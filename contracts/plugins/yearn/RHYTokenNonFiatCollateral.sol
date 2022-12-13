@@ -19,8 +19,8 @@ contract RHYTokenNonFiatCollateral is AbstractRHYTokenCollateral {
         uint256 delayUntilDefault_,
         uint16 basisPoints_,
         AggregatorV3Interface underlyingTargetToUoAFeed_,
-        uint48 oracleTimeout_,
         AggregatorV3Interface underlyingTargetToRefFeed_,
+        uint48 oracleTimeout_,
         uint256 defaultThreshold_
     )
         AbstractRHYTokenCollateral(

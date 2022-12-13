@@ -20,8 +20,7 @@ import { setOraclePrice } from '../../utils/oracles'
 import { advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
-  DMYTokenFiatCollateral,
-  RHYTokenFiatCollateral,
+  RHYTokenNonFiatCollateral,
   YTokenMock,
   ERC20Mock,
   FacadeRead,
@@ -45,14 +44,14 @@ const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`RHYTokenNonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
   // Tokens/Assets
-  let dai: ERC20Mock
-  let yvDai: YTokenMock
-  let yvDaiCollateral: RHYTokenFiatCollateral
+  let wbtc: ERC20Mock
+  let yvWbtc: YTokenMock
+  let yvWbtcCollateral: RHYTokenNonFiatCollateral
   // let compToken: ERC20Mock
   // let compAsset: Asset
   // let comptroller: ComptrollerMock
@@ -127,40 +126,43 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
       await loadFixture(defaultFixture))
 
-    // Get required contracts for yvDAI
-    // DAI token
-    dai = <ERC20Mock>(
-      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
+    // Get required contracts for yvWBTC
+    // wBTC token
+    wbtc = <ERC20Mock>(
+      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.WBTC || '')
     )
 
     YTokenMockFactory = await ethers.getContractFactory('YTokenMock')
-    // yvDAI token
-    yvDai = <YTokenMock>await YTokenMockFactory.deploy('DAI yVault', 'yvDAI', dai.address)
-    await yvDai.setExchangeRate(fp('1.0998'))
-    expect(await yvDai.pricePerShare()).to.be.equal(fp('1.0998'))
+    // yvWBTC token
+    yvWbtc = <YTokenMock>await YTokenMockFactory.deploy('WBTC yVault', 'yvWBTC', wbtc.address)
+    await yvWbtc.setExchangeRate(fp('1.021'))
+    expect(await yvWbtc.pricePerShare()).to.be.equal(
+      toBNDecimals(fp('1.021'), await wbtc.decimals())
+    )
 
-    // Deploy yvDai collateral plugin
-    YTokenCollateralFactory = await ethers.getContractFactory('RHYTokenFiatCollateral', {
+    // Deploy yvWBTC collateral plugin
+    YTokenCollateralFactory = await ethers.getContractFactory('RHYTokenNonFiatCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
-    yvDaiCollateral = <RHYTokenFiatCollateral>(
+    yvWbtcCollateral = <RHYTokenNonFiatCollateral>(
       await YTokenCollateralFactory.deploy(
-        yvDai.address,
+        yvWbtc.address,
         config.rTokenMaxTradeVolume,
         fp('1'),
-        ethers.utils.formatBytes32String('USD'),
+        ethers.utils.formatBytes32String('BTC'),
         delayUntilDefault,
         '100',
-        networkConfig[chainId].chainlinkFeeds.DAI as string,
+        networkConfig[chainId].chainlinkFeeds.BTC as string,
+        networkConfig[chainId].chainlinkFeeds.WBTC as string,
         ORACLE_TIMEOUT,
         defaultThreshold
       )
     )
 
     // Setup balances for addr1 - mint tokens on mock
-    // yvDAI
-    initialBal = bn('500000e18')
-    await yvDai.mint(addr1.address, toBNDecimals(initialBal, 18))
+    // yvWBTC
+    initialBal = bn('50000e4')
+    await yvWbtc.mint(addr1.address, initialBal)
 
     // Set parameters
     const rTokenConfig: IRTokenConfig = {
@@ -173,7 +175,7 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     // Set primary basket
     const rTokenSetup: IRTokenSetup = {
       assets: [],
-      primaryBasket: [yvDaiCollateral.address],
+      primaryBasket: [yvWbtcCollateral.address],
       weights: [fp('1')],
       backups: [],
       beneficiary: ZERO_ADDRESS,
@@ -228,19 +230,19 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
       // Check Rewards assets (if applies)
       // Check Collateral plugin
-      // yvDAI (RHYTokenFiatCollateral)
-      expect(await yvDaiCollateral.isCollateral()).to.equal(true)
-      expect(await yvDaiCollateral.erc20()).to.equal(yvDai.address)
-      expect(await yvDai.decimals()).to.equal(await dai.decimals())
-      expect(await yvDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await yvDaiCollateral.actualRefPerTok()).to.be.closeTo(fp('1.0998'), fp('0.001'))
-      expect(await yvDaiCollateral.refPerTok()).to.be.closeTo(fp('1.0888'), fp('0.001'))
-      expect(await yvDaiCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await yvDaiCollateral.strictPrice()).to.be.closeTo(fp('1.099'), fp('0.001'))
+      // yvWBTC (RHYTokenNonFiatCollateral)
+      expect(await yvWbtcCollateral.isCollateral()).to.equal(true)
+      expect(await yvWbtcCollateral.erc20()).to.equal(yvWbtc.address)
+      expect(await yvWbtc.decimals()).to.equal(await wbtc.decimals())
+      expect(await yvWbtcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('BTC'))
+      expect(await yvWbtcCollateral.actualRefPerTok()).to.be.closeTo(fp('1.021'), fp('0.001'))
+      expect(await yvWbtcCollateral.refPerTok()).to.be.closeTo(fp('1.01'), fp('0.01'))
+      expect(await yvWbtcCollateral.targetPerRef()).to.equal(fp('1'))
+      expect(await yvWbtcCollateral.strictPrice()).to.be.closeTo(fp('32000'), fp('200'))
 
       // Check claim data
-      await expect(yvDaiCollateral.claimRewards()).to.not.emit(yvDaiCollateral, 'RewardsClaimed')
-      expect(await yvDaiCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+      await expect(yvWbtcCollateral.claimRewards()).to.not.emit(yvWbtcCollateral, 'RewardsClaimed')
+      expect(await yvWbtcCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
@@ -252,16 +254,16 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       const ERC20s = await assetRegistry.erc20s()
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
-      expect(ERC20s[2]).to.equal(yvDai.address)
+      expect(ERC20s[2]).to.equal(yvWbtc.address)
       expect(ERC20s.length).to.eql(3)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(yvDaiCollateral.address)
+      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(yvWbtcCollateral.address)
 
       // Collaterals
-      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(yvDaiCollateral.address)
+      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(yvWbtcCollateral.address)
     })
 
     // Check RToken basket
@@ -269,7 +271,7 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(yvDai.address)
+      expect(backing[0]).to.equal(yvWbtc.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
@@ -279,15 +281,15 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
       const [isFallback, price] = await basketHandler.price(true)
       expect(isFallback).to.equal(false)
-      expect(price).to.be.closeTo(fp('1.01'), fp('0.001')) // weight / refPerTok * price = 1 / 1.088 * 1.099
+      expect(price).to.be.closeTo(fp('31683'), fp('50')) // weight / refPerTok * price = 1 / 1.01 * 32000
 
       // Check RToken price
-      const issueAmount: BigNumber = bn('10000e18')
-      await yvDai
+      const issueAmount: BigNumber = bn('1e18')
+      await yvWbtc
         .connect(addr1)
-        .approve(rToken.address, toBNDecimals(issueAmount, await dai.decimals()).mul(100))
+        .approve(rToken.address, toBNDecimals(issueAmount, await wbtc.decimals()).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1.01'), fp('0.001'))
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('31683'), fp('50'))
     })
 
     // Validate constructor arguments
@@ -296,13 +298,14 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Delay until default
       await expect(
         YTokenCollateralFactory.deploy(
-          yvDai.address,
+          yvWbtc.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
-          ethers.utils.formatBytes32String('USD'),
+          ethers.utils.formatBytes32String('BTC'),
           bn('0'),
           '100',
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
+          networkConfig[chainId].chainlinkFeeds.BTC as string,
+          networkConfig[chainId].chainlinkFeeds.WBTC as string,
           ORACLE_TIMEOUT,
           defaultThreshold
         )
@@ -311,28 +314,30 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Default threshold
       await expect(
         YTokenCollateralFactory.deploy(
-          yvDai.address,
+          yvWbtc.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
-          ethers.utils.formatBytes32String('USD'),
+          ethers.utils.formatBytes32String('BTC'),
           bn('1000'),
           '100',
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
+          networkConfig[chainId].chainlinkFeeds.BTC as string,
+          networkConfig[chainId].chainlinkFeeds.WBTC as string,
           ORACLE_TIMEOUT,
           bn('0')
         )
       ).to.be.revertedWith('defaultThreshold zero')
 
-      // basis points excess
+      // Rate per period
       await expect(
         YTokenCollateralFactory.deploy(
-          yvDai.address,
+          yvWbtc.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
-          ethers.utils.formatBytes32String('USD'),
+          ethers.utils.formatBytes32String('BTC'),
           delayUntilDefault,
           '10001',
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
+          networkConfig[chainId].chainlinkFeeds.BTC as string,
+          networkConfig[chainId].chainlinkFeeds.WBTC as string,
           ORACLE_TIMEOUT,
           defaultThreshold
         )
@@ -341,57 +346,59 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   })
 
   describe('Issuance/Appreciation/Redemption', () => {
-    const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+    const MIN_ISSUANCE_PER_BLOCK = bn('1e18')
 
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      await yvDai
+      await yvWbtc
         .connect(addr1)
-        .approve(rToken.address, toBNDecimals(issueAmount, await dai.decimals()).mul(100))
+        .approve(rToken.address, toBNDecimals(issueAmount, await wbtc.decimals()).mul(100))
 
+      console.log(await yvWbtc.balanceOf(addr1.address))
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check RTokens issued to user
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount) // ~0.989
 
       // Store Balances after issuance
-      const balanceAddr1yvDai: BigNumber = await yvDai.balanceOf(addr1.address)
+      const balanceAddr1yvWbtc: BigNumber = await yvWbtc.balanceOf(addr1.address)
+      console.log(balanceAddr1yvWbtc)
 
       // Check rates and prices
-      const yvDaiPrice1: BigNumber = await yvDaiCollateral.strictPrice()
-      const yvDaiRefPerTok1: BigNumber = await yvDaiCollateral.refPerTok()
+      const yvWbtcPrice1: BigNumber = await yvWbtcCollateral.strictPrice()
+      const yvWbtcRefPerTok1: BigNumber = await yvWbtcCollateral.refPerTok()
 
-      expect(yvDaiPrice1).to.be.closeTo(fp('1.099'), fp('0.001'))
-      expect(yvDaiRefPerTok1).to.be.closeTo(fp('1.088'), fp('0.001'))
+      expect(yvWbtcPrice1).to.be.closeTo(fp('32000'), fp('100'))
+      expect(yvWbtcRefPerTok1).to.be.closeTo(fp('1.01'), fp('0.01'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue1).to.be.closeTo(fp('10100'), fp('10')) // approx 10.1K in value
+      expect(totalAssetValue1).to.be.closeTo(fp('31600'), fp('100')) // approx $31.6K in value
 
       // Increase exchange rate slightly
-      await yvDai.setExchangeRate(fp('1.1'))
+      await yvWbtc.setExchangeRate(fp('1.025'))
 
       // Refresh yToken manually
-      await yvDaiCollateral.refresh()
-      expect(await yvDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await yvWbtcCollateral.refresh()
+      expect(await yvWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight increase
-      const yvDaiPrice2: BigNumber = await yvDaiCollateral.strictPrice() // ~1.1
-      const yvDaiRefPerTok2: BigNumber = await yvDaiCollateral.refPerTok() // ~1.09
+      const yvWbtcPrice2: BigNumber = await yvWbtcCollateral.strictPrice() // ~$33.3K
+      const yvWbtcRefPerTok2: BigNumber = await yvWbtcCollateral.refPerTok() // ~1.04
 
       // Check rates and price increase
-      expect(yvDaiPrice2).to.be.gt(yvDaiPrice1)
-      expect(yvDaiRefPerTok2).to.be.gt(yvDaiRefPerTok1)
+      expect(yvWbtcPrice2).to.be.gt(yvWbtcPrice1)
+      expect(yvWbtcRefPerTok2).to.be.gt(yvWbtcRefPerTok1)
 
       // Still close to the original values
-      expect(yvDaiPrice2).to.be.closeTo(fp('1.1'), fp('0.001'))
-      expect(yvDaiRefPerTok2).to.be.closeTo(fp('1.09'), fp('0.001'))
+      expect(yvWbtcPrice2).to.be.closeTo(fp('32000'), fp('200'))
+      expect(yvWbtcRefPerTok2).to.be.closeTo(fp('1.01'), fp('0.01'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -400,31 +407,31 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(totalAssetValue2).to.be.gt(totalAssetValue1)
 
       // Increase exchange rate greatly
-      await yvDai.setExchangeRate(fp('1.9'))
+      await yvWbtc.setExchangeRate(fp('1.9'))
 
       // Refresh yToken manually
-      await yvDaiCollateral.refresh()
-      expect(await yvDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await yvWbtcCollateral.refresh()
+      expect(await yvWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, great increase
-      const yvDaiPrice3: BigNumber = await yvDaiCollateral.strictPrice() // ~1.9
-      const yvDaiRefPerTok3: BigNumber = await yvDaiCollateral.refPerTok() // ~1.88
+      const yvWbtcPrice3: BigNumber = await yvWbtcCollateral.strictPrice() // ~$59.5K
+      const yvWbtcRefPerTok3: BigNumber = await yvWbtcCollateral.refPerTok() // ~1.88
 
       // Check rates and price increase
-      expect(yvDaiPrice3).to.be.gt(yvDaiPrice2)
-      expect(yvDaiRefPerTok3).to.be.gt(yvDaiRefPerTok2)
+      expect(yvWbtcPrice3).to.be.gt(yvWbtcPrice2)
+      expect(yvWbtcRefPerTok3).to.be.gt(yvWbtcRefPerTok2)
 
       // Now significantly different
-      expect(yvDaiPrice3).to.be.closeTo(fp('1.9'), fp('0.001'))
-      expect(yvDaiRefPerTok3).to.be.closeTo(fp('1.88'), fp('0.01'))
+      expect(yvWbtcPrice3).to.be.closeTo(fp('59500'), fp('100'))
+      expect(yvWbtcRefPerTok3).to.be.closeTo(fp('1.88'), fp('0.01'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue3).to.be.gt(totalAssetValue2)
+      expect(totalAssetValue3).to.be.gt(totalAssetValue2) // ~$58.8K
 
-      // Redeem Rtokens with the updated rates
+      // Redeem RTokens with the updated rates
       await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
 
       // Check funds were transferred
@@ -432,18 +439,24 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Check balances - Fewer yvTokens should have been sent to the user
-      const newBalanceAddr1yvDai: BigNumber = await yvDai.balanceOf(addr1.address)
+      const newBalanceAddr1yvWbtc: BigNumber = await yvWbtc.balanceOf(addr1.address)
 
-      // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1yvDai.sub(balanceAddr1yvDai)).to.be.closeTo(fp('5300'), fp('100'))
+      // Check received tokens represent ~$31.6K in value at current prices
+      expect(newBalanceAddr1yvWbtc.sub(balanceAddr1yvWbtc)).to.be.closeTo(
+        bn('0.53e8'),
+        bn('0.01e8')
+      )
 
       // Check remainders in Backing Manager
-      expect(await yvDai.balanceOf(backingManager.address)).to.be.closeTo(fp('3800'), fp('100'))
+      expect(await yvWbtc.balanceOf(backingManager.address)).to.be.closeTo(
+        bn('0.46e8'),
+        bn('0.01e8')
+      )
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('7500'),
-        fp('300')
+        fp('27200'),
+        fp('100')
       )
     })
   })
@@ -452,7 +465,7 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   // claiming calls throughout the protocol are handled correctly and do not revert.
   describe('Rewards', () => {
     it('Should be able to claim rewards (if applicable)', async () => {
-      const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+      const MIN_ISSUANCE_PER_BLOCK = bn('1e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
       await expectEvents(backingManager.claimRewards(), [
@@ -464,15 +477,16 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       ])
 
       // Provide approvals for issuances
-      await yvDai
-        .connect(addr1)
-        .approve(rToken.address, toBNDecimals(issueAmount, await dai.decimals()).mul(100))
+      await yvWbtc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8))
 
       // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(toBNDecimals(issueAmount, 8))).to.emit(
+        rToken,
+        'Issuance'
+      )
 
       // Check RTokens issued to user
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(toBNDecimals(issueAmount, 8))
 
       // Now we can claim rewards - check initial balance still 0
       // Advance Time
@@ -491,33 +505,19 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
-      // Reverts with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      // Compound
-      await expect(yvDaiCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
-
-      // Fallback price is returned
-      const [isFallback, price] = await yvDaiCollateral.price(true)
-      expect(isFallback).to.equal(true)
-      expect(price).to.equal(fp('1'))
-
-      // Refresh should mark status IFFY
-      await yvDaiCollateral.refresh()
-      expect(await yvDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
-
       // YTokens Collateral with no price
-      const nonpriceYtokenCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>await (
-        await ethers.getContractFactory('DMYTokenFiatCollateral', {
+      const nonpriceYtokenCollateral: RHYTokenNonFiatCollateral = <RHYTokenNonFiatCollateral>await (
+        await ethers.getContractFactory('RHYTokenNonFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        yvDai.address,
+        yvWbtc.address,
         config.rTokenMaxTradeVolume,
         fp('1'),
-        ethers.utils.formatBytes32String('DM10000yvDAI'),
+        ethers.utils.formatBytes32String('BTC'),
         delayUntilDefault,
         '100',
+        NO_PRICE_DATA_FEED,
         NO_PRICE_DATA_FEED,
         ORACLE_TIMEOUT,
         defaultThreshold
@@ -531,32 +531,73 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await nonpriceYtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
-      const invalidpriceYtokenCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>await (
-        await ethers.getContractFactory('DMYTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        yvDai.address,
-        config.rTokenMaxTradeVolume,
-        fp('1'),
-        ethers.utils.formatBytes32String('DM10000yvDAI'),
-        delayUntilDefault,
-        '100',
-        mockChainlinkFeed.address,
-        ORACLE_TIMEOUT,
-        defaultThreshold
+      const invalidpriceYtokenCollateral: RHYTokenNonFiatCollateral = <RHYTokenNonFiatCollateral>(
+        await (
+          await ethers.getContractFactory('RHYTokenNonFiatCollateral', {
+            libraries: { OracleLib: oracleLib.address },
+          })
+        ).deploy(
+          yvWbtc.address,
+          config.rTokenMaxTradeVolume,
+          fp('1'),
+          ethers.utils.formatBytes32String('BTC'),
+          delayUntilDefault,
+          '100',
+          networkConfig[chainId].chainlinkFeeds.BTC as string,
+          mockChainlinkFeed.address,
+          ORACLE_TIMEOUT,
+          defaultThreshold
+        )
       )
 
-      await setOraclePrice(invalidpriceYtokenCollateral.address, bn(0))
+      const invalidpriceYtokenCollateral2: RHYTokenNonFiatCollateral = <RHYTokenNonFiatCollateral>(
+        await (
+          await ethers.getContractFactory('RHYTokenNonFiatCollateral', {
+            libraries: { OracleLib: oracleLib.address },
+          })
+        ).deploy(
+          yvWbtc.address,
+          config.rTokenMaxTradeVolume,
+          fp('1'),
+          ethers.utils.formatBytes32String('BTC'),
+          delayUntilDefault,
+          '100',
+          mockChainlinkFeed.address,
+          networkConfig[chainId].chainlinkFeeds.WBTC as string,
+          ORACLE_TIMEOUT,
+          defaultThreshold
+        )
+      )
+
+      await setOraclePrice(invalidpriceYtokenCollateral2.address, bn(0))
 
       // Reverts with zero price
       await expect(invalidpriceYtokenCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
+      await expect(invalidpriceYtokenCollateral2.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
       // Refresh should mark status IFFY
       await invalidpriceYtokenCollateral.refresh()
       expect(await invalidpriceYtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await invalidpriceYtokenCollateral2.refresh()
+      expect(await invalidpriceYtokenCollateral2.status()).to.equal(CollateralStatus.IFFY)
+
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      await expect(yvWbtcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+
+      // Fallback price is returned
+      const [isFallback, price] = await yvWbtcCollateral.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(fp('1'))
+
+      // Refresh should mark status IFFY
+      await yvWbtcCollateral.refresh()
+      expect(await yvWbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -568,53 +609,54 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newYVDaiCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>await (
-        await ethers.getContractFactory('DMYTokenFiatCollateral', {
+      const newYVWbtcCollateral: RHYTokenNonFiatCollateral = <RHYTokenNonFiatCollateral>await (
+        await ethers.getContractFactory('RHYTokenNonFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        await yvDaiCollateral.erc20(),
-        await yvDaiCollateral.maxTradeVolume(),
+        await yvWbtcCollateral.erc20(),
+        await yvWbtcCollateral.maxTradeVolume(),
         fp('1'),
-        await yvDaiCollateral.targetName(),
-        await yvDaiCollateral.delayUntilDefault(),
+        await yvWbtcCollateral.targetName(),
+        await yvWbtcCollateral.delayUntilDefault(),
         '100',
+        networkConfig[chainId].chainlinkFeeds.BTC as string,
         mockChainlinkFeed.address,
-        await yvDaiCollateral.oracleTimeout(),
-        await yvDaiCollateral.defaultThreshold()
+        await yvWbtcCollateral.oracleTimeout(),
+        await yvWbtcCollateral.defaultThreshold()
       )
 
       // Check initial state
-      expect(await newYVDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newYVDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newYVWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYVWbtcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
       // Depeg one of the underlying tokens - Reducing price 20%
       await mockChainlinkFeed.updateAnswer(fp('0.8')) // -20%
 
       // Force updates - Should update whenDefault and status
-      await expect(newYVDaiCollateral.refresh())
-        .to.emit(newYVDaiCollateral, 'DefaultStatusChanged')
+      await expect(newYVWbtcCollateral.refresh())
+        .to.emit(newYVWbtcCollateral, 'DefaultStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-      expect(await newYVDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await newYVWbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
         delayUntilDefault
       )
-      expect(await newYVDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newYVWbtcCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
       // Move time forward past delayUntilDefault
       await advanceTime(Number(delayUntilDefault))
-      expect(await newYVDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newYVWbtcCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
       // YToken
-      const prevWhenDefault: BigNumber = await newYVDaiCollateral.whenDefault()
-      await expect(newYVDaiCollateral.refresh()).to.not.emit(
-        newYVDaiCollateral,
+      const prevWhenDefault: BigNumber = await newYVWbtcCollateral.whenDefault()
+      await expect(newYVWbtcCollateral.refresh()).to.not.emit(
+        newYVWbtcCollateral,
         'DefaultStatusChanged'
       )
-      expect(await newYVDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await newYVDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
+      expect(await newYVWbtcCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newYVWbtcCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
@@ -625,17 +667,18 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      const invalidYTokenCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>(
+      const invalidYTokenCollateral: RHYTokenNonFiatCollateral = <RHYTokenNonFiatCollateral>(
         await YTokenCollateralFactory.deploy(
-          await yvDaiCollateral.erc20(),
-          await yvDaiCollateral.maxTradeVolume(),
+          await yvWbtcCollateral.erc20(),
+          await yvWbtcCollateral.maxTradeVolume(),
           fp('1'),
-          await yvDaiCollateral.targetName(),
-          await yvDaiCollateral.delayUntilDefault(),
+          await yvWbtcCollateral.targetName(),
+          await yvWbtcCollateral.delayUntilDefault(),
           '100',
           invalidChainlinkFeed.address,
-          await yvDaiCollateral.oracleTimeout(),
-          await yvDaiCollateral.defaultThreshold()
+          invalidChainlinkFeed.address,
+          await yvWbtcCollateral.oracleTimeout(),
+          await yvWbtcCollateral.defaultThreshold()
         )
       )
 
@@ -644,7 +687,7 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
       expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Runnning out of gas (same error)
+      // Running out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
       await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
       expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
