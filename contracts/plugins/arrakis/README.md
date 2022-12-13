@@ -71,7 +71,7 @@ IERC20Metadata erc20_, // address of LP token
 uint192 maxTradeVolume_, // max trade volume - default
 
 uint48 oracleTimeout_, // oracle price request timeout - default
-bytes32 targetName_, // FSV2SQRT{token0 symbol}{token1 symbol}
+bytes32 targetName_, // ASV2SQRT{token0 symbol}{token1 symbol}
 uint192 defaultThreshold_, // maximum price drift from peg (%) - default
 uint256 delayUntilDefault_, // time till status goes from IFFY to DISABLED
 ```
