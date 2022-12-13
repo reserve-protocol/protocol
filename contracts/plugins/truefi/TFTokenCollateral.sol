@@ -118,7 +118,8 @@ contract TFTokenCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        // uint256 rate = ITFToken(address(erc20)).poolValue() / ITFToken(address(erc20)).totalSupply();
+        // uint256 rate = ITFToken(address(erc20)).poolValue()
+        // / ITFToken(address(erc20)).totalSupply();
         // //int8 shiftLeft = 6 - referenceERC20Decimals - 18;
         // return shiftl_toFix(rate, -0);
         ITFToken tfToken = ITFToken(address(erc20));
