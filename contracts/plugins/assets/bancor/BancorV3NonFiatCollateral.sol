@@ -88,8 +88,6 @@ contract BancorV3NonFiatCollateral is Collateral {
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
-        console.log(referencePrice);
-        console.log(erc20.decimals());
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
