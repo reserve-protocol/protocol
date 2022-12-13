@@ -536,7 +536,7 @@ describe('FacadeAct contract', () => {
         )
     })
 
-    it('Revenues - Should handle asses with invalid claim logic', async () => {
+    it('Revenues - Should handle assets with invalid claim logic', async () => {
       // Redeem all RTokens
       await rToken.connect(addr1).redeem(issueAmount)
 

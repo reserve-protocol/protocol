@@ -1345,10 +1345,34 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('contains duplicates')
     })
 
+    it('Should not allow to set prime Basket with 0 address tokens', async () => {
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
+      ).to.be.revertedWith('address zero is not valid collateral')
+    })
+
+    it('Should not allow to set prime Basket with stRSR', async () => {
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
+      ).to.be.revertedWith('stRSR is not valid collateral')
+    })
+
     it('Should not allow to set prime Basket with invalid target amounts', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
       ).to.be.revertedWith('invalid target amount')
+    })
+
+    it('Should not allow to set prime Basket with an empty basket', async () => {
+      await expect(basketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
+        'cannot empty basket'
+      )
+    })
+
+    it('Should not allow to set prime Basket with a zero amount', async () => {
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
+      ).to.be.revertedWith('invalid target amount; must be nonzero')
     })
 
     it('Should not allow to set prime Basket with RSR/RToken', async () => {
@@ -1368,6 +1392,25 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(basketHandler, 'PrimeBasketSet')
         .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+    })
+
+    it('Should return FIX_ZERO for basketsHeldBy(<any account>) if the basket is empty', async () => {
+      // run a fresh deployment specifically for this test
+      const receipt = await (
+        await deployer.deploy(
+          'RTKN RToken (empty basket)',
+          'RTKN (empty basket)',
+          'mandate (empty basket)',
+          owner.address,
+          config
+        )
+      ).wait()
+      const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
+      const newMain: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
+      const emptyBasketHandler: IBasketHandler = <IBasketHandler>(
+        await ethers.getContractAt('IBasketHandler', await newMain.basketHandler())
+      )
+      expect(await emptyBasketHandler.basketsHeldBy(addr1.address)).to.equal(0)
     })
 
     it('Should not allow to set backup Config if not OWNER', async () => {
