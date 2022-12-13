@@ -65,14 +65,13 @@ contract UniconvexFiatCollateral is UniconvexAbstractCollateral {
         uint256 multiplier = 10 ** IERC20Metadata(this.coins(0)).decimals();
         for (uint256 i = 1; i < chainlinkFeeds.length; i++) {
             uint256 divisor = 10 ** IERC20Metadata(this.coins(i)).decimals();
-            uint256 p = multiplier * curvePool.get_dy(0, int128(uint128(i)), FIX_ONE) / divisor;
+            uint256 p = (multiplier * curvePool.get_dy(0, int128(uint128(i)), FIX_ONE)) / divisor;
             if (p < peg - delta || p > peg + delta) {
                 return true;
             }
         }
         return false;
     }
-
 
     /// Refresh exchange rates and update default status.
     function refresh() external override {
@@ -86,8 +85,8 @@ contract UniconvexFiatCollateral is UniconvexAbstractCollateral {
         } else {
             // peg = FIX_ONE for {target} = {UoA}, not hardcoded because it can be overridden in
             // a collateral contract meant for {target} = {UoA}, where `targetPerRef` will be different from 1
-            uint192 peg = pricePerTarget() * targetPerRef() / FIX_ONE;
-            uint192 delta = peg * defaultThreshold / FIX_ONE;
+            uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+            uint192 delta = (peg * defaultThreshold) / FIX_ONE;
 
             anyPriceOutOfBoundsOrUnknown(peg, delta) || poolIsAwayFromOptimalPoint(peg, delta)
                 ? markStatus(CollateralStatus.IFFY)
@@ -100,7 +99,6 @@ contract UniconvexFiatCollateral is UniconvexAbstractCollateral {
             emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
-
 
     /**
      * @notice Check if every price is accessible from its feed and is within the allowed range
