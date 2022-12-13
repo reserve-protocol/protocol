@@ -191,7 +191,9 @@ describe('FacadeRead contract', () => {
     })
 
     it('Should return basketBreakdown correctly for tokens with (0,FIXED_MAX) price', async () => {
-      const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>await ethers.getContractAt('MockV3Aggregator', await tokenAsset.chainlinkFeed())
+      const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+        await ethers.getContractAt('MockV3Aggregator', await tokenAsset.chainlinkFeed())
+      )
       // set price of dai to 0
       await chainlinkFeed.updateAnswer(0)
       await main.connect(owner).pause()

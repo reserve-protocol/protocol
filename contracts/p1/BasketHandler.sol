@@ -350,7 +350,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @param qty {tok/BU}
     /// @param p {UoA/tok}
     function quantityMulPrice(uint192 qty, uint192 p) internal pure returns (uint192) {
+        // untestable:
+        //      qty will never = 0 here because of the check in _price()
         if (qty == 0 || p == 0) return 0;
+        // make collateral coll.refPerTok() return 0
         if (qty == FIX_MAX || p == FIX_MAX) return FIX_MAX;
 
         // return FIX_MAX instead of throwing overflow errors.
