@@ -659,6 +659,15 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
       // Decrease rate for nToken, will disable collateral immediately
       await bnETHMock.setUnderlying(bn('1e7'))
+      console.log(await bnETHMock.poolTokenToUnderlying())
+
+      // Force updates - Should update whenDefault and status for collateral
+      console.log(await newNEthCollateral.status())
+      console.log(await CollateralStatus.SOUND)
+      await expect(newNEthCollateral.refresh())
+        .to.emit(newNEthCollateral, 'DefaultStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+      console.log(await newNEthCollateral.status())
 
       expect(await newNEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())

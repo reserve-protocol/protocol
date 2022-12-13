@@ -22,6 +22,8 @@ For Non-Fiat collateral plugin:
 
 ## How does one configure and deploy an instance of the plugin?
 
+BLOCK USED IN TEST: `15000000`
+
 The collateral plugin `BancorV3FiatCollateral` is the plugin that will be deployed for any Fiat `bnToken` pool.
 Currently only `bnDai` token pool is available from Bancor V3 pools. 
 
