@@ -206,7 +206,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
 
     // Setup balances for addr1 - Transfer from Mainnet holder
     // tfUSDC
-    initialBal = bn('20000e6')
+    initialBal = bn('2000e6')
     await whileImpersonating(holderTFUSDC, async (tfusdcSigner) => {
       //console.log("Balances")
       //console.log(await tfUsdc.balanceOf(holderTFUSDC))
@@ -421,23 +421,31 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
   })
 
   describe('Issuance/Appreciation/Redemption', () => {
-    const MIN_ISSUANCE_PER_BLOCK = bn('10e6')
+    const MIN_ISSUANCE_PER_BLOCK = bn('10e18')
 
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
+      console.log("Balance of rToken after approval, before issuance")
       console.log(await rToken.balanceOf(addr1.address))
       // Provide approvals for issuances
-      await tfUsdc.connect(addr1).approve(rToken.address, issueAmount.mul(100))
-      console.log(await rToken.balanceOf(addr1.address))
+
+      await tfUsdc.connect(addr1).approve(rToken.address, issueAmount.mul(10))
+      console.log("Balance of tfUSDC after approval, before issuance")
+      console.log(await tfUsdc.balanceOf(addr1.address))
+    
+      //console.log(await rToken.balanceOf(addr1.address))
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      console.log(await rToken.balanceOf(addr1.address))
+      //console.log(await rToken.balanceOf(addr1.address))
       // Check RTokens issued to user
+      console.log("Balance of rToken after issuance")
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
       const balanceAddr1tfUsdc: BigNumber = await tfUsdc.balanceOf(addr1.address)
+      console.log("Balance of tfUSDC after issuance")
+      console.log(await tfUsdc.balanceOf(addr1.address))
 
       // Check rates and prices
       const tfUsdcPrice1: BigNumber = await tfUsdcCollateral.strictPrice() // ~ 0.022015 cents
@@ -521,15 +529,15 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       const newBalanceAddr1tfUsdc: BigNumber = await tfUsdc.balanceOf(addr1.address)
 
       // Check received tokens represent ~1K in value at current prices
-      expect(newBalanceAddr1tfUsdc.sub(balanceAddr1tfUsdc)).to.be.closeTo(bn('838e18'), bn('1e18')) // ~1.192 * 838 ~= 1K (100% of basket)
+      expect(newBalanceAddr1tfUsdc.sub(balanceAddr1tfUsdc)).to.be.closeTo(bn('8.833e6'), bn('0.1e6')) // ~1.192 * 838 ~= 1K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await tfUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn('139e18'), bn('1e18')) // ~= 165 usd in value
+      expect(await tfUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn('0.117e6'), bn('0.1e6')) // ~= 165 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('165'), // ~= 165 usd (from above)
-        fp('1')
+        fp('0.132'), // ~= 165 usd (from above)
+        fp('0.1')
       )
     })
   })
