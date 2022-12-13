@@ -88,6 +88,10 @@ library BasketLibP1 {
         IERC20 tok,
         uint192 weight
     ) internal {
+        // untestable:
+        //      Both calls to .add() use a weight that has been CEIL rounded in the
+        //      Fixed library div function, so weight will never be 0 here.
+        //      Additionally, setPrimeBasket() enforces prime-basket tokens must have a weight > 0.
         if (weight == FIX_ZERO) return;
         if (self.refAmts[tok].eq(FIX_ZERO)) {
             self.erc20s.push(tok);
