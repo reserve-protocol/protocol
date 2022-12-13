@@ -122,7 +122,7 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             })
         })
 
-        it("U2C can be deployed", async () => {
+        it("U2C non fiat can be deployed", async () => {
             const asset0 = usdt
             const asset1 = usdc
 
@@ -187,8 +187,8 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     DELAY_UNTIL_DEFAULT
                 )
 
-            //TODO asserts
             await waitForTx(await uniswapV2NonFiatCollateral.refresh())
+           
 
             expect(await uniswapV2NonFiatCollateral.isCollateral()).to.equal(true)
             expect(await uniswapV2NonFiatCollateral.erc20()).to.equal(pairAddress)
@@ -196,7 +196,6 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniswapV2NonFiatCollateral.targetName()).to.equal(targetName)
             expect(await uniswapV2NonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
             expect(await uniswapV2NonFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
-            //expect(await uniswapV2NonFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
             expect(await uniswapV2NonFiatCollateral.delayUntilDefault()).to.equal(
                 DELAY_UNTIL_DEFAULT
             )
@@ -206,20 +205,15 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniswapV2NonFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
 
             const pair = <IUniswapV2Pair>await ethers.getContractAt("IUniswapV2Pair", pairAddress)
+            const liquidity = await pair.balanceOf(addr1.address)
             const { reserve0, reserve1 } = await pair.getReserves()
             const totalSupply = await pair.totalSupply()
             const expectedRefPerTok = fp(sqrt(reserve0.mul(reserve1))).div(totalSupply)
             expect(await uniswapV2NonFiatCollateral.refPerTok()).to.equal(expectedRefPerTok)
 
             expect(await uniswapV2NonFiatCollateral.targetPerRef()).to.equal(fp("1"))
-            expect(await uniswapV2NonFiatCollateral.pricePerTarget()).to.equal(fp("1"))
-            //expect(await uniswapV2NonFiatCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
-            //expect(await uniswapV2NonFiatCollateral.strictPrice()).to.equal(await uniswapV2NonFiatCollateral._fallbackPrice())
-            //TODO
-            //expect(await uniswapV2NonFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-            // expect(await uniswapV2NonFiatCollateral.bal(addr1.address)).to.equal(
-            //   await adjustedAmout(uniswapV2Wrapper, 100)
-            // )
+            expect(await uniswapV2NonFiatCollateral.pricePerTarget()).to.equal(await uniswapV2NonFiatCollateral.strictPrice())
+            expect(await uniswapV2NonFiatCollateral.strictPrice()).closeTo(pow10(18).mul(fp('200')).div(liquidity), pow10(32))
         })
 
         it("U2C fiat can be deployed", async () => {
