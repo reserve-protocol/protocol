@@ -6,7 +6,7 @@ import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../../test/utils/impersonation'
 import { RoundingMode, TradeStatus, CollateralStatus } from '../../common/constants'
-import { advanceTime } from '../../test/utils/time'
+import { advanceTime, advanceBlocks } from '../../test/utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
@@ -325,7 +325,7 @@ describe('The Normal Operations scenario', () => {
 
       // Wait, then vest as Alice
       // 1e6 / 1e5 == 10 blocks
-      await minemine(100)
+      await advanceBlocks(100)
       await scenario.connect(alice).vestIssuance(1)
 
       // Now there are no outstanding issuances
