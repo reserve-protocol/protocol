@@ -15,7 +15,7 @@ import {
 } from '../../../common/configuration'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
 import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
-import { bn, fp, toBNDecimals } from '../../../common/numbers'
+import { bn, fp } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import { setOraclePrice } from '../../utils/oracles'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
@@ -197,6 +197,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
 
     // Setup balances for addr1 - Transfer from Mainnet holder
     // tfUSDC
+    // Note that the decimals in tfUSDC(tok) and USDC(ref) are both six.
     initialBal = bn('2000e6')
     await whileImpersonating(holderTFUSDC, async (tfusdcSigner) => {
       await tfUsdc.connect(tfusdcSigner).transfer(addr1.address, initialBal)
@@ -672,10 +673,13 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       // Note: In this case requires to use a TFToken mock to be able to change the rate
       const TFTokenMockFactory: ContractFactory = await ethers.getContractFactory('TFTokenMock')
       const symbol = await tfUsdc.symbol()
-      const tfUsdcMock: TFTokenMock = <TFTokenMock>(
-        await TFTokenMockFactory.deploy(symbol + ' Token', symbol, usdc.address, {
+      const tfUsdcMock: TFTokenMock = <TFTokenMock>await TFTokenMockFactory.deploy(
+        symbol + ' Token',
+        symbol,
+        usdc.address,
+        {
           gasLimit: 2000000,
-        })
+        }
       )
       // Set initial exchange rate to the new tfUsdc Mock
       await tfUsdcMock.setExchangeRate(fp('1.1'))
