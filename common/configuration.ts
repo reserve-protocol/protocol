@@ -28,6 +28,7 @@ export interface ITokens {
   yvDAI?: string
   yvWBTC?: string
   yvLINK?: string
+  rWBTC?: string
   AAVE?: string
   stkAAVE?: string
   COMP?: string
@@ -81,6 +82,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       yvDAI: '0x19D3364A399d251E894aC732651be8B0E4e85001',
       yvWBTC: '0xA696a63cc78DfFa1a63E9E50587C197387FF6C7E',
       yvLINK: '0x671a912C10bba0CFA74Cfc2d6Fba9BA1ed9530B2',
+      rWBTC: '0x65a833afDc250D9d38f8CD9bC2B1E3132dB13B2F',
       AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
