@@ -1,8 +1,8 @@
 # Collateral Plugin - Rocket - RETH
 
 This document is a temporary file to accompany the source code changes in this gitcoin submission pull request. The
-changes made add a collateral plugin enabling RETH to be used as collateral in the Reserve Protocol. All changes made
-fall under the greater licence in this repository, BlueOak-1.0.0.
+changes made add a collateral plugin enabling RETH to be used as collateral in the Reserve Protocol.
+All changes made fall under the greater licence in this repository, BlueOak-1.0.0.
 discord handle: aaron#7674
 
 ## Accounting units
@@ -12,13 +12,29 @@ target units are ether, and the unit of account is USD.
 
 ## refPerTok movements
 
-The value will only increase in normal circumstances. refPerTok() is found from getExchangeRate() in the RETH token
-contract. The exchange rate is determined by stored values in RocketStorage of total ether balance / total reth balance,
-and these values are periodically updated by the ODAO multisig. As RETH is a liquid staking token the exchange rate
-should only increase as minipools earn rewards. For the value to decrease a major error would need to occur in rocket
-pool, such as mass slashings due to a bug in client software. In this case refresh() would read a value for refPerTok
-which is less than the previously read value as the ODAO would vote in a value for total eth which is lower, and the
-CollateralStatus state would transition to disabled.
+The value will only increase in circumstances in which the collaterals status should remain SOUND. refPerTok() is found
+from getExchangeRate() in the RETH token contract. The exchange rate is determined by stored values in RocketStorage of
+total ether balance / total reth balance, and these values are periodically updated by the ODAO multisig. As RETH is a
+liquid staking token the exchange rate will increase as minipools earn rewards, it is not a volatile value like a price
+feed. For the value to decrease a catastrophic error would need to occur in rocket pool, such as mass slashings due to a
+critical bug in the client software. In this case refresh() would read a value for refPerTok which is less than the
+previously read value as the ODAO would vote in a value for total eth which is lower, and the CollateralStatus state
+would transition to disabled.
+
+Because the value should only increase, and has never decreased as shown in https://dune.com/queries/1286351/2204365 ,
+demurrage or revenue hiding is not employed. They have downsides of additional complexity risk, cause inconsistency to
+the Rtokens price, and increase gas costs significantly as they require regularly updating additional storage slots.
+There's a limit to the frequency the ODAO can update the values in RocketStorage, so for the eth balance to decrease
+without the reth balance also decreasing in equal proportion, any losses would have to outweigh the gains made by the
+other ~500k eth rocket pool is staking, so one minipool misbehaving would not be an issue. This was confirmed with
+rocket pool devs in their discord:
+> Valdorff — 11/27/2022 2:19 AM
+>
+> In order to go down, penalties would need to be larger than rewards across the ~day between oracle updates
+>
+> You can see the what the peg actually has done here: https://dune.com/queries/1286351/2204365
+>
+> Very very very unlikely this number goes down. Would probably take a huge client bug.
 
 ## Tests
 
@@ -70,7 +86,7 @@ delayUntilDefault seconds to recover.
 Compared to similar plugins there is a gas optimisation to save ~94 gas during normal usage where the status result is
 unchanged from SOUND. Instead of always overwriting the status and incurring a 100 gas fee for setting a slot to the
 same value, it compares first to see if it has changed, adding a DUP and EQ instead at a cost of ~6 gas, and only does
-the SSTORE if it's a new value which should be the rare flow. 
+the SSTORE if it's a new value which should be the rare flow.
 
 Slither reports two warning in refresh. One has been kept as one it is the recommended pattern to use in the reserve
 protocol solidity style document for catching out of gas errors. The other is an ignored return value which is also OK,
