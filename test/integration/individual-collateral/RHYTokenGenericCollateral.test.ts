@@ -157,7 +157,8 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         ethers.utils.formatBytes32String('LINK'),
         delayUntilDefault,
         '100',
-        priceProvider.address
+        priceProvider.address,
+        link.address
       )
     )
 
@@ -310,7 +311,8 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           ethers.utils.formatBytes32String('LINK'),
           bn('0'),
           '100',
-          priceProvider.address
+          priceProvider.address,
+          link.address
         )
       ).to.be.revertedWith('delayUntilDefault zero')
 
@@ -323,7 +325,8 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           ethers.utils.formatBytes32String('LINK'),
           delayUntilDefault,
           '10001',
-          priceProvider.address
+          priceProvider.address,
+          link.address
         )
       ).to.be.revertedWith('basisPoints_ invalid')
     })
@@ -506,7 +509,8 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           ethers.utils.formatBytes32String('LINK'),
           delayUntilDefault,
           '100',
-          NO_PRICE_DATA_FEED
+          NO_PRICE_DATA_FEED,
+          link.address
         )
       )
 
@@ -528,7 +532,8 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           ethers.utils.formatBytes32String('LINK'),
           delayUntilDefault,
           '100',
-          mockPriceProvider.address
+          mockPriceProvider.address,
+          link.address
         )
       )
 
@@ -563,7 +568,8 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           await yvLinkCollateral.targetName(),
           await yvLinkCollateral.delayUntilDefault(),
           '100',
-          mockPriceProvider.address
+          mockPriceProvider.address,
+          link.address
         )
       )
 
@@ -619,7 +625,8 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           await yvLinkCollateral.targetName(),
           await yvLinkCollateral.delayUntilDefault(),
           '100',
-          await yvLinkCollateral.priceProvider()
+          await yvLinkCollateral.priceProvider(),
+          link.address
         )
       )
 
@@ -668,7 +675,8 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           await yvLinkCollateral.targetName(),
           await yvLinkCollateral.delayUntilDefault(),
           '100',
-          invalidPriceProvider.address
+          invalidPriceProvider.address,
+          link.address
         )
       )
 

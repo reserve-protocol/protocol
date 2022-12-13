@@ -158,7 +158,8 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         ethers.utils.formatBytes32String('DM100yvLINK'),
         delayUntilDefault,
         getRatePerPeriod(100),
-        priceProvider.address
+        priceProvider.address,
+        link.address
       )
     )
 
@@ -314,7 +315,8 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           ethers.utils.formatBytes32String('DM100YVLink'),
           bn('0'),
           getRatePerPeriod(100),
-          priceProvider.address
+          priceProvider.address,
+          link.address
         )
       ).to.be.revertedWith('delayUntilDefault zero')
 
@@ -327,7 +329,8 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           ethers.utils.formatBytes32String('DM10000yvLINK'),
           delayUntilDefault,
           getRatePerPeriod(10000),
-          priceProvider.address
+          priceProvider.address,
+          link.address
         )
       ).to.be.revertedWith('ratePerPeriod zero')
     })
@@ -499,7 +502,8 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           ethers.utils.formatBytes32String('DM10000yvLINK'),
           delayUntilDefault,
           getRatePerPeriod(100),
-          NO_PRICE_DATA_FEED
+          NO_PRICE_DATA_FEED,
+          link.address
         )
       )
 
@@ -521,7 +525,8 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           ethers.utils.formatBytes32String('DM10000yvLINK'),
           delayUntilDefault,
           getRatePerPeriod(100),
-          mockPriceProvider.address
+          mockPriceProvider.address,
+          link.address
         )
       )
 
@@ -556,7 +561,8 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           await yvLinkCollateral.targetName(),
           await yvLinkCollateral.delayUntilDefault(),
           await yvLinkCollateral.ratePerPeriod(),
-          mockPriceProvider.address
+          mockPriceProvider.address,
+          link.address
         )
       )
 
@@ -609,7 +615,8 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           await yvLinkCollateral.targetName(),
           await yvLinkCollateral.delayUntilDefault(),
           await yvLinkCollateral.ratePerPeriod(),
-          invalidPriceProvider.address
+          invalidPriceProvider.address,
+          link.address
         )
       )
 

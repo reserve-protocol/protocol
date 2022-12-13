@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
 import "../assets/RevenueHidingCollateral.sol";
 import "./IYToken.sol";
@@ -8,7 +9,9 @@ import "./IPriceProvider.sol";
 
 contract RHYTokenGenericCollateral is RevenueHidingCollateral {
     using FixLib for uint192;
+
     IPriceProvider public immutable priceProvider;
+    IERC20Metadata public immutable underlyingToken;
 
     constructor(
         address vault_,
@@ -17,7 +20,8 @@ contract RHYTokenGenericCollateral is RevenueHidingCollateral {
         bytes32 targetName_,
         uint256 delayUntilDefault_,
         uint16 basisPoints_,
-        IPriceProvider priceProvider_
+        IPriceProvider priceProvider_,
+        IERC20Metadata underlyingToken_
     )
         RevenueHidingCollateral(
             vault_,
@@ -28,7 +32,10 @@ contract RHYTokenGenericCollateral is RevenueHidingCollateral {
             basisPoints_
         )
     {
+        require(address(priceProvider_) != address(0), "priceProvider_ is required");
+        require(address(underlyingToken_) != address(0), "underlyingToken_ is required");
         priceProvider = priceProvider_;
+        underlyingToken = underlyingToken_;
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -44,8 +51,7 @@ contract RHYTokenGenericCollateral is RevenueHidingCollateral {
     /// Can return 0, can revert
     /// @return {UoA/tok} The current price()
     function strictPrice() public view override returns (uint192) {
-        IYToken vault = IYToken(address(erc20));
-        uint256 _price = priceProvider.price(address(vault.token()));
+        uint256 _price = priceProvider.price(address(underlyingToken));
         if (_price == 0) {
             revert PriceOutsideRange();
         }

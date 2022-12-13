@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "../../libraries/Fixed.sol";
 import "../assets/DemurrageCollateral.sol";
@@ -9,6 +10,7 @@ import "./IPriceProvider.sol";
 
 contract DMYTokenGenericCollateral is DemurrageCollateral {
     IPriceProvider public immutable priceProvider;
+    IERC20Metadata public immutable underlyingToken;
 
     constructor(
         address vault_,
@@ -17,7 +19,8 @@ contract DMYTokenGenericCollateral is DemurrageCollateral {
         bytes32 targetName_,
         uint256 delayUntilDefault_,
         uint256 ratePerPeriod_,
-        IPriceProvider priceProvider_
+        IPriceProvider priceProvider_,
+        IERC20Metadata underlyingToken_
     )
         DemurrageCollateral(
             vault_,
@@ -28,7 +31,10 @@ contract DMYTokenGenericCollateral is DemurrageCollateral {
             ratePerPeriod_
         )
     {
+        require(address(priceProvider_) != address(0), "priceProvider_ is required");
+        require(address(underlyingToken_) != address(0), "underlyingToken_ is required");
         priceProvider = priceProvider_;
+        underlyingToken = underlyingToken_;
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -41,8 +47,7 @@ contract DMYTokenGenericCollateral is DemurrageCollateral {
     }
 
     function pricePerUTok() internal view override returns (uint192) {
-        IYToken vault = IYToken(address(erc20));
-        uint256 _price = priceProvider.price(address(vault.token()));
+        uint256 _price = priceProvider.price(address(underlyingToken));
         if (_price == 0) {
             revert PriceOutsideRange();
         }
