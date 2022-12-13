@@ -373,6 +373,28 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(rTokenTrader.claimRewards()).to.be.revertedWith('paused or frozen')
       })
 
+      it('Should not claim single rewards if paused', async () => {
+        await main.connect(owner).pause()
+        await expect(rTokenTrader.claimRewardsSingle(token2.address)).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+
+      it('Should not claim single rewards if frozen', async () => {
+        await main.connect(owner).freezeShort()
+        await expect(rTokenTrader.claimRewardsSingle(token2.address)).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+
+      it('should claim a single reward', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(rTokenTrader.address, rewardAmt)
+        await rTokenTrader.claimRewardsSingle(token2.address)
+        const balAfter = await aaveToken.balanceOf(rTokenTrader.address)
+        expect(balAfter).to.equal(rewardAmt)
+      })
+
       it('Should not settle trade if paused', async () => {
         await main.connect(owner).pause()
         await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
@@ -1325,6 +1347,24 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+      })
+
+      it('Should not distribute if paused or frozen', async () => {
+        const distAmount: BigNumber = bn('100e18')
+
+        await main.connect(owner).pause()
+
+        await expect(
+          distributor.distribute(rsr.address, backingManager.address, distAmount)
+        ).to.be.revertedWith('paused or frozen')
+
+        await main.connect(owner).unpause()
+
+        await main.connect(owner).freezeShort()
+
+        await expect(
+          distributor.distribute(rsr.address, backingManager.address, distAmount)
+        ).to.be.revertedWith('paused or frozen')
       })
 
       it('Should allow anyone to call distribute', async () => {
@@ -2794,6 +2834,37 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
+      })
+    })
+
+    context('With simple basket of ATokens and CTokens: no issued RTokens', function () {
+      beforeEach(async function () {
+        // Setup new basket with ATokens and CTokens
+        await basketHandler
+          .connect(owner)
+          .setPrimeBasket([token2.address, token3.address], [fp('0.5'), fp('0.5')])
+        await basketHandler.connect(owner).refreshBasket()
+
+        // Mint some RSR
+        await rsr.connect(owner).mint(addr1.address, initialBal)
+      })
+
+      it('Should be unable to handout excess assets', async () => {
+        // Check Price and Assets value
+        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        const mintAmt = bn('10000e18')
+        await token2.connect(owner).mint(backingManager.address, mintAmt)
+        await token3.connect(owner).mint(backingManager.address, mintAmt)
+
+        await expect(backingManager.manageTokens([])).revertedWith('BU rate out of range')
       })
     })
   })

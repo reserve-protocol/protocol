@@ -15,6 +15,7 @@ import {
   TestIMain,
   TestIRevenueTrader,
   USDCMock,
+  ZeroDecimalMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
@@ -36,8 +37,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   // Assets / Tokens
   let collateral0: Collateral
   let collateral1: Collateral
+  let collateralZ: Collateral
   let token0: ERC20Mock
   let token1: ERC20Mock
+  let tokenZ: ERC20Mock
 
   // Trading
   let gnosis: GnosisMock
@@ -55,6 +58,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
   let basket: Collateral[]
+  let collateral: Collateral[]
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -64,14 +68,27 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   beforeEach(async () => {
     ;[owner, addr1, other] = await ethers.getSigners()
     // Deploy fixture
-    ;({ basket, config, main, backingManager, broker, gnosis, rsrTrader, rTokenTrader } =
-      await loadFixture(defaultFixture))
+    ;({
+      basket,
+      config,
+      main,
+      backingManager,
+      broker,
+      gnosis,
+      rsrTrader,
+      rTokenTrader,
+      collateral,
+    } = await loadFixture(defaultFixture))
 
     // Get assets
     ;[collateral0, collateral1, ,] = basket
+    collateralZ = collateral[collateral.length - 1]
 
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
     token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
+    tokenZ = <ZeroDecimalMock>(
+      await ethers.getContractAt('ZeroDecimalMock', await collateralZ.erc20())
+    )
   })
 
   describe('Deployment', () => {
@@ -290,6 +307,24 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // Check nothing changed
       expect(await broker.disabled()).to.equal(false)
     })
+
+    it('Should not allow to report violation if paused or frozen', async () => {
+      // Check not disabled
+      expect(await broker.disabled()).to.equal(false)
+
+      await main.connect(owner).pause()
+
+      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith('paused or frozen')
+
+      await main.connect(owner).unpause()
+
+      await main.connect(owner).freezeShort()
+
+      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith('paused or frozen')
+
+      // Check nothing changed
+      expect(await broker.disabled()).to.equal(false)
+    })
   })
 
   describe('Trades', () => {
@@ -348,6 +383,52 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
+    })
+
+    it('Should initialize trade with minimum buy amount of at least 1', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Check state
+      expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
+
+      // Initialize trade - simulate from backingManager
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateralZ.address,
+        sellAmount: amount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Fund trade and initialize
+      await token0.connect(owner).mint(trade.address, amount)
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.not.be.reverted
+
+      // Check trade values
+      expect(await trade.gnosis()).to.equal(gnosis.address)
+      expect(await trade.auctionId()).to.equal(0)
+      expect(await trade.status()).to.equal(TradeStatus.OPEN)
+      expect(await trade.broker()).to.equal(broker.address)
+      expect(await trade.origin()).to.equal(backingManager.address)
+      expect(await trade.sell()).to.equal(token0.address)
+      expect(await trade.buy()).to.equal(tokenZ.address)
+      expect(await trade.initBal()).to.equal(amount)
+      expect(await trade.endTime()).to.equal(
+        (await getLatestBlockTimestamp()) + Number(config.auctionLength)
+      )
+      expect(await trade.worstCasePrice()).to.equal(bn('0'))
+      expect(await trade.canSettle()).to.equal(false)
     })
 
     it('Should protect against reentrancy when initializing trade', async () => {
