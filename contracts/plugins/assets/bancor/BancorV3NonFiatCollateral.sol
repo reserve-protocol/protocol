@@ -94,7 +94,6 @@ contract BancorV3NonFiatCollateral is Collateral {
         }
         
         prevReferencePrice = referencePrice;
-
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);

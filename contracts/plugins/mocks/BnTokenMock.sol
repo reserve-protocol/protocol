@@ -11,7 +11,9 @@ contract BnTokenMock is ERC20Mock {
     constructor(
         string memory name,
         string memory symbol
-    ) ERC20Mock(name, symbol) {}
+    ) ERC20Mock(name, symbol) {
+        underlying =0;
+    }
 
     function setUnderlying(uint256 amount) external {
         underlying = amount;
