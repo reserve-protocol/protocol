@@ -2,8 +2,8 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "contracts/p0/mixins/Component.sol";
-import "contracts/interfaces/IRewardable.sol";
+import "./Component.sol";
+import "../../interfaces/IRewardable.sol";
 
 /**
  * @title Rewardable

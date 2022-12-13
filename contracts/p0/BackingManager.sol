@@ -3,14 +3,14 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p0/mixins/TradingLib.sol";
-import "contracts/p0/mixins/Trading.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IBroker.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Array.sol";
-import "contracts/libraries/Fixed.sol";
+import "./mixins/TradingLib.sol";
+import "./mixins/Trading.sol";
+import "../interfaces/IAsset.sol";
+import "../interfaces/IAssetRegistry.sol";
+import "../interfaces/IBroker.sol";
+import "../interfaces/IMain.sol";
+import "../libraries/Array.sol";
+import "../libraries/Fixed.sol";
 
 /**
  * @title BackingManager

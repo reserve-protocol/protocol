@@ -98,7 +98,7 @@ A specific set of files will be created for that specific network after each pha
 - Before running the `deploy` script (or any particular script), run in a separate terminal a local forking node:
 
 ```bash
-FORK=true npx hardhat node
+yarn devchain
 ```
 
 ### Gas costs

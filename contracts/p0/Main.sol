@@ -3,11 +3,11 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/mixins/ComponentRegistry.sol";
-import "contracts/mixins/Auth.sol";
-import "contracts/mixins/Versioned.sol";
+import "../libraries/Fixed.sol";
+import "../interfaces/IMain.sol";
+import "../mixins/ComponentRegistry.sol";
+import "../mixins/Auth.sol";
+import "../mixins/Versioned.sol";
 
 /**
  * @title Main

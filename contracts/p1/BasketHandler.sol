@@ -4,12 +4,13 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IBasketHandler.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Array.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/p1/mixins/Component.sol";
+
+import "../interfaces/IAssetRegistry.sol";
+import "../interfaces/IBasketHandler.sol";
+import "../interfaces/IMain.sol";
+import "../libraries/Array.sol";
+import "../libraries/Fixed.sol";
+import "./mixins/Component.sol";
 
 // A "valid collateral array" is a an IERC20[] value without rtoken, rsr, or any duplicate values
 
@@ -274,6 +275,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function status() public view returns (CollateralStatus status_) {
         uint256 size = basket.erc20s.length;
 
+        // untestable:
+        //      disabled is only set in _switchBasket, and only if size > 0.
         if (disabled || size == 0) return CollateralStatus.DISABLED;
 
         for (uint256 i = 0; i < size; ++i) {
@@ -339,7 +342,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                     uint256 rawDelta = uint256(price_) * qty; // {D36} = {D18} * {D18}
                     // if we overflowed *, then return FIX_MAX
                     if (rawDelta / price_ != qty) return (true, FIX_MAX);
-                    uint256 delta = rawDelta / FIX_ONE; // {D18} = {D36} / {D18}
+
+                    // add in FIX_HALF for rounding
+                    uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
+                    if (shiftDelta < rawDelta) return (true, FIX_MAX);
+
+                    // delta = _div(rawDelta, FIX_ONE, ROUND)
+                    uint256 delta = shiftDelta / FIX_ONE; // {D18} = {D36} / {D18}
 
                     uint256 nextP = p + delta; // {D18} = {D18} + {D18}
 
@@ -590,8 +599,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
 
         // Keep records, emit event
-        uint192[] memory refAmts = new uint192[](newBasketLength);
-        for (uint256 i = 0; i < newBasketLength; ++i) {
+        basketLength = basket.erc20s.length;
+        uint192[] memory refAmts = new uint192[](basketLength);
+        for (uint256 i = 0; i < basketLength; ++i) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
         emit BasketSet(nonce, basket.erc20s, refAmts, disabled);
@@ -614,6 +624,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
     /// has nonzero targetPerRef() and refPerTok(), and is not a system token or 0 addr
     function goodCollateral(bytes32 targetName, IERC20 erc20) private view returns (bool) {
+        // untestable:
+        //      All calls to goodCollateral pass an erc20 from the config or the backup.
+        //      Both setPrimeBasket and setBackupConfig must pass a call to requireValidCollArray,
+        //      which runs the 4 checks below.
         if (erc20 == IERC20(address(0))) return false;
         if (erc20 == rsr) return false;
         if (erc20 == IERC20(address(rToken))) return false;

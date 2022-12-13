@@ -33,11 +33,12 @@ import {
 } from '../typechain'
 import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
@@ -492,7 +493,7 @@ describe('FacadeAct contract', () => {
         )
     })
 
-    it('Revenues - Should handle asses with invalid claim logic', async () => {
+    it('Revenues - Should handle assets with invalid claim logic', async () => {
       // Redeem all RTokens
       await rToken.connect(addr1).redeem(issueAmount)
 

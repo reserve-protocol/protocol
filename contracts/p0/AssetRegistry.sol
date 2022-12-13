@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/p0/mixins/Component.sol";
+import "../interfaces/IMain.sol";
+import "./mixins/Component.sol";
 
 /// The AssetRegistry provides the mapping from ERC20 to Asset, allowing the rest of Main
 /// to think in terms of ERC20 tokens and target/ref units.

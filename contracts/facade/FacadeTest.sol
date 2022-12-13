@@ -2,12 +2,12 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IFacadeTest.sol";
-import "contracts/interfaces/IRToken.sol";
-import "contracts/interfaces/IStRSR.sol";
-import "contracts/libraries/Fixed.sol";
+import "../interfaces/IAsset.sol";
+import "../interfaces/IAssetRegistry.sol";
+import "../interfaces/IFacadeTest.sol";
+import "../interfaces/IRToken.sol";
+import "../interfaces/IStRSR.sol";
+import "../libraries/Fixed.sol";
 
 /**
  * @title FacadeTest

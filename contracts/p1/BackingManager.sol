@@ -3,13 +3,13 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IBackingManager.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Array.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/p1/mixins/Trading.sol";
-import "contracts/p1/mixins/RecollateralizationLib.sol";
+import "../interfaces/IAsset.sol";
+import "../interfaces/IBackingManager.sol";
+import "../interfaces/IMain.sol";
+import "../libraries/Array.sol";
+import "../libraries/Fixed.sol";
+import "./mixins/Trading.sol";
+import "./mixins/RecollateralizationLib.sol";
 
 /**
  * @title BackingManager
@@ -180,7 +180,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // Mint revenue RToken and update `basketsNeeded`
         // across this block:
         //   where rate(R) == R.basketsNeeded / R.totalSupply,
-        //   rate(rToken') >= rate(rToken)
+        //   rate(rToken') >== rate(rToken)
         //   (>== is "no less than, and nearly equal to")
         //    and rToken'.basketsNeeded <= basketHandler.basketsHeldBy(this)
         // and rToken'.totalSupply is maximal satisfying this.

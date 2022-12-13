@@ -4,9 +4,9 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/plugins/trading/GnosisTrade.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
+import "../trading/GnosisTrade.sol";
+import "../../interfaces/IMain.sol";
+import "../../libraries/Fixed.sol";
 
 interface IBiddable {
     /// @param auctionId An internal auction id, not the one from AssetManager

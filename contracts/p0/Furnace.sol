@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/libraries/Fixed.sol";
-import "contracts/interfaces/IFurnace.sol";
-import "contracts/p0/mixins/Component.sol";
+import "../libraries/Fixed.sol";
+import "../interfaces/IFurnace.sol";
+import "./mixins/Component.sol";
 
 /**
  * @title FurnaceP0

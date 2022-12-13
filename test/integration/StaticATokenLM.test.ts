@@ -28,6 +28,7 @@ import {
   SelfdestructTransfer,
   StaticATokenLM,
 } from '../../typechain'
+import { useEnv } from '#/utils/env'
 
 let chainId: number
 
@@ -39,7 +40,7 @@ const setup = async (blockNumber: number) => {
     params: [
       {
         forking: {
-          jsonRpcUrl: process.env.MAINNET_RPC_URL,
+          jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
           blockNumber: blockNumber,
         },
       },

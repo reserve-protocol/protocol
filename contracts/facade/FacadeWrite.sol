@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/interfaces/IFacadeWrite.sol";
-import "contracts/facade/lib/FacadeWriteLib.sol";
+import "../interfaces/IFacadeWrite.sol";
+import "./lib/FacadeWriteLib.sol";
 
 /**
  * @title FacadeWrite
@@ -33,12 +33,15 @@ contract FacadeWrite is IFacadeWrite {
             require(setup.backups[i].backupCollateral.length > 0, "no backup collateral");
         }
 
-        // Validate beneficiary was set intentionally
-        require(
-            setup.beneficiary != address(0) ||
-                (setup.revShare.rTokenDist == 0 && setup.revShare.rsrDist == 0),
-            "beneficiary revShare mismatch"
-        );
+        // Validate beneficiaries
+        for (uint256 i = 0; i < setup.beneficiaries.length; ++i) {
+            require(
+                setup.beneficiaries[i].beneficiary != address(0) &&
+                    (setup.beneficiaries[i].revShare.rTokenDist > 0 ||
+                        setup.beneficiaries[i].revShare.rsrDist > 0),
+                "beneficiary revShare mismatch"
+            );
+        }
 
         // Deploy contracts
         IRToken rToken = IRToken(
@@ -103,9 +106,12 @@ contract FacadeWrite is IFacadeWrite {
             }
         }
 
-        // Setup revshare beneficiary
-        if (setup.beneficiary != address(0)) {
-            main.distributor().setDistribution(setup.beneficiary, setup.revShare);
+        // Setup revshare beneficiaries
+        for (uint256 i = 0; i < setup.beneficiaries.length; ++i) {
+            main.distributor().setDistribution(
+                setup.beneficiaries[i].beneficiary,
+                setup.beneficiaries[i].revShare
+            );
         }
 
         // Pause until setupGovernance

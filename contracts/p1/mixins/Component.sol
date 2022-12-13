@@ -4,9 +4,9 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import "contracts/interfaces/IComponent.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/mixins/Versioned.sol";
+import "../../interfaces/IComponent.sol";
+import "../../interfaces/IMain.sol";
+import "../../mixins/Versioned.sol";
 
 /**
  * Abstract superclass for system contracts registered in Main
@@ -25,6 +25,10 @@ abstract contract ComponentP1 is
     constructor() initializer {}
 
     // Sets main for the component - Can only be called during initialization
+    // untestable:
+    //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
+    //      This function is only called inside other `init` functions, each of which is wrapped
+    //      in an `initializer` modifier, which would fail first.
     // solhint-disable-next-line func-name-mixedcase
     function __Component_init(IMain main_) internal onlyInitializing {
         require(address(main_) != address(0), "main is zero address");

@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "contracts/interfaces/IMain.sol";
+import "../interfaces/IMain.sol";
 
 uint256 constant LONG_FREEZE_CHARGES = 6; // 6 uses
 uint48 constant MAX_UNFREEZE_AT = type(uint48).max;
@@ -57,6 +57,10 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     // - shortFreeze' == shortFreeze_
     // - longFreeze' == longFreeze_
     // questions: (what do I know about the values of paused and unfreezeAt?)
+    // untestable:
+    //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
+    //      This function is only called inside other `init` functions, each of which is wrapped
+    //      in an `initializer` modifier, which would fail first.
     // solhint-disable-next-line func-name-mixedcase
     function __Auth_init(uint48 shortFreeze_, uint48 longFreeze_) internal onlyInitializing {
         __AccessControl_init();

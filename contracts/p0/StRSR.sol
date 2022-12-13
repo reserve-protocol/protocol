@@ -9,13 +9,13 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IBasketHandler.sol";
-import "contracts/interfaces/IStRSR.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/libraries/Permit.sol";
-import "contracts/p0/mixins/Component.sol";
+import "../interfaces/IAsset.sol";
+import "../interfaces/IBasketHandler.sol";
+import "../interfaces/IStRSR.sol";
+import "../interfaces/IMain.sol";
+import "../libraries/Fixed.sol";
+import "../libraries/Permit.sol";
+import "./mixins/Component.sol";
 
 /*
  * @title StRSRP0
@@ -204,7 +204,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         // Skip executed withdrawals - Both amounts should be 0
         uint256 start = 0;
-        while (queue[start].rsrAmount == 0 && queue[start].stakeAmount == 0 && start < endId)
+        while (start < endId && queue[start].rsrAmount == 0 && queue[start].stakeAmount == 0)
             start++;
 
         // Accumulate and zero executable withdrawals
@@ -431,17 +431,22 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// value of rsrRewards()
     function _payoutRewards() internal {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
+
         uint192 initialExchangeRate = exchangeRate();
+        uint256 payout;
 
         uint48 numPeriods = (uint48(block.timestamp) - uint48(payoutLastPaid)) /
             uint48(rewardPeriod);
 
-        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-        uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
+        // Do an actual payout if and only if stakers exist!
+        if (totalStaked > 0) {
+            // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+            uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
+            payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
 
-        // Apply payout to RSR backing
-        rsrBacking += payout;
+            // Apply payout to RSR backing
+            rsrBacking += payout;
+        }
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 

@@ -6,6 +6,7 @@ import { bn, fp } from '../../common/numbers'
 import { IComponents } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
+import { useEnv } from '#/utils/env'
 
 // {tok}
 export const getCurrentPrice = async (chainlinkAddr?: string): Promise<BigNumber> => {
@@ -103,13 +104,13 @@ export async function verifyContract(
   // Sleep 0.5s to not overwhelm API
   await new Promise((r) => setTimeout(r, 500))
 
+  const ETHERSCAN_API_KEY = useEnv('ETHERSCAN_API_KEY')
+
   // Check to see if already verified
   const url = `${getEtherscanBaseURL(
     chainId,
     true
-  )}/api/?module=contract&action=getsourcecode&address=${address}&apikey=${
-    process.env.ETHERSCAN_API_KEY
-  }`
+  )}/api/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
   const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
   if (status != 200 || data['status'] != '1') {
     throw new Error("Can't communicate with Etherscan API")

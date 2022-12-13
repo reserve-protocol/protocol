@@ -55,6 +55,7 @@ import {
   NonFiatCollateral,
   SelfReferentialCollateral,
 } from '../typechain'
+import { useEnv } from '#/utils/env'
 
 export enum Implementation {
   P0,
@@ -62,9 +63,9 @@ export enum Implementation {
 }
 
 export const IMPLEMENTATION: Implementation =
-  process.env.PROTO_IMPL == Implementation.P1.toString() ? Implementation.P1 : Implementation.P0
+  useEnv('PROTO_IMPL') == Implementation.P1.toString() ? Implementation.P1 : Implementation.P0
 
-export const SLOW = !!process.env.SLOW
+export const SLOW = !!useEnv('SLOW')
 
 export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
 
@@ -210,6 +211,26 @@ async function collateralFixture(
     )
     return [erc20, coll]
   }
+  const make0DecimalCollateral = async (symbol: string): Promise<[ZeroDecimalMock, Collateral]> => {
+    const erc20: ZeroDecimalMock = <ZeroDecimalMock>await USDC.deploy(symbol + ' Token', symbol)
+    const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(0, bn('1'))
+    )
+
+    const coll = <FiatCollateral>(
+      await FiatCollateralFactory.deploy(
+        fp('1'),
+        chainlinkFeed.address,
+        erc20.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+    )
+    return [erc20, coll]
+  }
   const makeCTokenCollateral = async (
     symbol: string,
     referenceERC20: ERC20Mock,
@@ -287,6 +308,7 @@ async function collateralFixture(
     await busd[1].chainlinkFeed(),
     aaveToken
   )
+  const zcoin = await make0DecimalCollateral('ZCOIN') // zero decimals
   const erc20s = [
     dai[0],
     usdc[0],
@@ -299,6 +321,7 @@ async function collateralFixture(
     ausdc[0],
     ausdt[0],
     abusd[0],
+    zcoin[0],
   ]
   const collateral = [
     dai[1],
@@ -312,6 +335,7 @@ async function collateralFixture(
     ausdc[1],
     ausdt[1],
     abusd[1],
+    zcoin[1],
   ]
 
   // Create the initial basket
@@ -363,7 +387,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken } = await compAaveFixture()
   const { gnosis, easyAuction } = await gnosisFixture()
-  const gnosisAddr = process.env.FORK ? easyAuction.address : gnosis.address
+  const gnosisAddr = useEnv('FORK') ? easyAuction.address : gnosis.address
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR

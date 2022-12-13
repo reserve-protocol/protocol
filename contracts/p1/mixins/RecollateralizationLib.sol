@@ -2,10 +2,10 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/ITrading.sol";
-import "contracts/libraries/Fixed.sol";
+import "../../interfaces/IAsset.sol";
+import "../../interfaces/IAssetRegistry.sol";
+import "../../interfaces/ITrading.sol";
+import "../../libraries/Fixed.sol";
 import "./TradeLib.sol";
 
 /// Struct purposes:
@@ -197,7 +197,7 @@ library RecollateralizationLibP1 {
             ? fixMin(assetsLow.minus(shortfallSlippage), basketTargetHigh)
             : 0;
 
-        // {BU} = {UoA} / {BU/UoA}
+        // {BU} = {UoA} / {UoA/BU}
         range.top = basketTargetHigh.div(basketPrice, CEIL);
         range.bottom = basketTargetLow.div(basketPrice, CEIL);
     }

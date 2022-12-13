@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "contracts/libraries/Fixed.sol";
+import "../../libraries/Fixed.sol";
 import "./ERC20Mock.sol";
 
 contract BadERC20 is ERC20Mock {

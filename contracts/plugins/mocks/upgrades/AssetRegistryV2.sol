@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/p1/AssetRegistry.sol";
+import "../../../p1/AssetRegistry.sol";
 
 contract AssetRegistryP1V2 is AssetRegistryP1 {
     uint256 public newValue;

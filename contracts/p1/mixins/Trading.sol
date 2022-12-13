@@ -5,11 +5,11 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
-import "contracts/interfaces/ITrade.sol";
-import "contracts/interfaces/ITrading.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/p1/mixins/Component.sol";
-import "contracts/p1/mixins/RewardableLib.sol";
+import "../../interfaces/ITrade.sol";
+import "../../interfaces/ITrading.sol";
+import "../../libraries/Fixed.sol";
+import "./Component.sol";
+import "./RewardableLib.sol";
 
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
 /// @dev See docs/security for discussion of Multicall safety
@@ -36,6 +36,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // tradesOpen = len(values(trades))
     // trades[sell] != 0 iff trade[sell] has been opened and not yet settled
 
+    // untestable:
+    //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
+    //      This function is only called inside other `init` functions, each of which is wrapped
+    //      in an `initializer` modifier, which would fail first.
     // solhint-disable-next-line func-name-mixedcase
     function __Trading_init(
         IMain main_,

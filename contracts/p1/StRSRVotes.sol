@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
-import "contracts/interfaces/IStRSRVotes.sol";
-import "contracts/p1/StRSR.sol";
+import "../interfaces/IStRSRVotes.sol";
+import "./StRSR.sol";
 
 /*
  * @title StRSRP1Votes

@@ -3,13 +3,13 @@ pragma solidity 0.8.9;
 
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IRToken.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/libraries/RedemptionBattery.sol";
-import "contracts/p1/mixins/Component.sol";
-import "contracts/p1/mixins/RewardableLib.sol";
-import "contracts/vendor/ERC20PermitUpgradeable.sol";
+import "../interfaces/IMain.sol";
+import "../interfaces/IRToken.sol";
+import "../libraries/Fixed.sol";
+import "../libraries/RedemptionBattery.sol";
+import "./mixins/Component.sol";
+import "./mixins/RewardableLib.sol";
+import "../vendor/ERC20PermitUpgradeable.sol";
 
 // MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
 uint192 constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
@@ -49,7 +49,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // Always, issuanceRate <= MAX_ISSUANCE_RATE = FIX_ONE
     uint192 public issuanceRate;
 
-    // also: battery.redemptionRateFloor + battery.scalingRedemptionRate
+    // the following governance parameters exist inside the Battery struct:
+    //      battery.redemptionRateFloor
+    //      battery.scalingRedemptionRate
 
     // ==== End Governance Params ====
 
@@ -121,9 +123,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //
     // We define a (partial) ordering on IssueItems: item1 < item2 iff the following all hold:
     //   item1.when < item2.when
-    //   item2.amtRToken < item2.amtRToken
+    //   item1.amtRToken < item2.amtRToken
     //   item1.amtBaskets < item2.amtBaskets
-    //   for all valid indices i, item1[i].deposits < item2[i].deposits
+    //   for all valid indices i, item1.deposits[i] < item2.deposits[i]
     //
     // And, in fact, item2 - item1 is then well-defined (and also piecewise).
     //
@@ -515,7 +517,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction
     function sweepRewardsSingle(IERC20 erc20) external {
         requireNotPausedOrFrozen();
-        RewardableLibP1.sweepRewardsSingle(liabilities, erc20, backingManager);
+        RewardableLibP1.sweepRewardsSingle(liabilities, erc20, assetRegistry, backingManager);
     }
 
     // ====
@@ -672,6 +674,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         } else if (queue.left < left && right == queue.right) {
             queue.right = left; // refund span from end
         } else {
+            // untestable:
+            //      All calls to refundSpan() use valid values for left and right.
+            //      queue.left <= left && right <= queue.right.
+            //      Any call to refundSpan() passes queue.left for left,
+            //      OR passes queue.right for right, OR both.
             revert("Bad refundSpan");
         } // error: can't remove [left,right) from the queue, and leave just one interval
 

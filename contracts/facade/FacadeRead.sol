@@ -2,18 +2,18 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IFacadeRead.sol";
-import "contracts/interfaces/IRToken.sol";
-import "contracts/interfaces/IStRSR.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/p1/BasketHandler.sol";
-import "contracts/p1/BackingManager.sol";
-import "contracts/p1/Furnace.sol";
-import "contracts/p1/RToken.sol";
-import "contracts/p1/RevenueTrader.sol";
-import "contracts/p1/StRSRVotes.sol";
+import "../interfaces/IAsset.sol";
+import "../interfaces/IAssetRegistry.sol";
+import "../interfaces/IFacadeRead.sol";
+import "../interfaces/IRToken.sol";
+import "../interfaces/IStRSR.sol";
+import "../libraries/Fixed.sol";
+import "../p1/BasketHandler.sol";
+import "../p1/BackingManager.sol";
+import "../p1/Furnace.sol";
+import "../p1/RToken.sol";
+import "../p1/RevenueTrader.sol";
+import "../p1/StRSRVotes.sol";
 
 /**
  * @title Facade

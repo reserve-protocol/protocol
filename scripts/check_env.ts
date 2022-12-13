@@ -4,6 +4,8 @@ import { bn } from '../common/numbers'
 import { getChainId } from '../common/blockchain-utils'
 import { getEtherscanBaseURL } from './deployment/utils'
 
+import { useEnv } from '#/utils/env'
+
 async function main() {
   console.log(`Checking environment setup...\n`)
 
@@ -22,8 +24,11 @@ async function main() {
 
   // Check Etherscan API key
   const etherscanURL = getEtherscanBaseURL(chainId, true)
-  const url = `${etherscanURL}/api?module=stats&action=ethsupply&apikey=${process.env.ETHERSCAN_API_KEY}`
-  const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
+  const ETHERSCAN_API_KEY = useEnv('ETHERSCAN_API_KEY')
+  const { data, status } = await axios.get(
+    `${etherscanURL}/api?module=stats&action=ethsupply&apikey=${ETHERSCAN_API_KEY}`,
+    { headers: { Accept: 'application/json' } }
+  )
   if (status != 200 || data['status'] != '1') {
     throw new Error("Can't communicate with Etherscan API")
   }

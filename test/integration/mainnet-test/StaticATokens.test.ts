@@ -19,6 +19,7 @@ import {
   StaticATokenLM,
   USDCMock,
 } from '../../../typechain'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -32,7 +33,7 @@ const holderAUSDT = '0x611f97d450042418e7338cbdd19202711563df01'
 const holderBUSD = '0xf977814e90da44bfa03b6295a0616a897441acec'
 const holderABUSD = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
 
 const point1Pct = (value: BigNumber): BigNumber => {
   return value.div(1000)
@@ -81,7 +82,7 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
         params: [
           {
             forking: {
-              jsonRpcUrl: process.env.MAINNET_RPC_URL,
+              jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
               blockNumber: blockNumber,
             },
           },

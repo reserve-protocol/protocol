@@ -20,6 +20,6 @@ module.exports = {
     yul: true,
     yulDetails: {
       stackAllocation: true,
-    }
+    },
   },
 }
