@@ -2950,7 +2950,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should be unable to handout excess assets', async () => {
         // Check Price and Assets value
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(0)
 
