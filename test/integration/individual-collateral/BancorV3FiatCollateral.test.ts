@@ -642,8 +642,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Set initial exchange rate to the new bnToken Mock
       await bnToken.setUnderlying(fp('1e7'))
 
-      // Redeploy plugin using the new cDai mock
-      const newNUsdcCollateral = <BancorV3FiatCollateral>(
+      // Redeploy plugin using the new bnToken mock
+      const newBnTokenCollateral = <BancorV3FiatCollateral>(
         await BancorV3CollateralFactory.deploy(
           fp('1'),
           mockChainlinkFeed.address,
@@ -660,23 +660,23 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       )
 
       // Initialize internal state of max redPerTok
-      await newNUsdcCollateral.refresh()
+      await newBnTokenCollateral.refresh()
 
       // Check initial state
-      expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newNUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newBnTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newBnTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
 
       // Decrease rate for bnToken, will disable collateral immediately
-      await bnToken.setUnderlying(fp('5e7'))
+      await bnToken.setUnderlying(fp('1e4'))
 
       // Force updates - Should update whenDefault and status for collateral
-      await expect(newNUsdcCollateral.refresh())
-        .to.emit(newNUsdcCollateral, 'DefaultStatusChanged')
+      await expect(newBnTokenCollateral.refresh())
+        .to.emit(newBnTokenCollateral, 'DefaultStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
-      expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newBnTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newNUsdcCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newBnTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
     // Test for soft default
@@ -704,8 +704,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newBnDAICollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Depeg one of the underlying tokens - Reducing price 20%
-      await setOraclePrice(newBnDAICollateral.address, bn('8e7')) // -20%
+      // Depeg one of the underlying tokens - Reducing price 
+      await setOraclePrice(newBnDAICollateral.address, bn('8e7')) 
 
       // Force updates - Should update whenDefault and status
       await expect(newBnDAICollateral.refresh())

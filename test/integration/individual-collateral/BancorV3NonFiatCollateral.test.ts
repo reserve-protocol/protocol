@@ -378,14 +378,14 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
   describe('Issuance/Appreciation/Redemption', () => {
     const MIN_ISSUANCE_PER_BLOCK = bn('100e8')
     // values at block 15000000
-    // bnETHPrice1 = 100164292
-    // bnETHRefPerTok1 = 100164292
+    // bnETHPrice1 = 1123214985732310979533
+    // bnETHRefPerTok1 = 1001642926968509239
     // values after 2000 blocks from initial forkblock (block: 15002000)
-    const bnETHPrice2_hardcode = bn('1003750395336288894')
-    const bnETHRefPerTok2_hardcode = bn('1002808978323618248')
+    const bnETHPrice2_hardcode = bn('1161863513664381091050')
+    const bnETHRefPerTok2_hardcode = bn('1001651647650058758')
     // values after 102000 blocks from initial forkblock (block: 15102000)
-    const bnETHPrice3_hardcode = bn('1005070104084014279')
-    const bnETHRefPerTok3_hardcode = bn('1004066038045968311')
+    const bnETHPrice3_hardcode = bn('1218326346354864650813')
+    const bnETHRefPerTok3_hardcode = bn('1002079643799180510')
  
 
     // Issuance and redemption, making the collateral appreciate over time
@@ -407,7 +407,7 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       // Check rates and prices
       const bnETHPrice1: BigNumber = await BancorV3Collateral.strictPrice() // 
       const bnETHRefPerTok1: BigNumber = await BancorV3Collateral.refPerTok() // 
-
+      
       expect(bnETHPrice1).to.be.closeTo(fp('1000'), fp('150'))
       expect(bnETHRefPerTok1).to.be.closeTo(fp('1'), fp('0.5'))
 
@@ -432,15 +432,15 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(bnETHPrice2).to.be.gte(bnETHPrice1)
       expect(bnETHRefPerTok2).to.be.gte(bnETHRefPerTok1)
       
-      //expect(bnETHPrice2_hardcode).to.be.gt(bnETHPrice1)
-      //expect(bnETHRefPerTok2_hardcode).to.be.gt(bnETHRefPerTok1)
+      expect(bnETHPrice2_hardcode).to.be.gt(bnETHPrice1)
+      expect(bnETHRefPerTok2_hardcode).to.be.gt(bnETHRefPerTok1)
 
       // Still close to the original values
-      expect(bnETHPrice2).to.be.closeTo(fp('1000'), fp('150'))
+      expect(bnETHPrice2).to.be.closeTo(fp('1100'), fp('150'))
       expect(bnETHRefPerTok2).to.be.closeTo(fp('1'), fp('0.5'))
 
-      //expect(bnETHPrice2_hardcode).to.be.closeTo(fp('1'), fp('0.5'))
-      //expect(bnETHRefPerTok2_hardcode).to.be.closeTo(fp('1'), fp('0.5'))
+      expect(bnETHPrice2_hardcode).to.be.closeTo(fp('1100'), fp('150'))
+      expect(bnETHRefPerTok2_hardcode).to.be.closeTo(fp('1'), fp('0.5'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -464,15 +464,15 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(bnETHPrice3).to.be.gte(bnETHPrice2)
       expect(bnETHRefPerTok3).to.be.gte(bnETHRefPerTok2)
 
-      //expect(bnETHPrice3_hardcode).to.be.gt(bnETHPrice2)
-      //expect(bnETHRefPerTok3_hardcode).to.be.gt(bnETHRefPerTok2)
+      expect(bnETHPrice3_hardcode).to.be.gt(bnETHPrice2)
+      expect(bnETHRefPerTok3_hardcode).to.be.gt(bnETHRefPerTok2)
 
       // Need to adjust ranges
-      expect(bnETHPrice3).to.be.closeTo(fp('1000'), fp('150'))
+      expect(bnETHPrice3).to.be.closeTo(fp('1200'), fp('150'))
       expect(bnETHRefPerTok3).to.be.closeTo(fp('1'), fp('0.5'))
 
-      //expect(bnETHPrice3_hardcode).to.be.closeTo(fp('1'), fp('0.5'))
-      //expect(bnETHRefPerTok3_hardcode).to.be.closeTo(fp('1'), fp('0.5'))
+      expect(bnETHPrice3_hardcode).to.be.closeTo(fp('1200'), fp('150'))
+      expect(bnETHRefPerTok3_hardcode).to.be.closeTo(fp('1'), fp('0.5'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -632,11 +632,11 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
       await bnETHMock.connect(owner).mint(addr1.address, fp('1e8'))
 
-      // Set initial exchange rate to the new nToken Mock
+      // Set initial exchange rate to the new bnToken Mock
       await bnETHMock.setUnderlying(fp('0.002'))
 
-      // Redeploy plugin using the new cDai mock
-      const newNEthCollateral = <BancorV3NonFiatCollateral>await BancorV3CollateralFactory.deploy(
+      // Redeploy plugin using the new bnToken mock
+      const newBnTokenCollateral = <BancorV3NonFiatCollateral>await BancorV3CollateralFactory.deploy(
         fp('1'),
         mockChainlinkFeed.address,
         bnETH.address,
@@ -651,26 +651,23 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       )
 
       // Initialize internal state of max redPerTok
-      await newNEthCollateral.refresh()
+      await newBnTokenCollateral.refresh()
 
       // Check initial state
-      expect(await newNEthCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newNEthCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newBnTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newBnTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Decrease rate for nToken, will disable collateral immediately
+      // Decrease rate for bnToken, will disable collateral immediately
       await bnETHMock.setUnderlying(bn('1e7'))
 
       // Force updates - Should update whenDefault and status for collateral
-      console.log(await newNEthCollateral.status())
-      console.log(await CollateralStatus.SOUND)
-      await expect(newNEthCollateral.refresh())
-        .to.emit(newNEthCollateral, 'DefaultStatusChanged')
+      await expect(newBnTokenCollateral.refresh())
+        .to.emit(newBnTokenCollateral, 'DefaultStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-      console.log(await newNEthCollateral.status())
 
-      expect(await newNEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newBnTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newNEthCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newBnTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
     // Test for soft default
     it('Updates status in case of soft default', async () => {
