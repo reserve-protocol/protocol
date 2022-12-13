@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
@@ -506,6 +506,54 @@ describe('Assets contracts #fast', () => {
       await expect(invalidRSRAsset.price()).to.be.revertedWith('')
       await expect(invalidRSRAsset.lotPrice()).to.be.revertedWith('')
       await expect(invalidRSRAsset.refresh()).to.be.revertedWith('')
+    })
+
+    it('Should handle lot price correctly', async () => {
+      // Check lot prices - use RSR as example
+      const currBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
+      const [prevLowPrice, prevHighPrice] = await rsrAsset.price()
+      expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
+      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Lot price equals price when feed works OK
+      const [lotLowPrice1, lotHighPrice1] = await rsrAsset.lotPrice()
+      expect(lotLowPrice1).to.equal(prevLowPrice)
+      expect(lotHighPrice1).to.equal(prevHighPrice)
+
+      // Set invalid oracle
+      await setInvalidOracleTimestamp(rsrAsset.address)
+
+      // Check unpriced - uses still previous prices
+      await expectUnpriced(rsrAsset.address)
+      let [lowPrice, highPrice] = await rsrAsset.price()
+      expect(lowPrice).to.equal(bn(0))
+      expect(highPrice).to.equal(MAX_UINT192)
+      expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
+      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Lot price decreases a bit
+      const [lotLowPrice2, lotHighPrice2] = await rsrAsset.lotPrice()
+      expect(lotLowPrice2).to.be.lt(lotLowPrice1)
+      expect(lotHighPrice2).to.be.lt(lotHighPrice1)
+
+      // Advance blocks, lot price keeps decreasing
+      await advanceBlocks(100)
+      const [lotLowPrice3, lotHighPrice3] = await rsrAsset.lotPrice()
+      expect(lotLowPrice3).to.be.lt(lotLowPrice2)
+      expect(lotHighPrice3).to.be.lt(lotHighPrice2)
+
+      // Advance blocks beyond PRICE_TIMEOUT
+      await advanceBlocks(PRICE_TIMEOUT)
+
+      // Lot price returns 0 once time elapses
+      const [lotLowPrice4, lotHighPrice4] = await rsrAsset.lotPrice()
+      expect(lotLowPrice4).to.be.lt(lotLowPrice3)
+      expect(lotHighPrice4).to.be.lt(lotHighPrice3)
+      expect(lotLowPrice4).to.be.equal(bn(0))
+      expect(lotHighPrice4).to.be.equal(bn(0))
     })
   })
 
