@@ -149,7 +149,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     cDai = <CTokenMock>(
       await ethers.getContractAt('CTokenMock', networkConfig[chainId].tokens.cDAI || '')
     )
-    //console.log(await cDai.decimals())
 
     // Create COMP asset
     compAsset = <Asset>(
@@ -390,8 +389,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Provide approvals for issuances
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
-      console.log('Balances after approval, before issuance')
-      console.log(await cDai.balanceOf(addr1.address))
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
@@ -400,8 +397,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Store Balances after issuance
       const balanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
-      console.log('Balances after issuance')
-      console.log(await cDai.balanceOf(addr1.address))
 
       // Check rates and prices
       const cDaiPrice1: BigNumber = await cDaiCollateral.strictPrice() // ~ 0.022015 cents
