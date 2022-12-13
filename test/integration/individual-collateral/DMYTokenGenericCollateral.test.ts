@@ -22,7 +22,7 @@ import {
   Asset,
   ChainlinkPriceProvider,
   PriceProviderMock,
-  YTokenMock,
+  VaultTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -34,7 +34,7 @@ import {
   TestIDeployer,
   TestIMain,
   TestIRToken,
-  DMYTokenGenericCollateral,
+  DMVaultTokenGenericCollateral,
   InvalidPriceProviderMock,
 } from '../../../typechain'
 import { getRatePerPeriod } from '../../utils/demurrage'
@@ -48,14 +48,14 @@ const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`DMVaultTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
   // Tokens/Assets
   let link: ERC20Mock
-  let yvLink: YTokenMock
-  let yvLinkCollateral: DMYTokenGenericCollateral
+  let yvLink: VaultTokenMock
+  let yvLinkCollateral: DMVaultTokenGenericCollateral
   let priceProvider: ChainlinkPriceProvider
   let rsr: ERC20Mock
   let rsrAsset: Asset
@@ -106,7 +106,7 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
   let chainId: number
 
-  let YTokenCollateralFactory: ContractFactory
+  let VaultTokenCollateralFactory: ContractFactory
   let PriceProviderFactory: ContractFactory
   let PriceProviderMockFactory: ContractFactory
   let mockPriceProvider: PriceProviderMock
@@ -133,8 +133,8 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.LINK || '')
     )
     // YVLink token
-    yvLink = <YTokenMock>(
-      await ethers.getContractAt('YTokenMock', networkConfig[chainId].tokens.yvLINK || '')
+    yvLink = <VaultTokenMock>(
+      await ethers.getContractAt('VaultTokenMock', networkConfig[chainId].tokens.yvLINK || '')
     )
 
     // Deploy Chainlink price provider
@@ -149,9 +149,9 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
     )
 
     // Deploy yvLink collateral plugin
-    YTokenCollateralFactory = await ethers.getContractFactory('DMYTokenGenericCollateral', {})
-    yvLinkCollateral = <DMYTokenGenericCollateral>(
-      await YTokenCollateralFactory.deploy(
+    VaultTokenCollateralFactory = await ethers.getContractFactory('DMVaultTokenGenericCollateral')
+    yvLinkCollateral = <DMVaultTokenGenericCollateral>(
+      await VaultTokenCollateralFactory.deploy(
         yvLink.address,
         config.rTokenMaxTradeVolume,
         fp('7'),
@@ -239,7 +239,7 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       // Check Price provider
       expect(await priceProvider.price(link.address)).to.be.closeTo(fp('7.78'), fp('0.01'))
       // Check Collateral plugin
-      // yvLINK (DMYTokenGenericCollateral)
+      // yvLINK (DMVaultTokenGenericCollateral)
       expect(await yvLinkCollateral.isCollateral()).to.equal(true)
       expect(await yvLinkCollateral.erc20()).to.equal(yvLink.address)
       expect(await yvLink.decimals()).to.equal(await link.decimals())
@@ -308,7 +308,7 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
     it('Should validate constructor arguments correctly', async () => {
       // Delay until default
       await expect(
-        YTokenCollateralFactory.deploy(
+        VaultTokenCollateralFactory.deploy(
           yvLink.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
@@ -322,7 +322,7 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
       // Rate per period
       await expect(
-        YTokenCollateralFactory.deploy(
+        VaultTokenCollateralFactory.deploy(
           yvLink.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
@@ -491,23 +491,23 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       await yvLinkCollateral.refresh()
       expect(await yvLinkCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // YTokens Collateral with no price
-      const nonpriceYtokenCollateral: DMYTokenGenericCollateral = <DMYTokenGenericCollateral>(
-        await (
-          await ethers.getContractFactory('DMYTokenGenericCollateral', {})
-        ).deploy(
-          yvLink.address,
-          config.rTokenMaxTradeVolume,
-          fp('1'),
-          ethers.utils.formatBytes32String('DM10000yvLINK'),
-          delayUntilDefault,
-          getRatePerPeriod(100),
-          NO_PRICE_DATA_FEED,
-          link.address
-        )
+      // VaultTokens Collateral with no price
+      const nonpriceYtokenCollateral: DMVaultTokenGenericCollateral = <
+        DMVaultTokenGenericCollateral
+      >await (
+        await ethers.getContractFactory('DMVaultTokenGenericCollateral', {})
+      ).deploy(
+        yvLink.address,
+        config.rTokenMaxTradeVolume,
+        fp('1'),
+        ethers.utils.formatBytes32String('DM10000yvLINK'),
+        delayUntilDefault,
+        getRatePerPeriod(100),
+        NO_PRICE_DATA_FEED,
+        link.address
       )
 
-      // YTokens - Collateral with no price info should revert
+      // VaultTokens - Collateral with no price info should revert
       await expect(nonpriceYtokenCollateral.strictPrice()).to.be.reverted
 
       // Refresh should also revert - status is not modified
@@ -515,19 +515,19 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(await nonpriceYtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
-      const invalidpriceYtokenCollateral: DMYTokenGenericCollateral = <DMYTokenGenericCollateral>(
-        await (
-          await ethers.getContractFactory('DMYTokenGenericCollateral', {})
-        ).deploy(
-          yvLink.address,
-          config.rTokenMaxTradeVolume,
-          fp('1'),
-          ethers.utils.formatBytes32String('DM10000yvLINK'),
-          delayUntilDefault,
-          getRatePerPeriod(100),
-          mockPriceProvider.address,
-          link.address
-        )
+      const invalidpriceYtokenCollateral: DMVaultTokenGenericCollateral = <
+        DMVaultTokenGenericCollateral
+      >await (
+        await ethers.getContractFactory('DMVaultTokenGenericCollateral', {})
+      ).deploy(
+        yvLink.address,
+        config.rTokenMaxTradeVolume,
+        fp('1'),
+        ethers.utils.formatBytes32String('DM10000yvLINK'),
+        delayUntilDefault,
+        getRatePerPeriod(100),
+        mockPriceProvider.address,
+        link.address
       )
 
       await mockPriceProvider.setPrice(link.address, bn('0'))
@@ -551,9 +551,9 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a price provider mock where we can change the price
-      const newYVLinkCollateral: DMYTokenGenericCollateral = <DMYTokenGenericCollateral>(
+      const newYVLinkCollateral: DMVaultTokenGenericCollateral = <DMVaultTokenGenericCollateral>(
         await (
-          await ethers.getContractFactory('DMYTokenGenericCollateral', {})
+          await ethers.getContractFactory('DMVaultTokenGenericCollateral', {})
         ).deploy(
           await yvLinkCollateral.erc20(),
           await yvLinkCollateral.maxTradeVolume(),
@@ -589,7 +589,6 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(await newYVLinkCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
-      // YToken
       const prevWhenDefault: BigNumber = await newYVLinkCollateral.whenDefault()
       await expect(newYVLinkCollateral.refresh()).to.not.emit(
         newYVLinkCollateral,
@@ -607,28 +606,28 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         await InvalidPriceProviderMockFactory.deploy()
       )
 
-      const invalidYTokenCollateral: DMYTokenGenericCollateral = <DMYTokenGenericCollateral>(
-        await YTokenCollateralFactory.deploy(
-          await yvLinkCollateral.erc20(),
-          await yvLinkCollateral.maxTradeVolume(),
-          fp('1'),
-          await yvLinkCollateral.targetName(),
-          await yvLinkCollateral.delayUntilDefault(),
-          await yvLinkCollateral.ratePerPeriod(),
-          invalidPriceProvider.address,
-          link.address
-        )
+      const invalidVaultTokenCollateral: DMVaultTokenGenericCollateral = <
+        DMVaultTokenGenericCollateral
+      >await VaultTokenCollateralFactory.deploy(
+        await yvLinkCollateral.erc20(),
+        await yvLinkCollateral.maxTradeVolume(),
+        fp('1'),
+        await yvLinkCollateral.targetName(),
+        await yvLinkCollateral.delayUntilDefault(),
+        await yvLinkCollateral.ratePerPeriod(),
+        invalidPriceProvider.address,
+        link.address
       )
 
       // Reverting with no reason
       await invalidPriceProvider.setSimplyRevert(true)
-      await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidVaultTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidVaultTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Running out of gas (same error)
       await invalidPriceProvider.setSimplyRevert(false)
-      await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidVaultTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidVaultTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 })

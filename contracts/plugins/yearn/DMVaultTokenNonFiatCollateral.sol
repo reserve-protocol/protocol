@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "./AbstractDMYTokenCollateral.sol";
+import "./AbstractDMVaultTokenCollateral.sol";
 import "../assets/OracleLib.sol";
 import "../../libraries/Fixed.sol";
 
-contract DMYTokenNonFiatCollateral is AbstractDMYTokenCollateral {
+contract DMVaultTokenNonFiatCollateral is AbstractDMVaultTokenCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -23,7 +23,7 @@ contract DMYTokenNonFiatCollateral is AbstractDMYTokenCollateral {
         uint48 oracleTimeout_,
         uint256 defaultThreshold_
     )
-        AbstractDMYTokenCollateral(
+        AbstractDMVaultTokenCollateral(
             vault_,
             maxTradeVolume_,
             fallbackPrice_,

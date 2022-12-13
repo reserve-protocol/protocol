@@ -21,8 +21,8 @@ import { setOraclePrice } from '../../utils/oracles'
 import { advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
-  DMYTokenFiatCollateral,
-  YTokenMock,
+  DMVaultTokenFiatCollateral,
+  VaultTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -49,14 +49,14 @@ const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`DMVaultTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
   // Tokens/Assets
   let dai: ERC20Mock
-  let yvDai: YTokenMock
-  let yvDaiCollateral: DMYTokenFiatCollateral
+  let yvDai: VaultTokenMock
+  let yvDaiCollateral: DMVaultTokenFiatCollateral
   // let compToken: ERC20Mock
   // let compAsset: Asset
   // let comptroller: ComptrollerMock
@@ -111,7 +111,7 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
   let chainId: number
 
-  let YTokenCollateralFactory: ContractFactory
+  let VaultTokenCollateralFactory: ContractFactory
   let MockV3AggregatorFactory: ContractFactory
   let mockChainlinkFeed: MockV3Aggregator
 
@@ -136,16 +136,16 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
     )
     // yvDAI token
-    yvDai = <YTokenMock>(
-      await ethers.getContractAt('YTokenMock', networkConfig[chainId].tokens.yvDAI || '')
+    yvDai = <VaultTokenMock>(
+      await ethers.getContractAt('VaultTokenMock', networkConfig[chainId].tokens.yvDAI || '')
     )
 
     // Deploy yvDai collateral plugin
-    YTokenCollateralFactory = await ethers.getContractFactory('DMYTokenFiatCollateral', {
+    VaultTokenCollateralFactory = await ethers.getContractFactory('DMVaultTokenFiatCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
-    yvDaiCollateral = <DMYTokenFiatCollateral>(
-      await YTokenCollateralFactory.deploy(
+    yvDaiCollateral = <DMVaultTokenFiatCollateral>(
+      await VaultTokenCollateralFactory.deploy(
         yvDai.address,
         config.rTokenMaxTradeVolume,
         fp('1'),
@@ -231,7 +231,7 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
       // Check Rewards assets (if applies)
       // Check Collateral plugin
-      // yvDAI (DMYTokenFiatCollateral)
+      // yvDAI (DMVaultTokenFiatCollateral)
       expect(await yvDaiCollateral.isCollateral()).to.equal(true)
       expect(await yvDaiCollateral.erc20()).to.equal(yvDai.address)
       expect(await yvDai.decimals()).to.equal(await dai.decimals())
@@ -299,7 +299,7 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     it('Should validate constructor arguments correctly', async () => {
       // Delay until default
       await expect(
-        YTokenCollateralFactory.deploy(
+        VaultTokenCollateralFactory.deploy(
           yvDai.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
@@ -314,7 +314,7 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
       // Default threshold
       await expect(
-        YTokenCollateralFactory.deploy(
+        VaultTokenCollateralFactory.deploy(
           yvDai.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
@@ -329,7 +329,7 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
       // Rate per period
       await expect(
-        YTokenCollateralFactory.deploy(
+        VaultTokenCollateralFactory.deploy(
           yvDai.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
@@ -499,24 +499,26 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await yvDaiCollateral.refresh()
       expect(await yvDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // YTokens Collateral with no price
-      const nonpriceYtokenCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>await (
-        await ethers.getContractFactory('DMYTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        yvDai.address,
-        config.rTokenMaxTradeVolume,
-        fp('1'),
-        ethers.utils.formatBytes32String('DM10000yvDAI'),
-        delayUntilDefault,
-        getRatePerPeriod(100),
-        NO_PRICE_DATA_FEED,
-        ORACLE_TIMEOUT,
-        defaultThreshold
+      // VaultTokens Collateral with no price
+      const nonpriceYtokenCollateral: DMVaultTokenFiatCollateral = <DMVaultTokenFiatCollateral>(
+        await (
+          await ethers.getContractFactory('DMVaultTokenFiatCollateral', {
+            libraries: { OracleLib: oracleLib.address },
+          })
+        ).deploy(
+          yvDai.address,
+          config.rTokenMaxTradeVolume,
+          fp('1'),
+          ethers.utils.formatBytes32String('DM10000yvDAI'),
+          delayUntilDefault,
+          getRatePerPeriod(100),
+          NO_PRICE_DATA_FEED,
+          ORACLE_TIMEOUT,
+          defaultThreshold
+        )
       )
 
-      // YTokens - Collateral with no price info should revert
+      // VaultTokens - Collateral with no price info should revert
       await expect(nonpriceYtokenCollateral.strictPrice()).to.be.reverted
 
       // Refresh should also revert - status is not modified
@@ -524,20 +526,22 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await nonpriceYtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
-      const invalidpriceYtokenCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>await (
-        await ethers.getContractFactory('DMYTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        yvDai.address,
-        config.rTokenMaxTradeVolume,
-        fp('1'),
-        ethers.utils.formatBytes32String('DM10000yvDAI'),
-        delayUntilDefault,
-        getRatePerPeriod(100),
-        mockChainlinkFeed.address,
-        ORACLE_TIMEOUT,
-        defaultThreshold
+      const invalidpriceYtokenCollateral: DMVaultTokenFiatCollateral = <DMVaultTokenFiatCollateral>(
+        await (
+          await ethers.getContractFactory('DMVaultTokenFiatCollateral', {
+            libraries: { OracleLib: oracleLib.address },
+          })
+        ).deploy(
+          yvDai.address,
+          config.rTokenMaxTradeVolume,
+          fp('1'),
+          ethers.utils.formatBytes32String('DM10000yvDAI'),
+          delayUntilDefault,
+          getRatePerPeriod(100),
+          mockChainlinkFeed.address,
+          ORACLE_TIMEOUT,
+          defaultThreshold
+        )
       )
 
       await setOraclePrice(invalidpriceYtokenCollateral.address, bn(0))
@@ -561,8 +565,8 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newYVDaiCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>await (
-        await ethers.getContractFactory('DMYTokenFiatCollateral', {
+      const newYVDaiCollateral: DMVaultTokenFiatCollateral = <DMVaultTokenFiatCollateral>await (
+        await ethers.getContractFactory('DMVaultTokenFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
@@ -600,7 +604,6 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await newYVDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
-      // YToken
       const prevWhenDefault: BigNumber = await newYVDaiCollateral.whenDefault()
       await expect(newYVDaiCollateral.refresh()).to.not.emit(
         newYVDaiCollateral,
@@ -618,8 +621,8 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      const invalidYTokenCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>(
-        await YTokenCollateralFactory.deploy(
+      const invalidVaultTokenCollateral: DMVaultTokenFiatCollateral = <DMVaultTokenFiatCollateral>(
+        await VaultTokenCollateralFactory.deploy(
           await yvDaiCollateral.erc20(),
           await yvDaiCollateral.maxTradeVolume(),
           fp('1'),
@@ -634,13 +637,13 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidVaultTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidVaultTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidVaultTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidVaultTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 })

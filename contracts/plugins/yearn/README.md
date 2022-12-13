@@ -1,11 +1,12 @@
-# Yearn vaults collateral plugin
+# Strategy Vaults collateral plugin
 
 ## Introduction
 
-This is a collateral plugin written to enable the use of Yearn vault tokens as collateral on the Reserve protocol. The following resources will be helpful in understanding the reasoning behind this plugin's logic.
+This is a collateral plugin written to enable the use of strategy vault tokens (i.e tokens that implement the `pricePerShare()` method like Yearn vault tokens and Ribbon Theta vault v2 tokens) as collateral on the Reserve protocol. The following resources will be helpful in understanding the reasoning behind this plugin's logic.
 
 - [Yearn Finance docs](https://docs.yearn.finance/getting-started/intro#vaults)
 - [Yearn Vaults](https://docs.yearn.finance/getting-started/products/yvaults/overview)
+- [Ribbon Theta Vaults](https://docs.ribbon.finance/theta-vault/theta-vault)
 
 ## Summary
 
@@ -13,11 +14,15 @@ This is a collateral plugin written to enable the use of Yearn vault tokens as c
 >
 > _— [Yearn Finance docs](https://docs.yearn.finance/getting-started/intro#vaults)_
 
-Now these yields are generated using 'Strategies' set on the vaults which can in theory, incur a loss. These losses could be temporary, minor losses or very grievous depending on the cause of loss. Without this problem, using a yToken as collateral would have been pretty straightforward as the reference will just be the vault's underlying token. But there could be instances where a vault experiences a minor temporary loss and we actually want to tolerate the loss if it's within a certain range. Or a situation where we don't know the maximum possible loss that a vault can experience but we do know that it always recovers from that loss within a short while. For the Collateral plugin to be useful for a large number of vaults, there has to be a way to 'kinda circumvent' these problems.
+>Theta Vaults run an automated European options selling strategy, which earns yield on a weekly basis through writing out of the money options and collecting the premiums.
+>
+> _- [Theta Vaults docs](https://docs.ribbon.finance/theta-vault/theta-vault#what-are-theta-vaults)_
+
+Now these yields are generated using 'Strategies' set on the vaults which can in theory, incur a loss. These losses could be temporary, minor losses or very grievous depending on the cause of loss. Without this problem, using one of these tokens as collateral would have been pretty straightforward as the reference will just be the vault's underlying token. But there could be instances where a vault experiences a minor temporary loss and we actually want to tolerate the loss if it's within a certain range. Or a situation where we don't know the maximum possible loss that a vault can experience but we do know that it always recovers from that loss within a short while. For the Collateral plugin to be useful for a large number of vaults, there has to be a way to 'kinda circumvent' these problems.
 
 Now the decision was to provide 2 different approaches based on the RToken's requirements.
 
-1. The demurrage approach, where the exchange rate between the yToken and its underlying token isn't taken into consideration for determining the plugin's default status but instead, a management fee is charged per time on the yToken. This is useful for the case where we expect the yToken to be generally appreciating over time but also expect some losses along the way which can't really be given a definite range.
+1. The demurrage approach, where the exchange rate between the vault's token and its underlying token isn't taken into consideration for determining the plugin's default status but instead, a management fee is charged per time on the token. This is useful for the case where we expect the token to be generally appreciating over time but also expect some losses along the way which can't really be given a definite range.
 
 2. The revenue hiding approach, where the rate reported to the protocol is slightly lower than what it should actually be to give room for fluctuations in the unreported region. This is useful for the case where we expect a maximum amount of loss per time that the vault can experience. The best part about this approach is that it's technically possible to deploy a plugin that doesn't tolerate any losses at all and just behaves as though we made the underlying token the direct reference.
 
@@ -25,13 +30,13 @@ These approaches are explained in more detail below.
 
 ### Use cases
 
-There are basically 3 classifications of yearn vault tokens (based on personal opinion really):
+There are basically 3 classifications of vault tokens (based on personal opinion really):
 
-- **Fiat YToken:** Underlying token is a stable coin pegged to {UoA}. Think USDT, USDC, TUSD, YCRV, e.t.c.
+- **Fiat VaultToken:** Underlying token is a stable coin pegged to {UoA}. Think USDT, USDC, TUSD, YCRV, e.t.c.
 
-- **Non Fiat YToken:** Underlying token is pegged to some other currency which isn't pegged to {UoA}. Think WBTC, WETH, EURS, e.t.c.
+- **Non Fiat VaultToken:** Underlying token is pegged to some other currency which isn't pegged to {UoA}. Think WBTC, WETH, EURS, e.t.c.
 
-- **Generic YToken:** Underlying token can be anything. It could be an LP token or some other new token that doesn't have a chainlink feed yet. This variant of the plugin requires that you deploy a separate contract that implements the `IPriceProvider` interface which will be used to compute the price of the underlying token. Possibilities with this is that you could have an `IPriceProvider` that registers chainlink feeds for particular assets and uses that in the price computation. There could also be an `IPriceProvider` that calculates the price of a curve LP token. The possibilities really are endless.
+- **Generic VaultToken:** Underlying token can be anything. It could be an LP token or some other new token that doesn't have a chainlink feed yet. This variant of the plugin requires that you deploy a separate contract that implements the `IPriceProvider` interface which will be used to compute the price of the underlying token. Possibilities with this is that you could have an `IPriceProvider` that registers chainlink feeds for particular assets and uses that in the price computation. There could also be an `IPriceProvider` that calculates the price of a curve LP token. The possibilities really are endless.
 
 There are implementations of these variants available for both approaches so it's really up to RToken governance to determine which approach best suits the RToken they want to create.
 
@@ -52,7 +57,7 @@ Details on the constructor parameters are provided in the Setup section below.
 
 The accounting units chosen for this approach are somewhat peculiar:
 
-- `{tok}`: the yToken itself being used as collateral
+- `{tok}`: the token itself being used as collateral
 - `{ref}`: a synthetic unit that reflects the amount charged as a fee on the token
 - `{target}`: also synthetic and increases along with the `{ref}`, and is named something like, `DMyvBTC100`. More generally, `DM<token name><basis points>`.
 - `{UoA}`: USD
@@ -61,7 +66,7 @@ The accounting units chosen for this approach are somewhat peculiar:
 
 **Fiat Collateral**
 
-File: `contracts/plugins/yearn/DMYTokenFiatCollateral.sol`
+File: `contracts/plugins/yearn/DMVaultTokenFiatCollateral.sol`
 
 Constructor args
 | Parameter | Description |
@@ -78,7 +83,7 @@ Constructor args
 
 **Non-fiat Collateral**
 
-File: `contracts/plugins/yearn/DMYTokenNonFiatCollateral.sol`
+File: `contracts/plugins/yearn/DMVaultTokenNonFiatCollateral.sol`
 
 Constructor args
 | Parameter | Description |
@@ -96,7 +101,7 @@ Constructor args
 
 **Generic Collateral**
 
-File: `contracts/plugins/yearn/DMYTokenGenericCollateral.sol`
+File: `contracts/plugins/yearn/DMVaultTokenGenericCollateral.sol`
 
 Constructor args
 | Parameter | Description |
@@ -108,6 +113,7 @@ Constructor args
 | `delayUntilDefault_` | The amount of time the collateral should spend in the IFFY state on a soft default before being marked as DISABLED. |
 | `ratePerPeriod_` | The `ratePerPeriod` as explained earlier in FIXED values (`uint192`) |
 | `priceProvider_` | The address of the `IPriceProvider` to use for the collateral |
+| `underlyingToken_` | The address of the vault's underlying token |
 
 ## Revenue Hiding
 
@@ -127,7 +133,7 @@ One can actually deploy an RToken that doesn't hide any revenue by setting the b
 
 **Fiat Collateral**
 
-File: `contracts/plugins/yearn/RHYTokenFiatCollateral.sol`
+File: `contracts/plugins/yearn/RHVaultTokenFiatCollateral.sol`
 
 Constructor args
 | Parameter | Description |
@@ -144,7 +150,7 @@ Constructor args
 
 **Non-fiat Collateral**
 
-File: `contracts/plugins/yearn/RHYTokenNonFiatCollateral.sol`
+File: `contracts/plugins/yearn/RHVaultTokenNonFiatCollateral.sol`
 
 Constructor args
 | Parameter | Description |
@@ -162,7 +168,7 @@ Constructor args
 
 **Generic Collateral**
 
-File: `contracts/plugins/yearn/RHYTokenGenericCollateral.sol`
+File: `contracts/plugins/yearn/RHVaultTokenGenericCollateral.sol`
 
 Constructor args
 | Parameter | Description |
@@ -174,3 +180,4 @@ Constructor args
 | `delayUntilDefault_` | The amount of time the collateral should spend in the IFFY state on a soft default before being marked as DISABLED. |
 | `basisPoints_` | Percentage of revenue to hide |
 | `priceProvider_` | The address of the `IPriceProvider` to use for the collateral |
+| `underlyingToken_` | The address of the vault's underlying token |

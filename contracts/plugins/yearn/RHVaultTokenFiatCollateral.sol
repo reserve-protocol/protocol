@@ -3,9 +3,9 @@ pragma solidity 0.8.9;
 
 import "../../libraries/Fixed.sol";
 import "../assets/OracleLib.sol";
-import "./AbstractDMYTokenCollateral.sol";
+import "./AbstractRHVaultTokenCollateral.sol";
 
-contract DMYTokenFiatCollateral is AbstractDMYTokenCollateral {
+contract RHVaultTokenFiatCollateral is AbstractRHVaultTokenCollateral {
     using OracleLib for AggregatorV3Interface;
 
     constructor(
@@ -14,18 +14,18 @@ contract DMYTokenFiatCollateral is AbstractDMYTokenCollateral {
         uint256 fallbackPrice_,
         bytes32 targetName_,
         uint256 delayUntilDefault_,
-        uint256 ratePerPeriod_,
+        uint16 basisPoints_,
         AggregatorV3Interface chainlinkFeed_,
         uint48 oracleTimeout_,
         uint256 defaultThreshold_
     )
-        AbstractDMYTokenCollateral(
+        AbstractRHVaultTokenCollateral(
             vault_,
             maxTradeVolume_,
             fallbackPrice_,
             targetName_,
             delayUntilDefault_,
-            ratePerPeriod_,
+            basisPoints_,
             chainlinkFeed_,
             oracleTimeout_,
             defaultThreshold_

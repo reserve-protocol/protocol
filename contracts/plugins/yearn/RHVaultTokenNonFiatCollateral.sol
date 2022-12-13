@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "../../libraries/Fixed.sol";
+import "./AbstractRHVaultTokenCollateral.sol";
 import "../assets/OracleLib.sol";
-import "./AbstractRHYTokenCollateral.sol";
+import "../../libraries/Fixed.sol";
 
-contract RHYTokenFiatCollateral is AbstractRHYTokenCollateral {
+contract RHVaultTokenNonFiatCollateral is AbstractRHVaultTokenCollateral {
     using OracleLib for AggregatorV3Interface;
+    using FixLib for uint192;
+
+    AggregatorV3Interface public immutable underlyingTargetToRefFeed;
 
     constructor(
         address vault_,
@@ -15,25 +18,39 @@ contract RHYTokenFiatCollateral is AbstractRHYTokenCollateral {
         bytes32 targetName_,
         uint256 delayUntilDefault_,
         uint16 basisPoints_,
-        AggregatorV3Interface chainlinkFeed_,
+        AggregatorV3Interface underlyingTargetToUoAFeed_,
+        AggregatorV3Interface underlyingTargetToRefFeed_,
         uint48 oracleTimeout_,
         uint256 defaultThreshold_
     )
-        AbstractRHYTokenCollateral(
+        AbstractRHVaultTokenCollateral(
             vault_,
             maxTradeVolume_,
             fallbackPrice_,
             targetName_,
             delayUntilDefault_,
             basisPoints_,
-            chainlinkFeed_,
+            underlyingTargetToUoAFeed_,
             oracleTimeout_,
             defaultThreshold_
         )
-    {} // solhint-disable-line no-empty-blocks
+    {
+        underlyingTargetToRefFeed = underlyingTargetToRefFeed_;
+    }
+
+    /// Can return 0, can revert
+    /// @return {UoA/tok} The current price()
+    function strictPrice() public view virtual override returns (uint192) {
+        return
+            chainlinkFeed
+                .price(oracleTimeout)
+                .mul(underlyingTargetToRefFeed.price(oracleTimeout))
+                .mul(actualRefPerTok());
+    }
 
     function _checkAndUpdateDefaultStatus() internal override returns (bool isSound) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        // Doesn't need to check if peg is defaulting since they're not pegged anyways
+        try underlyingTargetToRefFeed.price_(oracleTimeout) returns (uint192 p) {
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
             if (p < FIX_ONE - defaultThreshold || p > FIX_ONE + defaultThreshold)

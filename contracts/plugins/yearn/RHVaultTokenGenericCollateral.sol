@@ -2,13 +2,14 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/OracleLib.sol";
 import "../../libraries/Fixed.sol";
-import "../assets/DemurrageCollateral.sol";
-import "./IYToken.sol";
+import "../assets/RevenueHidingCollateral.sol";
+import "./IVaultToken.sol";
 import "./IPriceProvider.sol";
 
-contract DMYTokenGenericCollateral is DemurrageCollateral {
+contract RHVaultTokenGenericCollateral is RevenueHidingCollateral {
+    using FixLib for uint192;
+
     IPriceProvider public immutable priceProvider;
     IERC20Metadata public immutable underlyingToken;
 
@@ -18,17 +19,17 @@ contract DMYTokenGenericCollateral is DemurrageCollateral {
         uint256 fallbackPrice_,
         bytes32 targetName_,
         uint256 delayUntilDefault_,
-        uint256 ratePerPeriod_,
+        uint16 basisPoints_,
         IPriceProvider priceProvider_,
         IERC20Metadata underlyingToken_
     )
-        DemurrageCollateral(
+        RevenueHidingCollateral(
             vault_,
             maxTradeVolume_,
             fallbackPrice_,
             targetName_,
             delayUntilDefault_,
-            ratePerPeriod_
+            basisPoints_
         )
     {
         require(address(priceProvider_) != address(0), "priceProvider_ is required");
@@ -40,18 +41,21 @@ contract DMYTokenGenericCollateral is DemurrageCollateral {
     // solhint-disable-next-line no-empty-blocks
     function claimRewards() external override {}
 
-    function uTokPerTok() internal view override returns (uint192) {
-        IYToken vault = IYToken(address(erc20));
+    /// @return {ref/tok} Quantity of whole reference units (actual) per whole collateral tokens
+    function actualRefPerTok() public view override returns (uint192) {
+        IVaultToken vault = IVaultToken(address(erc20));
         uint256 pps = vault.pricePerShare();
         return shiftl_toFix(pps, -int8(vault.decimals()));
     }
 
-    function pricePerUTok() internal view override returns (uint192) {
+    /// Can return 0, can revert
+    /// @return {UoA/tok} The current price()
+    function strictPrice() public view override returns (uint192) {
         uint256 _price = priceProvider.price(address(underlyingToken));
         if (_price == 0) {
             revert PriceOutsideRange();
         }
-        return shiftl_toFix(_price, -int8(priceProvider.decimals()));
+        return shiftl_toFix(_price, -int8(priceProvider.decimals())).mul(actualRefPerTok());
     }
 
     function _checkAndUpdateDefaultStatus() internal pure override returns (bool isSound) {

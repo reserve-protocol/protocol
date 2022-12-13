@@ -21,7 +21,7 @@ import {
   Asset,
   ChainlinkPriceProvider,
   PriceProviderMock,
-  YTokenMock,
+  VaultTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -33,7 +33,7 @@ import {
   TestIDeployer,
   TestIMain,
   TestIRToken,
-  RHYTokenGenericCollateral,
+  RHVaultTokenGenericCollateral,
   InvalidPriceProviderMock,
 } from '../../../typechain'
 
@@ -43,14 +43,14 @@ const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`RHVaultTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
   // Tokens/Assets
   let link: ERC20Mock
-  let yvLink: YTokenMock
-  let yvLinkCollateral: RHYTokenGenericCollateral
+  let yvLink: VaultTokenMock
+  let yvLinkCollateral: RHVaultTokenGenericCollateral
   let priceProvider: ChainlinkPriceProvider
   let rsr: ERC20Mock
   let rsrAsset: Asset
@@ -101,8 +101,8 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
   let chainId: number
 
-  let YTokenCollateralFactory: ContractFactory
-  let YTokenMockFactory: ContractFactory
+  let VaultTokenCollateralFactory: ContractFactory
+  let VaultTokenMockFactory: ContractFactory
   let PriceProviderFactory: ContractFactory
   let PriceProviderMockFactory: ContractFactory
   let mockPriceProvider: PriceProviderMock
@@ -128,9 +128,11 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
     link = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.LINK || '')
     )
-    YTokenMockFactory = await ethers.getContractFactory('YTokenMock')
+    VaultTokenMockFactory = await ethers.getContractFactory('VaultTokenMock')
     // YVLink token
-    yvLink = <YTokenMock>await YTokenMockFactory.deploy('LINK yVault', 'yvLINK', link.address)
+    yvLink = <VaultTokenMock>(
+      await VaultTokenMockFactory.deploy('LINK yVault', 'yvLINK', link.address)
+    )
     await yvLink.setExchangeRate(fp('1.01'))
     expect(await yvLink.pricePerShare()).to.be.equal(
       toBNDecimals(fp('1.01'), await link.decimals())
@@ -148,9 +150,12 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
     )
 
     // Deploy yvLink collateral plugin
-    YTokenCollateralFactory = await ethers.getContractFactory('RHYTokenGenericCollateral', {})
-    yvLinkCollateral = <RHYTokenGenericCollateral>(
-      await YTokenCollateralFactory.deploy(
+    VaultTokenCollateralFactory = await ethers.getContractFactory(
+      'RHVaultTokenGenericCollateral',
+      {}
+    )
+    yvLinkCollateral = <RHVaultTokenGenericCollateral>(
+      await VaultTokenCollateralFactory.deploy(
         yvLink.address,
         config.rTokenMaxTradeVolume,
         fp('7'),
@@ -236,7 +241,7 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       // Check Price provider
       expect(await priceProvider.price(link.address)).to.be.closeTo(fp('7.78'), fp('0.01'))
       // Check Collateral plugin
-      // yvLINK (RHYTokenGenericCollateral)
+      // yvLINK (RHVaultTokenGenericCollateral)
       expect(await yvLinkCollateral.isCollateral()).to.equal(true)
       expect(await yvLinkCollateral.erc20()).to.equal(yvLink.address)
       expect(await yvLink.decimals()).to.equal(await link.decimals())
@@ -304,7 +309,7 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
     it('Should validate constructor arguments correctly', async () => {
       // Delay until default
       await expect(
-        YTokenCollateralFactory.deploy(
+        VaultTokenCollateralFactory.deploy(
           yvLink.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
@@ -318,7 +323,7 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
       // Rate per period
       await expect(
-        YTokenCollateralFactory.deploy(
+        VaultTokenCollateralFactory.deploy(
           yvLink.address,
           config.rTokenMaxTradeVolume,
           fp('1'),
@@ -498,23 +503,23 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       await yvLinkCollateral.refresh()
       expect(await yvLinkCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // YTokens Collateral with no price
-      const nonpriceYtokenCollateral: RHYTokenGenericCollateral = <RHYTokenGenericCollateral>(
-        await (
-          await ethers.getContractFactory('RHYTokenGenericCollateral', {})
-        ).deploy(
-          yvLink.address,
-          config.rTokenMaxTradeVolume,
-          fp('1'),
-          ethers.utils.formatBytes32String('LINK'),
-          delayUntilDefault,
-          '100',
-          NO_PRICE_DATA_FEED,
-          link.address
-        )
+      // VaultTokens Collateral with no price
+      const nonpriceYtokenCollateral: RHVaultTokenGenericCollateral = <
+        RHVaultTokenGenericCollateral
+      >await (
+        await ethers.getContractFactory('RHVaultTokenGenericCollateral', {})
+      ).deploy(
+        yvLink.address,
+        config.rTokenMaxTradeVolume,
+        fp('1'),
+        ethers.utils.formatBytes32String('LINK'),
+        delayUntilDefault,
+        '100',
+        NO_PRICE_DATA_FEED,
+        link.address
       )
 
-      // YTokens - Collateral with no price info should revert
+      // VaultTokens - Collateral with no price info should revert
       await expect(nonpriceYtokenCollateral.strictPrice()).to.be.reverted
 
       // Refresh should also revert - status is not modified
@@ -522,19 +527,19 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(await nonpriceYtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
-      const invalidpriceYtokenCollateral: RHYTokenGenericCollateral = <RHYTokenGenericCollateral>(
-        await (
-          await ethers.getContractFactory('RHYTokenGenericCollateral', {})
-        ).deploy(
-          yvLink.address,
-          config.rTokenMaxTradeVolume,
-          fp('1'),
-          ethers.utils.formatBytes32String('LINK'),
-          delayUntilDefault,
-          '100',
-          mockPriceProvider.address,
-          link.address
-        )
+      const invalidpriceYtokenCollateral: RHVaultTokenGenericCollateral = <
+        RHVaultTokenGenericCollateral
+      >await (
+        await ethers.getContractFactory('RHVaultTokenGenericCollateral', {})
+      ).deploy(
+        yvLink.address,
+        config.rTokenMaxTradeVolume,
+        fp('1'),
+        ethers.utils.formatBytes32String('LINK'),
+        delayUntilDefault,
+        '100',
+        mockPriceProvider.address,
+        link.address
       )
 
       await mockPriceProvider.setPrice(link.address, bn('0'))
@@ -558,9 +563,9 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a price provider mock where we can change the price
-      const newYVLinkCollateral: RHYTokenGenericCollateral = <RHYTokenGenericCollateral>(
+      const newYVLinkCollateral: RHVaultTokenGenericCollateral = <RHVaultTokenGenericCollateral>(
         await (
-          await ethers.getContractFactory('RHYTokenGenericCollateral', {})
+          await ethers.getContractFactory('RHVaultTokenGenericCollateral', {})
         ).deploy(
           await yvLinkCollateral.erc20(),
           await yvLinkCollateral.maxTradeVolume(),
@@ -596,7 +601,6 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(await newYVLinkCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
-      // YToken
       const prevWhenDefault: BigNumber = await newYVLinkCollateral.whenDefault()
       await expect(newYVLinkCollateral.refresh()).to.not.emit(
         newYVLinkCollateral,
@@ -608,17 +612,17 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
-      // Note: In this case requires to use a YToken mock to be able to change the rate
+      // Note: In this case requires to use a VaultToken mock to be able to change the rate
       const symbol = await yvLink.symbol()
-      const yvLinkMock: YTokenMock = <YTokenMock>(
-        await YTokenMockFactory.deploy(symbol + ' Token', symbol, link.address)
+      const yvLinkMock: VaultTokenMock = <VaultTokenMock>(
+        await VaultTokenMockFactory.deploy(symbol + ' Token', symbol, link.address)
       )
       // Set initial exchange rate to the new yvLink Mock
       await yvLinkMock.setExchangeRate(fp('0.9'))
 
       // Redeploy plugin using the new yvLink mock
-      const newYvLinkCollateral: RHYTokenGenericCollateral = <RHYTokenGenericCollateral>(
-        await YTokenCollateralFactory.deploy(
+      const newYvLinkCollateral: RHVaultTokenGenericCollateral = <RHVaultTokenGenericCollateral>(
+        await VaultTokenCollateralFactory.deploy(
           yvLinkMock.address,
           await yvLinkCollateral.maxTradeVolume(),
           fp('1'),
@@ -649,7 +653,7 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       // Decrease rate for yvLINK outside threshold, should default immediately
       await yvLinkMock.setExchangeRate(fp('0.98'))
 
-      // Force updates - Should update whenDefault and status for YTokens
+      // Force updates - Should update whenDefault and status for VaultTokens
       await expect(newYvLinkCollateral.refresh())
         .to.emit(newYvLinkCollateral, 'DefaultStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
@@ -667,28 +671,28 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         await InvalidPriceProviderMockFactory.deploy()
       )
 
-      const invalidYTokenCollateral: RHYTokenGenericCollateral = <RHYTokenGenericCollateral>(
-        await YTokenCollateralFactory.deploy(
-          await yvLinkCollateral.erc20(),
-          await yvLinkCollateral.maxTradeVolume(),
-          fp('1'),
-          await yvLinkCollateral.targetName(),
-          await yvLinkCollateral.delayUntilDefault(),
-          '100',
-          invalidPriceProvider.address,
-          link.address
-        )
+      const invalidVaultTokenCollateral: RHVaultTokenGenericCollateral = <
+        RHVaultTokenGenericCollateral
+      >await VaultTokenCollateralFactory.deploy(
+        await yvLinkCollateral.erc20(),
+        await yvLinkCollateral.maxTradeVolume(),
+        fp('1'),
+        await yvLinkCollateral.targetName(),
+        await yvLinkCollateral.delayUntilDefault(),
+        '100',
+        invalidPriceProvider.address,
+        link.address
       )
 
       // Reverting with no reason
       await invalidPriceProvider.setSimplyRevert(true)
-      await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidVaultTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidVaultTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Running out of gas (same error)
       await invalidPriceProvider.setSimplyRevert(false)
-      await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidVaultTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidVaultTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 })
