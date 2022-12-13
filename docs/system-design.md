@@ -33,8 +33,8 @@ Some of the core contracts in our system regularly own ERC20 tokens. In each cas
 
 ### RToken Lifecycle
 
-1. During SlowIssuance, the `RToken` transfers collateral tokens from the issuer's address into itself.
-2. At vesting time, the `RToken` contract mints new RToken to the issuer and transfers the held collateral to the `BackingManager`. If the `BasketHandler` has updated the basket since issuance began, then the collateral is instead returned to the user and no RToken is minted.
+1. During SlowIssuance, the `RToken` transfers collateral tokens from the caller's address into itself.
+2. At vesting time, the `RToken` contract mints new RToken to the recipient and transfers the held collateral to the `BackingManager`. If the `BasketHandler` has updated the basket since issuance began, then the collateral is instead returned to the recipient and no RToken is minted.
 3. During redemption, RToken is burnt from the redeemer's account and they are transferred a prorata share of backing collateral from the `BackingManager`.
 
 ## Some Monetary Units
@@ -101,7 +101,7 @@ The dimension of `token amount` is `{tok/BU}`.
 
 For instance, if the reference basket contains the pair `<cUSDC, O.29>`, then one basket unit will contain 0.29 cUSDC.
 
-This is the form of the basket that issuers and redeemer will care most about. Issuance and redemption quantities are given by the collateral basket times the current `rTok/BU` exchange rate.
+This is the form of the basket that recipients and redeemer will care most about. Issuance and redemption quantities are given by the collateral basket times the current `rTok/BU` exchange rate.
 
 While an issuance is pending in the mempool, the quantities of tokens that will be ingested when the transaciton is mined may decrease slightly as the collateral becomes worth more. If furnace melting happens in that time, however, this can increase the quantity of collateral tokens in the basket and cause the issuance to fail.
 

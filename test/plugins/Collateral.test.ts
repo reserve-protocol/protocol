@@ -143,7 +143,7 @@ describe('Collateral contracts', () => {
     await usdc.connect(owner).approve(rToken.address, amt.div(bn('1e12')))
     await aToken.connect(owner).approve(rToken.address, amt)
     await cToken.connect(owner).approve(rToken.address, amt.div(bn('1e10')).mul(50))
-    await rToken.connect(owner).issue(amt)
+    await rToken.connect(owner)['issue(uint256)'](amt)
 
     // Factories
     FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
