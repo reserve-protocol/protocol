@@ -11,7 +11,6 @@ import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/Component.sol";
-
 // A "valid collateral array" is a an IERC20[] value without rtoken, rsr, or any duplicate values
 
 // A BackupConfig value is valid if erc20s is a valid collateral array
@@ -353,7 +352,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         // untestable:
         //      qty will never = 0 here because of the check in _price()
         if (qty == 0 || p == 0) return 0;
-        // make collateral coll.refPerTok() return 0
+        // untestable:
+        //      qty = FIX_MAX iff p = 0
         if (qty == FIX_MAX || p == FIX_MAX) return FIX_MAX;
 
         // return FIX_MAX instead of throwing overflow errors.
