@@ -28,9 +28,9 @@ We won't bother with adding disks. By default, GCP gives you a single boot disk 
 
 ```bash
 export NODENAME=difftest
-gcloud compute instances create $NODENAME \
+gcloud compute instances create difftest \
   --custom-extensions   --custom-vm-type=n2 \
-  --custom-cpu=2 --custom-memory=256 \
+  --custom-cpu=4 --custom-memory=384 \
   --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
 ```
 
@@ -71,11 +71,11 @@ solc-select install all
 # _way too much_ other junk
 sudo snap install node --classic --channel=16
 
-# Fetch and install echidna. The URL and filename given here assume most recent release is v2.0.3; see https://github.com/crytic/echidna/releases/latest
-wget "https://github.com/crytic/echidna/releases/download/v2.0.3/echidna-test-2.0.3-Ubuntu-18.04.tar.gz"
-tar -xf echidna-test-2.0.3-Ubuntu-18.04.tar.gz
+# Fetch and install echidna. The URL and filename given here assume most recent release is v2.0.4; see https://github.com/crytic/echidna/releases/latest
+wget "https://github.com/crytic/echidna/releases/download/v2.0.4/echidna-test-2.0.4-Ubuntu-18.04.tar.gz"
+tar -xf echidna-test-2.0.4-Ubuntu-18.04.tar.gz
 mv echidna-test ~/.local/bin
-rm echidna-test-2.0.3-Ubuntu-18.04.tar.gz
+rm echidna-test-2.0.4-Ubuntu-18.04.tar.gz
 
 # Install echidna parade (from source, with live files)
 git clone https://github.com/crytic/echidna-parade.git
@@ -92,7 +92,7 @@ sudo bash add-google-cloud-ops-agent-repo.sh --also-install
 # Get our code
 git clone https://github.com/reserve-protocol/protocol.git
 cd protocol
-git switch fuzz
+git switch fuzz-pricing
 
 # Install local dependencies. --force is necessary; seems to work fine.
 npm install --force 
@@ -103,8 +103,10 @@ TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile
 # Test run echidna briefly, see that it actually works
 # you have to change "YourScenario" to the right thing yourself
 echidna-test . --config tools/echidna.config.yml \
-  --contract YourScenario --test-limit 3
+  --contract ${SCENARIO} --test-limit 3
 ```
+
+<!-- HERE -->
 
 # Launch Fuzzing!
 
@@ -119,12 +121,13 @@ Edit `protocol/tools/echinda.config.yml`:
 Write `launch-parade.sh`:
 
 ``` bash
+#!/bin/bash
 nice echidna-parade protocol --name parade \
-    --contract YourScenario \
-    --config protocol/tools/echidna.config.yml \ 
+    --contract ${SCENARIO} \
+    --config protocol/tools/echidna.config.yml \
     --ncores 4 \
     --timeout -1 \
-    --gen_time 1800 --initial_time 3600 \
+    --gen_time 3600 --initial_time 7200 \
     --minseqLen 10 --maxseqLen 100 \
     --clean-results
 ```
