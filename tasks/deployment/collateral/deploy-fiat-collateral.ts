@@ -1,40 +1,38 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task } from 'hardhat/config'
 import { ContractFactory } from 'ethers'
-import { Collateral } from '../../../typechain'
+import { FiatCollateral } from '../../../typechain'
 
 task('deploy-fiat-collateral', 'Deploys a Fiat Collateral')
-  .addParam('fallbackPrice', 'A fallback price (in UoA)')
+  .addParam('priceTimeout', 'The amount of time before a price decays to 0')
   .addParam('priceFeed', 'Price Feed address')
+  .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
-  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)
 
     const FiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-      'FiatCollateral',
-      { libraries: { OracleLib: params.oracleLib } }
+      'FiatCollateral'
     )
 
-    const collateral = <Collateral>(
-      await FiatCollateralFactory.connect(deployer).deploy(
-        params.fallbackPrice,
-        params.priceFeed,
-        params.tokenAddress,
-        params.maxTradeVolume,
-        params.oracleTimeout,
-        params.targetName,
-        params.defaultThreshold,
-        params.delayUntilDefault
-      )
-    )
+    const collateral = <FiatCollateral>await FiatCollateralFactory.connect(deployer).deploy({
+      priceTimeout: params.priceTimeout,
+      chainlinkFeed: params.priceFeed,
+      oracleError: params.oracleError,
+      erc20: params.tokenAddress,
+      maxTradeVolume: params.maxTradeVolume,
+      oracleTimeout: params.oracleTimeout,
+      targetName: params.targetName,
+      defaultThreshold: params.defaultThreshold,
+      delayUntilDefault: params.delayUntilDefault,
+    })
     await collateral.deployed()
 
     if (!params.noOutput) {

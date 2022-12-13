@@ -30,6 +30,7 @@ pragma solidity ^0.8.9;
 
 // A uint value passed to this library was out of bounds for uint192 operations
 error UIntOutOfBounds();
+bytes32 constant UIntOutofBoundsHash = keccak256(abi.encodeWithSignature("UIntOutOfBounds()"));
 
 // Used by P1 implementation for easier casting
 uint256 constant FIX_ONE_256 = 1e18;

@@ -48,18 +48,23 @@ interface IRewardable {
  * whether it is used as RToken backing or not. Any token that can report a price in the UoA
  * is eligible to be an asset.
  */
-interface IAsset {
-  /// Can return 0, can revert
-  /// Shortcut for price(false)
-  /// @return {UoA/tok} The current price(), without considering fallback prices
-  function strictPrice() external view returns (uint192);
+interface IAsset is IRewardable {
+  /// Refresh saved price
+  /// The Reserve protocol calls this at least once per transaction, before relying on
+  /// the Asset's other functions.
+  /// @dev Called immediately after deployment, before use
+  function refresh() external;
 
-  /// Can return 0
-  /// Should not revert if `allowFallback` is true. Can revert if false.
-  /// @param allowFallback Whether to try the fallback price in case precise price reverts
-  /// @return isFallback If the price is a failover price
-  /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-  function price(bool allowFallback) external view returns (bool isFallback, uint192);
+  /// Should not revert
+  /// @return low {UoA/tok} The lower end of the price estimate
+  /// @return high {UoA/tok} The upper end of the price estimate
+  function price() external view returns (uint192 low, uint192 high);
+
+  /// Should not revert
+  /// lotLow should be nonzero when the asset might be worth selling
+  /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+  /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+  function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
   /// @return {tok} The balance of the ERC20 in whole tokens
   function bal(address account) external view returns (uint192);
@@ -91,10 +96,18 @@ enum CollateralStatus {
  * @notice A subtype of Asset that consists of the tokens eligible to back the RToken.
  */
 interface ICollateral is IAsset {
+  /// Emitted whenever the collateral status is changed
+  /// @param newStatus The old CollateralStatus
+  /// @param newStatus The updated CollateralStatus
+  event CollateralStatusChanged(
+    CollateralStatus indexed oldStatus,
+    CollateralStatus indexed newStatus
+  );
+
+  /// @dev refresh()
   /// Refresh exchange rates and update default status.
-  /// The Reserve protocol calls this at least once per transaction, before relying on
-  /// this collateral's prices or default status.
-  function refresh() external;
+  /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
+  /// refPerTok() has ever decreased since last call.
 
   /// @return The canonical name of this collateral's target unit.
   function targetName() external view returns (bytes32);
@@ -302,13 +315,7 @@ The same wrapper approach is easily used to tokenize positions in protocols that
 
 Because it’s called at the beginning of many transactions, `refresh()` should never revert. If `refresh()` encounters a critical error, it should change the Collateral contract’s state so that `status()` becomes `DISABLED`.
 
-### `strictPrice()`, `price(bool)`, and `status()`
-
-The Reserve protocol is designed to sensibly handle tokens under various error conditions. To enable this, Asset contracts that rely on external price feeds of whatever kind must provide a sensible "fallback" price mechanism. This fallback price should be selectively exposed. When `price(true)` is called, this is an indication to the plugin that a fallback price can be returned if the primary price is unavailable.
-
-`strictPrice()` should revert if any of the price information it relies upon to give a high-quality price is unavailable; `price(false)` should behave essentially the same way. In a situation where `strictPrice()` or `price(false)` would revert, `price(true)` should instead return `(true, p)`, where `p` is some reasonable fallback price computed without relying on the failing price feed.
-
-If a Collateral's `refresh()` method is called during conditions when only fallback prices are available, its `status()` should become either `IFFY` or `DISABLED`.
+To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`lotPrice()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
 
 ### The `IFFY` status should be temporary.
 
@@ -316,11 +323,19 @@ If a contract's `status()` has been `IFFY` on every call to `refresh()` for some
 
 Unless there's a good reason for a specific collateral to use a different mechanism, that maximum `IFFY` duration should be a parameter given in the Collateral plugin's constructor.
 
+### Collateral cannot be SOUND if `price().low` is 0
+
+If `price()` returns 0 for the lower-bound price estimate `low`, the collateral should pass-through the [slow default](#types-of-default) process where it is first marked `IFFY` and eventually transitioned to `DISABLED` if the behavior is sustained. `status()` should NOT return `SOUND`.
+
+If a collateral implementor extends [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol), the logic inherited in the `refresh()` function already satisfies this property.
+
 ### Collateral must default if `refPerTok()` falls.
 
-Notice that `refresh()` is the only non-view method on the ICollateral interface, so it's the only place that can deal with a state change like this. However, `refresh()` is carefully called by any flow through the RToken protocol that requires good prices or sound collateral. So, we need just the following quite specific property:
+Notice that `refresh()` is the only non-view method on the ICollateral interface, so it's the only place that can deal with a state change like this. `refresh()` is carefully called by any flow through the RToken protocol that requires good prices or sound collateral. So, we need just the following quite specific property:
 
 If `refresh()` is called twice, and `refPerTok()` just after the second call is lower than `refPerTok()` just after the first call, then `status()` must change to `CollateralStatus.DISABLED` immediately. This is true for any collateral plugin. For some collateral plugins it will be obvious that `refPerTok()` cannot decrease, in which case no checks are required.
+
+If a collateral implementor extends [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol), the logic inherited in the `refresh()` function already satisfies this property.
 
 ### Defaulted Collateral must stay defaulted.
 
@@ -331,7 +346,7 @@ If `status()` ever returns `CollateralStatus.DISABLED`, then it must always retu
 Protocol contracts that hold an asset for any significant amount of time are all able to call `claimRewards()` via delegatecall. The plugin contract should include whatever logic is necessary to claim rewards from all relevant defi protocols. These rewards are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
 
 - `claimRewards()` should expected to be executed via delegatecall. It must claim all rewards that may be earned by holding the asset ERC20.
-- The `RewardsClaimed` event should be emitted for each claim.
+- The `RewardsClaimed` event should be emitted for each token type claimed.
 
 ### Smaller Constraints
 
@@ -345,9 +360,16 @@ The values returned by the following view methods should never change:
 
 ## Function-by-function walkthrough
 
+Collateral implementors who extend from [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) can restrict their attention to overriding the following four functions:
+
+- `tryPrice()` (not on the ICollateral interface; used by `price()`/`lotPrice()`/`refresh()`)
+- `refPerTok()`
+- `targetPerRef()`
+- `claimRewards()`
+
 ### refresh()
 
-`function refresh() external`
+`function refresh() public`
 
 Because `refresh()` is relied upon by so much of the protocol, it is important that it only reverts due to out-of-gas errors. So, wrap any risky external calls that might throw in a try-catch block like this one:
 
@@ -370,7 +392,7 @@ You may include additional mutators on a Collateral plugin implementation, but `
 
 It's common for a Collateral plugin to reply on economic or technical assumptions that might go wrong -- a fiatcoin can lose its peg, a lending protocol might become undercollateralized, a complex protocol may go wrong if a bug is found and exploited. When a plugin has such assumptions, `refresh()` is responsible for checking that its assumptions still hold, and changing the CollateralStatus to `IFFY` or `DISABLED` when it cannot ascertain that its assumptions hold.
 
-`status()` should trigger `DISABLED` when `refresh()` can tell that its assumptions are definitely being violated, and `status()` should trigger `IFFY` if it cannot tell that its assumptions _aren't_ being violated.
+`status()` should trigger `DISABLED` when `refresh()` can tell that its assumptions are definitely being violated, and `status()` should trigger `IFFY` if it cannot tell that its assumptions _aren't_ being violated, such as if an oracle is reverting or has become stale.
 
 #### Types of Default
 
@@ -397,34 +419,35 @@ enum CollateralStatus {
 
 #### Reasons to default
 
-After a call to `refresh()`, it is expected the collateral is either `IFFY` or `DISABLED` if any of the following calls might revert:
-
-- `strictPrice()`
-- `price(false)`
-- `refPerTok()`
-- `targetPerRef()`
+After a call to `refresh()`, it is expected the collateral is either `IFFY` or `DISABLED` if either `refPerTok()` or `targetPerRef()` might revert, of if `price()` would return a 0 value for `low`.
 
 The collateral should also be immediately set to `DISABLED` if `refPerTok()` has fallen.
 
-A Collateral plugin may become `DISABLED` for other reasons as well. For instance, if an ERC20 represents a bridged asset, the Collateral should monitor the exchange rate to the canonical asset for deviations. A sustained period of deviation, or simply stale oracle data, should result in the collateral becoming `DISABLED`.
+A Collateral plugin may become `DISABLED` for other reasons as well. For instance, if an ERC20 represents a bridged asset, the Collateral should monitor the exchange rate to the canonical asset for deviations. A sustained period of deviation, or simply stale oracle data, should result in the collateral eventually becoming `DISABLED`.
 
 As long as it observes such a price irregularity, the Collateral's `status()` should return `IFFY`. It is up to the collateral how long the `IFFY` period lasts before the collateral becomes `DISABLED`, but it is critical that this period is finite and relatively short; this duration should probably be an argument in the plugin's constructor.
 
 Lastly, once a collateral becomes `DISABLED`, it must remain `DISABLED`.
 
-### strictPrice() `{UoA/tok}`
+### price() `{UoA/tok}`
 
-Should revert if pricing data is unavailable.
+Should never revert.
 
-Should act identically to `price(false)`.
+Should return a lower and upper estimate for the price of the token on secondary markets.
+
+Lower estimate must be <= upper estimate.
+
+Should return `(0, FIX_MAX)` if pricing data is unavailable or stale.
 
 Should be gas-efficient.
 
-### price(bool) `{UoA/tok}`
+### lotPrice() `{UoA/tok}`
 
-Can revert if `False`. Should not revert if `True`.
+Should never revert.
 
-Can use fallback pricing data if `True`.
+Lower estimate must be <= upper estimate.
+
+The low estimate should be nonzero while the asset is worth selling.
 
 Should be gas-efficient.
 
@@ -457,10 +480,10 @@ The target name is just a bytes32 serialization of the target unit string. Here 
 
 For a collateral plugin that uses a novel target unit, get the targetName with `ethers.utils.formatBytes32String(unitName)`.
 
-If implementing a demurrage-based collateral plugin, make sure your targetName differs from the examples above and follows the pattern laid out in [Demurrage Collateral](#demurrage-collateral).
+If implementing a demurrage-based collateral plugin, make sure your targetName follows the pattern laid out in [Demurrage Collateral](#demurrage-collateral).
 
 ## Practical Advice from Previous Work
 
-In our own collateral plugin development, we found it useful to implement Collateral plugins by extended a common, abstract contract. Consider subclassing [AbstractCollateral.sol](../contracts/plugins/assets/AbstractCollateral.sol) and its parent class [Asset.sol](../contracts/plugins/assets/Asset.sol) for your own Collateral plugin.
+In most cases [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) can be extended, pretty easily, to support a new collateral type. This allows the collateral developer to limit their attention to the overriding of four functions: `tryPrice()`, `refPerTok()`, `targetPerRef()`, `claimRewards()`.
 
 If you're quite stuck, you might also find it useful to read through our other Collateral plugins as models, found in our repository in `/contracts/plugins/assets`.

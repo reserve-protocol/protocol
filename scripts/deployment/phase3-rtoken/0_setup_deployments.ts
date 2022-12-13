@@ -31,7 +31,7 @@ async function main() {
 
   // Check if deployment file already exists for this chainId
   const rTokenDeploymentFilename = getRTokenDeploymentFilename(chainId, RTOKEN_NAME)
-  if (fileExists(rTokenDeploymentFilename)) {
+  if (chainId != '31337' && fileExists(rTokenDeploymentFilename)) {
     throw new Error(`${rTokenDeploymentFilename} exists; I won't overwrite it.`)
   }
 

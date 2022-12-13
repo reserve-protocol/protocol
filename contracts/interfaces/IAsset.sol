@@ -14,17 +14,22 @@ import "./IRewardable.sol";
  * is eligible to be an asset.
  */
 interface IAsset is IRewardable {
-    /// Can return 0, can revert
-    /// Shortcut for price(false)
-    /// @return {UoA/tok} The current price(), without considering fallback prices
-    function strictPrice() external view returns (uint192);
+    /// Refresh saved price
+    /// The Reserve protocol calls this at least once per transaction, before relying on
+    /// the Asset's other functions.
+    /// @dev Called immediately after deployment, before use
+    function refresh() external;
 
-    /// Can return 0
-    /// Should not revert if `allowFallback` is true. Can revert if false.
-    /// @param allowFallback Whether to try the fallback price in case precise price reverts
-    /// @return isFallback If the price is a failover price
-    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool allowFallback) external view returns (bool isFallback, uint192);
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() external view returns (uint192 low, uint192 high);
+
+    /// Should not revert
+    /// lotLow should be nonzero when the asset might be worth selling
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);
@@ -76,10 +81,10 @@ interface ICollateral is IAsset {
         CollateralStatus indexed newStatus
     );
 
+    /// @dev refresh()
     /// Refresh exchange rates and update default status.
-    /// The Reserve protocol calls this at least once per transaction, before relying on
-    /// this collateral's prices or default status.
-    function refresh() external;
+    /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
+    /// refPerTok() has ever decreased since last call.
 
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);

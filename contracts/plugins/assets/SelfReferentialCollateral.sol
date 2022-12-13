@@ -2,47 +2,43 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./AbstractCollateral.sol";
+import "../../libraries/Fixed.sol";
+import "./FiatCollateral.sol";
 
 /**
  * @title SelfReferentialCollateral
- * @notice Collateral plugin for collateral that is its own target and reference unit,
- * like COMP, MKR, etc.
- * Expected: {tok} == {ref} == {target}, and {target} is probably not {UoA}
- * Self-referential collateral can default if the oracle becomes stale for long enough.
+ * @notice Collateral plugin for an unpegged collateral, such as wETH.
+ * Expected: {tok} == {ref}, {ref} == {target}, {target} != {UoA}
  */
-contract SelfReferentialCollateral is Collateral {
+contract SelfReferentialCollateral is FiatCollateral {
+    using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    /// @param chainlinkFeed_ Feed units: {UoA/ref}
-    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
-    /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
-    // solhint-disable no-empty-blocks
-    constructor(
-        uint192 fallbackPrice_,
-        AggregatorV3Interface chainlinkFeed_,
-        IERC20Metadata erc20_,
-        uint192 maxTradeVolume_,
-        uint48 oracleTimeout_,
-        bytes32 targetName_,
-        uint256 delayUntilDefault_
-    )
-        Collateral(
-            fallbackPrice_,
-            chainlinkFeed_,
-            erc20_,
-            maxTradeVolume_,
-            oracleTimeout_,
-            targetName_,
-            delayUntilDefault_
+    /// @param config.chainlinkFeed Feed units: {UoA/ref}
+    constructor(CollateralConfig memory config) FiatCollateral(config) {
+        require(config.defaultThreshold == 0, "default threshold not supported");
+    }
+
+    /// Can revert, used by other contract functions in order to catch errors
+    /// @param low {UoA/tok} The low price estimate
+    /// @param high {UoA/tok} The high price estimate
+    /// @param pegPrice {target/ref}
+    function tryPrice()
+        external
+        view
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
         )
-    {}
+    {
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+        uint192 delta = p.mul(oracleError);
 
-    // solhint-enable no-empty-blocks
-
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view virtual override returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
+        low = p - delta;
+        high = p + delta;
+        pegPrice = targetPerRef();
     }
 }

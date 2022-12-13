@@ -12,7 +12,6 @@ export interface IPrerequisites {
 export interface IDeployments {
   prerequisites: IPrerequisites
   rewardableLib: string
-  oracleLib: string
   tradingLib: string
   permitLib: string
   facadeRead: string

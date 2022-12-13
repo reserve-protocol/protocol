@@ -43,14 +43,6 @@ async function main() {
     [],
     'contracts/libraries/Permit.sol:PermitLib'
   )
-
-  /** ******************** Verify OracleLib Library ****************************************/
-  await verifyContract(
-    chainId,
-    deployments.oracleLib,
-    [],
-    'contracts/plugins/assets/OracleLib.sol:OracleLib'
-  )
 }
 
 main().catch((error) => {

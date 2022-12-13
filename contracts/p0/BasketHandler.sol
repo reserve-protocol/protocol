@@ -288,51 +288,69 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
-    /// @param allowFallback Whether to fail over to the fallback price or not
-    /// @return isFallback If any fallback prices were used
-    /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function price(bool allowFallback) external view returns (bool isFallback, uint192 p) {
-        uint256 length = basket.erc20s.length;
-        for (uint256 i = 0; i < length; ++i) {
-            bool isFallback_; // Is this token's price a fallback price
-            uint192 price_; // This token's price
-
-            if (!allowFallback) {
-                (isFallback_, price_) = main.assetRegistry().toAsset(basket.erc20s[i]).price(
-                    allowFallback
-                );
-            } else {
-                try main.assetRegistry().toAsset(basket.erc20s[i]) returns (IAsset asset) {
-                    (isFallback_, price_) = asset.price(true);
-                } catch {
-                    isFallback_ = true;
-                    price_ = 0;
-                }
-            }
-
-            isFallback = isFallback || isFallback_;
-            uint192 qty = quantity(basket.erc20s[i]);
-
-            if (!allowFallback) {
-                p = p.plus(price_.mul(qty));
-            } else {
-                try this.addProduct(p, price_, qty) returns (uint192 sum) {
-                    p = sum;
-                } catch {
-                    return (true, FIX_MAX);
-                }
-            }
-        }
+    function price() external view returns (uint192 low, uint192 high) {
+        return _price(false);
     }
 
-    // Returns a + (b * c). Pulled out into separate function for exception-catching in price()
-    function addProduct(
-        uint192 a,
-        uint192 b,
-        uint192 c
-    ) external pure returns (uint192) {
-        return a.plus(b.mul(c));
+    /// Should not revert
+    /// lowLow should be nonzero when the asset might be worth selling
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
+    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
+        return _price(true);
+    }
+
+    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
+    /// @return low {UoA/tok} The lower end of the lot price estimate
+    /// @return high {UoA/tok} The upper end of the lot price estimate
+    function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
+        IAssetRegistry reg = main.assetRegistry();
+
+        uint256 low256;
+        uint256 high256;
+
+        for (uint256 i = 0; i < basket.erc20s.length; i++) {
+            uint192 qty = quantity(basket.erc20s[i]);
+            if (qty == 0) continue;
+
+            (uint192 lowP, uint192 highP) = useLotPrice
+                ? reg.toAsset(basket.erc20s[i]).lotPrice()
+                : reg.toAsset(basket.erc20s[i]).price();
+
+            low256 += quantityMulPrice(qty, lowP);
+            high256 += quantityMulPrice(qty, highP);
+        }
+
+        low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
+        high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
+    }
+
+    /// Multiply quantity by price, rounding up to FIX_MAX and down to 0
+    /// @param qty {tok/BU}
+    /// @param p {UoA/tok}
+    function quantityMulPrice(uint192 qty, uint192 p) internal pure returns (uint192) {
+        if (qty == 0 || p == 0) return 0;
+        if (qty == FIX_MAX || p == FIX_MAX) return FIX_MAX;
+
+        // return FIX_MAX instead of throwing overflow errors.
+        unchecked {
+            // p and mul *are* Fix values, so have 18 decimals (D18)
+            uint256 rawDelta = uint256(p) * qty; // {D36} = {D18} * {D18}
+            // if we overflowed *, then return FIX_MAX
+            if (rawDelta / p != qty) return FIX_MAX;
+
+            // add in FIX_HALF for rounding
+            uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
+            if (shiftDelta < rawDelta) return FIX_MAX;
+
+            // return _div(rawDelta, FIX_ONE, ROUND)
+            return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
+        }
     }
 
     /// Return the current issuance/redemption value of `amount` BUs

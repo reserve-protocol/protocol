@@ -9,6 +9,8 @@ import "../interfaces/IRToken.sol";
 import "../interfaces/IStRSR.sol";
 import "../libraries/Fixed.sol";
 
+uint192 constant FIX_TWO = FIX_ONE * 2;
+
 /**
  * @title FacadeTest
  * @notice A facade that is useful for driving/querying the system during testing.
@@ -65,7 +67,9 @@ contract FacadeTest is IFacadeTest {
         rToken.sweepRewards();
     }
 
-    /// @return total {UoA} An estimate of the total value of all non-RSR assets at BackingManager
+    /// Unlike Recollateralizationlib.totalAssetValue, this function _should_ yield a decreasing
+    /// quantity through the rebalancing process due to slippage accruing during each trade.
+    /// @return total {UoA} Point estimate of the value of all exogenous assets at BackingManager
     /// @custom:static-call
     function totalAssetValue(IRToken rToken) external returns (uint192 total) {
         IMain main = rToken.main();
@@ -76,16 +80,15 @@ contract FacadeTest is IFacadeTest {
 
         IERC20[] memory erc20s = reg.erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
-            if (erc20s[i] == rsr) continue;
+            // Skip RSR + RToken
+            if (erc20s[i] == rsr || erc20s[i] == IERC20(address(rToken))) continue;
 
             IAsset asset = reg.toAsset(erc20s[i]);
-            // Exclude collateral that has defaulted
-            if (
-                asset.isCollateral() &&
-                ICollateral(address(asset)).status() != CollateralStatus.DISABLED
-            ) {
-                total = total.plus(asset.bal(backingManager).mul(asset.strictPrice()));
-            }
+
+            (uint192 lowPrice, uint192 highPrice) = asset.price();
+            uint192 midPrice = lowPrice.plus(highPrice).divu(2);
+
+            total = total.plus(asset.bal(backingManager).mul(midPrice));
         }
     }
 }

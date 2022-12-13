@@ -20,7 +20,7 @@ import {
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { setOraclePrice } from './utils/oracles'
+import { expectPrice, setOraclePrice } from './utils/oracles'
 import { advanceTime } from './utils/time'
 import snapshotGasCost from './utils/snapshotGasCost'
 import {
@@ -48,7 +48,13 @@ import {
   TimelockController,
   USDCMock,
 } from '../typechain'
-import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
+import {
+  Collateral,
+  Implementation,
+  IMPLEMENTATION,
+  defaultFixture,
+  ORACLE_ERROR,
+} from './fixtures'
 import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -522,9 +528,7 @@ describe('FacadeWrite contract', () => {
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
           // Check BU price
-          const [isFallback, price] = await basketHandler.price(true)
-          expect(isFallback).to.equal(false)
-          expect(price).to.equal(fp('1'))
+          await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
         })
 
         it('Should setup backup basket correctly', async () => {

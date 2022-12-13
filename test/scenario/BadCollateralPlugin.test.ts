@@ -5,23 +5,29 @@ import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { expectEvents } from '../../common/events'
 import { CollateralStatus } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { bn, fp, divCeil } from '../../common/numbers'
 import {
   BadCollateralPlugin,
   ERC20Mock,
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
   TestIStRSR,
   TestIRToken,
 } from '../../typechain'
-import { setOraclePrice } from '../utils/oracles'
+import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { getTrade } from '../utils/trades'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -55,7 +61,6 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -80,7 +85,6 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      oracleLib,
       aaveToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -99,19 +103,18 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     collateral0 = await (
-      await ethers.getContractFactory('BadCollateralPlugin', {
-        libraries: { OracleLib: oracleLib.address },
-      })
-    ).deploy(
-      fp('1'),
-      chainlinkFeed.address,
-      token0.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('USD'),
-      DEFAULT_THRESHOLD,
-      DELAY_UNTIL_DEFAULT
-    )
+      await ethers.getContractFactory('BadCollateralPlugin')
+    ).deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: token0.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: DEFAULT_THRESHOLD,
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
+    })
 
     // Backup
     backupToken = erc20s[2] // USDT
@@ -164,7 +167,13 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       await rToken.connect(addr1).redeem(initialBal.div(2))
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
-      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), bn('1'))
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
     })
 
     it('should increase the issuance basket as collateral loses value', async () => {
@@ -191,7 +200,12 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(token0.address)
       expect(await trade.initBal()).to.be.gt(initialBal.div(10))
-      expect(await trade.worstCasePrice()).to.equal(fp('1.1').sub(1))
+
+      const unslippedPrice = fp('1.1')
+      const lowSellPrice = fp('1').sub(fp('1').mul(ORACLE_ERROR).div(fp('1')))
+      const highBuyPrice = fp('1').add(fp('1').mul(ORACLE_ERROR).div(fp('1')))
+      const worstCasePrice = divCeil(unslippedPrice.mul(lowSellPrice), highBuyPrice).sub(1)
+      expect(await trade.worstCasePrice()).to.equal(worstCasePrice)
     })
   })
 
@@ -207,9 +221,21 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
       // RToken price should follow depegging
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
       await setOraclePrice(collateral0.address, bn('2e8')) // 100% increase, would normally trigger soft default
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('2'))
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('2'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
 
       // Should remain SOUND because missing soft default checks
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)

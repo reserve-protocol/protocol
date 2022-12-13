@@ -81,6 +81,7 @@ interface IFacadeRead {
         view
         returns (uint192 backing, uint192 insurance);
 
-    /// @return {UoA/tok} The price of the RToken as given by the relevant RTokenAsset
-    function price(IRToken rToken) external view returns (uint192);
+    /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
+    /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset
+    function price(IRToken rToken) external view returns (uint192 low, uint192 high);
 }

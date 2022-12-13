@@ -57,13 +57,13 @@ Some examples:
 
 - Let's say we're building a pure-stable USD basket, out of USDC, USDP, and DAI. The unit of account would surely be USD. Each collateral token would also be its own reference unit, and its target would be USD.
 
-- Perhaps we're interested in a USD-denominated basket of blue-chip cryptocurrencies.  This type of rToken could be a 50/50 basket of wstETH and yvwBTC, where the reference units could be ETH and wBTC, respectively.  The target units would then be ETH & BTC, while the `{UoA}` would be USD.  Thus, the *value* of the rToken would fluctuate (according to its unit-of-account), but all other necessary properties could be maintained.
+- Perhaps we're interested in a USD-denominated basket of blue-chip cryptocurrencies. This type of rToken could be a 50/50 basket of wstETH and yvwBTC, where the reference units could be ETH and wBTC, respectively. The target units would then be ETH & BTC, while the `{UoA}` would be USD. Thus, the _value_ of the rToken would fluctuate (according to its unit-of-account), but all other necessary properties could be maintained.
 
 Separate from these, a number in dimension `{BU}` ("basket units") is an amount of current baskets.
 
 ### Regarding `{UoA}` and `{target}`
 
-While it will usually be the case that a collateral's `{target}` will be the same as its RToken's `{UoA}`, this is by no means a requirement.  The `{UoA}` is a way to value the RToken and its collateral in terms of a single unit, while each collateral's `{target}` is the expected value of its liability, or its `{ref}`.  As in example #3 above, an RToken's collaterals may have completely different `{target}` units, but be valued by the same `{UoA}`.
+While it will usually be the case that a collateral's `{target}` will be the same as its RToken's `{UoA}`, this is by no means a requirement. The `{UoA}` is a way to value the RToken and its collateral in terms of a single unit, while each collateral's `{target}` is the expected value of its liability, or its `{ref}`. As in example #3 above, an RToken's collaterals may have completely different `{target}` units, but be valued by the same `{UoA}`.
 
 ## Basket Dynamics
 
@@ -145,29 +145,35 @@ A good explainer for how Gnosis auctions work can be found (on their github)[htt
 
 The fraction of revenues that should go towards RToken holders vs stakers, as given by the relative values of `dist.rTokenDist` and `dist.rsrDist`. This can be thought of as a single variable between 0 and 100% (during deployment).
 
-Anticipated value: 60% to stakers and 40% to RToken holders.
+Default value: 60% to stakers and 40% to RToken holders.
 Mainnet reasonable range: 0% to 100%
 
 ### `minTradeVolume`
 
 Dimension: `{UoA}`
 
-The minimum sized trade that can be performed, in terms of the unit of account. Setting this too high will result in auctions happening infrequently. Setting this too low may allow adversaries to cause auctions that incur large amounts of slippage.
+The minimum sized trade that can be performed, in terms of the unit of account.
+
+Setting this too high will result in auctions happening infrequently or the RToken taking a haircut when it cannot be sure it has enough staked RSR to succeed in rebalancing at par.
+
+Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `auctionLength` seconds.
+
+This variable should NOT be interpreted to mean that auction sizes above this value will necessarily clear. It could be the case that gas frictions are so high that auctions launched at this size are not worthy of bids.
 
 This parameter can be set to zero.
 
-Anticipated value: `1e22` = $10k
-Mainnet reasonable range: 1e20 to 1e24
+Default value: `1e21` = $1k
+Mainnet reasonable range: 1e19 to 1e23
 
 #### `rTokenMaxTradeVolume`
 
 Dimension: `{UoA}`
 
-The maximum sized trade for any trade involving RToken, in terms of the unit of account.
+The maximum sized trade for any trade involving RToken, in terms of the unit of account. The high end of the price is applied to this variable to convert it to a token quantity.
 
 This parameter can be set to zero.
 
-Anticipated value: `1e24` = $1M
+Default value: `1e24` = $1M
 Mainnet reasonable range: 1e22 to 1e27.
 
 ### `rewardPeriod`
@@ -176,7 +182,7 @@ Dimension: `{seconds}`
 
 The reward period is the length of one period of the StRSR and Furnace reward curves, which use exponential decay in order to hand out rewards slowly. The `rewardPeriod` must be set in conjuction with `rewardRatio` in order to achieve a desired payout rate. The `rewardPeriod` is the length of time that comprises a single period. Over a single period, `rewardRatio` of the last balance recorded is handed out. For multiple periods, the amount handed out is `(1 - (1-r)^N)`, where `r` is the `rewardRatio` and `N` is the number of periods elapsed.
 
-Anticipated value: `86400` = 1 day
+Default value: `86400` = 1 day
 Mainnet reasonable range: 10 to 31536000 (1 year)
 
 ### `rewardRatio`
@@ -185,25 +191,25 @@ Dimension: `{1}`
 
 The `rewardRatio` is the amount of the current reward amount that should be handed out in a single period. See above.
 
-Anticipated value: `0.007701635339554948` = half life of 90 periods
+Default value: `0.007701635339554948` = half life of 90 periods
 Mainnet reasonable range: 1e9 to 1e18
 
 ### `unstakingDelay`
 
 Dimension: `{seconds}`
 
-The unstaking delay is the number of seconds that all RSR unstakings must be delayed in order to account for stakers trying to frontrun defaults. It must be longer than governance cycle, and must be long enough that RSR stakers do not unstake in advance of foreseeable basket change.
+The unstaking delay is the number of seconds that all RSR unstakings must be delayed in order to account for stakers trying to frontrun defaults. It must be longer than governance cycle, and must be long enough that RSR stakers do not unstake in advance of foreseeable basket change in order to avoid being expensed for slippage.
 
-Anticipated value: `1209600` = 2 weeks
+Default value: `1209600` = 2 weeks
 Mainnet reasonable range: 1 to 31536000
 
 ### `tradingDelay`
 
 Dimension: `{seconds}`
 
-The trading delay is how many seconds should pass after the basket has been changed, before a trade is opened. In the long term this can probably trend towards zero, but at the start we will want some heads up before trading in order to avoid losses due to poor liquidity.
+The trading delay is how many seconds should pass after the basket has been changed before a trade can be opened. In the long term this can be set to 0 after MEV searchers are firmly integrated, but at the start it may be useful to have a delay before trading in order to avoid worst-case prices.
 
-Anticipated value: `14400` = 4 hours
+Default value: `14400` = 4 hours
 Mainnet reasonable range: 0 to 604800
 
 ### `auctionLength`
@@ -212,7 +218,7 @@ Dimension: `{seconds}`
 
 The auction length is how many seconds long Gnosis EasyAuctions should be.
 
-Anticipated value: `900` = 15 minutes
+Default value: `900` = 15 minutes
 Mainnet reasonable range: 60 to 3600
 
 ### `backingBuffer`
@@ -221,34 +227,34 @@ Dimension: `{1}`
 
 The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This buffer allows collateral tokens to be periodically converted into the RToken, which is a more efficient form of revenue production than trading each individual collateral for the desired RToken.
 
-Anticipated value: `1e14` = 0.01%
+Default value: `1e14` = 0.01%
 Mainnet reasonable range: 1e12 to 1e18
 
 ### `maxTradeSlippage`
 
 Dimension: `{1}`
 
-The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at.
+The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at. Oracle prices have ranges of their own; the maximum trade slippage permits additional price movement beyond the worst-case oracle price.
 
-Anticipated value: `0.01e18` = 1%
+Default value: `0.02e18` = 2%
 Mainnet reasonable range: 1e12 to 1e18
 
 ### `shortFreeze`
 
 Dimension: `{s}`
 
-The number of seconds an initial freeze lasts. Governance can freeze forever.
+The number of seconds a short freeze lasts. Governance can freeze forever.
 
-Anticipated value: `259200` = 3 days
+Default value: `259200` = 3 days
 Mainnet reasonable range: 3600 to 2592000 (1 hour to 1 month)
 
 ### `longFreeze`
 
 Dimension: `{s}`
 
-The number of seconds a freeze extensions freeze lasts. A long freeze / extension can only occur during a short freeze.
+The number of seconds a long freeze lasts. Long freezes can be disabled by removing all addresses from the `LONG_FREEZER` role.
 
-Anticipated value: `2592000` = 30 days
+Default value: `2592000` = 30 days
 Mainnet reasonable range: 86400 to 31536000 (1 day to 1 year)
 
 ### `issuanceRate`
@@ -257,7 +263,7 @@ Dimension: `{1}`
 
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply. It cannot be zero.
 
-Anticipated value: `0.00025e18` = 0.025% per block
+Default value: `0.00025e18` = 0.025% per block
 Mainnet reasonable range: 1e12 to 1e16
 
 ### `RedemptionBattery`
@@ -272,7 +278,7 @@ Dimension: `{qRTok/hour}`
 
 The redemption rate floor is the minimum quantity of RToken to allow redemption of per-hour, and thereby the rate to charge the redemption battery at.
 
-Anticipated value: `1e24` = 1,000,000 RToken
+Default value: `1e24` = 1,000,000 RToken
 Mainnet reasonable range: 1e23 to 1e27
 
 #### `RedemptionBattery.scalingRedemptionRate`
@@ -281,16 +287,18 @@ Dimension: `{1/hour}`
 
 The max redemption is a percentage value that describes what proportion of the RToken supply to allow redemption of per-hour. It controls how quickly the protocol can scale down RToken supply.
 
-Anticipated value: `5e16` = 5% per hour
+Default value: `5e16` = 5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour; or disable and set to 0)
 
 ### Governance Parameters
 
 Governance is 7 days end-to-end.
 
+**Default values**
+
 - Voting delay: 1 day
 - Voting period: 2 days
 - Execution delay: 4 days
 
 Proposal Threshold: 0.05%
-Quorum: 10%
+Quorum: 10% of the StRSR supply (not RSR)

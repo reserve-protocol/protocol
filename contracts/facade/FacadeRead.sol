@@ -101,9 +101,11 @@ contract FacadeRead is IFacadeRead {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
             int8 decimals = int8(IERC20Metadata(erc20s[i]).decimals());
+            (uint192 lowPrice, uint192 highPrice) = coll.price();
+            uint192 midPrice = lowPrice > 0 ? lowPrice.plus(highPrice).div(2) : lowPrice;
 
             // {UoA} = {qTok} * {tok/qTok} * {UoA/tok}
-            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(coll.strictPrice());
+            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(midPrice);
             uoaSum += uoaAmts[i];
             targets[i] = coll.targetName();
         }
@@ -207,8 +209,8 @@ contract FacadeRead is IFacadeRead {
         stTokenAddress = main.stRSR();
     }
 
-    /// @return backing The worst-case collaterazation % the protocol will have after done trading
-    /// @return insurance The insurance value relative to the fully-backed value
+    /// @return backing {1} The worstcase collateralization % the protocol will have after trading
+    /// @return insurance {1} The insurance value relative to the fully-backed value as a %
     function backingOverview(IRToken rToken)
         external
         view
@@ -217,10 +219,12 @@ contract FacadeRead is IFacadeRead {
         uint256 supply = rToken.totalSupply();
         if (supply == 0) return (0, 0);
 
-        (, uint192 basketPrice) = rToken.main().basketHandler().price(false);
+        // {UoA/BU}
+        (uint192 buPriceLow, uint192 buPriceHigh) = rToken.main().basketHandler().price();
+        uint192 basketMidPrice = buPriceLow > 0 ? buPriceLow.plus(buPriceHigh).div(2) : buPriceLow;
 
         // {UoA} = {BU} * {UoA/BU}
-        uint192 uoaNeeded = rToken.basketsNeeded().mul(basketPrice);
+        uint192 uoaNeeded = rToken.basketsNeeded().mul(basketMidPrice);
 
         // Useful abbreviations
         IAssetRegistry assetRegistry = rToken.main().assetRegistry();
@@ -237,9 +241,11 @@ contract FacadeRead is IFacadeRead {
                 if (erc20s[i] == rsr) continue;
 
                 IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
+                (uint192 lowPrice, uint192 highPrice) = asset.price();
+                uint192 midPrice = lowPrice > 0 ? lowPrice.plus(highPrice).div(2) : lowPrice;
 
                 // {UoA} = {tok} * {UoA/tok}
-                uint192 uoa = asset.bal(backingMgr).mul(asset.strictPrice());
+                uint192 uoa = asset.bal(backingMgr).mul(midPrice);
                 uoaHeld = uoaHeld.plus(uoa);
             }
 
@@ -256,16 +262,20 @@ contract FacadeRead is IFacadeRead {
                 rsrAsset.bal(address(rToken.main().stRSR()))
             );
 
+            (uint192 lowPrice, uint192 highPrice) = rsrAsset.price();
+            uint192 midPrice = lowPrice > 0 ? lowPrice.plus(highPrice).div(2) : lowPrice;
+
             // {UoA} = {tok} * {UoA/tok}
-            uint192 rsrUoA = rsrBal.mul(rsrAsset.strictPrice());
+            uint192 rsrUoA = rsrBal.mul(midPrice);
 
             // {1} = {UoA} / {UoA}
             insurance = rsrUoA.div(uoaNeeded);
         }
     }
 
-    /// @return {UoA/tok} The price of the RToken as given by the relevant RTokenAsset
-    function price(IRToken rToken) external view returns (uint192) {
-        return rToken.main().assetRegistry().toAsset(IERC20(address(rToken))).strictPrice();
+    /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
+    /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset
+    function price(IRToken rToken) external view returns (uint192 low, uint192 high) {
+        return rToken.main().assetRegistry().toAsset(IERC20(address(rToken))).price();
     }
 }

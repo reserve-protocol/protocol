@@ -7,7 +7,7 @@ import { getChainId } from '../common/blockchain-utils'
 import { IConfig, MAX_ISSUANCE_RATE } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { setOraclePrice } from './utils/oracles'
+import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   ATokenFiatCollateral,
@@ -43,6 +43,7 @@ import {
   defaultFixture,
   Implementation,
   IMPLEMENTATION,
+  ORACLE_ERROR,
   SLOW,
   ORACLE_TIMEOUT,
 } from './fixtures'
@@ -236,7 +237,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
       await rToken.connect(addr1).issue(fp('1'))
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
     })
 
     it('Should setup the DomainSeparator for Permit correctly', async () => {
@@ -661,7 +668,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price pre-issuance
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -966,8 +979,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
     })
 
-    it('Should return price 0 and trade min after full basket refresh', async () => {
-      // Note: To get RToken price to 0, a full basket refresh needs to occur
+    it('Should return fully discounted price after full basket refresh', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
       // Set basket - Single token
@@ -975,15 +987,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price pre-issuance
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount))
-
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Perform a basket switch
@@ -993,9 +1016,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Should expect maxTradeSlippage + dust losses -- remember no insurance available
       // maxTradeSlippage + dust losses
-      const dustPriceImpact = fp('1').mul(config.minTradeVolume).div(issueAmount)
-      expect(await rTokenAsset.strictPrice()).to.equal(
-        fp('1').mul(99).div(100).sub(dustPriceImpact.mul(2))
+      // Recall the shortfall is calculated against high prices
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })

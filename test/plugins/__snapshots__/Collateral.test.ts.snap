@@ -1,11 +1,11 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral contracts Gas Reporting Force Updates - Hard Default - ATokens/CTokens 1`] = `40485`;
+exports[`Collateral contracts Gas Reporting Force Updates - Hard Default - ATokens/CTokens 1`] = `72572`;
 
-exports[`Collateral contracts Gas Reporting Force Updates - Hard Default - ATokens/CTokens 2`] = `41732`;
+exports[`Collateral contracts Gas Reporting Force Updates - Hard Default - ATokens/CTokens 2`] = `73985`;
 
-exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 1`] = `49472`;
+exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 1`] = `60894`;
 
-exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 2`] = `45234`;
+exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 2`] = `53856`;
 
-exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 3`] = `44838`;
+exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 3`] = `53374`;

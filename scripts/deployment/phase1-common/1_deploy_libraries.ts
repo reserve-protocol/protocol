@@ -5,11 +5,10 @@ import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validatePrerequisites } from '../utils'
-import { RecollateralizationLibP1, OracleLib, PermitLib } from '../../../typechain'
+import { RecollateralizationLibP1, PermitLib } from '../../../typechain'
 
 let tradingLib: RecollateralizationLibP1
 let rewardableLib: Contract
-let oracleLib: OracleLib
 let permitLib: PermitLib
 
 async function main() {
@@ -49,19 +48,12 @@ async function main() {
   await permitLib.deployed()
   deployments.permitLib = permitLib.address
 
-  // Deploy OracleLib external library
-  const OracleLibFactory = await ethers.getContractFactory('OracleLib')
-  oracleLib = <OracleLib>await OracleLibFactory.deploy()
-  await oracleLib.deployed()
-  deployments.oracleLib = oracleLib.address
-
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     TradingLib: ${tradingLib.address}
     RewardableLib: ${rewardableLib.address}
     PermitLib: ${permitLib.address}
-    OracleLib: ${oracleLib.address}
     Deployment file: ${deploymentFilename}`)
 }
 

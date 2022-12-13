@@ -47,31 +47,30 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);
         IAsset buy = reg.toAsset(tokenToBuy);
-        uint192 sellPrice = sell.strictPrice(); // {UoA/tok}
-        uint192 buyPrice = buy.strictPrice(); // {UoA/tok}
+        (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
+        (, uint192 buyPrice) = buy.price(); // {UoA/tok}
 
-        require(buyPrice > 0, "buy asset has zero price");
+        require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
+
+        TradingLibP0.TradeInfo memory trade = TradingLibP0.TradeInfo({
+            sell: sell,
+            buy: buy,
+            sellAmount: sell.bal(address(this)),
+            buyAmount: 0,
+            sellPrice: sellPrice,
+            buyPrice: buyPrice
+        });
+        TradingLibP0.TradingRules memory rules = TradingLibP0.TradingRules({
+            minTradeVolume: minTradeVolume,
+            maxTradeSlippage: maxTradeSlippage
+        });
 
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
-        (bool launch, TradeRequest memory trade) = TradingLibP0.prepareTradeSell(
-            this,
-            sell,
-            buy,
-            sell.bal(address(this)),
-            sellPrice,
-            buyPrice
-        );
+        (bool launch, TradeRequest memory req) = TradingLibP0.prepareTradeSell(trade, rules);
 
         if (launch) {
-            if (sell.isCollateral()) {
-                CollateralStatus status = ICollateral(address(sell)).status();
-
-                if (status == CollateralStatus.IFFY) return;
-                if (status == CollateralStatus.DISABLED) trade.minBuyAmount = 0;
-            }
-
-            tryTrade(trade);
+            tryTrade(req);
         }
     }
 }

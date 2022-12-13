@@ -27,7 +27,7 @@ async function main() {
     chainId,
     deployments.rsrAsset,
     [
-      (await asset.fallbackPrice()).toString(),
+      (await asset.lotPrice()).toString(),
       await asset.chainlinkFeed(),
       await asset.erc20(),
       (await asset.maxTradeVolume()).toString(),

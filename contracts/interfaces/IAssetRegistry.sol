@@ -5,6 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAsset.sol";
 import "./IComponent.sol";
 
+/// A serialization of the AssetRegistry to be passed around in the P1 impl for gas optimization
+struct Registry {
+    IERC20[] erc20s;
+    IAsset[] assets;
+}
+
 /**
  * @title IAssetRegistry
  * @notice The AssetRegistry is in charge of maintaining the ERC20 tokens eligible
@@ -43,9 +49,8 @@ interface IAssetRegistry is IComponent {
     /// @return A list of all registered ERC20s
     function erc20s() external view returns (IERC20[] memory);
 
-    /// @return The list of registered ERC20s
-    /// @return The list of registered Assets, in the same order
-    function getRegistry() external view returns (IERC20[] memory, IAsset[] memory);
+    /// @return reg The list of registered ERC20s and Assets, in the same order
+    function getRegistry() external view returns (Registry memory reg);
 
     function register(IAsset asset) external returns (bool);
 

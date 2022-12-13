@@ -33,7 +33,7 @@ async function main() {
     chainId,
     deployments.collateral.DAI,
     [
-      (await asset.fallbackPrice()).toString(),
+      (await asset.lotPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.DAI,
       networkConfig[chainId].tokens.DAI,
       fp('1e6').toString(),
@@ -70,7 +70,7 @@ async function main() {
     chainId,
     aTokenCollateral.address,
     [
-      (await asset.fallbackPrice()).toString(),
+      (await asset.lotPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.DAI,
       await aTokenCollateral.erc20(),
       fp('1e6').toString(), // $1m
@@ -87,7 +87,7 @@ async function main() {
     chainId,
     deployments.collateral.cDAI,
     [
-      (await asset.fallbackPrice()).toString(),
+      (await asset.lotPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.DAI,
       networkConfig[chainId].tokens.cDAI,
       fp('1e6').toString(), // $1m
@@ -106,7 +106,7 @@ async function main() {
     chainId,
     deployments.collateral.cWBTC,
     [
-      (await asset.fallbackPrice()).toString(),
+      (await asset.lotPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.WBTC,
       networkConfig[chainId].chainlinkFeeds.BTC,
       networkConfig[chainId].tokens.cWBTC,
@@ -126,7 +126,7 @@ async function main() {
     chainId,
     deployments.collateral.cETH,
     [
-      (await asset.fallbackPrice()).toString(),
+      (await asset.lotPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.ETH,
       networkConfig[chainId].tokens.cETH,
       fp('1e6').toString(), // $1m
@@ -144,7 +144,7 @@ async function main() {
     chainId,
     deployments.collateral.WBTC,
     [
-      (await asset.fallbackPrice()).toString(),
+      (await asset.lotPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.WBTC,
       networkConfig[chainId].chainlinkFeeds.BTC,
       networkConfig[chainId].tokens.WBTC,
@@ -162,7 +162,7 @@ async function main() {
     chainId,
     deployments.collateral.WETH,
     [
-      (await asset.fallbackPrice()).toString(),
+      (await asset.lotPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.ETH,
       networkConfig[chainId].tokens.WETH,
       fp('1e6').toString(), // $1m
@@ -179,7 +179,7 @@ async function main() {
     chainId,
     deployments.collateral.EURT,
     [
-      (await asset.fallbackPrice()).toString(),
+      (await asset.lotPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.EURT,
       networkConfig[chainId].chainlinkFeeds.EUR,
       networkConfig[chainId].tokens.EURT,

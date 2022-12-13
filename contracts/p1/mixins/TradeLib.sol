@@ -18,6 +18,7 @@ import "./RecollateralizationLib.sol";
 library TradeLib {
     using FixLib for uint192;
 
+    /// @dev Caller must be ITrading
     /// Prepare a trade to sell `trade.sellAmount` that guarantees a reasonable closing price,
     /// without explicitly aiming at a particular quantity to purchase.
     /// @param trade:
@@ -39,28 +40,34 @@ library TradeLib {
         view
         returns (bool notDust, TradeRequest memory req)
     {
-        assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
-        // assert(trade.sellPrice >= 0); not needed
+        // checked for in RevenueTrader / CollateralizatlionLib
+        assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
+
+        (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
 
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellPrice, trade.sellAmount, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotLow, rules.minTradeVolume)) {
             return (false, req);
         }
 
-        // {sellTok} - reads trade.sell.price(true)
-        uint192 s = fixMin(trade.sellAmount, maxTradeSize(trade.sell, trade.sellPrice));
+        // Cap sell amount
+        uint192 maxSell = maxTradeSize(trade.sell, lotHigh); // {sellTok}
+        uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
-        // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        uint192 b = s.mul(FIX_ONE.minus(rules.maxTradeSlippage)).mulDiv(
-            trade.sellPrice,
-            trade.buyPrice,
-            CEIL
+        // Calculate equivalent buyAmount within [0, FIX_MAX]
+        // {buyTok} = {sellTok} * {1} * {UoA/sellTok} / {UoA/buyTok}
+        uint192 b = safeMulDivCeil(
+            ITrading(address(this)),
+            s.mul(FIX_ONE.minus(rules.maxTradeSlippage)),
+            trade.sellPrice, // {UoA/sellTok}
+            trade.buyPrice // {UoA/buyTok}
         );
 
-        req.sell = trade.sell;
-        req.buy = trade.buy;
+        // {*tok} => {q*Tok}
         req.sellAmount = s.shiftl_toUint(int8(trade.sell.erc20Decimals()), FLOOR);
         req.minBuyAmount = b.shiftl_toUint(int8(trade.buy.erc20Decimals()), CEIL);
+        req.sell = trade.sell;
+        req.buy = trade.buy;
 
         return (true, req);
     }
@@ -98,7 +105,12 @@ library TradeLib {
         view
         returns (bool notDust, TradeRequest memory req)
     {
-        assert(trade.sellPrice > 0 && trade.buyPrice > 0);
+        assert(
+            trade.sellPrice > 0 &&
+                trade.sellPrice < FIX_MAX &&
+                trade.buyPrice > 0 &&
+                trade.buyPrice < FIX_MAX
+        );
 
         // Don't buy dust.
         trade.buyAmount = fixMax(
@@ -120,24 +132,41 @@ library TradeLib {
         return prepareTradeSell(trade, rules);
     }
 
-    /// @param asset The asset in question
-    /// @param price {UoA/tok} The price to use
+    /// @param asset The asset in consideration
     /// @param amt {tok} The number of whole tokens we plan to sell
+    /// @param price {UoA/tok} The price to use for sizing
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
         IAsset asset,
-        uint192 price,
         uint192 amt,
+        uint192 price,
         uint192 minTradeVolume
     ) internal view returns (bool) {
-        // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
-        // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok. This is
-        // likely to be true of all the trading platforms we integrate with.
         return
             amt.gte(minTradeSize(minTradeVolume, price)) &&
+            // Trading platforms often don't allow token quanta trades for rounding reasons
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
+    }
+
+    /// @return The result of FixLib.mulDiv bounded from above by FIX_MAX in the case of overflow
+    function safeMulDivCeil(
+        ITrading trader,
+        uint192 x,
+        uint192 y,
+        uint192 z
+    ) internal pure returns (uint192) {
+        try trader.mulDivCeil(x, y, z) returns (uint192 result) {
+            return result;
+        } catch Panic(uint256 errorCode) {
+            // 0x11: overflow
+            // 0x12: div-by-zero
+            assert(errorCode == 0x11 || errorCode == 0x12);
+        } catch (bytes memory reason) {
+            assert(keccak256(reason) == UIntOutofBoundsHash);
+        }
+        return FIX_MAX;
     }
 
     // === Private ===
