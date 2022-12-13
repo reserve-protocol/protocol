@@ -23,7 +23,7 @@ contract TFTokenCollateral is Collateral {
     // All TrueFiTokens have 6 decimals, their underlying(USDC) also has 6 decimals.
     // USDC: https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
 
-    //int8 public immutable referenceERC20Decimals;
+    //int8 public immutable referenceERC20Decimals; -- why we removed? #mention
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
