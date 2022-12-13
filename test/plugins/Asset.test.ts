@@ -2,13 +2,14 @@ import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { advanceTime } from '../utils/time'
-import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../utils/time'
+import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
   expectPrice,
   expectRTokenPrice,
   expectUnpriced,
+  setInvalidOracleAnsweredRound,
   setInvalidOracleTimestamp,
   setOraclePrice,
 } from '../utils/oracles'
@@ -20,15 +21,26 @@ import {
   ERC20Mock,
   FiatCollateral,
   IAssetRegistry,
+  InvalidFiatCollateral,
+  InvalidMockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
   USDCMock,
 } from '../../typechain'
-import { Collateral, defaultFixture, ORACLE_TIMEOUT, ORACLE_ERROR } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  ORACLE_TIMEOUT,
+  ORACLE_ERROR,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 describe('Assets contracts #fast', () => {
   // Tokens
@@ -232,10 +244,16 @@ describe('Assets contracts #fast', () => {
       await expectPrice(compAsset.address, bn('0'), bn('0'), false)
       await expectPrice(aaveAsset.address, bn('0'), bn('0'), false)
 
-      // Fallback prices should be nonzero
-      expect(await rsrAsset.lotPrice()).to.be.gt(0)
-      expect(await compAsset.lotPrice()).to.be.gt(0)
-      expect(await aaveAsset.lotPrice()).to.be.gt(0)
+      // Fallback prices should be zero
+      let [lotLow, lotHigh] = await rsrAsset.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
+      ;[lotLow, lotHigh] = await rsrAsset.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
+      ;[lotLow, lotHigh] = await aaveAsset.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
 
       // Update values of underlying tokens of RToken to 0
       await setOraclePrice(collateral0.address, bn(0))
@@ -250,8 +268,10 @@ describe('Assets contracts #fast', () => {
         config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
 
-      // Should have nonzero lot price
-      expect(await rTokenAsset.lotPrice()).to.be.gt(0)
+      // Should have lot price
+      ;[lotLow, lotHigh] = await rTokenAsset.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
     })
 
     it('Should return 0 price for RTokenAsset in full haircut scenario', async () => {
@@ -325,6 +345,254 @@ describe('Assets contracts #fast', () => {
       await expectUnpriced(rsrAsset.address)
       await expectUnpriced(compAsset.address)
       await expectUnpriced(aaveAsset.address)
+    })
+
+    it('Should be unpriced in case of invalid answered round', async () => {
+      await setInvalidOracleAnsweredRound(rsrAsset.address)
+      await setInvalidOracleAnsweredRound(compAsset.address)
+      await setInvalidOracleAnsweredRound(aaveAsset.address)
+
+      // Check unpriced
+      await expectUnpriced(rsrAsset.address)
+      await expectUnpriced(compAsset.address)
+      await expectUnpriced(aaveAsset.address)
+    })
+
+    it('Should handle unpriced edge cases for RToken', async () => {
+      // Swap one of the collaterals for an invalid one
+      const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
+      const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
+        await InvalidFiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral0.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral0.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
+      )
+
+      // Swap asset
+      await assetRegistry.swapRegistered(invalidFiatCollateral.address)
+
+      // Reverting with a specific error
+      await invalidFiatCollateral.setSimplyRevert(true)
+      await expect(invalidFiatCollateral.price()).to.be.revertedWith('errormsg')
+
+      // Check RToken unpriced
+      await expectUnpriced(rTokenAsset.address)
+
+      //  Runnning out of gas
+      await invalidFiatCollateral.setSimplyRevert(false)
+      await expect(invalidFiatCollateral.price()).to.be.revertedWith('')
+
+      //  Check RToken price reverrts
+      await expect(rTokenAsset.price()).to.be.revertedWith('')
+    })
+
+    it('Should be able to refresh saved prices', async () => {
+      // Check initial prices - use RSR as example
+      let currBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
+      let [lowPrice, highPrice] = await rsrAsset.price()
+      expect(await rsrAsset.savedLowPrice()).to.equal(lowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(highPrice)
+      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Refresh saved prices
+      await rsrAsset.refresh()
+
+      // Check values remain but timestamp was updated
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
+      ;[lowPrice, highPrice] = await rsrAsset.price()
+      expect(await rsrAsset.savedLowPrice()).to.equal(lowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(highPrice)
+      currBlockTimestamp = await getLatestBlockTimestamp()
+      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Update values in Oracles increase by 20%
+      await setOraclePrice(rsrAsset.address, bn('1.2e8')) // 20%
+
+      // Before calling refresh we still have the old values
+      await expectPrice(rsrAsset.address, fp('1.2'), ORACLE_ERROR, true)
+      ;[lowPrice, highPrice] = await rsrAsset.price()
+      expect(await rsrAsset.savedLowPrice()).to.be.lt(lowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.be.lt(highPrice)
+
+      // Refresh prices - Should save new values
+      await rsrAsset.refresh()
+
+      // Check new prices were stored
+      await expectPrice(rsrAsset.address, fp('1.2'), ORACLE_ERROR, true)
+      ;[lowPrice, highPrice] = await rsrAsset.price()
+      expect(await rsrAsset.savedLowPrice()).to.equal(lowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(highPrice)
+      currBlockTimestamp = await getLatestBlockTimestamp()
+      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+    })
+
+    it('Should not save prices if try/price returns unpriced', async () => {
+      const UnpricedAssetFactory = await ethers.getContractFactory('UnpricedAssetMock')
+      const unpricedRSRAsset: Asset = <Asset>(
+        await UnpricedAssetFactory.deploy(
+          PRICE_TIMEOUT,
+          await rsrAsset.chainlinkFeed(),
+          ORACLE_ERROR,
+          rsr.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT
+        )
+      )
+
+      // Save prices
+      await unpricedRSRAsset.refresh()
+
+      // Check initial prices - use RSR as example
+      let currBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(unpricedRSRAsset.address, fp('1'), ORACLE_ERROR, true)
+      let [lowPrice, highPrice] = await unpricedRSRAsset.price()
+      expect(await unpricedRSRAsset.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedRSRAsset.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedRSRAsset.lastSave()).to.be.equal(currBlockTimestamp)
+
+      // Refresh saved prices
+      await unpricedRSRAsset.refresh()
+
+      // Check values remain but timestamp was updated
+      await expectPrice(unpricedRSRAsset.address, fp('1'), ORACLE_ERROR, true)
+      ;[lowPrice, highPrice] = await unpricedRSRAsset.price()
+      expect(await unpricedRSRAsset.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedRSRAsset.savedHighPrice()).to.equal(highPrice)
+      currBlockTimestamp = await getLatestBlockTimestamp()
+      expect(await unpricedRSRAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Set as unpriced so it returns 0,FIX MAX in try/price
+      await unpricedRSRAsset.setUnpriced(true)
+
+      // Check that now is unpriced
+      await expectUnpriced(unpricedRSRAsset.address)
+
+      // Refreshing would not save the new rates
+      await unpricedRSRAsset.refresh()
+      expect(await unpricedRSRAsset.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedRSRAsset.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedRSRAsset.lastSave()).to.equal(currBlockTimestamp)
+    })
+
+    it('Should not revert on refresh if unpriced', async () => {
+      // Check initial prices - use RSR as example
+      const currBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
+      const [prevLowPrice, prevHighPrice] = await rsrAsset.price()
+      expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
+      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Set invalid oracle
+      await setInvalidOracleTimestamp(rsrAsset.address)
+
+      // Check unpriced - uses still previous prices
+      await expectUnpriced(rsrAsset.address)
+      let [lowPrice, highPrice] = await rsrAsset.price()
+      expect(lowPrice).to.equal(bn(0))
+      expect(highPrice).to.equal(MAX_UINT192)
+      expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
+      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Perform refresh
+      await rsrAsset.refresh()
+
+      // Check still unpriced - no update on prices/timestamp
+      await expectUnpriced(rsrAsset.address)
+      ;[lowPrice, highPrice] = await rsrAsset.price()
+      expect(lowPrice).to.equal(bn(0))
+      expect(highPrice).to.equal(MAX_UINT192)
+      expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
+    })
+
+    it('Reverts if Chainlink feed reverts or runs out of gas', async () => {
+      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+        'InvalidMockV3Aggregator'
+      )
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+
+      const invalidRSRAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          invalidChainlinkFeed.address,
+          ORACLE_ERROR,
+          rsr.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT
+        )
+      )
+
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidRSRAsset.price()).to.be.revertedWith('')
+      await expect(invalidRSRAsset.lotPrice()).to.be.revertedWith('')
+      await expect(invalidRSRAsset.refresh()).to.be.revertedWith('')
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidRSRAsset.price()).to.be.revertedWith('')
+      await expect(invalidRSRAsset.lotPrice()).to.be.revertedWith('')
+      await expect(invalidRSRAsset.refresh()).to.be.revertedWith('')
+    })
+
+    it('Should handle lot price correctly', async () => {
+      // Check lot prices - use RSR as example
+      const currBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
+      const [prevLowPrice, prevHighPrice] = await rsrAsset.price()
+      expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
+      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Lot price equals price when feed works OK
+      const [lotLowPrice1, lotHighPrice1] = await rsrAsset.lotPrice()
+      expect(lotLowPrice1).to.equal(prevLowPrice)
+      expect(lotHighPrice1).to.equal(prevHighPrice)
+
+      // Set invalid oracle
+      await setInvalidOracleTimestamp(rsrAsset.address)
+
+      // Check unpriced - uses still previous prices
+      await expectUnpriced(rsrAsset.address)
+      const [lowPrice, highPrice] = await rsrAsset.price()
+      expect(lowPrice).to.equal(bn(0))
+      expect(highPrice).to.equal(MAX_UINT192)
+      expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
+      expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
+      expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Lot price decreases a bit
+      const [lotLowPrice2, lotHighPrice2] = await rsrAsset.lotPrice()
+      expect(lotLowPrice2).to.be.lt(lotLowPrice1)
+      expect(lotHighPrice2).to.be.lt(lotHighPrice1)
+
+      // Advance blocks, lot price keeps decreasing
+      await advanceBlocks(100)
+      const [lotLowPrice3, lotHighPrice3] = await rsrAsset.lotPrice()
+      expect(lotLowPrice3).to.be.lt(lotLowPrice2)
+      expect(lotHighPrice3).to.be.lt(lotHighPrice2)
+
+      // Advance blocks beyond PRICE_TIMEOUT
+      await advanceBlocks(PRICE_TIMEOUT)
+
+      // Lot price returns 0 once time elapses
+      const [lotLowPrice4, lotHighPrice4] = await rsrAsset.lotPrice()
+      expect(lotLowPrice4).to.be.lt(lotLowPrice3)
+      expect(lotHighPrice4).to.be.lt(lotHighPrice3)
+      expect(lotLowPrice4).to.be.equal(bn(0))
+      expect(lotHighPrice4).to.be.equal(bn(0))
     })
   })
 

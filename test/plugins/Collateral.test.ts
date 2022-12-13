@@ -34,6 +34,7 @@ import {
   expectPrice,
   expectRTokenPrice,
   expectUnpriced,
+  setInvalidOracleAnsweredRound,
   setInvalidOracleTimestamp,
   setOraclePrice,
 } from '../utils/oracles'
@@ -499,15 +500,17 @@ describe('Collateral contracts', () => {
       )
     })
 
-    it('Should be unpriced if price is zero', async () => {
+    it('Should be (0, 0) if price is zero', async () => {
       // Set price of token to 0 in Aave
       await setOraclePrice(tokenCollateral.address, bn('0'))
 
       // Check price of token
       await expectPrice(tokenCollateral.address, bn('0'), bn('0'), false)
 
-      // Fallback price should be nonzero
-      expect(await tokenCollateral.lotPrice()).to.be.gt(0)
+      // Lot prices should be zero
+      const [lotLow, lotHigh] = await tokenCollateral.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
@@ -516,6 +519,17 @@ describe('Collateral contracts', () => {
 
     it('Should be unpriced in case of invalid timestamp', async () => {
       await setInvalidOracleTimestamp(tokenCollateral.address)
+
+      // Check price of token
+      await expectUnpriced(tokenCollateral.address)
+
+      // When refreshed, sets status to Unpriced
+      await tokenCollateral.refresh()
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+    })
+
+    it('Should be unpriced in case of invalid answered round', async () => {
+      await setInvalidOracleAnsweredRound(tokenCollateral.address)
 
       // Check price of token
       await expectUnpriced(tokenCollateral.address)
@@ -1370,6 +1384,22 @@ describe('Collateral contracts', () => {
       )
     })
 
+    it('Should not allow invalid defaultThreshold', async () => {
+      await expect(
+        SelfRefCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: selfRefToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('ETH'),
+          defaultThreshold: bn(100),
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
+      ).to.be.revertedWith('default threshold not supported')
+    })
+
     it('Should calculate prices correctly', async function () {
       // Check initial prices
       await expectPrice(selfReferentialCollateral.address, fp('1'), ORACLE_ERROR, true)
@@ -1516,6 +1546,26 @@ describe('Collateral contracts', () => {
           compoundMock.address
         )
       ).to.be.revertedWith('referenceERC20Decimals missing')
+    })
+
+    it('Should not allow invalid defaultThreshold', async () => {
+      await expect(
+        CTokenSelfReferentialFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: cSelfRefToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: bn(200),
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          0,
+          compoundMock.address
+        )
+      ).to.be.revertedWith('default threshold not supported')
     })
 
     it('Should setup collateral correctly', async function () {

@@ -31,10 +31,10 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     //      This function is only called inside other `init` functions, each of which is wrapped
     //      in an `initializer` modifier, which would fail first.
     // solhint-disable-next-line func-name-mixedcase
-    function __Trading_init(
-        uint192 maxTradeSlippage_,
-        uint192 minTradeVolume_
-    ) internal onlyInitializing {
+    function __Trading_init(uint192 maxTradeSlippage_, uint192 minTradeVolume_)
+        internal
+        onlyInitializing
+    {
         setMaxTradeSlippage(maxTradeSlippage_);
         setMinTradeVolume(minTradeVolume_);
     }
@@ -93,7 +93,11 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     // === FixLib Helper ===
 
     /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDivCeil(uint192 x, uint192 y, uint192 z) external pure returns (uint192) {
+    function mulDivCeil(
+        uint192 x,
+        uint192 y,
+        uint192 z
+    ) external pure returns (uint192) {
         return x.mulDiv(y, z, CEIL);
     }
 }

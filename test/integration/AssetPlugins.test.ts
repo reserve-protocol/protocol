@@ -70,8 +70,6 @@ let owner: SignerWithAddress
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
-const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
-
 const point1Pct = (value: BigNumber): BigNumber => {
   return value.div(1000)
 }

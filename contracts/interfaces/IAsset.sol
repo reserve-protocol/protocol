@@ -14,7 +14,7 @@ import "./IRewardable.sol";
  * is eligible to be an asset.
  */
 interface IAsset is IRewardable {
-    /// Refresh last price
+    /// Refresh saved price
     /// The Reserve protocol calls this at least once per transaction, before relying on
     /// the Asset's other functions.
     /// @dev Called immediately after deployment, before use
@@ -26,7 +26,7 @@ interface IAsset is IRewardable {
     function price() external view returns (uint192 low, uint192 high);
 
     /// Should not revert
-    /// lotLow be nonzero when the asset might be worth selling
+    /// lotLow should be nonzero when the asset might be worth selling
     /// @return lotLow {UoA/tok} The lower end of the lot price estimate
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);

@@ -80,7 +80,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
 
     // Standard ERC20
     token1 = await (await ethers.getContractFactory('ERC20Mock')).deploy('Peg ERC20', 'PERC20')
-    let chainlinkFeed = <MockV3Aggregator>(
+    const chainlinkFeed = <MockV3Aggregator>(
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     collateral1 = await (

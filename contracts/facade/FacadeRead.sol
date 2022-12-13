@@ -209,7 +209,7 @@ contract FacadeRead is IFacadeRead {
         stTokenAddress = main.stRSR();
     }
 
-    /// @return backing {1} The worst-case collateralization % the protocol will have after done trading
+    /// @return backing {1} The worstcase collateralization % the protocol will have after trading
     /// @return insurance {1} The insurance value relative to the fully-backed value as a %
     function backingOverview(IRToken rToken)
         external

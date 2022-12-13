@@ -28,7 +28,6 @@ struct CollateralConfig {
  *
  * For: {tok} == {ref}, {ref} != {target}, {target} == {UoA}
  * Can be easily extended by (optionally) re-implementing:
- *   - refresh()
  *   - tryPrice()
  *   - refPerTok()
  *   - targetPerRef()
@@ -64,9 +63,7 @@ contract FiatCollateral is ICollateral, Asset {
     uint192 public prevReferencePrice; // previous rate, {ref/tok}
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(
-        CollateralConfig memory config
-    )
+    constructor(CollateralConfig memory config)
         Asset(
             config.priceTimeout,
             config.chainlinkFeed,
@@ -94,6 +91,8 @@ contract FiatCollateral is ICollateral, Asset {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
+    /// Should not return FIX_MAX for low
+    /// Should only return FIX_MAX for high if low is 0
     /// @dev Override this when pricing is more complicated than just a single oracle
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
@@ -103,7 +102,11 @@ contract FiatCollateral is ICollateral, Asset {
         view
         virtual
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
@@ -125,13 +128,16 @@ contract FiatCollateral is ICollateral, Asset {
         // Check for soft default + save lotPrice
         try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
+            // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-            // high can't be FIX_MAX in this contract, but inheritors might mess this up
+            // Save prices if priced
             if (high < FIX_MAX) {
-                // Save prices
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);
+            } else {
+                // must be unpriced
+                assert(low == 0);
             }
 
             // If the price is below the default-threshold price, default eventually
@@ -175,8 +181,12 @@ contract FiatCollateral is ICollateral, Asset {
     // === Helpers for child classes ===
 
     function markStatus(CollateralStatus status_) internal {
+        // untestable:
+        //      All calls to markStatus happen exlusively if the collateral is not already defaulted
         if (_whenDefault <= block.timestamp) return; // prevent DISABLED -> SOUND/IFFY
 
+        // untestable:
+        //      The final `else` branch will never be triggered as all possible states are checked
         if (status_ == CollateralStatus.SOUND) {
             _whenDefault = NEVER;
         } else if (status_ == CollateralStatus.IFFY) {

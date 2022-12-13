@@ -18,10 +18,9 @@ contract NonFiatCollateral is FiatCollateral {
 
     /// @param config.chainlinkFeed Feed units: {target/ref}
     /// @param uoaPerTargetFeed_ Feed units: {UoA/target}
-    constructor(
-        CollateralConfig memory config,
-        AggregatorV3Interface uoaPerTargetFeed_
-    ) FiatCollateral(config) {
+    constructor(CollateralConfig memory config, AggregatorV3Interface uoaPerTargetFeed_)
+        FiatCollateral(config)
+    {
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         uoaPerTargetFeed = uoaPerTargetFeed_;
     }
@@ -34,7 +33,11 @@ contract NonFiatCollateral is FiatCollateral {
         external
         view
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
         uint192 pricePerTarget = uoaPerTargetFeed.price(oracleTimeout); // {UoA/target}

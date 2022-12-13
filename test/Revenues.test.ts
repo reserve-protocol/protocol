@@ -847,7 +847,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .withArgs(STRSR_DEST, bn(0), bn(1))
 
         // Set COMP tokens as reward
-        rewardAmountCOMP = fp('2')
+        rewardAmountCOMP = fp('1.9')
 
         // COMP Rewards
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
@@ -871,7 +871,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to maxTradeSlippage
+        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to maxTradeSlippage
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         // Run auctions
@@ -1051,7 +1051,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to max trade slippage
+        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
@@ -1245,7 +1245,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to max trade slippage
+        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
@@ -1410,8 +1410,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check balances at destinations
         // StRSR
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+          minBuyAmt.add(minBuyAmtRemainder),
+          15
+        )
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken, 15)
       })
 
       it('Should not distribute if paused or frozen', async () => {
@@ -2947,7 +2950,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should be unable to handout excess assets', async () => {
         // Check Price and Assets value
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(0)
 

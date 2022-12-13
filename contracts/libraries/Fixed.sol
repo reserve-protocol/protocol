@@ -91,7 +91,11 @@ function shiftl_toFix(uint256 x, int8 shiftLeft) pure returns (uint192) {
 
 /// @return x * 10**shiftLeft
 // as-ints: x * 10**(shiftLeft + 18)
-function shiftl_toFix(uint256 x, int8 shiftLeft, RoundingMode rounding) pure returns (uint192) {
+function shiftl_toFix(
+    uint256 x,
+    int8 shiftLeft,
+    RoundingMode rounding
+) pure returns (uint192) {
     // conditions for avoiding overflow
     if (x == 0) return 0;
     if (shiftLeft <= -96) return (rounding == CEIL ? 1 : 0); // 0 < uint.max / 10**77 < 0.5
@@ -99,7 +103,7 @@ function shiftl_toFix(uint256 x, int8 shiftLeft, RoundingMode rounding) pure ret
 
     shiftLeft += 18;
 
-    uint256 coeff = 10 ** abs(shiftLeft);
+    uint256 coeff = 10**abs(shiftLeft);
     uint256 shifted = (shiftLeft >= 0) ? x * coeff : _divrnd(x, coeff, rounding);
 
     return _safeWrap(shifted);
@@ -147,7 +151,11 @@ function abs(int256 x) pure returns (uint256) {
 /// Divide two uints, returning a uint, using rounding mode `rounding`.
 /// @return numerator / divisor
 // as-ints: numerator / divisor
-function _divrnd(uint256 numerator, uint256 divisor, RoundingMode rounding) pure returns (uint256) {
+function _divrnd(
+    uint256 numerator,
+    uint256 divisor,
+    RoundingMode rounding
+) pure returns (uint256) {
     uint256 result = numerator / divisor;
 
     if (rounding == FLOOR) return result;
@@ -204,7 +212,7 @@ library FixLib {
         if (decimals <= -59) return (rounding == CEIL ? 1 : 0); // 59, because 1e58 > 2**192
         if (58 <= decimals) revert UIntOutOfBounds(); // 58, because x * 1e58 > 2 ** 192 if x != 0
 
-        uint256 coeff = uint256(10 ** abs(decimals));
+        uint256 coeff = uint256(10**abs(decimals));
         return _safeWrap(decimals >= 0 ? x * coeff : _divrnd(x, coeff, rounding));
     }
 
@@ -247,7 +255,11 @@ library FixLib {
     /// Multiply this uint192 by a uint192
     /// @return x * y
     // as-ints: x * y/1e18
-    function mul(uint192 x, uint192 y, RoundingMode rounding) internal pure returns (uint192) {
+    function mul(
+        uint192 x,
+        uint192 y,
+        RoundingMode rounding
+    ) internal pure returns (uint192) {
         return _safeWrap(_divrnd(uint256(x) * uint256(y), FIX_SCALE, rounding));
     }
 
@@ -268,7 +280,11 @@ library FixLib {
     /// Divide this uint192 by a uint192
     /// @return x / y
     // as-ints: x * 1e18 / y
-    function div(uint192 x, uint192 y, RoundingMode rounding) internal pure returns (uint192) {
+    function div(
+        uint192 x,
+        uint192 y,
+        RoundingMode rounding
+    ) internal pure returns (uint192) {
         // Multiply-in FIX_SCALE before dividing by y to preserve precision.
         return _safeWrap(_divrnd(uint256(x) * FIX_SCALE, y, rounding));
     }
@@ -283,7 +299,11 @@ library FixLib {
     /// Divide this uint192 by a uint
     /// @return x / y
     // as-ints: x / y
-    function divu(uint192 x, uint256 y, RoundingMode rounding) internal pure returns (uint192) {
+    function divu(
+        uint192 x,
+        uint256 y,
+        RoundingMode rounding
+    ) internal pure returns (uint192) {
         return _safeWrap(_divrnd(x, y, rounding));
     }
 
@@ -336,7 +356,11 @@ library FixLib {
     /// Return whether or not this uint192 is less than epsilon away from y.
     /// @return |x - y| < epsilon
     // as-ints: |x - y| < epsilon
-    function near(uint192 x, uint192 y, uint192 epsilon) internal pure returns (bool) {
+    function near(
+        uint192 x,
+        uint192 y,
+        uint192 epsilon
+    ) internal pure returns (bool) {
         uint192 diff = x <= y ? y - x : x - y;
         return diff < epsilon;
     }
@@ -367,7 +391,7 @@ library FixLib {
 
         decimals -= 18; // shift so that toUint happens at the same time.
 
-        uint256 coeff = uint256(10 ** abs(decimals));
+        uint256 coeff = uint256(10**abs(decimals));
         return decimals >= 0 ? uint256(x * coeff) : uint256(_divrnd(x, coeff, rounding));
     }
 
@@ -411,7 +435,11 @@ library FixLib {
     /// @dev Only use if you need to avoid overflow; costlier than x * y / z
     /// @return x * y / z
     // as-ints: x * y / z
-    function muluDivu(uint192 x, uint256 y, uint256 z) internal pure returns (uint192) {
+    function muluDivu(
+        uint192 x,
+        uint256 y,
+        uint256 z
+    ) internal pure returns (uint192) {
         return muluDivu(x, y, z, FLOOR);
     }
 
@@ -432,7 +460,11 @@ library FixLib {
     /// @dev Only use if you need to avoid overflow; costlier than x * y / z
     /// @return x * y / z
     // as-ints: x * y / z
-    function mulDiv(uint192 x, uint192 y, uint192 z) internal pure returns (uint192) {
+    function mulDiv(
+        uint192 x,
+        uint192 y,
+        uint192 z
+    ) internal pure returns (uint192) {
         return mulDiv(x, y, z, FLOOR);
     }
 
@@ -460,7 +492,11 @@ library FixLib {
 //    and quite a few of the other excellent "Mathemagic" posts from https://medium.com/wicketh
 /// @dev Only use if you need to avoid overflow; costlier than x * y / z
 /// @return result x * y / z
-function mulDiv256(uint256 x, uint256 y, uint256 z) pure returns (uint256 result) {
+function mulDiv256(
+    uint256 x,
+    uint256 y,
+    uint256 z
+) pure returns (uint256 result) {
     unchecked {
         (uint256 hi, uint256 lo) = fullMul(x, y);
         if (hi >= z) revert UIntOutOfBounds();
@@ -487,7 +523,12 @@ function mulDiv256(uint256 x, uint256 y, uint256 z) pure returns (uint256 result
 /// Return (x*y/z), avoiding intermediate overflow.
 /// @dev Only use if you need to avoid overflow; costlier than x * y / z
 /// @return x * y / z
-function mulDiv256(uint256 x, uint256 y, uint256 z, RoundingMode rounding) pure returns (uint256) {
+function mulDiv256(
+    uint256 x,
+    uint256 y,
+    uint256 z,
+    RoundingMode rounding
+) pure returns (uint256) {
     uint256 result = mulDiv256(x, y, z);
     if (rounding == FLOOR) return result;
 

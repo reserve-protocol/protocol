@@ -53,7 +53,10 @@ export const expectRTokenPrice = async (
 
   let expectedHigh = avgPrice.add(delta)
   expectedHigh = expectedHigh.add(expectedHigh.mul(oracleError).div(fp('1')))
-  expectedHigh = expectedHigh.mul(avgPrice).div(avgPrice.sub(delta)).add(1)
+
+  if (avgPrice.sub(delta).gt(0)) {
+    expectedHigh = expectedHigh.mul(avgPrice).div(avgPrice.sub(delta)).add(1)
+  }
 
   if (maxTradeSlippage) {
     // There can be any amount of shortfall, from zero to all the capital held by BackingManager
@@ -70,7 +73,6 @@ export const expectRTokenPrice = async (
   }
 
   const [lowPrice, highPrice] = await rTokenAsset.price()
-  console.log('expectRTokenPrice', lowPrice, highPrice, expectedLow, avgPrice, expectedHigh)
   expect(lowPrice).to.be.gte(expectedLow)
   expect(lowPrice).to.be.lte(avgPrice)
   expect(highPrice).to.be.lte(expectedHigh)
@@ -93,10 +95,18 @@ export const setOraclePrice = async (assetAddr: string, price: BigNumber) => {
   await v3Aggregator.updateAnswer(price)
 }
 
-// Use to set invalidate a Chainlink oracle for an asset
+// Use to invalidate a Chainlink oracle for an asset using latest timestamp
 export const setInvalidOracleTimestamp = async (assetAddr: string) => {
   const asset = await ethers.getContractAt('Asset', assetAddr)
   const chainlinkFeedAddr = await asset.chainlinkFeed()
   const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
   await v3Aggregator.setInvalidTimestamp()
+}
+
+// Use to invalidate a Chainlink oracle for an asset using the last answered round
+export const setInvalidOracleAnsweredRound = async (assetAddr: string) => {
+  const asset = await ethers.getContractAt('Asset', assetAddr)
+  const chainlinkFeedAddr = await asset.chainlinkFeed()
+  const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
+  await v3Aggregator.setInvalidAnsweredRound()
 }

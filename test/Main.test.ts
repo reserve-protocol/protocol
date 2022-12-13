@@ -38,6 +38,7 @@ import {
   GnosisTrade,
   IAssetRegistry,
   IBasketHandler,
+  MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -1883,7 +1884,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describeGas('Gas Reporting', () => {
-    it('Asset Registry - Force Updates', async () => {
+    it('Asset Registry - Refresh', async () => {
       // Basket handler can run refresh
       await whileImpersonating(basketHandler.address, async (bhsigner) => {
         await snapshotGasCost(assetRegistry.connect(bhsigner).refresh())
@@ -1891,12 +1892,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Asset Registry - Register Asset', async () => {
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+
       // Setup new Assets
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           PRICE_TIMEOUT,
-          ONE_ADDRESS,
+          chainlinkFeed.address,
           ORACLE_ERROR,
           erc20s[5].address,
           config.rTokenMaxTradeVolume,
@@ -1906,7 +1911,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const newAsset2: Asset = <Asset>(
         await AssetFactory.deploy(
           PRICE_TIMEOUT,
-          ONE_ADDRESS,
+          chainlinkFeed.address,
           ORACLE_ERROR,
           erc20s[6].address,
           config.rTokenMaxTradeVolume,
