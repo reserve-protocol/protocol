@@ -325,7 +325,7 @@ describe('The Normal Operations scenario', () => {
 
       // Wait, then vest as Alice
       // 1e6 / 1e5 == 10 blocks
-      await helpers.mine(100)
+      await minemine(100)
       await scenario.connect(alice).vestIssuance(1)
 
       // Now there are no outstanding issuances
@@ -800,5 +800,15 @@ describe('The Normal Operations scenario', () => {
     await expect(scenario.manageBackingTokens()).to.be.reverted
 
     expect(await scenario.echidna_isFullyCollateralized()).to.be.true
+  })
+
+  it('does not have the stRSR zero-stake revenue bug', async () => {
+    await advanceTime(600000)
+    await scenario.distributeRevenue(0, 0, exa)
+    await advanceTime(200000)
+    await scenario.payRSRProfits()
+    await advanceTime(600000)
+    await scenario.payRSRProfits()
+    expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
   })
 })
