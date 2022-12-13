@@ -21,6 +21,7 @@ import {
   ERC20Mock,
   FiatCollateral,
   IAssetRegistry,
+  InvalidFiatCollateral,
   InvalidMockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
@@ -37,6 +38,9 @@ import {
 } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 describe('Assets contracts #fast', () => {
   // Tokens
@@ -354,6 +358,41 @@ describe('Assets contracts #fast', () => {
       await expectUnpriced(aaveAsset.address)
     })
 
+    it('Should handle unpriced edge cases for RToken', async () => {
+      // Swap one of the collaterals for an invalid one
+      const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
+      const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
+        await InvalidFiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral0.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral0.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
+      )
+
+      // Swap asset
+      await assetRegistry.swapRegistered(invalidFiatCollateral.address)
+
+      // Reverting with a specific error
+      await invalidFiatCollateral.setSimplyRevert(true)
+      await expect(invalidFiatCollateral.price()).to.be.revertedWith('errormsg')
+
+      // Check RToken unpriced
+      await expectUnpriced(rTokenAsset.address)
+
+      //  Runnning out of gas
+      await invalidFiatCollateral.setSimplyRevert(false)
+      await expect(invalidFiatCollateral.price()).to.be.revertedWith('')
+
+      //  Check RToken price reverrts
+      await expect(rTokenAsset.price()).to.be.revertedWith('')
+    })
+
     it('Should be able to refresh saved prices', async () => {
       // Check initial prices - use RSR as example
       let currBlockTimestamp: number = await getLatestBlockTimestamp()
@@ -527,7 +566,7 @@ describe('Assets contracts #fast', () => {
 
       // Check unpriced - uses still previous prices
       await expectUnpriced(rsrAsset.address)
-      let [lowPrice, highPrice] = await rsrAsset.price()
+      const [lowPrice, highPrice] = await rsrAsset.price()
       expect(lowPrice).to.equal(bn(0))
       expect(highPrice).to.equal(MAX_UINT192)
       expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
