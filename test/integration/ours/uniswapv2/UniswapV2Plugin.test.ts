@@ -284,7 +284,7 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         DELAY_UNTIL_DEFAULT
                     )
 
-            //TODO asserts
+        
             await waitForTx(await uniswapV2FiatCollateral.refresh())
 
             expect(await uniswapV2FiatCollateral.isCollateral()).to.equal(true)
@@ -293,7 +293,7 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniswapV2FiatCollateral.targetName()).to.equal(targetName)
             expect(await uniswapV2FiatCollateral.status()).to.equal(CollateralStatus.SOUND)
             expect(await uniswapV2FiatCollateral.whenDefault()).to.equal(MAX_UINT256)
-            //expect(await uniswapV2NonFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+            expect(await uniswapV2FiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
             expect(await uniswapV2FiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
             expect(await uniswapV2FiatCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
             expect(await uniswapV2FiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
@@ -306,13 +306,13 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             expect(await uniswapV2FiatCollateral.targetPerRef()).to.equal(fp("1"))
             expect(await uniswapV2FiatCollateral.pricePerTarget()).to.equal(fp("1"))
-            //expect(await uniswapV2NonFiatCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
-            //expect(await uniswapV2NonFiatCollateral.strictPrice()).to.equal(await uniswapV2NonFiatCollateral._fallbackPrice())
-            //TODO
-            //expect(await uniswapV2NonFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-            // expect(await uniswapV2NonFiatCollateral.bal(addr1.address)).to.equal(
-            //   await adjustedAmout(uniswapV2Wrapper, 100)
-            // )
+            const liquidity = await pair.balanceOf(addr1.address)
+            expect(await uniswapV2FiatCollateral.strictPrice()).closeTo(pow10(18).mul(fp('200')).div(liquidity), pow10(32))
+
+            await waitForTx(await mockChainlinkFeed0.updateAnswer(fp("1.06").div(pow10(10))))
+            uniswapV2FiatCollateral.refresh()
+            expect(await uniswapV2FiatCollateral.status()).to.equal(CollateralStatus.IFFY)
+
         })
 
         // it("Try feeds", async () => {

@@ -40,12 +40,19 @@ contract UniswapV2FiatCollateral is UniswapV2AbstractCollateral {
         defaultThreshold = defaultThreshold_;
     }
 
-    function priceNotInBounds(uint192 price, uint192 peg, uint192 delta) internal pure returns (bool) {
-        return price < peg - delta || price > peg + delta;
+    function priceNotInBounds(uint192 p, uint192 peg, uint192 delta) internal pure returns (bool) {
+        return p < peg - delta || p > peg + delta;
     }
 
-    function poolIsAwayFromOptimalPoint() internal pure returns (bool) {
-        return true;
+    function poolIsAwayFromOptimalPoint(uint192 peg, uint192 delta) internal view returns (bool) {
+        IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
+        (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
+        uint256 p = FIX_ONE * 10 ** IERC20Metadata(pair.token1()).decimals() * reserve0 / reserve1/
+            10 ** IERC20Metadata(pair.token0()).decimals();
+        console.log("pool price", p);
+        console.log("peg", peg);
+        console.log("delta", delta);
+        return priceNotInBounds(uint192(p), peg, delta);
     }
 
     /// Refresh exchange rates and update default status.
@@ -59,12 +66,14 @@ contract UniswapV2FiatCollateral is UniswapV2AbstractCollateral {
 
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 price0) {
             try chainlinkFeedSecondAsset.price_(oracleTimeout) returns (uint192 price1) {
+                console.log("price0", price0);
+                console.log("price1", price1);
                 uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
                 uint192 delta = (peg * defaultThreshold) / FIX_ONE;
                 if (
                     priceNotInBounds(price0, peg, delta) ||
                     priceNotInBounds(price1, peg, delta) ||
-                    poolIsAwayFromOptimalPoint()
+                    poolIsAwayFromOptimalPoint(peg, delta)
                 ) {
                     markStatus(CollateralStatus.IFFY);
                 } else {
