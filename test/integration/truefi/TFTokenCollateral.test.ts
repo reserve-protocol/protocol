@@ -132,8 +132,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
-    //?????????????????????
-    // Fork at designated block number - REQUIRED
+
     await hre.network.provider.request({
       method: "hardhat_reset",
       params: [{
@@ -161,11 +160,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
     tfUsdc = <TFTokenMock>(
       await ethers.getContractAt('TFTokenMock', networkConfig[chainId].tokens.tfUSDC || '')
     )
-    // console.log(await tfUsdc.decimals())
-    // console.log(await tfUsdc.totalSupply())
-    // console.log(await tfUsdc.poolValue())
-    // console.log(await tfUsdc.name())
-    // console.log(await usdc.totalSupply())
     // TRU token
     truToken = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.TRU || '')
@@ -208,10 +202,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
     // tfUSDC
     initialBal = bn('2000e6')
     await whileImpersonating(holderTFUSDC, async (tfusdcSigner) => {
-      //console.log("Balances")
-      //console.log(await tfUsdc.balanceOf(holderTFUSDC))
-      await tfUsdc.connect(tfusdcSigner).transfer(addr1.address, initialBal) //???? toBNDecimals(initialBal, 8)
-      //console.log(await tfUsdc.balanceOf(holderTFUSDC))
+      await tfUsdc.connect(tfusdcSigner).transfer(addr1.address, initialBal)
     })
 
     // Set parameters
@@ -288,7 +279,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       // Check Collateral plugin
       // tfUSDC (TFTokenCollateral)
       expect(await tfUsdcCollateral.isCollateral()).to.equal(true)
-      //expect(await tfUsdcCollateral.referenceERC20Decimals()).to.equal(await usdc.decimals())
       expect(await tfUsdcCollateral.erc20()).to.equal(tfUsdc.address)
       expect(await tfUsdc.decimals()).to.equal(6)
       expect(await tfUsdcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -315,16 +305,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
     })
-
-
-
-
-
-
-
-
-
-
 
     // Check assets/collaterals in the Asset Registry
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
@@ -388,50 +368,28 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
           contractAddressTRUFarm,
         )
       ).to.be.revertedWith('defaultThreshold zero')
-
-      // ReferenceERC20Decimals
-      // await expect(
-      //   TFTokenCollateralFactory.deploy(
-      //     fp('1'),
-      //     networkConfig[chainId].chainlinkFeeds.USDC as string,
-      //     tfUsdc.address,
-      //     config.rTokenMaxTradeVolume,
-      //     ORACLE_TIMEOUT,
-      //     ethers.utils.formatBytes32String('USD'),
-      //     defaultThreshold,
-      //     delayUntilDefault,
-      //     contractAddressTRUFarm,
-      //   )
-      // ).to.be.revertedWith('referenceERC20Decimals missing')
     })
   })
 
   describe('Issuance/Appreciation/Redemption', () => {
-    const MIN_ISSUANCE_PER_BLOCK = bn('10e18')
+    const MIN_ISSUANCE_PER_BLOCK = bn('1000e18')
 
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
-      //console.log("Balance of rToken after approval, before issuance")
-      //console.log(await rToken.balanceOf(addr1.address))
+
       // Provide approvals for issuances
 
       await tfUsdc.connect(addr1).approve(rToken.address, issueAmount.mul(10))
-      //console.log("Balance of tfUSDC after approval, before issuance")
-      //console.log(await tfUsdc.balanceOf(addr1.address))
-    
-      //console.log(await rToken.balanceOf(addr1.address))
+
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      //console.log(await rToken.balanceOf(addr1.address))
+
       // Check RTokens issued to user
-      //console.log("Balance of rToken after issuance")
-      //expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
       const balanceAddr1tfUsdc: BigNumber = await tfUsdc.balanceOf(addr1.address)
-      //console.log("Balance of tfUSDC after issuance")
-      //console.log(await tfUsdc.balanceOf(addr1.address))
 
       // Check rates and prices
       const tfUsdcPrice1: BigNumber = await tfUsdcCollateral.strictPrice() // ~ 0.022015 cents
@@ -444,7 +402,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('0.01')) // approx 1K in value ?????
+      expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('0.01')) // approx 1K in value
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
@@ -472,7 +430,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       )
       expect(totalAssetValue2).to.be.gt(totalAssetValue1)
 
-      // Advance time and blocks greatly, causing refPerTok() to increase greatly ?????
+      // Advance time and blocks greatly, causing refPerTok() to increase greatly
       await advanceTime(10000000)
       await advanceBlocks(10000000)
 
@@ -498,12 +456,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       )
       expect(totalAssetValue3).to.be.gt(totalAssetValue2)
 
-      // console.log("before redeem")
-      // console.log(await rToken.balanceOf(addr1.address))
-      // console.log(await totalAssetValue1)
-      // console.log(await totalAssetValue2)
-      // console.log(await totalAssetValue3)
-      // console.log(await rToken.connect(addr1).)
       // Redeem Rtokens with the updated rates
       await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
       console.log("after redeem")
@@ -515,14 +467,14 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       const newBalanceAddr1tfUsdc: BigNumber = await tfUsdc.balanceOf(addr1.address)
 
       // Check received tokens represent ~1K in value at current prices
-      expect(newBalanceAddr1tfUsdc.sub(balanceAddr1tfUsdc)).to.be.closeTo(bn('8.833e6'), bn('0.1e6')) // ~1.192 * 838 ~= 1K (100% of basket)
+      expect(newBalanceAddr1tfUsdc.sub(balanceAddr1tfUsdc)).to.be.closeTo(bn('883.3e6'), bn('10e6')) // ~1.192 * 838 ~= 1K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await tfUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn('0.117e6'), bn('0.1e6')) // ~= 165 usd in value
+      expect(await tfUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn('11.7e6'), bn('10e6')) // ~= 13.2? usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('0.132'), // ~= 165 usd (from above)
+        fp('13.2'), // ~= 13.2 usd (from above)
         fp('0.1')
       )
     })
