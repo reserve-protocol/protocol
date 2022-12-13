@@ -636,7 +636,7 @@ library TradingLibP0 {
 
     /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
     /// @return {tok} The max trade size for the asset in whole tokens
-    function maxTradeSize(IAsset asset, uint192 price) private pure returns (uint192) {
+    function maxTradeSize(IAsset asset, uint192 price) private view returns (uint192) {
         uint192 size = price == 0 ? FIX_MAX : asset.maxTradeVolume().div(price, ROUND);
         return size > 0 ? size : 1;
     }
