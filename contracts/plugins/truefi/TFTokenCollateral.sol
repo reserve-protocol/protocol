@@ -7,7 +7,6 @@ import "../assets/AbstractCollateral.sol";
 import "./ITFToken.sol";
 import "../../libraries/Fixed.sol";
 
-
 /**
  * @title TFTokenFiatCollateral
  * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
@@ -31,7 +30,6 @@ contract TFTokenCollateral is Collateral {
 
     ITRUFarm public immutable trufarm;
 
-
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
@@ -45,7 +43,7 @@ contract TFTokenCollateral is Collateral {
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_, 
+        uint256 delayUntilDefault_,
         ITRUFarm trufarm_
     )
         Collateral(
@@ -66,7 +64,6 @@ contract TFTokenCollateral is Collateral {
         prevReferencePrice = refPerTok();
 
         trufarm = trufarm_;
-        
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
@@ -129,11 +126,12 @@ contract TFTokenCollateral is Collateral {
         uint192 ts = shiftl_toFix(tfToken.totalSupply(), -6);
         return pv.div(ts);
     }
+
     // / Claim rewards earned by holding a balance of the ERC20 token
     // / @dev delegatecall
     function claimRewards() external virtual override {
         IERC20 tru = IERC20(trufarm.rewardToken());
-        uint amount = trufarm.claimable(address(erc20), address(this));       
+        uint256 amount = trufarm.claimable(address(erc20), address(this));
         address[] memory tokens_ = new address[](1);
         tokens_[0] = address(erc20);
         trufarm.claim(tokens_);

@@ -390,19 +390,17 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Provide approvals for issuances
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
-      console.log("Balances after approval, before issuance")
+      console.log('Balances after approval, before issuance')
       console.log(await cDai.balanceOf(addr1.address))
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      
-      
 
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
       const balanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
-      console.log("Balances after issuance")
+      console.log('Balances after issuance')
       console.log(await cDai.balanceOf(addr1.address))
 
       // Check rates and prices

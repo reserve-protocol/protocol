@@ -20,14 +20,13 @@ contract TFTokenMock is ERC20Mock {
         _mint(0x58f5F0684C381fCFC203D77B2BbA468eBb29B098, FIX_ONE);
         poolValue = totalSupply(); // initial refpertok of 1
     }
-    
 
     function decimals() public pure override returns (uint8) {
         return 6;
     }
 
     function setExchangeRate(uint192 rate) external {
-        poolValue = rate * totalSupply() / FIX_ONE;
+        poolValue = (rate * totalSupply()) / FIX_ONE;
     }
 
     function underlying() external view returns (address) {
