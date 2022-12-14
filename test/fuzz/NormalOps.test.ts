@@ -817,7 +817,6 @@ describe('The Normal Operations scenario', () => {
     await scenario.connect(alice).unstake(1)
     await advanceTime(1213957)
     await scenario.connect(alice).withdrawAvailable()
-    const [left, right] = await comp.stRSR.idRange(alice.address)
     expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
     // fails due to Panic(0x32), out-of-bounds array access
   })
