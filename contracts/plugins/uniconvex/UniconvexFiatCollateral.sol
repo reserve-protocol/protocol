@@ -80,7 +80,11 @@ contract UniconvexFiatCollateral is UniconvexAbstractCollateral {
         CollateralStatus oldStatus = status();
 
         uint192 referencePrice = refPerTok();
-        if (referencePrice < prevReferencePrice) {
+
+        IBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(poolId);
+        if (poolInfo.shutdown) {
+            markStatus(CollateralStatus.DISABLED);
+        } else if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
             // peg = FIX_ONE for {target} = {UoA}, not hardcoded because it can be overridden in

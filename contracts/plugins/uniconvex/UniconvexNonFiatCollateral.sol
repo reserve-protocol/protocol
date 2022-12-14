@@ -21,10 +21,8 @@ contract UniconvexNonFiatCollateral is UniconvexAbstractCollateral {
             oracleTimeout_,
             targetName_,
             delayUntilDefault_
-        ) {
-            
-        }
-    
+        )
+    {}
 
     function refresh() external override {
         if (alreadyDefaulted()) return;
@@ -32,7 +30,10 @@ contract UniconvexNonFiatCollateral is UniconvexAbstractCollateral {
         CollateralStatus oldStatus = status();
 
         uint192 referencePrice = refPerTok();
-        if (referencePrice < prevReferencePrice) {
+        IBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(poolId);
+        if (poolInfo.shutdown) {
+            markStatus(CollateralStatus.DISABLED);
+        } else if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
             //TODO need to check feeds

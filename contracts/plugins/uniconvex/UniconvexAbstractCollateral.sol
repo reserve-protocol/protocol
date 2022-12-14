@@ -24,7 +24,7 @@ import "../assets/AbstractCollateral.sol";
   */
 abstract contract UniconvexAbstractCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
-
+    uint256 public immutable poolId;
     //  Price feeds for Curve pool assets, their number is determined by the Curve pool used
     AggregatorV3Interface[] public chainlinkFeeds;
     uint192 public prevReferencePrice;
@@ -42,7 +42,7 @@ abstract contract UniconvexAbstractCollateral is Collateral {
 
     /**
         @notice Constructor
-        @param poolId Convex pool ID
+        @param poolId_ Convex pool ID
         @param fallbackPrice_ Fallback price for the collateral asset
         @param chainlinkFeeds_ Price feeds for Curve pool assets
         @param maxTradeVolume_ Max RToken trade volume
@@ -51,7 +51,7 @@ abstract contract UniconvexAbstractCollateral is Collateral {
         @param delayUntilDefault_ Delay until default
       */
     constructor(
-        uint256 poolId,
+        uint256 poolId_,
         uint192 fallbackPrice_,
         AggregatorV3Interface[] memory chainlinkFeeds_,
         uint192 maxTradeVolume_,
@@ -62,13 +62,14 @@ abstract contract UniconvexAbstractCollateral is Collateral {
         Collateral(
             fallbackPrice_,
             chainlinkFeeds_[0],
-            IERC20Metadata(getConvexTokenFromPoolId(poolId)),
+            IERC20Metadata(getConvexTokenFromPoolId(poolId_)),
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
             delayUntilDefault_
         )
     {
+        poolId = poolId_;
         chainlinkFeeds = chainlinkFeeds_;
         IBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(poolId);
         baseRewardPool = IBaseRewardPool(poolInfo.crvRewards);
