@@ -9,26 +9,25 @@ import "../../libraries/Fixed.sol";
 
 /**
  * @title TFTokenFiatCollateral
- * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
+ * @notice Collateral plugin for TrueFi's tfUSDC token
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
 contract TFTokenCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
-
     // Token TrueFi USD Coin: https://etherscan.io/token/0xa991356d261fbaf194463af6df8f0464f8f1c742
-    // All TrueFiTokens have 6 decimals, their underlying(USDC) also has 6 decimals.
     // USDC: https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
+    // All TrueFiTokens have 6 decimals, their underlying(USDC) also has 6 decimals.
 
-    //int8 public immutable referenceERC20Decimals; -- why we removed? #mention
+    // int8 public immutable referenceERC20Decimals;
+    // referenceERC20Decimals is not required as the decimals in Tok and Ref are the same.
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
-    ITRUFarm public immutable trufarm;
+    ITRUFarm public immutable trufarm; // TrueMultiFarm contract for reward claiming.
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
@@ -57,9 +56,7 @@ contract TFTokenCollateral is Collateral {
         )
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        //require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         defaultThreshold = defaultThreshold_;
-        //referenceERC20Decimals = referenceERC20Decimals_;
 
         prevReferencePrice = refPerTok();
 
@@ -118,10 +115,6 @@ contract TFTokenCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        // uint256 rate = ITFToken(address(erc20)).poolValue()
-        // / ITFToken(address(erc20)).totalSupply();
-        // //int8 shiftLeft = 6 - referenceERC20Decimals - 18;
-        // return shiftl_toFix(rate, -0);
         ITFToken tfToken = ITFToken(address(erc20));
         uint192 pv = shiftl_toFix(tfToken.poolValue(), -6);
         uint192 ts = shiftl_toFix(tfToken.totalSupply(), -6);

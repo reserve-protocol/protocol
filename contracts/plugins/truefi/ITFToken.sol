@@ -19,7 +19,7 @@ interface ITRUFarm {
     /// @dev From TrueFi Docs (TrueMultiFarm contract):
     /// Number of accrued TRU rewards.
     function claimable(address token, address account) external view returns (uint256);
-    
+
     /// @dev Lenders can claim TRU rewards using claim()
     function claim(address[] calldata tokens) external;
 
