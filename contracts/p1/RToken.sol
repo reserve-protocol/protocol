@@ -49,9 +49,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // Always, issuanceRate <= MAX_ISSUANCE_RATE = FIX_ONE
     uint192 public issuanceRate;
 
-    // the following governance parameters exist inside the Battery struct:
-    //      battery.redemptionRateFloor
-    //      battery.scalingRedemptionRate
+    // also: battery.redemptionRateFloor + battery.scalingRedemptionRate
 
     // ==== End Governance Params ====
 
@@ -123,9 +121,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //
     // We define a (partial) ordering on IssueItems: item1 < item2 iff the following all hold:
     //   item1.when < item2.when
-    //   item1.amtRToken < item2.amtRToken
+    //   item2.amtRToken < item2.amtRToken
     //   item1.amtBaskets < item2.amtBaskets
-    //   for all valid indices i, item1.deposits[i] < item2.deposits[i]
+    //   for all valid indices i, item1[i].deposits < item2[i].deposits
     //
     // And, in fact, item2 - item1 is then well-defined (and also piecewise).
     //
@@ -674,11 +672,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         } else if (queue.left < left && right == queue.right) {
             queue.right = left; // refund span from end
         } else {
-            // untestable:
-            //      All calls to refundSpan() use valid values for left and right.
-            //      queue.left <= left && right <= queue.right.
-            //      Any call to refundSpan() passes queue.left for left,
-            //      OR passes queue.right for right, OR both.
             revert("Bad refundSpan");
         } // error: can't remove [left,right) from the queue, and leave just one interval
 

@@ -5,7 +5,6 @@ import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
-
 import {
   AaveLendingPoolMock,
   Asset,
@@ -27,7 +26,6 @@ import {
   FacadeRead,
   FacadeAct,
   FacadeTest,
-  FiatCollateral,
   FurnaceP1,
   GnosisTrade,
   IAssetRegistry,
@@ -36,6 +34,7 @@ import {
   IGnosis,
   MainP1,
   NonFiatCollateral,
+  OracleLib,
   PermitLib,
   RevenueTraderP1,
   RTokenAsset,
@@ -55,14 +54,9 @@ import {
   RecollateralizationLibP1,
 } from '../../typechain'
 
-import {
-  Collateral,
-  Implementation,
-  IMPLEMENTATION,
-  ORACLE_ERROR,
-  ORACLE_TIMEOUT,
-  PRICE_TIMEOUT,
-} from '../fixtures'
+import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
+
+export const ORACLE_TIMEOUT = bn('500000000') // 5700d - large for tests only
 
 interface RSRFixture {
   rsr: ERC20Mock
@@ -144,8 +138,11 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
+  oracleLib: OracleLib,
   comptroller: ComptrollerMock,
   aaveLendingPool: AaveLendingPoolMock,
+  aaveToken: ERC20Mock,
+  compToken: ERC20Mock,
   config: IConfig
 ): Promise<CollateralFixture> {
   const chainId = await getChainId(hre)
@@ -154,21 +151,39 @@ async function collateralFixture(
   }
 
   const StaticATokenFactory: ContractFactory = await ethers.getContractFactory('StaticATokenLM')
-  const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
-  const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
-  const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
+  const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
+    libraries: { OracleLib: oracleLib.address },
+  })
+  const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral', {
+    libraries: { OracleLib: oracleLib.address },
+  })
+  const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral', {
+    libraries: { OracleLib: oracleLib.address },
+  })
 
-  const NonFiatCollateralFactory = await ethers.getContractFactory('NonFiatCollateral')
+  const NonFiatCollateralFactory = await ethers.getContractFactory('NonFiatCollateral', {
+    libraries: { OracleLib: oracleLib.address },
+  })
 
-  const CTokenNonFiatCollateralFactory = await ethers.getContractFactory('CTokenNonFiatCollateral')
+  const CTokenNonFiatCollateralFactory = await ethers.getContractFactory(
+    'CTokenNonFiatCollateral',
+    {
+      libraries: { OracleLib: oracleLib.address },
+    }
+  )
 
   const SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral')
 
   const CTokenSelfReferentialCollateralFactory = await ethers.getContractFactory(
-    'CTokenSelfReferentialCollateral'
+    'CTokenSelfReferentialCollateral',
+    {
+      libraries: { OracleLib: oracleLib.address },
+    }
   )
 
-  const EURFiatCollateralFactory = await ethers.getContractFactory('EURFiatCollateral')
+  const EURFiatCollateralFactory = await ethers.getContractFactory('EURFiatCollateral', {
+    libraries: { OracleLib: oracleLib.address },
+  })
 
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
@@ -177,46 +192,72 @@ async function collateralFixture(
   const makeVanillaCollateral = async (
     tokenAddr: string,
     chainlinkAddr: string
-  ): Promise<[IERC20Metadata, FiatCollateral]> => {
+  ): Promise<[IERC20Metadata, Collateral]> => {
     const erc20: IERC20Metadata = <IERC20Metadata>await ethers.getContractAt('ERC20Mock', tokenAddr)
-    const coll = <FiatCollateral>await FiatCollateralFactory.deploy({
-      priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: chainlinkAddr,
-      oracleError: ORACLE_ERROR,
-      erc20: erc20.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT,
-      targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold,
-      delayUntilDefault,
-    })
-    await coll.refresh()
-    return [erc20, coll]
+    return [
+      erc20,
+      <Collateral>(
+        await CollateralFactory.deploy(
+          fp('1'),
+          chainlinkAddr,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      ),
+    ]
+  }
+
+  const makeSixDecimalCollateral = async (
+    tokenAddr: string,
+    chainlinkAddr: string
+  ): Promise<[IERC20Metadata, Collateral]> => {
+    const erc20: IERC20Metadata = <IERC20Metadata>await ethers.getContractAt('USDCMock', tokenAddr)
+    return [
+      erc20,
+      <Collateral>(
+        await CollateralFactory.deploy(
+          fp('1'),
+          chainlinkAddr,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      ),
+    ]
   }
 
   const makeCTokenCollateral = async (
     tokenAddress: string,
+    referenceERC20: IERC20Metadata,
     chainlinkAddr: string
   ): Promise<[IERC20Metadata, CTokenFiatCollateral]> => {
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
-      {
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: chainlinkAddr,
-        oracleError: ORACLE_ERROR,
-        erc20: erc20.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-      },
-      comptroller.address
-    )
-    await coll.refresh()
-    return [erc20, coll]
+    return [
+      erc20,
+      <CTokenFiatCollateral>(
+        await CTokenCollateralFactory.deploy(
+          fp('0.02'),
+          chainlinkAddr,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+          (await referenceERC20.decimals()).toString(),
+          comptroller.address
+        )
+      ),
+    ]
   }
 
   const makeATokenCollateral = async (
@@ -236,19 +277,22 @@ async function collateralFixture(
         'stat' + symbol
       )
     )
-    const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
-      priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: chainlinkAddr,
-      oracleError: ORACLE_ERROR,
-      erc20: staticErc20.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT,
-      targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold,
-      delayUntilDefault,
-    })
-    await coll.refresh()
-    return [staticErc20 as IERC20Metadata, coll]
+
+    return [
+      staticErc20 as IERC20Metadata,
+      <ATokenFiatCollateral>(
+        await ATokenCollateralFactory.deploy(
+          fp('1'),
+          chainlinkAddr,
+          staticErc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      ),
+    ]
   }
 
   const makeNonFiatCollateral = async (
@@ -259,50 +303,53 @@ async function collateralFixture(
   ): Promise<[IERC20Metadata, NonFiatCollateral]> => {
     const erc20: ERC20Mock = <ERC20Mock>await ethers.getContractAt('ERC20Mock', nonFiatTokenAddress)
 
-    const coll = <NonFiatCollateral>await NonFiatCollateralFactory.deploy(
-      {
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: referenceUnitOracleAddr,
-        oracleError: ORACLE_ERROR,
-        erc20: erc20.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String(targetName),
-        defaultThreshold,
-        delayUntilDefault,
-      },
-      targetUnitOracleAddr
-    )
-    await coll.refresh()
-    return [erc20, coll]
+    return [
+      erc20,
+      <NonFiatCollateral>(
+        await NonFiatCollateralFactory.deploy(
+          fp('1'),
+          referenceUnitOracleAddr,
+          targetUnitOracleAddr,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String(targetName),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      ),
+    ]
   }
 
   const makeCTokenNonFiatCollateral = async (
     tokenAddress: string,
+    referenceERC20: IERC20Metadata,
     referenceUnitOracleAddr: string,
     targetUnitOracleAddr: string,
+    compToken: ERC20Mock,
     targetName: string
   ): Promise<[IERC20Metadata, CTokenNonFiatCollateral]> => {
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const coll = <CTokenNonFiatCollateral>await CTokenNonFiatCollateralFactory.deploy(
-      {
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: referenceUnitOracleAddr,
-        oracleError: ORACLE_ERROR,
-        erc20: erc20.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String(targetName),
-        defaultThreshold,
-        delayUntilDefault,
-      },
-      targetUnitOracleAddr,
-      comptroller.address
-    )
-    await coll.refresh()
-    return [erc20, coll]
+    return [
+      erc20,
+      <CTokenNonFiatCollateral>(
+        await CTokenNonFiatCollateralFactory.deploy(
+          fp('1'),
+          referenceUnitOracleAddr,
+          targetUnitOracleAddr,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String(targetName),
+          defaultThreshold,
+          delayUntilDefault,
+          (await referenceERC20.decimals()).toString(),
+          comptroller.address
+        )
+      ),
+    ]
   }
 
   const makeSelfReferentialCollateral = async (
@@ -311,49 +358,49 @@ async function collateralFixture(
     targetName: string
   ): Promise<[IERC20Metadata, SelfReferentialCollateral]> => {
     const erc20: ERC20Mock = <ERC20Mock>await ethers.getContractAt('ERC20Mock', selfRefTokenAddress)
-    const coll = <SelfReferentialCollateral>await SelfRefCollateralFactory.deploy({
-      priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: chainlinkAddr,
-      oracleError: ORACLE_ERROR,
-      erc20: erc20.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT,
-      targetName: ethers.utils.formatBytes32String(targetName),
-      defaultThreshold: bn(0),
-      delayUntilDefault,
-    })
-    await coll.refresh()
-    return [erc20, coll]
+
+    return [
+      erc20,
+      <SelfReferentialCollateral>(
+        await SelfRefCollateralFactory.deploy(
+          fp('1'),
+          chainlinkAddr,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String(targetName),
+          delayUntilDefault
+        )
+      ),
+    ]
   }
 
   const makeCTokenSelfReferentialCollateral = async (
     tokenAddress: string,
+    referenceERC20: IERC20Metadata,
     chainlinkAddr: string,
-    targetName: string,
-    referenceERC20Decimals: number
+    compToken: ERC20Mock,
+    targetName: string
   ): Promise<[IERC20Metadata, CTokenSelfReferentialCollateral]> => {
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const coll = <CTokenSelfReferentialCollateral>(
-      await CTokenSelfReferentialCollateralFactory.deploy(
-        {
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: chainlinkAddr,
-          oracleError: ORACLE_ERROR,
-          erc20: erc20.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String(targetName),
-          defaultThreshold: bn(0),
+    return [
+      erc20,
+      <CTokenSelfReferentialCollateral>(
+        await CTokenSelfReferentialCollateralFactory.deploy(
+          fp('1'),
+          chainlinkAddr,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String(targetName),
           delayUntilDefault,
-        },
-        referenceERC20Decimals,
-        comptroller.address
-      )
-    )
-    await coll.refresh()
-    return [erc20, coll]
+          (await referenceERC20.decimals()).toString(),
+          comptroller.address
+        )
+      ),
+    ]
   }
 
   const makeEURFiatCollateral = async (
@@ -364,22 +411,22 @@ async function collateralFixture(
   ): Promise<[IERC20Metadata, EURFiatCollateral]> => {
     const erc20: ERC20Mock = <ERC20Mock>await ethers.getContractAt('ERC20Mock', eurFiatTokenAddress)
 
-    const coll = <EURFiatCollateral>await EURFiatCollateralFactory.deploy(
-      {
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: referenceUnitOracleAddr,
-        oracleError: ORACLE_ERROR,
-        erc20: erc20.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String(targetName),
-        defaultThreshold,
-        delayUntilDefault,
-      },
-      targetUnitOracleAddr
-    )
-    await coll.refresh()
-    return [erc20, coll]
+    return [
+      erc20,
+      <EURFiatCollateral>(
+        await EURFiatCollateralFactory.deploy(
+          fp('1'),
+          referenceUnitOracleAddr,
+          targetUnitOracleAddr,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String(targetName),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      ),
+    ]
   }
 
   // Create all possible collateral
@@ -394,22 +441,18 @@ async function collateralFixture(
     networkConfig[chainId].tokens.DAI as string,
     DAI_USD_PRICE_FEED
   )
-
-  const usdc = await makeVanillaCollateral(
+  const usdc = await makeSixDecimalCollateral(
     networkConfig[chainId].tokens.USDC as string,
     USDC_USD_PRICE_FEED
   )
-
-  const usdt = await makeVanillaCollateral(
+  const usdt = await makeSixDecimalCollateral(
     networkConfig[chainId].tokens.USDT as string,
     USDT_USD_PRICE_FEED
   )
-
   const busd = await makeVanillaCollateral(
     networkConfig[chainId].tokens.BUSD as string,
     BUSD_USD_PRICE_FEED
   )
-
   const usdp = await makeVanillaCollateral(
     networkConfig[chainId].tokens.USDP as string,
     USDP_USD_PRICE_FEED
@@ -421,19 +464,23 @@ async function collateralFixture(
 
   const cdai = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cDAI as string,
+    dai[0],
     DAI_USD_PRICE_FEED
   )
   const cusdc = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cUSDC as string,
+    usdc[0],
     USDC_USD_PRICE_FEED
   )
   const cusdt = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cUSDT as string,
+    usdt[0],
     USDT_USD_PRICE_FEED
   )
 
   const cusdp = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cUSDP as string,
+    usdp[0],
     USDP_USD_PRICE_FEED
   )
 
@@ -468,8 +515,10 @@ async function collateralFixture(
 
   const cWBTC = await makeCTokenNonFiatCollateral(
     networkConfig[chainId].tokens.cWBTC as string,
+    wbtc[0],
     networkConfig[chainId].chainlinkFeeds.WBTC as string,
     networkConfig[chainId].chainlinkFeeds.BTC as string,
+    compToken,
     'BTC'
   )
 
@@ -481,9 +530,10 @@ async function collateralFixture(
 
   const cETH = await makeCTokenSelfReferentialCollateral(
     networkConfig[chainId].tokens.cETH as string,
+    weth[0],
     networkConfig[chainId].chainlinkFeeds.ETH as string,
-    'ETH',
-    18
+    compToken,
+    'ETH'
   )
 
   const eurt = await makeEURFiatCollateral(
@@ -577,6 +627,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
+  oracleLib: OracleLib
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -614,6 +665,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     redemptionRateFloor: fp('1e6'), // 1M RToken
   }
 
+  // Deploy OracleLib external library
+  const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
+  const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
+
   // Deploy PermitLib external library
   const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
   const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
@@ -642,15 +697,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
   const rsrAsset: Asset = <Asset>(
     await AssetFactory.deploy(
-      PRICE_TIMEOUT,
+      fp('0.007'),
       networkConfig[chainId].chainlinkFeeds.RSR || '',
-      ORACLE_ERROR,
       rsr.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
   )
-  await rsrAsset.refresh()
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
@@ -766,30 +819,25 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await (
       await ethers.getContractFactory('Asset')
     ).deploy(
-      PRICE_TIMEOUT,
+      fp('1'),
       networkConfig[chainId].chainlinkFeeds.AAVE || '',
-      ORACLE_ERROR,
       aaveToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
   )
-  await aaveAsset.refresh()
 
   const compAsset: Asset = <Asset>(
     await (
       await ethers.getContractFactory('Asset')
     ).deploy(
-      PRICE_TIMEOUT,
+      fp('1'),
       networkConfig[chainId].chainlinkFeeds.COMP || '',
-      ORACLE_ERROR,
       compToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
   )
-  await compAsset.refresh()
-
   const rToken: TestIRToken = <TestIRToken>(
     await ethers.getContractAt('TestIRToken', await main.rToken())
   )
@@ -808,8 +856,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
+    oracleLib,
     compoundMock,
     aaveMock,
+    aaveToken,
+    compToken,
     config
   )
 
@@ -873,5 +924,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     facadeTest,
     rsrTrader,
     rTokenTrader,
+    oracleLib,
   }
 }

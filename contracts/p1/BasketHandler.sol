@@ -275,8 +275,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function status() public view returns (CollateralStatus status_) {
         uint256 size = basket.erc20s.length;
 
-        // untestable:
-        //      disabled is only set in _switchBasket, and only if size > 0.
         if (disabled || size == 0) return CollateralStatus.DISABLED;
 
         for (uint256 i = 0; i < size; ++i) {
@@ -305,67 +303,58 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
-    /// Should not revert
-    /// @return low {UoA/tok} The lower end of the price estimate
-    /// @return high {UoA/tok} The upper end of the price estimate
+    /// @param allowFallback Whether to fail over to the fallback price or not
+    /// @return isFallback If any fallback prices were used
+    /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function price() external view returns (uint192 low, uint192 high) {
-        return _price(false);
-    }
+    function price(bool allowFallback) external view returns (bool isFallback, uint192 p) {
+        uint256 length = basket.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
+            bool isFallback_; // Is this token's price a fallback price
+            uint192 price_; // This token's price
 
-    /// Should not revert
-    /// lowLow should be nonzero when the asset might be worth selling
-    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
-        return _price(true);
-    }
+            if (!allowFallback) {
+                (isFallback_, price_) = assetRegistry.toAsset(basket.erc20s[i]).price(
+                    allowFallback
+                );
+            } else {
+                try assetRegistry.toAsset(basket.erc20s[i]) returns (IAsset asset) {
+                    (isFallback_, price_) = asset.price(true);
+                } catch {
+                    isFallback_ = true;
+                    price_ = 0;
+                }
+            }
 
-    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
-    /// @return low {UoA/tok} The lower end of the lot price estimate
-    /// @return high {UoA/tok} The upper end of the lot price estimate
-    function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
-        uint256 low256;
-        uint256 high256;
-
-        uint256 len = basket.erc20s.length;
-        for (uint256 i = 0; i < len; ++i) {
+            isFallback = isFallback || isFallback_;
+            if (price_ == 0) continue;
             uint192 qty = quantity(basket.erc20s[i]);
-            if (qty == 0) continue;
 
-            (uint192 lowP, uint192 highP) = useLotPrice
-                ? assetRegistry.toAsset(basket.erc20s[i]).lotPrice()
-                : assetRegistry.toAsset(basket.erc20s[i]).price();
+            if (!allowFallback) {
+                p = p.plus(price_.mul(qty));
+            } else {
+                // if allowFallback, compute p := p + price * qty,
+                // but return FIX_MAX instead of throwing overflow errors.
+                unchecked {
+                    // price_, mul, and p *are* Fix values, so have 18 decimals (D18)
+                    uint256 rawDelta = uint256(price_) * qty; // {D36} = {D18} * {D18}
+                    // if we overflowed *, then return FIX_MAX
+                    if (rawDelta / price_ != qty) return (true, FIX_MAX);
 
-            low256 += quantityMulPrice(qty, lowP);
-            high256 += quantityMulPrice(qty, highP);
-        }
+                    // add in FIX_HALF for rounding
+                    uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
+                    if (shiftDelta < rawDelta) return (true, FIX_MAX);
 
-        low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
-        high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
-    }
+                    // delta = _div(rawDelta, FIX_ONE, ROUND)
+                    uint256 delta = shiftDelta / FIX_ONE; // {D18} = {D36} / {D18}
 
-    /// Multiply quantity by price, rounding up to FIX_MAX and down to 0
-    /// @param qty {tok/BU}
-    /// @param p {UoA/tok}
-    function quantityMulPrice(uint192 qty, uint192 p) internal pure returns (uint192) {
-        if (qty == 0 || p == 0) return 0;
-        if (qty == FIX_MAX || p == FIX_MAX) return FIX_MAX;
+                    uint256 nextP = p + delta; // {D18} = {D18} + {D18}
 
-        // return FIX_MAX instead of throwing overflow errors.
-        unchecked {
-            // p and mul *are* Fix values, so have 18 decimals (D18)
-            uint256 rawDelta = uint256(p) * qty; // {D36} = {D18} * {D18}
-            // if we overflowed *, then return FIX_MAX
-            if (rawDelta / p != qty) return FIX_MAX;
-
-            // add in FIX_HALF for rounding
-            uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
-            if (shiftDelta < rawDelta) return FIX_MAX;
-
-            // return _div(rawDelta, FIX_ONE, ROUND)
-            return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
+                    // if we overflowed +, or would otherwise overflow the downcast to uint192:
+                    if (nextP < delta || nextP > FIX_MAX) return (true, FIX_MAX);
+                    p = uint192(nextP);
+                }
+            }
         }
     }
 
@@ -633,10 +622,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
     /// has nonzero targetPerRef() and refPerTok(), and is not a system token or 0 addr
     function goodCollateral(bytes32 targetName, IERC20 erc20) private view returns (bool) {
-        // untestable:
-        //      All calls to goodCollateral pass an erc20 from the config or the backup.
-        //      Both setPrimeBasket and setBackupConfig must pass a call to requireValidCollArray,
-        //      which runs the 4 checks below.
         if (erc20 == IERC20(address(0))) return false;
         if (erc20 == rsr) return false;
         if (erc20 == IERC20(address(rToken))) return false;

@@ -7,7 +7,7 @@ import { getChainId } from '../common/blockchain-utils'
 import { IConfig, MAX_ISSUANCE_RATE } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
+import { setOraclePrice } from './utils/oracles'
 import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   ATokenFiatCollateral,
@@ -43,7 +43,6 @@ import {
   defaultFixture,
   Implementation,
   IMPLEMENTATION,
-  ORACLE_ERROR,
   SLOW,
   ORACLE_TIMEOUT,
 } from './fixtures'
@@ -75,7 +74,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let basket: Collateral[]
   let initialBasketNonce: BigNumber
   let rTokenAsset: RTokenAsset
-  let aaveToken: ERC20Mock
 
   // Config values
   let config: IConfig
@@ -183,7 +181,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     // Deploy fixture
     ;({
-      aaveToken,
       assetRegistry,
       backingManager,
       basket,
@@ -237,13 +234,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
       await rToken.connect(addr1).issue(fp('1'))
-      await expectRTokenPrice(
-        rTokenAsset.address,
-        fp('1'),
-        ORACLE_ERROR,
-        await backingManager.maxTradeSlippage(),
-        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
-      )
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
     })
 
     it('Should setup the DomainSeparator for Permit correctly', async () => {
@@ -668,13 +659,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price pre-issuance
-      await expectRTokenPrice(
-        rTokenAsset.address,
-        fp('1'),
-        ORACLE_ERROR,
-        await backingManager.maxTradeSlippage(),
-        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
-      )
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -979,7 +964,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
     })
 
-    it('Should return fully discounted price after full basket refresh', async () => {
+    it('Should return price 0 and trade min after full basket refresh', async () => {
+      // Note: To get RToken price to 0, a full basket refresh needs to occur
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
       // Set basket - Single token
@@ -987,26 +973,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price pre-issuance
-      await expectRTokenPrice(
-        rTokenAsset.address,
-        fp('1'),
-        ORACLE_ERROR,
-        await backingManager.maxTradeSlippage(),
-        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
-      )
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount))
-      await expectRTokenPrice(
-        rTokenAsset.address,
-        fp('1'),
-        ORACLE_ERROR,
-        await backingManager.maxTradeSlippage(),
-        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
-      )
+
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Perform a basket switch
@@ -1016,13 +991,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Should expect maxTradeSlippage + dust losses -- remember no insurance available
       // maxTradeSlippage + dust losses
-      // Recall the shortfall is calculated against high prices
-      await expectRTokenPrice(
-        rTokenAsset.address,
-        fp('1'),
-        ORACLE_ERROR,
-        await backingManager.maxTradeSlippage(),
-        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      const dustPriceImpact = fp('1').mul(config.minTradeVolume).div(issueAmount)
+      expect(await rTokenAsset.strictPrice()).to.equal(
+        fp('1').mul(99).div(100).sub(dustPriceImpact.mul(2))
       )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
@@ -2113,21 +2084,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Reward Claiming #fast', () => {
-    const issueAmt = bn('10000000e18')
-
-    beforeEach(async () => {
-      await token0.connect(owner).mint(addr1.address, issueAmt)
-      await token1.connect(owner).mint(addr1.address, issueAmt)
-      await token2.connect(owner).mint(addr1.address, issueAmt)
-      await token3.connect(owner).mint(addr1.address, issueAmt)
-
-      // Provide approvals for future issuances
-      await token0.connect(addr1).approve(rToken.address, issueAmt)
-      await token1.connect(addr1).approve(rToken.address, issueAmt)
-      await token2.connect(addr1).approve(rToken.address, issueAmt)
-      await token3.connect(addr1).approve(rToken.address, issueAmt)
-    })
-
     it('should not claim rewards when paused', async () => {
       await main.connect(owner).pause()
       await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
@@ -2138,14 +2094,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).freezeShort()
       await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
       await expect(rToken.claimRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
-    })
-
-    it('should claim a single reward', async () => {
-      const rewardAmt = bn('100e18')
-      await token2.setRewards(rToken.address, rewardAmt)
-      await rToken.claimRewardsSingle(token2.address)
-      const balAfter = await aaveToken.balanceOf(rToken.address)
-      expect(balAfter).to.equal(rewardAmt)
     })
   })
 

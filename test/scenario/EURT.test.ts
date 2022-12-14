@@ -12,6 +12,7 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
+  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIStRSR,
@@ -19,15 +20,7 @@ import {
   TestIRToken,
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
-import {
-  Collateral,
-  defaultFixture,
-  IMPLEMENTATION,
-  ORACLE_ERROR,
-  ORACLE_TIMEOUT,
-  PRICE_TIMEOUT,
-} from '../fixtures'
-import { expectPrice } from '../utils/oracles'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -64,6 +57,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -92,6 +86,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       basketHandler,
       rsrTrader,
       rTokenTrader,
+      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -106,20 +101,19 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('0.5e8')) // $0.50 / EURT
     )
     eurtCollateral = await (
-      await ethers.getContractFactory('EURFiatCollateral')
+      await ethers.getContractFactory('EURFiatCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
     ).deploy(
-      {
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: referenceUnitOracle.address,
-        oracleError: ORACLE_ERROR,
-        erc20: eurt.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('EURO'),
-        defaultThreshold: DEFAULT_THRESHOLD,
-        delayUntilDefault: DELAY_UNTIL_DEFAULT,
-      },
-      targetUnitOracle.address
+      fp('1'),
+      referenceUnitOracle.address,
+      targetUnitOracle.address,
+      eurt.address,
+      config.rTokenMaxTradeVolume,
+      ORACLE_TIMEOUT,
+      ethers.utils.formatBytes32String('EURO'),
+      DEFAULT_THRESHOLD,
+      DELAY_UNTIL_DEFAULT
     )
 
     // Basket configuration
@@ -186,7 +180,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
 
     it('should calculate price correctly', async () => {
       await referenceUnitOracle.updateAnswer(bn('0.475e8')) // 5% below peg
-      await expectPrice(eurtCollateral.address, fp('0.475'), ORACLE_ERROR, true)
+      expect(await eurtCollateral.strictPrice()).to.equal(fp('0.475'))
     })
 
     it('should redeem after EUR price increase for same quantities', async () => {

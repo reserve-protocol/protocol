@@ -20,7 +20,7 @@ import {
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { expectPrice, setOraclePrice } from './utils/oracles'
+import { setOraclePrice } from './utils/oracles'
 import { advanceTime } from './utils/time'
 import snapshotGasCost from './utils/snapshotGasCost'
 import {
@@ -48,13 +48,7 @@ import {
   TimelockController,
   USDCMock,
 } from '../typechain'
-import {
-  Collateral,
-  Implementation,
-  IMPLEMENTATION,
-  defaultFixture,
-  ORACLE_ERROR,
-} from './fixtures'
+import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
 import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -249,32 +243,6 @@ describe('FacadeWrite contract', () => {
     await expect(
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
     ).to.be.revertedWith('no collateral')
-  })
-
-  it('Should allow all rev share to go to RSR stakers', async () => {
-    rTokenSetup.beneficiaries = [
-      { beneficiary: beneficiary1.address, revShare: { rsrDist: bn(1), rTokenDist: bn(0) } },
-    ]
-    // Deploy RToken via FacadeWrite
-    const receipt = await (
-      await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
-    ).wait()
-
-    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main
-    main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
-  })
-
-  it('Should allow all rev share to go to RToken holders', async () => {
-    rTokenSetup.beneficiaries = [
-      { beneficiary: beneficiary1.address, revShare: { rsrDist: bn(0), rTokenDist: bn(1) } },
-    ]
-    // Deploy RToken via FacadeWrite
-    const receipt = await (
-      await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
-    ).wait()
-
-    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main
-    main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
   })
 
   describe('Deployment Process', () => {
@@ -528,7 +496,9 @@ describe('FacadeWrite contract', () => {
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
           // Check BU price
-          await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
+          const [isFallback, price] = await basketHandler.price(true)
+          expect(isFallback).to.equal(false)
+          expect(price).to.equal(fp('1'))
         })
 
         it('Should setup backup basket correctly', async () => {

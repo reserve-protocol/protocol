@@ -12,6 +12,7 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   NonFiatCollateral,
+  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIStRSR,
@@ -19,15 +20,7 @@ import {
   TestIRToken,
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
-import {
-  Collateral,
-  defaultFixture,
-  IMPLEMENTATION,
-  ORACLE_ERROR,
-  ORACLE_TIMEOUT,
-  PRICE_TIMEOUT,
-} from '../fixtures'
-import { expectPrice } from '../utils/oracles'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -66,6 +59,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -94,6 +88,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       basketHandler,
       rsrTrader,
       rTokenTrader,
+      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -108,20 +103,19 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // 1 WBTC/BTC
     )
     wbtcCollateral = await (
-      await ethers.getContractFactory('NonFiatCollateral')
+      await ethers.getContractFactory('NonFiatCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
     ).deploy(
-      {
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: referenceUnitOracle.address,
-        oracleError: ORACLE_ERROR,
-        erc20: wbtc.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('BTC'),
-        defaultThreshold: DEFAULT_THRESHOLD,
-        delayUntilDefault: DELAY_UNTIL_DEFAULT,
-      },
-      targetUnitOracle.address
+      fp('20000'),
+      referenceUnitOracle.address,
+      targetUnitOracle.address,
+      wbtc.address,
+      config.rTokenMaxTradeVolume,
+      ORACLE_TIMEOUT,
+      ethers.utils.formatBytes32String('BTC'),
+      DEFAULT_THRESHOLD,
+      DELAY_UNTIL_DEFAULT
     )
 
     // Backup
@@ -219,7 +213,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
     it('should calculate price correctly', async () => {
       await referenceUnitOracle.updateAnswer(bn('0.95e8')) // 5% below peg
       await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
-      await expectPrice(wbtcCollateral.address, fp('95000'), ORACLE_ERROR, true)
+      expect(await wbtcCollateral.strictPrice()).to.equal(fp('95000'))
     })
 
     it('should redeem after BTC price increase for same quantities', async () => {

@@ -23,10 +23,10 @@ library RewardableLibP1 {
     // actions:
     //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()")) for asset in assets
     function claimRewards(IAssetRegistry reg) external {
-        Registry memory registry = reg.getRegistry();
-        for (uint256 i = 0; i < registry.assets.length; ++i) {
+        (, IAsset[] memory assets) = reg.getRegistry();
+        for (uint256 i = 0; i < assets.length; ++i) {
             // Claim rewards via delegatecall
-            address(registry.assets[i]).functionDelegateCall(
+            address(assets[i]).functionDelegateCall(
                 abi.encodeWithSignature("claimRewards()"),
                 "rewards claim failed"
             );

@@ -126,8 +126,6 @@ contract GnosisTrade is ITrade {
         );
 
         // Gnosis EasyAuction requires minBuyAmtPerOrder > 0
-        // untestable:
-        //      Value will always be at least 1. Handled previously in the calling contracts.
         if (minBuyAmtPerOrder == 0) minBuyAmtPerOrder = 1;
 
         // == Interactions ==

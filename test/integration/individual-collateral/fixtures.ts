@@ -4,7 +4,7 @@ import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { IImplementations, IGovParams, networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
-import { Implementation, IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
+import { Implementation, IMPLEMENTATION } from '../../fixtures'
 import {
   Asset,
   AssetRegistryP1,
@@ -23,6 +23,7 @@ import {
   GnosisTrade,
   IGnosis,
   MainP1,
+  OracleLib,
   PermitLib,
   RevenueTraderP1,
   RTokenP1,
@@ -64,6 +65,7 @@ interface DefaultFixture extends RSRAndModuleFixture {
   facadeAct: FacadeAct
   facadeTest: FacadeTest
   facadeWrite: FacadeWrite
+  oracleLib: OracleLib
   govParams: IGovParams
 }
 
@@ -76,6 +78,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
+
+  // Deploy OracleLib external library
+  const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
+  const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
 
   // Deploy PermitLib external library
   const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
@@ -107,9 +113,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Deploy RSR Asset
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
   const rsrAsset: Asset = <Asset>await AssetFactory.deploy(
-    PRICE_TIMEOUT,
+    fp('0.007'),
     networkConfig[chainId].chainlinkFeeds.RSR || '',
-    ORACLE_ERROR,
     rsr.address,
     fp('1e6'), // max trade volume
     ORACLE_TIMEOUT
@@ -231,6 +236,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     facadeAct,
     facadeTest,
     facadeWrite,
+    oracleLib,
     govParams,
   }
 }

@@ -43,11 +43,12 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// Update the state of all assets
     /// @custom:refresher
     // actions: calls refresh(c) for c in keys(assets) when c.isCollateral()
-    function refresh() public {
+    function refresh() external {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
-            assets[IERC20(_erc20s.at(i))].refresh();
+            IAsset asset = assets[IERC20(_erc20s.at(i))];
+            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
         }
     }
 
@@ -75,9 +76,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
         uint192 quantity = basketHandler.quantity(asset.erc20());
 
-        if (quantity > 0) basketHandler.disableBasket();
-
         swapped = _registerIgnoringCollisions(asset);
+
+        if (quantity > 0) basketHandler.disableBasket();
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -129,15 +130,20 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
+    /// TODO decide whether to keep and use it in more places, or dump
     /// Returns keys(assets), values(assets) as (duplicate-free) lists.
     // returns: [keys(assets)], [values(assets)] without duplicates.
-    function getRegistry() external view returns (Registry memory reg) {
+    function getRegistry()
+        external
+        view
+        returns (IERC20[] memory erc20s_, IAsset[] memory assets_)
+    {
         uint256 length = _erc20s.length();
-        reg.erc20s = new IERC20[](length);
-        reg.assets = new IAsset[](length);
+        erc20s_ = new IERC20[](length);
+        assets_ = new IAsset[](length);
         for (uint256 i = 0; i < length; ++i) {
-            reg.erc20s[i] = IERC20(_erc20s.at(i));
-            reg.assets[i] = assets[IERC20(_erc20s.at(i))];
+            erc20s_[i] = IERC20(_erc20s.at(i));
+            assets_[i] = assets[IERC20(_erc20s.at(i))];
         }
     }
 
@@ -170,9 +176,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
         assets[erc20] = asset;
         emit AssetRegistered(erc20, asset);
-
-        // Refresh to ensure it does not revert, and to save a recent lastPrice
-        asset.refresh();
         return true;
     }
 

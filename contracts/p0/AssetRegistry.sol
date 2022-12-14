@@ -27,10 +27,11 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Force updates in all collateral assets
     /// @custom:refresher
-    function refresh() public {
+    function refresh() external {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         for (uint256 i = 0; i < _erc20s.length(); i++) {
-            assets[IERC20(_erc20s.at(i))].refresh();
+            IAsset asset = assets[IERC20(_erc20s.at(i))];
+            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
         }
     }
 
@@ -95,17 +96,22 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         }
     }
 
-    function getRegistry() external view returns (Registry memory reg) {
+    /// TODO decide whether to keep and use it in more places, or dump
+    function getRegistry()
+        external
+        view
+        returns (IERC20[] memory erc20s_, IAsset[] memory assets_)
+    {
         uint256 length = _erc20s.length();
-        reg.erc20s = new IERC20[](length);
-        reg.assets = new IAsset[](length);
+        erc20s_ = new IERC20[](length);
+        assets_ = new IAsset[](length);
         for (uint256 i = 0; i < length; ++i) {
-            reg.erc20s[i] = IERC20(_erc20s.at(i));
-            reg.assets[i] = assets[IERC20(_erc20s.at(i))];
-            assert(address(reg.erc20s[i]) != address(0));
-            assert(address(reg.assets[i]) != address(0));
+            erc20s_[i] = IERC20(_erc20s.at(i));
+            assets_[i] = assets[IERC20(_erc20s.at(i))];
+            assert(address(erc20s_[i]) != address(0));
+            assert(address(assets_[i]) != address(0));
         }
-        assert(reg.erc20s.length == reg.assets.length);
+        assert(erc20s_.length == assets_.length);
     }
 
     //
@@ -122,9 +128,6 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Register an asset, unregistering any previous asset with the same ERC20.
     function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
-        // Refresh to ensure it does not revert, and to save a recent lastPrice
-        asset.refresh();
-
         if (_erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] == asset)
             return false;
 

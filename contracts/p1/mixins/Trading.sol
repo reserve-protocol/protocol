@@ -36,10 +36,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // tradesOpen = len(values(trades))
     // trades[sell] != 0 iff trade[sell] has been opened and not yet settled
 
-    // untestable:
-    //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
-    //      This function is only called inside other `init` functions, each of which is wrapped
-    //      in an `initializer` modifier, which would fail first.
     // solhint-disable-next-line func-name-mixedcase
     function __Trading_init(
         IMain main_,
@@ -132,17 +128,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         require(val <= MIN_TRADE_VOLUME, "invalid minTradeVolume");
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;
-    }
-
-    // === FixLib Helper ===
-
-    /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDivCeil(
-        uint192 x,
-        uint192 y,
-        uint192 z
-    ) external pure returns (uint192) {
-        return x.mulDiv(y, z, CEIL);
     }
 
     /**

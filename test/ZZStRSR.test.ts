@@ -786,28 +786,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should not withdraw if firstId >= endId', async () => {
-        const prevAddr1Balance = await rsr.balanceOf(addr1.address)
-
-        await advanceTime(stkWithdrawalDelay + 1)
-
-        // Withdraw
-        await stRSR.connect(addr1).withdraw(addr1.address, 1)
-
-        // Withdrawal was completed
-        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-        expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
-
-        // withdraw with same ID, nothing happens
-        await stRSR.connect(addr1).withdraw(addr1.address, 1)
-
-        // Nothing changed since second withdrawal
-        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-        expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
-      })
-
       it('Should withdraw after stakingWithdrawalDelay', async () => {
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
@@ -1116,7 +1094,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Rewards should not be handed out when frozen but staking should still work', async () => {
       await main.connect(owner).freezeLong()
       await advanceTime(Number(config.rewardPeriod) + 1)
-      await expect(stRSR.payoutRewards()).revertedWith('paused or frozen')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
@@ -2607,26 +2584,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
         expect(await stRSRVotes.getVotes(addr2.address)).to.equal(0)
       })
-    })
-  })
-
-  describe('(regressions)', () => {
-    it('avoids paying revenue to an empty stRSR population', async () => {
-      expect(await stRSR.totalSupply()).to.equal(0)
-
-      await advanceTime(600_000)
-      await rsr.mint(stRSR.address, bn('1e18'))
-      // If some RSR rewards have been cooking in stRSR for a while, but no one is there to collect,
-      await advanceTime(600_000)
-      await stRSR.payoutRewards()
-      await advanceTime(600_000)
-      await stRSR.payoutRewards()
-
-      // Then both totalStakes and stakeRSR should remain 0 after a few payoutRewards() calls
-      // And, so, if someone then stakes a bit, they just get 1:1 stRSR for staked RSR.
-      await rsr.connect(addr1).approve(stRSR.address, bn('1e18'))
-      await stRSR.connect(addr1).stake(bn('1e18'))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(bn('1e18'))
     })
   })
 
