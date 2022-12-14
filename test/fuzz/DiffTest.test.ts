@@ -8,6 +8,7 @@ import { fp } from '../../common/numbers'
 import * as sc from '../../typechain' // All smart contract types
 
 import { addr } from './common'
+import { advanceTime, advanceBlocks } from '../../test/utils/time'
 import { SHORT_FREEZER } from '../../common/constants'
 
 const user = (i: number) => addr((i + 1) * 0x10000)
@@ -285,8 +286,14 @@ describe('The Differential Testing scenario', () => {
       expect(await scenario.callStatic.echidna_brokerDisabledEqual()).to.be.true
     })
     it('regression: claimRewards does not rupture sync after one block', async () => {
-      await helpers.mine(10, 120) // pass some time
+      await advanceBlocks(10)
+      await advanceTime(120)
       await scenario.connect(alice).claimRewards(0)
+      expect(await scenario.callStatic.echidna_assetsEquivalent()).to.be.true
+    })
+    it('regression: setErrorState-then-claimRewards breaks assetsEquivalent', async () => {
+      await scenario.setErrorState(0, true, true)
+      await scenario.claimRewards(0)
       expect(await scenario.callStatic.echidna_assetsEquivalent()).to.be.true
     })
   })
