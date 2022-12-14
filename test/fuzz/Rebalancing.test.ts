@@ -6,7 +6,7 @@ import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../utils/impersonation'
 import { CollateralStatus, RoundingMode, TradeStatus } from '../../common/constants'
-import { advanceTime } from '../utils/time'
+import { advanceTime, advanceBlocks } from '../utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
@@ -1615,6 +1615,14 @@ describe('The Rebalancing scenario', () => {
       await scenario.unregisterAsset(0)
       await scenario.refreshBasket()
       expect(await scenario.callStatic.echidna_rebalancingProperties()).to.be.true
+    })
+
+    it('the rToken invariant had an underflowing index computation', async () => {
+      await scenario.connect(alice).issue(20_000n * exa)
+      await advanceTime(1)
+      await advanceBlocks(1)
+      await scenario.connect(alice).vestIssuance(1)
+      expect(await scenario.callStatic.echidna_rTokenInvariants()).to.be.true
     })
   })
 })

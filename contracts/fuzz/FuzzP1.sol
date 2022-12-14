@@ -410,11 +410,12 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
                 for (uint256 j = 0; j < queue.right; j++) {
                     if (j > 0 && queue.items[j].amtRToken <= queue.items[j - 1].amtRToken)
                         queueItemsProp = false;
-
                     if (queue.tokens.length != queue.items[j].deposits.length)
                         queueTokensProp = false;
                 }
-                if (queue.items[queue.right - 1].when > allVestAt) allVestProp = false;
+                if (queue.right > 0 && queue.items[queue.right - 1].when > allVestAt) {
+                    allVestProp = false;
+                }
             }
         }
 
