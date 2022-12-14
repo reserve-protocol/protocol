@@ -18,7 +18,6 @@ import "../interfaces/IStRSR.sol";
 import "../mixins/Versioned.sol";
 import "../plugins/assets/Asset.sol";
 import "../plugins/assets/RTokenAsset.sol";
-import "../plugins/assets/markets/RTokenMarket.sol";
 import "./Main.sol";
 import "../libraries/String.sol";
 

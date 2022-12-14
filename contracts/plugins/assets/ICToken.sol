@@ -6,6 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 /// Portion of external interface for CTokens
 // See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken is IERC20Metadata {
+    function mint(uint256 mintAmount) external;
+
+    function mint() external payable;
+
+    function redeem(uint256 redeemAmount) external;
+
     /// @dev From Compound Docs:
     /// The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
     function exchangeRateCurrent() external returns (uint256);

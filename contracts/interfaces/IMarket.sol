@@ -3,24 +3,18 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IMarket {
-    function enter(
-        IERC20 fromToken,
-        uint256 amountIn,
-        IERC20 toToken,
-        uint256 minAmountOut,
-        address swapTarget,
-        bytes calldata swapCallData,
-        address receiver
-    ) external payable returns (uint256 amountOut);
+struct MarketCall {
+    IERC20 fromToken;
+    uint256 amountIn;
+    IERC20 toToken;
+    uint256 minAmountOut;
+    address target;
+    uint256 value;
+    bytes data;
+}
 
-    function exit(
-        IERC20 fromToken,
-        uint256 amountIn,
-        IERC20 toToken,
-        uint256 minAmountOut,
-        address swapTarget,
-        bytes calldata swapCallData,
-        address receiver
-    ) external payable returns (uint256 amountOut);
+interface IMarket {
+    function enter(MarketCall calldata call) external payable returns (uint256 amountOut);
+
+    function exit(MarketCall calldata call) external payable returns (uint256 amountOut);
 }
