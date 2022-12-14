@@ -34,6 +34,7 @@ contract UniconvexNonFiatCollateral is UniconvexAbstractCollateral {
         )
     {}
 
+    /// Refresh exchange rates and update default status.
     function refresh() external override {
         if (alreadyDefaulted()) return;
 
