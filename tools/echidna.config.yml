@@ -13,7 +13,7 @@ prefix: echidna_
 # seqLen defines how many transactions are in a test sequence
 seqLen: 50
 # testLimit is the number of test sequences to run
-testLimit: 10000
+testLimit: 1000
 
 # estimateGas makes echidna perform analysis of maximum gas costs for functions (experimental)
 # estimateGas: false
@@ -29,7 +29,7 @@ maxGasprice: 0
 corpusDir: "echidna-corpus"
 
 # solcArgs allows special args to solc
-solcArgs: "optimize"
+# solcArgs: "optimize"
 
 # crytic: disable compilation from echidna-test!
 cryticArgs: ["--ignore-compile"]
