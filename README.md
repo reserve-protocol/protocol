@@ -1,6 +1,11 @@
+Reserve Protocol Launch Hackathon submission by Chainhackers
+
 [Twitter](https://twitter.com/ChainHackerClan)  
 [Telegram](https://t.me/utgardaloki)  
 [Discord](https://discord.gg/a5E9vWbp9R)  
+
+[UniswapV3UsdCollateral](contracts/plugins/uniswapv3/README.md)
+[Convex Curve Stable Pools Collateral + Convex Curve Volatile Pools Collateral](contracts/plugins/uniconvex/README.md)
 
 
 # Reserve Protocol

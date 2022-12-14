@@ -23,7 +23,7 @@ abstract contract UniswapV3Collateral is Collateral {
     uint8 public immutable underlyingERC20Decimals0;
     uint8 public immutable underlyingERC20Decimals1;
 
-    uint192 public immutable fallbackPriceSecondAsset; //TODO pass this as a parameter
+    uint192 public immutable fallbackPriceSecondAsset;
 
     constructor(
         uint192 fallbackPrice_,
@@ -48,7 +48,11 @@ abstract contract UniswapV3Collateral is Collateral {
     {
         require(
             address(chainlinkFeedSecondAsset_) != address(0),
-            "missing chainlink feed for second asset in pair"
+            "UniswapV3Collateral: missing Chainlink feed for second asset in pair"
+        );
+        require(
+            address(uniswapV3Wrapper_) != address(0),
+            "UniswapV3Collateral: uniswapV3Wrapper_ can't be 0"
         );
         fallbackPriceSecondAsset = fallbackPriceSecondAsset_;
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
@@ -117,10 +121,7 @@ abstract contract UniswapV3Collateral is Collateral {
         uint192 price1,
         uint256 liquidity
     ) internal pure returns (uint192) {
-        //TODO liquidity can be 10 ** 18 for some assets.
-        //Resulting price per one liquidity would have too bad precision. Need to check
-        uint256 priceScaled0 = FIX_ONE * (price0 * amount0) / liquidity / 10**decimals0;
-        uint256 priceScaled1 = FIX_ONE * (price1 * amount1) / liquidity / 10**decimals1;
-        return uint192(priceScaled0 + priceScaled1);
+        return uint192( ( FIX_ONE * price0 * amount0 / 10**decimals0 +
+                          FIX_ONE * price1 * amount1 / 10**decimals1 ) / liquidity );
     }
 }

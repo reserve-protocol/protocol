@@ -1,6 +1,6 @@
 # Uniswap V3 Collateral Plugins
 
-### Resources used
+### References
 [Uniswap V3 Whitepaper](https://uniswap.org/whitepaper-v3.pdf)  
 [Uniswap V3 Online Rewferencer](https://docs.uniswap.org/contracts/v3/reference/periphery/NonfungiblePositionManager)
 
@@ -27,7 +27,7 @@ is to provide the same behavior as a constant product pool on some range $[p_{a}
 
 ##### Synthetic target implementation details
 
-{tok} UniswapV3Wrapper [TODO link] ERC20 wrapping a Uniswap V3 non-fungible liquidity position. UniswapV3Wrapper contract holds the position token, manages increasing/decreasing liquidity by its holders, and distributes rewards from the position to wrapper holders according to their balances. The ERC20 wrapper token represents shared ownership of the single non-fungible Uniswap position owned by its contract. 
+{tok} [UniswapV3Wrapper](./UniswapV3Wrapper.sol) ERC20 wrapping a Uniswap V3 non-fungible liquidity position. UniswapV3Wrapper contract holds the position token, manages increasing/decreasing liquidity by its holders, and distributes rewards from the position to wrapper holders according to their balances. The ERC20 wrapper token represents shared ownership of the single non-fungible Uniswap position owned by its contract. 
 
 Increasing/decreasing liquidity is permissionless - any address can add liquidity to the wrapped position by spending the required assets after approving their spending to UniswapV3Wrapper, and any address can remove liquidity by burning owned wrapper tokens.
 
@@ -36,12 +36,12 @@ Increasing/decreasing liquidity is permissionless - any address can add liquidit
 Due to Uniswap V3 contracts being non-upgradeable and implementing rather straighforward math, keeping their invariant (1), it is safe to define its `targetPerRef()` as 1 (`FIX_ONE`)
 
 For the same reasons, `refPerTok()` will 
-* keep its value on liquidity added and taken away through UniswapV3Wrapper
-* grow on swaps when the asset ratio is within the fees receiving range due to fees being collecgted
-* keep its value when the asset ratio is outside the range
-* grow in the unlikely case when liquidity is added via Uniswap's NonFungiblePositionManager directly
+* keep its value unchanged on liquidity added and taken away through UniswapV3Wrapper
+* keep its value unchanged on swaps, both when the asset ratio is inside and outside the position's range, since in V3 swap fees aren't added to liquidity reserves, but claimed separately instead
+* grow in the unlikely case when liquidity is added via Uniswap's NonFungiblePositionManager directly, so that UniswapV3Wrapper does not know about it
 
 Removing liquidity without using UniswapV3Wrapper can't happen, since the contract creates the position when it's deployed and keeps it forever.
+The above sums up to `refPerTok` being non-decreasing.
 
 ##### IFFY/DISABLED status criteria
 
@@ -51,12 +51,12 @@ The contract sets `IFFY` status whenever one of the following is true:
 * price of one of the assets is unknown due to its oracle feed interaction being unsuccessful for any reason  
 * the pool is far enough from its 1:1 balance point, according to a disbalance threshold value defined on deploy
 
-The mechanism of transitioning from IFFY to DISABLED is inherited from `Collateral` [TODO src link]
-
+The mechanism of transitioning from IFFY to DISABLED is inherited from [Collateral](../assets/AbstractCollateral.sol)
 
 
 `claimRewards()` emits `RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount)`
-Rewards are claimed pro-rata between holders of the ERC20 wrapper token. Rewards distrubution mechanism is similar to that of [Aave Collateral Plugin TODO src link] simplified.
+Rewards are claimed pro rata between holders of the ERC20 wrapper token. Rewards distribution mechanism is similar to
+that of [Aave Collateral Plugin](../aave/StaticATokenLM.sol) simplified.
 
 `strictPrice()`
 Two oracle feeds are used to determine the price of the collateral.
@@ -72,30 +72,11 @@ In general case feeds are independent and do not guarantee calls to both feeds m
 
 Thus, the user can evaluate the cost of increasing liquidity in the wrapped position before doing so, even. The original implementation remained untouched. We should discuss this with `reserve`.
 
-`refPerTok()`
-//TODO
+##### Deployment
 
-`targetPerRef()`
-The target is the same as ref, so the rate is always constant equal to one
-
-Judging Criteria
-
-​ If there are multiple submissions in this category that meet all acceptance criteria, we will decide the grant winner based on the following judgments: ​
-
-    How clear, clean, and solidly-engineered is the implementation?
-    How gas-efficient is the implementation? The Reserve protocol makes heavy use of the refresh(), price(), and status() functions, for users’ sake these need to be especially efficient.
-    How easy is it to reason about what these Collateral plugins do?
-    Do we see technical or economic vulnerabilities in these plugins, and how severe are they?
-    Could these plugins be deployed and used on mainnet immediately, or are they missing prerequisites? For instance, do they require price feeds or trading mechanisms that don’t already exist?
-    How large is the range of significant, natural use cases covered by this set of Collateral plugins? Example of this further described below. ​
-
-For an illustration of “range of use cases,” when we implemented our Compound collateral plugins, we thought it important to implement three different kinds of Collateral contracts to capture three substantially different kinds of Compound-wrapped tokens:
-
-    Tokens where the underlying token is a fiatcoin, and the Collateral plugin should default if the underlying token’s price diverges from the target unit’s price. For instance, cUSDC is redeemable for USDC, and the plugin should default if USDC loses its peg to USD.
-    Tokens where the underlying token is pegged to some unstable asset, and the Collateral plugin should default if the underlying token’s price diverges from the target unit’s price. For instance, cWBTC has underlying token WBTC, and the plugin should default if WBTC loses its peg to BTC.
-    Tokens where the underlying token simply is the target asset, and requires no default check. For instance, cETH has underlying token ETH, and so the underlying token itself needs no default check.
-
-​ If we had implemented only one or two of these, the range of use cases would be notably smaller. The degree to which each Collateral plugin is configurable will also contribute to the range of use cases covered by the set of plugins. Again, we expect the already-existing Collateral plugins should be a good guide here. ​
-### notes TODO
-
-* price out of position bounds - TODO
+How does one configure and deploy an instance of the plugin?
+- Find or create a Uniswap liquidity pair of 2 assets - both USD stablecoins DAI, USDC
+- Choose a fee tier - at the moment of writing those are 0.01%, 0.05%, 0.3%, 1%, and a reward range
+- Deploy [UniswapV3Wrapper](./UniswapV3Wrapper.sol) with the values chosen above as `INonfungiblePositionManager.MintParams` passed to the constructor
+- Find feed addresses for both assets on [Chainlink](https://data.chain.link/ethereum/mainnet/stablecoins).
+- Deploy collateral using its constructor in the usual way
