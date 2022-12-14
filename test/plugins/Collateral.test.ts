@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
   ATokenFiatCollateral,
@@ -163,7 +163,7 @@ describe('Collateral contracts', () => {
       expect(await token.decimals()).to.equal(18)
       expect(await tokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT48)
       expect(await tokenCollateral.pegBottom()).to.equal(fp('1').sub(DEFAULT_THRESHOLD))
       expect(await tokenCollateral.pegTop()).to.equal(fp('1').add(DEFAULT_THRESHOLD))
       expect(await tokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
@@ -181,7 +181,7 @@ describe('Collateral contracts', () => {
       expect(await usdc.decimals()).to.equal(6)
       expect(await usdcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT48)
       expect(await usdcCollateral.pegBottom()).to.equal(fp('1').sub(DEFAULT_THRESHOLD))
       expect(await usdcCollateral.pegTop()).to.equal(fp('1').add(DEFAULT_THRESHOLD))
       expect(await usdcCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
@@ -199,7 +199,7 @@ describe('Collateral contracts', () => {
       expect(await aToken.decimals()).to.equal(18)
       expect(await aTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
       expect(await aTokenCollateral.pegBottom()).to.equal(fp('1').sub(DEFAULT_THRESHOLD))
       expect(await aTokenCollateral.pegTop()).to.equal(fp('1').add(DEFAULT_THRESHOLD))
       expect(await aTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
@@ -223,7 +223,7 @@ describe('Collateral contracts', () => {
       expect(await cToken.decimals()).to.equal(8)
       expect(await cTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
       expect(await cTokenCollateral.pegBottom()).to.equal(fp('1').sub(DEFAULT_THRESHOLD))
       expect(await cTokenCollateral.pegTop()).to.equal(fp('1').add(DEFAULT_THRESHOLD))
       expect(await cTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
@@ -548,10 +548,10 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       // Force updates (with no changes)
       await expect(tokenCollateral.refresh()).to.not.emit(
@@ -574,10 +574,10 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
     })
 
     it('Updates status in case of soft default', async () => {
@@ -589,10 +589,10 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       // Depeg one of the underlying tokens - Reducing price 20%
       // Should also impact on the aToken and cToken
@@ -603,7 +603,7 @@ describe('Collateral contracts', () => {
 
       await expect(usdcCollateral.refresh()).to.not.emit(usdcCollateral, 'CollateralStatusChanged')
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       const softDefaultCollaterals = [tokenCollateral, aTokenCollateral, cTokenCollateral]
       for (const coll of softDefaultCollaterals) {
@@ -655,10 +655,10 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       // Decrease rate for AToken and CToken, will disable collateral immediately
       await aToken.setExchangeRate(fp('0.99'))
@@ -670,11 +670,11 @@ describe('Collateral contracts', () => {
         'CollateralStatusChanged'
       )
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       await expect(usdcCollateral.refresh()).to.not.emit(usdcCollateral, 'CollateralStatusChanged')
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       const hardDefaultCollaterals = [aTokenCollateral, cTokenCollateral]
       for (const coll of hardDefaultCollaterals) {
@@ -955,7 +955,7 @@ describe('Collateral contracts', () => {
       // Get priceable info
       await nonFiatCollateral.refresh()
       expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await nonFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await nonFiatCollateral.whenDefault()).to.equal(MAX_UINT48)
       expect(await nonFiatCollateral.pegBottom()).to.equal(fp('1').sub(DEFAULT_THRESHOLD))
       expect(await nonFiatCollateral.pegTop()).to.equal(fp('1').add(DEFAULT_THRESHOLD))
       expect(await nonFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
@@ -1209,7 +1209,7 @@ describe('Collateral contracts', () => {
       await cTokenNonFiatCollateral.refresh()
 
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await cTokenNonFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await cTokenNonFiatCollateral.whenDefault()).to.equal(MAX_UINT48)
       expect(await cTokenNonFiatCollateral.pegBottom()).to.equal(fp('1').sub(DEFAULT_THRESHOLD))
       expect(await cTokenNonFiatCollateral.pegTop()).to.equal(fp('1').add(DEFAULT_THRESHOLD))
       expect(await cTokenNonFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
@@ -1581,7 +1581,7 @@ describe('Collateral contracts', () => {
       // Get priceable info
       await cTokenSelfReferentialCollateral.refresh()
       expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await cTokenSelfReferentialCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await cTokenSelfReferentialCollateral.whenDefault()).to.equal(MAX_UINT48)
       expect(await cTokenSelfReferentialCollateral.maxTradeVolume()).to.equal(
         config.rTokenMaxTradeVolume
       )
@@ -1781,7 +1781,7 @@ describe('Collateral contracts', () => {
       // Get priceable info
       await eurFiatCollateral.refresh()
       expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await eurFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await eurFiatCollateral.whenDefault()).to.equal(MAX_UINT48)
       expect(await eurFiatCollateral.pegBottom()).to.equal(fp('1').sub(DEFAULT_THRESHOLD))
       expect(await eurFiatCollateral.pegTop()).to.equal(fp('1').add(DEFAULT_THRESHOLD))
       expect(await eurFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)

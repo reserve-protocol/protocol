@@ -45,10 +45,10 @@ contract FiatCollateral is ICollateral, Asset {
     // _whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
     //                In this case, the asset may recover, reachiving _whenDefault == NEVER.
     // _whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 private constant NEVER = type(uint256).max;
-    uint256 private _whenDefault = NEVER;
+    uint48 private constant NEVER = type(uint48).max;
+    uint48 private _whenDefault = NEVER;
 
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
+    uint48 public immutable delayUntilDefault; // {s} e.g 86400
 
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
@@ -188,9 +188,12 @@ contract FiatCollateral is ICollateral, Asset {
         if (status_ == CollateralStatus.SOUND) {
             _whenDefault = NEVER;
         } else if (status_ == CollateralStatus.IFFY) {
-            _whenDefault = Math.min(block.timestamp + delayUntilDefault, _whenDefault);
+            uint256 sum = block.timestamp + delayUntilDefault;
+            if (sum >= NEVER) _whenDefault = NEVER;
+            else if (sum < _whenDefault) _whenDefault = uint48(sum);
+            // else: no change to _whenDefault
         } else if (status_ == CollateralStatus.DISABLED) {
-            _whenDefault = block.timestamp;
+            _whenDefault = uint48(block.timestamp);
         }
     }
 
