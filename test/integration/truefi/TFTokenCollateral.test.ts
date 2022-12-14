@@ -44,11 +44,9 @@ import forkBlockNumber from '../fork-block-numbers'
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet - we're pretending to be this person who has a LOT of tfUSDC
-// const holderTFUSDC = '0x663fdedb7fa953ddb4fbf778d2c77da497b7644a'
 const holderTFUSDC = '0x58f5f0684c381fcfc203d77b2bba468ebb29b098'
-// const holderTFUSDC = '0xec6c3fd795d6e6f202825ddb56e01b3c128b0b10'
 
-//USDC/USD Price Feed - Chainlink & BNB Mainnet
+// USDC/USD Price Feed - Chainlink & BNB Mainnet
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
@@ -270,6 +268,9 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(await truAsset.erc20()).to.equal(networkConfig[chainId].tokens.TRU)
       expect(await truToken.decimals()).to.equal(8)
       expect(await truAsset.strictPrice()).to.be.closeTo(fp('0.03748'), fp('0.005')) // Close to $0.03748 USD - Dec 2022
+      // claimRewards() should not actually claim any rewards for the user,
+      // Since there are no extra rewards for tfToken holders. Only staked tfUSDC tokens can farm rewards.
+      // Once we write a wrapper for staked tfUSDC, TRU token rewards can be claimed on staked tfUSDC.
       await expect(truAsset.claimRewards()).to.not.emit(truAsset, 'RewardsClaimed')
       expect(await truAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -282,16 +283,8 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(await tfUsdcCollateral.refPerTok()).to.be.closeTo(fp('1.1174'), fp('0.001'))
       expect(await tfUsdcCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await tfUsdcCollateral.pricePerTarget()).to.equal(fp('1'))
-      // the following assertion cannot always be true since Euler's TFToken->underlying exchange rates do not need to be updated via
-      // a write function, and hence refPerTok() will be different from its last read in a long enough timeframe even if refresh() wasn't
-      // called to update prevReferencePrice. ??????????
-      //expect(await tfUsdcCollateral.prevReferencePrice()).to.equal(await tfUsdcCollateral.refPerTok())
-      // commented, as there is no reason for prevReference price to be equal to the refPerTok.
+      expect(await tfUsdcCollateral.refPerTok()).to.gte(await tfUsdcCollateral.prevReferencePrice())
       expect(await tfUsdcCollateral.strictPrice()).to.be.closeTo(fp('1.1174'), fp('0.01')) // close to $1.0359
-
-      // claimRewards() should not actually claim any rewards for the user,
-      // since there are no extra rewards for TFToken holders ???????????????????
-      // expect(await tfUsdcCollateral.claimRewards()).to.not.emit(tfUsdcCollateral, 'RewardsClaimed')
 
       // Check claim data
       await expect(tfUsdcCollateral.claimRewards())
@@ -341,8 +334,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(price).to.be.closeTo(fp('1'), fp('0.015'))
 
       // Check RToken price
-      const issueAmount: BigNumber = bn('3e6') //????
-      //await tfUsdc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      const issueAmount: BigNumber = bn('3e6')
       await tfUsdc.connect(addr1).approve(rToken.address, issueAmount.mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
@@ -376,7 +368,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-
+      // Note: toBNDecimals is not required as the number of decimals is 6 in Tok and Ref
       await tfUsdc.connect(addr1).approve(rToken.address, issueAmount.mul(10))
 
       // Issue rTokens
@@ -389,8 +381,8 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       const balanceAddr1tfUsdc: BigNumber = await tfUsdc.balanceOf(addr1.address)
 
       // Check rates and prices
-      const tfUsdcPrice1: BigNumber = await tfUsdcCollateral.strictPrice() // ~ 0.022015 cents
-      const tfUsdcRefPerTok1: BigNumber = await tfUsdcCollateral.refPerTok() // ~ 0.022015 cents
+      const tfUsdcPrice1: BigNumber = await tfUsdcCollateral.strictPrice()
+      const tfUsdcRefPerTok1: BigNumber = await tfUsdcCollateral.refPerTok()
 
       expect(tfUsdcPrice1).to.be.closeTo(fp('1.1174'), fp('0.001'))
       expect(tfUsdcRefPerTok1).to.be.closeTo(fp('1.1174'), fp('0.001'))
@@ -436,8 +428,8 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(await tfUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const tfUsdcPrice3: BigNumber = await tfUsdcCollateral.strictPrice() // ~0.03294
-      const tfUsdcRefPerTok3: BigNumber = await tfUsdcCollateral.refPerTok() // ~0.03294
+      const tfUsdcPrice3: BigNumber = await tfUsdcCollateral.strictPrice()
+      const tfUsdcRefPerTok3: BigNumber = await tfUsdcCollateral.refPerTok()
 
       // Check rates and price increase
       expect(tfUsdcPrice3).to.be.gt(tfUsdcPrice2)
@@ -455,7 +447,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
 
       // Redeem Rtokens with the updated rates
       await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
-      console.log('after redeem')
       // Check funds were transferred
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
@@ -464,10 +455,10 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       const newBalanceAddr1tfUsdc: BigNumber = await tfUsdc.balanceOf(addr1.address)
 
       // Check received tokens represent ~1K in value at current prices
-      expect(newBalanceAddr1tfUsdc.sub(balanceAddr1tfUsdc)).to.be.closeTo(bn('883.3e6'), bn('10e6')) // ~1.192 * 838 ~= 1K (100% of basket)
+      expect(newBalanceAddr1tfUsdc.sub(balanceAddr1tfUsdc)).to.be.closeTo(bn('883.3e6'), bn('10e6'))
 
       // Check remainders in Backing Manager
-      expect(await tfUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn('11.7e6'), bn('10e6')) // ~= 13.2? usd in value
+      expect(await tfUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn('11.7e6'), bn('10e6'))
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
@@ -479,63 +470,70 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
 
   // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
   // claiming calls throughout the protocol are handled correctly and do not revert.
+  // The Rewards test that is commented from line #484 implements test for rewards claiming.
+  // Test on line #484 below can be used once we implement wrapper for staked tfUSDC.
+
   describe('Rewards', () => {
     it('Should be able to claim rewards (if applicable)', async () => {
-      // since there are no rewards to claim, we not check to see that it doesn't emit anything ?????????????
-      // const MIN_ISSUANCE_PER_BLOCK = bn('1000') //????
-      const MIN_ISSUANCE_PER_BLOCK = bn('10e6') //????
-      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-
-      // Try to claim rewards at this point - Nothing for Backing Manager
-      expect(await truToken.balanceOf(backingManager.address)).to.equal(0)
-
-      await expectEvents(backingManager.claimRewards(), [
-        {
-          contract: backingManager,
-          name: 'RewardsClaimed',
-          args: [truToken.address, bn(0)],
-          emitted: true,
-        },
-      ])
-
-      // No rewards so far
-      expect(await truToken.balanceOf(backingManager.address)).to.equal(0)
-
-      // Provide approvals for issuances
-      await tfUsdc.connect(addr1).approve(rToken.address, issueAmount.mul(100))
-
-      // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
-      // Check RTokens issued to user
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-
-      // Now we can claim rewards - check initial balance still 0
-      expect(await truToken.balanceOf(backingManager.address)).to.equal(0)
-
-      // Advance Time
-      await advanceTime(80000)
-
-      // Claim rewards
-      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-      // Check rewards both in COMP and stkAAVE ?????????
-      const rewardsTRU1: BigNumber = await truToken.balanceOf(backingManager.address)
-
-      expect(rewardsTRU1).to.be.gte(0) // as there may be accounts which didnt stake their tfUSDC, for them to reap TRU rewards, we choose greater than OR equal to Zero.
-
-      // Keep moving time
-      await advanceTime(360000)
-
-      // Get additional rewards
-      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-      const rewardsTRU2: BigNumber = await truToken.balanceOf(backingManager.address)
-
-      expect(rewardsTRU2.sub(rewardsTRU1)).to.be.gte(0)
-      //as not every holder of tfUSDC stakes it for earning TRU.
+      // Since there are no rewards to claim, we not check to see that it doesn't emit anything
+      await expectEvents(backingManager.claimRewards(), [])
     })
   })
+
+  // describe('Rewards', () => {
+  //   it('Should be able to claim rewards (if applicable)', async () => {
+  //     const MIN_ISSUANCE_PER_BLOCK = bn('10e6')
+  //     const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+
+  //     // Try to claim rewards at this point - Nothing for Backing Manager
+  //     expect(await truToken.balanceOf(backingManager.address)).to.equal(0)
+
+  //     await expectEvents(backingManager.claimRewards(), [
+  //       {
+  //         contract: backingManager,
+  //         name: 'RewardsClaimed',
+  //         args: [truToken.address, bn(0)],
+  //         emitted: true,
+  //       },
+  //     ])
+
+  //     // No rewards so far
+  //     expect(await truToken.balanceOf(backingManager.address)).to.equal(0)
+
+  //     // Provide approvals for issuances
+  //     await tfUsdc.connect(addr1).approve(rToken.address, issueAmount.mul(100))
+
+  //     // Issue rTokens
+  //     await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+  //     // Check RTokens issued to user
+  //     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+  //     // Now we can claim rewards - check initial balance still 0
+  //     expect(await truToken.balanceOf(backingManager.address)).to.equal(0)
+
+  //     // Advance Time
+  //     await advanceTime(80000)
+
+  //     // Claim rewards
+  //     await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+
+  //     const rewardsTRU1: BigNumber = await truToken.balanceOf(backingManager.address)
+
+  //     expect(rewardsTRU1).to.be.gte(0) // as there may be accounts which didnt stake their tfUSDC, for them to reap TRU rewards, we choose greater than OR equal to Zero.
+
+  //     // Keep moving time
+  //     await advanceTime(360000)
+
+  //     // Get additional rewards
+  //     await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+
+  //     const rewardsTRU2: BigNumber = await truToken.balanceOf(backingManager.address)
+
+  //     expect(rewardsTRU2.sub(rewardsTRU1)).to.be.gte(0)
+  //     // As not every holder of tfUSDC stakes it for earning TRU.
+  //   })
+  // })
 
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
@@ -577,7 +575,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       await expect(nonpriceTFTokenCollateral.refresh()).to.be.reverted
       expect(await nonpriceTFTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // go forward in time and blocks to get around gas limit error during deployment ???
+      // Go forward in time and blocks to get around gas limit error during deployment
       await advanceTime(1)
       await advanceBlocks(10)
 
@@ -704,14 +702,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       // Check initial state
       expect(await newTFUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newTFUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
-      //console.log(await newTFUsdcCollateral.refPerTok())
-
-      // await tfUsdcMock.setExchangeRate(fp('1.09')) // we want to expect that it is still SOUND when it only increases.
-      // await newTFUsdcCollateral.refresh()
-
-      // expect(await newTFUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // expect(await newTFUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
       // Decrease rate for tfUSDC, will disable collateral immediately
       await tfUsdcMock.setExchangeRate(fp('1.08'))

@@ -121,14 +121,22 @@ contract TFTokenCollateral is Collateral {
         return pv.div(ts);
     }
 
-    // / Claim rewards earned by holding a balance of the ERC20 token
-    // / @dev delegatecall
+    /// Claim rewards earned by holding staked tfUSDC token.
+    /// Wrapper for staked tfUSDC is required for this.
+    /// Currently, the wrapper is not implemented yet.
+    /// Once wrapper is done, the parts commented in the claimRewards() function
+    /// can be uncommented making appropriate changes to enable claiming of rewards.
+    /// The calls to the TrueMultiFarm contract are correct.
+    /// @dev delegatecall
     function claimRewards() external virtual override {
         IERC20 tru = IERC20(trufarm.rewardToken());
-        uint256 amount = trufarm.claimable(address(erc20), address(this));
-        address[] memory tokens_ = new address[](1);
-        tokens_[0] = address(erc20);
-        trufarm.claim(tokens_);
+        // uint256 amount = trufarm.claimable(address(erc20), address(this));
+        // address[] memory tokens_ = new address[](1);
+        // tokens_[0] = address(erc20);
+        // trufarm.claim(tokens_);
+        // emit RewardsClaimed(tru, amount);
+
+        uint256 amount = 0;
         emit RewardsClaimed(tru, amount);
     }
 }
