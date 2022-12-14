@@ -3,9 +3,7 @@
     <a href="https://imzapping.in/#/issuance?token=0xc3ac2836FadAD8076bfB583150447a8629658591" target="_blank"><img src="https://i.imgur.com/e0jwg5i.jpg" width="80%" alt="Reserve Zap Splash"/></a>
   </p>
 
-  <div align="center">
-    <img width="70%" src="https://i.imgur.com/6KUXaZ6.gif" />
-  </div>
+https://user-images.githubusercontent.com/71284258/207502695-e6e86985-01b9-4b60-91f6-68dcfac2a207.mov
 
 <div align="center">
   <div align="center">
@@ -41,7 +39,7 @@ The demo at <a href="https://imzapping.in/#/issuance?token=0xc3ac2836FadAD8076bf
 | Variable | Value |
 |--------------|------------------------------------------------------|
 | Network Name | Forked ETH |
-| RPC URL | https://d343-2001-569-7bc0-ff00-5c0d-1d4f-4d68-a9a0.ngrok.io |
+| RPC URL | https://104c-2001-569-7bc0-ff00-2c6f-76a6-dbc9-f8e0.ngrok.io |
 | Chain ID | 31337 |
 | Symbol | ETH |
 
