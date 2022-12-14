@@ -6,6 +6,12 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/goldfinch/IGoldfinch.sol";
 
+/**
+ * @title GoldfinchStakingWrapper
+ * @notice FIDU only earns GFI rewards when staked in a Synthetix-style staking contract.
+ * These positions are not inherently transferable, so this contract facilitates wrapping staked
+ * positions into an `erc20` token for use in a collateral adapter
+ **/
 contract GoldfinchStakingWrapper is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -40,18 +46,34 @@ contract GoldfinchStakingWrapper is ERC20, ReentrancyGuard {
         return 18;
     }
 
+    /**
+     * @notice Deposits FIDU in the staking contract and mints wFIDU to msg.sender
+     * @param _to The address that will receive the wFIDU
+     * @param _amount The amount of FIDU to deposit (== amount minted)
+     **/
     function deposit(address _to, uint256 _amount) external nonReentrant {
         _deposit(msg.sender, _to, _amount);
     }
 
+    /**
+     * @notice Burns `amount` of wFIDU, with sender receiving the corresponding amount of FIDU
+     * @param _amount The amount to withdraw
+     **/
     function withdraw(uint256 _amount) external nonReentrant {
         _withdraw(msg.sender, _amount);
     }
 
+    /**
+     * @notice Claims rewards from goldfinchStaking and updates internal accounting of rewards.
+     */
     function collectAndUpdateRewards() external nonReentrant {
         _collectAndUpdateRewards();
     }
 
+    /**
+     * @notice Get the total claimable rewards of the contract.
+     * @return The current balance + pending rewards from goldfinchStaking
+     */
     function getTotalClaimableRewards() external view returns (uint256) {
         if (tokenId == 0) return 0;
 
@@ -59,6 +81,11 @@ contract GoldfinchStakingWrapper is ERC20, ReentrancyGuard {
         return REWARD_TOKEN.balanceOf(address(this)) + freshRewards;
     }
 
+    /**
+     * @notice Get the total claimable rewards for a user
+     * @param user The address of the user
+     * @return The claimable amount of rewards
+     */
     function getClaimableRewards(address user) external view returns (uint256) {
         return _getClaimableRewards(user, balanceOf(user), true);
     }
