@@ -366,7 +366,7 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await advanceTime(10000)
       await advanceBlocks(10000)
 
-      // Refresh cToken manually (required)
+      // Refresh tfToken manually (required)
       await tfUSDCCollateral.refresh()
       expect(await tfUSDCCollateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -392,7 +392,7 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await advanceTime(100000000)
       await advanceBlocks(100000000)
 
-      // Refresh cToken manually (required)
+      // Refresh tfToken manually (required)
       await tfUSDCCollateral.refresh()
       expect(await tfUSDCCollateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -421,7 +421,7 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
 
-      // Check balances - Fewer cTokens should have been sent to the user
+      // Check balances - Fewer tfTokens should have been sent to the user
       const newBalanceAddr1tfUSDC: BigNumber = await tfUSDC.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
@@ -464,8 +464,8 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await tfUSDCCollateral.refresh()
       expect(await tfUSDCCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // CTokens Collateral with no price
-      const nonpriceCtokenCollateral: TFLendingCollateral = <TFLendingCollateral>await (
+      // TfTokens Collateral with no price
+      const nonpriceTfTokenCollateral: TFLendingCollateral = <TFLendingCollateral>await (
         await ethers.getContractFactory('TFLendingCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
@@ -481,15 +481,15 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         loanDefaultThreshold
       )
 
-      // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenCollateral.strictPrice()).to.be.reverted
+      // TfTokens - Collateral with no price info should revert
+      await expect(nonpriceTfTokenCollateral.strictPrice()).to.be.reverted
 
       // Refresh should also revert - status is not modified
-      await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
-      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(nonpriceTfTokenCollateral.refresh()).to.be.reverted
+      expect(await nonpriceTfTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
-      const invalidpriceCtokenCollateral: TFLendingCollateral = <TFLendingCollateral>await (
+      const invalidpriceTfTokenCollateral: TFLendingCollateral = <TFLendingCollateral>await (
         await ethers.getContractFactory('TFLendingCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
@@ -505,16 +505,16 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         loanDefaultThreshold
       )
 
-      await setOraclePrice(invalidpriceCtokenCollateral.address, bn(0))
+      await setOraclePrice(invalidpriceTfTokenCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidpriceCtokenCollateral.strictPrice()).to.be.revertedWith(
+      await expect(invalidpriceTfTokenCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
       // Refresh should mark status IFFY
-      await invalidpriceCtokenCollateral.refresh()
-      expect(await invalidpriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await invalidpriceTfTokenCollateral.refresh()
+      expect(await invalidpriceTfTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -575,7 +575,7 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     })
 
     it('Updates status in case of loan default threshold passed', async () => {
-      // Note: In this case requires to use a CToken mock to be able to change the rate
+      // Note: In this case requires to use a TfToken mock to be able to change the rate
       const TrueFiPoolMockFactory: ContractFactory = await ethers.getContractFactory(
         'TrueFiPoolMock'
       )
@@ -639,7 +639,7 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
-      // Note: In this case requires to use a CToken mock to be able to change the rate
+      // Note: In this case requires to use a TfToken mock to be able to change the rate
       const TrueFiPoolMockFactory: ContractFactory = await ethers.getContractFactory(
         'TrueFiPoolMock'
       )
@@ -675,7 +675,7 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       // Decrease rate for tfUSDC, will disable collateral immediately
       await tfUSDCMock.setPoolValue(fp('10'))
 
-      // Force updates - Should update whenDefault and status for Atokens/CTokens
+      // Force updates - Should update whenDefault and status for Atokens/TfTokens
       await expect(newtfUSDCCollateral.refresh())
         .to.emit(newtfUSDCCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
@@ -693,7 +693,7 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
       )
 
-      const invalidCTokenCollateral: TFLendingCollateral = <TFLendingCollateral>(
+      const invalidTfTokenCollateral: TFLendingCollateral = <TFLendingCollateral>(
         await TFLendingCollateralFactory.deploy(
           fp('1'),
           invalidChainlinkFeed.address,
@@ -709,13 +709,13 @@ describeFork(`TFLendingCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidTfTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidTfTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidTfTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidTfTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 })
