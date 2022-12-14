@@ -954,7 +954,7 @@ contract DiffTestScenario {
             priceTimeout_: 806400,
             oracleError_: 0.005e18,
             defaultThreshold_: uint192(between(1, 1e18, defaultThresholdSeed)),
-            delayUntilDefault_: between(1, type(uint48).max/2, delayUntilDefaultSeed),
+            delayUntilDefault_: between(1, type(uint48).max / 2, delayUntilDefaultSeed),
             targetName_: targetName,
             refPerTokModel_: isStable ? growing : getNextPriceModel(),
             targetPerRefModel_: isStable ? justOne : getNextPriceModel(),
@@ -967,6 +967,21 @@ contract DiffTestScenario {
     // ================ Equivalence Properties ================
     // Absolute tolerance for differences due to rounding after sequences of <= 100 runs
     uint192 private constant EPSILON = 10_000;
+
+    // bring refreshers up-to-date with each other
+    function refreshBoth() internal {
+        bool failed0;
+        try p[0].poke() {} catch {
+            failed0 = true;
+        }
+
+        bool failed1;
+        try p[1].poke() {} catch {
+            failed1 = true;
+        }
+
+        require(failed0 == failed1, "Pokes failed differently");
+    }
 
     function echidna_assetRegistryInvariants() external view returns (bool) {
         return HasInv(address(p[1].assetRegistry())).invariantsHold();
@@ -1010,7 +1025,7 @@ contract DiffTestScenario {
 
     // ================ Equivalence tests ================
     function echidna_allTokensEqual() public returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         if (p[0].numUsers() != p[1].numUsers()) return false;
         if (p[0].numTokens() != p[1].numTokens()) return false;
@@ -1032,27 +1047,27 @@ contract DiffTestScenario {
     }
 
     function echidna_equalPaused() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         return TestIMain(address(p[0])).paused() == TestIMain(address(p[1])).paused();
     }
 
     // RToken
     function echidna_rTokenRedemptionLimitsEqual() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         return p[0].rToken().redemptionLimit() == p[1].rToken().redemptionLimit();
     }
 
     function echidna_basketsNeededEqual() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         return p[0].rToken().basketsNeeded() == p[1].rToken().basketsNeeded();
     }
 
     // StRSR: endIdForWithdraw(user), exchangeRate
     function echidna_StRSREndIdsEqual() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         uint256 N = p[0].numUsers();
         for (uint256 u = 0; u < N; u++) {
@@ -1065,14 +1080,14 @@ contract DiffTestScenario {
     }
 
     function echidna_stRSRExchangeRateEqual() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         return p[0].stRSR().exchangeRate() == p[1].stRSR().exchangeRate();
     }
 
     // AssetRegistry: isRegsietered(token), <isAsset(token)>, <isCollateral(token)>
     function assetsEqualPrices(IAsset a, IAsset b) public returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         (uint192 aLow, uint192 aHigh) = a.price();
         (uint192 bLow, uint192 bHigh) = b.price();
@@ -1087,7 +1102,7 @@ contract DiffTestScenario {
     }
 
     function echidna_assetsEquivalent() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
         uint256 N = p[0].numTokens() + 3;
         for (uint256 i = 0; i < N; i++) {
             IERC20 t0 = p[0].someToken(i);
@@ -1117,7 +1132,7 @@ contract DiffTestScenario {
     }
 
     function echidna_bhEqualThunks() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
@@ -1130,7 +1145,7 @@ contract DiffTestScenario {
     }
 
     function echidna_bhEqualPrices() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         (uint192 aLow, uint192 aHigh) = p[0].basketHandler().price();
         (uint192 bLow, uint192 bHigh) = p[1].basketHandler().price();
@@ -1141,7 +1156,7 @@ contract DiffTestScenario {
     }
 
     function echidna_bhEqualQty() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
@@ -1157,7 +1172,7 @@ contract DiffTestScenario {
     }
 
     function echidna_bhEqualBasketsHeld() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
@@ -1172,7 +1187,7 @@ contract DiffTestScenario {
     }
 
     function echidna_bhEqualQuotes() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
@@ -1194,7 +1209,7 @@ contract DiffTestScenario {
 
     // Distributor
     function echidna_distributorEqual() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         RevenueTotals memory t0 = p[0].distributor().totals();
         RevenueTotals memory t1 = p[1].distributor().totals();
@@ -1203,7 +1218,7 @@ contract DiffTestScenario {
 
     // Broker
     function echidna_brokerDisabledEqual() external returns (bool) {
-        p[0].poke(); p[1].poke();
+        refreshBoth();
 
         return p[0].broker().disabled() == p[1].broker().disabled();
     }

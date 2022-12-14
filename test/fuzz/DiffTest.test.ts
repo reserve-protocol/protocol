@@ -285,16 +285,24 @@ describe('The Differential Testing scenario', () => {
       expect(await scenario.callStatic.echidna_distributorEqual()).to.be.true
       expect(await scenario.callStatic.echidna_brokerDisabledEqual()).to.be.true
     })
-    it('regression: claimRewards does not rupture sync after one block', async () => {
+  })
+
+  describe('avoids the regression in which', () => {
+    it('claimRewards breaks sync after one block', async () => {
       await advanceBlocks(10)
       await advanceTime(120)
       await scenario.connect(alice).claimRewards(0)
       expect(await scenario.callStatic.echidna_assetsEquivalent()).to.be.true
     })
-    it('regression: setErrorState-then-claimRewards breaks assetsEquivalent', async () => {
+    it('setErrorState and then claimRewards breaks assetsEquivalent', async () => {
       await scenario.setErrorState(0, true, true)
       await scenario.claimRewards(0)
       expect(await scenario.callStatic.echidna_assetsEquivalent()).to.be.true
+    })
+    it('pausing breaks sync', async () => {
+      await scenario.grantRole(3, 0)
+      await scenario.connect(alice).pause()
+      expect(await scenario.callStatic.echidna_distributorEqual()).to.be.true
     })
   })
 })
