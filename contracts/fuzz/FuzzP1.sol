@@ -424,6 +424,7 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
 
 contract StRSRP1Fuzz is StRSRP1 {
     // A range of plausibly-valid IDs for withdraw()
+    // Half-open range: i is a valid ID for withdraw() iff left <= i < right
     function idRange(address user) public view returns (uint256 left, uint256 right) {
         left = firstRemainingDraft[draftEra][user];
         right = draftQueues[draftEra][user].length;
@@ -432,12 +433,9 @@ contract StRSRP1Fuzz is StRSRP1 {
     function draftSum(address user) public view returns (uint256) {
         CumulativeDraft[] storage queue = draftQueues[draftEra][user];
         (uint256 left, uint256 right) = idRange(user);
-        if (right == 0) return 0;
-        if (right - left > 1) {
-            return uint256(queue[right - 1].drafts - queue[left].drafts);
-        } else {
-            return queue[left].drafts;
-        }
+        uint256 lowDrafts = (left == 0) ? 0 : queue[left - 1].drafts;
+        uint256 hiDrafts = (right == 0) ? 0 : queue[right - 1].drafts;
+        return hiDrafts - lowDrafts;
     }
 
     function invariantsHold() external view returns (bool) {

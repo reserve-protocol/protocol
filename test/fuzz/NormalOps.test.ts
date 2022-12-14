@@ -811,4 +811,15 @@ describe('The Normal Operations scenario', () => {
     await scenario.payRSRProfits()
     expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
   })
+
+  it('does not have out-of-bounds access in stRSRInvariants ', async () => {
+    await scenario.connect(alice).stake(1)
+    await scenario.connect(alice).unstake(1)
+    await advanceTime(1213957)
+    await scenario.connect(alice).withdrawAvailable()
+    const [left, right] = await comp.stRSR.idRange(alice.address)
+    console.log(`indices are left=${left.toNumber()} and right=${right.toNumber()}`)
+    expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
+    // fails due to Panic(0x32), out-of-bounds array access
+  })
 })
