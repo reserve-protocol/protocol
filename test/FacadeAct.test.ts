@@ -212,7 +212,7 @@ describe('FacadeAct contract', () => {
       await cToken.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
     })
 
     it('No call required', async () => {
@@ -536,7 +536,7 @@ describe('FacadeAct contract', () => {
         )
     })
 
-    it('Revenues - Should handle asses with invalid claim logic', async () => {
+    it('Revenues - Should handle assets with invalid claim logic', async () => {
       // Redeem all RTokens
       await rToken.connect(addr1).redeem(issueAmount)
 

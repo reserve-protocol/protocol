@@ -180,7 +180,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // Mint revenue RToken and update `basketsNeeded`
         // across this block:
         //   where rate(R) == R.basketsNeeded / R.totalSupply,
-        //   rate(rToken') >= rate(rToken)
+        //   rate(rToken') >== rate(rToken)
         //   (>== is "no less than, and nearly equal to")
         //    and rToken'.basketsNeeded <= basketHandler.basketsHeldBy(this)
         // and rToken'.totalSupply is maximal satisfying this.

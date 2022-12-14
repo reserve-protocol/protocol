@@ -141,7 +141,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
     // Mint RToken
     await token0.connect(addr1).approve(rToken.address, initialBal)
-    await rToken.connect(addr1).issue(initialBal)
+    await rToken.connect(addr1)['issue(uint256)'](initialBal)
     expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal)
 
     // Stake RSR
@@ -185,10 +185,10 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       // Should not be able to re-issue at the same quantities
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
       await token0.connect(addr1).approve(rToken.address, initialBal.div(2))
-      await expect(rToken.connect(addr1).issue(initialBal.div(2))).to.be.reverted
+      await expect(rToken.connect(addr1)['issue(uint256)'](initialBal.div(2))).to.be.reverted
 
       // Should be able to issue at larger quantities
-      await rToken.connect(addr1).issue(initialBal.div(4))
+      await rToken.connect(addr1)['issue(uint256)'](initialBal.div(4))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.mul(3).div(4))
       expect(await token0.balanceOf(addr1.address)).to.be.lt(initialBal.div(4))
       expect(await token0.balanceOf(addr1.address)).to.be.gt(initialBal.div(6))
@@ -258,7 +258,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
       // Should be able to re-issue the same amount of RToken, despite depeg
       await token0.connect(addr1).approve(rToken.address, initialBal.div(2))
-      await rToken.connect(addr1).issue(initialBal.div(2))
+      await rToken.connect(addr1)['issue(uint256)'](initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal)
     })
 

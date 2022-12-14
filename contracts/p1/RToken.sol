@@ -49,7 +49,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // Always, issuanceRate <= MAX_ISSUANCE_RATE = FIX_ONE
     uint192 public issuanceRate;
 
-    // also: battery.redemptionRateFloor + battery.scalingRedemptionRate
+    // the following governance parameters exist inside the Battery struct:
+    //      battery.redemptionRateFloor
+    //      battery.scalingRedemptionRate
 
     // ==== End Governance Params ====
 
@@ -95,7 +97,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // Redemption throttle
     RedemptionBatteryLib.Battery private battery;
 
-    // {ERC20: {qTok} owed to Issuers}
+    // {ERC20: {qTok} owed to Recipients}
     // During reward sweeping, we sweep token balances - liabilities
     mapping(IERC20 => uint256) private liabilities;
 
@@ -121,9 +123,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //
     // We define a (partial) ordering on IssueItems: item1 < item2 iff the following all hold:
     //   item1.when < item2.when
-    //   item2.amtRToken < item2.amtRToken
+    //   item1.amtRToken < item2.amtRToken
     //   item1.amtBaskets < item2.amtBaskets
-    //   for all valid indices i, item1[i].deposits < item2[i].deposits
+    //   for all valid indices i, item1.deposits[i] < item2.deposits[i]
     //
     // And, in fact, item2 - item1 is then well-defined (and also piecewise).
     //
@@ -169,24 +171,24 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         setRedemptionRateFloor(redemptionRateFloor_);
     }
 
-    /// Convenience function for msg.sender to issue RTokens and maintain API compability
+    /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
-    /// @custom:interaction nearly CEI, see comments in issue(address,uint256) below for details
+    /// @custom:interaction nearly CEI, but see comments around handling of refunds
     function issue(uint256 amtRToken) external {
         issue(_msgSender(), amtRToken);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
-    /// @param recipient The recipient of the issued RTokens
+    /// @param recipient The address to receive the issued RTokens
     /// @param amtRToken {qTok} The quantity of RToken to issue
-    /// @return mintedAmount {qTok} The quantity of RToken instantly minted
+    /// @return mintedAmount {qTok} The amount of RTokens minted (instantly issued)
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
     function issue(address recipient, uint256 amtRToken)
         public
         notPausedOrFrozen
         returns (uint256)
     {
-        require(amtRToken != 0, "Cannot issue zero");
+        require(amtRToken > 0, "Cannot issue zero");
 
         // == Refresh ==
         assetRegistry.refresh();
@@ -244,7 +246,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // just do a "quick issuance" of iss instead of putting the issuance in the queue:
         // effects and actions if we go this way are the combined actions to create and vest iss:
         //   basketsNeeded += iss.amtBaskets
-        //   mint(issuer, iss.amtRToken)
+        //   mint(recipient, iss.amtRToken)
         //   for each token index i, erc20s[i].transferFrom(issuer, backingManager, iss.deposits[i])
         if (
             // D18{blocks} <= D18{1} * {blocks}
@@ -263,7 +265,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
             // == Interactions then return: transfer tokens ==
             // Complete issuance
-            _mint(issuer, amtRToken);
+            _mint(recipient, amtRToken);
+
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,
@@ -271,14 +274,15 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
                     deposits[i]
                 );
             }
+
+            // All RTokens instantly issued
             return amtRToken;
         }
 
         // ==== Otherwise, we're going to create and enqueue the issuance "iss":
         // effects and actions down this route are:
-        //   lastItem'(issuer) = lastItem(issuer) + iss
+        //   lastItem'(recipient) = lastItem(recipient) + iss
         //   for each token index i, erc20s[i].transferFrom(issuer, this, iss.deposits[i])
-
         // Append issuance to queue (whether that needs a new allocation with push() or not)
         IssueItem storage curr = (queue.right < queue.items.length)
             ? queue.items[queue.right]
@@ -331,7 +335,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
 
-        // Return 0 since nothing was minted immediately
+        // No RTokens instantly issued
         return 0;
     }
 
@@ -393,6 +397,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Cancel some vesting issuance(s)
+    /// Only callable by the account owner
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
@@ -439,7 +444,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // == Checks and Effects ==
         address redeemer = _msgSender();
-        require(balanceOf(redeemer) >= amount, "not enough RToken");
         // Allow redemption during IFFY + UNPRICED
         require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
@@ -485,7 +489,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
         // == Interactions ==
-        // Accept and burn RToken
+        // Accept and burn RToken, reverts if not enough balance to burn
         _burn(redeemer, amount);
 
         bool allZero = true;
@@ -557,8 +561,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // effects:
     //   bal'[caller] = bal[caller] - amtRToken
     //   totalSupply' = totalSupply - amtRToken
-    function melt(uint256 amtRToken) external {
-        requireNotPausedOrFrozen();
+    function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
         requireValidBUExchangeRate();
@@ -689,6 +692,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         } else if (queue.left < left && right == queue.right) {
             queue.right = left; // refund span from end
         } else {
+            // untestable:
+            //      All calls to refundSpan() use valid values for left and right.
+            //      queue.left <= left && right <= queue.right.
+            //      Any call to refundSpan() passes queue.left for left,
+            //      OR passes queue.right for right, OR both.
             revert("Bad refundSpan");
         } // error: can't remove [left,right) from the queue, and leave just one interval
 

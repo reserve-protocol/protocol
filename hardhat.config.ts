@@ -42,7 +42,7 @@ const config: HardhatUserConfig = {
     localhost: {
       // network for long-lived mainnet forks
       chainId: 31337,
-      url: 'http://localhost:8546',
+      url: 'http://127.0.0.1:8546',
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,

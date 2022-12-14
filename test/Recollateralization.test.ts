@@ -232,7 +232,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await backupToken2.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await rToken.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1)['issue(uint256)'](issueAmount)
       })
 
       it('Should select backup config correctly - Single backup token', async () => {
@@ -530,7 +530,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
         // Cannot issue because collateral is not sound
-        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket unsound')
+        await expect(rToken.connect(addr1)['issue(uint256)'](bn('1e18'))).to.be.revertedWith(
+          'basket unsound'
+        )
       })
 
       it('Should handle having invalid tokens in the backup configuration', async () => {
@@ -665,7 +667,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await backupToken1.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await rToken.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1)['issue(uint256)'](issueAmount)
       })
 
       it('Should select backup config correctly - EUR token', async () => {
@@ -777,7 +779,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
         // Cannot issue because collateral is not sound
-        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket unsound')
+        await expect(rToken.connect(addr1)['issue(uint256)'](bn('1e18'))).to.be.revertedWith(
+          'basket unsound'
+        )
       })
     })
   })
@@ -800,7 +804,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await token0.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await rToken.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
         // Stake some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -2504,7 +2508,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await backupToken2.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await rToken.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -3611,7 +3615,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await backupToken2.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
       // Mint some RSR
       await rsr.connect(owner).mint(addr1.address, initialBal)

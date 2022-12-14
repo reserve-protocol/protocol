@@ -170,11 +170,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   it('should act honestly without modification', async () => {
     const issueAmt = initialBal.div(100)
     await token0.connect(addr1).approve(rToken.address, issueAmt)
-    await rToken.connect(addr1).issue(issueAmt)
+    await rToken.connect(addr1)['issue(uint256)'](issueAmt)
     await rToken.connect(addr1).transfer(addr2.address, issueAmt)
     expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmt)
     await token0.connect(addr2).approve(rToken.address, issueAmt)
-    await rToken.connect(addr2).issue(issueAmt)
+    await rToken.connect(addr2)['issue(uint256)'](issueAmt)
     expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmt.mul(2))
     expect(await rToken.decimals()).to.equal(18)
   })
@@ -185,27 +185,31 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     beforeEach(async () => {
       issueAmt = initialBal.div(100)
       await token0.connect(addr1).approve(rToken.address, issueAmt)
-      await rToken.connect(addr1).issue(issueAmt)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmt)
       await token0.setRevertDecimals(true)
     })
 
     it('should revert during atomic issuance', async () => {
       await token0.connect(addr2).approve(rToken.address, issueAmt)
-      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('No Decimals')
+      await expect(rToken.connect(addr2)['issue(uint256)'](issueAmt)).to.be.revertedWith(
+        'No Decimals'
+      )
 
       // Should work now
       await token0.setRevertDecimals(false)
-      await rToken.connect(addr2).issue(issueAmt)
+      await rToken.connect(addr2)['issue(uint256)'](issueAmt)
     })
 
     it('should revert during slow issuance', async () => {
       issueAmt = initialBal.div(10)
       await token0.connect(addr2).approve(rToken.address, issueAmt)
-      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('No Decimals')
+      await expect(rToken.connect(addr2)['issue(uint256)'](issueAmt)).to.be.revertedWith(
+        'No Decimals'
+      )
 
       // Should work now
       await token0.setRevertDecimals(false)
-      await rToken.connect(addr2).issue(issueAmt)
+      await rToken.connect(addr2)['issue(uint256)'](issueAmt)
     })
 
     it('should revert during redemption', async () => {
@@ -277,30 +281,30 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     beforeEach(async () => {
       issueAmt = initialBal.div(100)
       await token0.connect(addr1).approve(rToken.address, issueAmt)
-      await rToken.connect(addr1).issue(issueAmt)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmt)
       await token0.setCensored(backingManager.address, true)
       await token0.setCensored(rToken.address, true)
     })
 
     it('should revert during atomic issuance', async () => {
       await token0.connect(addr2).approve(rToken.address, issueAmt)
-      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('censored')
+      await expect(rToken.connect(addr2)['issue(uint256)'](issueAmt)).to.be.revertedWith('censored')
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
       await token0.setCensored(rToken.address, false)
-      await rToken.connect(addr2).issue(issueAmt)
+      await rToken.connect(addr2)['issue(uint256)'](issueAmt)
     })
 
     it('should revert during slow issuance', async () => {
       issueAmt = initialBal.div(10) // over 1 block
       await token0.connect(addr2).approve(rToken.address, issueAmt)
-      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('censored')
+      await expect(rToken.connect(addr2)['issue(uint256)'](issueAmt)).to.be.revertedWith('censored')
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
       await token0.setCensored(rToken.address, false)
-      await rToken.connect(addr2).issue(issueAmt)
+      await rToken.connect(addr2)['issue(uint256)'](issueAmt)
     })
 
     it('should revert during redemption', async () => {

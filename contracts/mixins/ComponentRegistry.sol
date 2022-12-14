@@ -11,6 +11,10 @@ import "./Auth.sol";
  * @title ComponentRegistry
  */
 abstract contract ComponentRegistry is Initializable, Auth, IComponentRegistry {
+    // untestable:
+    //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
+    //      This function is only called inside other `init` functions, each of which is wrapped
+    //      in an `initializer` modifier, which would fail first.
     // solhint-disable-next-line func-name-mixedcase
     function __ComponentRegistry_init(Components memory components_) internal onlyInitializing {
         _setBackingManager(components_.backingManager);

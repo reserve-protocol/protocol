@@ -17,7 +17,7 @@ import "./mixins/Rewardable.sol";
 import "../vendor/ERC20PermitUpgradeable.sol";
 
 struct SlowIssuance {
-    address issuer;
+    address recipient;
     uint256 amount; // {qRTok}
     uint192 baskets; // {BU}
     address[] erc20s;
@@ -68,7 +68,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
 
     // === Liability Tracking ===
 
-    // {ERC20: {qTok} owed to Issuers}
+    // {ERC20: {qTok} owed to recipients}
     mapping(IERC20 => uint256) private liabilities;
 
     // === For P1 compatibility in testing ===
@@ -134,31 +134,31 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         battery.redemptionRateFloor = val;
     }
 
-    /// Begin a time-delayed issuance of RToken to msg.sender for basket collateral
+    /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issue(uint256 amount) external override {
-        issue(msg.sender, amount);
+    function issue(uint256 amount) external {
+        issue(_msgSender(), amount);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
-    /// @param recipient The account to receive the RToken
+    /// @param recipient The address to receive the issued RTokens
     /// @param amount {qTok} The quantity of RToken to issue
-    /// @return mintedAmount {qTok} The quantity of RToken instantly minted
+    /// @return mintedAmount {qToken} The quantity of RTokens minted in this transaction
     /// @custom:interaction
     function issue(address recipient, uint256 amount)
         public
-        override
         notPausedOrFrozen
-        returns (uint256)
+        returns (uint256 mintedAmount)
     {
-        require(amount != 0, "Cannot issue zero");
+        require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
 
         IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() == CollateralStatus.SOUND, "basket unsound");
 
+        address issuer = _msgSender();
         refundAndClearStaleIssuances(recipient);
 
         // Compute # of baskets to create `amount` qRTok
@@ -170,13 +170,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
             liabilities[IERC20(erc20s[i])] += deposits[i];
-            IERC20(erc20s[i]).safeTransferFrom(_msgSender(), address(this), deposits[i]);
+            IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
 
         // Add a new SlowIssuance ticket to the queue
         uint48 basketNonce = main.basketHandler().nonce();
         SlowIssuance memory iss = SlowIssuance({
-            issuer: recipient,
+            recipient: recipient,
             amount: amount,
             baskets: baskets,
             erc20s: erc20s,
@@ -190,7 +190,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
 
         uint256 index = issuances[recipient].length - 1;
         emit IssuanceStarted(
-            iss.issuer,
+            iss.recipient,
             index,
             iss.amount,
             iss.baskets,
@@ -210,9 +210,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             assert(vestedAmount == iss.amount);
             // Remove issuance
             issuances[recipient].pop();
-        }
 
-        return 0;
+            // Return the amount of RToken that was minted
+            mintedAmount = vestedAmount;
+        }
     }
 
     /// Cancels a vesting slow issuance
@@ -247,7 +248,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             if (!iss.processed) {
                 for (uint256 i = 0; i < iss.erc20s.length; i++) {
                     liabilities[IERC20(iss.erc20s[i])] -= iss.deposits[i];
-                    IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
+                    IERC20(iss.erc20s[i]).safeTransfer(iss.recipient, iss.deposits[i]);
                 }
                 amtRToken += iss.amount;
                 iss.processed = true;
@@ -318,7 +319,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     /// @custom:interaction
     function redeem(uint256 amount) external notFrozen {
         require(amount > 0, "Cannot redeem zero");
-        require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // Call collective state keepers.
         // notFrozen modifier requires we use only a subset of main.poke()
@@ -344,7 +344,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         // Revert if redemption exceeds battery capacity
         battery.discharge(totalSupply(), amount); // reverts on over-redemption
 
-        // Accept and burn RToken
+        // Accept and burn RToken, reverts if not enough balance
         _burn(_msgSender(), amount);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
@@ -439,8 +439,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
 
     /// Tries to vest an issuance
     /// @return issued The total amount of RToken minted
-    function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
-        SlowIssuance storage iss = issuances[issuer][index];
+    function tryVestIssuance(address recipient, uint256 index) internal returns (uint256 issued) {
+        SlowIssuance storage iss = issuances[recipient][index];
         uint48 basketNonce = main.basketHandler().nonce();
         require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not ready");
         assert(iss.basketNonce == basketNonce); // this should always be true at this point
@@ -450,7 +450,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
                 liabilities[IERC20(iss.erc20s[i])] -= iss.deposits[i];
                 IERC20(iss.erc20s[i]).safeTransfer(address(main.backingManager()), iss.deposits[i]);
             }
-            _mint(iss.issuer, iss.amount);
+            _mint(iss.recipient, iss.amount);
 
             issued = iss.amount;
 
@@ -458,7 +458,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             basketsNeeded = basketsNeeded.plus(iss.baskets);
 
             iss.processed = true;
-            emit Issuance(issuer, iss.amount, iss.baskets);
+            emit Issuance(recipient, iss.amount, iss.baskets);
         }
     }
 
@@ -494,7 +494,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
                 someProcessed = true;
 
                 for (uint256 j = 0; j < iss.erc20s.length; j++) {
-                    IERC20(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
+                    IERC20(iss.erc20s[j]).safeTransfer(iss.recipient, iss.deposits[j]);
                 }
                 iss.processed = true;
                 endIndex = i + 1;

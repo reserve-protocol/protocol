@@ -275,6 +275,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function status() public view returns (CollateralStatus status_) {
         uint256 size = basket.erc20s.length;
 
+        // untestable:
+        //      disabled is only set in _switchBasket, and only if size > 0.
         if (disabled || size == 0) return CollateralStatus.DISABLED;
 
         for (uint256 i = 0; i < size; ++i) {
@@ -631,6 +633,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
     /// has nonzero targetPerRef() and refPerTok(), and is not a system token or 0 addr
     function goodCollateral(bytes32 targetName, IERC20 erc20) private view returns (bool) {
+        // untestable:
+        //      All calls to goodCollateral pass an erc20 from the config or the backup.
+        //      Both setPrimeBasket and setBackupConfig must pass a call to requireValidCollArray,
+        //      which runs the 4 checks below.
         if (erc20 == IERC20(address(0))) return false;
         if (erc20 == rsr) return false;
         if (erc20 == IERC20(address(rToken))) return false;
