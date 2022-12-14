@@ -18,7 +18,7 @@ Contract source code: [UniconvexFiatCollateral](./UniconvexFiatCollateral.sol)
 $$\dfrac{D}{L}$$ 
 
 where 
-D = total amount of coins when the pool in in balanced state and all the coins have an equal price
+D = total amount of coins when the pool is in its balanced state and all the coins have an equal price
 L = total liquidity
 
 The constant D is the same as in StableSwap invariant (v1) 
@@ -34,25 +34,37 @@ The 3 bullet points above combined mean that `{ref}` keeps its value on every ki
 
 `{target}` = `{UoA}`
 
-UniconvexFiatCollateral is meant for tokens all of which are pegged to USD  DAI-USDC-USDT
+[Convex Curve Fiat Collateral](./UniconvexFiatCollateral) is meant to be used with tokens all of which are pegged to USD  DAI-USDC-USDT
+and in stable Curve pools - v1, 3pool
 Expected: 
 * {tok} == {ref}
 * {ref} is pegged to {target}, otherwise the collateral defaults on refresh
 * {target} == {UoA}
 
-UniconvexNonFiatCollateral can be used with any convex pool to claim rewards like stable pools which should no be retargeted or crypto pools like USDT-BTC-WETH
-* Expected: {tok} == {ref}, {ref} is pegged to {target} or defaulting, {target} != {UoA}
-
 How does one configure and deploy an instance of the plugin?
 - Choose assets - stablecoins pegged to USD like DAI, USDC, USDT
-- Choose Curve pool containing your assets of choice and mint Curve LP tokens
+- Choose Curve pool - `v1` or `3pool` containing your assets of choice and mint Curve LP tokens
 - Choose Convex pool, stake Curve LP tokens to get your Convex LP tokens
 - Curve (Convex) supports 2+ assets in pools. So you need prepare feeds for each asset, find the required addresses on [Chainlink](https://data.chain.link/ethereum/mainnet/stablecoins)
 - Deploy collateral using its constructor in the usual way
 
 
-If the deployer should plug in price feeds, what units does your plugin expect those price feeds to be stated in?
- {UoA}/ {Curve Coin(i)}
+## Convex Curve Non Fiat Collateral
+
+[Convex Curve Non Fiat Collateral](./UniconvexNonFiatCollateral) is meant for to be used with volatile assets in Curve pools 
+like Tricrypto. It will work with fiat stablecoins and stable pools like v1 and 3pool.
+The choice between the two should be made based on economic considerations. 
+
+
+UniconvexNonFiatCollateral can be used with any convex pool to claim rewards like stable pools which should no be retargeted or crypto pools like USDT-BTC-WETH
+* Expected: {tok} == {ref}, {ref} is pegged to {target} or defaulting, {target} != {UoA}
+
+How does one configure and deploy an instance of the plugin?
+- Choose assets - stablecoins or volatile, can be mixed -  in a volatile pool like Tricrypto
+- Mint Curve LP tokens in the pool of choice
+- Choose Convex pool, stake Curve LP tokens to get your Convex LP tokens
+- Curve (Convex) supports 2+ assets in pools. So you need prepare feeds for each asset, find the required addresses on [Chainlink](https://data.chain.link/ethereum/mainnet/stablecoins)
+- Deploy collateral using its constructor in the usual way
 
 #### Why should the value (reference units per collateral token) decrease only in exceptional circumstances?
 see "Implementation details and behavior" section above
