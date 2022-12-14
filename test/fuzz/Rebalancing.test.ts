@@ -1608,4 +1608,13 @@ describe('The Rebalancing scenario', () => {
     await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
+
+  describe('contains the fix for the bug where', () => {
+    it('manageTokens() reverting due to an invalid BU rate violates expectations', async () => {
+      await scenario.connect(alice).issue(1)
+      await scenario.unregisterAsset(0)
+      await scenario.refreshBasket()
+      expect(await scenario.callStatic.echidna_rebalancingProperties()).to.be.true
+    })
+  })
 })

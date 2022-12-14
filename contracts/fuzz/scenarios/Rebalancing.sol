@@ -927,7 +927,7 @@ contract RebalancingScenario {
                 priceTimeout_: 806400,
                 oracleError_: 0.005e18,
                 defaultThreshold_: uint192(between(1, 1e18, defaultThresholdSeed)),
-                delayUntilDefault_: between(1, type(uint48).max/2, delayUntilDefaultSeed),
+                delayUntilDefault_: between(1, type(uint48).max / 2, delayUntilDefaultSeed),
                 targetName_: targetName,
                 refPerTokModel_: isStable ? growing : getNextPriceModel(),
                 targetPerRefModel_: isStable ? justOne : getNextPriceModel(),
@@ -1103,23 +1103,30 @@ contract RebalancingScenario {
             // Save Tokens in surplus and deficit (excludes RSR)
             bm.saveSurplusAndDeficitTokens();
 
-            // Create trade if required
-            manageBackingTokens();
+            // Create trade, if able and needed
+            try this.manageBackingTokens() {
+                // Check if new trade was created
+                if (bm.tradesOpen() > tradesBMPrev && broker.tradesLength() > tradesBrokerPrev) {
+                    TradeMock trade = TradeMock(address(broker.lastOpenedTrade()));
 
-            // Check if new trade was created
-            if (bm.tradesOpen() > tradesBMPrev && broker.tradesLength() > tradesBrokerPrev) {
-                TradeMock trade = TradeMock(address(broker.lastOpenedTrade()));
+                    bool valid = bm.isValidSurplusToken(trade.sell()) &&
+                        bm.isValidDeficitToken(trade.buy());
+                    // Check auctioned tokens
+                    if (!valid) return false;
 
-                // Check auctioned tokens
-                if (!bm.isValidSurplusToken(trade.sell()) || !bm.isValidDeficitToken(trade.buy()))
-                    return false;
+                    // Settle trades
+                    trade.allowInstantSettlement();
+                    settleTrades();
 
-                // Settle trades
-                trade.allowInstantSettlement();
-                settleTrades();
-
-                // Check Range
-                return bm.isBasketRangeSmaller();
+                    // Check Range
+                    return bm.isBasketRangeSmaller();
+                }
+            } catch Error(string memory reason) {
+                if (
+                    keccak256(abi.encodePacked(reason)) ==
+                    keccak256(abi.encodePacked("BU rate out of range"))
+                ) return true;
+                else revert(reason);
             }
         }
         return true;
