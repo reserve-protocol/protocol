@@ -6,7 +6,7 @@ import "./IUniswapV3Wrapper.sol";
 import "./UniswapV3Collateral.sol";
 
 /**
-    @title Uniswap V3 Collateral
+    @title Uniswap V3 Non Fiat Collateral
     @notice Collateral plugin for non-fiat Uniswap V3 positions
     @notice Requires Uniswap V3 Wrapper to be deployed first to wrap the position used
     @author Gene A. Tsvigun

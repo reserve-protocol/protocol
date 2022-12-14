@@ -23,7 +23,7 @@ abstract contract UniswapV3Collateral is Collateral {
     uint8 public immutable underlyingERC20Decimals0;
     uint8 public immutable underlyingERC20Decimals1;
 
-    uint192 public immutable fallbackPriceSecondAsset; //TODO pass this as a parameter
+    uint192 public immutable fallbackPriceSecondAsset;
 
     constructor(
         uint192 fallbackPrice_,
@@ -48,7 +48,11 @@ abstract contract UniswapV3Collateral is Collateral {
     {
         require(
             address(chainlinkFeedSecondAsset_) != address(0),
-            "missing chainlink feed for second asset in pair"
+            "UniswapV3Collateral: missing Chainlink feed for second asset in pair"
+        );
+        require(
+            address(uniswapV3Wrapper_) != address(0),
+            "UniswapV3Collateral: uniswapV3Wrapper_ can't be 0"
         );
         fallbackPriceSecondAsset = fallbackPriceSecondAsset_;
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;

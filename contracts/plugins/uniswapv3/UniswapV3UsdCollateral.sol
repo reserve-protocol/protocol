@@ -6,7 +6,6 @@ import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "hardhat/console.sol";
 import "contracts/libraries/Fixed.sol";
 
 import "./IUniswapV3Wrapper.sol";
@@ -14,7 +13,7 @@ import "./UniswapV3Collateral.sol";
 
 /**
     @title Uniswap V3 USD Collateral
-    @notice Collateral plugin for non-fiat Uniswap V3 positions
+    @notice Collateral plugin for Uniswap V3 positions with USD stablecoins as both assets
     @notice Requires Uniswap V3 Wrapper to be deployed first to wrap the position used
     @author Gene A. Tsvigun
     @author Vic G. Larson
@@ -28,8 +27,18 @@ contract UniswapV3UsdCollateral is UniswapV3Collateral {
     uint192 public immutable defaultThreshold;
 
     /**
-     * @param tickThreshold_ max acceptable absolute value of difference with Uniswap pool tick
-     * 10 means ~0.1%, 100 means ~1% price difference from the optimum 1:1 pool state
+        @param fallbackPrice_ Fallback price for the first collateral asset
+        @param fallbackPriceSecondAsset_ Fallback price for the second collateral asset
+        @param chainlinkFeed_ Chainlink feed for the first collateral asset
+        @param chainlinkFeedSecondAsset_ Chainlink feed for the second collateral asset
+        @param uniswapV3Wrapper_ Uniswap V3 wrapper for the position used as collateral
+        @param maxTradeVolume_ Max RToken trade volume
+        @param oracleTimeout_ Oracle timeout used for price feeds interaction
+        @param targetName_ { target } Target name
+        @param defaultThreshold_ Maximum deviation from the reference price for any of the assets in the Curve pool
+        @param tickThreshold_ max acceptable absolute value of difference with Uniswap pool tick
+               10 means ~0.1%, 100 means ~1% price difference from the optimum 1:1 pool state
+        @param delayUntilDefault_ Delay until default
      */
     constructor(
         uint192 fallbackPrice_,
