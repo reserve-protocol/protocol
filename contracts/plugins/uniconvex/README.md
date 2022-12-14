@@ -34,8 +34,11 @@ The 3 bullet points above combined mean that `{ref}` keeps its value on every ki
 
 `{target}` = `{UoA}`
 
-UniconvexFiatCollateral for tokens pegged to usd or eurocoins like stable pools DAI-USDC-USDT
-* Expected: {tok} == {ref}, {ref} is pegged to {target} or defaults, {target} == {UoA}
+UniconvexFiatCollateral is meant for tokens all of which are pegged to USD  DAI-USDC-USDT
+Expected: 
+* {tok} == {ref}
+* {ref} is pegged to {target}, otherwise the collateral defaults on refresh
+* {target} == {UoA}
 
 UniconvexNonFiatCollateral can be used with any convex pool to claim rewards like stable pools which should no be retargeted or crypto pools like USDT-BTC-WETH
 * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaulting, {target} != {UoA}
