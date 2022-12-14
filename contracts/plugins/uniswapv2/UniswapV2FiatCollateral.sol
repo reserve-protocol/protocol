@@ -93,5 +93,17 @@ contract UniswapV2FiatCollateral is UniswapV2AbstractCollateral {
             emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
+
+    /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
+    /// {target} = {UoA} and {ref} = {tok}
+    /// The same as strictPrice when price of assets equal to pricePerTarget()
+    function targetPerRef() public view override returns (uint192) {
+        IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
+        return
+            uint192(
+                (FIX_ONE * 10 ** 18 * 2) /
+                    Math.sqrt(10 ** (IERC20Metadata(pair.token0()).decimals() + IERC20Metadata(pair.token1()).decimals()))
+            );
+    }
     
 }

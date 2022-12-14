@@ -304,7 +304,7 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const expectedRefPerTok = fp(sqrt(reserve0.mul(reserve1))).div(totalSupply)
             expect(await uniswapV2FiatCollateral.refPerTok()).to.equal(expectedRefPerTok)
 
-            expect(await uniswapV2FiatCollateral.targetPerRef()).to.equal(fp("1"))
+            expect(await uniswapV2FiatCollateral.targetPerRef()).to.equal(fp("2e12"))
             expect(await uniswapV2FiatCollateral.pricePerTarget()).to.equal(fp("1"))
             const liquidity = await pair.balanceOf(addr1.address)
             expect(await uniswapV2FiatCollateral.strictPrice()).closeTo(pow10(18).mul(fp('200')).div(liquidity), pow10(32))
