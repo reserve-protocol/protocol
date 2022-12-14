@@ -47,8 +47,8 @@ How does one configure and deploy an instance of the plugin?
 - Choose assets - stablecoins pegged to USD like DAI, USDC, USDT
 - Choose Curve pool containing your assets of choice and mint Curve LP tokens
 - Choose Convex pool, stake Curve LP tokens to get your Convex LP tokens
-- Deploy collateral using constructor in the usual way
-- Curve (Convex) supports 2+ assets in pools. So you need prepare feed for each asset.
+- Curve (Convex) supports 2+ assets in pools. So you need prepare feeds for each asset, find the required addresses on [Chainlink](https://data.chain.link/ethereum/mainnet/stablecoins)
+- Deploy collateral using its constructor in the usual way
 
 
 If the deployer should plug in price feeds, what units does your plugin expect those price feeds to be stated in?
