@@ -89,7 +89,7 @@ contract UniconvexFiatCollateral is UniconvexAbstractCollateral {
         } else {
             // peg = FIX_ONE for {target} = {UoA}, not hardcoded because it can be overridden in
             // a collateral contract meant for {target} = {UoA}, where `targetPerRef` will be different from 1
-            uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+            uint192 peg = pricePerTarget() / FIX_ONE;
             uint192 delta = (peg * defaultThreshold) / FIX_ONE;
 
             anyPriceOutOfBoundsOrUnknown(peg, delta) || poolIsAwayFromOptimalPoint(peg, delta)

@@ -68,7 +68,7 @@ contract UniswapV2FiatCollateral is UniswapV2AbstractCollateral {
             try chainlinkFeedSecondAsset.price_(oracleTimeout) returns (uint192 price1) {
                 console.log("price0", price0);
                 console.log("price1", price1);
-                uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+                uint192 peg = pricePerTarget() / FIX_ONE;
                 uint192 delta = (peg * defaultThreshold) / FIX_ONE;
                 if (
                     priceNotInBounds(price0, peg, delta) ||
