@@ -32,6 +32,7 @@ export interface ITokens {
   WBTC?: string
   EURT?: string
   RSR?: string
+  FIDU?: string // Goldfinch Senior Pool AKA FIDU
 }
 
 interface INetworkConfig {
@@ -44,6 +45,7 @@ interface INetworkConfig {
   COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  GOLDFINCH_SENIOR_POOL?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -81,6 +83,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
+      FIDU: '0x6a445E9F40e0b97c92d0b8a3366cEF1d67F700BF',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -104,6 +107,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    GOLDFINCH_SENIOR_POOL: '0x8481a6EbAf5c7DABc3F7e09e44A89531fd31F822',
   },
   '3': {
     name: 'ropsten',
@@ -141,6 +145,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
+      FIDU: '0x6a445E9F40e0b97c92d0b8a3366cEF1d67F700BF',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -161,6 +166,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    GOLDFINCH_SENIOR_POOL: '0x8481a6EbAf5c7DABc3F7e09e44A89531fd31F822',
   },
   '5': {
     name: 'goerli',
@@ -289,7 +295,7 @@ export interface IRTokenSetup {
   primaryBasket: string[]
   weights: BigNumber[]
   backups: IBackupInfo[]
-  beneficiaries: IBeneficiaryInfo[]
+  beneficiaries: IBeneficiaryInfo[] | string
 }
 
 export interface IGovParams {
