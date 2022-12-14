@@ -314,18 +314,18 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await UniswapV3UsdCollateral.targetName()).to.equal(targetName)
             expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
             expect(await UniswapV3UsdCollateral.whenDefault()).to.equal(MAX_UINT256)
-            //expect(await UniswapV3UsdCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+            expect(await UniswapV3UsdCollateral.defaultThreshold()).to.equal(pow10(16).mul(5))
             expect(await UniswapV3UsdCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
             expect(await UniswapV3UsdCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
             expect(await UniswapV3UsdCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
             expect(await UniswapV3UsdCollateral.refPerTok()).to.equal(fp("1"))
-            expect(await UniswapV3UsdCollateral.targetPerRef()).to.equal(fp("1"))
             expect(await UniswapV3UsdCollateral.pricePerTarget()).to.equal(fp("1"))
             const positions = await uniswapV3WrapperMock.positions()
             expect(await UniswapV3UsdCollateral.strictPrice()).closeTo(
                 fp("200").mul(bn("1e18")).div(positions.liquidity),
                 bn("1e19")
             )
+            expect(await UniswapV3UsdCollateral.targetPerRef()).closeTo(pow10(24).mul(2), bn("1e17"))
             expect(await UniswapV3UsdCollateral.strictPrice()).to.be.closeTo(
                 await UniswapV3UsdCollateral._fallbackPrice(), bn("1e17")
             )

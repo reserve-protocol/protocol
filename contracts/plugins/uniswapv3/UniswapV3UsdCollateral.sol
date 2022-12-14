@@ -79,12 +79,23 @@ contract UniswapV3UsdCollateral is UniswapV3Collateral {
         markStatus(newStatus);
     }
 
+    /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
+    /// {target} = {UoA} and {ref} = {tok}
+    /// The same as strictPrice when price of assets equal to pricePerTarget()
+    function targetPerRef() public view override returns (uint192) {
+        return
+            uint192(
+                (FIX_ONE * 10 ** 18 * 2) /
+                    Math.sqrt(10 ** (underlyingERC20Decimals0 + underlyingERC20Decimals1))
+            );
+    }
+
     /**
      * @notice Check if the current tick value the Uniswap pool
      * @notice in which the wrapped position is opened
      * @notice is within bounds
      * @dev the point of comparing ticks instead of calculating price deviation
-     * @dev from price values is that price values are calculated 
+     * @dev from price values is that price values are calculated
      * @dev the tick value which is already stored in `pool.slot0`
      */
     function poolAwayFromOptimalPoint() internal view returns (bool) {
@@ -95,7 +106,7 @@ contract UniswapV3UsdCollateral is UniswapV3Collateral {
     /**
      * @notice Check if both prices are available to get from the feed
      * @notice and if they are within bounds
-     */    
+     */
     function pricesAwayFromPegOrUnknown() internal view returns (bool) {
         uint192 peg = pricePerTarget();
         uint192 delta = (peg * defaultThreshold) / FIX_ONE;
