@@ -180,7 +180,7 @@ contract FiatCollateral is ICollateral, Asset {
 
     function markStatus(CollateralStatus status_) internal {
         // untestable:
-        //      All calls to markStatus happen exlusively if the collateral is not already defaulted
+        //      All calls to markStatus happen exclusively if the collateral is not defaulted
         if (_whenDefault <= block.timestamp) return; // prevent DISABLED -> SOUND/IFFY
 
         // untestable:
