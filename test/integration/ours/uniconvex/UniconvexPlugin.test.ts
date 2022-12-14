@@ -320,6 +320,8 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     [asset0, asset1, asset2, lpToken, convexLpToken]
                 )
 
+                uniconvexCollateral.claimRewards();
+
                 const curveLpTokenLiquidity = await lpToken.connect(addr1).balanceOf(addr1.address)
                 const balance0before = await asset0.connect(addr1).balanceOf(addr1.address)
                 const balance1before = await asset1.connect(addr1).balanceOf(addr1.address)
@@ -396,6 +398,12 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
                 !isFiat && expect(await uniconvexCollateral.targetPerRef()).to.equal(fp("1"))
                 isFiat && expect(await uniconvexCollateral.pricePerTarget()).to.equal(fp("1"))
+
+                await waitForTx(await mockChainlinkFeeds[0].updateAnswer(fp("1").div(pow10(10))))
+                await waitForTx(await mockChainlinkFeeds[1].updateAnswer(fp("1").div(pow10(10))))
+                await waitForTx(await mockChainlinkFeeds[2].updateAnswer(fp("1").div(pow10(10))))
+                uniconvexCollateral.refresh()
+                expect(await uniconvexCollateral.status()).to.equal(CollateralStatus.SOUND)
             })
         }
     })
