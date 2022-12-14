@@ -33,6 +33,7 @@ export interface ITokens {
   EURT?: string
   RSR?: string
   GSP?: string // Goldfinch Senior Pool AKA FIDU
+  GFI?: string
 }
 
 interface INetworkConfig {
@@ -84,6 +85,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
       GSP: '0x6a445E9F40e0b97c92d0b8a3366cEF1d67F700BF',
+      GFI: '0xdab396cCF3d84Cf2D07C4454e10C8A6F5b008D2b',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',

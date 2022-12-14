@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/RevenueHiding.sol";
 import "contracts/plugins/goldfinch/IGoldfinch.sol";
 import "contracts/plugins/goldfinch/GoldfinchConfigOptions.sol";
+
+interface IGoldFinchStakingWrapper is IERC20Metadata {
+    function claimRewards(bool, address) external;
+
+    // solhint-disable-next-line func-name-mixedcase
+    function REWARD_TOKEN() external view returns (IERC20);
+}
 
 /**
  * @title GoldfinchSeniorPoolCollateral
@@ -63,6 +71,15 @@ contract GoldfinchSeniorPoolCollateral is RevenueHiding {
         ); // SHOULD remain at 200 (0.5% withdrawal fee)
 
         maxRefPerTok = actualRefPerTok();
+    }
+
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @dev delegatecall
+    function claimRewards() external virtual override {
+        IERC20 gfi = IGoldFinchStakingWrapper(address(erc20)).REWARD_TOKEN();
+        uint256 oldBal = gfi.balanceOf(address(this));
+        IGoldFinchStakingWrapper(address(erc20)).claimRewards(true, address(this));
+        emit RewardsClaimed(gfi, gfi.balanceOf(address(this)) - oldBal);
     }
 
     /// @dev Manual update to Goldfinch's withdrawal fee

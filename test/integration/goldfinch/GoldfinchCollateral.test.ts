@@ -37,31 +37,56 @@ import {
   TestIRToken,
   IGoldfinchLegacyConfig,
 } from '../../../typechain'
+import { GoldfinchStakingWrapper } from '@typechain/GoldfinchStakingWrapper'
+import forkBlockNumber from '../fork-block-numbers'
+import { useEnv } from '#/utils/env'
+import { UniV3OracleAsset } from '@typechain/UniV3OracleAsset'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
+// Setup test environment
+const setup = async (blockNumber: number) => {
+  // Use Mainnet fork
+  await hre.network.provider.request({
+    method: 'hardhat_reset',
+    params: [
+      {
+        forking: {
+          jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+          blockNumber: blockNumber,
+        },
+      },
+    ],
+  })
+}
+
 // Holder addresses in Mainnet
 const gspHolder = '0xb45b74eb35790d20e5f4225b0ac49d5bb074696e'
-const usdcHolder = '0xcffad3200574698b78f32232aa9d63eabd290703'
 
 const legacyGoldfinchList = '0x4eb844Ff521B4A964011ac8ecd42d500725C95CC'
 
 const goldfinchAdmin = '0xa083880f7a5df37bf00a25380c3eb9af9cd92d8f'
 const goldfinchTranchedPool = '0xc9bdd0d3b80cc6efe79a82d850f44ec9b55387ae'
 const goldfinchPoolAdmin = '0xd3207620a6c8c2dd2799b34833d6fa04444a40c7'
+
+const goldfinchStaking = '0xFD6FF39DA508d281C2d255e9bBBfAb34B6be60c3'
+
 const describeFork = process.env.FORK ? describe : describe.skip
 
 describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
+  let addr2: SignerWithAddress
 
   // Tokens/Assets
-  let usdc: ERC20Mock
   let gsp: ERC20Mock
+  let gfiToken: ERC20Mock
   let gspCollateral: GoldfinchSeniorPoolCollateral
+  let gspWrapper: GoldfinchStakingWrapper
   let goldfinch: IGoldfinchSeniorPool
   let rsr: ERC20Mock
   let rsrAsset: Asset
+  let gfiAsset: Asset
 
   // Core Contracts
   let main: TestIMain
@@ -112,8 +137,10 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
   let chainId: number
 
   let GoldfinchSeniorPoolCollateralFactory: ContractFactory
+  let GoldfinchStakingWrapperFactory: ContractFactory
 
   before(async () => {
+    await setup(forkBlockNumber.goldfinch)
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
 
@@ -124,7 +151,7 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
   })
 
   beforeEach(async () => {
-    ;[owner, addr1] = await ethers.getSigners()
+    ;[owner, addr1, addr2] = await ethers.getSigners()
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
       await loadFixture(defaultFixture))
 
@@ -135,14 +162,27 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       'IGoldfinchSeniorPool',
       networkConfig[chainId].GOLDFINCH_SENIOR_POOL || ''
     )
-    // USDC token
-    usdc = <ERC20Mock>(
-      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDC || '')
-    )
 
     // Goldfinch Senior Pool token (AKA FIDU)
     gsp = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.GSP || '')
+    )
+
+    // Goldfinch governance/rewards token
+    gfiToken = <ERC20Mock>(
+      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.GFI || '')
+    )
+
+    // Deploy Goldfinch Staking Wrapper
+    GoldfinchStakingWrapperFactory = await ethers.getContractFactory('GoldfinchStakingWrapper')
+
+    gspWrapper = <GoldfinchStakingWrapper>(
+      await GoldfinchStakingWrapperFactory.deploy(
+        'Goldfinch Staking Wrapper',
+        'wFIDU',
+        goldfinchStaking,
+        networkConfig[chainId].tokens.GSP
+      )
     )
 
     // Deploy Goldfinch SP collateral plugin
@@ -152,11 +192,25 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
         libraries: { OracleLib: oracleLib.address },
       }
     )
+
+    gfiAsset = <UniV3OracleAsset>(
+      await (
+        await ethers.getContractFactory('UniV3OracleAsset')
+      ).deploy(
+        fp('0.68'),
+        networkConfig[chainId].chainlinkFeeds.ETH || '',
+        gfiToken.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        networkConfig[chainId].tokens.WETH || ''
+      )
+    )
+
     gspCollateral = <GoldfinchSeniorPoolCollateral>(
       await GoldfinchSeniorPoolCollateralFactory.deploy(
         fp('1'),
         networkConfig[chainId].chainlinkFeeds.USDC as string,
-        gsp.address,
+        gspWrapper.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -173,18 +227,25 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
 
     await whileImpersonating(goldfinchAdmin, async (goldfinchAdminSigner) => {
       await goldfinchWhitelist.connect(goldfinchAdminSigner).addToGoList(addr1.address)
+      await goldfinchWhitelist.connect(goldfinchAdminSigner).addToGoList(addr2.address)
     })
 
-    // Setup balances for addr1 - Transfer from Mainnet holder
-    // GSP
+    // Setup GSP balances for addr1, addr2 - Transfer from Mainnet holder
+    // Addr1 has greater balance than addr2 to verify wrapper reward entitlements
     initialBal = bn('20000e18')
     await whileImpersonating(gspHolder, async (gspSigner) => {
       await gsp.connect(gspSigner).transfer(addr1.address, toBNDecimals(initialBal, 18))
+      await gsp.connect(gspSigner).transfer(addr2.address, toBNDecimals(initialBal.div(2), 18))
+      await gsp.connect(gspSigner).transfer(owner.address, toBNDecimals(initialBal.div(2), 18))
     })
 
-    await whileImpersonating(usdcHolder, async (usdcSigner) => {
-      await usdc.connect(usdcSigner).transfer(goldfinchTranchedPool, toBNDecimals(initialBal, 6))
-    })
+    await gsp.connect(addr1).approve(gspWrapper.address, toBNDecimals(initialBal, 18).mul(100))
+    await gsp
+      .connect(addr2)
+      .approve(gspWrapper.address, toBNDecimals(initialBal.div(2), 18).mul(100))
+
+    await gspWrapper.connect(addr1).deposit(addr1.address, toBNDecimals(initialBal, 18))
+    await gspWrapper.connect(addr2).deposit(addr2.address, toBNDecimals(initialBal.div(2), 18))
 
     // Set parameters
     const rTokenConfig: IRTokenConfig = {
@@ -196,12 +257,11 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
 
     // Set primary basket
     const rTokenSetup: IRTokenSetup = {
-      assets: [],
+      assets: [gfiAsset.address],
       primaryBasket: [gspCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries: [],
     }
 
     // Deploy RToken via FacadeWrite
@@ -243,17 +303,26 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
   describe('Deployment', () => {
     // Check the initial state
     it('Should setup RToken, Collateral correctly', async () => {
+      expect(await gfiAsset.isCollateral()).to.equal(false)
+      expect(await gfiAsset.erc20()).to.equal(gfiToken.address)
+      expect(await gfiAsset.erc20()).to.equal(networkConfig[chainId].tokens.GFI)
+      expect(await gfiToken.decimals()).to.equal(18)
+      expect(await gfiAsset.strictPrice()).to.be.closeTo(fp('0.68'), fp('0.05'))
+
+      await expect(gfiAsset.claimRewards()).to.not.emit(gfiAsset, 'RewardsClaimed')
+      expect(await gfiAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+
       // Check Collateral plugin
-      // cDAI (CTokenFiatCollateral)
+      // gsp (GoldfinchSeniorPoolCollateral)
       expect(await gspCollateral.isCollateral()).to.equal(true)
-      expect(await gspCollateral.erc20()).to.equal(gsp.address)
-      expect(await gsp.decimals()).to.equal(18)
+      expect(await gspCollateral.erc20()).to.equal(gspWrapper.address)
+      expect(await gspWrapper.decimals()).to.equal(18)
       expect(await gspCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await gspCollateral.actualRefPerTok()).to.be.closeTo(fp('1.062'), fp('0.01'))
-      expect(await gspCollateral.refPerTok()).to.be.closeTo(fp('1.04076'), fp('0.01')) // 2% revenue hiding
+      expect(await gspCollateral.actualRefPerTok()).to.be.closeTo(fp('1.103'), fp('0.01'))
+      expect(await gspCollateral.refPerTok()).to.be.closeTo(fp('1.082'), fp('0.01')) // 2% revenue hiding
       expect(await gspCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await gspCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await gspCollateral.strictPrice()).to.be.closeTo(fp('1.062'), fp('0.001')) // close to $1.062
+      expect(await gspCollateral.strictPrice()).to.be.closeTo(fp('1.104'), fp('0.001')) // close to $1.103
 
       expect(await gspCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -267,16 +336,17 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       const ERC20s = await assetRegistry.erc20s()
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
-      expect(ERC20s[2]).to.equal(gsp.address)
-      expect(ERC20s.length).to.eql(3)
+      expect(ERC20s[2]).to.equal(gfiToken.address)
+      expect(ERC20s[3]).to.equal(gspWrapper.address)
+      expect(ERC20s.length).to.eql(4)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(gspCollateral.address)
+      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(gfiAsset.address)
 
       // Collaterals
-      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(gspCollateral.address)
+      expect(await assetRegistry.toColl(ERC20s[3])).to.equal(gspCollateral.address)
     })
 
     // Check RToken basket
@@ -284,7 +354,7 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(gsp.address)
+      expect(backing[0]).to.equal(gspWrapper.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
@@ -298,7 +368,9 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
 
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
-      await gsp.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
+      await gspWrapper
+        .connect(addr1)
+        .approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1.0208'), fp('0.015'))
     })
@@ -311,7 +383,7 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
         GoldfinchSeniorPoolCollateralFactory.deploy(
           fp('1'),
           networkConfig[chainId].chainlinkFeeds.USDC as string,
-          gsp.address,
+          gspWrapper.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -327,7 +399,7 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
         GoldfinchSeniorPoolCollateralFactory.deploy(
           fp('1'),
           networkConfig[chainId].chainlinkFeeds.USDC as string,
-          gsp.address,
+          gspWrapper.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -343,7 +415,7 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
         GoldfinchSeniorPoolCollateralFactory.deploy(
           fp('1'),
           networkConfig[chainId].chainlinkFeeds.USDC as string,
-          gsp.address,
+          gspWrapper.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -364,7 +436,9 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      await gsp.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
+      await gspWrapper
+        .connect(addr1)
+        .approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -373,7 +447,7 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
-      const balanceAddr1Gsp: BigNumber = await gsp.balanceOf(addr1.address)
+      const balanceAddr1Gsp: BigNumber = await gspWrapper.balanceOf(addr1.address)
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -385,8 +459,8 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       const gspPrice1: BigNumber = await gspCollateral.strictPrice() // ~1.062 cents
       const gspRefPerTok1: BigNumber = await gspCollateral.refPerTok() // ~1.0408 cents
 
-      expect(gspPrice1).to.be.closeTo(fp('1.062'), fp('0.001'))
-      expect(gspRefPerTok1).to.be.closeTo(fp('1.0408'), fp('0.001'))
+      expect(gspPrice1).to.be.closeTo(fp('1.104'), fp('0.001'))
+      expect(gspRefPerTok1).to.be.closeTo(fp('1.082'), fp('0.001'))
 
       // Advance time and blocks so interest payment is due
       await advanceTime(3000000)
@@ -416,8 +490,8 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       expect(gspRefPerTok2).to.be.gt(gspRefPerTok1)
 
       // Still close to the original values
-      expect(gspPrice2).to.be.closeTo(fp('1.063'), fp('0.001'))
-      expect(gspRefPerTok2).to.be.closeTo(fp('1.0408'), fp('0.001'))
+      expect(gspPrice2).to.be.closeTo(fp('1.104'), fp('0.001'))
+      expect(gspRefPerTok2).to.be.closeTo(fp('1.082'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -433,17 +507,20 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Check balances - Fewer cTokens should have been sent to the user
-      const newBalanceAddr1Gsp: BigNumber = await gsp.balanceOf(addr1.address)
+      const newBalanceAddr1Gsp: BigNumber = await gspWrapper.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1Gsp.sub(balanceAddr1Gsp)).to.be.closeTo(bn('9600e18'), bn('100e18')) // 1.063 * 9.6k ~= $10208 (100% of basket)
+      expect(newBalanceAddr1Gsp.sub(balanceAddr1Gsp)).to.be.closeTo(bn('9238e18'), bn('100e18')) // 1.082 * 9.2k ~= $10208 (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await gsp.balanceOf(backingManager.address)).to.be.closeTo(bn('5.5e18'), bn('1e17')) // ~= $6 usd in value
+      expect(await gspWrapper.balanceOf(backingManager.address)).to.be.closeTo(
+        bn('5.98e18'),
+        bn('1e17')
+      ) // ~= $7 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('6'), // ~= 6 usd (from above)
+        fp('7'), // ~= 7 usd (from above)
         fp('0.5')
       )
     })
@@ -453,8 +530,53 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
   // claiming calls throughout the protocol are handled correctly and do not revert.
   describe('Rewards', () => {
     it('Should be able to claim rewards (if applicable)', async () => {
-      // Only checking to see that claim call does not revert
-      await expectEvents(backingManager.claimRewards(), [])
+      const issueAmount: BigNumber = bn('10000e18')
+      // Try to claim rewards at this point - Nothing for Backing Manager
+      expect(await gfiToken.balanceOf(backingManager.address)).to.equal(0)
+
+      await expectEvents(backingManager.claimRewards(), [
+        {
+          contract: backingManager,
+          name: 'RewardsClaimed',
+          args: [gfiToken.address, bn(0)],
+          emitted: true,
+        },
+      ])
+
+      // No rewards so far
+      expect(await gfiToken.balanceOf(backingManager.address)).to.equal(0)
+
+      await gspWrapper
+        .connect(addr1)
+        .approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+      // Check RTokens issued to user
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Now we can claim rewards - check initial balance still 0
+      expect(await gfiToken.balanceOf(backingManager.address)).to.equal(0)
+
+      // Advance Time
+      await advanceTime(8000)
+
+      // Claim rewards
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+
+      // Check rewards both in COMP and stkAAVE
+      const rewardsGFI1: BigNumber = await gfiToken.balanceOf(backingManager.address)
+
+      expect(rewardsGFI1).to.be.gt(0)
+
+      // Keep moving time
+      await advanceTime(3600)
+
+      // Get additional rewards
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+
+      const rewardGFI2: BigNumber = await gfiToken.balanceOf(backingManager.address)
+
+      expect(rewardGFI2.sub(rewardsGFI1)).to.be.gt(0)
     })
   })
 
@@ -471,14 +593,13 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       const GolfinchMockFactory: ContractFactory = await ethers.getContractFactory(
         'GolfinchSeniorPoolMock'
       )
-      const symbol = await gsp.symbol()
+      const symbol = await gspWrapper.symbol()
       const goldfinchMock: GolfinchSeniorPoolMock = <GolfinchSeniorPoolMock>(
         await GolfinchMockFactory.deploy(symbol + ' Token', symbol)
       )
       // Set initial exchange rate to the new gsp mock
       await goldfinchMock.setSharePrice(fp('1.062'))
 
-      console.log('waiting to deploy')
       // Redeploy plugin using the new gsp mock
       const newGspCollateral: GoldfinchSeniorPoolCollateral = <GoldfinchSeniorPoolCollateral>await (
         await ethers.getContractFactory('GoldfinchSeniorPoolCollateral', {
@@ -496,8 +617,6 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
         goldfinchMock.address,
         200
       )
-
-      console.log('done deploy')
 
       // Check initial state
       expect(await newGspCollateral.status()).to.equal(CollateralStatus.SOUND)
@@ -525,6 +644,93 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       expect(await newGspCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
       expect(await newGspCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+    })
+  })
+
+  describe('Wrapper Reward Claims/Entitlements', () => {
+    it('Should return greater entitlements for addr1 > addr2 > owner', async () => {
+      const claimableAddr1Before = await gspWrapper.getClaimableRewards(addr1.address)
+      const claimableAddr2Before = await gspWrapper.getClaimableRewards(addr2.address)
+
+      // Advance time and blocks so rewards accumulate
+      await advanceTime(300000)
+      await advanceBlocks(1000)
+
+      const claimableAddr1After = await gspWrapper.getClaimableRewards(addr1.address)
+      const claimableAddr2After = await gspWrapper.getClaimableRewards(addr2.address)
+
+      // Expect addr1 to have a greater claimable amount and both higher than before
+      expect(claimableAddr1After).to.be.gt(claimableAddr2After)
+
+      expect(claimableAddr1After).to.be.gt(claimableAddr1Before)
+      expect(claimableAddr2After).to.be.gt(claimableAddr2Before)
+
+      // Owner makes a deposit into the GoldfinchWrapper
+      await gsp
+        .connect(owner)
+        .approve(gspWrapper.address, toBNDecimals(initialBal.div(2), 18).mul(100))
+      await gspWrapper.connect(owner).deposit(owner.address, toBNDecimals(initialBal.div(2), 18))
+
+      const claimableOwner = await gspWrapper.getClaimableRewards(owner.address)
+
+      // Expect owner to have a smaller claimable amount than addr2 because of later deposit
+      expect(claimableOwner).to.be.lt(claimableAddr2After)
+    })
+
+    it('Should claim token rewards from wrapper', async () => {
+      const gfi = <ERC20Mock>(
+        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.GFI || '')
+      )
+
+      const gfiAddr1BalanceBefore = await gfi.balanceOf(addr1.address)
+      const gfiAddr2BalanceBefore = await gfi.balanceOf(addr2.address)
+
+      // Advance time and blocks so rewards accumulate
+      await advanceTime(300000)
+      await advanceBlocks(1000)
+
+      await gspWrapper.connect(addr1).claimRewards(true, addr1.address)
+      await gspWrapper.connect(addr2).claimRewards(true, addr2.address)
+
+      const gfiAddr1BalanceAfter = await gfi.balanceOf(addr1.address)
+      const gfiAddr2BalanceAfter = await gfi.balanceOf(addr2.address)
+
+      expect(gfiAddr1BalanceAfter).to.be.gt(gfiAddr1BalanceBefore)
+      expect(gfiAddr2BalanceAfter).to.be.gt(gfiAddr2BalanceBefore)
+      expect(gfiAddr1BalanceAfter).to.be.gt(gfiAddr2BalanceAfter)
+
+      const claimableAddr1 = await gspWrapper.getClaimableRewards(addr1.address)
+      const claimableAddr2 = await gspWrapper.getClaimableRewards(addr1.address)
+
+      // No more rewards claimable right away
+      expect(claimableAddr1).to.be.closeTo(bn('0'), fp('0.0001'))
+      expect(claimableAddr2).to.be.closeTo(bn('0'), fp('0.0001'))
+    })
+
+    it('Should withdraw users balances from the wrapper', async () => {
+      const gspWrapperAddr1BalanceBefore = await gspWrapper.balanceOf(addr1.address)
+      const gspWrapperAddr2BalanceBefore = await gspWrapper.balanceOf(addr2.address)
+
+      const gspAddr1BalanceBefore = await gsp.balanceOf(addr1.address)
+      const gspAddr2BalanceBefore = await gsp.balanceOf(addr2.address)
+
+      await gspWrapper.connect(addr1).withdraw(gspWrapperAddr1BalanceBefore)
+      await gspWrapper.connect(addr2).withdraw(gspWrapperAddr2BalanceBefore)
+
+      const gspWrapperAddr1BalanceAfter = await gspWrapper.balanceOf(addr1.address)
+      const gspWrapperAddr2BalanceAfter = await gspWrapper.balanceOf(addr2.address)
+
+      const gspAddr1BalanceAfter = await gsp.balanceOf(addr1.address)
+      const gspAddr2BalanceAfter = await gsp.balanceOf(addr2.address)
+
+      expect(gspWrapperAddr1BalanceAfter).to.eq(0)
+      expect(gspWrapperAddr2BalanceAfter).to.eq(0)
+
+      expect(gspAddr1BalanceAfter).to.be.gt(gspAddr1BalanceBefore)
+      expect(gspAddr2BalanceAfter).to.be.gt(gspAddr2BalanceBefore)
+
+      // Addr1 initially deposited double the amount of addr2
+      expect(gspAddr1BalanceAfter).to.be.closeTo(gspAddr2BalanceAfter.mul(2), fp('10'))
     })
   })
 })
