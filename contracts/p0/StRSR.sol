@@ -431,17 +431,22 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// value of rsrRewards()
     function _payoutRewards() internal {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
+
         uint192 initialExchangeRate = exchangeRate();
+        uint256 payout;
 
         uint48 numPeriods = (uint48(block.timestamp) - uint48(payoutLastPaid)) /
             uint48(rewardPeriod);
 
-        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-        uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
+        // Do an actual payout if and only if stakers exist!
+        if (totalStaked > 0) {
+            // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+            uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
+            payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
 
-        // Apply payout to RSR backing
-        rsrBacking += payout;
+            // Apply payout to RSR backing
+            rsrBacking += payout;
+        }
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 

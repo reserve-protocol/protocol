@@ -2610,6 +2610,26 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
+  describe('(regressions)', () => {
+    it('avoids paying revenue to an empty stRSR population', async () => {
+      expect(await stRSR.totalSupply()).to.equal(0)
+
+      await advanceTime(600_000)
+      await rsr.mint(stRSR.address, bn('1e18'))
+      // If some RSR rewards have been cooking in stRSR for a while, but no one is there to collect,
+      await advanceTime(600_000)
+      await stRSR.payoutRewards()
+      await advanceTime(600_000)
+      await stRSR.payoutRewards()
+
+      // Then both totalStakes and stakeRSR should remain 0 after a few payoutRewards() calls
+      // And, so, if someone then stakes a bit, they just get 1:1 stRSR for staked RSR.
+      await rsr.connect(addr1).approve(stRSR.address, bn('1e18'))
+      await stRSR.connect(addr1).stake(bn('1e18'))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(bn('1e18'))
+    })
+  })
+
   describe(`Extreme Bounds (SLOW=${SLOW})`, () => {
     // Dimensions
     //

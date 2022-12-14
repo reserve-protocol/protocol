@@ -496,16 +496,21 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint48 numPeriods = (uint48(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
         uint192 initRate = exchangeRate();
+        uint256 payout;
 
-        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        // Apply payout to RSR backing
-        // payoutRatio: D18 = FIX_ONE: D18 - FixLib.powu(): D18
-        // Both uses of uint192(-) are fine, as it's equivalent to FixLib.sub().
-        uint192 payoutRatio = FIX_ONE - FixLib.powu(FIX_ONE - rewardRatio, numPeriods);
+        // Do an actual payout if and only if stakers exist!
+        if (totalStakes > 0) {
+            // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+            // Apply payout to RSR backing
+            // payoutRatio: D18 = FIX_ONE: D18 - FixLib.powu(): D18
+            // Both uses of uint192(-) are fine, as it's equivalent to FixLib.sub().
+            uint192 payoutRatio = FIX_ONE - FixLib.powu(FIX_ONE - rewardRatio, numPeriods);
 
-        // payout: {qRSR} = D18{1} * {qRSR} / D18
-        uint256 payout = (payoutRatio * rsrRewardsAtLastPayout) / FIX_ONE;
-        stakeRSR += payout;
+            // payout: {qRSR} = D18{1} * {qRSR} / D18
+            payout = (payoutRatio * rsrRewardsAtLastPayout) / FIX_ONE;
+            stakeRSR += payout;
+        }
+
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
