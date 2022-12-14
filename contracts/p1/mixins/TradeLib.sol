@@ -162,6 +162,9 @@ library TradeLib {
         } catch Panic(uint256 errorCode) {
             // 0x11: overflow
             // 0x12: div-by-zero
+            // untestable:
+            //      Overflow is protected against and checked for in FixLib.mulDiv()
+            //      Div-by-zero is NOT protected against, but no caller will ever use 0 for z
             assert(errorCode == 0x11 || errorCode == 0x12);
         } catch (bytes memory reason) {
             assert(keccak256(reason) == UIntOutofBoundsHash);
