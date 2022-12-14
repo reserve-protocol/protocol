@@ -615,7 +615,57 @@ contract NormalOpsScenario {
         return true;
     }
 
+    function echidna_mainInvariants() external view returns (bool) {
+        return main.invariantsHold();
+    }
+
+    function echidna_assetRegistryInvariants() external view returns (bool) {
+        return AssetRegistryP1Fuzz(address(main.assetRegistry())).invariantsHold();
+    }
+
+    function echidna_backingManagerInvariants() external view returns (bool) {
+        return BackingManagerP1Fuzz(address(main.backingManager())).invariantsHold();
+    }
+
+    function echidna_basketInvariants() external view returns (bool) {
+        return BasketHandlerP1Fuzz(address(main.basketHandler())).invariantsHold();
+    }
+
+    function echidna_brokerInvariants() external view returns (bool) {
+        return BrokerP1Fuzz(address(main.broker())).invariantsHold();
+    }
+
+    // Calling basketHandler.refreshBasket() provides some properties
+    function echidna_refreshBasketProperties() external returns (bool) {
+        assert(main.hasRole(OWNER, address(this)));
+        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+        bh.savePrev();
+        bh.refreshBasket();
+        return bh.isValidBasketAfterRefresh();
+    }
+
+    function echidna_distributorInvariants() external view returns (bool) {
+        return DistributorP1Fuzz(address(main.distributor())).invariantsHold();
+    }
+
+    function echidna_furnaceInvariants() external view returns (bool) {
+        return FurnaceP1Fuzz(address(main.furnace())).invariantsHold();
+    }
+
+    function echidna_rsrTraderInvariants() external view returns (bool) {
+        return RevenueTraderP1Fuzz(address(main.rsrTrader())).invariantsHold();
+    }
+
+    function echidna_rTokenTraderInvariants() external view returns (bool) {
+        return RevenueTraderP1Fuzz(address(main.rTokenTrader())).invariantsHold();
+    }
+
+    function echidna_rTokenInvariants() external view returns (bool) {
+        return RTokenP1Fuzz(address(main.rToken())).invariantsHold();
+    }
+
     function echidna_stRSRInvariants() external view returns (bool) {
         return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
     }
+
 }
