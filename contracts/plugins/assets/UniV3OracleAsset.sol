@@ -21,7 +21,7 @@ interface IStaticOracle {
 contract UniV3OracleAsset is Asset {
     using OracleLib for AggregatorV3Interface;
 
-    IERC20Metadata immutable referenceToken;
+    IERC20Metadata public immutable referenceToken;
     IStaticOracle public oracle = IStaticOracle(0xB210CE856631EeEB767eFa666EC7C1C57738d438);
 
     // solhint-disable no-empty-blocks
