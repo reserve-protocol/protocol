@@ -19,7 +19,7 @@ struct CollateralConfig {
     bytes32 targetName; // The bytes32 representation of the target name
     uint192 defaultThreshold; // {1} A value like 0.05 that represents a deviation tolerance
     // set defaultThreshold to zero to create SelfReferentialCollateral
-    uint256 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
+    uint48 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
 }
 
 /**
