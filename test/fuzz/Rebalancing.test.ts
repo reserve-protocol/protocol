@@ -1624,5 +1624,11 @@ describe('The Rebalancing scenario', () => {
       await scenario.connect(alice).vestIssuance(1)
       expect(await scenario.callStatic.echidna_rTokenInvariants()).to.be.true
     })
+
+    it('the quoteProportional property would fail right after a hard default', async () => {
+      await scenario.connect(alice).issue(1000)
+      await scenario.updatePrice(20, 0, 0, 0, 0) // reduces refPerTok and forces a hard default.
+      expect(await scenario.callStatic.echidna_quoteProportionalToBasketIfNotRebalancing()).be.true
+    })
   })
 })

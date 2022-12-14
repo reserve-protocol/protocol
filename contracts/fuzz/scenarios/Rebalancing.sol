@@ -989,7 +989,10 @@ contract RebalancingScenario {
     }
 
     // The system is always fully collateralized if not rebalancing
-    function echidna_quoteProportionalToBasketIfNotRebalancing() external view returns (bool) {
+    function echidna_quoteProportionalToBasketIfNotRebalancing() external returns (bool) {
+        // This relies on ScenarioStatus having been just updated:
+        refreshBasket();
+
         // rtoken.quote() * rtoken.totalSupply < basketHolder balances
         if (status != ScenarioStatus.REBALANCING_ONGOING) {
             RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
