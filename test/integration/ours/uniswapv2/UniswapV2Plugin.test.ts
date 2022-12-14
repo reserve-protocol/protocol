@@ -23,7 +23,7 @@ import { CollateralStatus, MAX_UINT256 } from "../../../../common/constants"
 import { UniswapV2NonFiatCollateral__factory } from "@typechain/factories/UniswapV2NonFiatCollateral__factory"
 import { UniswapV2NonFiatCollateral } from "@typechain/UniswapV2NonFiatCollateral"
 import { getLatestBlockTimestamp } from "../../../utils/time"
-import { closeDeadline, sqrt } from "../common"
+import { closeDeadline, logBalances, sqrt } from "../common"
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -234,6 +234,14 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             await waitForTx(await asset0.connect(owner).approve(router.address, p0(100)))
             await waitForTx(await asset1.connect(owner).approve(router.address, p1(100)))
 
+            const pair = <IUniswapV2Pair>await ethers.getContractAt("IUniswapV2Pair", pairAddress)
+
+            await logBalances(
+                "Balances before addLiquidity",
+                [owner, addr1],
+                [asset0, asset1, pair]
+            )
+
             await waitForTx(
                 await router
                     .connect(owner)
@@ -247,6 +255,12 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         addr1.address,
                         (await getLatestBlockTimestamp()) + 60
                     )
+            )
+
+            await logBalances(
+                "Balances after addLiquidity",
+                [owner, addr1],
+                [asset0, asset1, pair]
             )
 
             const DEFAULT_THRESHOLD = fp("0.05") // 5%
@@ -269,6 +283,7 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const fallbackPrice = fp("1")
             const targetName = ethers.utils.formatBytes32String("UNIV2SQRT")
+            
             const uniswapV2FiatCollateral: UniswapV2FiatCollateral =
                 await uniswapV2FiatCollateralContractFactory
                     .connect(addr1)
@@ -298,7 +313,6 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniswapV2FiatCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
             expect(await uniswapV2FiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
 
-            const pair = <IUniswapV2Pair>await ethers.getContractAt("IUniswapV2Pair", pairAddress)
             const { reserve0, reserve1 } = await pair.getReserves()
             const totalSupply = await pair.totalSupply()
             const expectedRefPerTok = fp(sqrt(reserve0.mul(reserve1))).div(totalSupply)

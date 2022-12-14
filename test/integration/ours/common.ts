@@ -9,6 +9,7 @@ import { getContractAddress } from "@ethersproject/address"
 import { ZERO_ADDRESS } from "../../../common/constants"
 import { waitForTx } from "../utils"
 import { whileImpersonating } from "../../utils/impersonation"
+import { IUniswapV2Pair } from "@typechain/IUniswapV2Pair"
 
 /// @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
 export const MIN_TICK = -887272
@@ -132,7 +133,7 @@ export async function deployUniswapV3Wrapper(
 export async function logBalancesAddr(
     prefix: string,
     adresses: string[],
-    assets: (ERC20Mock | USDCMock | UniswapV3Wrapper)[]
+    assets: (ERC20Mock | USDCMock | UniswapV3Wrapper | IUniswapV2Pair)[]
 ) {
     console.log(prefix)
     const table = []
@@ -151,7 +152,7 @@ export async function logBalancesAddr(
 export async function logBalances(
     prefix: string,
     accounts: { address: string }[],
-    assets: (ERC20Mock | USDCMock | UniswapV3Wrapper)[]
+    assets: (ERC20Mock | USDCMock | UniswapV3Wrapper | IUniswapV2Pair)[]
 ) {
     return logBalancesAddr(
         prefix,
