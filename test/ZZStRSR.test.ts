@@ -691,7 +691,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Issue tokens
         const issueAmount: BigNumber = bn('100e18')
-        await rToken.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)

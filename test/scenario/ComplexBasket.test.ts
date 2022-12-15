@@ -461,7 +461,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmt)
 
     // Issue
-    await rToken.connect(addr1).issue(issueAmt)
+    await rToken.connect(addr1)['issue(uint256)'](issueAmt)
     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmt)
     expect(await rToken.totalSupply()).to.equal(issueAmt)
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
@@ -707,7 +707,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(quotes[7]).to.equal(bn(6400e8))
 
     // Issue 1 RToken
-    await rToken.connect(addr1).issue(issueAmount)
+    await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
     const origAssetValue = issueAmount.mul(totalPriceUSD).div(BN_SCALE_FACTOR)
     await expectRTokenPrice(
@@ -1323,7 +1323,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Issue
     const issueAmount = bn('1e18')
 
-    await rToken.connect(addr1).issue(issueAmount)
+    await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
@@ -1548,7 +1548,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Issue
     const issueAmount = bn('200e18')
 
-    await rToken.connect(addr1).issue(issueAmount)
+    await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
 

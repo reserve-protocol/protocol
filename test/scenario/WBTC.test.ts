@@ -165,7 +165,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       issueAmt = initialBal.div(100)
       await token0.connect(addr1).approve(rToken.address, issueAmt)
       await wbtc.connect(addr1).approve(rToken.address, issueAmt)
-      await rToken.connect(addr1).issue(issueAmt)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmt)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmt)

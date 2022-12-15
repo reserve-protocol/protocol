@@ -97,7 +97,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // Redemption throttle
     RedemptionBatteryLib.Battery private battery;
 
-    // {ERC20: {qTok} owed to Issuers}
+    // {ERC20: {qTok} owed to Recipients}
     // During reward sweeping, we sweep token balances - liabilities
     mapping(IERC20 => uint256) private liabilities;
 
@@ -174,7 +174,20 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
-    function issue(uint256 amtRToken) external notPausedOrFrozen {
+    function issue(uint256 amtRToken) external {
+        issue(_msgSender(), amtRToken);
+    }
+
+    /// Begin a time-delayed issuance of RToken for basket collateral
+    /// @param recipient The address to receive the issued RTokens
+    /// @param amtRToken {qTok} The quantity of RToken to issue
+    /// @return mintedAmount {qTok} The amount of RTokens minted (instantly issued)
+    /// @custom:interaction nearly CEI, but see comments around handling of refunds
+    function issue(address recipient, uint256 amtRToken)
+        public
+        notPausedOrFrozen
+        returns (uint256)
+    {
         require(amtRToken > 0, "Cannot issue zero");
 
         // == Refresh ==
@@ -183,20 +196,20 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
 
         uint48 basketNonce = basketHandler.nonce();
-        IssueQueue storage queue = issueQueues[issuer];
+        IssueQueue storage queue = issueQueues[recipient];
 
         // Refund issuances against old baskets
         if (queue.basketNonce > 0 && queue.basketNonce != basketNonce) {
             // == Interaction ==
             // This violates simple CEI, so we have to renew any potential transient state!
-            refundSpan(issuer, queue.left, queue.right);
+            refundSpan(recipient, queue.left, queue.right);
 
             // Refresh collateral after interaction
             assetRegistry.refresh();
 
             // Refresh local values after potential reentrant changes to contract state.
             basketNonce = basketHandler.nonce();
-            queue = issueQueues[issuer];
+            queue = issueQueues[recipient];
         }
 
         // == Checks-effects block ==
@@ -233,7 +246,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // just do a "quick issuance" of iss instead of putting the issuance in the queue:
         // effects and actions if we go this way are the combined actions to create and vest iss:
         //   basketsNeeded += iss.amtBaskets
-        //   mint(issuer, iss.amtRToken)
+        //   mint(recipient, iss.amtRToken)
         //   for each token index i, erc20s[i].transferFrom(issuer, backingManager, iss.deposits[i])
         if (
             // D18{blocks} <= D18{1} * {blocks}
@@ -248,11 +261,12 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             basketsNeeded = newBasketsNeeded;
 
             // Note: We don't need to update the prev queue entry because queue.left = queue.right
-            emit Issuance(issuer, amtRToken, amtBaskets);
+            emit Issuance(recipient, amtRToken, amtBaskets);
 
             // == Interactions then return: transfer tokens ==
             // Complete issuance
-            _mint(issuer, amtRToken);
+            _mint(recipient, amtRToken);
+
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,
@@ -260,14 +274,15 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
                     deposits[i]
                 );
             }
-            return;
+
+            // All RTokens instantly issued
+            return amtRToken;
         }
 
         // ==== Otherwise, we're going to create and enqueue the issuance "iss":
         // effects and actions down this route are:
-        //   lastItem'(issuer) = lastItem(issuer) + iss
+        //   lastItem'(recipient) = lastItem(recipient) + iss
         //   for each token index i, erc20s[i].transferFrom(issuer, this, iss.deposits[i])
-
         // Append issuance to queue (whether that needs a new allocation with push() or not)
         IssueItem storage curr = (queue.right < queue.items.length)
             ? queue.items[queue.right]
@@ -301,7 +316,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         queue.right++;
 
         emit IssuanceStarted(
-            issuer,
+            recipient,
             queue.right - 1,
             amtRToken,
             amtBaskets,
@@ -319,6 +334,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         for (uint256 i = 0; i < basketSize; ++i) {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
+
+        // No RTokens instantly issued
+        return 0;
     }
 
     /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
@@ -379,6 +397,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Cancel some vesting issuance(s)
+    /// Only callable by the account owner
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
@@ -425,7 +444,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // == Checks and Effects ==
         address redeemer = _msgSender();
-        require(balanceOf(redeemer) >= amount, "not enough RToken");
         // Allow redemption during IFFY + UNPRICED
         require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
@@ -471,7 +489,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
         // == Interactions ==
-        // Accept and burn RToken
+        // Accept and burn RToken, reverts if not enough balance to burn
         _burn(redeemer, amount);
 
         bool allZero = true;

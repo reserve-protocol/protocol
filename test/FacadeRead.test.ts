@@ -108,7 +108,7 @@ describe('FacadeRead contract', () => {
       await cToken.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
     })
 
     it('should return the correct facade address', async () => {
@@ -211,8 +211,8 @@ describe('FacadeRead contract', () => {
         const largeIssueAmount = initialBal.div(10)
 
         // Issue rTokens
-        await rToken.connect(addr1).issue(largeIssueAmount)
-        await rToken.connect(addr1).issue(largeIssueAmount.add(1))
+        await rToken.connect(addr1)['issue(uint256)'](largeIssueAmount)
+        await rToken.connect(addr1)['issue(uint256)'](largeIssueAmount.add(1))
         const pendings = await facade.pendingIssuances(rToken.address, addr1.address)
 
         expect(pendings.length).to.eql(2)

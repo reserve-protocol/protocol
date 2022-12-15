@@ -367,7 +367,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token3.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await rToken.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -2223,7 +2223,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token3.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await rToken.connect(addr1).issue(issueAmount)
+        await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -3061,7 +3061,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
       // Mint some RSR
       await rsr.connect(owner).mint(addr1.address, initialBal)

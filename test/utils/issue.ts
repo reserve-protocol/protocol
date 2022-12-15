@@ -1,11 +1,12 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
+
 import { bn, fp } from '../../common/numbers'
 import { FacadeRead, TestIRToken } from '../../typechain'
-import { advanceBlocks } from './time'
 import { IMPLEMENTATION, Implementation } from '../fixtures'
+import { advanceBlocks } from './time'
 
 // Issue `amount` RToken to `user`.
 //
@@ -33,7 +34,7 @@ export async function issueMany(
     const currIssue = maxAmt.lt(yetToIssue) ? maxAmt : yetToIssue
 
     // Issue currIssue to user, and wait ISS_BLOCKS
-    await rToken.connect(user).issue(currIssue)
+    await rToken.connect(user)['issue(uint256)'](currIssue)
 
     await advanceBlocks(ISS_BLOCKS.add(1))
 
