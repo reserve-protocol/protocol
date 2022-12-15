@@ -122,11 +122,11 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Register an asset, unregistering any previous asset with the same ERC20.
     function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
-        // Refresh to ensure it does not revert, and to save a recent lastPrice
-        asset.refresh();
-
         if (_erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] == asset)
             return false;
+
+        // Refresh to ensure it does not revert, and to save a recent lastPrice
+        asset.refresh();
 
         if (_erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] != asset) {
             _erc20s.remove(address(asset.erc20()));

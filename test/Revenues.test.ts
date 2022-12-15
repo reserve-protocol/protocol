@@ -67,6 +67,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let rsr: ERC20Mock
   let rsrAsset: Asset
   let compToken: ERC20Mock
+  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
 
@@ -145,6 +146,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rsr,
       rsrAsset,
       compToken,
+      compAsset,
       aaveToken,
       compoundMock,
       erc20s,
@@ -630,6 +632,82 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // COMP Rewards - 1 qTok
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Collect revenue
+        await expectEvents(backingManager.claimRewards(), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, rewardAmountCOMP],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, bn(0)],
+            emitted: true,
+          },
+        ])
+
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check no funds in Market, now in trader
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(0))
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP)
+
+        // Check destinations, nothing changed
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
+      it('Should not sell an asset with 0 price', async () => {
+        // Set f = 1
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(0), bn(0))
+
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(1))
+
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('1000e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Set COMP price to 0
+        await setOraclePrice(compAsset.address, bn(0))
+
+        // Refresh asset so lot price also = 0
+        await compAsset.refresh()
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [

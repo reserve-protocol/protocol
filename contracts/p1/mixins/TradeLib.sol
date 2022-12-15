@@ -162,6 +162,9 @@ library TradeLib {
         } catch Panic(uint256 errorCode) {
             // 0x11: overflow
             // 0x12: div-by-zero
+            // untestable:
+            //      Overflow is protected against and checked for in FixLib.mulDiv()
+            //      Div-by-zero is NOT protected against, but no caller will ever use 0 for z
             assert(errorCode == 0x11 || errorCode == 0x12);
         } catch (bytes memory reason) {
             assert(keccak256(reason) == UIntOutofBoundsHash);
@@ -183,6 +186,8 @@ library TradeLib {
     /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
     /// @return {tok} The max trade size for the asset in whole tokens
     function maxTradeSize(IAsset asset, uint192 price) private view returns (uint192) {
+        // untestable:
+        //       Price cannot be 0, it would've been filtered before in `prepareTradeSell`
         uint192 size = price == 0 ? FIX_MAX : asset.maxTradeVolume().div(price, ROUND);
         return size > 0 ? size : 1;
     }

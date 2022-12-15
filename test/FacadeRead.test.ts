@@ -10,6 +10,7 @@ import {
   FacadeTest,
   StaticATokenMock,
   StRSRP1,
+  TestIBasketHandler,
   TestIMain,
   TestIStRSR,
   TestIRToken,
@@ -54,6 +55,7 @@ describe('FacadeRead contract', () => {
   let rToken: TestIRToken
   let main: TestIMain
   let stRSR: TestIStRSR
+  let basketHandler: TestIBasketHandler
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -67,7 +69,9 @@ describe('FacadeRead contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, basket, facade, facadeTest, rToken, main } = await loadFixture(defaultFixture))
+    ;({ stRSR, rsr, basket, facade, facadeTest, rToken, main, basketHandler } = await loadFixture(
+      defaultFixture
+    ))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -240,6 +244,47 @@ describe('FacadeRead contract', () => {
 
         expect(pendings[1][0]).to.eql(bn(1)) // index
         expect(pendings[1][2]).to.eql(unstakeAmount.add(1)) // amount
+      })
+
+      it('Should return prime basket', async () => {
+        const [erc20s, targetNames, targetAmts] = await facade.primeBasket(rToken.address)
+        expect(erc20s.length).to.equal(4)
+        expect(targetNames.length).to.equal(4)
+        expect(targetAmts.length).to.equal(4)
+        const expectedERC20s = [token.address, usdc.address, aToken.address, cToken.address]
+        for (let i = 0; i < 4; i++) {
+          expect(erc20s[i]).to.equal(expectedERC20s[i])
+          expect(targetNames[i]).to.equal(ethers.utils.formatBytes32String('USD'))
+          expect(targetAmts[i]).to.equal(fp('0.25'))
+        }
+      })
+
+      it('Should return backup config', async () => {
+        // Set a backup config
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [
+            token.address,
+            usdc.address,
+          ])
+
+        // Expect that config
+        let [erc20s, max] = await facade.backupConfig(
+          rToken.address,
+          ethers.utils.formatBytes32String('USD')
+        )
+        expect(erc20s.length).to.equal(2)
+        expect(erc20s[0]).to.equal(token.address)
+        expect(erc20s[1]).to.equal(usdc.address)
+        expect(max).to.equal(1)
+
+        // Expect empty config for non-USD
+        ;[erc20s, max] = await facade.backupConfig(
+          rToken.address,
+          ethers.utils.formatBytes32String('EURO')
+        )
+        expect(erc20s.length).to.equal(0)
+        expect(max).to.equal(0)
       })
     }
   })
