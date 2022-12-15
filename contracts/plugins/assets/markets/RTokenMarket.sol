@@ -11,12 +11,12 @@ import "contracts/p1/RToken.sol";
 
 import "./AbstractMarket.sol";
 
-contract RTokenMarket is AbstractMarket {
+contract RTokenMarket is AbstractMulticall {
     using Address for address;
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    constructor() AbstractMarket() {
+    constructor() AbstractMulticall() {
         approvedTargets[0xDef1C0ded9bec7F1a1670819833240f027b25EfF] = true; // 0x
     }
 
@@ -49,7 +49,6 @@ contract RTokenMarket is AbstractMarket {
         address[] memory collateralTokens;
         uint256[] memory collateralAmounts;
         (amountOut, collateralTokens, collateralAmounts) = maxIssuable(rToken, address(this));
-
         require(amountOut >= minAmountOut, "RTokenMarket: INSUFFICIENT_OUTPUT");
 
         for (uint256 i = 0; i < collateralTokens.length; ++i) {
@@ -58,10 +57,6 @@ contract RTokenMarket is AbstractMarket {
 
         // Q: Do we want to return the minted amount here or the issued amount?
         return rToken.issue(receiver, amountOut);
-    }
-
-    function enter(MarketCall calldata) external payable returns (uint256) {
-        revert("RTokenMarket: NOT_IMPLEMENTED");
     }
 
     function exit(
@@ -75,12 +70,11 @@ contract RTokenMarket is AbstractMarket {
         require(amountIn != 0, "RTokenMarket: INSUFFICIENT_INPUT");
         require(receiver != address(0), "RTokenMarket: INVALID_RECEIVER");
 
+        uint256 initialBalance = _getBalance(toToken);
+
         fromToken.safeTransferFrom(_msgSender(), address(this), amountIn);
 
-        IRToken rToken = RTokenP1(address(fromToken));
-        rToken.redeem(amountIn);
-
-        uint256 initialBalance = _getBalance(toToken);
+        RTokenP1(address(fromToken)).redeem(amountIn);
 
         for (uint256 i = 0; i < marketCalls.length; ++i) {
             MarketCall memory call = marketCalls[i];
@@ -95,10 +89,6 @@ contract RTokenMarket is AbstractMarket {
         require(amountOut >= minAmountOut, "RTokenMarket: INSUFFICIENT_OUTPUT");
 
         toToken.safeTransfer(receiver, amountOut);
-    }
-
-    function exit(MarketCall calldata) external payable returns (uint256) {
-        revert("RTokenMarket: NOT_IMPLEMENTED");
     }
 
     function maxIssuable(IRToken rToken, address account)

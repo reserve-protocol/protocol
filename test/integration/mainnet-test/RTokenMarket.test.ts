@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { useEnv } from '#/utils/env'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 
 import { getChainId } from '../../../common/blockchain-utils'
@@ -14,7 +14,6 @@ import {
   networkConfig,
 } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
-import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import {
   Asset,

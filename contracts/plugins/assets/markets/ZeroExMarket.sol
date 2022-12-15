@@ -5,7 +5,6 @@ import "contracts/interfaces/IWETH.sol";
 import "./AbstractMarket.sol";
 
 contract ZeroExMarket is AbstractMarket {
-    using SafeERC20 for IERC20;
     IWETH public constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     function enter(MarketCall calldata call)
@@ -89,7 +88,6 @@ contract ZeroExMarket is AbstractMarket {
         require(success, "ZeroExMarket: SWAP_TARGET_CALL_FAILED");
 
         amountOut = _getBalance(toToken) - initialBalance;
-
         require(amountOut >= minAmountOut, "ZeroExMarket: INSUFFICIENT_OUTPUT");
     }
 }

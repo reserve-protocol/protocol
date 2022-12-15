@@ -20,7 +20,7 @@ contract CTokenMarket is AbstractMarket {
         if (address(call.fromToken) == address(0)) {
             cToken.mint{ value: call.amountIn }();
         } else {
-            IERC20(cToken.underlying()).approve(address(cToken), call.amountIn);
+            call.fromToken.approve(address(cToken), call.amountIn);
             cToken.mint(call.amountIn);
         }
 
