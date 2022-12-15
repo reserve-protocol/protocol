@@ -130,8 +130,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     uint48 public override nonce; // A unique identifier for this basket instance
     uint48 public override timestamp; // The timestamp when this basket was last set
 
-    // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
-    // be paused.
+    // If disabled is true, status() is DISABLED, the basket is invalid,
+    // and everything except redemption should be paused.
     bool private disabled;
 
     // ==== Invariants ====
@@ -462,11 +462,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
        let configTargetWeight(tgt) = sum(config.targetAmts[e]
                                          for e in config.erc20s
-                                         where targetNames[e] == tgt)
+                                         where _targetNames[e] == tgt)
 
        let targetWeightSum(b, tgt) = sum(targetWeight(b, e)
                                          for e in config.erc20s
-                                         where targetNames[e] == tgt)
+                                         where _targetNames[e] == tgt)
 
        Given all that, if disabled' == false, then for all tgt,
            targetWeightSum(basket', tgt) == configTargetWeight(tgt)
@@ -474,36 +474,36 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
        ==== Usual specs ====
 
        Then, finally, given all that, the effects of _switchBasket() are:
-         basket' = newBasket, as defined above
+         basket' = _newBasket, as defined above
          nonce' = nonce + 1
          timestamp' = now
     */
 
     // These are effectively local variables of _switchBasket.
     // Nothing should use their values from previous transactions.
-    EnumerableSet.Bytes32Set private targetNames;
-    Basket private newBasket; // Always empty
+    EnumerableSet.Bytes32Set private _targetNames;
+    Basket private _newBasket; // Always empty
 
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// (The mutator that actually does all the work in this contract.)
     function _switchBasket() private {
         disabled = false;
 
-        // targetNames := {}
-        while (targetNames.length() > 0) targetNames.remove(targetNames.at(0));
-        // newBasket := {}
-        newBasket.empty();
+        // _targetNames := {}
+        while (_targetNames.length() > 0) _targetNames.remove(_targetNames.at(0));
+        // _newBasket := {}
+        _newBasket.empty();
 
-        // targetNames = set(values(config.targetNames))
-        // (and this stays true; targetNames is not touched again in this function)
+        // _targetNames = set(values(config.targetNames))
+        // (and this stays true; _targetNames is not touched again in this function)
         uint256 basketLength = config.erc20s.length;
         for (uint256 i = 0; i < basketLength; ++i) {
-            targetNames.add(config.targetNames[config.erc20s[i]]);
+            _targetNames.add(config.targetNames[config.erc20s[i]]);
         }
-        uint256 targetsLength = targetNames.length();
+        uint256 targetsLength = _targetNames.length();
 
         // "good" collateral is collateral with any status() other than DISABLED
-        // goodWeights and totalWeights are in index-correspondence with targetNames
+        // goodWeights and totalWeights are in index-correspondence with _targetNames
         // As such, they're each interepreted as a map from target name -> target weight
 
         // {target/BU} total target weight of good, prime collateral with target i
@@ -521,10 +521,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // Find collateral's targetName index
             uint256 targetIndex;
             for (targetIndex = 0; targetIndex < targetsLength; ++targetIndex) {
-                if (targetNames.at(targetIndex) == config.targetNames[erc20]) break;
+                if (_targetNames.at(targetIndex) == config.targetNames[erc20]) break;
             }
             assert(targetIndex < targetsLength);
-            // now, targetNames[targetIndex] == config.targetNames[config.erc20s[i]]
+            // now, _targetNames[targetIndex] == config.targetNames[config.erc20s[i]]
 
             // Set basket weights for good, prime collateral,
             // and accumulate the values of goodWeights and targetWeights
@@ -533,7 +533,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             if (goodCollateral(config.targetNames[erc20], erc20) && targetWeight.gt(FIX_ZERO)) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
-                newBasket.add(
+                _newBasket.add(
                     erc20,
                     targetWeight.div(assetRegistry.toColl(erc20).targetPerRef(), CEIL)
                 );
@@ -544,11 +544,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         // Analysis: at this point:
         // for all tgt in target names,
         //   totalWeights(tgt)
-        //   = sum(config.targetAmts[e] for e in config.erc20s where targetNames[e] == tgt), and
+        //   = sum(config.targetAmts[e] for e in config.erc20s where _targetNames[e] == tgt), and
         //   goodWeights(tgt)
-        //   = sum(primeWt(e) for e in config.erc20s where targetNames[e] == tgt)
+        //   = sum(primeWt(e) for e in config.erc20s where _targetNames[e] == tgt)
         // for all e in config.erc20s,
-        //   targetWeight(newBasket, e)
+        //   targetWeight(_newBasket, e)
         //   = sum(primeWt(e) if goodCollateral(e), else 0)
 
         // For each tgt in target names, if we still need more weight for tgt then try to add the
@@ -556,16 +556,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < targetsLength; ++i) {
             if (totalWeights[i].lte(goodWeights[i])) continue; // Don't need any backup weight
 
-            // "tgt" = targetNames[i]
+            // "tgt" = _targetNames[i]
             // Now, unsoundPrimeWt(tgt) > 0
 
             uint256 size = 0; // backup basket size
-            BackupConfig storage backup = config.backups[targetNames.at(i)];
+            BackupConfig storage backup = config.backups[_targetNames.at(i)];
 
             // Find the backup basket size: min(backup.max, # of good backup collateral)
             uint256 backupLength = backup.erc20s.length;
             for (uint256 j = 0; j < backupLength && size < backup.max; ++j) {
-                if (goodCollateral(targetNames.at(i), backup.erc20s[j])) size++;
+                if (goodCollateral(_targetNames.at(i), backup.erc20s[j])) size++;
             }
 
             // Now, size = len(backups(tgt)). Do the disable check:
@@ -580,10 +580,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // Loop: for erc20 in backups(tgt)...
             for (uint256 j = 0; j < backupLength && assigned < size; ++j) {
                 IERC20 erc20 = backup.erc20s[j];
-                if (goodCollateral(targetNames.at(i), erc20)) {
-                    // Across this .add(), targetWeight(newBasket',erc20)
-                    // = targetWeight(newBasket,erc20) + unsoundPrimeWt(tgt) / len(backups(tgt))
-                    newBasket.add(
+                if (goodCollateral(_targetNames.at(i), erc20)) {
+                    // Across this .add(), targetWeight(_newBasket',erc20)
+                    // = targetWeight(_newBasket,erc20) + unsoundPrimeWt(tgt) / len(backups(tgt))
+                    _newBasket.add(
                         erc20,
                         needed.div(assetRegistry.toColl(erc20).targetPerRef().mulu(size), CEIL)
                         // this div is safe: targetPerRef > 0: goodCollateral check
@@ -591,18 +591,18 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                     assigned++;
                 }
             }
-            // Here, targetWeight(newBasket, e) = primeWt(e) + backupWt(e) for all e targeting tgt
+            // Here, targetWeight(_newBasket, e) = primeWt(e) + backupWt(e) for all e targeting tgt
         }
         // Now we've looped through all values of tgt, so for all e,
-        //   targetWeight(newBasket, e) = primeWt(e) + backupWt(e)
+        //   targetWeight(_newBasket, e) = primeWt(e) + backupWt(e)
 
         // Notice if basket is actually empty
-        uint256 newBasketLength = newBasket.erc20s.length;
+        uint256 newBasketLength = _newBasket.erc20s.length;
         if (newBasketLength == 0) disabled = true;
 
         // Update the basket if it's not disabled
         if (!disabled) {
-            basket.setFrom(newBasket);
+            basket.setFrom(_newBasket);
             nonce += 1;
             timestamp = uint48(block.timestamp);
         }
@@ -652,6 +652,53 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             return false;
         }
     }
+
+    // ==== FacadeRead views ====
+    // Not used in-protocol
+
+    /// Getter pt1 for `config` struct variable
+    /// @dev Indices are shared across return values
+    /// @return erc20s The erc20s in the prime basket
+    /// @return targetNames The bytes32 name identifier of the target unit, per ERC20
+    /// @return targetAmts {target/BU} The amount of the target unit in the basket, per ERC20
+    function getPrimeBasket()
+        external
+        view
+        returns (
+            IERC20[] memory erc20s,
+            bytes32[] memory targetNames,
+            uint192[] memory targetAmts
+        )
+    {
+        erc20s = new IERC20[](basket.erc20s.length);
+        targetNames = new bytes32[](erc20s.length);
+        targetAmts = new uint192[](erc20s.length);
+
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            erc20s[i] = config.erc20s[i];
+            targetNames[i] = config.targetNames[erc20s[i]];
+            targetAmts[i] = config.targetAmts[erc20s[i]];
+        }
+    }
+
+    /// Getter pt2 for `config` struct variable
+    /// @param targetName The name of the target unit to lookup the backup for
+    /// @return erc20s The backup erc20s for the target unit, in order of most to least desirable
+    /// @return max The maximum number of tokens from the array to use at a single time
+    function getBackupConfig(bytes32 targetName)
+        external
+        view
+        returns (IERC20[] memory erc20s, uint256 max)
+    {
+        BackupConfig storage backup = config.backups[targetName];
+        erc20s = new IERC20[](backup.erc20s.length);
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            erc20s[i] = backup.erc20s[i];
+        }
+        max = backup.max;
+    }
+
+    // ==== Storage Gap ====
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
