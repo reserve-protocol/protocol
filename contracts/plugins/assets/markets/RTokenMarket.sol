@@ -7,7 +7,6 @@ import "contracts/interfaces/IMarket.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IWETH.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p1/RToken.sol";
 
 import "./AbstractMarket.sol";
 
@@ -35,7 +34,7 @@ contract RTokenMarket is AbstractMulticall {
             fromToken.safeTransferFrom(_msgSender(), address(this), amountIn);
         }
 
-        IRToken rToken = RTokenP1(address(toToken));
+        IRToken rToken = IRToken(address(toToken));
 
         for (uint256 i = 0; i < marketCalls.length; ++i) {
             MarketCall memory call = marketCalls[i];
@@ -55,7 +54,6 @@ contract RTokenMarket is AbstractMulticall {
             IERC20(collateralTokens[i]).approve(address(rToken), collateralAmounts[i]);
         }
 
-        // Q: Do we want to return the minted amount here or the issued amount?
         return rToken.issue(receiver, amountOut);
     }
 
@@ -70,11 +68,11 @@ contract RTokenMarket is AbstractMulticall {
         require(amountIn != 0, "RTokenMarket: INSUFFICIENT_INPUT");
         require(receiver != address(0), "RTokenMarket: INVALID_RECEIVER");
 
-        uint256 initialBalance = _getBalance(toToken);
+        bool isToETH = address(toToken) == address(0);
+        uint256 initialBalance = isToETH ? address(this).balance : toToken.balanceOf(address(this));
 
         fromToken.safeTransferFrom(_msgSender(), address(this), amountIn);
-
-        RTokenP1(address(fromToken)).redeem(amountIn);
+        IRToken(address(fromToken)).redeem(amountIn);
 
         for (uint256 i = 0; i < marketCalls.length; ++i) {
             MarketCall memory call = marketCalls[i];
@@ -85,42 +83,51 @@ contract RTokenMarket is AbstractMulticall {
             );
         }
 
-        amountOut = _getBalance(toToken) - initialBalance;
+        amountOut =
+            (isToETH ? address(this).balance : toToken.balanceOf(address(this))) -
+            initialBalance;
+
         require(amountOut >= minAmountOut, "RTokenMarket: INSUFFICIENT_OUTPUT");
 
-        toToken.safeTransfer(receiver, amountOut);
+        if (isToETH) {
+            payable(receiver).transfer(amountOut);
+        } else {
+            toToken.safeTransfer(receiver, amountOut);
+        }
     }
 
     function maxIssuable(IRToken rToken, address account)
         public
         returns (
-            uint256 amount,
-            address[] memory tokens,
-            uint256[] memory deposits
+            uint256 rTokenAmount,
+            address[] memory collateralTokens,
+            uint256[] memory collateralAmounts
         )
     {
         IMain main = rToken.main();
+        IBasketHandler basketHandler = main.basketHandler();
+
         main.poke();
 
-        // {BU}
-        uint192 needed = rToken.basketsNeeded();
-        IBasketHandler basketHandler = main.basketHandler();
-        uint192 held = basketHandler.basketsHeldBy(account);
+        // Cache total supply and decimals
         uint256 totalSupply = rToken.totalSupply();
-
         int8 decimals = int8(rToken.decimals());
 
-        amount = (
+        // {BU}
+        uint192 held = basketHandler.basketsHeldBy(account);
+        uint192 needed = rToken.basketsNeeded();
+
+        rTokenAmount = (
             needed.eq(FIX_ZERO) // {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
                 ? held // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
                 : held.mulDiv(shiftl_toFix(totalSupply, -decimals), needed)
         ).shiftl_toUint(decimals);
 
-        // Compute # of baskets to create `amount` qRTok
+        // Compute # of baskets to create `rTokenAmount` qRTok
         uint192 baskets = (totalSupply > 0) // {BU}
-            ? needed.muluDivu(amount, totalSupply) // {BU * qRTok / qRTok}
-            : shiftl_toFix(amount, -decimals); // {qRTok / qRTok}
+            ? needed.muluDivu(rTokenAmount, totalSupply) // {BU * qRTok / qRTok}
+            : shiftl_toFix(rTokenAmount, -decimals); // {qRTok / qRTok}
 
-        (tokens, deposits) = basketHandler.quote(baskets, CEIL);
+        (collateralTokens, collateralAmounts) = basketHandler.quote(baskets, CEIL);
     }
 }
