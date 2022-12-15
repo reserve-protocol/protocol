@@ -287,7 +287,10 @@ describe('The Differential Testing scenario', () => {
     })
   })
 
-  describe('avoids the regression in which', () => {
+  describe('does not contain the bug in which', () => {
+    /* Notes for reproductions:
+       In this scenario, someToken arguments are (by default) %'d by 11
+    */
     it('claimRewards breaks sync after one block', async () => {
       await advanceBlocks(10)
       await advanceTime(120)
@@ -303,6 +306,12 @@ describe('The Differential Testing scenario', () => {
       await scenario.grantRole(3, 0)
       await scenario.connect(alice).pause()
       expect(await scenario.callStatic.echidna_distributorEqual()).to.be.true
+    })
+    it('assetRegistry.refresh() was called from stake(), but only in P0, 1 day ago', async () => {
+      await scenario.setErrorState(0, false, true)
+      await scenario.connect(alice).stake(1)
+      await advanceTime(86400)
+      expect(await scenario.callStatic.echidna_bhEqualThunks()).to.be.true
     })
   })
 })
