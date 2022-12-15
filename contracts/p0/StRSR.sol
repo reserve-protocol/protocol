@@ -135,7 +135,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(rsrAmount > 0, "Cannot stake zero");
 
         // Call state keepers -- only subset that work while paused/frozen
-        main.assetRegistry().refresh();
         if (!main.pausedOrFrozen()) _payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
@@ -164,7 +163,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(balances[account] >= stakeAmount, "Not enough balance");
 
         // Call state keepers
-        main.poke();
+        _payoutRewards();
 
         // The next line is not an overflow risk:
         // stakeAmount = rsrAmount * (totalStaked / rsrBacking) <= 1e29 * 1e9 = 1e38
@@ -190,6 +189,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
     /// @custom:interaction
     function withdraw(address account, uint256 endId) external notPausedOrFrozen {
+        // Call state keepers
+        main.poke();
+
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCollateralized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
@@ -198,9 +200,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         if (endId == 0) return;
         require(endId <= queue.length, "index out-of-bounds");
         require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
-
-        // Call state keepers
-        main.poke();
 
         // Skip executed withdrawals - Both amounts should be 0
         uint256 start = 0;
