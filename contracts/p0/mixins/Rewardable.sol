@@ -15,8 +15,6 @@ abstract contract RewardableP0 is ComponentP0, IRewardableComponent {
     /// Claim all rewards
     /// Collective Action
     function claimRewards() external notPausedOrFrozen {
-        main.poke();
-
         IAssetRegistry reg = main.assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
 
