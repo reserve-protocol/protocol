@@ -187,19 +187,15 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
     // Mint initial balances
     initialBal = bn('1000000e18')
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
-    await backupToken1.connect(owner).mint(addr1.address, initialBal)
-    await backupToken2.connect(owner).mint(addr1.address, initialBal)
 
-    await token0.connect(owner).mint(addr2.address, initialBal)
-    await token1.connect(owner).mint(addr2.address, initialBal)
-    await token2.connect(owner).mint(addr2.address, initialBal)
-    await token3.connect(owner).mint(addr2.address, initialBal)
-    await backupToken1.connect(owner).mint(addr1.address, initialBal)
-    await backupToken2.connect(owner).mint(addr1.address, initialBal)
+    await Promise.all(
+      [token0, token1, token2, token3, backupToken1, backupToken2].map((t) =>
+        Promise.all([
+          t.connect(owner).mint(addr1.address, initialBal),
+          t.connect(owner).mint(addr2.address, initialBal),
+        ])
+      )
+    )
   })
 
   describe('Default Handling - Basket Selection', function () {
@@ -224,12 +220,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
 
         // Provide approvals
-        await token0.connect(addr1).approve(rToken.address, initialBal)
-        await token1.connect(addr1).approve(rToken.address, initialBal)
-        await token2.connect(addr1).approve(rToken.address, initialBal)
-        await token3.connect(addr1).approve(rToken.address, initialBal)
-        await backupToken1.connect(addr1).approve(rToken.address, initialBal)
-        await backupToken2.connect(addr1).approve(rToken.address, initialBal)
+        await Promise.all(
+          [token0, token1, token2, token3, backupToken1, backupToken2].map((t) =>
+            t.connect(addr1).approve(rToken.address, initialBal)
+          )
+        )
 
         // Issue rTokens
         await rToken.connect(addr1)['issue(uint256)'](issueAmount)

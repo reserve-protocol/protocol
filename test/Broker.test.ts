@@ -259,10 +259,11 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       }
 
       // Mint required tokens
-      await token0.connect(owner).mint(backingManager.address, amount)
-      await token0.connect(owner).mint(rsrTrader.address, amount)
-      await token0.connect(owner).mint(rTokenTrader.address, amount)
-      await token0.connect(owner).mint(addr1.address, amount)
+      await Promise.all(
+        [backingManager, rsrTrader, rTokenTrader, addr1].map((a) =>
+          token0.connect(owner).mint(a.address, amount)
+        )
+      )
 
       // Attempt to open trade from non-trader
       await token0.connect(addr1).approve(broker.address, amount)

@@ -34,7 +34,7 @@ import {
 } from '../../../typechain'
 import { ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
 import { whileImpersonating } from '../../utils/impersonation'
-import { ORACLE_TIMEOUT, defaultFixture } from '../assets/fixtures'
+import { defaultFixture } from '../fixtures'
 import { get0xSwap } from '../utils'
 
 const abi = ethers.utils.defaultAbiCoder

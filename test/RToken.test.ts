@@ -216,12 +216,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     // Mint initial balances
     initialBal = bn('40000e18')
     await Promise.all(
-      tokens.map((t) =>
-        Promise.all([
-          t.connect(owner).mint(addr1.address, initialBal),
-          t.connect(owner).mint(addr2.address, initialBal),
-        ])
-      )
+      tokens.flatMap((t) => [
+        t.connect(owner).mint(addr1.address, initialBal),
+        t.connect(owner).mint(addr2.address, initialBal),
+      ])
     )
   })
 
@@ -563,10 +561,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const issueAmount: BigNumber = bn('100000e18')
 
       // Start issuance pre-pause
-      await token0.connect(addr1).approve(rToken.address, issueAmount)
-      await token1.connect(addr1).approve(rToken.address, issueAmount)
-      await token2.connect(addr1).approve(rToken.address, issueAmount)
-      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
       await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
       // Pause Main
@@ -580,10 +575,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const issueAmount: BigNumber = bn('100000e18')
 
       // Start issuance pre-pause
-      await token0.connect(addr1).approve(rToken.address, issueAmount)
-      await token1.connect(addr1).approve(rToken.address, issueAmount)
-      await token2.connect(addr1).approve(rToken.address, issueAmount)
-      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
       await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
       // Attempt to cancel
@@ -620,10 +612,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Should revert if user does not have the required Tokens', async function () {
       const issueAmount: BigNumber = bn('10000000000e18')
 
-      await token0.connect(addr1).approve(rToken.address, issueAmount)
-      await token1.connect(addr1).approve(rToken.address, issueAmount)
-      await token2.connect(addr1).approve(rToken.address, issueAmount)
-      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
 
       await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.be.revertedWith(
         'ERC20: transfer amount exceeds balance'
@@ -888,10 +877,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
 
       // Provide approvals
-      await token0.connect(addr1).approve(rToken.address, initialBal)
-      await token1.connect(addr1).approve(rToken.address, initialBal)
-      await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
 
       // Issue rTokens
       await rToken.connect(addr1)['issue(uint256)'](issueAmount)
@@ -1044,9 +1030,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Process 4 blocks
-      await advanceTime(100)
-      await advanceTime(100)
-      await advanceTime(100)
+      await advanceTime(300)
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
@@ -1068,9 +1052,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
       // Process slow issuances, resetting indices
-      await advanceTime(100)
-      await advanceTime(100)
-      await advanceTime(100)
+      await advanceTime(300)
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
       await expectProcessedIssuance(addr1.address, 0)
 
@@ -1634,12 +1616,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Provide approvals
       await Promise.all(
-        tokens.map((t) =>
-          Promise.all([
-            t.connect(addr1).approve(rToken.address, initialBal),
-            t.connect(addr2).approve(rToken.address, initialBal),
-          ])
-        )
+        tokens.flatMap((t) => [
+          t.connect(addr1).approve(rToken.address, initialBal),
+          t.connect(addr2).approve(rToken.address, initialBal),
+        ])
       )
 
       // Issue rTokens

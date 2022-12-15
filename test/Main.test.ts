@@ -180,15 +180,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     // Mint initial balances
     initialBal = bn('1000000e18')
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
 
-    await token0.connect(owner).mint(addr2.address, initialBal)
-    await token1.connect(owner).mint(addr2.address, initialBal)
-    await token2.connect(owner).mint(addr2.address, initialBal)
-    await token3.connect(owner).mint(addr2.address, initialBal)
+    await Promise.all(
+      [token0, token1, token2, token3].map((t) =>
+        Promise.all([
+          t.connect(owner).mint(addr1.address, initialBal),
+          t.connect(owner).mint(addr2.address, initialBal),
+        ])
+      )
+    )
   })
 
   describe('Deployment #fast', () => {
@@ -259,11 +259,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(ERC20s[2]).to.equal(aaveToken.address)
       expect(ERC20s[3]).to.equal(compToken.address)
 
-      const initialTokens: string[] = await Promise.all(
-        basket.map(async (c): Promise<string> => {
-          return await c.erc20()
-        })
-      )
+      const initialTokens: string[] = await Promise.all(basket.map((c) => c.erc20()))
       expect(ERC20s.slice(4)).to.eql(initialTokens)
       expect(ERC20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
 
