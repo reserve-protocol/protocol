@@ -970,14 +970,17 @@ contract DiffTestScenario {
 
     // bring refreshers up-to-date with each other
     function refreshBoth() internal {
+        // each poke() will fail iff paused or frozen.
         bool failed0;
         try p[0].poke() {} catch {
             failed0 = true;
+            p[0].assetRegistry().refresh();
         }
 
         bool failed1;
         try p[1].poke() {} catch {
             failed1 = true;
+            p[1].assetRegistry().refresh();
         }
 
         require(failed0 == failed1, "Pokes failed differently");
@@ -1137,10 +1140,10 @@ contract DiffTestScenario {
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
 
-        if (a.fullyCollateralized() != b.fullyCollateralized()) return false;
-        if (a.status() != b.status()) return false;
-        if (a.nonce() != b.nonce()) return false;
-        if (a.timestamp() != b.timestamp()) return false;
+        require(a.fullyCollateralized() == b.fullyCollateralized(), "fullyCollateralized not eq");
+        require(a.status() == b.status(), "status not eq");
+        require(a.nonce() == b.nonce(), "nonce not eq");
+        require(a.timestamp() == b.timestamp(), "timestamp not eq");
         return true;
     }
 
