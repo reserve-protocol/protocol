@@ -128,7 +128,6 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         // Refresh to ensure it does not revert, and to save a recent lastPrice
         asset.refresh();
 
-
         if (_erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] != asset) {
             _erc20s.remove(address(asset.erc20()));
             emit AssetUnregistered(asset.erc20(), assets[asset.erc20()]);
