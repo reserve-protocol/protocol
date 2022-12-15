@@ -1236,7 +1236,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('has only initially-true properties', async () => {
-    expect(await scenario.echidna_quoteProportionalToBasketIfNotRebalancing()).to.be.true
+    expect(await scenario.callStatic.echidna_quoteProportionalToBasketIfNotRebalancing()).to.be.true
     expect(await scenario.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
     expect(await scenario.echidna_mainInvariants()).to.be.true
     expect(await scenario.echidna_assetRegistryInvariants()).to.be.true
