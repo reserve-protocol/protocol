@@ -31,7 +31,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     IRevenueTrader private rsrTrader;
     IRevenueTrader private rTokenTrader;
     uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
-    uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
+    uint192 public constant MAX_BACKING_BUFFER = FIX_ONE; // {1} 100%
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep

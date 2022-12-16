@@ -15,7 +15,7 @@ import "../vendor/ERC20PermitUpgradeable.sol";
 uint192 constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
 
 // MAX_ISSUANCE_RATE: 100%
-uint192 constant MAX_ISSUANCE_RATE = 1e18; // {1}
+uint192 constant MAX_ISSUANCE_RATE = FIX_ONE; // {1}
 
 /**
  * @title RTokenP1

@@ -35,7 +35,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
     uint48 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
-    uint192 public constant MAX_REWARD_RATIO = 1e18;
+    uint192 public constant MAX_REWARD_RATIO = FIX_ONE; // {1} 100%
 
     // === ERC20 ===
     string public name; // mutable
@@ -61,7 +61,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
     uint192 public stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
 
-    uint192 private constant MAX_STAKE_RATE = 1e27; // 1e9 D18{qStRSR/qRSR}
+    uint192 private constant MAX_STAKE_RATE = 1e9 * FIX_ONE; // 1e9 D18{qStRSR/qRSR}
 
     // era => (owner => (spender => {qStRSR}))
     mapping(uint256 => mapping(address => mapping(address => uint256))) private _allowances;
@@ -83,7 +83,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
     uint192 public draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
 
-    uint192 private constant MAX_DRAFT_RATE = 1e27; // 1e9 D18{qDrafts/qRSR}
+    uint192 private constant MAX_DRAFT_RATE = 1e9 * FIX_ONE; // 1e9 D18{qDrafts/qRSR}
 
     // ==== Analysis Definitions for Financial State ====
     // Let `bal` be the map stakes[era]; so, bal[acct] == balanceOf(acct)
