@@ -516,7 +516,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // stakeRate else case: D18{qStRSR/qRSR} = {qStRSR} * D18 / {qRSR}
         // downcast is safe: it's at most 1e38 * 1e18 = 1e56
-
+        // untestable:
+        //      the second half of the OR comparison is untestable because of the invariant:
+        //      if totalStakes == 0, then stakeRSR == 0
         stakeRate = (stakeRSR == 0 || totalStakes == 0)
             ? FIX_ONE
             : uint192((totalStakes * FIX_ONE_256 + (stakeRSR - 1)) / stakeRSR);
