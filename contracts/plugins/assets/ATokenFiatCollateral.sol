@@ -37,6 +37,7 @@ contract ATokenFiatCollateral is FiatCollateral {
 
     // solhint-disable no-empty-blocks
     constructor(CollateralConfig memory config) FiatCollateral(config) {}
+
     // solhint-enable no-empty-blocks
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
