@@ -61,7 +61,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades.set(sell, 0)
     //   tradesOpen' = tradesOpen - 1
-    // untestable:
+    // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function settleTrade(IERC20 sell) external notPausedOrFrozen nonReentrant {
         ITrade trade = trades[sell];
@@ -103,7 +103,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
     //
-    // untestable:
+    // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
     // this contract that changes state this function refers to.
