@@ -48,7 +48,7 @@ contract FacadeRead is IFacadeRead {
 
     /// @custom:static-call
     function issue(IRToken rToken, uint256 amount)
-        public
+        external
         returns (address[] memory tokens, uint256[] memory deposits)
     {
         IMain main = rToken.main();
