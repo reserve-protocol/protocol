@@ -30,6 +30,7 @@
     "test:scenario:coverage": "PROTO_IMPL=1 hardhat coverage --testfiles 'test/scenario/*.test.ts`",
     "test:serial": "hardhat test",
     "test:recompile": "hardhat compile --force && mocha --require hardhat/register --recursive --exit",
+    "test:gas": "REPORT_GAS=1 PROTO_IMPL=1 hardhat test test/**/*.test.ts",
     "lint": "bash tools/lint",
     "eslint": "eslint test/",
     "prepare": "husky install",
