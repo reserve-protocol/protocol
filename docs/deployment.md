@@ -104,11 +104,11 @@ yarn devchain
 ### Gas costs
 
 Gas costs from Goerli; excludes collateral deployments:
+(ROUGH, these were last updated August 2022)
 
 - RSRAsset: 893,122
 - RewardableLib: 918,407
 - TradingLib: 2,623,625
-- OracleLib: 448,042
 - Facade: 3,715,055
 - FacadeWriteLib: 4,235,169
 - FacadeWrite: 4,159,216
