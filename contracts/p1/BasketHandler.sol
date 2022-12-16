@@ -369,6 +369,18 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // add in FIX_HALF for rounding
             uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
+            // untestable (here there be dragons):
+            //          A)  shiftDelta = rawDelta + (FIX_ONE / 2)
+            //      shiftDelta overflows if:
+            //          B)  shiftDelta = MAX_UINT256 - FIX_ONE/2 + 1
+            //              rawDelta + (FIX_ONE/2) = MAX_UINT256 - FIX_ONE/2 + 1
+            //              p * qty = MAX_UINT256 - FIX_ONE + 1
+            //      therefore shiftDelta overflows if:
+            //          C)  p = (MAX_UINT256 - FIX_ONE + 1) / qty
+            //      MAX_UINT256 ~= 1e77 , FIX_MAX ~= 6e57 (6e20 difference in magnitude)
+            //      qty <= 1e21 (MAX_TARGET_AMT)
+            //      qty must be between 1e19 & 1e20 in order for p in (C) to be uint192,
+            //      but qty would have to be < 1e18 in order for (A) to overflow
             if (shiftDelta < rawDelta) return FIX_MAX;
 
             // return _div(rawDelta, FIX_ONE, ROUND)
