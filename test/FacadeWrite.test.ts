@@ -218,6 +218,19 @@ describe('FacadeWrite contract', () => {
   })
 
   it('Should perform validations', async () => {
+    // Cannot deploy with duplicate collateral
+    rTokenSetup.primaryBasket = [tokenAsset.address, tokenAsset.address]
+    rTokenSetup.weights = [fp('0.5'), fp('0.5')]
+    await expect(
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).to.be.revertedWith('duplicate collateral')
+
+    // Cannot deploy with duplicate asset
+    rTokenSetup.assets = [tokenAsset.address, tokenAsset.address]
+    await expect(
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).to.be.revertedWith('duplicate asset')
+
     // Should not accept zero addr beneficiary
     rTokenSetup.beneficiaries = [{ beneficiary: ZERO_ADDRESS, revShare: revShare1 }]
     await expect(

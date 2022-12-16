@@ -62,7 +62,7 @@ contract FacadeWrite is IFacadeWrite {
 
         // Register assets
         for (uint256 i = 0; i < setup.assets.length; ++i) {
-            assetRegistry.register(setup.assets[i]);
+            require(assetRegistry.register(setup.assets[i]), "duplicate asset");
             backingManager.grantRTokenAllowance(setup.assets[i].erc20());
         }
 
@@ -72,7 +72,7 @@ contract FacadeWrite is IFacadeWrite {
 
             // Register collateral
             for (uint256 i = 0; i < setup.primaryBasket.length; ++i) {
-                assetRegistry.register(setup.primaryBasket[i]);
+                require(assetRegistry.register(setup.primaryBasket[i]), "duplicate collateral");
                 IERC20 erc20 = setup.primaryBasket[i].erc20();
                 basketERC20s[i] = erc20;
                 backingManager.grantRTokenAllowance(erc20);
@@ -92,7 +92,7 @@ contract FacadeWrite is IFacadeWrite {
 
                 for (uint256 j = 0; j < setup.backups[i].backupCollateral.length; ++j) {
                     ICollateral backupColl = setup.backups[i].backupCollateral[j];
-                    assetRegistry.register(backupColl);
+                    assetRegistry.register(backupColl); // do not require the asset is new
                     IERC20 erc20 = backupColl.erc20();
                     backupERC20s[j] = erc20;
                     backingManager.grantRTokenAllowance(erc20);
