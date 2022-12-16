@@ -39,6 +39,7 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
+  MockableCollateral,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -1645,6 +1646,39 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       await expectPrice(basketHandler.address, fp('0.25'), ORACLE_ERROR, true)
+    })
+
+    it('Should handle collateral with high price and quantity', async () => {
+      // Check status and price
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
+
+      // Set fallback to 0 for one of the collaterals (swapping the collateral)
+      const MockableCollateralFactory: ContractFactory = await ethers.getContractFactory(
+        'MockableCollateral'
+      )
+      const newColl = <MockableCollateral>await MockableCollateralFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: await collateral2.chainlinkFeed(),
+        oracleError: ORACLE_ERROR,
+        erc20: await collateral2.erc20(),
+        maxTradeVolume: await collateral2.maxTradeVolume(),
+        oracleTimeout: await collateral2.oracleTimeout(),
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: await collateral2.delayUntilDefault(),
+      })
+
+      await assetRegistry.connect(owner).swapRegistered(newColl.address)
+
+      await setOraclePrice(newColl.address, bn('1e41'))
+      await newColl.setTargetPerRef(1)
+
+      await basketHandler.setPrimeBasket([await newColl.erc20()], [fp('1000')])
+      await basketHandler.refreshBasket()
+
+      console.log(MAX_UINT192)
+      await expectPrice(basketHandler.address, MAX_UINT192, ORACLE_ERROR, true, bn('1'))
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
