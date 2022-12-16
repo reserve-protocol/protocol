@@ -364,6 +364,53 @@ contract DiffTestScenario {
         }
     }
 
+    function justIssue(uint256 amount) public asSender {
+        for (uint256 N = 0; N < 2; N++) {
+            p[N].rToken().issue(amount);
+        }
+    }
+    function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
+        for (uint256 N = 0; N < 2; N++) {
+            p[N].rToken().issue(p[N].someAddr(recipientID), amount);
+        }
+    }
+
+    // do allowances as needed, and *then* do issuance
+    function issue(uint256 amount) public asSender {
+        for (uint256 N = 0; N < 2; N++) {
+            require(
+                amount + p[N].rToken().totalSupply() <= 1e48,
+                "Do not issue 'unreasonably' many rTokens"
+            );
+
+            address[] memory tokens;
+            uint256[] memory tokenAmounts;
+            (tokens, tokenAmounts) = (RTokenP1Fuzz(address(p[N].rToken()))).quote(amount, CEIL);
+            for (uint256 i = 0; i < tokens.length; i++) {
+                IERC20(tokens[i]).approve(address(p[N].rToken()), tokenAmounts[i]);
+            }
+            p[N].rToken().issue(amount);
+        }
+    }
+
+    // do allowances as needed, and *then* do issuance
+    function issueTo(uint256 amount, uint8 recipientID) public asSender {
+        for (uint256 N = 0; N < 2; N++) {
+            require(
+                amount + p[N].rToken().totalSupply() <= 1e48,
+                "Do not issue 'unreasonably' many rTokens"
+            );
+
+            address[] memory tokens;
+            uint256[] memory tokenAmounts;
+            (tokens, tokenAmounts) = (RTokenP1Fuzz(address(p[N].rToken()))).quote(amount, CEIL);
+            for (uint256 i = 0; i < tokens.length; i++) {
+                IERC20(tokens[i]).approve(address(p[N].rToken()), tokenAmounts[i]);
+            }
+            p[N].rToken().issue(p[N].someAddr(recipientID), amount);
+        }
+    }
+
     function cancelIssuance(uint256 seedID, bool earliest) public asSender {
         for (uint256 N = 0; N < 2; N++) {
             // filter endIDs mostly to valid IDs

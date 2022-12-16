@@ -416,6 +416,21 @@ contract ChaosOpsScenario {
         assertRTokenIssuances(msg.sender);
     }
 
+    // do issuance without doing allowances first, to a different recipient
+    function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
+        address recipient = main.someAddr(recipientID);
+        uint256 preSupply = main.rToken().totalSupply();
+
+        main.rToken().issue(recipient, amount);
+
+        uint256 postSupply = main.rToken().totalSupply();
+
+        if (postSupply == preSupply) noteIssuance(amount);
+        else noteQuickIssuance(amount);
+
+        assertRTokenIssuances(recipient);
+    }
+
     // do allowances as needed, and *then* do issuance
     function issue(uint256 amount) public asSender {
         uint256 preSupply = main.rToken().totalSupply();
@@ -435,6 +450,28 @@ contract ChaosOpsScenario {
         else noteQuickIssuance(amount);
 
         assertRTokenIssuances(msg.sender);
+    }
+
+    // do allowances as needed, and *then* do issuance
+    function issueTo(uint256 amount, uint8 recipientID) public asSender {
+        address recipient = main.someAddr(recipientID);
+        uint256 preSupply = main.rToken().totalSupply();
+        require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+
+        address[] memory tokens;
+        uint256[] memory tokenAmounts;
+        (tokens, tokenAmounts) = (RTokenP1Fuzz(address(main.rToken()))).quote(amount, CEIL);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
+        }
+        main.rToken().issue(recipient, amount);
+
+        uint256 postSupply = main.rToken().totalSupply();
+
+        if (postSupply == preSupply) noteIssuance(amount);
+        else noteQuickIssuance(amount);
+
+        assertRTokenIssuances(recipient);
     }
 
     function cancelIssuance(uint256 seedID, bool earliest) public asSender {
