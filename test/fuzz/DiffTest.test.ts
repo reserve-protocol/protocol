@@ -313,5 +313,15 @@ describe('The Differential Testing scenario', () => {
       await advanceTime(86400)
       expect(await scenario.callStatic.echidna_bhEqualThunks()).to.be.true
     })
+    it('cancel does assetRegistry.refresh() only in P1', async () => {
+      // Cause a default
+      await scenario.swapRegisteredAsset(0, 0, 0, 0, false, false)
+      await scenario.refreshBasket()
+      // Set error state for something in the basket
+      await scenario.setErrorState(5, true, true)
+      await scenario.connect(alice).cancelIssuance(0, false)
+      await advanceTime(86400)
+      expect(await scenario.callStatic.echidna_bhEqualPrices()).to.be.true
+    })
   })
 })
