@@ -339,31 +339,6 @@ contract DiffTestScenario {
 
     // ==== user functions: rtoken ====
 
-    // do issuance without doing allowances first
-    function justIssue(uint256 amount) public asSender {
-        for (uint256 N = 0; N < 2; N++) {
-            p[N].rToken().issue(amount);
-        }
-    }
-
-    // do allowances as needed, and *then* do issuance
-    function issue(uint256 amount) public asSender {
-        for (uint256 N = 0; N < 2; N++) {
-            require(
-                amount + p[N].rToken().totalSupply() <= 1e48,
-                "Do not issue 'unreasonably' many rTokens"
-            );
-
-            address[] memory tokens;
-            uint256[] memory tokenAmounts;
-            (tokens, tokenAmounts) = (RTokenP1Fuzz(address(p[N].rToken()))).quote(amount, CEIL);
-            for (uint256 i = 0; i < tokens.length; i++) {
-                IERC20(tokens[i]).approve(address(p[N].rToken()), tokenAmounts[i]);
-            }
-            p[N].rToken().issue(amount);
-        }
-    }
-
     function justIssue(uint256 amount) public asSender {
         for (uint256 N = 0; N < 2; N++) {
             p[N].rToken().issue(amount);

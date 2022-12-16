@@ -1236,7 +1236,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('has only initially-true properties', async () => {
-    expect(await scenario.callStatic.echidna_quoteProportionalToBasketIfNotRebalancing()).to.be.true
+    expect(await scenario.callStatic.echidna_quoteProportionalWhenFullyCollateralized()).to.be.true
     expect(await scenario.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
     expect(await scenario.echidna_mainInvariants()).to.be.true
     expect(await scenario.echidna_assetRegistryInvariants()).to.be.true
@@ -1628,7 +1628,7 @@ describe('The Rebalancing scenario', () => {
     it('the quoteProportional property would fail right after a hard default', async () => {
       await scenario.connect(alice).issue(1000)
       await scenario.updatePrice(20, 0, 0, 0, 0) // reduces refPerTok and forces a hard default.
-      expect(await scenario.callStatic.echidna_quoteProportionalToBasketIfNotRebalancing()).be.true
+      expect(await scenario.callStatic.echidna_quoteProportionalWhenFullyCollateralized()).be.true
     })
   })
 })

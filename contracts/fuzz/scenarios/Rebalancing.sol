@@ -446,7 +446,7 @@ contract RebalancingScenario {
     }
 
     // do issuance without doing allowances first
-    function justIssueTo(uint256 amount, uint8 recipient) public asSender {
+    function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
         address recipient = main.someAddr(recipientID);
         uint256 preSupply = main.rToken().totalSupply();
 
@@ -502,8 +502,6 @@ contract RebalancingScenario {
 
         assertRTokenIssuances(recipient);
     }
-
-
 
     function cancelIssuance(uint256 seedID, bool earliest) public asSender {
         // filter endIDs mostly to valid IDs
@@ -1027,27 +1025,6 @@ contract RebalancingScenario {
         FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
-    // The system is always fully collateralized if not rebalancing
-    function echidna_quoteProportionalToBasketIfNotRebalancing() external returns (bool) {
-        // This relies on ScenarioStatus having been just updated:
-        refreshBasket();
-
-        // rtoken.quote() * rtoken.totalSupply < basketHolder balances
-        if (status != ScenarioStatus.REBALANCING_ONGOING) {
-            RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
-
-            (address[] memory tokens, uint256[] memory amts) = rtoken.quote(
-                rtoken.totalSupply(),
-                RoundingMode.FLOOR
-            );
-
-            for (uint256 i = 0; i < tokens.length; i++) {
-                uint256 bal = IERC20(tokens[i]).balanceOf(address(main.backingManager()));
-                if (bal < amts[i]) return false;
-            }
-        }
-        return true;
-    }
 
     // Calling basketHandler.refereshBasket() yields an identical basket, if not rebalancing
     function echidna_refreshBasketIsNoopDuringAfterRebalancing() external returns (bool) {
@@ -1180,4 +1157,23 @@ contract RebalancingScenario {
             return main.basketHandler().fullyCollateralized();
         } else return true;
     }
+
+    function echidna_quoteProportionalWhenFullyCollateralized() external returns (bool) {
+        // rtoken.quote() * rtoken.totalSupply < basketHolder balances
+        if(main.basketHandler().fullyCollateralized()) {
+            RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
+
+            (address[] memory tokens, uint256[] memory amts) = rtoken.quote(
+                rtoken.totalSupply(),
+                RoundingMode.FLOOR
+            );
+
+            for (uint256 i = 0; i < tokens.length; i++) {
+                uint256 bal = IERC20(tokens[i]).balanceOf(address(main.backingManager()));
+                if (bal < amts[i]) return false;
+            }
+        }
+        return true;
+    }
+
 }
