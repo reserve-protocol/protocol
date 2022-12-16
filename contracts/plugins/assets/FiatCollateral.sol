@@ -201,7 +201,7 @@ contract FiatCollateral is ICollateral, Asset {
         return _whenDefault <= block.timestamp;
     }
 
-    function whenDefault() public view returns (uint256) {
+    function whenDefault() external view returns (uint256) {
         return _whenDefault;
     }
 
