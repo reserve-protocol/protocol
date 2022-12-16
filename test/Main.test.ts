@@ -1677,7 +1677,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await basketHandler.setPrimeBasket([await newColl.erc20()], [fp('1000')])
       await basketHandler.refreshBasket()
 
-      console.log(MAX_UINT192)
       await expectPrice(basketHandler.address, MAX_UINT192, ORACLE_ERROR, true, bn('1'))
     })
 
