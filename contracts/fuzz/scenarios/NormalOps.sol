@@ -593,14 +593,14 @@ contract NormalOpsScenario {
     }
 
     // RSR and RToken rates never fall
-    uint192 public prevRSRRate; // {StRSR/RSR}
-    uint192 public prevRTokenRate; // {RTok/BU}
+    uint192 public prevRSRRate; // {RSR/stRSR}
+    uint192 public prevRTokenRate; // {BU/RTok}
 
     function rTokenRate() public view returns (uint192) {
         return
-            main.rToken().basketsNeeded() == 0
+            main.rToken().totalSupply() == 0
                 ? FIX_ONE
-                : uint192((FIX_ONE * main.rToken().totalSupply()) / main.rToken().basketsNeeded());
+                : uint192((FIX_ONE * main.rToken().basketsNeeded()) / main.rToken().totalSupply());
     }
 
     // pseudo-mutator for saving old rates...
@@ -610,8 +610,8 @@ contract NormalOpsScenario {
     }
 
     function echidna_ratesNeverFall() external view returns (bool) {
-        if (main.stRSR().exchangeRate() > prevRSRRate) return false;
-        if (rTokenRate() > prevRTokenRate) return false;
+        if (main.stRSR().exchangeRate() < prevRSRRate) return false;
+        if (rTokenRate() < prevRTokenRate) return false;
         return true;
     }
 
@@ -667,5 +667,4 @@ contract NormalOpsScenario {
     function echidna_stRSRInvariants() external view returns (bool) {
         return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
     }
-
 }

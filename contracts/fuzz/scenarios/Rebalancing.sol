@@ -955,17 +955,17 @@ contract RebalancingScenario {
     }
 
     // ================ System Properties ================
-    uint192 public prevRSRRate; // {StRSR/RSR}
-    uint192 public prevRTokenRate; // {RTok/BU}
+    uint192 public prevRSRRate; // {RSR/StRSR}
+    uint192 public prevRTokenRate; // {BU/RTok}
 
     // Basket Range
     // BasketRange prevBasketRange;
 
     function rTokenRate() public view returns (uint192) {
         return
-            main.rToken().basketsNeeded() == 0
+            main.rToken().totalSupply() == 0
                 ? FIX_ONE
-                : uint192((FIX_ONE * main.rToken().totalSupply()) / main.rToken().basketsNeeded());
+                : uint192((FIX_ONE * main.rToken().basketsNeeded()) / main.rToken().totalSupply());
     }
 
     // pseudo-mutator for saving old rates...
@@ -1022,7 +1022,7 @@ contract RebalancingScenario {
     }
 
     function echidna_RTokenRateNeverFallInNormalOps() external view returns (bool) {
-        if (status == ScenarioStatus.BEFORE_REBALANCING && rTokenRate() > prevRTokenRate)
+        if (status == ScenarioStatus.BEFORE_REBALANCING && rTokenRate() < prevRTokenRate)
             return false;
         return true;
     }

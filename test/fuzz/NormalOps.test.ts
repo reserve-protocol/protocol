@@ -771,53 +771,66 @@ describe('The Normal Operations scenario', () => {
     expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
   })
 
-  it('does not fail on refreshBasket after just one call to updatePrice', async () => {
-    await scenario.updatePrice(0, 0, 0, 0, 0)
+  describe('does not have the bug in which', () => {
+    it('refreshBasket fails after just one call to updatePrice', async () => {
+      await scenario.updatePrice(0, 0, 0, 0, 0)
 
-    // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
-    await comp.basketHandler.savePrev()
-    await whileImpersonating(scenario.address, async (asOwner) => {
-      await comp.basketHandler.connect(asOwner).refreshBasket()
+      // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
+      await comp.basketHandler.savePrev()
+      await whileImpersonating(scenario.address, async (asOwner) => {
+        await comp.basketHandler.connect(asOwner).refreshBasket()
+      })
+      expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
     })
-    expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
-  })
 
-  it('does not have falling rates after a tiny issuance', async () => {
-    await scenario.connect(alice).issue(1)
-    expect(await scenario.echidna_ratesNeverFall()).to.be.true
-  })
+    it('rates fall after a tiny issuance', async () => {
+      await scenario.connect(alice).issue(1)
+      expect(await scenario.echidna_ratesNeverFall()).to.be.true
+    })
 
-  it('does not have the backingManager double-revenue bug', async () => {
-    // Have some RToken in existance
-    await scenario.connect(alice).issue(1e6)
+    it('backingManager issues double revenue', async () => {
+      // Have some RToken in existance
+      await scenario.connect(alice).issue(1e6)
 
-    // cause C0 to grow against its ref unit
-    await scenario.updatePrice(0, fp(1.1), 0, 0, fp(1))
+      // cause C0 to grow against its ref unit
+      await scenario.updatePrice(0, fp(1.1), 0, 0, fp(1))
 
-    // call manageTokens([C0, C0])
-    await scenario.pushBackingToManage(0)
-    await scenario.pushBackingToManage(0)
-    await expect(scenario.manageBackingTokens()).to.be.reverted
+      // call manageTokens([C0, C0])
+      await scenario.pushBackingToManage(0)
+      await scenario.pushBackingToManage(0)
+      await expect(scenario.manageBackingTokens()).to.be.reverted
 
-    expect(await scenario.echidna_isFullyCollateralized()).to.be.true
-  })
+      expect(await scenario.echidna_isFullyCollateralized()).to.be.true
+    })
 
-  it('does not have the stRSR zero-stake revenue bug', async () => {
-    await advanceTime(600000)
-    await scenario.distributeRevenue(0, 0, exa)
-    await advanceTime(200000)
-    await scenario.payRSRProfits()
-    await advanceTime(600000)
-    await scenario.payRSRProfits()
-    expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
-  })
+    it('stRSR tries to pay revenue to no stakers', async () => {
+      await advanceTime(600000)
+      await scenario.distributeRevenue(0, 0, exa)
+      await advanceTime(200000)
+      await scenario.payRSRProfits()
+      await advanceTime(600000)
+      await scenario.payRSRProfits()
+      expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
+    })
 
-  it('does not have out-of-bounds access in stRSRInvariants ', async () => {
-    await scenario.connect(alice).stake(1)
-    await scenario.connect(alice).unstake(1)
-    await advanceTime(1213957)
-    await scenario.connect(alice).withdrawAvailable()
-    expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
-    // fails due to Panic(0x32), out-of-bounds array access
+    it('stRSRInvariants has an out-of-bounds access', async () => {
+      await scenario.connect(alice).stake(1)
+      await scenario.connect(alice).unstake(1)
+      await advanceTime(1213957)
+      await scenario.connect(alice).withdrawAvailable()
+      expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
+      // fails due to Panic(0x32), out-of-bounds array access
+    })
+
+    it('rate falling after distributing revenue, staking, and unstaking', async () => {
+      await advanceTime(410_000)
+      await scenario.distributeRevenue(0, 0, 50) // Distribute 50 atto RSR from alice
+      await advanceTime(410_000)
+      await scenario.connect(alice).stake(1)
+      await advanceTime(410_000)
+      await scenario.connect(alice).unstake(1)
+
+      expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
+    })
   })
 })
