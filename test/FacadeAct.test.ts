@@ -212,7 +212,7 @@ describe('FacadeAct contract', () => {
       await cToken.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
     })
 
     it('No call required', async () => {

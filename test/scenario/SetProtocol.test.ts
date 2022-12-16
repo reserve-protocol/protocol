@@ -165,7 +165,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     await token0.connect(addr1).approve(rToken.address, issueAmt)
     await token1.connect(addr1).approve(rToken.address, issueAmt.mul(3))
     await token2.connect(addr1).approve(rToken.address, issueAmt.mul(9))
-    await rToken.connect(addr1).issue(issueAmt)
+    await rToken.connect(addr1)['issue(uint256)'](issueAmt)
 
     // Verify balances
     expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmt)
@@ -249,7 +249,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     await token0.connect(addr1).approve(rToken.address, issueAmt)
     await token1.connect(addr1).approve(rToken.address, issueAmt.mul(3))
     await token2.connect(addr1).approve(rToken.address, issueAmt.mul(9))
-    await rToken.connect(addr1).issue(issueAmt)
+    await rToken.connect(addr1)['issue(uint256)'](issueAmt)
 
     // Verify balances
     expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmt)

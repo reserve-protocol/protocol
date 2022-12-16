@@ -22,15 +22,15 @@ interface IRToken is
     IERC20PermitUpgradeable
 {
     /// Emitted when issuance is started, at the point collateral is taken in
-    /// @param issuer The account performing the issuance
-    /// @param index The index off the issuance in the issuer's queue
+    /// @param recipient The account of the recipient of the issuance
+    /// @param index The index off the issuance in the account's queue
     /// @param amount The quantity of RToken being issued
     /// @param baskets The basket unit-equivalent of the collateral deposits
     /// @param erc20s The ERC20 collateral tokens corresponding to the quantities
     /// @param quantities The quantities of tokens paid with
     /// @param blockAvailableAt The (continuous) block at which the issuance vests
     event IssuanceStarted(
-        address indexed issuer,
+        address indexed recipient,
         uint256 indexed index,
         uint256 indexed amount,
         uint192 baskets,
@@ -40,35 +40,35 @@ interface IRToken is
     );
 
     /// Emitted when an RToken issuance is canceled, such as during a default
-    /// @param issuer The account of the issuer
-    /// @param firstId The first of the cancelled issuances in the issuer's queue
-    /// @param endId The index _after_ the last of the cancelled issuances in the issuer's queue
+    /// @param recipient The account of the recipient
+    /// @param firstId The first of the cancelled issuances in the account's queue
+    /// @param endId The index _after_ the last of the cancelled issuances in the account's queue
     /// @param amount {qRTok} The amount of RTokens canceled
     /// That is, id was cancelled iff firstId <= id < endId
     event IssuancesCanceled(
-        address indexed issuer,
+        address indexed recipient,
         uint256 indexed firstId,
         uint256 indexed endId,
         uint256 amount
     );
 
     /// Emitted when an RToken issuance is completed successfully
-    /// @param issuer The account of the issuer
-    /// @param firstId The first of the completed issuances in the issuer's queue
+    /// @param recipient The account of the recipient
+    /// @param firstId The first of the completed issuances in the account's queue
     /// @param endId The id directly after the last of the completed issuances
     /// @param amount {qRTok} The amount of RTokens canceled
     event IssuancesCompleted(
-        address indexed issuer,
+        address indexed recipient,
         uint256 indexed firstId,
         uint256 indexed endId,
         uint256 amount
     );
 
     /// Emitted when an issuance of RToken occurs, whether it occurs via slow minting or not
-    /// @param issuer The address of the account issuing RTokens
+    /// @param recipient The address of the recipient of the RTokens
     /// @param amount The quantity of RToken being issued
     /// @param baskets The corresponding number of baskets
-    event Issuance(address indexed issuer, uint256 indexed amount, uint192 indexed baskets);
+    event Issuance(address indexed recipient, uint256 indexed amount, uint192 indexed baskets);
 
     /// Emitted when a redemption of RToken occurs
     /// @param redeemer The address of the account redeeeming RTokens
@@ -111,7 +111,14 @@ interface IRToken is
     /// @custom:interaction
     function issue(uint256 amount) external;
 
-    /// Cancels a vesting slow issuance of _msgSender
+    /// Begin a time-delayed issuance of RToken for basket collateral
+    /// @param recipient The address to receive the issued RTokens
+    /// @param amount {qTok} The quantity of RToken to issue
+    /// @return mintedAmount {qToken} The quantity of RTokens minted in this transaction
+    /// @custom:interaction
+    function issue(address recipient, uint256 amount) external returns (uint256 mintedAmount);
+
+    /// Cancels a vesting slow issuance of recipient _msgSender
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One edge of the issuance range to cancel
@@ -120,9 +127,9 @@ interface IRToken is
     function cancel(uint256 endId, bool earliest) external;
 
     /// Completes vested slow issuances for the account, up to endId.
-    /// @param account The address of the account to vest issuances for
+    /// @param recipient The address of the account to vest issuances for
     /// @custom:interaction
-    function vest(address account, uint256 endId) external;
+    function vest(address recipient, uint256 endId) external;
 
     /// Redeem RToken for basket collateral
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem

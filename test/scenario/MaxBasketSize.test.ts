@@ -321,9 +321,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       // Issue
       const issueAmt = initialBal.div(100)
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).issue(issueAmt))
+        await snapshotGasCost(rToken.connect(addr1)['issue(uint256)'](issueAmt))
       } else {
-        await rToken.connect(addr1).issue(issueAmt)
+        await rToken.connect(addr1)['issue(uint256)'](issueAmt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmt)
 
@@ -344,7 +344,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Issue
       const issueAmt = initialBal.div(100)
-      await rToken.connect(addr1).issue(issueAmt)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmt)
 
       // Stake RSR
       await rsr.connect(owner).mint(addr1.address, issueAmt.mul(1e9))
@@ -456,9 +456,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       // Issue
       const issueAmt = initialBal.div(100)
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).issue(issueAmt))
+        await snapshotGasCost(rToken.connect(addr1)['issue(uint256)'](issueAmt))
       } else {
-        await rToken.connect(addr1).issue(issueAmt)
+        await rToken.connect(addr1)['issue(uint256)'](issueAmt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmt)
 
@@ -479,7 +479,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Issue
       const issueAmt = initialBal.div(100)
-      await rToken.connect(addr1).issue(issueAmt)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmt)
 
       // Basket Swapping - Default CTokens
       // Will be replaced by existing ATokens

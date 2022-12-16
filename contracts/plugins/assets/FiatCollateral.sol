@@ -19,7 +19,7 @@ struct CollateralConfig {
     bytes32 targetName; // The bytes32 representation of the target name
     uint192 defaultThreshold; // {1} A value like 0.05 that represents a deviation tolerance
     // set defaultThreshold to zero to create SelfReferentialCollateral
-    uint256 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
+    uint48 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
 }
 
 /**
@@ -45,10 +45,10 @@ contract FiatCollateral is ICollateral, Asset {
     // _whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
     //                In this case, the asset may recover, reachiving _whenDefault == NEVER.
     // _whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 private constant NEVER = type(uint256).max;
-    uint256 private _whenDefault = NEVER;
+    uint48 private constant NEVER = type(uint48).max;
+    uint48 private _whenDefault = NEVER;
 
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
+    uint48 public immutable delayUntilDefault; // {s} e.g 86400
 
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
@@ -182,7 +182,7 @@ contract FiatCollateral is ICollateral, Asset {
 
     function markStatus(CollateralStatus status_) internal {
         // untestable:
-        //      All calls to markStatus happen exlusively if the collateral is not already defaulted
+        //      All calls to markStatus happen exclusively if the collateral is not defaulted
         if (_whenDefault <= block.timestamp) return; // prevent DISABLED -> SOUND/IFFY
 
         // untestable:
@@ -190,9 +190,12 @@ contract FiatCollateral is ICollateral, Asset {
         if (status_ == CollateralStatus.SOUND) {
             _whenDefault = NEVER;
         } else if (status_ == CollateralStatus.IFFY) {
-            _whenDefault = Math.min(block.timestamp + delayUntilDefault, _whenDefault);
+            uint256 sum = block.timestamp + uint256(delayUntilDefault);
+            if (sum >= NEVER) _whenDefault = NEVER;
+            else if (sum < _whenDefault) _whenDefault = uint48(sum);
+            // else: no change to _whenDefault
         } else if (status_ == CollateralStatus.DISABLED) {
-            _whenDefault = block.timestamp;
+            _whenDefault = uint48(block.timestamp);
         }
     }
 

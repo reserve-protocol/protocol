@@ -13,7 +13,7 @@ import {
   IRTokenSetup,
   networkConfig,
 } from '../../../common/configuration'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
+import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../../common/constants'
 import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
@@ -323,7 +323,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),
@@ -367,7 +367,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
       // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -509,7 +509,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
       // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -633,7 +633,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Check initial state
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       // Depeg one of the underlying tokens - Reducing price 20%
       await setOraclePrice(newCDaiCollateral.address, bn('8e7')) // -20%
@@ -696,7 +696,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Check initial state
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       // Decrease rate for cDAI, will disable collateral immediately
       await cDaiMock.setExchangeRate(fp('0.019'))

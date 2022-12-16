@@ -196,8 +196,8 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Issue tokens
       const issueAmount: BigNumber = bn('100e18')
-      await rToken.connect(addr1).issue(issueAmount)
-      await rToken.connect(addr2).issue(issueAmount)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+      await rToken.connect(addr2)['issue(uint256)'](issueAmount)
     })
 
     it('Should not melt if paused', async () => {
@@ -462,8 +462,8 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Issue tokens
       const issueAmount: BigNumber = bn('100e18')
-      await rToken.connect(addr1).issue(issueAmount)
-      await rToken.connect(addr2).issue(issueAmount)
+      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+      await rToken.connect(addr2)['issue(uint256)'](issueAmount)
 
       // Advance blocks to fill battery
       await advanceBlocks(300)

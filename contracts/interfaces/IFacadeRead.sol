@@ -66,6 +66,29 @@ interface IFacadeRead {
     /// @dev Use with `vest`
     function endIdForVest(RTokenP1 rToken, address account) external view returns (uint256);
 
+    /// Returns the prime basket
+    /// @dev Indices are shared across return values
+    /// @return erc20s The erc20s in the prime basket
+    /// @return targetNames The bytes32 name identifier of the target unit, per ERC20
+    /// @return targetAmts {target/BU} The amount of the target unit in the basket, per ERC20
+    function primeBasket(RTokenP1 rToken)
+        external
+        view
+        returns (
+            IERC20[] memory erc20s,
+            bytes32[] memory targetNames,
+            uint192[] memory targetAmts
+        );
+
+    /// Returns the backup configuration for a given targetName
+    /// @param targetName The name of the target unit to lookup the backup for
+    /// @return erc20s The backup erc20s for the target unit, in order of most to least desirable
+    /// @return max The maximum number of tokens from the array to use at a single time
+    function backupConfig(RTokenP1 rToken, bytes32 targetName)
+        external
+        view
+        returns (IERC20[] memory erc20s, uint256 max);
+
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens);
