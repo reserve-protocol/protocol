@@ -54,6 +54,7 @@ import {
   RecollateralizationLibP1,
   USDCMock,
   NonFiatCollateral,
+  ZeroDecimalMock,
 } from '../typechain'
 import { useEnv } from '#/utils/env'
 
@@ -552,20 +553,24 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
-  const main: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
+  const main: TestIMain = await ethers.getContractAt('TestIMain', mainAddr)
 
   // Get Core
-  const assetRegistry: IAssetRegistry = <IAssetRegistry>(
-    await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
+  const assetRegistry: IAssetRegistry = await ethers.getContractAt(
+    'IAssetRegistry',
+    await main.assetRegistry()
   )
-  const backingManager: TestIBackingManager = <TestIBackingManager>(
-    await ethers.getContractAt('TestIBackingManager', await main.backingManager())
+  const backingManager: TestIBackingManager = await ethers.getContractAt(
+    'TestIBackingManager',
+    await main.backingManager()
   )
-  const basketHandler: IBasketHandler = <IBasketHandler>(
-    await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+  const basketHandler: IBasketHandler = await ethers.getContractAt(
+    'IBasketHandler',
+    await main.basketHandler()
   )
-  const distributor: TestIDistributor = <TestIDistributor>(
-    await ethers.getContractAt('TestIDistributor', await main.distributor())
+  const distributor: TestIDistributor = await ethers.getContractAt(
+    'TestIDistributor',
+    await main.distributor()
   )
 
   const aaveChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
@@ -602,21 +607,16 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   await assetRegistry.connect(owner).register(aaveAsset.address)
   await assetRegistry.connect(owner).register(compAsset.address)
 
-  const rToken: TestIRToken = <TestIRToken>(
-    await ethers.getContractAt('TestIRToken', await main.rToken())
-  )
-  const rTokenAsset: RTokenAsset = <RTokenAsset>(
-    await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
-  )
-
-  const broker: TestIBroker = <TestIBroker>(
-    await ethers.getContractAt('TestIBroker', await main.broker())
+  const rToken: TestIRToken = await ethers.getContractAt('TestIRToken', await main.rToken())
+  const rTokenAsset: RTokenAsset = await ethers.getContractAt(
+    'RTokenAsset',
+    await assetRegistry.toAsset(rToken.address)
   )
 
-  const furnace: TestIFurnace = <TestIFurnace>(
-    await ethers.getContractAt('TestIFurnace', await main.furnace())
-  )
-  const stRSR: TestIStRSR = <TestIStRSR>await ethers.getContractAt('TestIStRSR', await main.stRSR())
+  const broker: TestIBroker = await ethers.getContractAt('TestIBroker', await main.broker())
+
+  const furnace: TestIFurnace = await ethers.getContractAt('TestIFurnace', await main.furnace())
+  const stRSR: TestIStRSR = await ethers.getContractAt('TestIStRSR', await main.stRSR())
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(

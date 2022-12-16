@@ -4,6 +4,7 @@ import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../common/constants'
 import { DeployerRegistry, TestIDeployer } from '../typechain'
 import { defaultFixture } from './fixtures'
+import { Wallet } from 'ethers'
 
 const createFixtureLoader = waffle.createFixtureLoader
 

@@ -53,7 +53,6 @@ contract ZeroExMarket is AbstractMarket {
         bytes calldata data
     ) internal returns (uint256 amountOut) {
         require(amountIn != 0, "ZeroExMarket: INSUFFICIENT_INPUT");
-        require(approvedTargets[target], "ZeroExMarket: SWAP_TARGET_NOT_APPROVED");
 
         // A => A
         if (address(fromToken) == address(toToken)) {

@@ -31,11 +31,17 @@ import {
   RTokenMarket,
   FiatCollateral,
   ZeroExMarket,
+  IAssetRegistry,
+  IBasketHandler,
+  RTokenAsset,
+  TestIBackingManager,
+  FacadeTest,
 } from '../../../typechain'
-import { ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
+import { ORACLE_ERROR, ORACLE_TIMEOUT, PRICE_TIMEOUT } from '../../fixtures'
 import { whileImpersonating } from '../../utils/impersonation'
-import { defaultFixture } from '../fixtures'
+import { defaultFixture } from './fixtures'
 import { get0xSwap } from '../utils'
+import { expectInIndirectReceipt } from '#/common/events'
 
 const abi = ethers.utils.defaultAbiCoder
 const createFixtureLoader = waffle.createFixtureLoader
@@ -47,8 +53,9 @@ const holderDAI = '0x075e72a5edf65f0a5f44699c7654c1a76941ddc8'
 // const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
+const PROTO_IMPL = useEnv('PROTO_IMPL')
 
-describeFork('RTokenMarket', function () {
+describeFork(`RTokenMarket for RTokenP${PROTO_IMPL}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
@@ -60,13 +67,20 @@ describeFork('RTokenMarket', function () {
   let compToken: ERC20Mock
   let compAsset: Asset
   let comptroller: ComptrollerMock
+  let rsr: ERC20Mock
+  let rsrAsset: Asset
 
   // Core Contracts
   let main: TestIMain
   let rToken: TestIRToken
+  let rTokenAsset: RTokenAsset
+  let assetRegistry: IAssetRegistry
+  let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
 
   let deployer: TestIDeployer
   let facade: FacadeRead
+  let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
   let govParams: IGovParams
 
@@ -102,7 +116,6 @@ describeFork('RTokenMarket', function () {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
-
   let chainId: number
 
   let MockV3AggregatorFactory: ContractFactory
@@ -120,13 +133,17 @@ describeFork('RTokenMarket', function () {
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ deployer, facade, facadeWrite, govParams } = await loadFixture(defaultFixture))
+    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } = await loadFixture(
+      defaultFixture
+    ))
 
-    rTokenMarket = <RTokenMarket>(
-      await (await ethers.getContractFactory('RTokenMarket')).deploy(facade.address)
-    )
+    rTokenMarket = <RTokenMarket>await (await ethers.getContractFactory('RTokenMarket')).deploy()
     cTokenMarket = <CTokenMarket>await (await ethers.getContractFactory('CTokenMarket')).deploy()
     zeroExMarket = <ZeroExMarket>await (await ethers.getContractFactory('ZeroExMarket')).deploy()
+
+    await rTokenMarket
+      .connect(owner)
+      .setApprovedTargets([cTokenMarket.address, zeroExMarket.address], [true, true])
 
     // Get required contracts for cDAI
     // COMP token
@@ -165,7 +182,6 @@ describeFork('RTokenMarket', function () {
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
       oracleError: ORACLE_ERROR,
       erc20: dai.address,
-      market: zeroExMarket.address,
       maxTradeVolume: config.rTokenMaxTradeVolume,
       oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
@@ -188,7 +204,6 @@ describeFork('RTokenMarket', function () {
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
         oracleError: ORACLE_ERROR,
         erc20: cDai.address,
-        market: cTokenMarket.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -219,10 +234,28 @@ describeFork('RTokenMarket', function () {
     }
 
     // Deploy RToken via FacadeWrite
-    await (await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)).wait()
+    const receipt = await (
+      await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
+    ).wait()
+
+    // Get Main
+    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main
+    main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
 
     // Get core contracts
+    assetRegistry = <IAssetRegistry>(
+      await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
+    )
+    backingManager = <TestIBackingManager>(
+      await ethers.getContractAt('TestIBackingManager', await main.backingManager())
+    )
+    basketHandler = <IBasketHandler>(
+      await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+    )
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
+    rTokenAsset = <RTokenAsset>(
+      await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
+    )
 
     // Setup owner and unpause
     await facadeWrite.connect(owner).setupGovernance(
@@ -242,68 +275,93 @@ describeFork('RTokenMarket', function () {
   })
 
   describe('enter', () => {
+    it('will not make calls to unauthorized targets', async () => {
+      const amountIn = bn('10000e18')
+      await dai.connect(addr1).approve(rTokenMarket.address, amountIn)
+
+      await expect(
+        rTokenMarket.connect(addr1).enter(
+          dai.address,
+          amountIn,
+          rToken.address,
+          amountIn,
+          [
+            {
+              fromToken: dai.address,
+              amountIn: bn('8000e18'),
+              toToken: cDai.address,
+              minAmountOut: bn('8000e18'),
+              target: '0x0000000000000000000000000000000000000042',
+              value: bn('0'),
+              data: '0x',
+            },
+          ],
+          addr1.address
+        )
+      ).to.be.revertedWith('SWAP_TARGET_NOT_APPROVED')
+    })
+
     it('can enter with DAI', async () => {
       const amountIn = bn('10000e18')
-      const rTokenAmount = amountIn
+      await dai.connect(addr1).approve(rTokenMarket.address, amountIn)
+
       const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
       const totalShares = daiShares.add(cDaiShares)
 
-      const swapAmountIns = [daiShares, cDaiShares].map((shares) =>
-        amountIn.mul(shares).div(totalShares)
+      const minAmountOut = amountIn.mul(99999).div(100000)
+      await rTokenMarket.connect(addr1).enter(
+        dai.address,
+        amountIn,
+        rToken.address,
+        minAmountOut,
+        [
+          {
+            fromToken: dai.address,
+            amountIn: amountIn.mul(cDaiShares).div(totalShares),
+            toToken: cDai.address,
+            minAmountOut: 0,
+            value: 0,
+            target: cTokenMarket.address,
+            data: '0x',
+          },
+        ],
+        addr1.address
       )
-      const swapCallDatas = ['', ''] // no 0x swaps
-      const swapCallData = abi.encode(['uint256[]', 'bytes[]'], [swapAmountIns, swapCallDatas])
 
-      await dai.connect(addr1).approve(rTokenMarket.address, rTokenAmount)
-      await rTokenMarket
-        .connect(addr1)
-        .enter(
-          dai.address,
-          rTokenAmount,
-          rToken.address,
-          rTokenAmount,
-          ZERO_ADDRESS,
-          swapCallData,
-          addr1.address
-        )
-
-      expect(await rToken.balanceOf(addr1.address)).to.eq(rTokenAmount)
+      expect(Number(await rToken.balanceOf(addr1.address))).to.be.greaterThanOrEqual(
+        Number(minAmountOut)
+      )
     })
 
     it('can enter with ETH', async () => {
-      const amountIn = bn('10e18') // 10 ETH
-
-      const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
-      const totalShares = daiShares.add(cDaiShares)
-
-      const swapAmountIns = [daiShares, cDaiShares].map((shares) =>
-        amountIn.mul(shares).div(totalShares)
-      )
-
-      const swapCallDatas = await Promise.all(
-        swapAmountIns.map((amount) =>
-          get0xSwap('quote', {
-            buyToken: 'DAI',
-            sellToken: 'ETH',
-            sellAmount: amount.toNumber(),
-          })
-        )
-      )
-      const swapCallData = abi.encode(['uint256[]', 'bytes[]'], [swapAmountIns, swapCallDatas])
-
-      await rTokenMarket
-        .connect(addr1)
-        .enter(
-          ZERO_ADDRESS,
-          amountIn,
-          rToken.address,
-          1,
-          swapCallDatas[0].to,
-          swapCallData,
-          addr1.address
-        )
-
-      expect(await rToken.balanceOf(addr1.address)).to.be.greaterThan(1)
+      // const amountIn = bn('10e18') // 10 ETH
+      // const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
+      // const totalShares = daiShares.add(cDaiShares)
+      // const swapAmountIns = [daiShares, cDaiShares].map((shares) =>
+      //   amountIn.mul(shares).div(totalShares)
+      // )
+      // const swapCallDatas = await Promise.all(
+      //   swapAmountIns.map((amount) =>
+      //     get0xSwap('quote', {
+      //       buyToken: 'DAI',
+      //       sellToken: 'ETH',
+      //       sellAmount: amount.toNumber(),
+      //     })
+      //   )
+      // )
+      // const swapCallData = abi.encode(['uint256[]', 'bytes[]'], [swapAmountIns, swapCallDatas])
+      // await rTokenMarket
+      //   .connect(addr1)
+      //   .enter(
+      //     ZERO_ADDRESS,
+      //     amountIn,
+      //     rToken.address,
+      //     1,
+      //     swapCallDatas[0].to,
+      //     swapCallData,
+      //     addr1.address
+      //   )
+      // expect(await rToken.balanceOf(addr1.address)).to.be.greaterThan(1)
     })
   })
 

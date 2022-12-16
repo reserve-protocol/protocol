@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
-import "./IMarket.sol";
 
 /**
  * @title IAsset
@@ -100,7 +99,4 @@ interface ICollateral is IAsset {
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() external view returns (uint192);
-
-    // @return IMarket for entering/exiting this collateral token
-    function market() external view returns (IMarket);
 }

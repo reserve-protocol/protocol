@@ -9,8 +9,6 @@ import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./ITrade.sol";
-import "./IVersioned.sol";
-import "./IFacadeRead.sol";
 
 /**
  * @title DeploymentParams
@@ -56,7 +54,6 @@ struct Implementations {
     IMain main;
     Components components;
     ITrade trade;
-    IFacadeRead facadeRead;
 }
 
 /**

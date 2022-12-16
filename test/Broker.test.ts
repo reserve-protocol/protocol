@@ -81,7 +81,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     } = await loadFixture(defaultFixture))
 
     // Get assets
-    ;[collateral0, collateral1, ,] = basket
+    ;[collateral0, collateral1] = basket
     collateralZ = collateral[collateral.length - 1]
 
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())

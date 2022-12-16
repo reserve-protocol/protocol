@@ -182,12 +182,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     initialBal = bn('1000000e18')
 
     await Promise.all(
-      [token0, token1, token2, token3].map((t) =>
-        Promise.all([
-          t.connect(owner).mint(addr1.address, initialBal),
-          t.connect(owner).mint(addr2.address, initialBal),
-        ])
-      )
+      [token0, token1, token2, token3].flatMap((t) => [
+        t.connect(owner).mint(addr1.address, initialBal),
+        t.connect(owner).mint(addr2.address, initialBal),
+      ])
     )
   })
 
