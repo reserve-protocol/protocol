@@ -67,7 +67,7 @@ hash -r && slither --version
 - Lint Typescript code: `yarn eslint`
 - Run the Slither static checker: `yarn slither`
 - Run a local mainnet fork devchain: `yarn devchain`
-- Deploy our system to your local evm devchain: `yarn deploy --network localhost`
+- Deploy our system to your local evm devchain: `yarn deploy:run --network localhost`
 
 ## Mainnet Forking
 
