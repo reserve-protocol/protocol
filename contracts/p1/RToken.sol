@@ -174,7 +174,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
-    function issue(uint256 amtRToken) external {
+    function issue(uint256 amtRToken) public {
         issue(_msgSender(), amtRToken);
     }
 

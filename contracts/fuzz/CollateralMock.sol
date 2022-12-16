@@ -28,7 +28,7 @@ contract CollateralMock is OracleErrorMock, FiatCollateral {
         uint48 priceTimeout_,
         uint192 oracleError_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
+        uint48 delayUntilDefault_,
         bytes32 targetName_,
         // Price Models
         PriceModel memory refPerTokModel_, // Ref units per token
@@ -143,7 +143,7 @@ contract CollateralNoDecay is CollateralMock {
         uint48 priceTimeout_,
         uint192 oracleError_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
+        uint48 delayUntilDefault_,
         bytes32 targetName_,
         // Price Models
         PriceModel memory refPerTokModel_, // Ref units per token

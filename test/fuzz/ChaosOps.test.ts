@@ -785,7 +785,7 @@ describe('The Chaos Operations scenario', () => {
 
       // Register collateral again for target A, avoid creating a new token
       // Will create an additional reward token
-      await scenario.registerAsset(7, 0, exa, exa, 1, exa)
+      await scenario.registerAsset(7, 0, exa, 2n ** 47n, 1, exa)
 
       updatedErc20s = await comp.assetRegistry.erc20s()
       expect(updatedErc20s.length).to.equal(erc20s.length)
@@ -797,7 +797,7 @@ describe('The Chaos Operations scenario', () => {
         await comp.assetRegistry.toColl(token.address)
       )
 
-      await scenario.swapRegisteredAsset(4, exa, exa, 2, 0)
+      await scenario.swapRegisteredAsset(4, exa, 2n ** 47n, 2, 0)
 
       const newColl = await ConAt('CollateralMock', await comp.assetRegistry.toColl(token.address))
 
@@ -814,7 +814,7 @@ describe('The Chaos Operations scenario', () => {
       expect(updatedErc20s.length).to.equal(erc20s.length - 1)
 
       // Register STABLE collateral for target A, avoid creating a new token
-      await scenario.registerAsset(7, 0, exa, exa, true, false)
+      await scenario.registerAsset(7, 0, exa, 2n ** 47n, true, false)
 
       // Registered the new collateral and the reward asset
       updatedErc20s = await comp.assetRegistry.erc20s()
@@ -854,8 +854,8 @@ describe('The Chaos Operations scenario', () => {
       // Register another new token to be the new collateral's reward
       const rewardID = await main.numTokens()
       await scenario.createToken(3, 'FnordReward', 'frfr')
-      await scenario.registerAsset(tokenID, 3, exa, exa, true, false)
-      await scenario.registerAsset(rewardID, 3, exa, exa, false, false)
+      await scenario.registerAsset(tokenID, 3, exa, 2n ** 47n, true, false)
+      await scenario.registerAsset(rewardID, 3, exa, 2n ** 47n, false, false)
       await scenario.setRewardToken(tokenID, rewardID)
 
       // Check new tokens registered
@@ -1317,7 +1317,7 @@ describe('The Chaos Operations scenario', () => {
     await scenario.swapRegisteredAsset(
       211,
       157198260n,
-      115792089237316195423570985008687907853269984665640564039457584007913129639931n,
+      2n ** 48n - 1n,
       115792089237316195423570985008687907853269984665640564039457584007913129639905n,
       79675224655379746186334390283315537261450992776061862950001213325377990300223n
     )

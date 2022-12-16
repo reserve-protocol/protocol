@@ -268,7 +268,7 @@ contract ChaosOpsScenario {
         uint8 tokenID,
         uint8 targetNameID,
         uint256 defaultThresholdSeed,
-        uint256 delayUntilDefaultSeed,
+        uint48 delayUntilDefaultSeed,
         bool isColl,
         bool isStable
     ) public {
@@ -289,7 +289,7 @@ contract ChaosOpsScenario {
     function swapRegisteredAsset(
         uint8 tokenID,
         uint256 defaultThresholdSeed,
-        uint256 delayUntilDefaultSeed,
+        uint48 delayUntilDefaultSeed,
         uint256 switchTypeSeed,
         uint256 stableOrRandomSeed
     ) public {
@@ -885,7 +885,7 @@ contract ChaosOpsScenario {
         IERC20 erc20,
         bool isStable,
         uint256 defaultThresholdSeed,
-        uint256 delayUntilDefaultSeed,
+        uint48 delayUntilDefaultSeed,
         bytes32 targetName
     ) public returns (CollateralMock) {
         return
@@ -895,7 +895,7 @@ contract ChaosOpsScenario {
                 priceTimeout_: 806400,
                 oracleError_: 0.005e18,
                 defaultThreshold_: uint192(between(1, 1e18, defaultThresholdSeed)),
-                delayUntilDefault_: between(1, type(uint48).max / 2, delayUntilDefaultSeed),
+                delayUntilDefault_: uint48(between(1, type(uint48).max / 2, delayUntilDefaultSeed)),
                 targetName_: targetName,
                 refPerTokModel_: isStable ? growing : getNextPriceModel(),
                 targetPerRefModel_: isStable ? justOne : getNextPriceModel(),

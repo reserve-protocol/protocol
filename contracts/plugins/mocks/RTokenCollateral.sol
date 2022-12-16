@@ -39,7 +39,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         IRToken erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_,
-        uint256 delayUntilDefault_
+        uint48 delayUntilDefault_
     ) RTokenAsset(erc20_, maxTradeVolume_) {
         require(targetName_ != bytes32(0), "targetName missing");
         targetName = targetName_;

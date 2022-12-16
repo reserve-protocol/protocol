@@ -234,7 +234,7 @@ describe('The Differential Testing scenario', () => {
       expect(initNumTokens0).to.equal(initNumTokens1)
 
       await scenario.createToken(ethers.utils.formatBytes32String('Tgt'), 'Fnord', 'K')
-      await scenario.registerAsset(initNumTokens0, 1, exa, exa, true, true)
+      await scenario.registerAsset(initNumTokens0, 1, exa, 2n ** 47n, true, true)
 
       expect(await p0.numTokens()).to.equal(initNumTokens0.add(1))
       expect(await p1.numTokens()).to.equal(initNumTokens1.add(1))
@@ -257,11 +257,11 @@ describe('The Differential Testing scenario', () => {
       expect(initNumTokens0).to.equal(initNumTokens1)
 
       await scenario.createToken(ethers.utils.formatBytes32String('Tgt'), 'Fnord', 'K')
-      await scenario.registerAsset(initNumTokens0, 1, exa, exa, true, true)
+      await scenario.registerAsset(initNumTokens0, 1, exa, 2n ** 47n, true, true)
 
       // swap out registeredAsset 7 so that it's an Asset, rather than a Collateral,
       // so we can check that things (targetName + isCollateral) have changed
-      await scenario.swapRegisteredAsset(initNumTokens0, 1, exa, exa, true, true)
+      await scenario.swapRegisteredAsset(initNumTokens0, 1, exa, 2n ** 47n, true, true)
       expect(await p0.numTokens()).to.equal(initNumTokens0.add(1))
       expect(await p1.numTokens()).to.equal(initNumTokens1.add(1))
 

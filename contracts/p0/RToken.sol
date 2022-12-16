@@ -137,7 +137,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issue(uint256 amount) external {
+    function issue(uint256 amount) public {
         issue(_msgSender(), amount);
     }
 
