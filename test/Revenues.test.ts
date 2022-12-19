@@ -6,7 +6,7 @@ import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, divCeil, fp, near, pow10 } from '../common/numbers'
+import { bn, divCeil, fp, near } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
