@@ -13,6 +13,14 @@ contract RTokenMaker is Ownable {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
+    // For preventing delegatecalls to this contract's functions
+    address public immutable self;
+
+    constructor() Ownable() {
+        self = address(this);
+    }
+
+    // For approving targets that can be safely called with delegatecall
     mapping(address => bool) public approvedTargets;
 
     function setApprovedTargets(address[] calldata targets, bool[] calldata isApproved)
@@ -34,22 +42,22 @@ contract RTokenMaker is Ownable {
         MarketCall[] calldata marketCalls,
         address receiver
     ) external payable returns (uint256 mintedAmount) {
+        if (self != address(this)) revert TargetCallFailed(self, "INVALID_CALLER");
         if (amountIn == 0) revert InsufficientInput();
         if (receiver == address(0)) revert InvalidReceiver();
 
         if (address(fromToken) != address(0)) {
-            fromToken.safeTransferFrom(_msgSender(), address(this), amountIn);
+            fromToken.safeTransferFrom(_msgSender(), self, amountIn);
         }
 
         uint256 callCount = marketCalls.length;
         for (uint256 i = 0; i < callCount; ++i) {
-            MarketCall memory call = marketCalls[i];
-            address target = call.target;
+            address target = marketCalls[i].target;
             if (!approvedTargets[target]) revert TargetNotApproved(target);
 
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory returndata) = target.delegatecall(
-                abi.encodeWithSelector(IMarket.enter.selector, call)
+                abi.encodeWithSelector(IMarket.enter.selector, marketCalls[i])
             );
             if (!success) revert TargetCallFailed(target, returndata);
         }
@@ -58,12 +66,11 @@ contract RTokenMaker is Ownable {
             uint256 amountOut,
             address[] memory collateralTokens,
             uint256[] memory collateralAmounts
-        ) = maxIssuable(rToken, address(this));
-        if (amountOut < minAmountOut) {
-            revert InsufficientOutput();
-        }
+        ) = maxIssuable(rToken, self);
+        if (amountOut < minAmountOut) revert InsufficientOutput();
 
-        for (uint256 i = 0; i < collateralTokens.length; ++i) {
+        uint256 collateralCount = collateralTokens.length;
+        for (uint256 i = 0; i < collateralCount; ++i) {
             IERC20(collateralTokens[i]).approve(address(rToken), collateralAmounts[i]);
         }
 
@@ -78,26 +85,23 @@ contract RTokenMaker is Ownable {
         MarketCall[] calldata marketCalls,
         address receiver
     ) public payable returns (uint256 amountOut) {
+        if (self != address(this)) revert TargetCallFailed(self, "INVALID_CALLER");
         if (amountIn == 0) revert InsufficientInput();
         if (receiver == address(0)) revert InvalidReceiver();
 
         uint256 initialBalance = _getBalance(toToken);
 
-        require(
-            rToken.transferFrom(_msgSender(), address(this), amountIn),
-            "RTokenMaker: TRANSFER_FAILED"
-        );
+        IERC20(address(rToken)).safeTransferFrom(_msgSender(), self, amountIn);
         rToken.redeem(amountIn);
 
         uint256 callCount = marketCalls.length;
         for (uint256 i = 0; i < callCount; ++i) {
-            MarketCall memory call = marketCalls[i];
-            address target = call.target;
+            address target = marketCalls[i].target;
             if (!approvedTargets[target]) revert TargetNotApproved(target);
 
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory returndata) = target.delegatecall(
-                abi.encodeWithSelector(IMarket.enter.selector, call)
+                abi.encodeWithSelector(IMarket.enter.selector, marketCalls[i])
             );
             if (!success) revert TargetCallFailed(target, returndata);
         }
@@ -149,9 +153,9 @@ contract RTokenMaker is Ownable {
 
     function _getBalance(IERC20 token) internal view returns (uint256) {
         if (address(token) == address(0)) {
-            return address(this).balance;
+            return self.balance;
         } else {
-            return token.balanceOf(address(this));
+            return token.balanceOf(self);
         }
     }
 }
