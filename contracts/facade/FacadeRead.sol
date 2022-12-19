@@ -14,7 +14,6 @@ import "../p1/Furnace.sol";
 import "../p1/RToken.sol";
 import "../p1/RevenueTrader.sol";
 import "../p1/StRSRVotes.sol";
-
 /**
  * @title Facade
  * @notice A UX-friendly layer for reading out the state of an RToken in summary views.
@@ -250,6 +249,9 @@ contract FacadeRead is IFacadeRead {
 
         // {UoA/BU}
         (uint192 buPriceLow, uint192 buPriceHigh) = rToken.main().basketHandler().price();
+        // untestable:
+        //      if buPriceLow==0 then basketMidPrice=0 and uoaNeeded=0
+        //      this functions will then panic when `uoaHeld.div(uoaNeeded)`
         uint192 basketMidPrice = buPriceLow > 0 ? buPriceLow.plus(buPriceHigh).div(2) : buPriceLow;
 
         // {UoA} = {BU} * {UoA/BU}

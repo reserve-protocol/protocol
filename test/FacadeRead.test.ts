@@ -3,7 +3,9 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../common/numbers'
+import { setOraclePrice } from './utils/oracles'
 import {
+  Asset,
   CTokenMock,
   ERC20Mock,
   FacadeRead,
@@ -58,6 +60,9 @@ describe('FacadeRead contract', () => {
   let stRSR: TestIStRSR
   let basketHandler: TestIBasketHandler
 
+  // RSR
+  let rsrAsset: Asset
+
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -70,7 +75,7 @@ describe('FacadeRead contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, basket, facade, facadeTest, rToken, main, basketHandler } = await loadFixture(
+    ;({ stRSR, rsr, rsrAsset, basket, facade, facadeTest, rToken, main, basketHandler } = await loadFixture(
       defaultFixture
     ))
 
@@ -168,6 +173,41 @@ describe('FacadeRead contract', () => {
       // Check values - No supply, returns 0
       expect(backing).to.equal(0)
       expect(insurance).to.equal(0)
+    })
+
+    it('Should return backingOverview backing correctly when an asset price is 0', async () => {
+      await setOraclePrice(tokenAsset.address, bn(0))
+      await basketHandler.refreshBasket()
+      let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully capitalized and no insurance
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(insurance).to.equal(0)
+    })
+
+    it('Should return backingOverview insurance correctly when RSR price is 0', async () => {
+      // Mint some RSR
+      const stakeAmount = bn('50e18') // Half in value compared to issued RTokens
+      await rsr.connect(owner).mint(addr1.address, stakeAmount.mul(2))
+
+      // Stake some RSR
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
+      await stRSR.connect(addr1).stake(stakeAmount)
+
+      let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully capitalized and no insurance
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(insurance).to.equal(fp('0.5'))
+
+      // Set price to 0
+      await setOraclePrice(rsrAsset.address, bn(0))
+
+      let [backing2, insurance2] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully capitalized and no insurance
+      expect(backing2).to.be.closeTo(fp('1'), 10)
+      expect(insurance2).to.equal(0)
     })
 
     it('Should return basketBreakdown correctly for paused token', async () => {
