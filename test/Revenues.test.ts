@@ -780,7 +780,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Set new asset for COMP with low maxTradeVolume
-        const noSellCOMPAsset: Asset = <Asset>await AssetFactory.deploy(
+        const newCOMPAsset: Asset = <Asset>await AssetFactory.deploy(
           PRICE_TIMEOUT,
           await compAsset.chainlinkFeed(),
           ORACLE_ERROR,
@@ -791,13 +791,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Set a very high price
         const compPrice = bn('300e8')
-        await setOraclePrice(noSellCOMPAsset.address, compPrice)
+        await setOraclePrice(newCOMPAsset.address, compPrice)
 
         // Refresh asset
-        await noSellCOMPAsset.refresh()
+        await newCOMPAsset.refresh()
 
         // Swap asset
-        await assetRegistry.connect(owner).swapRegistered(noSellCOMPAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newCOMPAsset.address)
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
@@ -832,6 +832,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               compToken.address,
               rsr.address,
               bn(1),
+              // the 1% increase here offsets the 1% decrease that would normally be applied to the sellAmt, but since 1 is the floor, isn't
               await toMinBuyAmt(bn(1), fp('303'), fp('1')),
             ],
           },
@@ -1047,7 +1048,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to maxTradeSlippage
+        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to oracle error
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         // Run auctions
