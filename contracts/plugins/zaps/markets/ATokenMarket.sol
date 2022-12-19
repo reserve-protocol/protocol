@@ -5,27 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "./AbstractMarket.sol";
 
-// This interface is redundant with the one from contracts/plugins/aave/IStaticAToken,
-// but it's compiled with a different solidity version.
-interface IStaticAToken is IERC20Metadata {
-    /**
-     * @notice Claim rewards
-     * @param forceUpdate Flag to retrieve latest rewards from `INCENTIVES_CONTROLLER`
-     */
-    function claimRewardsToSelf(bool forceUpdate) external;
-
-    /**
-     * @notice Returns the Aave liquidity index of the underlying aToken, denominated rate here
-     * as it can be considered as an ever-increasing exchange rate
-     * @return The liquidity index
-     **/
-    function rate() external view returns (uint256);
-
-    /// @return The reward token, ie stkAAVE
-    // solhint-disable-next-line func-name-mixedcase
-    function REWARD_TOKEN() external view returns (IERC20);
-}
-
 contract ATokenMarket is AbstractMarket {
     function enter(MarketCall calldata call)
         external
@@ -68,4 +47,25 @@ contract ATokenMarket is AbstractMarket {
         // }
         // require(amountOut >= call.minAmountOut, "ATokenMarket: INSUFFICIENT_OUTPUT");
     }
+}
+
+// This interface is redundant with the one from contracts/plugins/aave/IStaticAToken,
+// but it's compiled with a different solidity version.
+interface IStaticAToken is IERC20Metadata {
+    /**
+     * @notice Claim rewards
+     * @param forceUpdate Flag to retrieve latest rewards from `INCENTIVES_CONTROLLER`
+     */
+    function claimRewardsToSelf(bool forceUpdate) external;
+
+    /**
+     * @notice Returns the Aave liquidity index of the underlying aToken, denominated rate here
+     * as it can be considered as an ever-increasing exchange rate
+     * @return The liquidity index
+     **/
+    function rate() external view returns (uint256);
+
+    /// @return The reward token, ie stkAAVE
+    // solhint-disable-next-line func-name-mixedcase
+    function REWARD_TOKEN() external view returns (IERC20);
 }

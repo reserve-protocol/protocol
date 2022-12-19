@@ -3,6 +3,13 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+error InvalidValue();
+error InsufficientInput();
+error InvalidReceiver();
+error TargetCallFailed(address target, bytes returndata);
+error TargetNotApproved(address target);
+error InsufficientOutput();
+
 struct MarketCall {
     IERC20 fromToken;
     uint256 amountIn;

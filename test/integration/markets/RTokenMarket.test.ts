@@ -279,20 +279,21 @@ describeFork(`RTokenMarket for RTokenP${PROTO_IMPL}`, function () {
       const amountIn = bn('10000e18')
       await dai.connect(addr1).approve(rTokenMarket.address, amountIn)
 
+      const minAmountOut = amountIn.mul(9999).div(10000)
       await expect(
         rTokenMarket.connect(addr1).enter(
           dai.address,
           amountIn,
           rToken.address,
-          amountIn,
+          minAmountOut,
           [
             {
               fromToken: dai.address,
               amountIn: bn('8000e18'),
               toToken: cDai.address,
               minAmountOut: bn('8000e18'),
-              target: '0x0000000000000000000000000000000000000042',
-              value: bn('0'),
+              target: '0x4242424242424242424242424242424242424242',
+              value: 0,
               data: '0x',
             },
           ],
@@ -334,34 +335,36 @@ describeFork(`RTokenMarket for RTokenP${PROTO_IMPL}`, function () {
     })
 
     it('can enter with ETH', async () => {
-      // const amountIn = bn('10e18') // 10 ETH
-      // const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
-      // const totalShares = daiShares.add(cDaiShares)
-      // const swapAmountIns = [daiShares, cDaiShares].map((shares) =>
-      //   amountIn.mul(shares).div(totalShares)
-      // )
-      // const swapCallDatas = await Promise.all(
-      //   swapAmountIns.map((amount) =>
-      //     get0xSwap('quote', {
-      //       buyToken: 'DAI',
-      //       sellToken: 'ETH',
-      //       sellAmount: amount.toNumber(),
-      //     })
-      //   )
-      // )
-      // const swapCallData = abi.encode(['uint256[]', 'bytes[]'], [swapAmountIns, swapCallDatas])
-      // await rTokenMarket
-      //   .connect(addr1)
-      //   .enter(
-      //     ZERO_ADDRESS,
-      //     amountIn,
-      //     rToken.address,
-      //     1,
-      //     swapCallDatas[0].to,
-      //     swapCallData,
-      //     addr1.address
-      //   )
-      // expect(await rToken.balanceOf(addr1.address)).to.be.greaterThan(1)
+      const minAmountOut = bn('10000e18')
+      const amountIn = bn('10e18') // 10 ETH
+      const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
+
+      const marketCalls: Parameters<typeof rTokenMarket.enter>[4] = [
+        {
+          fromToken: ZERO_ADDRESS,
+          amountIn: bn('10e18'),
+          toToken: dai.address,
+          minAmountOut: 0,
+          value: 0,
+          target: zeroExMarket.address,
+          data: '0x',
+        },
+        {
+          fromToken: dai.address,
+          amountIn: 0,
+          toToken: cDai.address,
+          minAmountOut: 0,
+          value: 0,
+          target: cTokenMarket.address,
+          data: '0x',
+        },
+      ]
+
+      await rTokenMarket
+        .connect(addr1)
+        .enter(ZERO_ADDRESS, amountIn, rToken.address, minAmountOut, marketCalls, addr1.address, {
+          value: amountIn,
+        })
     })
   })
 
