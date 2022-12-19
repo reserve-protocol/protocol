@@ -102,7 +102,7 @@ Ranges here are formatted like "[min, max, granularity]" For instance, the range
 
 ### Rates
 
-- weights in the prime basket: [0, 1e3, 1e-6] `{target/BU}`
+- weights in the prime basket: (0, 1e3, 1e-6] `{target/BU}`
 - the StRSR exchange rate: [1e-9, 1e9, 1e-9] `{stRSR/rsr}`
 - the RToken exchange rate: [1e-9, 1e9, 1e-9] `{BU/rTok}`
 - a result of `Collateral.targetPerRef()`: [1e-9, 1e9, 1e-9] `{target/ref}`
