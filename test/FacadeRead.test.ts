@@ -13,7 +13,7 @@ import {
   MockV3Aggregator,
   StaticATokenMock,
   StRSRP1,
-  TestIBasketHandler,
+  IBasketHandler,
   TestIMain,
   TestIStRSR,
   TestIRToken,
@@ -58,7 +58,7 @@ describe('FacadeRead contract', () => {
   let rToken: TestIRToken
   let main: TestIMain
   let stRSR: TestIStRSR
-  let basketHandler: TestIBasketHandler
+  let basketHandler: IBasketHandler
 
   // RSR
   let rsrAsset: Asset
@@ -75,9 +75,8 @@ describe('FacadeRead contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, rsrAsset, basket, facade, facadeTest, rToken, main, basketHandler } = await loadFixture(
-      defaultFixture
-    ))
+    ;({ stRSR, rsr, rsrAsset, basket, facade, facadeTest, rToken, main, basketHandler } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -178,7 +177,7 @@ describe('FacadeRead contract', () => {
     it('Should return backingOverview backing correctly when an asset price is 0', async () => {
       await setOraclePrice(tokenAsset.address, bn(0))
       await basketHandler.refreshBasket()
-      let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+      const [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully capitalized and no insurance
       expect(backing).to.be.closeTo(fp('1'), 10)
@@ -194,7 +193,7 @@ describe('FacadeRead contract', () => {
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
 
-      let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+      const [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully capitalized and no insurance
       expect(backing).to.be.closeTo(fp('1'), 10)
@@ -203,7 +202,7 @@ describe('FacadeRead contract', () => {
       // Set price to 0
       await setOraclePrice(rsrAsset.address, bn(0))
 
-      let [backing2, insurance2] = await facade.callStatic.backingOverview(rToken.address)
+      const [backing2, insurance2] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully capitalized and no insurance
       expect(backing2).to.be.closeTo(fp('1'), 10)
