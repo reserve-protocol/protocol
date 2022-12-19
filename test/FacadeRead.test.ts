@@ -3,14 +3,17 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../common/numbers'
+import { setOraclePrice } from './utils/oracles'
 import {
+  Asset,
   CTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
+  MockV3Aggregator,
   StaticATokenMock,
   StRSRP1,
-  TestIBasketHandler,
+  IBasketHandler,
   TestIMain,
   TestIStRSR,
   TestIRToken,
@@ -55,7 +58,10 @@ describe('FacadeRead contract', () => {
   let rToken: TestIRToken
   let main: TestIMain
   let stRSR: TestIStRSR
-  let basketHandler: TestIBasketHandler
+  let basketHandler: IBasketHandler
+
+  // RSR
+  let rsrAsset: Asset
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -69,9 +75,8 @@ describe('FacadeRead contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, basket, facade, facadeTest, rToken, main, basketHandler } = await loadFixture(
-      defaultFixture
-    ))
+    ;({ stRSR, rsr, rsrAsset, basket, facade, facadeTest, rToken, main, basketHandler } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -169,6 +174,41 @@ describe('FacadeRead contract', () => {
       expect(insurance).to.equal(0)
     })
 
+    it('Should return backingOverview backing correctly when an asset price is 0', async () => {
+      await setOraclePrice(tokenAsset.address, bn(0))
+      await basketHandler.refreshBasket()
+      const [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully capitalized and no insurance
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(insurance).to.equal(0)
+    })
+
+    it('Should return backingOverview insurance correctly when RSR price is 0', async () => {
+      // Mint some RSR
+      const stakeAmount = bn('50e18') // Half in value compared to issued RTokens
+      await rsr.connect(owner).mint(addr1.address, stakeAmount.mul(2))
+
+      // Stake some RSR
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
+      await stRSR.connect(addr1).stake(stakeAmount)
+
+      const [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully capitalized and no insurance
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(insurance).to.equal(fp('0.5'))
+
+      // Set price to 0
+      await setOraclePrice(rsrAsset.address, bn(0))
+
+      const [backing2, insurance2] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully capitalized and no insurance
+      expect(backing2).to.be.closeTo(fp('1'), 10)
+      expect(insurance2).to.equal(0)
+    })
+
     it('Should return basketBreakdown correctly for paused token', async () => {
       await main.connect(owner).pause()
       const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
@@ -183,6 +223,31 @@ describe('FacadeRead contract', () => {
       expect(breakdown[1]).to.be.closeTo(fp('0.25'), 10)
       expect(breakdown[2]).to.be.closeTo(fp('0.25'), 10)
       expect(breakdown[3]).to.be.closeTo(fp('0.25'), 10)
+      expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
+    })
+
+    it('Should return basketBreakdown correctly for tokens with (0,FIXED_MAX) price', async () => {
+      const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+        await ethers.getContractAt('MockV3Aggregator', await tokenAsset.chainlinkFeed())
+      )
+      // set price of dai to 0
+      await chainlinkFeed.updateAnswer(0)
+      await main.connect(owner).pause()
+      const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
+      expect(erc20s.length).to.equal(4)
+      expect(breakdown.length).to.equal(4)
+      expect(targets.length).to.equal(4)
+      expect(erc20s[0]).to.equal(token.address)
+      expect(erc20s[1]).to.equal(usdc.address)
+      expect(erc20s[2]).to.equal(aToken.address)
+      expect(erc20s[3]).to.equal(cToken.address)
+      expect(breakdown[0]).to.equal(fp('0')) // dai
+      expect(breakdown[1]).to.equal(fp('1')) // usdc
+      expect(breakdown[2]).to.equal(fp('0')) // adai
+      expect(breakdown[3]).to.equal(fp('0')) // cdai
       expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
