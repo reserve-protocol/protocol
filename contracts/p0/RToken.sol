@@ -336,14 +336,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
 
         (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(baskets, FLOOR);
 
-        // {1} = {qRTok} / {qRTok}
-        uint192 prorate = toFix(amount).divu(totalSupply());
-
         // Revert if redemption exceeds battery capacity
         battery.discharge(totalSupply(), amount); // reverts on over-redemption
-
-        // Accept and burn RToken, reverts if not enough balance
-        _burn(_msgSender(), amount);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
         basketsNeeded = basketsNeeded.minus(baskets);
@@ -352,11 +346,15 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         IBackingManager backingMgr = main.backingManager();
 
         bool allZero = true;
+        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < erc20s.length; i++) {
-            // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-            uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
-            // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu_toUint(bal);
+            // {qTok} = {qTok} * {qRTok} / {qRTok}
+            uint256 prorata = mulDiv256(
+                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr)),
+                amount,
+                totalSupply()
+            );
+
             amounts[i] = Math.min(amounts[i], prorata);
             // Send withdrawal
             if (amounts[i] > 0) {
@@ -364,6 +362,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
                 if (allZero) allZero = false;
             }
         }
+
+        // Accept and burn RToken, reverts if not enough balance
+        _burn(_msgSender(), amount);
 
         if (allZero) revert("Empty redemption");
     }

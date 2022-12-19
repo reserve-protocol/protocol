@@ -11,6 +11,7 @@ import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/Component.sol";
+
 // A "valid collateral array" is a an IERC20[] value without rtoken, rsr, or any duplicate values
 
 // A BackupConfig value is valid if erc20s is a valid collateral array
