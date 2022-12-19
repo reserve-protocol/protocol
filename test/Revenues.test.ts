@@ -6,7 +6,7 @@ import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, divCeil, fp, near } from '../common/numbers'
+import { bn, divCeil, fp, near, pow10 } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
@@ -750,6 +750,104 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP)
 
         // Check destinations, nothing changed
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
+      it('Should handle properly an asset with low maxTradeVolume', async () => {
+        // Set f = 1
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(0), bn(0))
+
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(1))
+
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('1000e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Set new asset for COMP with low maxTradeVolume
+        const noSellCOMPAsset: Asset = <Asset>await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          await compAsset.chainlinkFeed(),
+          ORACLE_ERROR,
+          compToken.address,
+          bn(1), // very low
+          ORACLE_TIMEOUT
+        )
+
+        // Set a very high price
+        const compPrice = bn('300e8')
+        await setOraclePrice(noSellCOMPAsset.address, compPrice)
+
+        // Refresh asset
+        await noSellCOMPAsset.refresh()
+
+        // Swap asset
+        await assetRegistry.connect(owner).swapRegistered(noSellCOMPAsset.address)
+
+        // Collect revenue
+        await expectEvents(backingManager.claimRewards(), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, rewardAmountCOMP],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, bn(0)],
+            emitted: true,
+          },
+        ])
+
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions - will sell the maxTradeVolume
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: true,
+            args: [
+              anyValue,
+              compToken.address,
+              rsr.address,
+              bn(1),
+              await toMinBuyAmt(bn(1), fp('303'), fp('1')),
+            ],
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check funds now in Market
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(1))
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP.sub(bn(1)))
+
+        // Check destinations, nothing still -  Auctions need to be completed
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
