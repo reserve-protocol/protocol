@@ -46,6 +46,7 @@ import {
   ORACLE_ERROR,
   SLOW,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
@@ -2505,7 +2506,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  context.skip(`Extreme Values`, () => {
+  context(`Extreme Values`, () => {
     // makeColl: Deploy and register a new constant-price collateral
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
@@ -2513,21 +2514,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
       const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
       await oracle.deployed() // fix extreme value tests failing
-      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
-        libraries: { OracleLib: oracle.address },
+      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
+      const coll: FiatCollateral = <FiatCollateral>await CollateralFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: oracle.address,
+        oracleError: ORACLE_ERROR,
+        erc20: erc20.address,
+        maxTradeVolume: fp('1e36'),
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.05'),
+        delayUntilDefault: bn(86400),
       })
-      const coll: FiatCollateral = <FiatCollateral>(
-        await CollateralFactory.deploy(
-          fp('1'),
-          oracle.address,
-          erc20.address,
-          fp('1e36'),
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          fp('0.05'),
-          bn(86400)
-        )
-      )
       await assetRegistry.register(coll.address)
       expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
       await setOraclePrice(coll.address, price)
@@ -2657,7 +2655,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MAX_RTOKENS, bn(1)],
         [MAX_RTOKENS, bn(1)],
         [MAX_RTOKENS],
-        [bn(255)],
+        [bn(100)],
         [MAX_WEIGHT, MIN_WEIGHT],
         [MAX_WEIGHT, MIN_WEIGHT],
         [fp('0.1')],
