@@ -14,6 +14,7 @@ import "../p1/Furnace.sol";
 import "../p1/RToken.sol";
 import "../p1/RevenueTrader.sol";
 import "../p1/StRSRVotes.sol";
+
 /**
  * @title Facade
  * @notice A UX-friendly layer for reading out the state of an RToken in summary views.
