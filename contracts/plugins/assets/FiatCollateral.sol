@@ -192,6 +192,8 @@ contract FiatCollateral is ICollateral, Asset {
             if (sum >= NEVER) _whenDefault = NEVER;
             else if (sum < _whenDefault) _whenDefault = uint48(sum);
             // else: no change to _whenDefault
+            // untested:
+            //      explicit `if` to check DISABLED. else branch will never be hit
         } else if (status_ == CollateralStatus.DISABLED) {
             _whenDefault = uint48(block.timestamp);
         }
