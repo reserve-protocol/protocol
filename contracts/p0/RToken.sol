@@ -348,14 +348,12 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         bool allZero = true;
         // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < erc20s.length; i++) {
-            // {qTok} = {qTok} * {qRTok} / {qRTok}
-            uint256 prorata = mulDiv256(
-                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr)),
-                amount,
-                totalSupply()
-            );
+            uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr)); // {qTok}
 
+            // {qTok} = {qTok} * {qRTok} / {qRTok}
+            uint256 prorata = mulDiv256(bal, amount, totalSupply());
             amounts[i] = Math.min(amounts[i], prorata);
+
             // Send withdrawal
             if (amounts[i] > 0) {
                 IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
