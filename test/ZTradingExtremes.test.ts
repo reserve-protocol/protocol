@@ -4,7 +4,7 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig, MAX_ORACLE_TIMEOUT } from '../common/configuration'
 import { FURNACE_DEST, STRSR_DEST, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
-import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
+import { bn, fp, shortString, toBNDecimals, divCeil } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
@@ -321,7 +321,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         expect(collateralDecimals == 8 || collateralDecimals == 18).to.equal(true)
         const token = collateralDecimals == 8 ? await prepCToken(i) : await prepAToken(i)
         primeBasket.push(token)
-        targetAmts.push(primeWeight.div(basketSize).add(1)) // might sum to slightly over, is ok
+        targetAmts.push(divCeil(primeWeight, bn(basketSize))) // might sum to slightly over, is ok
         await token.connect(owner).mint(addr1.address, MAX_UINT256)
         await token.connect(addr1).approve(rToken.address, MAX_UINT256)
       }
