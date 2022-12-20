@@ -239,7 +239,8 @@ contract FacadeRead is IFacadeRead {
     }
 
     /// @return backing {1} The worstcase collateralization % the protocol will have after trading
-    /// @return overCollateralization {1} The over-collateralization value relative to the fully-backed value as a %
+    /// @return overCollateralization {1} The over-collateralization value relative to the
+    ///     fully-backed value as a %
     function backingOverview(IRToken rToken)
         external
         view

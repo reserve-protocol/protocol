@@ -98,7 +98,8 @@ interface IFacadeRead {
     function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress);
 
     /// @return backing The worst-case collaterazation % the protocol will have after done trading
-    /// @return overCollateralization The over-collateralization value relative to the fully-backed value
+    /// @return overCollateralization The over-collateralization value relative to the
+    ///     fully-backed value
     function backingOverview(IRToken rToken)
         external
         view
