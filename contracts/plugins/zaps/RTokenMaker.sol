@@ -18,33 +18,35 @@ contract RTokenMaker is AbstractMaker {
     using SafeERC20 for IERC20;
 
     /// Perform an instant or time-delayed issuance of RToken from a particular input token
+    /// @param recipient The recipient of the minted RToken
     /// @param fromToken The deposit token
     /// @param amountIn {qTok} The quantity of the deposit token to deposit
     /// @param rToken The RToken to mint
     /// @param minAmountOut {qRTok} The minimum quantity of RToken to mint
     /// @param marketCalls The market calls to execute before minting
-    /// @param recipient The recipient of the minted RToken
     /// @return mintedAmount {qToken} The quantity of RTokens instnatly minted in this transaction
     function issue(
+        address recipient,
         IERC20 fromToken,
         uint256 amountIn,
         IRToken rToken,
         uint256 minAmountOut,
-        MarketCall[] calldata marketCalls,
-        address recipient
+        MarketCall[] calldata marketCalls
     ) external payable nonDelegateCall nonReentrant returns (uint256 mintedAmount) {
         // Checks
-        if (amountIn == 0) revert InsufficientInput();
+        if (amountIn == 0) revert InsufficientInput(address(fromToken));
         if (recipient == address(0)) revert InvalidRecipient();
 
         // Deposit fromToken
-        if (address(fromToken) != address(0)) {
+        if (address(fromToken) != ETH) {
             fromToken.safeTransferFrom(_msgSender(), self, amountIn);
         }
 
         // Execute market calls
         uint256 callCount = marketCalls.length;
-        for (uint256 i = 0; i < callCount; ++i) _marketEnter(marketCalls[i]);
+        for (uint256 i = 0; i < callCount; ++i) {
+            _marketDelegateCall(IMarket.enter.selector, marketCalls[i]);
+        }
 
         // Calculate the maximum issuable amount of RToken
         (
@@ -52,7 +54,7 @@ contract RTokenMaker is AbstractMaker {
             address[] memory collateralTokens,
             uint256[] memory collateralAmounts
         ) = _maxIssuable(rToken, self);
-        if (amountOut < minAmountOut) revert InsufficientOutput();
+        if (amountOut < minAmountOut) revert InsufficientOutput(address(rToken));
 
         // Approve collateral
         uint256 collateralCount = collateralTokens.length;
@@ -65,23 +67,23 @@ contract RTokenMaker is AbstractMaker {
     }
 
     /// Redeem an RToken and trade it for a particular output token
+    /// @param recipient The recipient of the output toToken
     /// @param rToken The deposit token
     /// @param amountIn {qTok} The quantity of the RToken to deposit and redeem
     /// @param toToken The token to receive by the end of the transaction
     /// @param minAmountOut {qRTok} The minimum quantity of toToken to receive
     /// @param marketCalls The market calls to execute after redemption
-    /// @param recipient The recipient of the output toToken
     /// @return amountOut {qToken} The quantity of toToken received in this transaction
     function redeem(
+        address recipient,
         IRToken rToken,
         uint256 amountIn,
         IERC20 toToken,
         uint256 minAmountOut,
-        MarketCall[] calldata marketCalls,
-        address recipient
+        MarketCall[] calldata marketCalls
     ) external payable nonDelegateCall nonReentrant returns (uint256 amountOut) {
         // Checks
-        if (amountIn == 0) revert InsufficientInput();
+        if (amountIn == 0) revert InsufficientInput(address(rToken));
         if (recipient == address(0)) revert InvalidRecipient();
 
         // Store the initial balance
@@ -93,19 +95,21 @@ contract RTokenMaker is AbstractMaker {
 
         // Execute market calls
         uint256 callCount = marketCalls.length;
-        for (uint256 i = 0; i < callCount; ++i) _marketExit(marketCalls[i]);
+        for (uint256 i = 0; i < callCount; ++i) {
+            _marketDelegateCall(IMarket.exit.selector, marketCalls[i]);
+        }
 
         // Calculate amountOut
         amountOut = _getBalance(toToken) - initialBalance;
-        if (amountOut < minAmountOut) revert InsufficientOutput();
+        if (amountOut < minAmountOut) revert InsufficientOutput(address(toToken));
 
         // Transfer toToken to recipient
-        if (address(toToken) == address(0)) {
+        if (address(toToken) != ETH) {
+            toToken.safeTransfer(recipient, amountOut);
+        } else {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = recipient.call{ value: amountOut }(""); // inlined Address.sendValue
             if (!success) revert TargetCallFailed(recipient, "ETH_TRANSFER_FAILED");
-        } else {
-            toToken.safeTransfer(recipient, amountOut);
         }
     }
 

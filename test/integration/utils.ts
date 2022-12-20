@@ -12,17 +12,20 @@ type ZeroExSwapParams = {
   sellToken: string
   buyToken: string
   slippagePercentage?: number
+  takerAddress?: string
 } & ({ sellAmount: number | string } | { buyAmount: number | string })
 
 interface ZeroExResponse {
   buyAmount: number
+  buyTokenAddress: string
   buyTokenToEthRate: number
   data: string
-  gas: number
-  gasPrice: number
+  gas: string
+  gasPrice: string
   guaranteedPrice: number
   price: number
   sellAmount: number
+  sellTokenAddress: string
   sellTokenToEthRate: number
   sources: { name: string; proportion: string }[]
   to: string
@@ -30,8 +33,10 @@ interface ZeroExResponse {
 }
 
 export const get0xSwap = async (type: 'price' | 'quote', params: ZeroExSwapParams) => {
-  const { data } = await axios.get(`https://api.0x.org/swap/v1/${type}`, { params })
-  return data as ZeroExResponse
+  const { data } = await axios.get<ZeroExResponse>(`https://api.0x.org/swap/v1/${type}`, {
+    params: { ...params, enableSlippageProtection: true },
+  })
+  return data
 }
 
 export const buildPermitParams = (

@@ -3,23 +3,21 @@ pragma solidity 0.8.9;
 
 import "contracts/plugins/assets/ICToken.sol";
 
-import "contracts/interfaces/IMarket.sol";
+import "./AbstractMarket.sol";
 
-import "hardhat/console.sol";
-
-contract CTokenMarket is IMarket {
-    function enter(MarketCall calldata call) external override {
+contract CTokenMarket is AbstractMarket {
+    function enter(MarketCall calldata call) external payable override {
         ICToken cToken = ICToken(address(call.toToken));
 
-        if (address(call.fromToken) == address(0)) {
-            cToken.mint{ value: call.amountIn }();
+        if (address(call.fromToken) == ETH) {
+            cToken.mint{ value: call.value }();
         } else {
             call.fromToken.approve(address(cToken), call.amountIn);
             cToken.mint(call.amountIn);
         }
     }
 
-    function exit(MarketCall calldata call) external override {
+    function exit(MarketCall calldata call) external payable override {
         ICToken(address(call.fromToken)).redeem(call.amountIn);
     }
 }

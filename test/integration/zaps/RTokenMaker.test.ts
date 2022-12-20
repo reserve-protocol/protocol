@@ -19,7 +19,6 @@ import {
   Asset,
   CTokenFiatCollateral,
   CTokenMarket,
-  CTokenMock,
   ComptrollerMock,
   ERC20Mock,
   FacadeRead,
@@ -36,6 +35,7 @@ import {
   RTokenAsset,
   TestIBackingManager,
   FacadeTest,
+  ICToken,
 } from '../../../typechain'
 import { ORACLE_ERROR, ORACLE_TIMEOUT, PRICE_TIMEOUT } from '../../fixtures'
 import { whileImpersonating } from '../../utils/impersonation'
@@ -47,12 +47,11 @@ const abi = ethers.utils.defaultAbiCoder
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
-const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 const holderDAI = '0x075e72a5edf65f0a5f44699c7654c1a76941ddc8'
 
 // const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
-const describeFork = useEnv('FORK') ? describe : describe.skip
+const describeFork = useEnv('FORK_LATEST') ? describe : describe.skip
 const PROTO_IMPL = useEnv('PROTO_IMPL')
 
 describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
@@ -62,7 +61,7 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
   // Tokens/Assets
   let dai: ERC20Mock
   let daiCollateral: FiatCollateral
-  let cDai: CTokenMock
+  let cDai: ICToken
   let cDaiCollateral: CTokenFiatCollateral
   let compToken: ERC20Mock
   let compAsset: Asset
@@ -190,13 +189,11 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
       delayUntilDefault,
     })
     await whileImpersonating(holderDAI, async (daiSigner) => {
-      await dai.connect(daiSigner).transfer(addr1.address, bn('2000000e18'))
+      await dai.connect(daiSigner).transfer(addr1.address, bn('200000e18'))
     })
 
     // cDAI token
-    cDai = <CTokenMock>(
-      await ethers.getContractAt('CTokenMock', networkConfig[chainId].tokens.cDAI || '')
-    )
+    cDai = <ICToken>await ethers.getContractAt('ICToken', networkConfig[chainId].tokens.cDAI || '')
     cDaiCollateral = <CTokenFiatCollateral>await (
       await ethers.getContractFactory('CTokenFiatCollateral')
     ).deploy(
@@ -213,9 +210,6 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
       },
       comptroller.address
     )
-    await whileImpersonating(holderCDAI, async (cdaiSigner) => {
-      await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(bn('2000000e18'), 8))
-    })
 
     // Set parameters
     const rTokenConfig: IRTokenConfig = {
@@ -275,19 +269,16 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
     mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   })
 
-  describe('enter', () => {
+  describe('issue', () => {
     it('will not make calls to unauthorized targets', async () => {
       const amountIn = bn('10000e18')
       await dai.connect(addr1).approve(rTokenMaker.address, amountIn)
 
       const minAmountOut = amountIn.mul(9999).div(10000)
       await expect(
-        rTokenMaker.connect(addr1).issue(
-          dai.address,
-          amountIn,
-          rToken.address,
-          minAmountOut,
-          [
+        rTokenMaker
+          .connect(addr1)
+          .issue(addr1.address, dai.address, amountIn, rToken.address, minAmountOut, [
             {
               fromToken: dai.address,
               amountIn: bn('8000e18'),
@@ -297,10 +288,24 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
               value: 0,
               data: '0x',
             },
-          ],
-          addr1.address
-        )
+          ])
       ).to.be.revertedWith('TargetNotApproved')
+    })
+
+    it('will revert upon insufficient input', async () => {
+      await expect(
+        rTokenMaker.connect(addr1).issue(addr1.address, dai.address, 0, rToken.address, 0, [
+          {
+            fromToken: dai.address,
+            amountIn: 0,
+            toToken: cDai.address,
+            minAmountOut: 0,
+            value: 0,
+            target: cTokenMarket.address,
+            data: '0x',
+          },
+        ])
+      ).to.be.revertedWith('InsufficientInput')
     })
 
     it('will revert upon insufficient output of a market call', async () => {
@@ -312,12 +317,9 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
 
       const minAmountOut = amountIn.add(42)
       await expect(
-        rTokenMaker.connect(addr1).issue(
-          dai.address,
-          amountIn,
-          rToken.address,
-          minAmountOut,
-          [
+        rTokenMaker
+          .connect(addr1)
+          .issue(addr1.address, dai.address, amountIn, rToken.address, minAmountOut, [
             {
               fromToken: dai.address,
               amountIn: amountIn.mul(cDaiShares).div(totalShares),
@@ -327,9 +329,7 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
               target: cTokenMarket.address,
               data: '0x',
             },
-          ],
-          addr1.address
-        )
+          ])
       ).to.be.revertedWith('InsufficientOutput')
     })
 
@@ -342,12 +342,9 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
 
       const minAmountOut = amountIn.add(42)
       await expect(
-        rTokenMaker.connect(addr1).issue(
-          dai.address,
-          amountIn,
-          rToken.address,
-          minAmountOut,
-          [
+        rTokenMaker
+          .connect(addr1)
+          .issue(addr1.address, dai.address, amountIn, rToken.address, minAmountOut, [
             {
               fromToken: dai.address,
               amountIn: amountIn.mul(cDaiShares).div(totalShares),
@@ -357,13 +354,11 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
               target: cTokenMarket.address,
               data: '0x',
             },
-          ],
-          addr1.address
-        )
+          ])
       ).to.be.revertedWith('InsufficientOutput')
     })
 
-    it('can enter with DAI', async () => {
+    it('can zap in DAI', async () => {
       const amountIn = bn('10000e18')
       await dai.connect(addr1).approve(rTokenMaker.address, amountIn)
 
@@ -371,30 +366,71 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
       const totalShares = daiShares.add(cDaiShares)
 
       const minAmountOut = amountIn.mul(99999).div(100000)
-      await rTokenMaker.connect(addr1).issue(
-        dai.address,
-        amountIn,
-        rToken.address,
-        minAmountOut,
-        [
+      await rTokenMaker
+        .connect(addr1)
+        .issue(addr1.address, dai.address, amountIn, rToken.address, minAmountOut, [
           {
+            target: cTokenMarket.address,
+            value: 0,
+            data: '0x',
             fromToken: dai.address,
             amountIn: amountIn.mul(cDaiShares).div(totalShares),
             toToken: cDai.address,
             minAmountOut: 0,
-            value: 0,
-            target: cTokenMarket.address,
-            data: '0x',
           },
-        ],
-        addr1.address
-      )
+        ])
 
       expect(await rToken.balanceOf(addr1.address)).to.be.above(minAmountOut)
     })
+
+    it('can zap in ETH', async () => {
+      const amountIn = bn('1e18')
+
+      const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
+      const totalShares = daiShares.add(cDaiShares)
+
+      const quote = await get0xSwap('quote', {
+        sellToken: 'ETH',
+        sellAmount: amountIn.toString(),
+        buyToken: 'DAI',
+        slippagePercentage: 0.03,
+        takerAddress: rTokenMaker.address,
+      })
+
+      const minRTokenOut = bn(quote.buyAmount).mul(99999).div(100000)
+
+      await rTokenMaker.connect(addr1).issue(
+        addr1.address,
+        await rTokenMaker.ETH(),
+        amountIn,
+        rToken.address,
+        minRTokenOut,
+        [
+          {
+            target: zeroExMarket.address,
+            value: quote.value,
+            fromToken: quote.sellTokenAddress,
+            amountIn: amountIn,
+            toToken: dai.address,
+            minAmountOut: bn(quote.buyAmount),
+            data: quote.data,
+          },
+          {
+            target: cTokenMarket.address,
+            value: 0,
+            fromToken: dai.address,
+            amountIn: bn(quote.buyAmount).mul(cDaiShares).div(totalShares),
+            toToken: cDai.address,
+            minAmountOut: 0,
+            data: '0x',
+          },
+        ],
+        { value: quote.value }
+      )
+    })
   })
 
-  describe('exit', () => {
+  describe('redeem', () => {
     const daiAmountIn = bn('10000e18') // instant issuance
     const rTokenAmount = daiAmountIn.mul(99999).div(100000)
 
@@ -404,12 +440,9 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
 
       await dai.connect(addr1).approve(rTokenMaker.address, daiAmountIn)
 
-      await rTokenMaker.connect(addr1).issue(
-        dai.address,
-        daiAmountIn,
-        rToken.address,
-        rTokenAmount,
-        [
+      await rTokenMaker
+        .connect(addr1)
+        .issue(addr1.address, dai.address, daiAmountIn, rToken.address, rTokenAmount, [
           {
             fromToken: dai.address,
             amountIn: daiAmountIn.mul(cDaiShares).div(totalShares),
@@ -419,9 +452,7 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
             target: cTokenMarket.address,
             data: '0x',
           },
-        ],
-        addr1.address
-      )
+        ])
 
       await rToken.connect(addr1).approve(rTokenMaker.address, rTokenAmount)
     })

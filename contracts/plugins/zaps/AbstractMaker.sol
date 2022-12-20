@@ -17,6 +17,8 @@ error InvalidAssocArray();
 /// @dev ReentrancyGuard and DelegateCallGuard provide access to security modifiers
 ///      nonReentrant and nonDelegateCall
 abstract contract AbstractMaker is Ownable, ReentrancyGuard, DelegateCallGuard {
+    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     // solhint-disable-next-line no-empty-blocks
     constructor() Ownable() ReentrancyGuard() DelegateCallGuard() {}
 
@@ -36,42 +38,32 @@ abstract contract AbstractMaker is Ownable, ReentrancyGuard, DelegateCallGuard {
     }
 
     function _getBalance(IERC20 token) internal view returns (uint256) {
-        if (address(token) == address(0)) {
-            return self.balance;
-        } else {
-            return token.balanceOf(self);
-        }
-    }
-
-    /// @notice This function is used to delegatecall the 'enter' function in a target contract
-    function _marketEnter(MarketCall calldata marketCall) internal {
-        _marketDelegateCall(marketCall, IMarket.enter.selector);
-    }
-
-    /// @notice This function is used to delegatecall the 'exit' function in a target contract
-    function _marketExit(MarketCall calldata marketCall) internal {
-        _marketDelegateCall(marketCall, IMarket.exit.selector);
+        return address(token) == ETH ? self.balance : token.balanceOf(self);
     }
 
     /// @notice This function is private, use _marketEnter or _marketExit instead
-    /// @param marketCall The MarketCall struct containing the calldata
     /// @param selector The selector of the function to call
+    /// @param call The MarketCall struct containing the target & calldata
     /// @dev Logic inlined from Address.functionDelegateCall to support reverting with custom errors
-    function _marketDelegateCall(MarketCall calldata marketCall, bytes4 selector) private {
-        address target = marketCall.target;
+    function _marketDelegateCall(bytes4 selector, MarketCall calldata call) internal {
+        address target = call.target;
         // Checks for approval and contract code at the target address
         if (!isApprovedTarget[target] || target.code.length == 0) revert TargetNotApproved(target);
         // Check that the input amount is sufficient
-        if (marketCall.amountIn == 0) revert InsufficientInput();
+        if (call.amountIn == 0) revert InsufficientInput(address(call.fromToken));
 
-        uint256 initialBalance = _getBalance(marketCall.toToken);
+        uint256 initialBalance = _getBalance(call.toToken);
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = target.delegatecall(
-            abi.encodeWithSelector(selector, marketCall)
+            abi.encodeWithSelector(selector, call)
         );
 
-        if (!success) {
+        if (success) {
+            // If the call was successful, verify that the output amount is sufficient
+            uint256 amountOut = _getBalance(call.toToken) - initialBalance;
+            if (amountOut < call.minAmountOut) revert InsufficientOutput(address(call.toToken));
+        } else {
             // Reverts without a provided reason
             if (returndata.length == 0) {
                 revert TargetCallFailed(target, "DELEGATE_CALL_FAILED");
@@ -82,9 +74,5 @@ abstract contract AbstractMaker is Ownable, ReentrancyGuard, DelegateCallGuard {
                 revert(add(32, returndata), mload(returndata))
             }
         }
-
-        // If the call was successful, verify that the output amount is sufficient
-        uint256 amountOut = _getBalance(marketCall.toToken) - initialBalance;
-        if (amountOut < marketCall.minAmountOut) revert InsufficientOutput();
     }
 }

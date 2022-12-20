@@ -8,6 +8,7 @@ type IEnvVars =
   | 'GOERLI_RPC_URL'
   | 'MNEMONIC'
   | 'REPORT_GAS'
+  | 'FORK_LATEST'
   | 'FORK'
   | 'SLOW'
   | 'PROTO'

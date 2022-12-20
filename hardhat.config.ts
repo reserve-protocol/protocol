@@ -9,9 +9,9 @@ import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 import '@withtally/tally-publish-dao'
 
+import forkBlockNumber from '#/test/integration/fork-block-numbers'
 import { useEnv } from '#/utils/env'
 import { HardhatUserConfig } from 'hardhat/types'
-import forkBlockNumber from '#/test/integration/fork-block-numbers'
 
 // eslint-disable-next-line node/no-missing-require
 require('#/tasks')
@@ -29,10 +29,12 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       // network for tests/in-process stuff
-      forking: useEnv('FORK')
+      forking: useEnv('FORK_LATEST')
+        ? { url: MAINNET_RPC_URL }
+        : useEnv('FORK')
         ? {
             url: MAINNET_RPC_URL,
-            blockNumber: Number(useEnv('MAINNET_BLOCK', forkBlockNumber['default'].toString())),
+            blockNumber: Number(useEnv('MAINNET_BLOCK', forkBlockNumber.default.toString())),
           }
         : undefined,
       gas: 0x1ffffffff,
