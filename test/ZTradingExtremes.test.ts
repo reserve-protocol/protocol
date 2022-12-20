@@ -392,7 +392,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       })
     })
   })
-  context.only('Revenue: rewards', function () {
+  context('Revenue: rewards', function () {
     // STORY
     //
     // There are N reward-earning collateral in the basket.
