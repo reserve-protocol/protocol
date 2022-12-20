@@ -177,7 +177,9 @@ describe('FacadeRead contract', () => {
     it('Should return backingOverview backing correctly when an asset price is 0', async () => {
       await setOraclePrice(tokenAsset.address, bn(0))
       await basketHandler.refreshBasket()
-      const [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
 
       // Check values - Fully capitalized and no over-collateralization
       expect(backing).to.be.closeTo(fp('1'), 10)
@@ -193,7 +195,9 @@ describe('FacadeRead contract', () => {
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
 
-      const [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
 
       // Check values - Fully capitalized and no over-collateralization
       expect(backing).to.be.closeTo(fp('1'), 10)
@@ -202,7 +206,9 @@ describe('FacadeRead contract', () => {
       // Set price to 0
       await setOraclePrice(rsrAsset.address, bn(0))
 
-      const [backing2, overCollateralization2] = await facade.callStatic.backingOverview(rToken.address)
+      const [backing2, overCollateralization2] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
 
       // Check values - Fully capitalized and no over-collateralization
       expect(backing2).to.be.closeTo(fp('1'), 10)
