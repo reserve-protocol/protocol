@@ -115,8 +115,9 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
-    // Set backingBuffer to 0 to make math easy
+    // Set backingBuffer and minTradeVolume to 0, to make math easy and always trade
     await backingManager.connect(owner).setBackingBuffer(0)
+    await backingManager.connect(owner).setMinTradeVolume(0)
   })
 
   const prepAToken = async (index: number): Promise<StaticATokenMock> => {
@@ -307,7 +308,11 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await setupTrading(stRSRCut)
 
       // Reign in the RToken supply if it's an unrealistic scenario
-      const maxRTokenSupply = MAX_UOA.mul(bn('1e36')).div(appreciationExchangeRate.mul(primeWeight))
+      let maxRTokenSupply = MAX_UOA.mul(bn('1e36'))
+      if (appreciationExchangeRate.gt(0)) {
+        maxRTokenSupply = maxRTokenSupply.div(appreciationExchangeRate.mul(primeWeight))
+      }
+
       if (rTokenSupply.gt(maxRTokenSupply)) rTokenSupply = maxRTokenSupply
 
       const primeBasket = []
@@ -332,6 +337,11 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await issueMany(facade, rToken, rTokenSupply, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
+      // Mint any excess possible before increasing exchange rate to avoid blowing through max BU exchange rate
+      // Explanation: For low-decimal tokens it's possible to begin overcollateralized when
+      // the amount transferred in on RToken minting is 1 attoToken
+      await backingManager.manageTokens([])
+
       // === Execution ===
 
       // Increase redemption rate
@@ -346,11 +356,11 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     if (SLOW) {
       dimensions = [
         [fp('1e-6'), fp('1e30')], // RToken supply
-        [1, 256], // basket size
+        [1, 100], // basket size
         [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
         [8, 18], // collateral decimals
-        [fp('0'), fp('1e9'), fp('0.02')], // exchange rate at appreciation
-        [1, 256], // how many collateral assets appreciate (up to)
+        [fp('1e9'), fp('1').add(fp('1e-9'))], // exchange rate at appreciation
+        [1, 100], // how many collateral assets appreciate (up to)
         [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
       ]
     } else {
@@ -382,7 +392,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       })
     })
   })
-  context('Revenue: rewards', function () {
+  context.only('Revenue: rewards', function () {
     // STORY
     //
     // There are N reward-earning collateral in the basket.
@@ -492,7 +502,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     if (SLOW) {
       dimensions = [
         [fp('1e-6'), fp('1e30')], // RToken supply
-        [1, 256], // basket size
+        [1, 100], // basket size
         [1, 2], // num reward tokens
         [bn('0'), bn('1e11'), bn('1e6')], // reward amount (whole tokens), up to 100B supply tokens
         [fp('0'), fp('1'), fp('0.6')], // StRSR cut (f)
@@ -523,7 +533,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   })
 
   context('Recovery from default', function () {
-    const runRecollateralizationAuctions = async (rTokenSupply: BigNumber, basketSize: number) => {
+    const runRecollateralizationAuctions = async (basketSize: number) => {
       let uncapitalized = true
       const basketsNeeded = await rToken.basketsNeeded()
 
@@ -544,15 +554,14 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
           const auctionId = await trade.auctionId()
           const [, , buy, sellAmt, minBuyAmt] = await gnosis.auctions(auctionId)
-          const actualBuyAmt = sellAmt.gt(minBuyAmt) ? sellAmt : minBuyAmt
           const buyERC20 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', buy)
-          await buyERC20.connect(addr1).approve(gnosis.address, actualBuyAmt)
+          await buyERC20.connect(addr1).approve(gnosis.address, minBuyAmt)
           expect(sellAmt.gt(0)).to.equal(true)
-          expect(actualBuyAmt.gt(0)).to.equal(true)
+          expect(minBuyAmt.gt(0)).to.equal(true)
           await gnosis.placeBid(auctionId, {
             bidder: addr1.address,
             sellAmount: sellAmt,
-            buyAmount: actualBuyAmt,
+            buyAmount: minBuyAmt,
           })
         }
 
@@ -636,22 +645,21 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       // Default tokens
       for (let i = 0; i < primeBasket.length && i < howManyDefault; i++) {
-        await primeBasket[i].setExchangeRate(fp('0.00001'))
+        await primeBasket[i].setExchangeRate(fp('0.001'))
       }
 
-      await assetRegistry.refresh()
       await basketHandler.refreshBasket()
-      await runRecollateralizationAuctions(rTokenSupply, basketSize)
+      await runRecollateralizationAuctions(basketSize)
     }
 
     let dimensions
     if (SLOW) {
       dimensions = [
         [fp('1e-6'), fp('1e30')], // RToken supply
-        [1, 256], // basket size
+        [2, 100], // basket size
         [fp('1e-6'), fp('1e3'), fp('1')], // prime basket weights
         [8, 18], // collateral decimals
-        [1, 256], // how many collateral assets default (up to)
+        [1, 99], // how many collateral assets default (up to)
       ]
     } else {
       dimensions = [
@@ -667,13 +675,19 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
     const numCases = cases.length.toString()
     cases.forEach((params, index) => {
+      const basketSize = params[1] as number
+      const howManyDefault = params[4] as number
+
+      // skip nonsense cases
+      if (howManyDefault >= basketSize) return
+
       it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runScenario(
           params[0] as BigNumber,
-          params[1] as number,
+          basketSize,
           params[2] as BigNumber,
           params[3] as number,
-          params[4] as number
+          howManyDefault
         )
       })
     })
@@ -774,7 +788,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       }
     }
 
-    const size = SLOW ? 256 : 4 // Currently 256 takes >5 minutes to execute 32 cases
+    const size = SLOW ? 100 : 4 // Currently 100 takes >5 minutes to execute 32 cases
 
     const primeTokens = [size, 1]
 
