@@ -11,7 +11,6 @@ import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/Component.sol";
-
 // A "valid collateral array" is a an IERC20[] value without rtoken, rsr, or any duplicate values
 
 // A BackupConfig value is valid if erc20s is a valid collateral array
@@ -89,6 +88,10 @@ library BasketLibP1 {
         IERC20 tok,
         uint192 weight
     ) internal {
+        // untestable:
+        //      Both calls to .add() use a weight that has been CEIL rounded in the
+        //      Fixed library div function, so weight will never be 0 here.
+        //      Additionally, setPrimeBasket() enforces prime-basket tokens must have a weight > 0.
         if (weight == FIX_ZERO) return;
         if (self.refAmts[tok].eq(FIX_ZERO)) {
             self.erc20s.push(tok);
@@ -350,7 +353,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @param qty {tok/BU}
     /// @param p {UoA/tok}
     function quantityMulPrice(uint192 qty, uint192 p) internal pure returns (uint192) {
+        // untestable:
+        //      qty will never = 0 here because of the check in _price()
         if (qty == 0 || p == 0) return 0;
+        // untestable:
+        //      qty = FIX_MAX iff p = 0
         if (qty == FIX_MAX || p == FIX_MAX) return FIX_MAX;
 
         // return FIX_MAX instead of throwing overflow errors.
@@ -362,6 +369,18 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // add in FIX_HALF for rounding
             uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
+            // untestable (here there be dragons):
+            //          A)  shiftDelta = rawDelta + (FIX_ONE / 2)
+            //      shiftDelta overflows if:
+            //          B)  shiftDelta = MAX_UINT256 - FIX_ONE/2 + 1
+            //              rawDelta + (FIX_ONE/2) = MAX_UINT256 - FIX_ONE/2 + 1
+            //              p * qty = MAX_UINT256 - FIX_ONE + 1
+            //      therefore shiftDelta overflows if:
+            //          C)  p = (MAX_UINT256 - FIX_ONE + 1) / qty
+            //      MAX_UINT256 ~= 1e77 , FIX_MAX ~= 6e57 (6e20 difference in magnitude)
+            //      qty <= 1e21 (MAX_TARGET_AMT)
+            //      qty must be between 1e19 & 1e20 in order for p in (C) to be uint192,
+            //      but qty would have to be < 1e18 in order for (A) to overflow
             if (shiftDelta < rawDelta) return FIX_MAX;
 
             // return _div(rawDelta, FIX_ONE, ROUND)

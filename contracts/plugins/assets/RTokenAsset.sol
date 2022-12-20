@@ -71,7 +71,7 @@ contract RTokenAsset is IAsset {
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
         try this.tryPrice() returns (uint192 low, uint192 high) {
-            assert(low <= high); // TODO remove?
+            assert(low <= high);
             return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data

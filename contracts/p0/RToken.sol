@@ -225,8 +225,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     /// @custom:interaction
     function cancel(uint256 endId, bool earliest) external notFrozen {
         // Call collective state keepers.
-        // notFrozen modifier requires we use only a subset of main.poke()
-        main.assetRegistry().refresh();
 
         // solhint-disable-next-line no-empty-blocks
         try main.furnace().melt() {} catch {}

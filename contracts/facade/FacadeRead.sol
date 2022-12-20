@@ -48,7 +48,7 @@ contract FacadeRead is IFacadeRead {
 
     /// @custom:static-call
     function issue(IRToken rToken, uint256 amount)
-        public
+        external
         returns (address[] memory tokens, uint256[] memory deposits)
     {
         IMain main = rToken.main();
@@ -271,6 +271,9 @@ contract FacadeRead is IFacadeRead {
 
         // {UoA/BU}
         (uint192 buPriceLow, uint192 buPriceHigh) = rToken.main().basketHandler().price();
+        // untestable:
+        //      if buPriceLow==0 then basketMidPrice=0 and uoaNeeded=0
+        //      this functions will then panic when `uoaHeld.div(uoaNeeded)`
         uint192 basketMidPrice = buPriceLow > 0 ? buPriceLow.plus(buPriceHigh).div(2) : buPriceLow;
 
         // {UoA} = {BU} * {UoA/BU}
