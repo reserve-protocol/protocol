@@ -1,123 +1,121 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "contracts/interfaces/IBasketHandler.sol";
-import "contracts/interfaces/IMarket.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 
-contract RTokenMaker is Ownable {
+import "./AbstractMaker.sol";
+
+/// @title RTokenMaker
+/// @notice A Maker that issues RTokens from a single input token
+///         or redeems an RToken into a single output token
+/// @dev RTokenMaker provides the implementation, AbstractMaker provides the helper functions
+contract RTokenMaker is AbstractMaker {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    // For preventing delegatecalls to this contract's functions
-    address public immutable self;
-
-    constructor() Ownable() {
-        self = address(this);
-    }
-
-    // For approving targets that can be safely called with delegatecall
-    mapping(address => bool) public approvedTargets;
-
-    function setApprovedTargets(address[] calldata targets, bool[] calldata isApproved)
-        public
-        onlyOwner
-    {
-        uint256 targetCount = targets.length;
-        require(targetCount == isApproved.length, "RTokenMaker: MISMATCHED_ARRAY_LENGTHS");
-        for (uint256 i = 0; i < targetCount; ++i) {
-            approvedTargets[targets[i]] = isApproved[i];
-        }
-    }
-
+    /// Perform an instant or time-delayed issuance of RToken from a particular input token
+    /// @param fromToken The deposit token
+    /// @param amountIn {qTok} The quantity of the deposit token to deposit
+    /// @param rToken The RToken to mint
+    /// @param minAmountOut {qRTok} The minimum quantity of RToken to mint
+    /// @param marketCalls The market calls to execute before minting
+    /// @param recipient The recipient of the minted RToken
+    /// @return mintedAmount {qToken} The quantity of RTokens instnatly minted in this transaction
     function issue(
         IERC20 fromToken,
         uint256 amountIn,
         IRToken rToken,
         uint256 minAmountOut,
         MarketCall[] calldata marketCalls,
-        address receiver
-    ) external payable returns (uint256 mintedAmount) {
-        if (self != address(this)) revert TargetCallFailed(self, "INVALID_CALLER");
+        address recipient
+    ) external payable nonDelegateCall nonReentrant returns (uint256 mintedAmount) {
+        // Checks
         if (amountIn == 0) revert InsufficientInput();
-        if (receiver == address(0)) revert InvalidReceiver();
+        if (recipient == address(0)) revert InvalidReceiver();
 
+        // Deposit fromToken
         if (address(fromToken) != address(0)) {
             fromToken.safeTransferFrom(_msgSender(), self, amountIn);
         }
 
+        // Execute market calls
         uint256 callCount = marketCalls.length;
-        for (uint256 i = 0; i < callCount; ++i) {
-            address target = marketCalls[i].target;
-            if (!approvedTargets[target]) revert TargetNotApproved(target);
+        for (uint256 i = 0; i < callCount; ++i) _marketEnter(marketCalls[i]);
 
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, bytes memory returndata) = target.delegatecall(
-                abi.encodeWithSelector(IMarket.enter.selector, marketCalls[i])
-            );
-            if (!success) revert TargetCallFailed(target, returndata);
-        }
-
+        // Calculate the maximum issuable amount of RToken
         (
             uint256 amountOut,
             address[] memory collateralTokens,
             uint256[] memory collateralAmounts
-        ) = maxIssuable(rToken, self);
+        ) = _maxIssuable(rToken, self);
         if (amountOut < minAmountOut) revert InsufficientOutput();
 
+        // Approve collateral
         uint256 collateralCount = collateralTokens.length;
         for (uint256 i = 0; i < collateralCount; ++i) {
             IERC20(collateralTokens[i]).approve(address(rToken), collateralAmounts[i]);
         }
 
-        return rToken.issue(receiver, amountOut);
+        // Issue RTokens, this call returns the amount of RToken instantly minted
+        return rToken.issue(recipient, amountOut);
     }
 
+    /// Redeem an RToken and trade it for a particular output token
+    /// @param rToken The deposit token
+    /// @param amountIn {qTok} The quantity of the RToken to deposit and redeem
+    /// @param toToken The token to receive by the end of the transaction
+    /// @param minAmountOut {qRTok} The minimum quantity of toToken to receive
+    /// @param marketCalls The market calls to execute after redemption
+    /// @param recipient The recipient of the output toToken
+    /// @return amountOut {qToken} The quantity of toToken received in this transaction
     function redeem(
         IRToken rToken,
         uint256 amountIn,
         IERC20 toToken,
         uint256 minAmountOut,
         MarketCall[] calldata marketCalls,
-        address receiver
-    ) public payable returns (uint256 amountOut) {
-        if (self != address(this)) revert TargetCallFailed(self, "INVALID_CALLER");
+        address recipient
+    ) external payable nonDelegateCall nonReentrant returns (uint256 amountOut) {
+        // Checks
         if (amountIn == 0) revert InsufficientInput();
-        if (receiver == address(0)) revert InvalidReceiver();
+        if (recipient == address(0)) revert InvalidReceiver();
 
+        // Store the initial balance
         uint256 initialBalance = _getBalance(toToken);
 
+        // Redeem RToken
         IERC20(address(rToken)).safeTransferFrom(_msgSender(), self, amountIn);
         rToken.redeem(amountIn);
 
+        // Execute market calls
         uint256 callCount = marketCalls.length;
-        for (uint256 i = 0; i < callCount; ++i) {
-            address target = marketCalls[i].target;
-            if (!approvedTargets[target]) revert TargetNotApproved(target);
+        for (uint256 i = 0; i < callCount; ++i) _marketExit(marketCalls[i]);
 
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, bytes memory returndata) = target.delegatecall(
-                abi.encodeWithSelector(IMarket.enter.selector, marketCalls[i])
-            );
-            if (!success) revert TargetCallFailed(target, returndata);
-        }
-
+        // Calculate amountOut
         amountOut = _getBalance(toToken) - initialBalance;
         if (amountOut < minAmountOut) revert InsufficientOutput();
 
+        // Transfer toToken to recipient
         if (address(toToken) == address(0)) {
-            payable(receiver).transfer(amountOut);
+            // solhint-disable-next-line no-low-level-calls
+            (bool success, ) = recipient.call{ value: amountOut }(""); // inlined Address.sendValue
+            if (!success) revert TargetCallFailed(recipient, "ETH_TRANSFER_FAILED");
         } else {
-            toToken.safeTransfer(receiver, amountOut);
+            toToken.safeTransfer(recipient, amountOut);
         }
     }
 
-    function maxIssuable(IRToken rToken, address account)
-        public
+    /// @notice Inlined from FacadeRead to save gas
+    /// @return rTokenAmount How many RToken `account` can issue given current holdings
+    /// @return collateralTokens The tokens that `account` must deposit to issue RToken
+    /// @return collateralAmounts The quantities of `collateralTokens` that `account` must deposit
+    /// @custom:static-call
+    function _maxIssuable(IRToken rToken, address account)
+        internal
         returns (
             uint256 rTokenAmount,
             address[] memory collateralTokens,
@@ -149,13 +147,5 @@ contract RTokenMaker is Ownable {
             : shiftl_toFix(rTokenAmount, -decimals); // {qRTok / qRTok}
 
         (collateralTokens, collateralAmounts) = basketHandler.quote(baskets, CEIL);
-    }
-
-    function _getBalance(IERC20 token) internal view returns (uint256) {
-        if (address(token) == address(0)) {
-            return self.balance;
-        } else {
-            return token.balanceOf(self);
-        }
     }
 }
