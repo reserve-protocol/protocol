@@ -101,7 +101,7 @@ contract RTokenMaker is AbstractMaker {
 
         // Transfer toToken to recipient
         if (address(toToken) == address(0)) {
-            // solhint-disable-next-line no-low-level-calls
+            // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = recipient.call{ value: amountOut }(""); // inlined Address.sendValue
             if (!success) revert TargetCallFailed(recipient, "ETH_TRANSFER_FAILED");
         } else {

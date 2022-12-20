@@ -5,6 +5,8 @@ import "contracts/plugins/assets/ICToken.sol";
 
 import "contracts/interfaces/IMarket.sol";
 
+import "hardhat/console.sol";
+
 contract CTokenMarket is IMarket {
     function enter(MarketCall calldata call) external override {
         ICToken cToken = ICToken(address(call.toToken));
@@ -18,6 +20,6 @@ contract CTokenMarket is IMarket {
     }
 
     function exit(MarketCall calldata call) external override {
-        ICToken(address(call.toToken)).redeem(call.amountIn);
+        ICToken(address(call.fromToken)).redeem(call.amountIn);
     }
 }

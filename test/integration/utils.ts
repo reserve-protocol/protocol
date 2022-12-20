@@ -12,20 +12,21 @@ type ZeroExSwapParams = {
   sellToken: string
   buyToken: string
   slippagePercentage?: number
-} & ({ sellAmount: number } | { buyAmount: number })
+} & ({ sellAmount: number | string } | { buyAmount: number | string })
 
 interface ZeroExResponse {
-  price: number
-  to: string
-  data: string
-  value: number
-  gas: number
-  gasPrice: number
   buyAmount: number
   buyTokenToEthRate: number
+  data: string
+  gas: number
+  gasPrice: number
+  guaranteedPrice: number
+  price: number
   sellAmount: number
   sellTokenToEthRate: number
   sources: { name: string; proportion: string }[]
+  to: string
+  value: number
 }
 
 export const get0xSwap = async (type: 'price' | 'quote', params: ZeroExSwapParams) => {

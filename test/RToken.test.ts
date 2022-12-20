@@ -1663,7 +1663,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Should revert if no balance of RToken #fast', async function () {
       const redeemAmount: BigNumber = bn('20000e18')
 
-      await expect(rToken.connect(addr1).redeem(redeemAmount)).to.be.revertedWith('UIntOutOfBounds')
+      await expect(rToken.connect(addr1).redeem(redeemAmount)).to.be.reverted
     })
 
     context('With issued RTokens', function () {

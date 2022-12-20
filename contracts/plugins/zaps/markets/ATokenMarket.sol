@@ -7,6 +7,7 @@ import "contracts/interfaces/IMarket.sol";
 
 contract ATokenMarket is IMarket {
     function enter(MarketCall calldata call) external override {
+        call.fromToken.approve(address(call.toToken), call.amountIn);
         IStaticATokenLM(address(call.toToken)).deposit(address(this), call.amountIn, 0, true);
     }
 
