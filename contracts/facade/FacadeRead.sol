@@ -239,11 +239,11 @@ contract FacadeRead is IFacadeRead {
     }
 
     /// @return backing {1} The worstcase collateralization % the protocol will have after trading
-    /// @return insurance {1} The insurance value relative to the fully-backed value as a %
+    /// @return overCollateralization {1} The over-collateralization value relative to the fully-backed value as a %
     function backingOverview(IRToken rToken)
         external
         view
-        returns (uint192 backing, uint192 insurance)
+        returns (uint192 backing, uint192 overCollateralization)
     {
         uint256 supply = rToken.totalSupply();
         if (supply == 0) return (0, 0);
@@ -285,7 +285,7 @@ contract FacadeRead is IFacadeRead {
             backing = uoaHeld.div(uoaNeeded);
         }
 
-        // Compute insurance
+        // Compute overCollateralization
         {
             IAsset rsrAsset = assetRegistry.toAsset(rsr);
 
@@ -301,7 +301,7 @@ contract FacadeRead is IFacadeRead {
             uint192 rsrUoA = rsrBal.mul(midPrice);
 
             // {1} = {UoA} / {UoA}
-            insurance = rsrUoA.div(uoaNeeded);
+            overCollateralization = rsrUoA.div(uoaNeeded);
         }
     }
 

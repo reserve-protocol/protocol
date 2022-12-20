@@ -977,7 +977,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
-      // Should expect maxTradeSlippage + dust losses -- remember no insurance available
+      // Should expect maxTradeSlippage + dust losses -- remember no over-collateralization
+      // available
       // maxTradeSlippage + dust losses
       // Recall the shortfall is calculated against high prices
       await expectRTokenPrice(
