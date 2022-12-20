@@ -183,8 +183,6 @@ contract FiatCollateral is ICollateral, Asset {
         //      All calls to markStatus happen exclusively if the collateral is not defaulted
         if (_whenDefault <= block.timestamp) return; // prevent DISABLED -> SOUND/IFFY
 
-        // untestable:
-        //      The final `else` branch will never be triggered as all possible states are checked
         if (status_ == CollateralStatus.SOUND) {
             _whenDefault = NEVER;
         } else if (status_ == CollateralStatus.IFFY) {
