@@ -585,6 +585,133 @@ describe('FacadeAct contract', () => {
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
     })
 
+    it('Revenues - Should handle minTradeVolume = 0', async () => {
+      // Set minTradeVolume = 0
+      await rsrTrader.connect(owner).setMinTradeVolume(bn(0))
+      await rTokenTrader.connect(owner).setMinTradeVolume(bn(0))
+
+      const rewardAmountAAVE = bn('0.5e18')
+
+      // AAVE Rewards
+      await aToken.setRewards(backingManager.address, rewardAmountAAVE)
+
+      // Via Facade get next call - will claim rewards from backingManager
+      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(backingManager.address)
+      expect(data).to.not.equal('0x')
+
+      // Claim and sweep rewards
+      await owner.sendTransaction({
+        to: addr,
+        data,
+      })
+
+      // Collect revenue
+      // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+      const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+      const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
+      const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+      const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
+
+      // Via Facade get next call - will transfer RToken to Trader
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(backingManager.address)
+      expect(data).to.not.equal('0x')
+
+      // Manage tokens in Backing Manager
+      await owner.sendTransaction({
+        to: addr,
+        data,
+      })
+
+      // Next call would start Revenue auction - RTokenTrader
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(rTokenTrader.address)
+      expect(data).to.not.equal('0x')
+
+      // Manage tokens in RTokenTrader
+      await expect(
+        owner.sendTransaction({
+          to: addr,
+          data,
+        })
+      )
+        .to.emit(rTokenTrader, 'TradeStarted')
+        .withArgs(
+          anyValue,
+          aaveToken.address,
+          rToken.address,
+          sellAmtRToken,
+          withinQuad(minBuyAmtRToken)
+        )
+
+      // Via Facade get next call - will open RSR trade
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(rsrTrader.address)
+      expect(data).to.not.equal('0x')
+
+      // Manage tokens in RSRTrader
+      await expect(
+        owner.sendTransaction({
+          to: addr,
+          data,
+        })
+      )
+        .to.emit(rsrTrader, 'TradeStarted')
+        .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
+
+      // Check funds in Market
+      expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Mock auction by minting the buy tokens (in this case RSR and RToken)
+      await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+      await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+      await gnosis.placeBid(0, {
+        bidder: addr1.address,
+        sellAmount: sellAmtRToken,
+        buyAmount: minBuyAmtRToken,
+      })
+      await gnosis.placeBid(1, {
+        bidder: addr1.address,
+        sellAmount: sellAmt,
+        buyAmount: minBuyAmt,
+      })
+
+      // Settle RToken trades via Facade
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(rTokenTrader.address)
+      expect(data).to.not.equal('0x')
+
+      // Close auction in RToken Trader
+      await expect(
+        owner.sendTransaction({
+          to: addr,
+          data,
+        })
+      )
+        .to.emit(rTokenTrader, 'TradeSettled')
+        .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
+
+      // Now settle trade in RSR Trader
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(rsrTrader.address)
+      expect(data).to.not.equal('0x')
+
+      // Close auction in RSR Trader
+      await expect(
+        owner.sendTransaction({
+          to: addr,
+          data,
+        })
+      )
+        .to.emit(rsrTrader, 'TradeSettled')
+        .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
+    })
+
     it('Revenues - Should handle multiple assets with same reward token', async () => {
       // Update Reward token for AToken to use same as CToken
       const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
