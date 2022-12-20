@@ -3,12 +3,11 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-error InvalidValue();
 error InsufficientInput();
-error InvalidReceiver();
+error InsufficientOutput();
+error InvalidRecipient();
 error TargetCallFailed(address target, bytes returndata);
 error TargetNotApproved(address target);
-error InsufficientOutput();
 
 struct MarketCall {
     IERC20 fromToken;
@@ -21,7 +20,7 @@ struct MarketCall {
 }
 
 interface IMarket {
-    function enter(MarketCall calldata call) external payable returns (uint256 amountOut);
+    function enter(MarketCall calldata call) external;
 
-    function exit(MarketCall calldata call) external payable returns (uint256 amountOut);
+    function exit(MarketCall calldata call) external;
 }

@@ -3,45 +3,15 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import "./AbstractMarket.sol";
+import "contracts/interfaces/IMarket.sol";
 
-contract ATokenMarket is AbstractMarket {
-    function enter(MarketCall calldata call)
-        external
-        payable
-        virtual
-        override
-        returns (uint256 amountOut)
-    {
-        if (call.amountIn == 0) revert InsufficientInput();
-
-        amountOut = IStaticATokenLM(address(call.toToken)).deposit(
-            address(this),
-            call.amountIn,
-            0,
-            true
-        );
-
-        if (amountOut < call.minAmountOut) revert InsufficientOutput();
+contract ATokenMarket is IMarket {
+    function enter(MarketCall calldata call) external override {
+        IStaticATokenLM(address(call.toToken)).deposit(address(this), call.amountIn, 0, true);
     }
 
-    function exit(MarketCall calldata call)
-        external
-        payable
-        virtual
-        override
-        returns (uint256 amountOut)
-    {
-        if (msg.value != 0) revert InvalidValue();
-        if (call.amountIn == 0) revert InsufficientInput();
-
-        (, amountOut) = IStaticATokenLM(address(call.fromToken)).withdraw(
-            address(this),
-            call.amountIn,
-            true
-        );
-
-        if (amountOut < call.minAmountOut) revert InsufficientOutput();
+    function exit(MarketCall calldata call) external override {
+        IStaticATokenLM(address(call.fromToken)).withdraw(address(this), call.amountIn, true);
     }
 }
 

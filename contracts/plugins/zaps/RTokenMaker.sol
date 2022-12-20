@@ -35,7 +35,7 @@ contract RTokenMaker is AbstractMaker {
     ) external payable nonDelegateCall nonReentrant returns (uint256 mintedAmount) {
         // Checks
         if (amountIn == 0) revert InsufficientInput();
-        if (recipient == address(0)) revert InvalidReceiver();
+        if (recipient == address(0)) revert InvalidRecipient();
 
         // Deposit fromToken
         if (address(fromToken) != address(0)) {
@@ -82,7 +82,7 @@ contract RTokenMaker is AbstractMaker {
     ) external payable nonDelegateCall nonReentrant returns (uint256 amountOut) {
         // Checks
         if (amountIn == 0) revert InsufficientInput();
-        if (recipient == address(0)) revert InvalidReceiver();
+        if (recipient == address(0)) revert InvalidRecipient();
 
         // Store the initial balance
         uint256 initialBalance = _getBalance(toToken);
