@@ -476,9 +476,14 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < erc20length; ++i) {
-            // {qTok} = D18{1} * {qTok} / D18
-            uint256 prorata = (prorate *
-                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingManager))) / FIX_ONE;
+            // {qTok}
+            uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(address(backingManager));
+
+            // gas-optimization: only do the full mulDiv256 if prorate is 0
+            uint256 prorata = (prorate > 0)
+                ? (prorate * bal) / FIX_ONE // {qTok} = D18{1} * {qTok} / D18
+                : mulDiv256(bal, amount, supply); // {qTok} = {qTok} * {qRTok} / {qRTok}
+
             if (prorata < amounts[i]) amounts[i] = prorata;
         }
 
