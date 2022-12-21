@@ -136,11 +136,11 @@ describe('FacadeRead contract', () => {
     })
 
     it('Should return backingOverview correctly', async () => {
-      let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+      let [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
-      // Check values - Fully capitalized and no insurance
+      // Check values - Fully capitalized and no over-collateralization
       expect(backing).to.be.closeTo(fp('1'), 10)
-      expect(insurance).to.equal(0)
+      expect(overCollateralization).to.equal(0)
 
       // Mint some RSR
       const stakeAmount = bn('50e18') // Half in value compared to issued RTokens
@@ -149,42 +149,44 @@ describe('FacadeRead contract', () => {
       // Stake some RSR
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
-      ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+      ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
-      // Check values - Fully capitalized and fully insured
+      // Check values - Fully capitalized and fully over-collateralized
       expect(backing).to.be.closeTo(fp('1'), 10)
-      expect(insurance).to.be.closeTo(fp('0.5'), 10)
+      expect(overCollateralization).to.be.closeTo(fp('0.5'), 10)
 
       // Stake more RSR
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
-      ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+      ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
       expect(backing).to.be.closeTo(fp('1'), 10)
-      expect(insurance).to.be.closeTo(fp('1'), 10)
+      expect(overCollateralization).to.be.closeTo(fp('1'), 10)
 
       // Redeem all RTokens
       await rToken.connect(addr1).redeem(issueAmount)
 
       // Check values = 0 (no supply)
-      ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+      ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - No supply, returns 0
       expect(backing).to.equal(0)
-      expect(insurance).to.equal(0)
+      expect(overCollateralization).to.equal(0)
     })
 
     it('Should return backingOverview backing correctly when an asset price is 0', async () => {
       await setOraclePrice(tokenAsset.address, bn(0))
       await basketHandler.refreshBasket()
-      const [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
 
-      // Check values - Fully capitalized and no insurance
+      // Check values - Fully capitalized and no over-collateralization
       expect(backing).to.be.closeTo(fp('1'), 10)
-      expect(insurance).to.equal(0)
+      expect(overCollateralization).to.equal(0)
     })
 
-    it('Should return backingOverview insurance correctly when RSR price is 0', async () => {
+    it('Should return backingOverview over-collateralization correctly when RSR price is 0', async () => {
       // Mint some RSR
       const stakeAmount = bn('50e18') // Half in value compared to issued RTokens
       await rsr.connect(owner).mint(addr1.address, stakeAmount.mul(2))
@@ -193,20 +195,24 @@ describe('FacadeRead contract', () => {
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
 
-      const [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
 
-      // Check values - Fully capitalized and no insurance
+      // Check values - Fully capitalized and no over-collateralization
       expect(backing).to.be.closeTo(fp('1'), 10)
-      expect(insurance).to.equal(fp('0.5'))
+      expect(overCollateralization).to.equal(fp('0.5'))
 
       // Set price to 0
       await setOraclePrice(rsrAsset.address, bn(0))
 
-      const [backing2, insurance2] = await facade.callStatic.backingOverview(rToken.address)
+      const [backing2, overCollateralization2] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
 
-      // Check values - Fully capitalized and no insurance
+      // Check values - Fully capitalized and no over-collateralization
       expect(backing2).to.be.closeTo(fp('1'), 10)
-      expect(insurance2).to.equal(0)
+      expect(overCollateralization2).to.equal(0)
     })
 
     it('Should return basketBreakdown correctly for paused token', async () => {

@@ -33,9 +33,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     ///
     /// - Capital preservation first. Spending power preservation second. Permissionless
     ///     access third.
-    /// - Capital preservation above all else. All revenues fund the insurance pool.
+    /// - Capital preservation above all else. All revenues fund the over-collateralization pool.
     /// - Risk-neutral pursuit of profit for token holders.
-    ///     Maximize (gross revenue - payments for insurance and governance).
+    ///     Maximize (gross revenue - payments for over-collateralization and governance).
     /// - This RToken holds only FooCoin, to provide a trade for hedging against its
     ///     possible collapse.
     ///

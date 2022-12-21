@@ -1257,7 +1257,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Trigger recollateralization
@@ -1294,7 +1295,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check Gnosis
@@ -1373,7 +1375,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check Gnosis
@@ -1448,7 +1451,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Trigger recollateralization
@@ -1485,7 +1489,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check Gnosis
@@ -2011,7 +2016,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
-        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR) // retains value because insuranc, truee
+        // retains value because over-collateralization, true
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Running auctions will trigger recollateralization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -2040,7 +2046,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken - retains value from insurance
+        // Check price in USD of the current RToken - retains value from over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Perform Mock Bids (addr1 has balance)
@@ -2395,7 +2401,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(sellAmt.div(2))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken - 1 with insurance
+        // Check price in USD of the current RToken - 1 with over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Should have seized RSR  - Nothing in backing manager so far
@@ -2491,7 +2497,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Trigger recollateralization
@@ -2528,7 +2534,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check Gnosis
