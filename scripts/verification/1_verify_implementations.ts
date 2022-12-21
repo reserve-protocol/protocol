@@ -86,9 +86,6 @@ async function main() {
       name: 'rToken',
       desc: 'RToken',
       contract: 'contracts/p1/RToken.sol:RTokenP1',
-      // libraries: {
-      //   PermitLib: deployments.permitLib,
-      // },
     },
     {
       name: 'stRSR',
