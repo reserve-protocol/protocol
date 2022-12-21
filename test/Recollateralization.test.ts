@@ -4080,14 +4080,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       // Set Token2 to hard default - Reducing rate
       await token2.setExchangeRate(fp('0.99'))
 
-      const bkpTokenRefAmt: BigNumber = bn('0.125e18')
-
       // Mark Default - Perform basket switch
       await assetRegistry.refresh()
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
-
-      // Running auctions will trigger recollateralization - All balance will be redeemed
-      const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(token2.address))
@@ -4099,9 +4094,20 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       )
       await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
+      // confirms its backed up to two tokens
+      console.log(await basketHandler.quote(fp('1'), 2))
+
+      // A quarter of the basket defaulted down to 99% of its value, and it is being backed up to 2 tokens
+      const minBuyAmt2 = issueAmount.div(4).div(2)
+      const t = await getTrade(backingManager, token2.address)
+      const sellAmt2 = await t.initBal()
+      expect(minBuyAmt2).to.equal(await toMinBuyAmt(sellAmt2, fp('0.99'), fp('1')))
+
       // Perform Mock Bids for the new Token (addr1 has balance)
       // Assume fair price, get 80% of tokens (20e18), which is more than what we need
-      const minBuyAmt2: BigNumber = sellAmt2.mul(80).div(100)
+      // const minBuyAmt2: BigNumber =
+
+      console.log(sellAmt2, minBuyAmt2)
       await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt2)
       await gnosis.placeBid(0, {
         bidder: addr1.address,
