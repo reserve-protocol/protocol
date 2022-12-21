@@ -3,7 +3,6 @@
 
 set -exuo pipefail
 
-bash tools/lint && \
-yarn eslint && \
+yarn lint && \
 yarn compile && \
 yarn test:fast
