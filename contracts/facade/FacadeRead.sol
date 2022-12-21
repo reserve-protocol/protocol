@@ -226,10 +226,10 @@ contract FacadeRead is IFacadeRead {
         return BasketHandlerP1(address(rToken.main().basketHandler())).getBackupConfig(targetName);
     }
 
-    /// @return tokens The addresses of the ERC20s backing the RToken
-    function basketTokens(IRToken rToken) external view returns (address[] memory tokens) {
+    /// @return tokens The ERC20s backing the RToken
+    function basketTokens(IRToken rToken) external view returns (IERC20[] memory tokens) {
         IMain main = rToken.main();
-        (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
+        return main.basketHandler().basketTokens();
     }
 
     /// @return stTokenAddress The address of the corresponding stToken for the rToken

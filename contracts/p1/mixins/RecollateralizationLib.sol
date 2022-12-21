@@ -182,7 +182,7 @@ library RecollateralizationLibP1 {
         //         (that is, shortfall(c, BUs) is the market value of the c that `this` would
         //          need to be given in order to have enough of c to cover `range.top` BUs)
         // {UoA}
-        uint192 shortfall = collateralShortfall(components, reg, range.top);
+        uint192 shortfall = collateralShortfall(components, range.top);
 
         // shortfallSlippage: The total amount of slippage we'd see if we took max slippage
         //                    while trading `shortfall` value
@@ -421,34 +421,32 @@ library RecollateralizationLibP1 {
     /// @param basketsTop {BU} The top end of the basket range estimate
     /// @return shortfall {UoA} The missing re-collateralization in UoA terms
     // Specifically, returns:
-    //   sum( shortfall(c, basketsLow) for each erc20 c in the basket)
+    //   sum( shortfall(c, basketsLow) for each backing erc20 c in the basket)
     //   where shortfall(c,numBUs) == (numBus * bh.quantity(c) - c.balanceOf(bm)) * c.price().high
     //         (that is, shortfall(c, numBUs) is the market value of the c that `this` would
     //          need to be given in order to have enough of c to cover `basketsTop` BUs)
-    // precondition: erc20s contains no duplicates; all basket tokens are in erc20s
-    function collateralShortfall(
-        ComponentCache memory components,
-        Registry memory reg,
-        uint192 basketsTop
-    ) private view returns (uint192 shortfall) {
-        // TODO: it's really silly to pass over all the erc20s here, we only need to look at
-        // basket collateral
+    function collateralShortfall(ComponentCache memory components, uint192 basketsTop)
+        private
+        view
+        returns (uint192 shortfall)
+    {
+        IERC20[] memory basketERC20s = components.bh.basketTokens();
+        uint256 len = basketERC20s.length;
 
         // accumulate shortfall
-        uint256 erc20sLen = reg.erc20s.length;
-        for (uint256 i = 0; i < erc20sLen; ++i) {
-            uint192 quantity = components.bh.quantity(reg.erc20s[i]); // {tok/BU}
-            if (quantity == 0) continue; // skip non-basket collateral
+        for (uint256 i = 0; i < len; ++i) {
+            ICollateral coll = components.reg.toColl(basketERC20s[i]);
 
             // {tok} = {BU} * {tok/BU}
-            // needed: quantity of erc20s[i] needed for `basketsTop` BUs
-            uint192 needed = basketsTop.mul(quantity, CEIL); // {tok}
-            // held: quantity of erc20s[i] owned by the bm (BackingManager)
-            uint192 held = reg.assets[i].bal(address(components.bm)); // {tok}
+            // needed: quantity of erc20 needed for `basketsTop` BUs
+            uint192 needed = basketsTop.mul(components.bh.quantity(basketERC20s[i]), CEIL); // {tok}
+
+            // held: quantity of erc20 owned by the bm (BackingManager)
+            uint192 held = coll.bal(address(components.bm)); // {tok}
 
             if (held.lt(needed)) {
                 // use the high estimate because it is the worst-case cost of acquisition
-                (, uint192 priceHigh) = reg.assets[i].price(); // {UoA/tok}
+                (, uint192 priceHigh) = coll.price(); // {UoA/tok}
 
                 // {UoA} = {UoA} + ({tok} - {tok}) * {UoA/tok}
                 shortfall = shortfall.plus(needed.minus(held).mul(priceHigh, CEIL));
