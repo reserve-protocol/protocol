@@ -70,7 +70,7 @@ async function main() {
       {
         beneficiary: deployerUser.address,
         revShare: {
-          rTokenDist: bn('0'),
+          rTokenDist: bn('1'),
           rsrDist: bn('0'),
         },
       },

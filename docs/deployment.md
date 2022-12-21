@@ -52,7 +52,7 @@ The deployment process consists of three high-level commands:
 ```
 hardhat run scripts/deploy.ts --network {NETWORK}
 OR
-yarn deploy --network {NETWORK}
+yarn deploy:run --network {NETWORK}
 ```
 
 If anything _does_ go wrong, the easiest thing to do is comment out the sub-scripts in `deploy.ts` in order to pick up execution at another point.
@@ -62,7 +62,7 @@ If anything _does_ go wrong, the easiest thing to do is comment out the sub-scri
 ```
 hardhat run scripts/confirm.ts --network {NETWORK}
 OR
-yarn confirm --network {NETWORK}
+yarn deploy:run:confirm --network {NETWORK}
 ```
 
 3. Verify everything on Etherscan:
@@ -104,11 +104,11 @@ yarn devchain
 ### Gas costs
 
 Gas costs from Goerli; excludes collateral deployments:
+(ROUGH, these were last updated August 2022)
 
 - RSRAsset: 893,122
 - RewardableLib: 918,407
 - TradingLib: 2,623,625
-- OracleLib: 448,042
 - Facade: 3,715,055
 - FacadeWriteLib: 4,235,169
 - FacadeWrite: 4,159,216
@@ -178,7 +178,7 @@ To complete the environment configuration:
 Finally, run the `check_env` script in order to confirm the 3 environment variables are configured correctly.
 
 ```
-yarn check_env --network mainnet
+yarn deploy:check_env --network mainnet
 ```
 
 If this passes successfully it will print the deployer address and the current ETH balance. Next:
@@ -195,7 +195,7 @@ End state: Your `.env` file is known to be good. You did all of this without scr
 Open a new terminal session and from the project root run the deploy script:
 
 ```
-yarn deploy --network mainnet
+yarn deploy:run --network mainnet
 ```
 
 Three files should be produced as a result of this process.
@@ -213,7 +213,7 @@ End state: All three files contain populated JSON objects. There should not be a
 Next, run:
 
 ```
-yarn confirm --network mainnet
+yarn deploy:run:confirm --network mainnet
 ```
 
 This checks that:
