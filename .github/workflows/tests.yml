@@ -7,8 +7,8 @@ on:
   pull_request:
 
 jobs:
-  unit-tests:
-    name: 'Unit Tests'
+  Linting:
+    name: 'Plugin Tests'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -19,7 +19,62 @@ jobs:
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn lint
-      - run: yarn test:unit
+
+  plugin-tests:
+    name: 'Plugin Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn compile
+      - run: yarn lint
+      - run: yarn test:plugins
+
+  p0-tests:
+    name: 'P0 tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn compile
+      - run: yarn lint
+      - run: yarn test:p0
+
+  p1-tests:
+    name: 'P1 Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn compile
+      - run: yarn lint
+      - run: yarn test:p1
+
+  scenario-tests:
+    name: 'Scenario Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn compile
+      - run: yarn lint
+      - run: yarn test:scenario
 
   integration-tests:
     name: 'Integration Tests'
@@ -63,4 +118,4 @@ jobs:
       - run: yarn devchain &
         env:
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-      - run: yarn deploy --network localhost
+      - run: yarn deploy:run --network localhost
