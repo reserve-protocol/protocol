@@ -7,8 +7,8 @@ on:
   pull_request:
 
 jobs:
-  Linting:
-    name: 'Plugin Tests'
+  lint:
+    name: 'Lint Checks'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
