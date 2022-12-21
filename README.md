@@ -150,3 +150,7 @@ Target: Intensive equivalence testing, run continuously for days or weeks, sensi
 If you would like to contribute, you'll need to configure a secret in your fork repo in order for our integration tests to pass in CI. The name of the secret should `ALCHEMY_MAINNET_KEY` and it should be equal to the suffix portion of the full URL.
 
 Usage: `https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}`
+
+## External Documentation
+
+[Video overview](https://youtu.be/341MhkOWsJE)
