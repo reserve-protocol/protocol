@@ -1,0 +1,99 @@
+# Recollateralization Trading Algorithm
+
+Recollateralization takes place in the central loop of [`BackingManager.manageTokens()`](../contracts/p1/BackingManager). Since the BackingManager can only have open 1 trade at a time, it needs to know which tokens to try to trade and how much. This algorithm should not be gameable and should not result in unnecessary losses.
+
+```solidity
+(bool doTrade, TradeRequest memory req) = RecollateralizationLibP1.prepareRecollateralizationTrade(this);
+```
+
+The trading algorithm is isolated in [RecollateralizationLib.sol](../contracts/p1/mixins/RecollateralizationLib.sol). This document describes the algorithm implemented by the library at a high-level, as well as the concepts required to evaluate the correctness of the implementation.
+
+## High-level overview
+
+```solidity
+   /*
+    * Strategy: iteratively move the system on a forgiving path towards capitalization
+    * through a narrowing BU price band. The initial large spread reflects the
+    * uncertainty associated with the market price of defaulted/volatile collateral, as
+    * well as potential losses due to trading slippage. In the absence of further
+    * collateral default, the size of the BU price band should decrease with each trade
+    * until it is 0, at which point capitalization is restored.
+    ...
+    * If we run out of capital and are still undercollateralized, we compromise
+    * rToken.basketsNeeded to the current basket holdings. Haircut time.
+    */
+```
+
+### The BU price band - `basketRange()`
+
+The BU price band is a two-sided range in units of `{BU}` that describes the realistic range of basket units that the protocol expects to end up with after it is done trading. The lower bound indicates the number of basket units that the protocol will hold if future trading proceeds as pessimistically as possible. The upper bound indicates how many BUs the BackingManager will hold if trading proceeds as optimistically as possible.
+
+The spread represents uncertainty and arises from (i) the uncertainty fundamental in asset prices: [`IAsset.price() returns (uint192 low, uint192 high)`](../contracts/interfaces/IAsset.sol), (ii) the [`BackingManager.maxTradeSlippage`](system-design.md#maxTradeSlippage) governance param, and (iii) potentially accruable dust balances due to the [`minTradeVolume`](system-design.md#rTokenMinTradeVolume) (unique per asset).
+
+As trades complete, the distance between the top and bottom of the BU price band _strictly decreases_; it should not even remain the same (assuming the trade cleared for nonzero volume).
+
+#### `basketRange.top`
+
+`basketRange.top` is the lesser of `RToken.basketsNeeded()` and `assetsHigh.div(basketPriceLow)`, where:
+
+- `assetsHigh` is the value of all assets under management (includes staked RSR) if assets were worth their most
+- `basketPriceLow` is the price of one `{BU}` if assets were worth their least
+
+#### `basketRange.bottom`
+
+`basketRange.bottom` is the lesser of `basketRange.top` and `assetsLow.minus(shortfallSlippage).div(basketPriceHigh)`, where:
+
+- `assetsLow` is the value of all assets under management (includes staked RSR) if assets were worth their least, and up to [`minTradeVolume`](system-design.md#minTradeVolume) dust accrued everywhere
+- `shortfallSlippage` is the largest possible loss that could be taken during recollateralization trading due solely to [`maxTradeSlippage`](system-design.md#maxTradeSlippage)
+- `basketPriceHigh` is the price of one `{BU}` if assets were worth their most
+
+### Selecting the Trade - `nextTradePair()`
+
+The BU price band is used in order to determine token surplus/deficit: token surplus is defined relative to the top of the BU price band while token deficit is defined relative to the bottom of the BU price band
+
+This allows the protocol to deterministically select the next trade based on the following set of constraints (in this order of consideration):
+
+1. Always sell more than than the [`minTradeVolume`](system-design.md#minTradeVolume) governance param
+2. Never sell more than the [`maxTradeVolume`](system-design.md#rTokenMaxTradeVolume) governance param
+3. Sell `DISABLED` collateral first, `SOUND` next, and `IFFY` last.
+   (Non-collateral assets are considered SOUND for these purposes.)
+4. Do not double-trade SOUND assets: Capital that is traded from SOUND asset A -> SOUND asset B should not eventually be traded into SOUND asset C.
+   (Caveat: if the protocol gets an unreasonably good trade in excess of what was indicated by an asset's price range, this can happen)
+5. Large trades first, as determined by comparison in the `{UoA}`
+
+If there does not exist a trade that meets these constraints, then the protocol "takes a haircut", which is a colloquial way of saying it reduces `RToken.basketsNeeded()` to its current BU holdings. This causes a loss for RToken holders (undesirable) but causes the protocol to become collateralized again, allowing it to re-enter into a period of normal operation.
+
+#### Trade Sizing
+
+The `IAsset` interface defines two types of prices:
+
+```solidity
+/// @return low {UoA/tok} The lower end of the price estimate
+/// @return high {UoA/tok} The upper end of the price estimate
+function price() external view returns (uint192 low, uint192 high);
+
+/// lotLow should be nonzero when the asset might be worth selling
+/// @return lotLow {UoA/tok} The lower end of the lot price estimate
+/// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
+
+```
+
+All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `price().low` and the buying asset's `price().high`. However, the protocol must also be able to sell assets that do not currently have known prices. This can occur either due to an oracle contract reverting, or because the oracle value is stale. In this case `price()` returns `[0, FIX_MAX]` while `lotPrice()` returns nonzero values, at least for some period of time. If an asset's oracle goes offline forever, its `lotPrice()` will eventually reach `[0, 0]` and the protocol will completely stop trading this asset.
+
+#### Trade Examples
+
+TODO
+
+##### SOUND trades only (ie due to governance basket change)
+
+##### DISABLED collateral sale
+
+##### Haircut taken due to lack of RSR overcollateralization
+
+## Summary
+
+- The trading algorithm is conservative in its definition of token balance surplus and deficit
+- It first sells bad collateral before good collateral
+- It trades as much as it can without risking future double-trading
+- With each successive trade the BU price band narrows, opening up more token balance for surplus or providing sufficient justification for the purchase of more deficit collateral, often in some combination
