@@ -194,7 +194,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         main.poke();
 
         IBasketHandler bh = main.basketHandler();
-        require(bh.fullyCollateralized(), "RToken uncapitalized");
+        require(bh.fullyCollateralized(), "RToken uncollateralized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         Withdrawal[] storage queue = withdrawals[account];

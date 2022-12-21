@@ -138,7 +138,7 @@ describe('FacadeRead contract', () => {
     it('Should return backingOverview correctly', async () => {
       let [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
-      // Check values - Fully capitalized and no over-collateralization
+      // Check values - Fully collateralized and no over-collateralization
       expect(backing).to.be.closeTo(fp('1'), 10)
       expect(overCollateralization).to.equal(0)
 
@@ -151,7 +151,7 @@ describe('FacadeRead contract', () => {
       await stRSR.connect(addr1).stake(stakeAmount)
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
-      // Check values - Fully capitalized and fully over-collateralized
+      // Check values - Fully collateralized and fully over-collateralized
       expect(backing).to.be.closeTo(fp('1'), 10)
       expect(overCollateralization).to.be.closeTo(fp('0.5'), 10)
 
@@ -181,7 +181,7 @@ describe('FacadeRead contract', () => {
         rToken.address
       )
 
-      // Check values - Fully capitalized and no over-collateralization
+      // Check values - Fully collateralized and no over-collateralization
       expect(backing).to.be.closeTo(fp('1'), 10)
       expect(overCollateralization).to.equal(0)
     })
@@ -199,7 +199,7 @@ describe('FacadeRead contract', () => {
         rToken.address
       )
 
-      // Check values - Fully capitalized and no over-collateralization
+      // Check values - Fully collateralized and no over-collateralization
       expect(backing).to.be.closeTo(fp('1'), 10)
       expect(overCollateralization).to.equal(fp('0.5'))
 
@@ -210,7 +210,7 @@ describe('FacadeRead contract', () => {
         rToken.address
       )
 
-      // Check values - Fully capitalized and no over-collateralization
+      // Check values - Fully collateralized and no over-collateralization
       expect(backing2).to.be.closeTo(fp('1'), 10)
       expect(overCollateralization2).to.equal(0)
     })

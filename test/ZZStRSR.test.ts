@@ -676,8 +676,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should not complete withdrawal if not fully capitalized', async () => {
-        // Need to issue some RTokens to handle fully/not fully capitalized
+      it('Should not complete withdrawal if not fully collateralized', async () => {
+        // Need to issue some RTokens to handle fully/not fully collateralized
         await token0.connect(owner).mint(addr1.address, initialBal)
         await token1.connect(owner).mint(addr1.address, initialBal)
         await token2.connect(owner).mint(addr1.address, initialBal)
@@ -701,17 +701,17 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         const erc20s = await facade.basketTokens(rToken.address)
 
-        // Set not fully capitalized by changing basket
+        // Set not fully collateralized by changing basket
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
         await basketHandler.connect(owner).refreshBasket()
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'RToken uncapitalized'
+          'RToken uncollateralized'
         )
 
-        // If fully capitalized should withdraw OK  - Set back original basket
+        // If fully collateralized should withdraw OK  - Set back original basket
         await basketHandler.connect(owner).setPrimeBasket(erc20s, basketsNeededAmts)
         await basketHandler.connect(owner).refreshBasket()
 

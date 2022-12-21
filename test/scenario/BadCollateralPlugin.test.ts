@@ -262,7 +262,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal)
     })
 
-    it('should not be undercapitalized from its perspective', async () => {
+    it('should not be undercollateralized from its perspective', async () => {
       await setOraclePrice(collateral0.address, bn('0.5e8')) // 50% decrease, would normally trigger soft default
       await assetRegistry.refresh()
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)

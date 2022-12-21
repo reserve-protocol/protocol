@@ -525,7 +525,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(1, [], [], true)
 
-        // Check state - Basket is disabled even though fully capitalized
+        // Check state - Basket is disabled even though fully collateralized
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
