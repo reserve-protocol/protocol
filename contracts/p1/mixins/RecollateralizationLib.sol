@@ -49,6 +49,7 @@ struct TradeInfo {
 library RecollateralizationLibP1 {
     using FixLib for uint192;
     using TradeLib for TradeInfo;
+    using TradeLib for IBackingManager;
 
     /// Select and prepare a trade that moves us closer to capitalization, using the
     /// basket range to avoid overeager/duplicate trading.
@@ -128,25 +129,23 @@ library RecollateralizationLibP1 {
     //
     // - We will not aim to hold more than rToken.basketsNeeded() BUs
     // - No double trades: if we buy B in one trade, we won't sell B in another trade
+    //       Caveat: Unless the asset we're selling is IFFY/DISABLED
     // - The best amount of an asset we can sell is our balance minus any backing requirements;
     //       the worst is (our balance) - (backing requirement) - (its dust amount)
     // - The best price we might get for a trade is at the high sell price and low buy price
-    // - The worst price we might get for a trade between assets is the current
-    //     price estimate * ( 1 - maxTradeSlippage )
-    // - The worst price we might get for an UNPRICED collateral is 0
-    // - IFFY/DISABLED collateral are considered when they have nonzero price
+    // - The worst price we might get for a trade between assets is at the low sell price and
+    //     the high buy price, multiplied by ( 1 - maxTradeSlippage )
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
     // Given these assumptions, the following hold:
     //
-    // range.top = min(rToken.basketsNeeded, totalAssetValue(erc20s).high / basket.price().high)
-    //   because (totalAssetValue(erc20s).high / basket.price().high) is how many BUs we can hold
-    //   given "best plausible" prices, and we won't hold more than rToken(bm).basketsNeeded
+    // range.top = min(rToken.basketsNeeded, totalAssetValue(erc20s).high / basket.price().low)
+    //   because (totalAssetValue(erc20s).high / basket.price().low) is how many BUs we can hold
+    //   given "best plausible" prices, and we shouldn't hold more than rToken(bm).basketsNeeded
     //
     // range.bottom = max(0, min(lowBUs, range.top)), where:
     //   lowBUs = (assetsLow - maxTradeSlippage * buShortfall(range.top)) / basket.price().high
-    //     is the number of BUs that we are *sure* we have the assets to collateralize
-    //     (making the above assumptions about actual trade prices), and
+    //     is the number of BUs that we are *sure* we have the assets to collateralize, and
     //   buShortfall(range.top) = the total value of the assets we'd need to buy in order
     //     in order to fully collateralize `range.top` BUs,
     //
@@ -166,39 +165,40 @@ library RecollateralizationLibP1 {
         // {UoA}
         (uint192 assetsLow, uint192 assetsHigh) = totalAssetValue(components, rules, reg);
 
-        // {UoA}, Optimistic estimate of the value of our basket units at the end of this
-        //   recapitalization process.
-        uint192 basketTargetHigh = fixMin(
-            assetsHigh,
-            components.rToken.basketsNeeded().mul(basketPriceHigh)
-        );
+        // ==== Calculate range.top ====
 
-        // {UoA}, Total value of collateral in shortfall of `basketTargetHigh`. Specifically:
-        //   sum( shortfall(c, basketTargetHigh / basketPriceHigh) for each erc20 c in the basket)
+        // basketsHigh: The most amount of BUs we could possibly get from `assetsHigh`
+        // {BU} = {1} * {UoA} / {UoA/BU}
+        uint192 basketsHigh = components.bm.safeMulDivCeil(FIX_ONE, assetsHigh, basketPriceLow);
+
+        // range.top: The most amount of BUs we should possibly aim to hold
+        range.top = fixMin(basketsHigh, components.rToken.basketsNeeded());
+
+        // ==== Calculate range.bottom ====
+
+        // shortfall: The total value of collateral in shortfall of `range.top`. Specifically:
+        //   sum( shortfall(c, range.top) for each erc20 c in the basket)
         //   where shortfall(c, BUs) == (BUs * bh.quantity(c) - c.bal(bm)) * c.price().high
         //         (that is, shortfall(c, BUs) is the market value of the c that `this` would
-        //          need to be given in order to have enough of c to cover `BUs` BUs)
+        //          need to be given in order to have enough of c to cover `range.top` BUs)
         // {UoA}
-        uint192 shortfall = collateralShortfall(components, reg, basketTargetHigh, basketPriceHigh);
+        uint192 shortfall = collateralShortfall(components, range.top);
 
-        // ==== Further adjust the low backing estimate downwards to account for trading frictions
-
-        // {UoA}, Total value of the slippage we'd see if we made `shortfall` trades with
-        //     slippage `maxTradeSlippage()`
-        uint192 shortfallSlippage = rules.maxTradeSlippage.mul(shortfall).div(
+        // shortfallSlippage: The total amount of slippage we'd see if we took max slippage
+        //                    while trading `shortfall` value
+        // {UoA} = {1} * {UoA} / {1}
+        uint192 shortfallSlippage = rules.maxTradeSlippage.mulDiv(
+            shortfall,
             FIX_ONE.minus(rules.maxTradeSlippage),
             CEIL
         );
 
-        // {UoA}, Pessimistic estimate of the value of our basket units at the end of this
-        //   recapitalization process.
-        uint192 basketTargetLow = assetsLow.gt(shortfallSlippage)
-            ? fixMin(assetsLow.minus(shortfallSlippage), basketTargetHigh)
-            : 0;
+        // Take shortfallSlippage out of assetsLow
+        assetsLow = assetsLow.gt(shortfallSlippage) ? assetsLow.minus(shortfallSlippage) : 0;
 
+        // range.bottom: The least amount of BUs we could possibly end up holding after trading
         // {BU} = {UoA} / {UoA/BU}
-        range.top = basketTargetHigh.div(basketPriceLow, CEIL);
-        range.bottom = basketTargetLow.div(basketPriceHigh, CEIL);
+        range.bottom = fixMin(assetsLow.div(basketPriceHigh, CEIL), range.top);
     }
 
     // ===========================================================================================
@@ -253,11 +253,9 @@ library RecollateralizationLibP1 {
             (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/tok}
             (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
 
-            uint192 qty = components.bh.quantity(reg.erc20s[i]); // {tok/BU}
-
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
             if (
-                qty == 0 &&
+                components.bh.quantity(reg.erc20s[i]) == 0 &&
                 !TradeLib.isEnoughToSell(reg.assets[i], bal, lotLow, rules.minTradeVolume)
             ) continue;
 
@@ -268,7 +266,7 @@ library RecollateralizationLibP1 {
 
             // assetsHigh += high.mul(bal, CEIL), where assetsHigh is [0, FIX_MAX]
             // {UoA} = {UoA/tok} * {tok}
-            uint192 val = TradeLib.safeMulDivCeil(components.bm, high, bal, FIX_ONE);
+            uint192 val = components.bm.safeMulDivCeil(high, bal, FIX_ONE);
             if (uint256(assetsHigh) + val >= FIX_MAX) assetsHigh = FIX_MAX;
             else assetsHigh += val;
             // += is same as Fix.plus
@@ -420,40 +418,38 @@ library RecollateralizationLibP1 {
         }
     }
 
-    /// @param backingHigh {UoA} The high estimate for the amount of backing in UoA terms
-    /// @param basketPriceHigh {UoA/BU} The high price of a BU in UoA terms
+    /// @param basketsTop {BU} The top end of the basket range estimate
     /// @return shortfall {UoA} The missing re-collateralization in UoA terms
     // Specifically, returns:
-    //   sum( shortfall(c, basketTargetHigh / basketPriceHigh) for each erc20 c in the basket)
+    //   sum( shortfall(c, basketsLow) for each backing erc20 c in the basket)
     //   where shortfall(c,numBUs) == (numBus * bh.quantity(c) - c.balanceOf(bm)) * c.price().high
     //         (that is, shortfall(c, numBUs) is the market value of the c that `this` would
-    //          need to be given in order to have enough of c to cover `numBUs` BUs)
-    // precondition: erc20s contains no duplicates; all basket tokens are in erc20s
-    function collateralShortfall(
-        ComponentCache memory components,
-        Registry memory reg,
-        uint192 backingHigh,
-        uint192 basketPriceHigh
-    ) private view returns (uint192 shortfall) {
-        assert(basketPriceHigh > 0); // div by zero further down in function
+    //          need to be given in order to have enough of c to cover `basketsTop` BUs)
+    function collateralShortfall(ComponentCache memory components, uint192 basketsTop)
+        private
+        view
+        returns (uint192 shortfall)
+    {
+        IERC20[] memory basketERC20s = components.bh.basketTokens();
+        uint256 len = basketERC20s.length;
 
         // accumulate shortfall
-        uint256 erc20sLen = reg.erc20s.length;
-        for (uint256 i = 0; i < erc20sLen; ++i) {
-            uint192 quantity = components.bh.quantity(reg.erc20s[i]); // {tok/BU}
-            if (quantity == 0) continue; // skip non-basket collateral
+        for (uint256 i = 0; i < len; ++i) {
+            ICollateral coll = components.reg.toColl(basketERC20s[i]);
 
-            // {tok} = {UoA} * {tok/BU} / {UoA/BU}
-            // needed: quantity of erc20s[i] needed in basketPriceHigh's worth of baskets
-            uint192 needed = backingHigh.mulDiv(quantity, basketPriceHigh, CEIL); // {tok}
-            // held: quantity of erc20s[i] owned by the bm (BackingManager)
-            uint192 held = reg.assets[i].bal(address(components.bm)); // {tok}
+            // {tok} = {BU} * {tok/BU}
+            // needed: quantity of erc20 needed for `basketsTop` BUs
+            uint192 needed = basketsTop.mul(components.bh.quantity(basketERC20s[i]), CEIL); // {tok}
+
+            // held: quantity of erc20 owned by the bm (BackingManager)
+            uint192 held = coll.bal(address(components.bm)); // {tok}
 
             if (held.lt(needed)) {
-                (, uint192 priceHigh) = reg.assets[i].price(); // {UoA/tok}
+                // use the high estimate because it is the worst-case cost of acquisition
+                (, uint192 priceHigh) = coll.price(); // {UoA/tok}
 
                 // {UoA} = {UoA} + ({tok} - {tok}) * {UoA/tok}
-                shortfall = shortfall.plus(needed.minus(held).mul(priceHigh, FLOOR));
+                shortfall = shortfall.plus(needed.minus(held).mul(priceHigh, CEIL));
             }
         }
     }
