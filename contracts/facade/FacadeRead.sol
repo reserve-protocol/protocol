@@ -268,7 +268,7 @@ contract FacadeRead is IFacadeRead {
         {
             IERC20[] memory erc20s = assetRegistry.erc20s();
 
-            // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
+            // Bound each withdrawal by the prorata share, in case under-collateralized
             uint192 uoaHeld;
             for (uint256 i = 0; i < erc20s.length; i++) {
                 if (erc20s[i] == rsr) continue;

@@ -154,7 +154,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function handoutExcessAssets(IERC20[] calldata erc20s) private {
         /**
          * Assumptions:
-         *   - Fully collateralized. All collateral, and therefore assets, meet balance requirements.
+         *   - Fully collateralized. All collateral meet balance requirements.
          *   - All backing capital is held at BackingManager's address. No capital is out on-trade
          *   - Neither RToken nor RSR are in the basket
          *   - Each address in erc20s is unique
