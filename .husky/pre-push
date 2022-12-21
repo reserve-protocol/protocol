@@ -3,7 +3,7 @@
 
 set -exuo pipefail
 
-# bash tools/lint && \
 yarn eslint:fuzz && \
+yarn lint && \
 yarn compile && \
 yarn test:fuzz

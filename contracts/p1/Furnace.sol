@@ -12,7 +12,7 @@ import "./mixins/Component.sol";
 contract FurnaceP1 is ComponentP1, IFurnace {
     using FixLib for uint192;
 
-    uint192 public constant MAX_RATIO = 1e18;
+    uint192 public constant MAX_RATIO = FIX_ONE; // {1} 100%
     uint48 public constant MAX_PERIOD = 31536000; // {s} 1 year
 
     uint192 public ratio; // {1} What fraction of balance to melt each period

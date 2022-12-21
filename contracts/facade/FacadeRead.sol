@@ -48,7 +48,7 @@ contract FacadeRead is IFacadeRead {
 
     /// @custom:static-call
     function issue(IRToken rToken, uint256 amount)
-        public
+        external
         returns (address[] memory tokens, uint256[] memory deposits)
     {
         IMain main = rToken.main();
@@ -226,10 +226,10 @@ contract FacadeRead is IFacadeRead {
         return BasketHandlerP1(address(rToken.main().basketHandler())).getBackupConfig(targetName);
     }
 
-    /// @return tokens The addresses of the ERC20s backing the RToken
-    function basketTokens(IRToken rToken) external view returns (address[] memory tokens) {
+    /// @return tokens The ERC20s backing the RToken
+    function basketTokens(IRToken rToken) external view returns (IERC20[] memory tokens) {
         IMain main = rToken.main();
-        (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
+        return main.basketHandler().basketTokens();
     }
 
     /// @return stTokenAddress The address of the corresponding stToken for the rToken
@@ -239,17 +239,21 @@ contract FacadeRead is IFacadeRead {
     }
 
     /// @return backing {1} The worstcase collateralization % the protocol will have after trading
-    /// @return insurance {1} The insurance value relative to the fully-backed value as a %
+    /// @return overCollateralization {1} The over-collateralization value relative to the
+    ///     fully-backed value as a %
     function backingOverview(IRToken rToken)
         external
         view
-        returns (uint192 backing, uint192 insurance)
+        returns (uint192 backing, uint192 overCollateralization)
     {
         uint256 supply = rToken.totalSupply();
         if (supply == 0) return (0, 0);
 
         // {UoA/BU}
         (uint192 buPriceLow, uint192 buPriceHigh) = rToken.main().basketHandler().price();
+        // untestable:
+        //      if buPriceLow==0 then basketMidPrice=0 and uoaNeeded=0
+        //      this functions will then panic when `uoaHeld.div(uoaNeeded)`
         uint192 basketMidPrice = buPriceLow > 0 ? buPriceLow.plus(buPriceHigh).div(2) : buPriceLow;
 
         // {UoA} = {BU} * {UoA/BU}
@@ -282,7 +286,7 @@ contract FacadeRead is IFacadeRead {
             backing = uoaHeld.div(uoaNeeded);
         }
 
-        // Compute insurance
+        // Compute overCollateralization
         {
             IAsset rsrAsset = assetRegistry.toAsset(rsr);
 
@@ -298,7 +302,7 @@ contract FacadeRead is IFacadeRead {
             uint192 rsrUoA = rsrBal.mul(midPrice);
 
             // {1} = {UoA} / {UoA}
-            insurance = rsrUoA.div(uoaNeeded);
+            overCollateralization = rsrUoA.div(uoaNeeded);
         }
     }
 

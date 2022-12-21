@@ -46,6 +46,7 @@ import {
   ORACLE_ERROR,
   SLOW,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
@@ -976,7 +977,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
-      // Should expect maxTradeSlippage + dust losses -- remember no insurance available
+      // Should expect maxTradeSlippage + dust losses -- remember no over-collateralization
+      // available
       // maxTradeSlippage + dust losses
       // Recall the shortfall is calculated against high prices
       await expectRTokenPrice(
@@ -2505,32 +2507,29 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  context.skip(`Extreme Values`, () => {
+  context(`Extreme Values`, () => {
     // makeColl: Deploy and register a new constant-price collateral
-    async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
+    async function makeColl(index: number | string): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
       const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
       const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
       const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
       await oracle.deployed() // fix extreme value tests failing
-      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
-        libraries: { OracleLib: oracle.address },
+      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
+      const coll: FiatCollateral = <FiatCollateral>await CollateralFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: oracle.address,
+        oracleError: ORACLE_ERROR,
+        erc20: erc20.address,
+        maxTradeVolume: fp('1e36'),
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.05'),
+        delayUntilDefault: bn(86400),
       })
-      const coll: FiatCollateral = <FiatCollateral>(
-        await CollateralFactory.deploy(
-          fp('1'),
-          oracle.address,
-          erc20.address,
-          fp('1e36'),
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          fp('0.05'),
-          bn(86400)
-        )
-      )
       await assetRegistry.register(coll.address)
       expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
-      await setOraclePrice(coll.address, price)
+      await backingManager.grantRTokenAllowance(erc20.address)
       return erc20
     }
 
@@ -2566,7 +2565,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const weights: BigNumber[] = []
       let totalWeight: BigNumber = fp(0)
       for (let i = 0; i < N; i++) {
-        const erc20 = await makeColl(i, fp('0.00025'))
+        const erc20 = await makeColl(i)
         erc20s.push(erc20)
         const currWeight = i == 0 ? weightFirst : weightRest
         weights.push(currWeight)
@@ -2638,36 +2637,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     const MAX_WEIGHT = fp(1000)
     const MIN_WEIGHT = fp('1e-6')
     const MIN_ISSUANCE_FRACTION = fp('1e-6')
+    const MIN_RTOKENS = fp('1e-6')
 
     let paramList
 
     if (SLOW) {
       const bounds: BigNumber[][] = [
-        [bn(1), MAX_RTOKENS, bn('1.205e24')], // toIssue
-        [bn(1), MAX_RTOKENS, bn('4.4231e24')], // toRedeem
+        [MIN_RTOKENS, MAX_RTOKENS, bn('1.205e24')], // toIssue
+        [MIN_RTOKENS, MAX_RTOKENS, bn('4.4231e24')], // toRedeem
         [MAX_RTOKENS, bn('7.907e24')], // totalSupply
-        [bn(1), bn(3)], // numAssets
+        [bn(1), bn(3), bn(100)], // numAssets
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.1')], // weightFirst
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.2')], // weightRest
         [fp('0.00025'), fp(1), MIN_ISSUANCE_FRACTION], // issuanceRate
       ]
 
-      // A few big heavy test cases
-      const bounds2: BigNumber[][] = [
-        [MAX_RTOKENS, bn(1)],
-        [MAX_RTOKENS, bn(1)],
-        [MAX_RTOKENS],
-        [bn(255)],
-        [MAX_WEIGHT, MIN_WEIGHT],
-        [MAX_WEIGHT, MIN_WEIGHT],
-        [fp('0.1')],
-      ]
-
-      paramList = cartesianProduct(...bounds).concat(cartesianProduct(...bounds2))
+      paramList = cartesianProduct(...bounds)
     } else {
       const bounds: BigNumber[][] = [
-        [bn(1), MAX_RTOKENS], // toIssue
-        [bn(1), MAX_RTOKENS], // toRedeem
+        [MIN_RTOKENS, MAX_RTOKENS], // toIssue
+        [MIN_RTOKENS, MAX_RTOKENS], // toRedeem
         [MAX_RTOKENS], // totalSupply
         [bn(1)], // numAssets
         [MIN_WEIGHT, MAX_WEIGHT], // weightFirst

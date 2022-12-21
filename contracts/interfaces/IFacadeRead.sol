@@ -89,20 +89,21 @@ interface IFacadeRead {
         view
         returns (IERC20[] memory erc20s, uint256 max);
 
-    /// @return tokens The addresses of the ERC20s backing the RToken
+    /// @return tokens The ERC20s backing the RToken
     /// @custom:view
-    function basketTokens(IRToken rToken) external view returns (address[] memory tokens);
+    function basketTokens(IRToken rToken) external view returns (IERC20[] memory tokens);
 
     /// @return stTokenAddress The address of the corresponding stToken address
     /// @custom:view
     function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress);
 
     /// @return backing The worst-case collaterazation % the protocol will have after done trading
-    /// @return insurance The insurance value relative to the fully-backed value
+    /// @return overCollateralization The over-collateralization value relative to the
+    ///     fully-backed value
     function backingOverview(IRToken rToken)
         external
         view
-        returns (uint192 backing, uint192 insurance);
+        returns (uint192 backing, uint192 overCollateralization);
 
     /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
     /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset

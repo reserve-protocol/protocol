@@ -263,7 +263,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @param qty {tok/BU}
     /// @param p {UoA/tok}
     function quantityMulPrice(uint192 qty, uint192 p) internal pure returns (uint192) {
+        // untestable:
+        //      qty will never = 0 here because of the check in _price()
         if (qty == 0 || p == 0) return 0;
+        // untestable:
+        //      qty = FIX_MAX iff p = 0
         if (qty == FIX_MAX || p == FIX_MAX) return FIX_MAX;
 
         // return FIX_MAX instead of throwing overflow errors.
@@ -275,10 +279,32 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // add in FIX_HALF for rounding
             uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
+            // untestable (here there be dragons):
+            //          A)  shiftDelta = rawDelta + (FIX_ONE / 2)
+            //      shiftDelta overflows if:
+            //          B)  shiftDelta = MAX_UINT256 - FIX_ONE/2 + 1
+            //              rawDelta + (FIX_ONE/2) = MAX_UINT256 - FIX_ONE/2 + 1
+            //              p * qty = MAX_UINT256 - FIX_ONE + 1
+            //      therefore shiftDelta overflows if:
+            //          C)  p = (MAX_UINT256 - FIX_ONE + 1) / qty
+            //      MAX_UINT256 ~= 1e77 , FIX_MAX ~= 6e57 (6e20 difference in magnitude)
+            //      qty <= 1e21 (MAX_TARGET_AMT)
+            //      qty must be between 1e19 & 1e20 in order for p in (C) to be uint192,
+            //      but qty would have to be < 1e18 in order for (A) to overflow
             if (shiftDelta < rawDelta) return FIX_MAX;
 
             // return _div(rawDelta, FIX_ONE, ROUND)
             return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
+        }
+    }
+
+    /// Return the current reference basket
+    /// @return erc20s The erc20s in the reference basket
+    function basketTokens() external view returns (IERC20[] memory erc20s) {
+        uint256 len = basket.erc20s.length;
+        erc20s = new IERC20[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            erc20s[i] = basket.erc20s[i];
         }
     }
 

@@ -4,8 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-
 import "../interfaces/IAsset.sol";
 import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IBasketHandler.sol";
@@ -266,6 +264,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
             // return _div(rawDelta, FIX_ONE, ROUND)
             return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
+        }
+    }
+
+    /// Return the current reference basket
+    /// @return erc20s The erc20s in the reference basket
+    function basketTokens() external view returns (IERC20[] memory erc20s) {
+        uint256 len = basket.erc20s.length;
+        erc20s = new IERC20[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            erc20s[i] = basket.erc20s[i];
         }
     }
 

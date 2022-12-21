@@ -179,7 +179,7 @@ library TradeLib {
     /// @return {tok} The min trade size for the asset in whole tokens
     function minTradeSize(uint192 minTradeVolume, uint192 price) private pure returns (uint192) {
         // {tok} = {UoA} / {UoA/tok}
-        uint192 size = price == 0 ? FIX_MAX : minTradeVolume.div(price, ROUND);
+        uint192 size = price == 0 ? FIX_MAX : minTradeVolume.div(price, CEIL);
         return size > 0 ? size : 1;
     }
 
@@ -188,7 +188,7 @@ library TradeLib {
     function maxTradeSize(IAsset asset, uint192 price) private view returns (uint192) {
         // untestable:
         //       Price cannot be 0, it would've been filtered before in `prepareTradeSell`
-        uint192 size = price == 0 ? FIX_MAX : asset.maxTradeVolume().div(price, ROUND);
+        uint192 size = price == 0 ? FIX_MAX : asset.maxTradeVolume().div(price, FLOOR);
         return size > 0 ? size : 1;
     }
 }

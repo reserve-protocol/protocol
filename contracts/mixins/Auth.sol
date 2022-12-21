@@ -98,7 +98,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // ==== System-wide views ====
     // returns: bool(main is frozen) == now < unfreezeAt
-    function frozen() public view returns (bool) {
+    function frozen() external view returns (bool) {
         return block.timestamp < unfreezeAt;
     }
 

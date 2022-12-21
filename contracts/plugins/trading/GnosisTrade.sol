@@ -219,7 +219,7 @@ contract GnosisTrade is ITrade {
 
     /// @return True if the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
-    function canSettle() public view returns (bool) {
+    function canSettle() external view returns (bool) {
         return status == TradeStatus.OPEN && endTime <= block.timestamp;
     }
 

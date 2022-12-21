@@ -30,7 +30,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     IRevenueTrader private rsrTrader;
     IRevenueTrader private rTokenTrader;
     uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
-    uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
+    uint192 public constant MAX_BACKING_BUFFER = FIX_ONE; // {1} 100%
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
@@ -188,16 +188,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             needed = rToken.basketsNeeded(); // {BU}
             uint192 held = basketHandler.basketsHeldBy(address(this)); // {BU}
             if (held.gt(needed)) {
-                int8 decimals = int8(rToken.decimals());
-                uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
+                // gas-optimization: RToken is known to have 18 decimals, the same as FixLib
+                uint192 totalSupply = _safeWrap(rToken.totalSupply()); // {rTok}
 
                 // {BU} = {BU} - {BU}
                 uint192 extraBUs = held.minus(needed);
 
-                // {qRTok: Fix} = {BU} * {qRTok / BU} (if needed == 0, conv rate is 1 qRTok/BU)
+                // {rTok} = {BU} * {rTok / BU} (if needed == 0, conv rate is 1 rTok/BU)
                 uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
 
-                rToken.mint(address(this), rTok.shiftl_toUint(decimals));
+                // gas-optimization: RToken is known to have 18 decimals, same as FixLib
+                rToken.mint(address(this), uint256(rTok));
                 rToken.setBasketsNeeded(held);
                 needed = held;
             }

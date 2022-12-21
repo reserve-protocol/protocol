@@ -133,7 +133,7 @@ The Reserve Protocol makes a few different types of trades:
 - from collateral to RSR or RToken, in order to distribute collateral yields. These happen often.
 - from reward tokens to RSR or RToken, in order to distribute tokens rewards from collateral. These also happen often.
 - collateral to collateral, in order to change the distribution of collateral due to a basket change. Basket changes should be rare, happening only when governance changes the basket, or when some collateral token defaults.
-- RSR to collateral, in order to recollateralize the protocol from stRSR insurance, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using insure.
+- RSR to collateral, in order to recollateralize the protocol from stRSR over-collateralization, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using the over-collateralization buffer.
 
 Each type of trade can currently happen in only one way; the protocol launches a Gnosis EasyAuction. The Reserve Protocol is designed to make it easy to add other trading methods, but none others are currently supported.
 

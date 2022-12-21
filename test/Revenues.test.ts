@@ -754,6 +754,105 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
+      it('Should handle properly an asset with low maxTradeVolume', async () => {
+        // Set f = 1
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(0), bn(0))
+
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(1))
+
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('1000e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Set new asset for COMP with low maxTradeVolume
+        const newCOMPAsset: Asset = <Asset>await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          await compAsset.chainlinkFeed(),
+          ORACLE_ERROR,
+          compToken.address,
+          bn(1), // very low
+          ORACLE_TIMEOUT
+        )
+
+        // Set a very high price
+        const compPrice = bn('300e8')
+        await setOraclePrice(newCOMPAsset.address, compPrice)
+
+        // Refresh asset
+        await newCOMPAsset.refresh()
+
+        // Swap asset
+        await assetRegistry.connect(owner).swapRegistered(newCOMPAsset.address)
+
+        // Collect revenue
+        await expectEvents(backingManager.claimRewards(), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, rewardAmountCOMP],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, bn(0)],
+            emitted: true,
+          },
+        ])
+
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions - will sell the maxTradeVolume
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: true,
+            args: [
+              anyValue,
+              compToken.address,
+              rsr.address,
+              bn(1),
+              // the 1% increase here offsets the 1% decrease that would normally be applied to the sellAmt, but since 1 is the floor, isn't
+              await toMinBuyAmt(bn(1), fp('303'), fp('1')),
+            ],
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check funds now in Market
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(1))
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP.sub(bn(1)))
+
+        // Check destinations, nothing still -  Auctions need to be completed
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
       it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
         rewardAmountAAVE = bn('0.5e18')
 
@@ -949,7 +1048,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to maxTradeSlippage
+        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to oracle error
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         // Run auctions
