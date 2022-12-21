@@ -32,7 +32,7 @@ export const expectPrice = async (
 }
 
 // Expects a price around `avgPrice` assuming a consistent percentage oracle error
-// If the RToken is fully capitalized, there's no need to provide maxTradeSlippage/dustLoss
+// If the RToken is fully collateralized, there's no need to provide maxTradeSlippage/dustLoss
 // If maxTradeSlippage is truthy, applies a % reduction to the expected lower price
 // If dustLoss is additionally truthy, applies a nominal reduction to the expected lower price
 export const expectRTokenPrice = async (

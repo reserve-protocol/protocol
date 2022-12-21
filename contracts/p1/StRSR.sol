@@ -302,7 +302,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         assetRegistry.refresh();
 
         // == Checks + Effects ==
-        require(basketHandler.fullyCollateralized(), "RToken uncapitalized");
+        require(basketHandler.fullyCollateralized(), "RToken uncollateralized");
         require(basketHandler.status() == CollateralStatus.SOUND, "basket defaulted");
 
         uint256 firstId = firstRemainingDraft[draftEra][account];

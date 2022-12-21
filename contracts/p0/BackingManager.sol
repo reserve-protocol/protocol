@@ -93,7 +93,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
              *
              * ======
              *
-             * If we run out of capital and are still undercapitalized, we compromise
+             * If we run out of capital and are still undercollateralized, we compromise
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              */
 

@@ -346,7 +346,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         IBackingManager backingMgr = main.backingManager();
 
         bool allZero = true;
-        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
+        // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
         for (uint256 i = 0; i < erc20s.length; i++) {
             uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr)); // {qTok}
 

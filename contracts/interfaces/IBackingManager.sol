@@ -9,7 +9,7 @@ import "./ITrading.sol";
  * @title IBackingManager
  * @notice The BackingManager handles changes in the ERC20 balances that back an RToken.
  *   - It computes which trades to perform, if any, and initiates these trades with the Broker.
- *   - If already capitalized, excess assets are transferred to RevenueTraders.
+ *   - If already collateralized, excess assets are transferred to RevenueTraders.
  *
  * `manageTokens(erc20s)` and `manageTokensSortedOrder(erc20s)` are handles for getting at the
  *   same underlying functionality. The former allows an ERC20 list in any order, while the

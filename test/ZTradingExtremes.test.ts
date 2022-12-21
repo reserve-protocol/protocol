@@ -534,13 +534,13 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
   context('Recovery from default', function () {
     const runRecollateralizationAuctions = async (basketSize: number) => {
-      let uncapitalized = true
+      let uncollateralized = true
       const basketsNeeded = await rToken.basketsNeeded()
 
       // Run recap auctions
       const erc20s = await assetRegistry.erc20s()
 
-      for (let i = 0; i < basketSize + 1 && uncapitalized; i++) {
+      for (let i = 0; i < basketSize + 1 && uncollateralized; i++) {
         // Close any open auctions and launch new ones
         await facadeTest.runAuctionsForAllTraders(rToken.address)
 
@@ -567,13 +567,13 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
         // Advance time till auction ends
         await advanceTime(config.auctionLength.add(100).toString())
-        uncapitalized = !(await basketHandler.fullyCollateralized())
+        uncollateralized = !(await basketHandler.fullyCollateralized())
       }
 
       // Should not have taken a haircut
       expect((await rToken.basketsNeeded()).gte(basketsNeeded)).to.equal(true)
 
-      // Should be capitalized or still capitalizing
+      // Should be collateralized or still capitalizing
       expect(
         (await basketHandler.fullyCollateralized()) || Boolean(await backingManager.tradesOpen())
       ).to.equal(true)
@@ -586,7 +586,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     // Switch basket to remaining good collateral, if any.
     // Run non-RSR auctions to completion.
     // Seize RSR and use for remainder.
-    // Assert capitalized.
+    // Assert collateralized.
     //
     // DIMENSIONS
     //

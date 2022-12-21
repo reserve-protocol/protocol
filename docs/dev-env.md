@@ -60,24 +60,19 @@ hash -r && slither --version
 - Report compiled contract sizes: `yarn size`
 - There are many available test sets. A few of the most useful are:
   - Run only fast tests: `yarn test:fast`
-  - Run most tests: `yarn test`
-  - Run all tests (very slow!): `yarn test:exhaustive`
+  - Run P0 tests: `yarn test:p0`
+  - Run P1 tests: `yarn test:p1`
+  - Run plugin tests: `yarn test:plugins`
+  - Run integration tests: `yarn test:integration`
   - Run tests and report test coverage: `yarn test:coverage`
-- Lint Solidity code: `yarn lint`
-- Lint Typescript code: `yarn eslint`
+- Lint Solidity + Typescript code: `yarn lint`
 - Run the Slither static checker: `yarn slither`
 - Run a local mainnet fork devchain: `yarn devchain`
-- Deploy our system to your local evm devchain: `yarn deploy:run --network localhost`
+- Deploy to devchain: `yarn deploy:run --network localhost`
 
 ## Mainnet Forking
 
-The tests located in `test/integration` will require the Mainnet Forking setup in place. This is done by setting the `MAINNET_RPC_URL` variable in your local `.env`. An Alchemy node is recommended for Mainnet Forking to properly work. Additional information can be found [here](https://hardhat.org/hardhat-network/guides/mainnet-forking.html).
-
-For running scripts and tasks using Mainnet Forking a `FORK` environment variable can be defined. For example to run a local node using Mainnet forking you can run:
-
-```bash
-yarn devchain
-```
+The tests located in `test/integration` will require the Mainnet Forking setup in place. This is done by setting the `MAINNET_RPC_URL` variable in your local `.env`. An Alchemy or Ankr node (something with archive data) is needed for Mainnet Forking to properly work. Additional information can be found [here](https://hardhat.org/hardhat-network/guides/mainnet-forking.html).
 
 ## Pre-push Validation
 
@@ -89,7 +84,7 @@ However, ensure that you do not change the value of `.husky/pre-push` in our sha
 
 ## Echidna
 
-We _have_ some tooling for testing with Echidna, but it is immature, out-of-date, and shouldn't be expected to work out-of-the-box. Still, there is some useful, tested support for working with Echidna, see our [echidna usage docs](using-echidna.md)
+We _have_ some tooling for testing with Echidna, but it is specically in `fuzz` branch of the repo. See that branch and our [echidna usage docs](using-echidna.md)
 
 ## Test Deployment
 

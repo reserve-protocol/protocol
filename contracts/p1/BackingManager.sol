@@ -117,16 +117,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
         } else {
-            /* Recollateralization
+            /*
+             * Recollateralization
              *
-             * Strategy: iteratively move the system on a forgiving path towards capitalization
+             * Strategy: iteratively move the system on a forgiving path towards collateralization
              * through a narrowing BU price band. The initial large spread reflects the
              * uncertainty associated with the market price of defaulted/volatile collateral, as
              * well as potential losses due to trading slippage. In the absence of further
              * collateral default, the size of the BU price band should decrease with each trade
-             * until it is 0, at which point capitalization is restored.
+             * until it is 0, at which point collateralization is restored.
              *
-             * If we run out of capital and are still undercapitalized, we compromise
+             * If we run out of capital and are still undercollateralized, we compromise
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              */
 
@@ -153,7 +154,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function handoutExcessAssets(IERC20[] calldata erc20s) private {
         /**
          * Assumptions:
-         *   - Fully capitalized. All collateral, and therefore assets, meet balance requirements.
+         *   - Fully collateralized. All collateral meet balance requirements.
          *   - All backing capital is held at BackingManager's address. No capital is out on-trade
          *   - Neither RToken nor RSR are in the basket
          *   - Each address in erc20s is unique
@@ -206,7 +207,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         }
 
         // At this point, even though basketsNeeded may have changed:
-        // - We're fully capitalized
+        // - We're fully collateralized
         // - The BU exchange rate {BU/rTok} did not decrease
 
         // Keep a small buffer of individual collateral; "excess" assets are beyond the buffer.
