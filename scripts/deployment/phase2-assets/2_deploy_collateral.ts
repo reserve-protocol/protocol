@@ -1,5 +1,4 @@
 import fs from 'fs'
-import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
@@ -11,12 +10,8 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../common'
-import { priceTimeout, getOracleTimeout } from '../utils'
+import { combinedError, priceTimeout, getOracleTimeout } from '../utils'
 import { Asset, ATokenMock, StaticATokenLM } from '../../../typechain'
-
-const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
-  return fp('1').add(x).mul(fp('1').add(y)).div(fp('1')).sub(fp('1'))
-}
 
 async function main() {
   // ==== Read Configuration ====
