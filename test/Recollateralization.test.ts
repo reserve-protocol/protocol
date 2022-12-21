@@ -4058,7 +4058,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await rsr.connect(owner).mint(addr1.address, initialBal)
     })
 
-    it.only('Settle Trades / Manage Funds', async () => {
+    it('Settle Trades / Manage Funds', async () => {
       // Register Collateral
       await assetRegistry.connect(owner).register(backupCollateral1.address)
       await assetRegistry.connect(owner).register(backupCollateral2.address)
