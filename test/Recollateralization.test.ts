@@ -4080,11 +4080,15 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       // Set Token2 to hard default - Reducing rate
       await token2.setExchangeRate(fp('0.99'))
 
+      const bkpTokenRefAmt: BigNumber = bn('0.125e18')
+
       // Mark Default - Perform basket switch
       await assetRegistry.refresh()
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Run auctions - First Settle trades then Manage Funds
+      // Will sell all balance of token2
+      const sellAmt2 = await token2.balanceOf(backingManager.address)
       await snapshotGasCost(backingManager.settleTrade(token2.address))
       await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
@@ -4094,20 +4098,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       )
       await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
-      // confirms its backed up to two tokens
-      console.log(await basketHandler.quote(fp('1'), 2))
-
-      // A quarter of the basket defaulted down to 99% of its value, and it is being backed up to 2 tokens
-      const minBuyAmt2 = issueAmount.div(4).div(2)
-      const t = await getTrade(backingManager, token2.address)
-      const sellAmt2 = await t.initBal()
-      expect(minBuyAmt2).to.equal(await toMinBuyAmt(sellAmt2, fp('0.99'), fp('1')))
-
       // Perform Mock Bids for the new Token (addr1 has balance)
-      // Assume fair price, get 80% of tokens (20e18), which is more than what we need
-      // const minBuyAmt2: BigNumber =
-
-      console.log(sellAmt2, minBuyAmt2)
+      // Get minBuyAmt, we will have now surplus of backupToken1
+      const minBuyAmt2 = await toMinBuyAmt(sellAmt2, fp('0.99'), fp('1'))
       await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt2)
       await gnosis.placeBid(0, {
         bidder: addr1.address,
@@ -4119,10 +4112,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await advanceTime(config.auctionLength.add(100).toString())
 
       // End current auction, should start a new one to sell the new surplus of Backup Token 1
-      // We have an extra 7.5e18 to sell
       const requiredBkpToken: BigNumber = issueAmount.mul(bkpTokenRefAmt).div(BN_SCALE_FACTOR)
       const sellAmtBkp1: BigNumber = minBuyAmt2.sub(requiredBkpToken)
-      const minBuyAmtBkp1: BigNumber = sellAmtBkp1 // No trade slippage
+      const minBuyAmtBkp1: BigNumber = await toMinBuyAmt(sellAmtBkp1, fp('1'), fp('1'))
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(token2.address))
@@ -4141,9 +4133,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await advanceTime(config.auctionLength.add(100).toString())
 
       // End current auction, should start a new one to sell RSR for collateral
-      // Only 5e18 Tokens left to buy - Sets Buy amount as independent value
       const buyAmtBidRSR: BigNumber = requiredBkpToken.sub(minBuyAmtBkp1)
-      const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
+      const sellAmtRSR: BigNumber = buyAmtBidRSR // approximation
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(backupToken1.address))
