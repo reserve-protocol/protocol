@@ -332,7 +332,6 @@ contract NormalOpsScenario {
         else noteQuickIssuance(amount);
     }
 
-
     function cancelIssuance(uint256 seedID, bool earliest) public asSender {
         // filter endIDs mostly to valid IDs
         address user = msg.sender;

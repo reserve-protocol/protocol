@@ -1025,7 +1025,6 @@ contract RebalancingScenario {
         FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
-
     // Calling basketHandler.refereshBasket() yields an identical basket, if not rebalancing
     function echidna_refreshBasketIsNoopDuringAfterRebalancing() external returns (bool) {
         assert(main.hasRole(OWNER, address(this)));
@@ -1160,7 +1159,7 @@ contract RebalancingScenario {
 
     function echidna_quoteProportionalWhenFullyCollateralized() external returns (bool) {
         // rtoken.quote() * rtoken.totalSupply < basketHolder balances
-        if(main.basketHandler().fullyCollateralized()) {
+        if (main.basketHandler().fullyCollateralized()) {
             RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
 
             (address[] memory tokens, uint256[] memory amts) = rtoken.quote(
@@ -1175,5 +1174,4 @@ contract RebalancingScenario {
         }
         return true;
     }
-
 }

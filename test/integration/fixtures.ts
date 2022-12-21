@@ -1,5 +1,5 @@
 import { Fixture } from 'ethereum-waffle'
-import { BigNumber, ContractFactory, Contract } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'

@@ -344,6 +344,7 @@ contract DiffTestScenario {
             p[N].rToken().issue(amount);
         }
     }
+
     function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
         for (uint256 N = 0; N < 2; N++) {
             p[N].rToken().issue(p[N].someAddr(recipientID), amount);
