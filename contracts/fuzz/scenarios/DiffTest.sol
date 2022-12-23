@@ -1120,10 +1120,24 @@ contract DiffTestScenario {
         if (!aLow.near(bLow, EPSILON)) require(false, "low prices diverge");
         if (!aHigh.near(bHigh, EPSILON)) require(false, "high prices diverge");
 
-        (aLow, aHigh) = a.lotPrice();
-        (bLow, bHigh) = b.lotPrice();
+        bool aFailure;
+        bool bFailure;
+        try a.lotPrice() returns (uint192 l, uint192 h) {
+            aLow = l;
+            aHigh = h;
+        } catch {
+            aFailure = true;
+        }
+        try b.lotPrice() returns (uint192 l, uint192 h) {
+            bLow = l;
+            bHigh = h;
+        } catch {
+            bFailure = true;
+        }
+
         if (!aLow.near(bLow, EPSILON)) require(false, "low lotPrices diverge");
         if (!aHigh.near(bHigh, EPSILON)) require(false, "high lotPrices diverge");
+        if (aFailure != bFailure) require(false, "exactly one lotPrice failed");
         return true;
     }
 
@@ -1131,13 +1145,15 @@ contract DiffTestScenario {
         refreshBoth();
         uint256 N = p[0].numTokens() + 3;
         for (uint256 i = 0; i < N; i++) {
-            IERC20 t0 = p[0].someToken(i);
-            IERC20 t1 = p[1].someToken(i);
+            IERC20Metadata t0 = IERC20Metadata(address(p[0].someToken(i)));
+            IERC20Metadata t1 = IERC20Metadata(address(p[1].someToken(i)));
+
             bool isReg = p[0].assetRegistry().isRegistered(t0);
             if (isReg != p[1].assetRegistry().isRegistered(t1)) return false;
 
             // ==== asset equivalences
             if (!isReg) continue;
+
             IAsset asset0 = p[0].assetRegistry().toAsset(t0);
             IAsset asset1 = p[1].assetRegistry().toAsset(t1);
             if (!assetsEqualPrices(asset0, asset1)) return false;
@@ -1147,6 +1163,7 @@ contract DiffTestScenario {
 
             // ==== collateral equivalences
             if (!isColl) continue;
+
             ICollateral coll0 = ICollateral(address(asset0));
             ICollateral coll1 = ICollateral(address(asset1));
             if (coll0.targetName() != coll1.targetName()) return false;

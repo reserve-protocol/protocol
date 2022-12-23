@@ -323,5 +323,10 @@ describe('The Differential Testing scenario', () => {
       await advanceTime(86400)
       expect(await scenario.callStatic.echidna_bhEqualPrices()).to.be.true
     })
+    it('assetsEqualPrices was not wise to rtokenAsset.lotPrice() failing', async () => {
+      await scenario.connect(alice).issueTo(1, 2)
+      await scenario.unregisterAsset(0)
+      expect(await scenario.callStatic.echidna_assetsEquivalent()).to.be.true
+    })
   })
 })
