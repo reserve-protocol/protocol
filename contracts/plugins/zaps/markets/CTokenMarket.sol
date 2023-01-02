@@ -10,7 +10,7 @@ contract CTokenMarket is AbstractMarket {
         ICToken cToken = ICToken(address(call.toToken));
 
         if (address(call.fromToken) == ETH) {
-            cToken.mint{ value: call.value }();
+            cToken.mint{ value: call.amountIn }();
         } else {
             call.fromToken.approve(address(cToken), call.amountIn);
             cToken.mint(call.amountIn);

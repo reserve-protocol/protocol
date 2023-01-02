@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { useEnv } from '#/utils/env'
 import { expect } from 'chai'
-import { ContractFactory, Wallet } from 'ethers'
+import { BigNumberish, ContractFactory, Wallet, BigNumber } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 
 import { getChainId } from '../../../common/blockchain-utils'
@@ -14,7 +14,7 @@ import {
   networkConfig,
 } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
-import { bn, fp, toBNDecimals } from '../../../common/numbers'
+import { bn, fp } from '../../../common/numbers'
 import {
   Asset,
   CTokenFiatCollateral,
@@ -43,18 +43,22 @@ import { defaultFixture } from './fixtures'
 import { get0xSwap } from '../utils'
 import { expectInIndirectReceipt } from '#/common/events'
 
-const abi = ethers.utils.defaultAbiCoder
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
 const holderDAI = '0x075e72a5edf65f0a5f44699c7654c1a76941ddc8'
 
-// const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
+const withBasisPointSlippage = (basisPoints: number) => (amount: BigNumberish) =>
+  BigNumber.from(amount)
+    .mul(10000 - basisPoints)
+    .div(10000)
 
-const describeFork = useEnv('FORK_LATEST') ? describe : describe.skip
-const PROTO_IMPL = useEnv('PROTO_IMPL')
+const describeFork =
+  useEnv('FORK') && useEnv('PROTO_IMPL') === '1' && useEnv('MAINNET_BLOCK') === '-1'
+    ? describe
+    : describe.skip
 
-describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
+describeFork(`RTokenMaker`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
@@ -83,7 +87,6 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
   let facadeWrite: FacadeWrite
   let govParams: IGovParams
 
-  type MarketCall = Parameters<typeof RTokenMaker.prototype.issue>[4][0]
   let rTokenMaker: RTokenMaker
   let cTokenMarket: CTokenMarket
   let zeroExMarket: ZeroExMarket
@@ -93,6 +96,7 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR
   }
+
   const config: IConfig = {
     dist: dist,
     minTradeVolume: fp('1e4'), // $10k
@@ -121,6 +125,8 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
   let MockV3AggregatorFactory: ContractFactory
   let mockChainlinkFeed: MockV3Aggregator
 
+  let cdaiWeight: (n: BigNumberish) => BigNumber
+
   before(async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
@@ -133,9 +139,7 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } = await loadFixture(
-      defaultFixture
-    ))
+    ;({ deployer, facade, facadeWrite, govParams } = await loadFixture(defaultFixture))
 
     rTokenMaker = <RTokenMaker>await (await ethers.getContractFactory('RTokenMaker')).deploy()
     cTokenMarket = <CTokenMarket>await (await ethers.getContractFactory('CTokenMarket')).deploy()
@@ -228,6 +232,8 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
       beneficiaries: [],
     }
 
+    cdaiWeight = (n: BigNumberish) => bn(n).mul(8000).div(10000)
+
     // Deploy RToken via FacadeWrite
     const receipt = await (
       await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
@@ -238,19 +244,7 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
     main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
 
     // Get core contracts
-    assetRegistry = <IAssetRegistry>(
-      await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
-    )
-    backingManager = <TestIBackingManager>(
-      await ethers.getContractAt('TestIBackingManager', await main.backingManager())
-    )
-    basketHandler = <IBasketHandler>(
-      await ethers.getContractAt('IBasketHandler', await main.basketHandler())
-    )
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
-    rTokenAsset = <RTokenAsset>(
-      await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
-    )
 
     // Setup owner and unpause
     await facadeWrite.connect(owner).setupGovernance(
@@ -270,11 +264,14 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
   })
 
   describe('issue', () => {
-    it('will not make calls to unauthorized targets', async () => {
-      const amountIn = bn('10000e18')
-      await dai.connect(addr1).approve(rTokenMaker.address, amountIn)
+    const amountIn = bn('10000e18')
+    const minAmountOut = amountIn.mul(9999).div(10000)
 
-      const minAmountOut = amountIn.mul(9999).div(10000)
+    beforeEach(async () => {
+      await dai.connect(addr1).approve(rTokenMaker.address, amountIn)
+    })
+
+    it('will not make calls to unauthorized targets', async () => {
       await expect(
         rTokenMaker
           .connect(addr1)
@@ -294,37 +291,38 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
 
     it('will revert upon insufficient input', async () => {
       await expect(
-        rTokenMaker.connect(addr1).issue(addr1.address, dai.address, 0, rToken.address, 0, [
-          {
-            fromToken: dai.address,
-            amountIn: 0,
-            toToken: cDai.address,
-            minAmountOut: 0,
-            value: 0,
-            target: cTokenMarket.address,
-            data: '0x',
-          },
-        ])
+        rTokenMaker.connect(addr1).issue(addr1.address, dai.address, 0, rToken.address, 0, [])
+      ).to.be.revertedWith('InsufficientInput')
+    })
+
+    it('will revert upon insufficient input to a market call', async () => {
+      await expect(
+        rTokenMaker
+          .connect(addr1)
+          .issue(addr1.address, dai.address, amountIn, rToken.address, minAmountOut, [
+            {
+              target: cTokenMarket.address,
+              value: 0,
+              data: '0x',
+              fromToken: dai.address,
+              amountIn: 0,
+              toToken: cDai.address,
+              minAmountOut: 42,
+            },
+          ])
       ).to.be.revertedWith('InsufficientInput')
     })
 
     it('will revert upon insufficient output of a market call', async () => {
-      const amountIn = bn('10000e18')
-      await dai.connect(addr1).approve(rTokenMaker.address, amountIn)
-
-      const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
-      const totalShares = daiShares.add(cDaiShares)
-
-      const minAmountOut = amountIn.add(42)
       await expect(
         rTokenMaker
           .connect(addr1)
           .issue(addr1.address, dai.address, amountIn, rToken.address, minAmountOut, [
             {
               fromToken: dai.address,
-              amountIn: amountIn.mul(cDaiShares).div(totalShares),
+              amountIn: cdaiWeight(amountIn),
               toToken: cDai.address,
-              minAmountOut: amountIn.mul(cDaiShares).div(totalShares).add(42),
+              minAmountOut: cdaiWeight(amountIn).add(42),
               value: 0,
               target: cTokenMarket.address,
               data: '0x',
@@ -334,20 +332,13 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
     })
 
     it('will revert upon insufficient output of the issuance', async () => {
-      const amountIn = bn('10000e18')
-      await dai.connect(addr1).approve(rTokenMaker.address, amountIn)
-
-      const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
-      const totalShares = daiShares.add(cDaiShares)
-
-      const minAmountOut = amountIn.add(42)
       await expect(
         rTokenMaker
           .connect(addr1)
-          .issue(addr1.address, dai.address, amountIn, rToken.address, minAmountOut, [
+          .issue(addr1.address, dai.address, amountIn, rToken.address, amountIn.add(42), [
             {
               fromToken: dai.address,
-              amountIn: amountIn.mul(cDaiShares).div(totalShares),
+              amountIn: cdaiWeight(amountIn),
               toToken: cDai.address,
               minAmountOut: 0,
               value: 0,
@@ -359,13 +350,6 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
     })
 
     it('can zap in DAI', async () => {
-      const amountIn = bn('10000e18')
-      await dai.connect(addr1).approve(rTokenMaker.address, amountIn)
-
-      const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
-      const totalShares = daiShares.add(cDaiShares)
-
-      const minAmountOut = amountIn.mul(99999).div(100000)
       await rTokenMaker
         .connect(addr1)
         .issue(addr1.address, dai.address, amountIn, rToken.address, minAmountOut, [
@@ -374,7 +358,7 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
             value: 0,
             data: '0x',
             fromToken: dai.address,
-            amountIn: amountIn.mul(cDaiShares).div(totalShares),
+            amountIn: cdaiWeight(amountIn),
             toToken: cDai.address,
             minAmountOut: 0,
           },
@@ -386,40 +370,36 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
     it('can zap in ETH', async () => {
       const amountIn = bn('1e18')
 
-      const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
-      const totalShares = daiShares.add(cDaiShares)
-
       const quote = await get0xSwap('quote', {
         sellToken: 'ETH',
         sellAmount: amountIn.toString(),
         buyToken: 'DAI',
         slippagePercentage: 0.03,
-        takerAddress: rTokenMaker.address,
       })
 
-      const minRTokenOut = bn(quote.buyAmount).mul(99999).div(100000)
+      const minAmountOut = bn(quote.buyAmount).mul(99999).div(100000)
 
       await rTokenMaker.connect(addr1).issue(
         addr1.address,
         await rTokenMaker.ETH(),
         amountIn,
         rToken.address,
-        minRTokenOut,
+        minAmountOut,
         [
           {
             target: zeroExMarket.address,
             value: quote.value,
             fromToken: quote.sellTokenAddress,
-            amountIn: amountIn,
-            toToken: dai.address,
-            minAmountOut: bn(quote.buyAmount),
+            amountIn: quote.sellAmount,
+            toToken: quote.buyTokenAddress,
+            minAmountOut: quote.buyAmount,
             data: quote.data,
           },
           {
             target: cTokenMarket.address,
             value: 0,
             fromToken: dai.address,
-            amountIn: bn(quote.buyAmount).mul(cDaiShares).div(totalShares),
+            amountIn: cdaiWeight(quote.buyAmount),
             toToken: cDai.address,
             minAmountOut: 0,
             data: '0x',
@@ -435,9 +415,6 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
     const rTokenAmount = daiAmountIn.mul(99999).div(100000)
 
     beforeEach(async () => {
-      const [, [daiShares, cDaiShares]] = await facade.callStatic.basketBreakdown(rToken.address)
-      const totalShares = daiShares.add(cDaiShares)
-
       await dai.connect(addr1).approve(rTokenMaker.address, daiAmountIn)
 
       await rTokenMaker
@@ -445,7 +422,7 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
         .issue(addr1.address, dai.address, daiAmountIn, rToken.address, rTokenAmount, [
           {
             fromToken: dai.address,
-            amountIn: daiAmountIn.mul(cDaiShares).div(totalShares),
+            amountIn: cdaiWeight(daiAmountIn),
             toToken: cDai.address,
             minAmountOut: 0,
             value: 0,
@@ -455,6 +432,166 @@ describeFork(`RTokenMaker for RTokenP${PROTO_IMPL}`, function () {
         ])
 
       await rToken.connect(addr1).approve(rTokenMaker.address, rTokenAmount)
+    })
+
+    it('will not make calls to unauthorized targets', async () => {
+      await expect(
+        rTokenMaker
+          .connect(addr1)
+          .redeem(addr1.address, rToken.address, rTokenAmount, dai.address, daiAmountIn, [
+            {
+              fromToken: cDai.address,
+              amountIn: cdaiWeight(daiAmountIn),
+              toToken: dai.address,
+              minAmountOut: cdaiWeight(daiAmountIn),
+              target: '0x4242424242424242424242424242424242424242',
+              value: 0,
+              data: '0x',
+            },
+          ])
+      ).to.be.revertedWith('TargetNotApproved')
+    })
+
+    it('will revert upon insufficient input', async () => {
+      await expect(
+        rTokenMaker.connect(addr1).redeem(addr1.address, rToken.address, 0, dai.address, 0, [])
+      ).to.be.revertedWith('InsufficientInput')
+    })
+
+    it('will revert upon insufficient input to a market call', async () => {
+      await expect(
+        rTokenMaker
+          .connect(addr1)
+          .redeem(addr1.address, rToken.address, rTokenAmount, dai.address, daiAmountIn, [
+            {
+              fromToken: cDai.address,
+              amountIn: 0,
+              toToken: dai.address,
+              minAmountOut: cdaiWeight(daiAmountIn).add(42),
+              value: 0,
+              target: cTokenMarket.address,
+              data: '0x',
+            },
+          ])
+      ).to.be.revertedWith('InsufficientInput')
+    })
+
+    it('will revert upon insufficient output of a market call', async () => {
+      await expect(
+        rTokenMaker
+          .connect(addr1)
+          .redeem(addr1.address, rToken.address, rTokenAmount, dai.address, daiAmountIn, [
+            {
+              fromToken: cDai.address,
+              amountIn: cdaiWeight(daiAmountIn).div(1e10),
+              toToken: dai.address,
+              minAmountOut: cdaiWeight(daiAmountIn).mul(102).div(100),
+              value: 0,
+              target: cTokenMarket.address,
+              data: '0x',
+            },
+          ])
+      ).to.be.revertedWith('InsufficientOutput')
+    })
+
+    it('will revert upon insufficient output of the redemption', async () => {
+      await expect(
+        rTokenMaker
+          .connect(addr1)
+          .redeem(
+            addr1.address,
+            rToken.address,
+            rTokenAmount,
+            dai.address,
+            daiAmountIn.mul(102).div(100),
+            [
+              {
+                target: cTokenMarket.address,
+                value: 0,
+                fromToken: cDai.address,
+                amountIn: cdaiWeight(daiAmountIn).div(1e10),
+                toToken: dai.address,
+                minAmountOut: cdaiWeight(daiAmountIn),
+                data: '0x',
+              },
+            ]
+          )
+      ).to.be.revertedWith('InsufficientOutput')
+    })
+
+    it('can zap out DAI', async () => {
+      const with1BPS = withBasisPointSlippage(1)
+
+      const [tokens, amounts] = await facade.callStatic.issue(rToken.address, rTokenAmount)
+      const cDaiAmount = amounts[tokens.indexOf(cDai.address)]
+
+      const minAmountOut = with1BPS(daiAmountIn)
+
+      await rTokenMaker
+        .connect(addr1)
+        .redeem(addr1.address, rToken.address, rTokenAmount, dai.address, minAmountOut, [
+          {
+            target: cTokenMarket.address,
+            value: 0,
+            fromToken: cDai.address,
+            amountIn: with1BPS(cDaiAmount),
+            toToken: dai.address,
+            minAmountOut: with1BPS(cdaiWeight(minAmountOut)),
+            data: '0x',
+          },
+        ])
+
+      expect(await dai.balanceOf(addr1.address)).to.be.above(minAmountOut)
+    })
+
+    it('can zap out ETH', async () => {
+      const ETH = await rTokenMaker.ETH()
+      const less1BPS = withBasisPointSlippage(1)
+
+      const [tokens, amounts] = await facade.callStatic.issue(rToken.address, rTokenAmount)
+      const cDaiAmount = less1BPS(amounts[tokens.indexOf(cDai.address)])
+      const cDaiAmountOut = cDaiAmount
+        .mul(await cDai.callStatic.exchangeRateCurrent())
+        .div(bn('1e18'))
+      const daiAmountOut = cDaiAmountOut.add(amounts[tokens.indexOf(dai.address)])
+
+      const quote = await get0xSwap('quote', {
+        sellToken: dai.address,
+        sellAmount: daiAmountOut.toString(),
+        buyToken: ETH,
+        slippagePercentage: 0.02,
+      })
+
+      const initialBalance = await addr1.getBalance()
+      const minAmountOut = quote.buyAmount
+
+      await expect(
+        rTokenMaker
+          .connect(addr1)
+          .redeem(addr1.address, rToken.address, rTokenAmount, ETH, minAmountOut, [
+            {
+              target: cTokenMarket.address,
+              value: 0,
+              fromToken: cDai.address,
+              amountIn: cDaiAmount,
+              toToken: dai.address,
+              minAmountOut: cDaiAmountOut,
+              data: '0x',
+            },
+            {
+              target: zeroExMarket.address,
+              value: quote.value,
+              fromToken: quote.sellTokenAddress,
+              amountIn: quote.sellAmount,
+              toToken: quote.buyTokenAddress,
+              minAmountOut: quote.buyAmount,
+              data: quote.data,
+            },
+          ])
+      ).to.not.be.reverted
+
+      const minimumBalance = initialBalance.add(minAmountOut).sub(quote.value)
+      expect(await addr1.getBalance()).to.be.above(minimumBalance)
     })
   })
 })

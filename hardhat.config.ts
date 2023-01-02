@@ -20,6 +20,7 @@ const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 3_000_000 : 300_000
+const BLOCK_NUMBER = Number(useEnv('MAINNET_BLOCK', forkBlockNumber.default.toString()))
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
@@ -29,13 +30,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       // network for tests/in-process stuff
-      forking: useEnv('FORK_LATEST')
-        ? { url: MAINNET_RPC_URL }
-        : useEnv('FORK')
-        ? {
-            url: MAINNET_RPC_URL,
-            blockNumber: Number(useEnv('MAINNET_BLOCK', forkBlockNumber.default.toString())),
-          }
+      forking: useEnv('FORK')
+        ? { url: MAINNET_RPC_URL, blockNumber: BLOCK_NUMBER === -1 ? undefined : BLOCK_NUMBER }
         : undefined,
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
@@ -69,18 +65,7 @@ const config: HardhatUserConfig = {
     },
   },
   solidity: {
-    compilers: [
-      {
-        version: '0.8.9',
-        settings,
-      },
-      {
-        version: '0.6.12',
-      },
-      {
-        version: '0.4.24',
-      },
-    ],
+    compilers: [{ version: '0.8.9', settings }, { version: '0.6.12' }, { version: '0.4.24' }],
   },
   paths: {
     sources: src_dir,

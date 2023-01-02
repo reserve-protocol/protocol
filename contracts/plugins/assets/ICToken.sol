@@ -10,7 +10,9 @@ interface ICToken is IERC20Metadata {
 
     function mint() external payable;
 
-    function redeem(uint256 redeemAmount) external;
+    function redeem(uint256 redeemAmount) external returns (uint256);
+
+    function redeemUnderlying(uint256 underlyingAmount) external returns (uint256);
 
     /// @dev From Compound Docs:
     /// The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
