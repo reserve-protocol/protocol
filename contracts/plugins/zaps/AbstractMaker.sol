@@ -9,7 +9,7 @@ import "contracts/mixins/DelegateCallGuard.sol";
 
 import "contracts/interfaces/IMarket.sol";
 
-error InvalidAssocArray();
+// solhint-disable no-empty-blocks
 
 /**
  * @title AbstractMaker
@@ -18,7 +18,6 @@ error InvalidAssocArray();
  * @dev ReentrancyGuard and DelegateCallGuard provide access to security modifiers
  *      nonReentrant and nonDelegateCall
  */
-// solhint-disable no-empty-blocks
 abstract contract AbstractMaker is Ownable, ReentrancyGuard, DelegateCallGuard {
     address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     /// @notice delegate call target address => approval status
@@ -26,10 +25,10 @@ abstract contract AbstractMaker is Ownable, ReentrancyGuard, DelegateCallGuard {
 
     constructor() Ownable() ReentrancyGuard() DelegateCallGuard() {}
 
-    /**
-     * @dev This allows the Maker to receive ETH through contract interactions
-     */
+    /// @dev This allows the Maker to receive ETH through contract interactions
     receive() external payable {}
+
+    error InvalidAssocArray();
 
     /**
      * @notice This function is used by the owner to set the approved targets for delegatecalls
@@ -59,16 +58,17 @@ abstract contract AbstractMaker is Ownable, ReentrancyGuard, DelegateCallGuard {
     /**
      * @param selector The selector of the function to call
      * @param call The MarketCall struct containing the target & calldata
-     * @dev Logic inlined from Address.functionDelegateCall to support reverting with custom errors
+     * @dev Logic inlined from Address.functionDelegateCall to with custom errors
      */
     function _marketDelegateCall(bytes4 selector, MarketCall calldata call) internal {
         address target = call.target;
         // Checks for approval and contract code at the target address
         if (!isApprovedTarget[target]) revert TargetNotApproved(target);
-        // Check that the input amount is sufficient
-        if (call.amountIn == 0) revert InsufficientInput(address(call.fromToken));
 
         uint256 initialBalance = _balanceOf(call.toToken);
+        if (call.amountIn == 0 || initialBalance < call.amountIn) {
+            revert InsufficientInput(address(call.fromToken));
+        }
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = target.delegatecall(
