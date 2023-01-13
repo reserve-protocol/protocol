@@ -29,6 +29,7 @@ import {
   TestIMain,
   TestIRToken,
   USDCMock,
+  ERC20,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -51,6 +52,10 @@ import {
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
 import { useEnv } from '#/utils/env'
+
+if (IMPLEMENTATION != Implementation.P0 && IMPLEMENTATION != Implementation.P1) {
+  throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+}
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
@@ -153,26 +158,28 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   }
 
   const expectProcessedIssuance = async (account: string, index: number) => {
-    if (IMPLEMENTATION == Implementation.P1) {
-      const rTokenP1 = <RTokenP1>await ethers.getContractAt('RTokenP1', rToken.address)
-      await expect(rTokenP1.issueItem(account, index)).to.be.revertedWith('out of range')
-    } else if (IMPLEMENTATION == Implementation.P0) {
-      const rTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', rToken.address)
-      expect(await rTokenP0.validP1IssueItemIndex(account, index)).to.eql(false)
-      await expect(rTokenP0.issuances(account, index)).to.be.reverted
-    } else {
-      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    switch (IMPLEMENTATION) {
+      case Implementation.P1: {
+        const rTokenP1 = await ethers.getContractAt('RTokenP1', rToken.address)
+        return await expect(rTokenP1.issueItem(account, index)).to.be.revertedWith('out of range')
+      }
+      case Implementation.P0: {
+        const rTokenP0 = await ethers.getContractAt('RTokenP0', rToken.address)
+        expect(await rTokenP0.validP1IssueItemIndex(account, index)).to.eql(false)
+        console.log('expectProcessedIssuance.issuances.before', account, index)
+        return await expect(rTokenP0.issuances(account, index)).to.be.reverted
+      }
     }
   }
 
   const endIdForVest = async (account: string) => {
-    if (IMPLEMENTATION == Implementation.P1) {
-      return await facade.endIdForVest(rToken.address, account)
-    } else if (IMPLEMENTATION == Implementation.P0) {
-      const rTok = await ethers.getContractAt('RTokenP0', rToken.address)
-      return await rTok.endIdForVest(account)
-    } else {
-      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    switch (IMPLEMENTATION) {
+      case Implementation.P1:
+        return await facade.endIdForVest(rToken.address, account)
+      case Implementation.P0: {
+        const rTok = await ethers.getContractAt('RTokenP0', rToken.address)
+        return await rTok.endIdForVest(account)
+      }
     }
   }
 
@@ -983,35 +990,46 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Provide approvals
       await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
 
-      const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
+      const [, [expectedTkn0, expectedTkn1, expectedTkn2, expectedTkn3]] = await facade
+        .connect(addr1)
+        .callStatic.issue(rToken.address, issueAmount)
 
       // Issue rTokens
       await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
+      // Get token balances for [main, rToken contract, addr1]
+      const getBalances = async (token: ERC20) =>
+        await Promise.all([
+          token.balanceOf(main.address),
+          token.balanceOf(rToken.address),
+          token.balanceOf(addr1.address),
+        ])
+
       // Check Balances after
-      const expectedTkn0: BigNumber = quotes[0]
-      expect(await token0.balanceOf(main.address)).to.equal(0)
-      expect(await token0.balanceOf(rToken.address)).to.equal(expectedTkn0)
-      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
+      const [mainBal0, rTokenBal0, addr1Bal0] = await getBalances(token0)
+      expect(mainBal0).to.equal(0)
+      expect(rTokenBal0).to.equal(expectedTkn0)
+      expect(addr1Bal0).to.equal(initialBal.sub(expectedTkn0))
 
-      const expectedTkn1: BigNumber = quotes[1]
-      expect(await token1.balanceOf(main.address)).to.equal(0)
-      expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
-      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
+      const [mainBal1, rTokenBal1, addr1Bal1] = await getBalances(token1)
+      expect(mainBal1).to.equal(0)
+      expect(rTokenBal1).to.equal(expectedTkn1)
+      expect(addr1Bal1).to.equal(initialBal.sub(expectedTkn1))
 
-      const expectedTkn2: BigNumber = quotes[2]
-      expect(await token2.balanceOf(main.address)).to.equal(0)
-      expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
-      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
+      const [mainBal2, rTokenBal2, addr1Bal2] = await getBalances(token2)
+      expect(mainBal2).to.equal(0)
+      expect(rTokenBal2).to.equal(expectedTkn2)
+      expect(addr1Bal2).to.equal(initialBal.sub(expectedTkn2))
 
-      const expectedTkn3: BigNumber = quotes[3]
-      expect(await token3.balanceOf(main.address)).to.equal(0)
-      expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
-      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
+      const [mainBal3, rTokenBal3, addr1Bal3] = await getBalances(token3)
+      expect(mainBal3).to.equal(0)
+      expect(rTokenBal3).to.equal(expectedTkn3)
+      expect(addr1Bal3).to.equal(initialBal.sub(expectedTkn3))
 
-      expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await rToken.balanceOf(main.address)).to.equal(0)
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      const [mainRTokenBal, rTokenRTokenBal, addr1RTokenBal] = await getBalances(rToken)
+      expect(mainRTokenBal).to.equal(0)
+      expect(rTokenRTokenBal).to.equal(0)
+      expect(addr1RTokenBal).to.equal(0)
 
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
@@ -1032,7 +1050,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Process 4 blocks
-      await advanceTime(300)
+      await advanceTime(100)
+      await advanceTime(100)
+      await advanceTime(100)
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
@@ -1054,7 +1074,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1)['issue(uint256)'](issueAmount)
 
       // Process slow issuances, resetting indices
-      await advanceTime(300)
+      await advanceTime(100)
+      await advanceTime(100)
+      await advanceTime(100)
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
       await expectProcessedIssuance(addr1.address, 0)
 
