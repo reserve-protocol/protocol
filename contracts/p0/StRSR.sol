@@ -19,8 +19,8 @@ import "./mixins/Component.sol";
 
 /*
  * @title StRSRP0
- * @notice The StRSR is where people can stake their RSR in order to provide insurance and
- * benefit from the supply expansion of an RToken.
+ * @notice The StRSR is where people can stake their RSR in order to provide over-collateralization
+ * and benefit from the supply expansion of an RToken.
  *
  * There's an important assymetry in the StRSR. When RSR is added, it must be split only
  * across non-withdrawing balances, while when RSR is seized, it must be seized from both
@@ -126,7 +126,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         _payoutRewards();
     }
 
-    /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
+    /// Stakes an RSR `amount` on the corresponding RToken to earn yield and over-collateralized
+    /// the system
     /// @param rsrAmount {qRSR}
     /// @dev Staking continues while paused/frozen, without reward handouts
     /// @custom:interaction
@@ -193,7 +194,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         main.poke();
 
         IBasketHandler bh = main.basketHandler();
-        require(bh.fullyCollateralized(), "RToken uncapitalized");
+        require(bh.fullyCollateralized(), "RToken uncollateralized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         Withdrawal[] storage queue = withdrawals[account];

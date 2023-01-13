@@ -246,10 +246,10 @@ contract FacadeRead is IFacadeRead {
         return BasketHandlerP1(address(rToken.main().basketHandler())).getBackupConfig(targetName);
     }
 
-    /// @return tokens The addresses of the ERC20s backing the RToken
-    function basketTokens(IRToken rToken) external view returns (address[] memory tokens) {
+    /// @return tokens The ERC20s backing the RToken
+    function basketTokens(IRToken rToken) external view returns (IERC20[] memory tokens) {
         IMain main = rToken.main();
-        (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
+        return main.basketHandler().basketTokens();
     }
 
     /// @return stTokenAddress The address of the corresponding stToken for the rToken
@@ -258,13 +258,13 @@ contract FacadeRead is IFacadeRead {
         stTokenAddress = main.stRSR();
     }
 
-    /// @return backing {1} The worst-case collateralization % the protocol will have after
-    ///         done trading
-    /// @return insurance {1} The insurance value relative to the fully-backed value as a %
+    /// @return backing {1} The worstcase collateralization % the protocol will have after trading
+    /// @return overCollateralization {1} The over-collateralization value relative to the
+    ///     fully-backed value as a %
     function backingOverview(IRToken rToken)
         external
         view
-        returns (uint192 backing, uint192 insurance)
+        returns (uint192 backing, uint192 overCollateralization)
     {
         uint256 supply = rToken.totalSupply();
         if (supply == 0) return (0, 0);
@@ -288,7 +288,7 @@ contract FacadeRead is IFacadeRead {
         {
             IERC20[] memory erc20s = assetRegistry.erc20s();
 
-            // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
+            // Bound each withdrawal by the prorata share, in case under-collateralized
             uint192 uoaHeld;
             for (uint256 i = 0; i < erc20s.length; i++) {
                 if (erc20s[i] == rsr) continue;
@@ -306,7 +306,7 @@ contract FacadeRead is IFacadeRead {
             backing = uoaHeld.div(uoaNeeded);
         }
 
-        // Compute insurance
+        // Compute overCollateralization
         {
             IAsset rsrAsset = assetRegistry.toAsset(rsr);
 
@@ -322,7 +322,7 @@ contract FacadeRead is IFacadeRead {
             uint192 rsrUoA = rsrBal.mul(midPrice);
 
             // {1} = {UoA} / {UoA}
-            insurance = rsrUoA.div(uoaNeeded);
+            overCollateralization = rsrUoA.div(uoaNeeded);
         }
     }
 

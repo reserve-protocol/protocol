@@ -520,7 +520,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(1, [], [], true)
 
-        // Check state - Basket is disabled even though fully capitalized
+        // Check state - Basket is disabled even though fully collateralized
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
@@ -1252,7 +1252,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Trigger recollateralization
@@ -1289,7 +1290,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check Gnosis
@@ -1368,7 +1370,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check Gnosis
@@ -1443,7 +1446,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Trigger recollateralization
@@ -1480,7 +1484,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check Gnosis
@@ -2006,7 +2011,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
-        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR) // retains value because insuranc, truee
+        // retains value because over-collateralization, true
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Running auctions will trigger recollateralization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -2035,7 +2041,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken - retains value from insurance
+        // Check price in USD of the current RToken - retains value from over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Perform Mock Bids (addr1 has balance)
@@ -2390,7 +2396,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(sellAmt.div(2))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken - 1 with insurance
+        // Check price in USD of the current RToken - 1 with over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Should have seized RSR  - Nothing in backing manager so far
@@ -2486,7 +2492,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Trigger recollateralization
@@ -2523,7 +2529,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of insurance
+        // Check price in USD of the current RToken -- retains price because of
+        // over-collateralization
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check Gnosis
@@ -4081,10 +4088,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await assetRegistry.refresh()
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
-      // Running auctions will trigger recollateralization - All balance will be redeemed
-      const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
-
       // Run auctions - First Settle trades then Manage Funds
+      // Will sell all balance of token2
+      const sellAmt2 = await token2.balanceOf(backingManager.address)
       await snapshotGasCost(backingManager.settleTrade(token2.address))
       await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
@@ -4095,8 +4101,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
       // Perform Mock Bids for the new Token (addr1 has balance)
-      // Assume fair price, get 80% of tokens (20e18), which is more than what we need
-      const minBuyAmt2: BigNumber = sellAmt2.mul(80).div(100)
+      // Get minBuyAmt, we will have now surplus of backupToken1
+      const minBuyAmt2 = await toMinBuyAmt(sellAmt2, fp('0.99'), fp('1'))
       await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt2)
       await gnosis.placeBid(0, {
         bidder: addr1.address,
@@ -4108,10 +4114,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await advanceTime(config.auctionLength.add(100).toString())
 
       // End current auction, should start a new one to sell the new surplus of Backup Token 1
-      // We have an extra 7.5e18 to sell
       const requiredBkpToken: BigNumber = issueAmount.mul(bkpTokenRefAmt).div(BN_SCALE_FACTOR)
       const sellAmtBkp1: BigNumber = minBuyAmt2.sub(requiredBkpToken)
-      const minBuyAmtBkp1: BigNumber = sellAmtBkp1 // No trade slippage
+      const minBuyAmtBkp1: BigNumber = await toMinBuyAmt(sellAmtBkp1, fp('1'), fp('1'))
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(token2.address))
@@ -4130,9 +4135,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await advanceTime(config.auctionLength.add(100).toString())
 
       // End current auction, should start a new one to sell RSR for collateral
-      // Only 5e18 Tokens left to buy - Sets Buy amount as independent value
       const buyAmtBidRSR: BigNumber = requiredBkpToken.sub(minBuyAmtBkp1)
-      const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
+      const sellAmtRSR: BigNumber = buyAmtBidRSR // approximation
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(backupToken1.address))

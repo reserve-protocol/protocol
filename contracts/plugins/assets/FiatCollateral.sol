@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../interfaces/IAsset.sol";
 import "../../libraries/Fixed.sol";
 import "./FiatCollateral.sol";

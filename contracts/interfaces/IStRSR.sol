@@ -10,7 +10,7 @@ import "./IMain.sol";
 
 /**
  * @title IStRSR
- * @notice An ERC20 token representing shares of the RSR insurance pool.
+ * @notice An ERC20 token representing shares of the RSR over-collateralization pool.
  *
  * StRSR permits the BackingManager to take RSR in times of need. In return, the BackingManager
  * benefits the StRSR pool with RSR rewards purchased with a portion of its revenue.
@@ -94,7 +94,8 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// @custom:interaction
     function payoutRewards() external;
 
-    /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
+    /// Stakes an RSR `amount` on the corresponding RToken to earn yield and over-collateralized
+    /// the system
     /// @param amount {qRSR}
     /// @custom:interaction
     function stake(uint256 amount) external;

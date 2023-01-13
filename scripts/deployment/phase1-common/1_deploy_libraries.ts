@@ -16,7 +16,7 @@ async function main() {
   const [burner] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying TradingLib, RewardableLib, PermitLib, and OracleLib 
+  console.log(`Deploying TradingLib, RewardableLib, and PermitLib
     to network ${hre.network.name} (${chainId}) with burner account: ${burner.address}`)
 
   if (!networkConfig[chainId]) {

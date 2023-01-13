@@ -206,7 +206,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       await targetUnitOracle.updateAnswer(bn('0.25e8'))
       await assetRegistry.refresh()
 
-      // Should be fully capitalized
+      // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
@@ -216,7 +216,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       await assetRegistry.connect(owner).unregister(eurtCollateral.address)
       await basketHandler.refreshBasket()
 
-      // Should be in an undercapitalized state but SOUND
+      // Should be in an undercollateralized state but SOUND
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
     })

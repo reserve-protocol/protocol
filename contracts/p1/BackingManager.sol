@@ -31,7 +31,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     IRevenueTrader private rsrTrader;
     IRevenueTrader private rTokenTrader;
     uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
-    uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
+    uint192 public constant MAX_BACKING_BUFFER = FIX_ONE; // {1} 100%
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
@@ -117,16 +117,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
         } else {
-            /* Recollateralization
+            /*
+             * Recollateralization
              *
-             * Strategy: iteratively move the system on a forgiving path towards capitalization
+             * Strategy: iteratively move the system on a forgiving path towards collateralization
              * through a narrowing BU price band. The initial large spread reflects the
              * uncertainty associated with the market price of defaulted/volatile collateral, as
              * well as potential losses due to trading slippage. In the absence of further
              * collateral default, the size of the BU price band should decrease with each trade
-             * until it is 0, at which point capitalization is restored.
+             * until it is 0, at which point collateralization is restored.
              *
-             * If we run out of capital and are still undercapitalized, we compromise
+             * If we run out of capital and are still undercollateralized, we compromise
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              */
 
@@ -153,7 +154,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function handoutExcessAssets(IERC20[] calldata erc20s) private {
         /**
          * Assumptions:
-         *   - Fully capitalized. All collateral, and therefore assets, meet balance requirements.
+         *   - Fully collateralized. All collateral meet balance requirements.
          *   - All backing capital is held at BackingManager's address. No capital is out on-trade
          *   - Neither RToken nor RSR are in the basket
          *   - Each address in erc20s is unique
@@ -189,23 +190,24 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             needed = rToken.basketsNeeded(); // {BU}
             uint192 held = basketHandler.basketsHeldBy(address(this)); // {BU}
             if (held.gt(needed)) {
-                int8 decimals = int8(rToken.decimals());
-                uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
+                // gas-optimization: RToken is known to have 18 decimals, the same as FixLib
+                uint192 totalSupply = _safeWrap(rToken.totalSupply()); // {rTok}
 
                 // {BU} = {BU} - {BU}
                 uint192 extraBUs = held.minus(needed);
 
-                // {qRTok: Fix} = {BU} * {qRTok / BU} (if needed == 0, conv rate is 1 qRTok/BU)
+                // {rTok} = {BU} * {rTok / BU} (if needed == 0, conv rate is 1 rTok/BU)
                 uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
 
-                rToken.mint(address(this), rTok.shiftl_toUint(decimals));
+                // gas-optimization: RToken is known to have 18 decimals, same as FixLib
+                rToken.mint(address(this), uint256(rTok));
                 rToken.setBasketsNeeded(held);
                 needed = held;
             }
         }
 
         // At this point, even though basketsNeeded may have changed:
-        // - We're fully capitalized
+        // - We're fully collateralized
         // - The BU exchange rate {BU/rTok} did not decrease
 
         // Keep a small buffer of individual collateral; "excess" assets are beyond the buffer.

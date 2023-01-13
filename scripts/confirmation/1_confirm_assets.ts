@@ -36,11 +36,7 @@ async function main() {
     if (low.eq(0) || high.eq(0)) throw new Error('misconfigured oracle')
 
     if (!lotLow.eq(low) || !lotHigh.eq(high)) {
-      throw new Error('lot price off')
-    }
-    const savedLow = await asset.savedLowPrice()
-    const savedHigh = await asset.savedHighPrice()
-    if (!savedLow.eq(low) || !savedHigh.eq(high)) {
+      console.log('lotLow, low, lotHigh, high', lotLow, low, lotHigh, high)
       throw new Error('lot price off')
     }
   }
@@ -58,12 +54,7 @@ async function main() {
     if (low.eq(0) || high.eq(0)) throw new Error('misconfigured oracle')
 
     if (!lotLow.eq(low) || !lotHigh.eq(high)) {
-      throw new Error('lot price off')
-    }
-
-    const savedLow = await coll.savedLowPrice()
-    const savedHigh = await coll.savedHighPrice()
-    if (!savedLow.eq(low) || !savedHigh.eq(high)) {
+      console.log('lotLow, low, lotHigh, high', lotLow, low, lotHigh, high)
       throw new Error('lot price off')
     }
   }

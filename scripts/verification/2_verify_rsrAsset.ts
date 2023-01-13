@@ -4,6 +4,7 @@ import { getChainId } from '../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../deployment/common'
 import { verifyContract } from '../deployment/utils'
+import { fp } from '../../common/numbers'
 
 let deployments: IDeployments
 
@@ -27,8 +28,9 @@ async function main() {
     chainId,
     deployments.rsrAsset,
     [
-      (await asset.lotPrice()).toString(),
+      (await asset.priceTimeout()).toString(),
       await asset.chainlinkFeed(),
+      fp('0.02').toString(),
       await asset.erc20(),
       (await asset.maxTradeVolume()).toString(),
       (await asset.oracleTimeout()).toString(),

@@ -2,13 +2,17 @@ import hre from 'hardhat'
 import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber } from 'ethers'
-import { bn } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { IComponents } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
 
 export const priceTimeout = bn('604800') // 1 week
+
+export const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
+  return fp('1').add(x).mul(fp('1').add(y)).div(fp('1')).sub(fp('1'))
+}
 
 export const getOracleTimeout = (chainId: number): BigNumber => {
   return bn(chainId == 1 ? '86400' : '4294967296') // long timeout on testnets

@@ -274,7 +274,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         },
       ])
 
-      // Check state - Should be undercapitalized
+      // Check state - Should be undercollateralized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt.sub(1))
@@ -333,7 +333,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         },
       ])
 
-      // Check state - Should be undercapitalized
+      // Check state - Should be undercollateralized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
@@ -363,7 +363,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         },
       ])
 
-      // Check state - Should be undercapitalized
+      // Check state - Should be undercollateralized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)

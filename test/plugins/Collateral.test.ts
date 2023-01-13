@@ -581,7 +581,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Updates status in case of soft default', async () => {
-      const delayUntilDefault: BigNumber = await tokenCollateral.delayUntilDefault()
+      const delayUntilDefault: BigNumber = bn(await tokenCollateral.delayUntilDefault())
 
       // Check initial state
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
@@ -1491,7 +1491,7 @@ describe('Collateral contracts', () => {
       expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Advance time
-      const delayUntilDefault: BigNumber = await selfReferentialCollateral.delayUntilDefault()
+      const delayUntilDefault: BigNumber = bn(await selfReferentialCollateral.delayUntilDefault())
       await advanceTime(Number(delayUntilDefault) + 1)
 
       // Refresh
@@ -1961,7 +1961,7 @@ describe('Collateral contracts', () => {
 
   describeGas('Gas Reporting', () => {
     it('Force Updates - Soft Default', async function () {
-      const delayUntilDefault: BigNumber = await tokenCollateral.delayUntilDefault()
+      const delayUntilDefault: BigNumber = bn(await tokenCollateral.delayUntilDefault())
 
       // Depeg one of the underlying tokens - Reducing price 20%
       // Should also impact on the aToken and cToken

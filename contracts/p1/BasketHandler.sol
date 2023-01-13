@@ -11,6 +11,7 @@ import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/Component.sol";
+
 // A "valid collateral array" is a an IERC20[] value without rtoken, rsr, or any duplicate values
 
 // A BackupConfig value is valid if erc20s is a valid collateral array
@@ -385,6 +386,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // return _div(rawDelta, FIX_ONE, ROUND)
             return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
+        }
+    }
+
+    /// Return the current reference basket
+    /// @return erc20s The erc20s in the reference basket
+    function basketTokens() external view returns (IERC20[] memory erc20s) {
+        uint256 len = basket.erc20s.length;
+        erc20s = new IERC20[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            erc20s[i] = basket.erc20s[i];
         }
     }
 
