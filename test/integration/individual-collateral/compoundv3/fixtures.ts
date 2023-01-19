@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat'
 import { Fixture } from 'ethereum-waffle'
-import { ContractFactory, Event } from 'ethers'
+import { ContractFactory, Event, BigNumberish } from 'ethers'
 import {
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
@@ -13,7 +13,6 @@ import {
   ORACLE_TIMEOUT,
   FIX_ONE,
   USDC,
-  exp,
 } from './helpers'
 import {
   GnosisMock,
@@ -54,6 +53,7 @@ import {
   CometMock,
   CometMock__factory,
 } from '../../../../typechain'
+import { bn, fp } from '../../../../common/numbers'
 
 const RSR_PRICE_FEED = '0x759bBC1be8F90eE6457C44abc7d443842a976d02'
 const COMP_PRICE_FEED = '0xdbd020CAeF83eFd542f4De03e3cF0C28A4428bd5'
@@ -92,203 +92,203 @@ interface IImplementations {
   components: IComponents
 }
 
-export const makeReserveProtocol = async () => {
-  // Setup ERC20 mocks
-  const rsr = <ERC20Mock>await ethers.getContractAt('ERC20Mock', RSR)
-  const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
+// export const makeReserveProtocol = async () => {
+//   // Setup ERC20 mocks
+//   const rsr = <ERC20Mock>await ethers.getContractAt('ERC20Mock', RSR)
+//   const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
-  // Setup Assets
-  const compAsset = <Asset>(
-    await (
-      await ethers.getContractFactory('Asset')
-    ).deploy(FIX_ONE, COMP_PRICE_FEED, COMP, MAX_TRADE_VOL, ORACLE_TIMEOUT)
-  )
+//   // Setup Assets
+//   const compAsset = <Asset>(
+//     await (
+//       await ethers.getContractFactory('Asset')
+//     ).deploy(FIX_ONE, COMP_PRICE_FEED, COMP, MAX_TRADE_VOL, ORACLE_TIMEOUT)
+//   )
 
-  const rsrAsset = <Asset>(
-    await (
-      await ethers.getContractFactory('Asset')
-    ).deploy(exp(7, 15), RSR_PRICE_FEED, RSR, MAX_TRADE_VOL, ORACLE_TIMEOUT)
-  )
+//   const rsrAsset = <Asset>(
+//     await (
+//       await ethers.getContractFactory('Asset')
+//     ).deploy(exp(7, 15), RSR_PRICE_FEED, RSR, MAX_TRADE_VOL, ORACLE_TIMEOUT)
+//   )
 
-  // Deploy implementations
-  const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
-  const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
+//   // Deploy implementations
+//   const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
+//   const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
 
-  // Deploy RewardableLib external library
-  const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
-  const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+//   // Deploy RewardableLib external library
+//   const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
+//   const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
 
-  const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
-    'RecollateralizationLibP1'
-  )
-  const tradingLib: RecollateralizationLibP1 = <RecollateralizationLibP1>(
-    await TradingLibFactory.deploy()
-  )
+//   const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
+//     'RecollateralizationLibP1'
+//   )
+//   const tradingLib: RecollateralizationLibP1 = <RecollateralizationLibP1>(
+//     await TradingLibFactory.deploy()
+//   )
 
-  const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
-  const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
+//   const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
+//   const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
 
-  const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
-  const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
+//   const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
+//   const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
 
-  const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
-    'BackingManagerP1',
-    {
-      libraries: {
-        RewardableLibP1: rewardableLib.address,
-        RecollateralizationLibP1: tradingLib.address,
-      },
-    }
-  )
-  const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
+//   const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
+//     'BackingManagerP1',
+//     {
+//       libraries: {
+//         RewardableLibP1: rewardableLib.address,
+//         RecollateralizationLibP1: tradingLib.address,
+//       },
+//     }
+//   )
+//   const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
 
-  const BskHandlerImplFactory: ContractFactory = await ethers.getContractFactory('BasketHandlerP1')
-  const bskHndlrImpl: BasketHandlerP1 = <BasketHandlerP1>await BskHandlerImplFactory.deploy()
+//   const BskHandlerImplFactory: ContractFactory = await ethers.getContractFactory('BasketHandlerP1')
+//   const bskHndlrImpl: BasketHandlerP1 = <BasketHandlerP1>await BskHandlerImplFactory.deploy()
 
-  const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
-  const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
+//   const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
+//   const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
 
-  const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1', {
-    libraries: { RewardableLibP1: rewardableLib.address },
-  })
-  const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
+//   const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1', {
+//     libraries: { RewardableLibP1: rewardableLib.address },
+//   })
+//   const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
-  const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
-  const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
+//   const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
+//   const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
-  const TradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-  const tradeImpl: GnosisTrade = <GnosisTrade>await TradeImplFactory.deploy()
+//   const TradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+//   const tradeImpl: GnosisTrade = <GnosisTrade>await TradeImplFactory.deploy()
 
-  const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
-  const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
+//   const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
+//   const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
 
-  const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
-    libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
-  })
-  const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
+//   const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
+//     libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
+//   })
+//   const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
 
-  const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes', {
-    libraries: { PermitLib: permitLib.address },
-  })
-  const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
+//   const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes', {
+//     libraries: { PermitLib: permitLib.address },
+//   })
+//   const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
 
-  // Setup Implementation addresses
-  const implementations: IImplementations = {
-    main: mainImpl.address,
-    trade: tradeImpl.address,
-    components: {
-      assetRegistry: assetRegImpl.address,
-      backingManager: backingMgrImpl.address,
-      basketHandler: bskHndlrImpl.address,
-      broker: brokerImpl.address,
-      distributor: distribImpl.address,
-      furnace: furnaceImpl.address,
-      rsrTrader: revTraderImpl.address,
-      rTokenTrader: revTraderImpl.address,
-      rToken: rTokenImpl.address,
-      stRSR: stRSRImpl.address,
-    },
-  }
-  const { gnosis } = await gnosisFixture()
+//   // Setup Implementation addresses
+//   const implementations: IImplementations = {
+//     main: mainImpl.address,
+//     trade: tradeImpl.address,
+//     components: {
+//       assetRegistry: assetRegImpl.address,
+//       backingManager: backingMgrImpl.address,
+//       basketHandler: bskHndlrImpl.address,
+//       broker: brokerImpl.address,
+//       distributor: distribImpl.address,
+//       furnace: furnaceImpl.address,
+//       rsrTrader: revTraderImpl.address,
+//       rTokenTrader: revTraderImpl.address,
+//       rToken: rTokenImpl.address,
+//       stRSR: stRSRImpl.address,
+//     },
+//   }
+//   const { gnosis } = await gnosisFixture()
 
-  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
-  const deployer = <DeployerP1>(
-    await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address, implementations)
-  )
+//   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
+//   const deployer = <DeployerP1>(
+//     await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address, implementations)
+//   )
 
-  const config = {
-    dist: {
-      rTokenDist: 40n, // 2/5 RToken
-      rsrDist: 60n, // 3/5 RSR
-    },
-    minTradeVolume: exp(1, 22), // $10k
-    rTokenMaxTradeVolume: exp(1, 24), // $1M
-    shortFreeze: 259200n, // 3 days
-    longFreeze: 2592000n, // 30 days
-    rewardPeriod: 604800n, // 1 week
-    rewardRatio: exp(2284, 13), // approx. half life of 30 pay periods
-    unstakingDelay: 1209600n, // 2 weeks
-    tradingDelay: 0n, // (the delay _after_ default has been confirmed)
-    auctionLength: 900n, // 15 minutes
-    backingBuffer: exp(1, 14), // 0.01%
-    maxTradeSlippage: exp(1, 16), // 1%
-    issuanceRate: exp(25, 13), // 0.025% per block or ~0.1% per minute
-    scalingRedemptionRate: exp(5, 16), // 5%
-    redemptionRateFloor: exp(1000000, 18), // 1M RToken
-  }
-  // Deploy actual contracts
-  const [owner] = await ethers.getSigners()
-  const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
-  ).wait()
-  const event = receipt!.events!.find((e: Event) => e.event === 'RTokenCreated')
-  const mainAddr = event!.args!.main
-  const main: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
-  const rToken: TestIRToken = <TestIRToken>(
-    await ethers.getContractAt('TestIRToken', await main.rToken())
-  )
+//   const config = {
+//     dist: {
+//       rTokenDist: 40n, // 2/5 RToken
+//       rsrDist: 60n, // 3/5 RSR
+//     },
+//     minTradeVolume: exp(1, 22), // $10k
+//     rTokenMaxTradeVolume: exp(1, 24), // $1M
+//     shortFreeze: 259200n, // 3 days
+//     longFreeze: 2592000n, // 30 days
+//     rewardPeriod: 604800n, // 1 week
+//     rewardRatio: exp(2284, 13), // approx. half life of 30 pay periods
+//     unstakingDelay: 1209600n, // 2 weeks
+//     tradingDelay: 0n, // (the delay _after_ default has been confirmed)
+//     auctionLength: 900n, // 15 minutes
+//     backingBuffer: exp(1, 14), // 0.01%
+//     maxTradeSlippage: exp(1, 16), // 1%
+//     issuanceRate: exp(25, 13), // 0.025% per block or ~0.1% per minute
+//     scalingRedemptionRate: exp(5, 16), // 5%
+//     redemptionRateFloor: exp(1000000, 18), // 1M RToken
+//   }
+//   // Deploy actual contracts
+//   const [owner] = await ethers.getSigners()
+//   const receipt = await (
+//     await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
+//   ).wait()
+//   const event = receipt!.events!.find((e: Event) => e.event === 'RTokenCreated')
+//   const mainAddr = event!.args!.main
+//   const main: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
+//   const rToken: TestIRToken = <TestIRToken>(
+//     await ethers.getContractAt('TestIRToken', await main.rToken())
+//   )
 
-  // Get Core
-  const assetRegistry: IAssetRegistry = <IAssetRegistry>(
-    await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
-  )
+//   // Get Core
+//   const assetRegistry: IAssetRegistry = <IAssetRegistry>(
+//     await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
+//   )
 
-  // Deploy FacadeRead
-  const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
-  const facade = <FacadeRead>await FacadeReadFactory.deploy()
+//   // Deploy FacadeRead
+//   const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
+//   const facade = <FacadeRead>await FacadeReadFactory.deploy()
 
-  // Deploy FacadeTest
-  const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
-  const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
+//   // Deploy FacadeTest
+//   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
+//   const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
 
-  const backingManager: TestIBackingManager = <TestIBackingManager>(
-    await ethers.getContractAt('TestIBackingManager', await main.backingManager())
-  )
-  const basketHandler: IBasketHandler = <IBasketHandler>(
-    await ethers.getContractAt('IBasketHandler', await main.basketHandler())
-  )
-  const distributor: TestIDistributor = <TestIDistributor>(
-    await ethers.getContractAt('TestIDistributor', await main.distributor())
-  )
+//   const backingManager: TestIBackingManager = <TestIBackingManager>(
+//     await ethers.getContractAt('TestIBackingManager', await main.backingManager())
+//   )
+//   const basketHandler: IBasketHandler = <IBasketHandler>(
+//     await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+//   )
+//   const distributor: TestIDistributor = <TestIDistributor>(
+//     await ethers.getContractAt('TestIDistributor', await main.distributor())
+//   )
 
-  const rTokenAsset: RTokenAsset = <RTokenAsset>(
-    await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
-  )
+//   const rTokenAsset: RTokenAsset = <RTokenAsset>(
+//     await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
+//   )
 
-  const { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc } = await makeCollateral()()
+//   const { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc } = await makeCollateral()()
 
-  // Register an Asset and a Collateral
-  await assetRegistry.connect(owner).register(compAsset.address)
-  await assetRegistry.connect(owner).register(collateral.address)
+//   // Register an Asset and a Collateral
+//   await assetRegistry.connect(owner).register(compAsset.address)
+//   await assetRegistry.connect(owner).register(collateral.address)
 
-  // Set initial Basket
-  const collateralERC20 = await collateral.erc20()
-  await basketHandler.connect(owner).setPrimeBasket([collateralERC20], [FIX_ONE]) // CUSDC_V3 is 100% of Basket
-  await basketHandler.connect(owner).refreshBasket()
+//   // Set initial Basket
+//   const collateralERC20 = await collateral.erc20()
+//   await basketHandler.connect(owner).setPrimeBasket([collateralERC20], [FIX_ONE]) // CUSDC_V3 is 100% of Basket
+//   await basketHandler.connect(owner).refreshBasket()
 
-  // Set up allowances
-  await backingManager.grantRTokenAllowance(collateralERC20)
+//   // Set up allowances
+//   await backingManager.grantRTokenAllowance(collateralERC20)
 
-  return {
-    wcusdcV3,
-    usdc,
-    assetRegistry,
-    basketHandler,
-    collateral,
-    chainlinkFeed,
-    rTokenAsset,
-    facade,
-    rToken,
-    rsrAsset,
-    compAsset,
-    rsr,
-    compToken,
-    facadeTest,
-    cusdcV3,
-    backingManager,
-    main,
-  }
-}
+//   return {
+//     wcusdcV3,
+//     usdc,
+//     assetRegistry,
+//     basketHandler,
+//     collateral,
+//     chainlinkFeed,
+//     rTokenAsset,
+//     facade,
+//     rToken,
+//     rsrAsset,
+//     compAsset,
+//     rsr,
+//     compToken,
+//     facadeTest,
+//     cusdcV3,
+//     backingManager,
+//     main,
+//   }
+// }
 
 interface Collateral {
   collateral: CTokenV3Collateral
@@ -299,30 +299,32 @@ interface Collateral {
 }
 
 interface CollateralOpts {
-  chainlinkFeed?: string
   erc20?: string
-  rewardERC20?: string
   targetName?: string
-  oracleTimeout?: bigint
-  fallbackPrice?: bigint
-  maxTradeVolume?: bigint
-  defaultThreshold?: bigint
-  delayUntilDefault?: bigint
-  reservesThresholdIffy?: bigint
-  reservesThresholdDisabled?: bigint
+  rewardERC20?: string
+  priceTimeout?: BigNumberish
+  chainlinkFeed?: string
+  oracleError?: BigNumberish
+  oracleTimeout?: BigNumberish
+  maxTradeVolume?: BigNumberish
+  defaultThreshold?: BigNumberish
+  delayUntilDefault?: BigNumberish
+  reservesThresholdIffy?: BigNumberish
+  reservesThresholdDisabled?: BigNumberish
 }
 
-const defaultCollateralOpts: CollateralOpts = {
-  chainlinkFeed: USDC_USD_PRICE_FEED,
-  rewardERC20: COMP,
+export const defaultCollateralOpts: CollateralOpts = {
   targetName: ethers.utils.formatBytes32String('USD'),
+  rewardERC20: COMP,
+  priceTimeout: ORACLE_TIMEOUT,
+  chainlinkFeed: USDC_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
-  fallbackPrice: FIX_ONE,
+  oracleError: bn('5e17'),
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
-  reservesThresholdIffy: 10000n,
-  reservesThresholdDisabled: 5000n,
+  reservesThresholdIffy: bn('10000'),
+  reservesThresholdDisabled: bn('5000'),
 }
 
 // type Fixture<T> = () => Promise<T>
@@ -333,16 +335,27 @@ const defaultCollateralOpts: CollateralOpts = {
 export const deployCollateral = async (opts: CollateralOpts = {}): Promise<CTokenV3Collateral> => {
   opts = { ...defaultCollateralOpts, ...opts }
 
-  const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
-  const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
   const CTokenV3CollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'CTokenV3Collateral',
-    {
-      libraries: { OracleLib: oracleLib.address },
-    }
+    'CTokenV3Collateral'
   )
-  console.log(CTokenV3CollateralFactory)
-  const collateral = <CTokenV3Collateral>await CTokenV3CollateralFactory.deploy(opts)
+  const collateral = <CTokenV3Collateral>await CTokenV3CollateralFactory.deploy(
+    {
+      erc20: opts.erc20,
+      targetName: opts.targetName,
+      priceTimeout: opts.priceTimeout,
+      chainlinkFeed: opts.chainlinkFeed,
+      oracleError: opts.oracleError,
+      oracleTimeout: opts.oracleTimeout,
+      maxTradeVolume: opts.maxTradeVolume,
+      defaultThreshold: opts.defaultThreshold,
+      delayUntilDefault: opts.delayUntilDefault,
+    },
+    {
+      rewardERC20: opts.rewardERC20,
+      reservesThresholdIffy: opts.reservesThresholdIffy,
+      reservesThresholdDisabled: opts.reservesThresholdDisabled,
+    },
+  )
   await collateral.deployed()
 
   return collateral
@@ -356,7 +369,7 @@ export const makeCollateral = (opts: CollateralOpts = {}): Fixture<Collateral> =
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, exp(1, 6))
+    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     let { cusdcV3, wcusdcV3, usdc } = await makewCSUDC()
@@ -390,11 +403,11 @@ export const makeCollateralCometMock = (
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
       await ethers.getContractFactory('MockV3Aggregator')
     )
-    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, exp(1, 6))
+    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
-    const cusdcV3 = <CometMock>await CometFactory.deploy(exp(5, 15), exp(1, 15))
+    const cusdcV3 = <CometMock>await CometFactory.deploy(bn('5e15'), bn('1e15'))
 
     const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
       await ethers.getContractFactory('CusdcV3Wrapper')
