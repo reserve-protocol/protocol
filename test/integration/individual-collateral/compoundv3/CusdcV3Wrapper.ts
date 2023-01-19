@@ -26,26 +26,26 @@ describe('Wrapped CUSDCv3', () => {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
 
-  describe('deposit', () => {
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-  
-      chainId = await getChainId(hre)
-      if (!networkConfig[chainId]) {
-        throw new Error(`Missing network configuration for ${hre.network.name}`)
-      }
-    })
-  
-    beforeEach(async () => {
-      ;[owner, bob, charles, don] = await ethers.getSigners()
-      ;({
-        usdc,
-        wcusdcV3,
-        cusdcV3,
-      } = await loadFixture(cusdcFixture))
-    })
+  before(async () => {
+    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
+    loadFixture = createFixtureLoader([wallet])
 
+    chainId = await getChainId(hre)
+    if (!networkConfig[chainId]) {
+      throw new Error(`Missing network configuration for ${hre.network.name}`)
+    }
+  })
+
+  beforeEach(async () => {
+    ;[owner, bob, charles, don] = await ethers.getSigners()
+    ;({
+      usdc,
+      wcusdcV3,
+      cusdcV3,
+    } = await loadFixture(cusdcFixture))
+  })
+
+  describe('deposit', () => {
     it('deposit to own account', async () => {
       const usdcAsB = usdc.connect(bob)
       const cusdcV3AsB = cusdcV3.connect(bob)
@@ -102,7 +102,7 @@ describe('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.balanceOf(charles.address)).to.be.closeTo(balance, 50)
     })
 
-    it('deposits max uint256 and mints only available amount of wrapped cusdc', async () => {
+    it('deposits max uint256 and mints available amount of wrapped cusdc', async () => {
       const usdcAsB = usdc.connect(bob)
       const cusdcV3AsB = cusdcV3.connect(bob)
       const wcusdcV3AsB = wcusdcV3.connect(bob)
@@ -151,7 +151,7 @@ describe('Wrapped CUSDCv3', () => {
       const cusdcV3AsB = cusdcV3.connect(bob)
       const wcusdcV3AsB = wcusdcV3.connect(bob)
 
-      const balance = 40000e6
+      const balance = bn('40000e6')
       await allocateUSDC(bob.address, balance)
       await usdcAsB.approve(cusdcV3.address, ethers.constants.MaxUint256)
       await cusdcV3AsB.supply(usdc.address, balance)
@@ -177,25 +177,6 @@ describe('Wrapped CUSDCv3', () => {
   })
 
   describe('withdraw', () => {
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-  
-      chainId = await getChainId(hre)
-      if (!networkConfig[chainId]) {
-        throw new Error(`Missing network configuration for ${hre.network.name}`)
-      }
-    })
-  
-    beforeEach(async () => {
-      ;[owner, bob, charles, don] = await ethers.getSigners()
-      ;({
-        usdc,
-        wcusdcV3,
-        cusdcV3,
-      } = await loadFixture(cusdcFixture))
-    })
-
     it('withdraws to own account', async () => {
       const wcusdcV3AsB = wcusdcV3.connect(bob)
 
@@ -206,7 +187,7 @@ describe('Wrapped CUSDCv3', () => {
         0
       )
 
-      expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(20000e6, 50)
+      expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(bn('20000e6'), 50)
     })
 
     it('withdraws to a different account', async () => {
@@ -214,9 +195,8 @@ describe('Wrapped CUSDCv3', () => {
 
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
       await wcusdcV3AsB.withdrawTo(don.address, ethers.constants.MaxUint256)
-
-      expect(await cusdcV3.balanceOf(don.address)).to.be.closeTo(20000e6, 50)
-      expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(0, 50)
+      expect(await cusdcV3.balanceOf(don.address)).to.be.closeTo(bn('20000e6'), 50)
+      expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(bn(0), 50)
       expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
     })
 
@@ -233,7 +213,7 @@ describe('Wrapped CUSDCv3', () => {
       await wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, bn('20000e6'))
 
       expect(await cusdcV3.balanceOf(don.address)).be.closeTo(bn('20000e6'), 50)
-      expect(await cusdcV3.balanceOf(bob.address)).be.closeTo(0, 50)
+      expect(await cusdcV3.balanceOf(bob.address)).be.closeTo(bn(0), 50)
       expect(await cusdcV3.balanceOf(charles.address)).to.eq(0)
 
       expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
@@ -274,25 +254,6 @@ describe('Wrapped CUSDCv3', () => {
   })
 
   describe('transfer', () => {
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-  
-      chainId = await getChainId(hre)
-      if (!networkConfig[chainId]) {
-        throw new Error(`Missing network configuration for ${hre.network.name}`)
-      }
-    })
-  
-    beforeEach(async () => {
-      ;[owner, bob, charles, don] = await ethers.getSigners()
-      ;({
-        usdc,
-        wcusdcV3,
-        cusdcV3,
-      } = await loadFixture(cusdcFixture))
-    })
-
     it('does not transfer without approval', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
 
@@ -315,10 +276,14 @@ describe('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.baseTrackingAccrued(don.address)).to.be.lt(
         await wcusdcV3.baseTrackingAccrued(bob.address)
       )
+      const bobBal1 = await wcusdcV3.balanceOf(bob.address)
+      const donBal1 = await wcusdcV3.balanceOf(don.address)
+      await wcusdcV3.connect(bob).transfer(don.address, bn('10000e6'))
+      const bobBal2 = await wcusdcV3.balanceOf(bob.address)
+      const donBal2 = await wcusdcV3.balanceOf(don.address)
 
-      await expect(
-        wcusdcV3.connect(bob).transfer(don.address, bn('10000e6'))
-      ).to.changeTokenBalances(wcusdcV3, [bob, don], [-bn('10000e6'), bn('10000e6')])
+      expect(bobBal2).equal(bobBal1.sub(bn('10000e6')))
+      expect(donBal2).equal(donBal1.add(bn('10000e6')))
 
       await advanceTime(1000)
       await wcusdcV3.accrueAccount(don.address)
@@ -341,25 +306,6 @@ describe('Wrapped CUSDCv3', () => {
   })
 
   describe('accrueAccount', () => {
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-  
-      chainId = await getChainId(hre)
-      if (!networkConfig[chainId]) {
-        throw new Error(`Missing network configuration for ${hre.network.name}`)
-      }
-    })
-  
-    beforeEach(async () => {
-      ;[owner, bob, charles, don] = await ethers.getSigners()
-      ;({
-        usdc,
-        wcusdcV3,
-        cusdcV3,
-      } = await loadFixture(cusdcFixture))
-    })
-
     it('accrues rewards over time', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
       expect(await wcusdcV3.baseTrackingAccrued(bob.address)).to.eq(0)
@@ -383,25 +329,6 @@ describe('Wrapped CUSDCv3', () => {
   })
 
   describe('underlying balance', () => {
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-  
-      chainId = await getChainId(hre)
-      if (!networkConfig[chainId]) {
-        throw new Error(`Missing network configuration for ${hre.network.name}`)
-      }
-    })
-  
-    beforeEach(async () => {
-      ;[owner, bob, charles, don] = await ethers.getSigners()
-      ;({
-        usdc,
-        wcusdcV3,
-        cusdcV3,
-      } = await loadFixture(cusdcFixture))
-    })
-
     it('returns underlying balance of user which includes revenue', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
       const wrappedBalance = await wcusdcV3.balanceOf(bob.address)
@@ -488,25 +415,6 @@ describe('Wrapped CUSDCv3', () => {
   })
 
   describe('exchange rate', () => {
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-  
-      chainId = await getChainId(hre)
-      if (!networkConfig[chainId]) {
-        throw new Error(`Missing network configuration for ${hre.network.name}`)
-      }
-    })
-  
-    beforeEach(async () => {
-      ;[owner, bob, charles, don] = await ethers.getSigners()
-      ;({
-        usdc,
-        wcusdcV3,
-        cusdcV3,
-      } = await loadFixture(cusdcFixture))
-    })
-
     it('returns 1e18 when wrapped token has 0 balance', async () => {
       expect(await cusdcV3.balanceOf(wcusdcV3.address)).to.equal(0)
       expect(await wcusdcV3.exchangeRate()).to.equal(bn('1e18'))
@@ -528,25 +436,6 @@ describe('Wrapped CUSDCv3', () => {
   })
 
   describe('claiming rewards', () => {
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-  
-      chainId = await getChainId(hre)
-      if (!networkConfig[chainId]) {
-        throw new Error(`Missing network configuration for ${hre.network.name}`)
-      }
-    })
-  
-    beforeEach(async () => {
-      ;[owner, bob, charles, don] = await ethers.getSigners()
-      ;({
-        usdc,
-        wcusdcV3,
-        cusdcV3,
-      } = await loadFixture(cusdcFixture))
-    })
-
     it('does not claim rewards when user has no permission', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
       await advanceTime(1000)
@@ -644,25 +533,6 @@ describe('Wrapped CUSDCv3', () => {
   })
 
   describe('baseTrackingAccrued', () => {
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-  
-      chainId = await getChainId(hre)
-      if (!networkConfig[chainId]) {
-        throw new Error(`Missing network configuration for ${hre.network.name}`)
-      }
-    })
-  
-    beforeEach(async () => {
-      ;[owner, bob, charles, don] = await ethers.getSigners()
-      ;({
-        usdc,
-        wcusdcV3,
-        cusdcV3,
-      } = await loadFixture(cusdcFixture))
-    })
-
     it('matches baseTrackingAccrued in cUSDCv3 over time', async () => {
       await enableRewardsAccrual(cusdcV3)
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
