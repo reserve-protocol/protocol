@@ -8,6 +8,8 @@ import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 import '@withtally/tally-publish-dao'
+import '@nomicfoundation/hardhat-chai-matchers'
+import '@nomicfoundation/hardhat-toolbox'
 
 import { useEnv } from '#/utils/env'
 import { HardhatUserConfig } from 'hardhat/types'

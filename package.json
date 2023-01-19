@@ -102,5 +102,8 @@
   "resolutions": {
     "@solidity-parser/parser": "^0.13.2"
   },
-  "packageManager": "yarn@3.3.1"
+  "packageManager": "yarn@3.3.1",
+  "dependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1"
+  }
 }
