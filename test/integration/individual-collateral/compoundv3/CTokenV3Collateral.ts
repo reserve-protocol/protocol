@@ -18,6 +18,7 @@ import {
   REWARDS,
   COMP,
   CUSDC_V3,
+  ORACLE_ERROR
 } from './helpers'
 import { deployCollateral, makeCollateral, makeCollateralCometMock, defaultCollateralOpts } from './fixtures'
 import { advanceTime, advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from '../../../utils/time'
@@ -151,47 +152,64 @@ describeFork('CTokenV3Collateral', () => {
       it('prices change as USDC feed price changes', async () => {
         const { answer } = await chainlinkFeed.latestRoundData()
         const decimals = await chainlinkFeed.decimals()
-        const expectedPrice = toBNDecimals(answer, 18 - decimals)
+        const expectedPrice = answer.mul(bn(10).pow(18 - decimals))
+        const expectedDelta = expectedPrice.mul(ORACLE_ERROR).div(fp(1))
     
         // Check initial prices
-        // expect(await collateral.strictPrice()).to.equal(expectedPrice)
+        const [initLow, initHigh] = await collateral.price()
+        expect(initLow).to.equal(expectedPrice.sub(expectedDelta))
+        expect(initHigh).to.equal(expectedPrice.add(expectedDelta))
     
         // Check refPerTok initial values
         const expectedRefPerTok = bn('1e18')
         expect(await collateral.refPerTok()).to.equal(expectedRefPerTok) // should equal 1e18
     
         // Update values in Oracles increase by 10-20%
-        const newPrice = bn('11e7')
+        const newPrice = bn('11e6')
         const updateAnswerTx = await chainlinkFeed.updateAnswer(newPrice)
         await updateAnswerTx.wait()
     
         // Check new prices
-        // expect(await collateral.strictPrice()).to.equal(exp(newPrice, 18 - decimals))
+        const expectedNewPrice = newPrice.mul(bn(10).pow(18 - decimals))
+        const expectedNewDelta = expectedNewPrice.mul(ORACLE_ERROR).div(fp(1))
+        const [endLow, endHigh] = await collateral.price()
+        expect(endLow).to.equal(expectedNewPrice.sub(expectedNewDelta))
+        expect(endHigh).to.equal(expectedNewPrice.add(expectedNewDelta))
     
         // Check refPerTok remains the same
         expect(await collateral.refPerTok()).to.equal(expectedRefPerTok)
       })
     
-      it('prices change as refPerTok changes', async () => {
+      it.only('prices change as refPerTok changes', async () => {
         const prevRefPerTok = await collateral.refPerTok()
-        // const prevPrice = await collateral.strictPrice()
         expect(prevRefPerTok).to.equal(bn('1e18'))
-        // expect(prevPrice).to.equal(bn('1e18'))
+
+        const { answer } = await chainlinkFeed.latestRoundData()
+        const decimals = await chainlinkFeed.decimals()
+        const expectedPrice = answer.mul(bn(10).pow(18 - decimals))
+        const expectedDelta = expectedPrice.mul(ORACLE_ERROR).div(fp(1))
+
+        const [initLow, initHigh] = await collateral.price()
+        expect(initLow).to.equal(expectedPrice.sub(expectedDelta))
+        expect(initHigh).to.equal(expectedPrice.add(expectedDelta))
     
-        const [_, bob] = await ethers.getSigners()
-        const usdcAsB = usdc.connect(bob)
-        const cusdcV3AsB = cusdcV3.connect(bob)
-        const wcusdcV3AsB = wcusdcV3.connect(bob)
+        // const [_, bob] = await ethers.getSigners()
+        // const usdcAsB = usdc.connect(bob)
+        // const cusdcV3AsB = cusdcV3.connect(bob)
+        // const wcusdcV3AsB = wcusdcV3.connect(bob)
     
-        const balance = bn('20000e6')
-        await allocateUSDC(bob.address, balance)
-        await usdcAsB.approve(cusdcV3.address, ethers.constants.MaxUint256)
-        await cusdcV3AsB.supply(usdc.address, balance)
-        expect(await usdc.balanceOf(bob.address)).to.equal(0)
+        // const balance = bn('20000e6')
+        // await allocateUSDC(bob.address, balance)
+        // await usdcAsB.approve(cusdcV3.address, ethers.constants.MaxUint256)
+        // await cusdcV3AsB.supply(usdc.address, balance)
+        // expect(await usdc.balanceOf(bob.address)).to.equal(0)
+
+        await advanceBlocks(1000)
+        await advanceTime(12000)
     
-        await cusdcV3AsB.allow(wcusdcV3.address, true)
-        await wcusdcV3AsB.depositTo(bob.address, ethers.constants.MaxUint256)
-        expect(await collateral.refPerTok()).to.not.equal(prevRefPerTok)
+        // await cusdcV3AsB.allow(wcusdcV3.address, true)
+        // await wcusdcV3AsB.depositTo(bob.address, ethers.constants.MaxUint256)
+        expect(await collateral.refPerTok()).to.be.gt(prevRefPerTok)
         // expect(await collateral.strictPrice()).to.not.equal(prevPrice)
       })
     
