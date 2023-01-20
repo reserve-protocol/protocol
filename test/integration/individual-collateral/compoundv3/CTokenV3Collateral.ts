@@ -29,7 +29,7 @@ import {
   networkConfig,
 } from '../../../../common/configuration'
 import { bn, fp, toBNDecimals } from '../../../../common/numbers'
-import { MAX_UINT48 } from '../../../../common/constants'
+import { MAX_UINT48, MAX_UINT192 } from '../../../../common/constants'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
@@ -170,64 +170,61 @@ describeFork('CTokenV3Collateral', () => {
         await updateAnswerTx.wait()
     
         // Check new prices
-        const expectedNewPrice = newPrice.mul(bn(10).pow(18 - decimals))
-        const expectedNewDelta = expectedNewPrice.mul(ORACLE_ERROR).div(fp(1))
-        const [endLow, endHigh] = await collateral.price()
-        expect(endLow).to.equal(expectedNewPrice.sub(expectedNewDelta))
-        expect(endHigh).to.equal(expectedNewPrice.add(expectedNewDelta))
+        const newExpectedPrice = newPrice.mul(bn(10).pow(18 - decimals))
+        const newExpectedDelta = newExpectedPrice.mul(ORACLE_ERROR).div(fp(1))
+        const [newLow, newHigh] = await collateral.price()
+        expect(newLow).to.equal(newExpectedPrice.sub(newExpectedDelta))
+        expect(newHigh).to.equal(newExpectedPrice.add(newExpectedDelta))
     
         // Check refPerTok remains the same
         expect(await collateral.refPerTok()).to.equal(expectedRefPerTok)
       })
     
-      it.only('prices change as refPerTok changes', async () => {
+      it('prices change as refPerTok changes', async () => {
         const prevRefPerTok = await collateral.refPerTok()
         expect(prevRefPerTok).to.equal(bn('1e18'))
 
-        const { answer } = await chainlinkFeed.latestRoundData()
         const decimals = await chainlinkFeed.decimals()
-        const expectedPrice = answer.mul(bn(10).pow(18 - decimals))
-        const expectedDelta = expectedPrice.mul(ORACLE_ERROR).div(fp(1))
 
+        const initData = await chainlinkFeed.latestRoundData()
+        const expectedPrice = initData.answer.mul(bn(10).pow(18 - decimals))
+        const expectedDelta = expectedPrice.mul(ORACLE_ERROR).div(fp(1))
         const [initLow, initHigh] = await collateral.price()
         expect(initLow).to.equal(expectedPrice.sub(expectedDelta))
         expect(initHigh).to.equal(expectedPrice.add(expectedDelta))
     
-        // const [_, bob] = await ethers.getSigners()
-        // const usdcAsB = usdc.connect(bob)
-        // const cusdcV3AsB = cusdcV3.connect(bob)
-        // const wcusdcV3AsB = wcusdcV3.connect(bob)
+        const usdcAsB = usdc.connect(bob)
+        const cusdcV3AsB = cusdcV3.connect(bob)
+        const wcusdcV3AsB = wcusdcV3.connect(bob)
     
-        // const balance = bn('20000e6')
-        // await allocateUSDC(bob.address, balance)
-        // await usdcAsB.approve(cusdcV3.address, ethers.constants.MaxUint256)
-        // await cusdcV3AsB.supply(usdc.address, balance)
-        // expect(await usdc.balanceOf(bob.address)).to.equal(0)
+        // need to deposit in order to get an exchange rate
+        const balance = bn('20000e6')
+        await allocateUSDC(bob.address, balance)
+        await usdcAsB.approve(cusdcV3.address, ethers.constants.MaxUint256)
+        await cusdcV3AsB.supply(usdc.address, balance)
+        expect(await usdc.balanceOf(bob.address)).to.equal(0)
+        await cusdcV3AsB.allow(wcusdcV3.address, true)
+        await wcusdcV3AsB.depositTo(bob.address, ethers.constants.MaxUint256)
 
         await advanceBlocks(1000)
         await advanceTime(12000)
     
-        // await cusdcV3AsB.allow(wcusdcV3.address, true)
-        // await wcusdcV3AsB.depositTo(bob.address, ethers.constants.MaxUint256)
         expect(await collateral.refPerTok()).to.be.gt(prevRefPerTok)
-        // expect(await collateral.strictPrice()).to.not.equal(prevPrice)
+
+        const [newLow, newHigh] = await collateral.price()
+        expect(newLow).to.be.gt(initLow)
+        expect(newHigh).to.be.gt(initHigh)
       })
     
-      it('reverts if price is zero', async () => {
+      it('returns a 0 price', async () => {
         // Set price of USDC to 0
         const updateAnswerTx = await chainlinkFeed.updateAnswer(0)
         await updateAnswerTx.wait()
     
-        // Check price of token
-        // await expect(collateral.strictPrice()).to.be.revertedWithCustomError(
-        //   collateral,
-        //   'PriceOutsideRange'
-        // )
-    
-        // Fallback price is returned
+        // (0, FIX_MAX) is returned
         const [low, high] = await collateral.price()
-        // expect(isFallback).to.equal(true)
-        // expect(price).to.equal(await collateral.fallbackPrice())
+        expect(low).to.equal(0)
+        expect(high).to.equal(0)
     
         // When refreshed, sets status to Unpriced
         await collateral.refresh()
@@ -238,8 +235,10 @@ describeFork('CTokenV3Collateral', () => {
         await chainlinkFeed.setInvalidTimestamp()
     
         // Check price of token
-        // await expect(collateral.strictPrice()).to.be.revertedWithCustomError(collateral, 'StalePrice')
-    
+        const [low, high] = await collateral.price()
+        expect(low).to.equal(0)
+        expect(high).to.equal(MAX_UINT192)
+
         // When refreshed, sets status to Unpriced
         await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
@@ -376,12 +375,6 @@ describeFork('CTokenV3Collateral', () => {
         // State remains the same
         expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
         expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-      })
-    
-      it('reverts if price is stale', async () => {
-        await advanceTime(ORACLE_TIMEOUT.toString())
-        // Check new prices
-        // await expect(collateral.strictPrice()).to.be.revertedWithCustomError(collateral, 'StalePrice')
       })
     
       it('enters IFFY state when price becomes stale', async () => {
