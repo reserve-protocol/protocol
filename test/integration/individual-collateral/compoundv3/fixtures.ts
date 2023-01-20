@@ -13,6 +13,7 @@ import {
   ORACLE_TIMEOUT,
   FIX_ONE,
   USDC,
+  ORACLE_ERROR
 } from './helpers'
 import {
   GnosisMock,
@@ -319,7 +320,7 @@ export const defaultCollateralOpts: CollateralOpts = {
   priceTimeout: ORACLE_TIMEOUT,
   chainlinkFeed: USDC_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
-  oracleError: bn('5e17'),
+  oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
