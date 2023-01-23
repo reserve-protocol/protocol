@@ -8,7 +8,7 @@ import "contracts/libraries/Throttle.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {
     // 1 {qRTok} per hour or 5% supply of {qRTok} per hour
-    ThrottleLib.Params tParams = ThrottleLib.Params({ amtRate: 1e18, pctRate: toFix(5e16) });
+    ThrottleLib.Params memory tParams = ThrottleLib.Params({amtRate: 1e18, pctRate: toFix(5e16)});
 
     params = DeploymentParams({
         dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),

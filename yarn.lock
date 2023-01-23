@@ -1569,14 +1569,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/hardhat-network-helpers@npm:^1.0.6":
-  version: 1.0.6
-  resolution: "@nomicfoundation/hardhat-network-helpers@npm:1.0.6"
+"@nomicfoundation/hardhat-network-helpers@npm:^1.0.7":
+  version: 1.0.7
+  resolution: "@nomicfoundation/hardhat-network-helpers@npm:1.0.7"
   dependencies:
     ethereumjs-util: ^7.1.4
   peerDependencies:
     hardhat: ^2.9.5
-  checksum: 196e0273563edd232b8e663a73a9cf60d3e6ce3c00c1b8a7d9b4d9173b01b02ab5a0202eaea0658180318e14773290e226f95ae3626c89e46f8c699f2fd46b2f
+  checksum: 622338ae1692496aa3fb864c0ca04a58b141bd1410b0b3814085113f863c400167c9d7796a15fa77cb9fe2743daefd6c5d84322f62b6196ec8a9564dafcc0f23
   languageName: node
   linkType: hard
 
@@ -12409,7 +12409,7 @@ fsevents@~2.1.1:
     "@aave/protocol-v2": ^1.0.1
     "@chainlink/contracts": ^0.4.1
     "@nomicfoundation/hardhat-chai-matchers": ^1.0.3
-    "@nomicfoundation/hardhat-network-helpers": ^1.0.6
+    "@nomicfoundation/hardhat-network-helpers": ^1.0.7
     "@nomiclabs/hardhat-ethers": ^2.0.3
     "@nomiclabs/hardhat-etherscan": ^3.1.0
     "@nomiclabs/hardhat-waffle": ^2.0.1
