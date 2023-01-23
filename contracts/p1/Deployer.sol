@@ -197,7 +197,7 @@ contract DeployerP1 is IDeployer, Versioned {
         components.distributor.init(main, params.dist);
 
         // Init Furnace
-        components.furnace.init(main, params.rewardPeriod, params.rewardRatio);
+        components.furnace.init(main, params.rewardRatio);
 
         components.broker.init(main, gnosis, implementations.trade, params.auctionLength);
 
@@ -210,7 +210,6 @@ contract DeployerP1 is IDeployer, Versioned {
                 stRSRName,
                 stRSRSymbol,
                 params.unstakingDelay,
-                params.rewardPeriod,
                 params.rewardRatio
             );
         }
@@ -221,9 +220,8 @@ contract DeployerP1 is IDeployer, Versioned {
             name,
             symbol,
             mandate,
-            params.issuanceRate,
-            params.scalingRedemptionRate,
-            params.redemptionRateFloor
+            params.issuanceThrottle,
+            params.redemptionThrottle
         );
 
         // Deploy RToken/RSR Assets

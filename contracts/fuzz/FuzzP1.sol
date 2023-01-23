@@ -306,10 +306,9 @@ contract FurnaceP1Fuzz is FurnaceP1 {
     }
 
     function invariantsHold() external view returns (bool) {
-        bool periodProp = period > 0 && period <= MAX_PERIOD;
         bool ratioProp = ratio <= MAX_RATIO;
 
-        return periodProp && ratioProp;
+        return ratioProp;
     }
 
     function assertPayouts() external view {
@@ -337,32 +336,6 @@ contract RevenueTraderP1Fuzz is RevenueTraderP1 {
 
 contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     using FixLib for uint192;
-
-    // The range of IDs that would be valid as endID in cancel() or vest()
-    function idRange(address user) external view returns (uint256 left, uint256 right) {
-        left = issueQueues[user].left;
-        right = issueQueues[user].right;
-    }
-
-    // To be called only from MarketMock; this only works if MarketMock never enqueues any other
-    // issuances.
-    function fastIssue(uint256 amtRToken) external notPausedOrFrozen {
-        require(amtRToken > 0, "Cannot issue zero");
-
-        uint192 initAllVestAt = allVestAt;
-
-        issue(amtRToken);
-
-        IssueQueue storage queue = issueQueues[_msgSender()];
-        if (queue.right > queue.left) {
-            // We pushed a slow issuance, so rewrite that to be available now, and then vest it.
-            queue.items[queue.right - 1].when = 0;
-            vestUpTo(_msgSender(), queue.right);
-        }
-
-        allVestAt = initAllVestAt;
-    }
-
     /// The tokens and underlying quantities needed to issue `amount` qRTokens.
     /// @dev this is distinct from basketHandler().quote() b/c the input is in RTokens, not BUs.
     /// @param amount {qRTok} quantity of qRTokens to quote.
@@ -382,44 +355,8 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 
-    function assertIssuances(address issuer) external view {
-        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
-        IssueQueue storage queue = issueQueues[issuer];
-        if (queue.left < queue.right) {
-            assert(queue.basketNonce == bh.nonce());
-            (address[] memory erc20s, ) = bh.quote(1e18, RoundingMode.CEIL); // interested in tokens
-            assert(erc20s.length == queue.tokens.length);
-            for (uint256 i = 0; i < erc20s.length; i++) {
-                assert(erc20s[i] == queue.tokens[i]);
-            }
-        }
-    }
-
     function invariantsHold() external view returns (bool) {
-        // For any queue in value(issueQueues):
-        //   if 0 <= i < j <= queue.right, then item[i] < item[j]
-        //   queue.items[queue.right] <= allVestAt
-        //   for each item in queue.items: queue.tokens.length == item.deposits.length
-        bool allVestProp = true;
-        bool queueItemsProp = true;
-        bool queueTokensProp = true;
-        for (uint256 i = 0; i < IMainFuzz(address(main)).numUsers(); i++) {
-            address addr = IMainFuzz(address(main)).someAddr(i);
-            IssueQueue storage queue = issueQueues[addr];
-            if (queue.items.length > 0) {
-                for (uint256 j = 0; j < queue.right; j++) {
-                    if (j > 0 && queue.items[j].amtRToken <= queue.items[j - 1].amtRToken)
-                        queueItemsProp = false;
-                    if (queue.tokens.length != queue.items[j].deposits.length)
-                        queueTokensProp = false;
-                }
-                if (queue.right > 0 && queue.items[queue.right - 1].when > allVestAt) {
-                    allVestProp = false;
-                }
-            }
-        }
-
-        return allVestProp && queueItemsProp && queueTokensProp;
+        requireValidBUExchangeRate();
     }
 }
 

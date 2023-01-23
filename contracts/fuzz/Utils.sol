@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IAsset.sol";
+import "contracts/libraries/Throttle.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {
     params = DeploymentParams({
@@ -12,16 +13,14 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         rTokenMaxTradeVolume: 1e24,
         shortFreeze: 345600, // 4 days
         longFreeze: 1814400, // 3 weeks
-        rewardPeriod: 604800, // 1 week
         rewardRatio: FixLib.divu(toFix(22840), (1_000_000)), // approx. half life of 30 pay periods
         unstakingDelay: 1209600, // 2 weeks
         tradingDelay: 0, // (the delay _after_ default has been confirmed)
         auctionLength: 1800, // 30 minutes
         backingBuffer: FixLib.divu(toFix(1), 10000), // 0.01%, 1 BIP
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
-        issuanceRate: FixLib.divu(toFix(25), 1_000_000), // 0.025% per block or ~0.1% per minute
-        scalingRedemptionRate: FixLib.divu(FIX_ONE, 20),
-        redemptionRateFloor: toFix(1_000_000)
+        issuanceThrottle: ThrottleLib.Params({ amtRate: 1e18, pctRate: toFix(5e16) }), // 1 {qRTok} per hour or 5% supply of {qRTok} per hour
+        redemptionThrottle: ThrottleLib.Params({ amtRate: 1e18, pctRate: toFix(5e16) }) // 1 {qRTok} per hour or 5% supply of {qRTok} per hour
     });
 }
 

@@ -112,21 +112,19 @@ Finally, inside particular testing, it's quite useful to distinguish unit tests 
 
 Target: Full branch coverage, and testing of any semantically-relevant situations
 
-Status as of 2022-05-27: These are essentially complete, and provide near-complete coverage of our system.
-
 ### End-to-End Tests
 
 - Driven by `hardhat test`
 - Uses mainnet forking
-- Checks that the `p1` protocol works as expected when deployed
-- Tests all needed contracts, contract deployment, any migrations, etc.
+- Can run the same tests against both p0 and p1
+- Tests all needed plugin contracts, contract deployment, any migrations, etc.
 - Mock out as little as possible; use instances of real contracts
 
 Target: Each integration we plan to deploy behaves correctly under all actually-anticipated scenarios.
 
-Status as of 2022-05-27: We have initial drafts of a few of these.
-
 ### Property Testing
+
+Located in `fuzz` branch only.
 
 - Driven by Echidna
 - Asserts that contract invariants and functional properties of contract implementations hold for many executions
@@ -134,23 +132,25 @@ Status as of 2022-05-27: We have initial drafts of a few of these.
 
 Target: The handful of our most depended-upon system properties and invariants are articulated and thoroughly fuzz-tested. Examples of such properties include:
 
-- Unless the basket is switched (due to token default or governance) the protocol always remains fully-capitalized.
+- Unless the basket is switched (due to token default or governance) the protocol always remains fully-collateralized.
 - Unless the protocol is paused, RToken holders can always redeem
 - If the protocol is paused, and governance does not act further, the protocol will later become unpaused.
 
-Status as of 2022-05-27: We've gotten some simple proofs-of-concept to run, but they aren't well-integrated into our testing flow and they're certainly incomplete.
-
 ### Differential Testing
+
+Located in `fuzz` branch only.
 
 - Driven by Echidna
 - Asserts that the behavior of each p1 contract matches that of p0
 
-Target: Intensivve equivalence testing, run continuously for days or weeks, sensitive to any difference between observable behaviors of p0 and p1.
-
-Status as of 2022-05-27: Beyond proof-of-concept work with Echidna, we haven't begun this (beyond actually having p0 and p1 implementations).
+Target: Intensive equivalence testing, run continuously for days or weeks, sensitive to any difference between observable behaviors of p0 and p1.
 
 ## Contributing
 
 If you would like to contribute, you'll need to configure a secret in your fork repo in order for our integration tests to pass in CI. The name of the secret should `ALCHEMY_MAINNET_KEY` and it should be equal to the suffix portion of the full URL.
 
 Usage: `https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}`
+
+## External Documentation
+
+[Video overview](https://youtu.be/341MhkOWsJE)

@@ -11,9 +11,7 @@ export interface IPrerequisites {
 
 export interface IDeployments {
   prerequisites: IPrerequisites
-  rewardableLib: string
   tradingLib: string
-  permitLib: string
   facadeRead: string
   facadeWriteLib: string
   facadeWrite: string

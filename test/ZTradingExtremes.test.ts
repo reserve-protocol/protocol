@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig, MAX_ORACLE_TIMEOUT } from '../common/configuration'
+import { IConfig, MAX_ORACLE_TIMEOUT, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
 import { FURNACE_DEST, STRSR_DEST, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { bn, fp, shortString, toBNDecimals, divCeil } from '../common/numbers'
 import {
@@ -12,7 +12,6 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
-  FacadeRead,
   FacadeTest,
   FiatCollateral,
   GnosisMock,
@@ -30,7 +29,6 @@ import {
 import { advanceTime } from './utils/time'
 import { defaultFixture, ORACLE_ERROR, PRICE_TIMEOUT, SLOW } from './fixtures'
 import { cartesianProduct } from './utils/cases'
-import { issueMany } from './utils/issue'
 import { setOraclePrice } from './utils/oracles'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -59,7 +57,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   // Contracts to retrieve after deploy
   let stRSR: TestIStRSR
   let rToken: TestIRToken
-  let facade: FacadeRead
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -100,7 +97,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       basketHandler,
       distributor,
       rToken,
-      facade,
       facadeTest,
       rsrTrader,
       rTokenTrader,
@@ -254,7 +250,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
           expect(buy == rToken.address || buy == rsr.address)
           if (buy == rToken.address) {
-            await issueMany(facade, rToken, buyAmt, addr1)
+            await rToken.connect(addr1).issue(buyAmt)
             await rToken.connect(addr1).approve(gnosis.address, buyAmt)
             await gnosis.placeBid(auctionId, {
               bidder: addr1.address,
@@ -334,7 +330,10 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // Issue rTokens
-      await issueMany(facade, rToken, rTokenSupply, addr1)
+      const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+      await rToken.setIssuanceThrottleParams(noThrottle)
+      await rToken.setRedemptionThrottleParams(noThrottle)
+      await rToken.connect(addr1).issue(rTokenSupply)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // Mint any excess possible before increasing exchange rate to avoid blowing through max BU exchange rate
@@ -468,7 +467,10 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Issue rTokens
-      await issueMany(facade, rToken, rTokenSupply, addr1)
+      const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+      await rToken.setIssuanceThrottleParams(noThrottle)
+      await rToken.setRedemptionThrottleParams(noThrottle)
+      await rToken.connect(addr1).issue(rTokenSupply)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===
@@ -534,13 +536,13 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
   context('Recovery from default', function () {
     const runRecollateralizationAuctions = async (basketSize: number) => {
-      let uncapitalized = true
+      let uncollateralized = true
       const basketsNeeded = await rToken.basketsNeeded()
 
       // Run recap auctions
       const erc20s = await assetRegistry.erc20s()
 
-      for (let i = 0; i < basketSize + 1 && uncapitalized; i++) {
+      for (let i = 0; i < basketSize + 1 && uncollateralized; i++) {
         // Close any open auctions and launch new ones
         await facadeTest.runAuctionsForAllTraders(rToken.address)
 
@@ -567,13 +569,13 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
         // Advance time till auction ends
         await advanceTime(config.auctionLength.add(100).toString())
-        uncapitalized = !(await basketHandler.fullyCollateralized())
+        uncollateralized = !(await basketHandler.fullyCollateralized())
       }
 
       // Should not have taken a haircut
       expect((await rToken.basketsNeeded()).gte(basketsNeeded)).to.equal(true)
 
-      // Should be capitalized or still capitalizing
+      // Should be collateralized or still capitalizing
       expect(
         (await basketHandler.fullyCollateralized()) || Boolean(await backingManager.tradesOpen())
       ).to.equal(true)
@@ -586,7 +588,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     // Switch basket to remaining good collateral, if any.
     // Run non-RSR auctions to completion.
     // Seize RSR and use for remainder.
-    // Assert capitalized.
+    // Assert collateralized.
     //
     // DIMENSIONS
     //
@@ -638,7 +640,10 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await stRSR.connect(addr1).stake(fp('1e29'))
 
       // Issue rTokens
-      await issueMany(facade, rToken, rTokenSupply, addr1)
+      const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+      await rToken.setIssuanceThrottleParams(noThrottle)
+      await rToken.setRedemptionThrottleParams(noThrottle)
+      await rToken.connect(addr1).issue(rTokenSupply)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===

@@ -167,7 +167,7 @@ contract MarketMock is IMarketMock {
         }
 
         // Issue the RToken we want
-        rtoken.fastIssue(rtokenAmt);
+        rtoken.issue(rtokenAmt);
 
         // Clean up any stray backing tokens
         for (uint256 i = 0; i < tokens.length; i++) {

@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
 
-/// Externally-included library for verifying metatx sigs for EOAs and smart contract wallets
+/// Internal library for verifying metatx sigs for EOAs and smart contract wallets
 /// See ERC1271
 library PermitLib {
     function requireSignature(

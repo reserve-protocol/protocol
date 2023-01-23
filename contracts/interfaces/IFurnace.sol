@@ -10,21 +10,7 @@ import "./IComponent.sol";
  */
 interface IFurnace is IComponent {
     // Initialization
-    function init(
-        IMain main_,
-        uint48 period_,
-        uint192 ratio_
-    ) external;
-
-    /// Emitted when the melting period is changed
-    /// @param oldPeriod The old period
-    /// @param newPeriod The new period
-    event PeriodSet(uint48 indexed oldPeriod, uint48 indexed newPeriod);
-
-    function period() external view returns (uint48);
-
-    /// @custom:governance
-    function setPeriod(uint48) external;
+    function init(IMain main_, uint192 ratio_) external;
 
     /// Emitted when the melting ratio is changed
     /// @param oldRatio The old ratio

@@ -435,11 +435,14 @@ library RecollateralizationLibP1 {
 
         // accumulate shortfall
         for (uint256 i = 0; i < len; ++i) {
-            ICollateral coll = components.reg.toColl(basketERC20s[i]);
+            uint192 q = components.bh.quantity(basketERC20s[i]);
+            if (q == 0) continue; // can happen if current basket is out of sync with registry
 
             // {tok} = {BU} * {tok/BU}
             // needed: quantity of erc20 needed for `basketsTop` BUs
-            uint192 needed = basketsTop.mul(components.bh.quantity(basketERC20s[i]), CEIL); // {tok}
+            uint192 needed = basketsTop.mul(q, CEIL); // {tok}
+
+            ICollateral coll = components.reg.toColl(basketERC20s[i]);
 
             // held: quantity of erc20 owned by the bm (BackingManager)
             uint192 held = coll.bal(address(components.bm)); // {tok}

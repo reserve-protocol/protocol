@@ -176,23 +176,17 @@ This parameter can be set to zero.
 Default value: `1e24` = $1M
 Mainnet reasonable range: 1e22 to 1e27.
 
-### `rewardPeriod`
-
-Dimension: `{seconds}`
-
-The reward period is the length of one period of the StRSR and Furnace reward curves, which use exponential decay in order to hand out rewards slowly. The `rewardPeriod` must be set in conjuction with `rewardRatio` in order to achieve a desired payout rate. The `rewardPeriod` is the length of time that comprises a single period. Over a single period, `rewardRatio` of the last balance recorded is handed out. For multiple periods, the amount handed out is `(1 - (1-r)^N)`, where `r` is the `rewardRatio` and `N` is the number of periods elapsed.
-
-Default value: `86400` = 1 day
-Mainnet reasonable range: 10 to 31536000 (1 year)
-
 ### `rewardRatio`
 
 Dimension: `{1}`
 
-The `rewardRatio` is the amount of the current reward amount that should be handed out in a single period. See above.
+The `rewardRatio` is the amount of the current reward amount that should be handed out per span of 12s.
 
-Default value: `0.007701635339554948` = half life of 90 periods
-Mainnet reasonable range: 1e9 to 1e18
+Default value: `1069671574938` = a half life of 90 days at a period of 12s.
+
+Mainnet reasonable range: 1e11 to 1e13
+
+To calculate: `ln(2) / (60*60*24*desired_days_in_half_life/12)`, and then multiply by 1e18.
 
 ### `unstakingDelay`
 
@@ -257,38 +251,55 @@ The number of seconds a long freeze lasts. Long freezes can be disabled by remov
 Default value: `2592000` = 30 days
 Mainnet reasonable range: 86400 to 31536000 (1 day to 1 year)
 
-### `issuanceRate`
+### `RToken Supply Throttles`
 
-Dimension: `{1}`
+In order to restrict the system to organic patterns of behavior, we maintain two supply throttles, one for net issuance and one for net redemption. When a supply change occurs, a check is performed to ensure this does not move the supply more than an acceptable range over a period; a period is fixed to be an hour. The acceptable range (per throttle) is a function of the `amtRate` and `pctRate` variables. **It is the maximum of whichever variable provides the larger rate.**
 
-The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply. It cannot be zero.
+Note the differing units: the `amtRate` variable is in terms of `{qRTok/hour}` while the `pctRate` variable is in terms of `{1/hour}`, i.e a fraction.
 
-Default value: `0.00025e18` = 0.025% per block
-Mainnet reasonable range: 1e12 to 1e16
-
-### `RedemptionBattery`
-
-In order to restrict the system to organic patterns of behavior, we have the concept of a Redemption Battery. When redemption occurs, it uses up stored battery charge. The battery has a natural charging rate, which is controlled by the combination of two variables: _redemptionRateFloor_ and _scalingRedemptionRate_.
-
-Either of the two variables can be defined to be zero to disable them. When both are set to a nonzero value, the one that provides the faster charging rate is used. Note the differing units: one is in terms of `{qRTok/hour}` and the other is `{1/hour}`, i.e a fraction.
-
-#### `RedemptionBattery.redemptionRateFloor`
+#### `issuanceThrottle.amtRate`
 
 Dimension: `{qRTok/hour}`
 
-The redemption rate floor is the minimum quantity of RToken to allow redemption of per-hour, and thereby the rate to charge the redemption battery at.
+A quantity of RToken that serves as a lower-bound for how much net issuance to allow per hour.
+
+Must be at least 1 whole RToken, or 1e18. Can be as large as 1e48. Set it to 1e48 if you want to effectively disable the issuance throttle altogether.
 
 Default value: `1e24` = 1,000,000 RToken
 Mainnet reasonable range: 1e23 to 1e27
 
-#### `RedemptionBattery.scalingRedemptionRate`
+#### `issuanceThrottle.pctRate`
 
 Dimension: `{1/hour}`
 
-The max redemption is a percentage value that describes what proportion of the RToken supply to allow redemption of per-hour. It controls how quickly the protocol can scale down RToken supply.
+A fraction of the RToken supply that indicates how much net issuance to allow per hour.
+
+Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 
 Default value: `5e16` = 5% per hour
-Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour; or disable and set to 0)
+Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
+
+#### `redemptionThrottle.amtRate`
+
+Dimension: `{qRTok/hour}`
+
+A quantity of RToken that serves as a lower-bound for how much net redemption to allow per hour.
+
+Must be at least 1 whole RToken, or 1e18. Can be as large as 1e48. Set it to 1e48 if you want to effectively disable the redemption throttle altogether.
+
+Default value: `1e24` = 1,000,000 RToken
+Mainnet reasonable range: 1e23 to 1e27
+
+#### `redemptionThrottle.pctRate`
+
+Dimension: `{1/hour}`
+
+A fraction of the RToken supply that indicates how much net redemption to allow per hour.
+
+Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
+
+Default value: `5e16` = 5% per hour
+Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 ### Governance Parameters
 

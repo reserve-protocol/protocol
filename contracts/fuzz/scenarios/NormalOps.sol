@@ -249,25 +249,6 @@ contract NormalOpsScenario {
         spanMaxSupply = supply > spanMaxSupply ? supply : spanMaxSupply;
     }
 
-    function noteVesting(uint256 amount) internal {
-        if (spanPending >= amount) {
-            emit AssertionFailure("in noteVesting(amount), spanPending < amount");
-        }
-        spanPending -= amount;
-        spanVested += amount;
-
-        // {Rtok/block}
-        uint192 minRate = FIX_ONE * 10_000;
-        // {Rtok/block}
-        RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
-
-        uint256 supplyRate = rtoken.issuanceRate().mulu(rtoken.totalSupply());
-        uint192 issRate = uint192(Math.min(minRate, supplyRate));
-        if (spanVested < issRate.mulu(block.number - spanStartBlock + 1)) {
-            emit AssertionFailure("Issuance and vesting speed too high");
-        }
-    }
-
     // do issuance without doing allowances first
     function justIssue(uint256 amount) public asSender {
         uint256 preSupply = main.rToken().totalSupply();
@@ -304,7 +285,7 @@ contract NormalOpsScenario {
         address recipient = main.someAddr(recipientID);
         uint256 preSupply = main.rToken().totalSupply();
 
-        main.rToken().issue(recipient, amount);
+        main.rToken().issueTo(recipient, amount);
 
         uint256 postSupply = main.rToken().totalSupply();
 
@@ -324,39 +305,12 @@ contract NormalOpsScenario {
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
-        main.rToken().issue(recipient, amount);
+        main.rToken().issueTo(recipient, amount);
 
         uint256 postSupply = main.rToken().totalSupply();
 
         if (postSupply == preSupply) noteIssuance(amount);
         else noteQuickIssuance(amount);
-    }
-
-    function cancelIssuance(uint256 seedID, bool earliest) public asSender {
-        // filter endIDs mostly to valid IDs
-        address user = msg.sender;
-        RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
-        (uint256 left, uint256 right) = rtoken.idRange(user);
-        uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
-
-        // Do cancel
-        rtoken.cancel(id, earliest);
-    }
-
-    function vestIssuance(uint256 seedID) public asSender {
-        // filter endIDs mostly to valid IDs
-        address user = msg.sender;
-        RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
-        uint256 preSupply = rtoken.totalSupply();
-
-        (uint256 left, uint256 right) = rtoken.idRange(user);
-        uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
-
-        // Do vest
-        rtoken.vest(user, id);
-
-        uint256 postSupply = rtoken.totalSupply();
-        noteVesting(postSupply - preSupply);
     }
 
     function redeem(uint256 amount) public asSender {
@@ -423,11 +377,6 @@ contract NormalOpsScenario {
         if (which == 0) main.rTokenTrader().claimRewards();
         else if (which == 1) main.rsrTrader().claimRewards();
         else if (which == 2) main.backingManager().claimRewards();
-        else if (which == 3) main.rToken().claimRewards();
-    }
-
-    function sweepRewards() public {
-        main.rToken().sweepRewards();
     }
 
     function pushSeedForTrades(uint256 seed) public {
@@ -535,29 +484,10 @@ contract NormalOpsScenario {
         BrokerP1(address(main.broker())).setAuctionLength(uint48(between(1, 604800, seed)));
         // 604800 is Broker.MAX_AUCTION_LENGTH
     }
-
-    function setFurnacePeriod(uint256 seed) public {
-        FurnaceP1(address(main.furnace())).setPeriod(uint48(between(1, 31536000, seed)));
-        // 31536000 is Furnace.MAX_PERIOD
-    }
-
+    
     function setFurnaceRatio(uint256 seed) public {
         FurnaceP1(address(main.furnace())).setRatio(uint192(between(0, 1e18, seed)));
         // 1e18 is Furnace.MAX_RATIO
-    }
-
-    function setIssuanceRate(uint256 seed) public {
-        RTokenP1(address(main.rToken())).setIssuanceRate(uint192(between(0, 1e18, seed)));
-        // 1e18 is RToken.MAX_ISSUANCE_RATE
-    }
-
-    function setScalingRedemptionRate(uint256 seed) public {
-        RTokenP1(address(main.rToken())).setScalingRedemptionRate(uint192(between(0, 1e18, seed)));
-        // 1e18 is RToken.MAX_REDEMPTION
-    }
-
-    function setRedemptionRateFloor(uint256 value) public {
-        RTokenP1(address(main.rToken())).setRedemptionRateFloor(value);
     }
 
     function setRSRTraderMaxTradeSlippage(uint256 seed) public {
@@ -579,10 +509,6 @@ contract NormalOpsScenario {
             uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
-    }
-
-    function setStakeRewardPeriod(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setRewardPeriod(uint48(between(1, 31536000, seed)));
     }
 
     function setStakeRewardRatio(uint256 seed) public {

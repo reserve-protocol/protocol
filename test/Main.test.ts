@@ -298,7 +298,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check other values
 
-      expect(await basketHandler.nonce()).to.be.gt(bn(0))
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
@@ -382,9 +381,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - Furnace
-      await expect(
-        furnace.init(main.address, config.rewardPeriod, config.rewardRatio)
-      ).to.be.revertedWith('Initializable: contract is already initialized')
+      await expect(furnace.init(main.address, config.rewardRatio)).to.be.revertedWith(
+        'Initializable: contract is already initialized'
+      )
 
       // Attempt to reinitialize - Broker
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
@@ -400,9 +399,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           'RTKN RToken',
           'RTKN',
           'Manifesto',
-          config.issuanceRate,
-          config.scalingRedemptionRate,
-          config.redemptionRateFloor
+          config.issuanceThrottle,
+          config.redemptionThrottle
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
@@ -413,7 +411,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           'stRTKNRSR Token',
           'stRTKNRSR',
           config.unstakingDelay,
-          config.rewardPeriod,
           config.rewardRatio
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
@@ -433,15 +430,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         )
         components[name] = prevValue
       }
-
-      // StRSR validation - Set invalid RSRPayPeriod
-      const invalidPeriodConfig = { ...config }
-      invalidPeriodConfig.rewardPeriod = config.unstakingDelay
-
-      await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidPeriodConfig)
-      ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
-
       // Distributor validation - Set invalid distribution
       const invalidDistConfig = { ...config }
       invalidDistConfig.dist = { rTokenDist: bn(0), rsrDist: bn(0) }
@@ -1518,7 +1506,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(backing.length).to.equal(4)
 
       // Not updated so basket last changed is not set
-      expect(await basketHandler.nonce()).to.be.gt(bn(1))
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await main.connect(owner).unpause()

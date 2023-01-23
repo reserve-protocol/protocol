@@ -49,9 +49,12 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
+  TradingLibP0,
+  RecollateralizationLibP1,
   USDCMock,
   NonFiatCollateral,
 } from '../typechain'
+import { advanceTime } from './utils/time'
 import { useEnv } from '#/utils/env'
 
 export enum Implementation {
@@ -371,7 +374,6 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
-  permitLib: PermitLib
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -393,25 +395,25 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rTokenMaxTradeVolume: fp('1e6'), // $1M
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
-    rewardPeriod: bn('604800'), // 1 week
-    rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
+    rewardRatio: bn('1069671574938'), // approx. half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
-    issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    scalingRedemptionRate: fp('0.05'), // 5% per hour
-    redemptionRateFloor: fp('1e6'), // 1M RToken
+    issuanceThrottle: {
+      amtRate: fp('1e6'), // 1M RToken
+      pctRate: fp('0.05'), // 5%
+    },
+    redemptionThrottle: {
+      amtRate: fp('1e6'), // 1M RToken
+      pctRate: fp('0.05'), // 5%
+    },
   }
 
   // Deploy TradingLib external library
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
   const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
-
-  // Deploy TradingLib external library
-  const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
-  const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
 
   // Deploy FacadeRead
   const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
@@ -449,7 +451,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-    libraries: { TradingLibP0: tradingLib.address, PermitLib: permitLib.address },
+    libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(rsr.address, gnosisAddr, rsrAsset.address)
@@ -460,11 +462,24 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
     const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
 
+    // Deploy TradingLib external library
+    const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
+      'RecollateralizationLibP1'
+    )
+    const tradingLib: RecollateralizationLibP1 = <RecollateralizationLibP1>(
+      await TradingLibFactory.deploy()
+    )
+
     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
 
     const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
-      'BackingManagerP1'
+      'BackingManagerP1',
+      {
+        libraries: {
+          RecollateralizationLibP1: tradingLib.address,
+        },
+      }
     )
     const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
 
@@ -622,6 +637,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   for (let i = 0; i < basket.length; i++) {
     await backingManager.grantRTokenAllowance(await basket[i].erc20())
   }
+
+  // Charge throttle
+  await advanceTime(3600)
 
   return {
     rsr,

@@ -12,10 +12,6 @@ import "contracts/interfaces/IRToken.sol";
 
 // ================ Components ================
 interface IRTokenFuzz is IRToken {
-    // Issue some rtoken now, circumventing issuance delays.
-    // To be called only from MarketMock.
-    function fastIssue(uint256 amtRToken) external;
-
     /// The tokens and underlying quantities needed to issue `amount` qRTokens.
     /// @param amount {qRTok} quantity of qRTokens to quote.
     function quote(uint256 amount, RoundingMode)

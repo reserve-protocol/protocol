@@ -185,16 +185,14 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
             "RToken",
             "Rtkn",
             "fnord",
-            params.issuanceRate,
-            params.scalingRedemptionRate,
-            params.redemptionRateFloor
+            params.issuanceThrottle,
+            params.redemptionThrottle
         );
         stRSR.init(
             this,
             "Staked RSR",
             "stRSR",
             params.unstakingDelay,
-            params.rewardPeriod,
             params.rewardRatio
         );
 
@@ -231,7 +229,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         distributor.init(this, params.dist);
 
         // Init Furnace
-        furnace.init(this, params.rewardPeriod, params.rewardRatio);
+        furnace.init(this, params.rewardRatio);
 
         // Init Broker
         // `tradeImplmentation` and `gnosis` are unused in BrokerP1Fuzz

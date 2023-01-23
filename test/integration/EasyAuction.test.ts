@@ -111,7 +111,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Issue
       await token0.connect(owner).mint(addr1.address, issueAmount)
       await token0.connect(addr1).approve(rToken.address, issueAmount)
-      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
 
       // Seed excess stake
       await rsr.connect(owner).mint(addr1.address, issueAmount.mul(1e9))
@@ -274,7 +274,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         },
       ])
 
-      // Check state - Should be undercapitalized
+      // Check state - Should be undercollateralized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt.sub(1))
@@ -333,7 +333,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         },
       ])
 
-      // Check state - Should be undercapitalized
+      // Check state - Should be undercollateralized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
@@ -363,7 +363,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         },
       ])
 
-      // Check state - Should be undercapitalized
+      // Check state - Should be undercollateralized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
@@ -533,7 +533,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await token0.connect(owner).mint(addr1.address, issueAmount)
       await token1.connect(owner).mint(addr1.address, issueAmount)
       await token0.connect(addr1).approve(rToken.address, issueAmount)
-      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
 
       // Seed excess stake
       await rsr.connect(owner).mint(addr1.address, issueAmount.mul(1e9))

@@ -202,7 +202,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       cTokenAmt = issueAmt.mul(50).div(1e10) // cTokens are 50:1 with their underlying
       await token0.connect(addr1).approve(rToken.address, cTokenAmt)
       await cWBTC.connect(addr1).approve(rToken.address, cTokenAmt)
-      await rToken.connect(addr1)['issue(uint256)'](issueAmt)
+      await rToken.connect(addr1).issue(issueAmt)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmt)
@@ -310,7 +310,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('10000e8'))
       await assetRegistry.refresh()
 
-      // Should be fully capitalized
+      // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
@@ -320,7 +320,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await assetRegistry.connect(owner).unregister(cWBTCCollateral.address)
       await basketHandler.refreshBasket()
 
-      // Should be in an undercapitalized state but SOUND
+      // Should be in an undercollateralized state but SOUND
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     })
@@ -335,7 +335,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       expect(tokens[0]).to.equal(token0.address)
       expect(tokens[1]).to.equal(wbtc.address)
 
-      // Should not be fully capitalized
+      // Should not be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(0)

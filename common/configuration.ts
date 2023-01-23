@@ -230,21 +230,24 @@ export interface IConfig {
   rTokenMaxTradeVolume: BigNumber
   shortFreeze: BigNumber
   longFreeze: BigNumber
-  rewardPeriod: BigNumber
   rewardRatio: BigNumber
   unstakingDelay: BigNumber
   tradingDelay: BigNumber
   auctionLength: BigNumber
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
-  issuanceRate: BigNumber
-  scalingRedemptionRate: BigNumber
-  redemptionRateFloor: BigNumber
+  issuanceThrottle: ThrottleParams
+  redemptionThrottle: ThrottleParams
 }
 
 export interface IRevenueShare {
   rTokenDist: BigNumber
   rsrDist: BigNumber
+}
+
+export interface ThrottleParams {
+  amtRate: BigNumber
+  pctRate: BigNumber
 }
 
 export interface IComponents {
@@ -305,13 +308,14 @@ export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
 export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)
 export const MAX_TARGET_AMT = BigNumber.from(10).pow(21)
 export const MAX_RATIO = BigNumber.from(10).pow(18)
-export const MAX_ISSUANCE_RATE = BigNumber.from(10).pow(18)
 export const MAX_TRADE_VOLUME = BigNumber.from(10).pow(48)
 export const MAX_MIN_TRADE_VOLUME = BigNumber.from(10).pow(29)
+export const MIN_THROTTLE_AMT_RATE = BigNumber.from(10).pow(18)
+export const MAX_THROTTLE_AMT_RATE = BigNumber.from(10).pow(48)
+export const MAX_THROTTLE_PCT_RATE = BigNumber.from(10).pow(18)
 
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)
 export const MAX_TRADING_DELAY = 31536000 // 1 year
 export const MAX_AUCTION_LENGTH = 604800 // 1 week
-export const MAX_PERIOD = 31536000 // 1 year
 export const MAX_UNSTAKING_DELAY = 31536000 // 1 year

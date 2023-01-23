@@ -347,7 +347,7 @@ contract DiffTestScenario {
 
     function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
         for (uint256 N = 0; N < 2; N++) {
-            p[N].rToken().issue(p[N].someAddr(recipientID), amount);
+            p[N].rToken().issueTo(p[N].someAddr(recipientID), amount);
         }
     }
 
@@ -383,34 +383,7 @@ contract DiffTestScenario {
             for (uint256 i = 0; i < tokens.length; i++) {
                 IERC20(tokens[i]).approve(address(p[N].rToken()), tokenAmounts[i]);
             }
-            p[N].rToken().issue(p[N].someAddr(recipientID), amount);
-        }
-    }
-
-    function cancelIssuance(uint256 seedID, bool earliest) public asSender {
-        for (uint256 N = 0; N < 2; N++) {
-            // filter endIDs mostly to valid IDs
-            address user = msg.sender;
-            RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(p[N].rToken()));
-            (uint256 left, uint256 right) = rtoken.idRange(user);
-            uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
-
-            // Do cancel
-            rtoken.cancel(id, earliest);
-        }
-    }
-
-    function vestIssuance(uint256 seedID) public asSender {
-        for (uint256 N = 0; N < 2; N++) {
-            // filter endIDs mostly to valid IDs
-            address user = msg.sender;
-            RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(p[N].rToken()));
-
-            (uint256 left, uint256 right) = rtoken.idRange(user);
-            uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
-
-            // Do vest
-            rtoken.vest(user, id);
+            p[N].rToken().issueTo(p[N].someAddr(recipientID), amount);
         }
     }
 
@@ -535,13 +508,6 @@ contract DiffTestScenario {
             if (which == 0) p[N].rTokenTrader().claimRewards();
             else if (which == 1) p[N].rsrTrader().claimRewards();
             else if (which == 2) p[N].backingManager().claimRewards();
-            else if (which == 3) p[N].rToken().claimRewards();
-        }
-    }
-
-    function sweepRewards() public {
-        for (uint256 N = 0; N < 2; N++) {
-            p[N].rToken().sweepRewards();
         }
     }
 
@@ -763,40 +729,10 @@ contract DiffTestScenario {
         }
     }
 
-    function setFurnacePeriod(uint256 seed) public {
-        for (uint256 N = 0; N < 2; N++) {
-            p[N].furnace().setPeriod(uint48(between(1, 31536000, seed)));
-            // 31536000 is Furnace.MAX_PERIOD
-        }
-    }
-
     function setFurnaceRatio(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
             p[N].furnace().setRatio(uint192(between(0, 1e18, seed)));
             // 1e18 is Furnace.MAX_RATIO
-        }
-    }
-
-    function setIssuanceRate(uint256 seed) public {
-        for (uint256 N = 0; N < 2; N++) {
-            TestIRToken(address(p[N].rToken())).setIssuanceRate(uint192(between(0, 1e18, seed)));
-            // 1e18 is RToken.MAX_ISSUANCE_RATE
-        }
-    }
-
-    function setScalingRedemptionRate(uint256 seed) public {
-        for (uint256 N = 0; N < 2; N++) {
-            TestIRToken token = TestIRToken(address(p[N].rToken()));
-            token.setScalingRedemptionRate(uint192(between(0, 1e18, seed)));
-            // 1e18 is RToken.MAX_REDEMPTION
-        }
-    }
-
-    function setRedemptionRateFloor(uint256 seed) public {
-        for (uint256 N = 0; N < 2; N++) {
-            TestIRToken token = TestIRToken(address(p[N].rToken()));
-            token.setRedemptionRateFloor(uint192(between(0, 1e18, seed)));
-            // 1e18 is RToken.MAX_REDEMPTION
         }
     }
 
@@ -824,12 +760,6 @@ contract DiffTestScenario {
                 uint192(between(0, 1e18, seed))
             );
             // 1e18 is Trading.MAX_TRADE_SLIPPAGE
-        }
-    }
-
-    function setStakeRewardPeriod(uint256 seed) public {
-        for (uint256 N = 0; N < 2; N++) {
-            TestIStRSR(address(p[N].stRSR())).setRewardPeriod(uint48(between(1, 31536000, seed)));
         }
     }
 
@@ -1079,10 +1009,16 @@ contract DiffTestScenario {
     }
 
     // RToken
+    function echidna_rTokenIssuanceLimitsEqual() external returns (bool) {
+        refreshBoth();
+
+        return p[0].rToken().issuanceAvailable() == p[1].rToken().issuanceAvailable();
+    }
+
     function echidna_rTokenRedemptionLimitsEqual() external returns (bool) {
         refreshBoth();
 
-        return p[0].rToken().redemptionLimit() == p[1].rToken().redemptionLimit();
+        return p[0].rToken().redemptionAvailable() == p[1].rToken().redemptionAvailable();
     }
 
     function echidna_basketsNeededEqual() external returns (bool) {

@@ -112,33 +112,6 @@ contract RevenueTraderP0Fuzz is RevenueTraderP0 {
 
 contract RTokenP0Fuzz is IRTokenFuzz, RTokenP0 {
     using FixLib for uint192;
-
-    // The range of IDs that would be valid as endID in cancel() or vest()
-    function idRange(address user) external view returns (uint256 left, uint256 right) {
-        // left: index of the first issuance for which processed is false (or .length)
-        left = 0;
-        while (left < issuances[user].length && issuances[user][left].processed) left++;
-        right = issuances[user].length;
-    }
-
-    // To be called only from MarketMock; this only works if MarketMock never enqueues any other
-    // issuances.
-    function fastIssue(uint256 amtRToken) external notPausedOrFrozen {
-        require(amtRToken > 0, "Cannot issue zero");
-
-        uint192 initAllVestAt = allVestAt;
-
-        issue(amtRToken);
-        uint256 index = issuances[_msgSender()].length - 1;
-        SlowIssuance storage iss = issuances[_msgSender()][index];
-        if (!iss.processed) {
-            iss.blockAvailableAt = toFix(block.number - 10);
-            tryVestIssuance(_msgSender(), index);
-        }
-
-        allVestAt = initAllVestAt;
-    }
-
     /// The tokens and underlying quantities needed to issue `amount` qRTokens.
     /// @dev this is distinct from basketHandler().quote() b/c the input is in RTokens, not BUs.
     /// @param amount {qRTok} quantity of qRTokens to quote.
