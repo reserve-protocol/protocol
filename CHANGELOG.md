@@ -38,26 +38,48 @@ event RTokenCreated(
 
 Deploy commit [d757d3a5a6097ae42c71fc03a7c787ec001d2efc](https://github.com/reserve-protocol/protocol/commit/d757d3a5a6097ae42c71fc03a7c787ec001d2efc)
 
-## 1.2.0
+## 2.0.0
 
-Candidate release for the "all clear" milestone
+Candidate release for the "all clear" milestone. There wasn't any real usage of the 1.0.0/1.1.0 releases; this is the first release that we are going to spend real effort to remain backwards compatible with.
 
 - Support multiple beneficiaries via the [`FacadeWrite`](contracts/facade/FacadeWrite.sol)
-- Add `RToken.issue(address recipient, uint256 amount)` (like `RToken.issue(uint256 amount)`) to support issuance from another smart contract
-- Add `FacadeRead.primeBasket()` + `FacadeRead.backupConfig()`
+- Add `RToken.issueTo(address recipient, uint256 amount)` and `RToken.redeemTo(address recipient, uint256 amount)` to support issuance/redemption to a different address than `msg.sender`
+- Add `RToken.issuanceAvailable()` + `RToken.redemptionAvailable()`
+- Add `FacadeRead.primeBasket()` + `FacadeRead.backupConfig()` views
+- Remove `IBasketHandler.nonce()` from interface, though it remains on `BasketHandler` contracts
+- Many external libs moved to internal
 - Switch from price point estimates to price ranges; all prices now have a `low` and `high`. Impacted interface functions:
   - `IAsset.price()`
   - `IBasketHandler.price()`
 - Replace `IAsset.fallbackPrice()` with `IAsset.lotPrice()`. The lot price is the current price when available, and a fallback price otherwise.
 - Introduce decaying fallback prices. Over a finite period of time the fallback price goes to zero, linearly.
-- Remove `IAsset.pricePerTarget()` from interface
-- Selectively sweep rewards from RToken
+- Remove `IAsset.pricePerTarget()` from asset interface
+- Remove rewards earning and sweeping from RToken
 - Add `safeMulDivCeil()` to `ITrading` traders. Use when overflow is possible from 2 locations:
   - [RecollateralizationLib.sol:L271](contracts/p1/mixins/RecollateralizationLib.sol)
   - [TradeLib.sol:L59](contracts/p1/mixins/TradeLib.sol)
 - Introduce config struct to encapsulate Collateral constructor params more neatly
 - In general it should be easier to write Collateral plugins. Implementors should _only_ ever have to override 4 functions: `tryPrice()`, `refPerTok()`, `targetPerRef()`, and `claimRewards()`.
 - Add `.div(1 - maxTradeSlippage)` to calculation of `shortfallSlippage` in [RecollateralizationLib.sol:L188](contracts/p1/mixins/RecollateralizationLib.sol).
+- FacadeRead: remove `.pendingIssuances()` + `.endIdForVest()`
 - Bugfix: Do not handout RSR rewards when no one is staked
 - Bugfix: Support small redemptions even when the RToken supply is massive
-- Bump component-wide `version()` getter to 1.2.0
+- Bump component-wide `version()` getter to 2.0.0
+- Remove non-atomic issuance
+- Replace redemption battery with issuance and redemption throttles
+  - `amtRate` valid range: `[1e18, 1e48]`
+  - `pctRate` valid range: `[0, 1e18]`
+- Fix Furnace/StRSR reward period to 12 seconds
+- Gov params:
+  - --`rewardPeriod`
+  - --`issuanceRate`
+  - ++`issuanceThrottle`
+  - ++`redemptionThrottle`
+- Events:
+  - --`RToken.IssuanceStarted`
+  - --`RToken.IssuancesCompleted`
+  - --`RToken.IssuancesCanceled`
+  - `Issuance( address indexed recipient, uint256 indexed amount, uint192 baskets )` -> `Issuance( address indexed issuer, address indexed recipient, uint256 indexed amount, uint192 baskets )`
+  - `Redemption(address indexed recipient, uint256 indexed amount, uint192 baskets )` -> `Redemption(address indexed redeemer, address indexed recipient, uint256 indexed amount, uint192 baskets )`
+  - ++`RToken.IssuanceThrottleSet`
+  - ++`RToken.RedemptionThrottleSet`
