@@ -1,15 +1,12 @@
 import fs from 'fs'
 import hre, { ethers } from 'hardhat'
-import { Contract } from 'ethers'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validatePrerequisites } from '../utils'
-import { RecollateralizationLibP1, PermitLib } from '../../../typechain'
+import { RecollateralizationLibP1 } from '../../../typechain'
 
 let tradingLib: RecollateralizationLibP1
-let rewardableLib: Contract
-let permitLib: PermitLib
 
 async function main() {
   // ==== Read Configuration ====
@@ -36,24 +33,10 @@ async function main() {
   await tradingLib.deployed()
   deployments.tradingLib = tradingLib.address
 
-  // Deploy RewardableLib external library
-  const RewardableLibFactory = await ethers.getContractFactory('RewardableLibP1')
-  rewardableLib = <Contract>await RewardableLibFactory.deploy()
-  await rewardableLib.deployed()
-  deployments.rewardableLib = rewardableLib.address
-
-  // Deploy PermitLib external library
-  const PermitLibFactory = await ethers.getContractFactory('PermitLib')
-  permitLib = <PermitLib>await PermitLibFactory.deploy()
-  await permitLib.deployed()
-  deployments.permitLib = permitLib.address
-
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     TradingLib: ${tradingLib.address}
-    RewardableLib: ${rewardableLib.address}
-    PermitLib: ${permitLib.address}
     Deployment file: ${deploymentFilename}`)
 }
 

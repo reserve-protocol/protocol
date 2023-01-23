@@ -47,24 +47,12 @@ interface IFacadeRead {
     }
 
     /// @param account The account for the query
-    /// @return All the pending RToken issuances for an account
-    /// @custom:view
-    function pendingIssuances(RTokenP1 rToken, address account)
-        external
-        view
-        returns (Pending[] memory);
-
-    /// @param account The account for the query
     /// @return All the pending StRSR unstakings for an account
     /// @custom:view
     function pendingUnstakings(RTokenP1 rToken, address account)
         external
         view
         returns (Pending[] memory);
-
-    /// Return the highest index that could be completed by a vestIssuances call.
-    /// @dev Use with `vest`
-    function endIdForVest(RTokenP1 rToken, address account) external view returns (uint256);
 
     /// Returns the prime basket
     /// @dev Indices are shared across return values

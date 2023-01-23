@@ -101,9 +101,6 @@ interface IBasketHandler is IComponent {
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
-    /// @return The basket nonce, a monotonically increasing unique identifier
-    function nonce() external view returns (uint48);
-
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);
 }

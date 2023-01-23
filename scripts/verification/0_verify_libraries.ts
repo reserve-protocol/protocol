@@ -27,22 +27,6 @@ async function main() {
     [],
     'contracts/p1/mixins/RecollateralizationLib.sol:RecollateralizationLibP1'
   )
-
-  /** ******************** Verify Rewardable Library ****************************************/
-  await verifyContract(
-    chainId,
-    deployments.rewardableLib,
-    [],
-    'contracts/p1/mixins/RewardableLib.sol:RewardableLibP1'
-  )
-
-  /** ******************** Verify PermitLib Library ****************************************/
-  await verifyContract(
-    chainId,
-    deployments.permitLib,
-    [],
-    'contracts/libraries/Permit.sol:PermitLib'
-  )
 }
 
 main().catch((error) => {

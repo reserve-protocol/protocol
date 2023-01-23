@@ -9,6 +9,6 @@ import "../interfaces/IVersioned.sol";
  */
 abstract contract Versioned is IVersioned {
     function version() public pure virtual override returns (string memory) {
-        return "1.2.0";
+        return "2.0.0";
     }
 }
