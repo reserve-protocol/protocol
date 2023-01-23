@@ -7,6 +7,9 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Throttle.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {
+    // 1 {qRTok} per hour or 5% supply of {qRTok} per hour
+    ThrottleLib.Params tParams = ThrottleLib.Params({ amtRate: 1e18, pctRate: toFix(5e16) });
+
     params = DeploymentParams({
         dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),
         minTradeVolume: 1e22,
@@ -19,8 +22,8 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         auctionLength: 1800, // 30 minutes
         backingBuffer: FixLib.divu(toFix(1), 10000), // 0.01%, 1 BIP
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
-        issuanceThrottle: ThrottleLib.Params({ amtRate: 1e18, pctRate: toFix(5e16) }), // 1 {qRTok} per hour or 5% supply of {qRTok} per hour
-        redemptionThrottle: ThrottleLib.Params({ amtRate: 1e18, pctRate: toFix(5e16) }) // 1 {qRTok} per hour or 5% supply of {qRTok} per hour
+        issuanceThrottle: tParams,
+        redemptionThrottle: tParams
     });
 }
 

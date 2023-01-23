@@ -15,6 +15,8 @@
     "deploy:run": "hardhat run scripts/deploy.ts",
     "deploy:confirm": "hardhat run scripts/confirm.ts",
     "deploy:verify_etherscan": "hardhat run scripts/verify_etherscan.ts",
+    "eslint": "eslint test/",
+    "eslint:fuzz": "eslint test/fuzz",
     "test:unit": "yarn test:plugins && yarn test:p0 && yarn test:p1",
     "test:fast": "bash tools/fast-test.sh",
     "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
