@@ -1,5 +1,5 @@
 import { Fixture } from 'ethereum-waffle'
-import { ContractFactory, Contract } from 'ethers'
+import { ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { IImplementations, IGovParams, networkConfig } from '../../../common/configuration'
@@ -23,7 +23,6 @@ import {
   GnosisTrade,
   IGnosis,
   MainP1,
-  PermitLib,
   RevenueTraderP1,
   RTokenP1,
   StRSRP1Votes,
@@ -77,10 +76,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
-  // Deploy PermitLib external library
-  const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
-  const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
-
   // Deploy FacadeRead
   const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
   const facade = <FacadeRead>await FacadeReadFactory.deploy()
@@ -117,7 +112,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-    libraries: { TradingLibP0: tradingLib.address, PermitLib: permitLib.address },
+    libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address)
@@ -128,10 +123,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
     const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
 
-    // Deploy RewardableLib external library
-    const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
-    const rewardableLib: Contract = <Contract>await RewardableLibFactory.deploy()
-
     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
 
@@ -139,7 +130,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       'BackingManagerP1',
       {
         libraries: {
-          RewardableLibP1: rewardableLib.address,
           RecollateralizationLibP1: tradingLib.address,
         },
       }
@@ -154,12 +144,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
     const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
 
-    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
-      'RevenueTraderP1',
-      {
-        libraries: { RewardableLibP1: rewardableLib.address },
-      }
-    )
+    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1')
     const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
@@ -171,14 +156,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
 
-    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
-      libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
-    })
+    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1')
     const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
 
-    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes', {
-      libraries: { PermitLib: permitLib.address },
-    })
+    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
     const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
 
     // Setup Implementation addresses

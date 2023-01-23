@@ -1,5 +1,5 @@
 import { Fixture } from 'ethereum-waffle'
-import { BigNumber, ContractFactory, Contract } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
@@ -36,7 +36,6 @@ import {
   IGnosis,
   MainP1,
   NonFiatCollateral,
-  PermitLib,
   RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
@@ -602,21 +601,21 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rTokenMaxTradeVolume: fp('1e6'), // $1M
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
-    rewardPeriod: bn('604800'), // 1 week
-    rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
+    rewardRatio: bn('1069671574938'), // approx. half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
-    issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    scalingRedemptionRate: fp('0.05'), // 5%
-    redemptionRateFloor: fp('1e6'), // 1M RToken
+    issuanceThrottle: {
+      amtRate: fp('1e6'), // 1M RToken
+      pctRate: fp('0.05'), // 5%
+    },
+    redemptionThrottle: {
+      amtRate: fp('1e6'), // 1M RToken
+      pctRate: fp('0.05'), // 5%
+    },
   }
-
-  // Deploy PermitLib external library
-  const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
-  const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
 
   // Deploy FacadeRead
   const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
@@ -654,7 +653,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-    libraries: { TradingLibP0: tradingLib.address, PermitLib: permitLib.address },
+    libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address)
@@ -665,10 +664,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
     const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
 
-    // Deploy RewardableLib external library
-    const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
-    const rewardableLib: Contract = <Contract>await RewardableLibFactory.deploy()
-
     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
 
@@ -676,7 +671,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       'BackingManagerP1',
       {
         libraries: {
-          RewardableLibP1: rewardableLib.address,
           RecollateralizationLibP1: tradingLib.address,
         },
       }
@@ -691,10 +685,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
     const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
 
-    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
-      'RevenueTraderP1',
-      { libraries: { RewardableLibP1: rewardableLib.address } }
-    )
+    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1')
     const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
@@ -706,14 +697,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
 
-    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
-      libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
-    })
+    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1')
     const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
 
-    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes', {
-      libraries: { PermitLib: permitLib.address },
-    })
+    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
     const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
 
     // Setup Implementation addresses

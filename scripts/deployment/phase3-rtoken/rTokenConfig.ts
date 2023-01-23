@@ -18,8 +18,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
           rTokenDist: bn(40), // 2/5 RToken
           rsrDist: bn(60), // 3/5 RSR
         },
-        rewardPeriod: bn('86400'), // 1 day
-        rewardRatio: fp('0.007701635339554948'), // approx. half life of 90 periods
+        rewardRatio: bn('1069671574938'), // approx. half life of 90 days
         unstakingDelay: bn('1209600'), // 2 weeks
         tradingDelay: bn('14400'), // (the delay _after_ default has been confirmed) 4 hours
         auctionLength: bn('900'), // 15 minutes
@@ -27,9 +26,14 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         maxTradeSlippage: fp('0.01'), // 1%
         shortFreeze: bn('259200'), // 3 days
         longFreeze: bn('2592000'), // 30 days
-        issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-        scalingRedemptionRate: fp('0.05'), // 5% per hour
-        redemptionRateFloor: fp('1e6'), // 1M RToken
+        issuanceThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
+        redemptionThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
       },
       votingDelay: bn(7200), // in blocks, 1 day
       votingPeriod: bn(14400), // in blocks, 2 days
@@ -51,8 +55,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
           rTokenDist: bn(40), // 2/5 RToken
           rsrDist: bn(60), // 3/5 RSR
         },
-        rewardPeriod: bn('86400'), // 1 day
-        rewardRatio: fp('0.007701635339554948'), // approx. half life of 90 periods
+        rewardRatio: bn('1069671574938'), // approx. half life of 90 days
         unstakingDelay: bn('1209600'), // 2 weeks
         tradingDelay: bn('14400'), // (the delay _after_ default has been confirmed) 4 hours
         auctionLength: bn('900'), // 15 minutes
@@ -60,9 +63,14 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         maxTradeSlippage: fp('0.01'), // 1%
         shortFreeze: bn('259200'), // 3 days
         longFreeze: bn('2592000'), // 30 days
-        issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-        scalingRedemptionRate: fp('0.05'), // 5% per hour
-        redemptionRateFloor: fp('1e6'), // 1M RToken
+        issuanceThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
+        redemptionThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
       },
       votingDelay: bn(7200), // in blocks, 1 day
       votingPeriod: bn(14400), // in blocks, 2 days
@@ -83,8 +91,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
           rTokenDist: bn(40), // 2/5 RToken
           rsrDist: bn(60), // 3/5 RSR
         },
-        rewardPeriod: bn('86400'), // 1 day
-        rewardRatio: fp('0.007701635339554948'), // approx. half life of 90 periods
+        rewardRatio: bn('1069671574938'), // approx. half life of 90 days
         unstakingDelay: bn('1209600'), // 2 weeks
         tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
         auctionLength: bn('900'), // 15 minutes
@@ -92,9 +99,14 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         maxTradeSlippage: fp('0.01'), // 1%
         shortFreeze: bn('259200'), // 3 days
         longFreeze: bn('2592000'), // 30 days
-        issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-        scalingRedemptionRate: fp('0.05'), // 5% per hour
-        redemptionRateFloor: fp('1e6'), // 1M RToken
+        issuanceThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
+        redemptionThrottle: {
+          amtRate: fp('1e6'), // 1M RToken
+          pctRate: fp('0.05'), // 5%
+        },
       },
       votingDelay: bn(5), // 5 blocks
       votingPeriod: bn(100), // 100 blocks

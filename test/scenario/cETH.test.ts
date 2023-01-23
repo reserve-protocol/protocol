@@ -194,7 +194,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       cTokenAmt = issueAmt.mul(50).div(1e10) // cTokens are 50:1 with their underlying
       await token0.connect(addr1).approve(rToken.address, cTokenAmt)
       await cETH.connect(addr1).approve(rToken.address, cTokenAmt)
-      await rToken.connect(addr1)['issue(uint256)'](issueAmt)
+      await rToken.connect(addr1).issue(issueAmt)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmt)

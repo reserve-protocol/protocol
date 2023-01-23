@@ -151,7 +151,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       issueAmt = initialBal.div(100)
       await token0.connect(addr1).approve(rToken.address, issueAmt)
       await eurt.connect(addr1).approve(rToken.address, issueAmt)
-      await rToken.connect(addr1)['issue(uint256)'](issueAmt)
+      await rToken.connect(addr1).issue(issueAmt)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmt)

@@ -61,12 +61,10 @@ async function main() {
   const deploymentFilename = getDeploymentFilename(chainId)
   const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
-  if (!deployments.tradingLib || !deployments.rewardableLib) {
+  if (!deployments.tradingLib) {
     throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.tradingLib))) {
     throw new Error(`TradingLib contract not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.rewardableLib))) {
-    throw new Error(`RewardableLib contract not found in network ${hre.network.name}`)
   }
 
   // ******************** Deploy Main ********************************/
@@ -112,7 +110,6 @@ async function main() {
   // 2. ******* Backing Manager ***********/
   const BackingMgrImplFactory = await ethers.getContractFactory('BackingManagerP1', {
     libraries: {
-      RewardableLibP1: deployments.rewardableLib,
       RecollateralizationLibP1: deployments.tradingLib,
     },
   })
@@ -175,9 +172,7 @@ async function main() {
 
   // 7. *********** RevenueTrader *************/
 
-  const RevTraderImplFactory = await ethers.getContractFactory('RevenueTraderP1', {
-    libraries: { RewardableLibP1: deployments.rewardableLib },
-  })
+  const RevTraderImplFactory = await ethers.getContractFactory('RevenueTraderP1')
   revTraderImpl = <RevenueTraderP1>await RevTraderImplFactory.connect(burner).deploy()
   await revTraderImpl.deployed()
 
@@ -197,9 +192,7 @@ async function main() {
   )
 
   // 8. *********** RToken *************/
-  const RTokenImplFactory = await ethers.getContractFactory('RTokenP1', {
-    libraries: { RewardableLibP1: deployments.rewardableLib, PermitLib: deployments.permitLib },
-  })
+  const RTokenImplFactory = await ethers.getContractFactory('RTokenP1')
   rTokenImpl = <RTokenP1>await RTokenImplFactory.connect(burner).deploy()
   await rTokenImpl.deployed()
 
@@ -207,9 +200,7 @@ async function main() {
 
   // 9. *********** StRSR *************/
 
-  const StRSRImplFactory = await ethers.getContractFactory('StRSRP1Votes', {
-    libraries: { PermitLib: deployments.permitLib },
-  })
+  const StRSRImplFactory = await ethers.getContractFactory('StRSRP1Votes')
   stRSRImpl = <StRSRP1Votes>await StRSRImplFactory.connect(burner).deploy()
   await stRSRImpl.deployed()
 

@@ -31,8 +31,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
 
+    uint48 public constant PERIOD = 12; // {s} 12 seconds; 1 block on PoS Ethereum
+    uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint48 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e18;
 
     // ==== ERC20Permit ====
@@ -95,7 +96,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     // ==== Gov Params ====
     uint48 public unstakingDelay;
-    uint48 public rewardPeriod;
     uint192 public rewardRatio;
 
     function init(
@@ -103,7 +103,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         string memory name_,
         string memory symbol_,
         uint48 unstakingDelay_,
-        uint48 rewardPeriod_,
         uint192 rewardRatio_
     ) public initializer {
         require(bytes(name_).length > 0, "name empty");
@@ -115,7 +114,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         payoutLastPaid = block.timestamp;
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         setUnstakingDelay(unstakingDelay_);
-        setRewardPeriod(rewardPeriod_);
         setRewardRatio(rewardRatio_);
         era = 1;
     }
@@ -430,13 +428,12 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function _payoutRewards() internal {
-        if (block.timestamp < payoutLastPaid + rewardPeriod) return;
+        if (block.timestamp < payoutLastPaid + PERIOD) return;
 
         uint192 initialExchangeRate = exchangeRate();
         uint256 payout;
 
-        uint48 numPeriods = (uint48(block.timestamp) - uint48(payoutLastPaid)) /
-            uint48(rewardPeriod);
+        uint48 numPeriods = (uint48(block.timestamp) - uint48(payoutLastPaid)) / uint48(PERIOD);
 
         // Do an actual payout if and only if stakers exist!
         if (totalStaked > 0) {
@@ -447,7 +444,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             // Apply payout to RSR backing
             rsrBacking += payout;
         }
-        payoutLastPaid += numPeriods * rewardPeriod;
+        payoutLastPaid += numPeriods * PERIOD;
         rsrRewardsAtLastPayout = rsrRewards();
 
         emit RewardsPaid(payout);
@@ -521,17 +518,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // ==== Gov Param Setters ====
 
     function setUnstakingDelay(uint48 val) public governance {
-        require(val > 0 && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
+        require(val > MIN_UNSTAKING_DELAY && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
-        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
-    }
-
-    function setRewardPeriod(uint48 val) public governance {
-        require(val > 0 && val <= MAX_REWARD_PERIOD, "invalid rewardPeriod");
-        emit RewardPeriodSet(rewardPeriod, val);
-        rewardPeriod = val;
-        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     function setRewardRatio(uint192 val) public governance {

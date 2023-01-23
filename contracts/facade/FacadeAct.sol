@@ -275,32 +275,6 @@ contract FacadeAct is IFacadeAct {
             }
         }
 
-        // check for a melting opportunity
-        {
-            FurnaceP1 furnace = FurnaceP1(address(main.furnace()));
-            uint48 lastPayout = furnace.lastPayout();
-            try furnace.melt() {
-                if (furnace.lastPayout() != lastPayout) {
-                    // melt
-                    return (address(furnace), abi.encodeWithSelector(furnace.melt.selector));
-                }
-            } catch {}
-        }
-
-        // check for a reward payout opportunity
-        {
-            uint48 payoutLastPaid = cache.stRSR.payoutLastPaid();
-            try cache.stRSR.payoutRewards() {
-                if (cache.stRSR.payoutLastPaid() != payoutLastPaid) {
-                    // payoutRewards
-                    return (
-                        address(cache.stRSR),
-                        abi.encodeWithSelector(cache.stRSR.payoutRewards.selector)
-                    );
-                }
-            } catch {}
-        }
-
         // check if there are reward tokens to claim
         {
             // save initial balances
@@ -351,12 +325,9 @@ contract FacadeAct is IFacadeAct {
 
     function claimAndSweepRewards(RTokenP1 rToken) public {
         IMain main = rToken.main();
-        rToken.claimRewards();
         main.backingManager().claimRewards();
         main.rTokenTrader().claimRewards();
         main.rsrTrader().claimRewards();
-
-        rToken.sweepRewards();
     }
 
     /// Calculates the minTradeSize for an asset based on the given minTradeVolume and price

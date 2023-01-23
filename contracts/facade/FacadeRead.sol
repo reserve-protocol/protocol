@@ -119,25 +119,6 @@ contract FacadeRead is IFacadeRead {
     // === Views ===
 
     /// @param account The account for the query
-    /// @return issuances All the pending RToken issuances for an account
-    /// @custom:view
-    function pendingIssuances(RTokenP1 rToken, address account)
-        external
-        view
-        returns (Pending[] memory issuances)
-    {
-        (, uint256 left, uint256 right) = rToken.issueQueues(account);
-        issuances = new Pending[](right - left);
-        for (uint256 i = 0; i < right - left; i++) {
-            RTokenP1.IssueItem memory issueItem = rToken.issueItem(account, i + left);
-            uint256 diff = i + left == 0
-                ? issueItem.amtRToken
-                : issueItem.amtRToken - rToken.issueItem(account, i + left - 1).amtRToken;
-            issuances[i] = Pending(i + left, issueItem.when, diff);
-        }
-    }
-
-    /// @param account The account for the query
     /// @return unstakings All the pending RToken issuances for an account
     /// @custom:view
     function pendingUnstakings(RTokenP1 rToken, address account)
@@ -162,39 +143,6 @@ contract FacadeRead is IFacadeRead {
 
             unstakings[i] = Pending(i + left, availableAt, diff);
         }
-    }
-
-    /// @return A non-inclusive ending index
-    /// @custom:view
-    function endIdForVest(RTokenP1 rToken, address account) external view returns (uint256) {
-        (uint256 queueLeft, uint256 queueRight) = rToken.queueBounds(account);
-        uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block} = D18{1} * {block}
-
-        RTokenP1.IssueItem memory item;
-
-        // Handle common edge cases in O(1)
-        if (queueLeft == queueRight) return queueLeft;
-
-        item = rToken.issueItem(account, queueLeft);
-        if (blockNumber < item.when) return queueLeft;
-
-        item = rToken.issueItem(account, queueRight - 1);
-        if (item.when <= blockNumber) return queueRight;
-
-        // find left and right (using binary search where always left <= right) such that:
-        //     left == right - 1
-        //     queue[left].when <= block.timestamp
-        //     right == queueRight  or  block.timestamp < queue[right].when
-        uint256 left = queueLeft;
-        uint256 right = queueRight;
-        while (left < right - 1) {
-            uint256 test = (left + right) / 2;
-            // In this condition: D18{block} < D18{block}
-            item = rToken.issueItem(account, test);
-            if (item.when <= blockNumber) left = test;
-            else right = test;
-        }
-        return right;
     }
 
     /// Returns the prime basket

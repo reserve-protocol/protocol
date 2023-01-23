@@ -125,7 +125,7 @@ describe('Assets contracts #fast', () => {
       await tok.connect(wallet).mint(wallet.address, amt)
       await tok.connect(wallet).approve(rToken.address, amt)
     }
-    await rToken.connect(wallet)['issue(uint256)'](amt)
+    await rToken.connect(wallet).issue(amt)
 
     AssetFactory = await ethers.getContractFactory('Asset')
     RTokenAssetFactory = await ethers.getContractFactory('RTokenAsset')
