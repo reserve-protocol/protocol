@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig } from '../../common/configuration'
+import { IConfig, MAX_DELAY_UNTIL_DEFAULT } from '../../common/configuration'
 import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
@@ -306,6 +306,55 @@ describe('Collateral contracts', () => {
           compoundMock.address
         )
       ).to.be.revertedWith('delayUntilDefault zero')
+    })
+
+    it('Should not allow long delayUntilDefault', async () => {
+      await expect(
+        FiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await tokenCollateral.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: token.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: MAX_DELAY_UNTIL_DEFAULT + 1,
+        })
+      ).to.be.revertedWith('delayUntilDefault too long')
+
+      // ATokenFiatCollateral
+      await expect(
+        ATokenFiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await tokenCollateral.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: aToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: MAX_DELAY_UNTIL_DEFAULT + 1,
+        })
+      ).to.be.revertedWith('delayUntilDefault too long')
+
+      // CTokenFiatCollateral
+      await expect(
+        CTokenFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await tokenCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: cToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: MAX_DELAY_UNTIL_DEFAULT + 1,
+          },
+          compoundMock.address
+        )
+      ).to.be.revertedWith('delayUntilDefault too long')
     })
 
     it('Should not allow out of range oracle error', async () => {
@@ -686,78 +735,6 @@ describe('Collateral contracts', () => {
           .to.emit(coll, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
         expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
-      }
-    })
-
-    it('Maintains SOUND status if soft default is beyond max timestamp', async () => {
-      const delayUntilDefaultPrev: BigNumber = await tokenCollateral.delayUntilDefault()
-
-      // Update delay until default for one of the collaterals
-      const noDefaultTokenCollateral: FiatCollateral = <FiatCollateral>(
-        await FiatCollateralFactory.deploy({
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: await tokenCollateral.chainlinkFeed(),
-          oracleError: ORACLE_ERROR,
-          erc20: await tokenCollateral.erc20(),
-          maxTradeVolume: await tokenCollateral.maxTradeVolume(),
-          oracleTimeout: await tokenCollateral.oracleTimeout(),
-          targetName: await tokenCollateral.targetName(),
-          defaultThreshold: DEFAULT_THRESHOLD,
-          delayUntilDefault: MAX_UINT48.sub(bn(1)), // should not mark IFFY
-        })
-      )
-
-      // Refresh status
-      await noDefaultTokenCollateral.refresh()
-
-      // Register new collateral
-      await assetRegistry.connect(owner).swapRegistered(noDefaultTokenCollateral.address)
-
-      // Check initial state
-      expect(await noDefaultTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      expect(await noDefaultTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT48)
-      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
-      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
-
-      // Depeg one of the underlying tokens - Reducing price 20%
-      // Should also impact on the aToken and cToken
-      await setOraclePrice(noDefaultTokenCollateral.address, bn('8e7')) // -20%
-
-      // Force updates - Should update whenDefault and status
-      let expectedDefaultTimestamp: BigNumber
-
-      // The new collateral maintains SOUND status
-      await expect(noDefaultTokenCollateral.refresh()).to.not.emit(
-        noDefaultTokenCollateral,
-        'CollateralStatusChanged'
-      )
-      expect(await noDefaultTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await noDefaultTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
-
-      await expect(usdcCollateral.refresh()).to.not.emit(usdcCollateral, 'CollateralStatusChanged')
-      expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT48)
-
-      // Only the AToken and CToken would be marked as IFFY
-      const softDefaultCollaterals = [aTokenCollateral, cTokenCollateral]
-      for (const coll of softDefaultCollaterals) {
-        // Set next block timestamp - for deterministic result
-        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
-
-        expectedDefaultTimestamp = bn(await getLatestBlockTimestamp())
-          .add(1)
-          .add(delayUntilDefaultPrev)
-
-        await expect(coll.refresh())
-          .to.emit(coll, 'CollateralStatusChanged')
-          .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-        expect(await coll.status()).to.equal(CollateralStatus.IFFY)
         expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
       }
     })
