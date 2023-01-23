@@ -54,7 +54,7 @@ import {
   USDCMock,
   NonFiatCollateral,
 } from '../typechain'
-import { advanceTime } from './utils/time'
+import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
 
 export enum Implementation {
@@ -639,7 +639,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   }
 
   // Charge throttle
-  await advanceTime(3600)
+  await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
 
   return {
     rsr,
