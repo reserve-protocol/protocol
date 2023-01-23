@@ -1039,7 +1039,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await usdpCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await tusdCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // Non price Fiat collateral
@@ -1107,7 +1107,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // CTokens Collateral with no price
@@ -1183,7 +1183,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await aBusdCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // AToken collateral with no price
@@ -1244,7 +1244,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await wbtcCollateral.refresh()
       expect(await wbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // Non-Fiat collateral with no price
@@ -1315,7 +1315,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await cWBTCCollateral.refresh()
       expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // CTokens Collateral with no price
@@ -1530,7 +1530,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Refresh should mark status IFFY
       await eurtCollateral.refresh()
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // Non price EURO Fiat collateral

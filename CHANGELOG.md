@@ -83,3 +83,5 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
   - `Redemption(address indexed recipient, uint256 indexed amount, uint192 baskets )` -> `Redemption(address indexed redeemer, address indexed recipient, uint256 indexed amount, uint192 baskets )`
   - ++`RToken.IssuanceThrottleSet`
   - ++`RToken.RedemptionThrottleSet`
+- Collateral default threshold: 5% -> 1% (+ include oracleError)
+-

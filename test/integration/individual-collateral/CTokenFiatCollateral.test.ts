@@ -104,7 +104,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     },
   }
 
-  const defaultThreshold = fp('0.05') // 5%
+  const defaultThreshold = fp('0.01') // 1%
   const delayUntilDefault = bn('86400') // 24h
 
   let initialBal: BigNumber

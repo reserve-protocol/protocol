@@ -41,7 +41,7 @@ import { expectTrade, getTrade } from '../utils/trades'
 import { expectPrice, expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 const MAX_TRADE_VOLUME = fp('1e7') // $10M
 

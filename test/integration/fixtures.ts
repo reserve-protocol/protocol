@@ -169,7 +169,7 @@ async function collateralFixture(
 
   const EURFiatCollateralFactory = await ethers.getContractFactory('EURFiatCollateral')
 
-  const defaultThreshold = fp('0.05') // 5%
+  const defaultThreshold = fp('0.01') // 1%
   const delayUntilDefault = bn('86400') // 24h
 
   // Deploy all potential collateral assets
