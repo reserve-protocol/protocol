@@ -2,7 +2,7 @@
 
 How to fuzz with echidna-parade on a Google Cloud VM instance.
 
-# Get a VM instance
+# 1) Get a VM instance
 
 This is mostly from the GCP [compute engine docs](https://cloud.google.com/compute/docs/instances/create-start-instance)
 
@@ -19,8 +19,11 @@ gcloud config list project
 gcloud config set compute/region us-central1 
 gcloud config set compute/zone us-central1-a
 ```
+NOTE: **google cloud limits the number of n2 CPU cores that can be used in a given region to 8**. therefore, be sure to put each vm in a new region (or a maximum of 2 vms in 1 region). [gcloud regions](https://cloud.google.com/compute/docs/regions-zones)
 
-## Create VM
+## Setup a VM
+It is recommended to run each fuzzing scenario (NormalOps, RebalancingOps, ChaosOps) on its own VM.
+### Option A: Create a new VM
 
 Seems like N2 is the best instance type. I've done a little bit of performance testing here, but it's not totally obvious. One issue is that each project is limited to a quote of 8 N2 CPUs by default; 
 
@@ -34,6 +37,12 @@ gcloud compute instances create difftest \
   --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
 ```
 
+### Option B: Create a VM from existing Machine Image
+We currently (1/24/23) have a pre-cooked machine image that can be used for fuzzing.  Use the following command to launch a VM using this image.  If you setup a VM from an existing machine image, you can skip step 2 and go directly to step 3.
+```bash
+gcloud compute instances create fuzz-normal --source-machine-image=fuzzbox --zone=us-west1-a
+```
+
 ## Grab ssh metadata and log in
 
 ```bash
@@ -41,7 +50,7 @@ gcloud compute config-ssh
 ssh ${NODENAME}.us-central1-a.rtoken-fuzz
 ```
 
-# Install everything on the VM
+# 2) Install everything on the VM
 ## Initial setup
 
 I drop in my personal setup, for tmux and emacs QoL improvements 
@@ -92,7 +101,7 @@ sudo bash add-google-cloud-ops-agent-repo.sh --also-install
 # Get our code
 git clone https://github.com/reserve-protocol/protocol.git
 cd protocol
-git switch fuzz-pricing
+git switch fuzz
 
 # Install local dependencies. --force is necessary; seems to work fine.
 npm install --force 
@@ -108,7 +117,14 @@ echidna-test . --config tools/echidna.config.yml \
 
 <!-- HERE -->
 
-# Launch Fuzzing!
+# 3) Launch Fuzzing!
+
+Be sure you are on the latest commit of the fuzzing branch.
+```bash
+cd protocol
+git checkout fuzz
+git pull
+```
 
 echidna-parade follows an initial run of echidna with lots and lots of further echidna generations. Each of those generations has further randomized launch parameters, so that the overall test can explore more deeply. Each generation inherits the corpus improvements from previous generations, so they can all run increasingly detailed tests.
 
