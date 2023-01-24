@@ -128,18 +128,12 @@ git pull
 
 echidna-parade follows an initial run of echidna with lots and lots of further echidna generations. Each of those generations has further randomized launch parameters, so that the overall test can explore more deeply. Each generation inherits the corpus improvements from previous generations, so they can all run increasingly detailed tests.
 
-Edit `protocol/tools/echinda.config.yml`:
-
-- set seqLen: 100
-- set testLimit: 10000000
-- remove solcArgs
-
-Write `launch-parade.sh`:
+Write `launch-parade.sh` (should already exist if using the `fuzzbox` gcp machine image):
 
 ``` bash
 #!/bin/bash
 nice echidna-parade protocol --name parade \
-    --contract ${SCENARIO} \
+    --contract $1 \
     --config protocol/tools/echidna.config.yml \
     --ncores 4 \
     --timeout -1 \
@@ -148,9 +142,16 @@ nice echidna-parade protocol --name parade \
     --clean-results
 ```
 
-Back in the shell:
+Back in the shell, run parade for a scenario:
 
 ``` bash
 tmux  # Easy way to ensure you're in a detachable session.
-bash launch-parade.sh
+bash launch-parade.sh NormalOpsScenario
 ```
+The possible scenarios are:
+- NormalOpsScenario
+- ChaosOpsScenario
+- RebalancingScenario
+
+
+NOTE: tmux `Ctrl-b` has been mapped to `Ctrl-z`
