@@ -8,6 +8,8 @@ import "./FiatCollateral.sol";
 import "./Asset.sol";
 import "./OracleLib.sol";
 
+uint48 constant MAX_DELAY_UNTIL_DEFAULT = 1209600; // {s} 2 weeks
+
 struct CollateralConfig {
     uint48 priceTimeout; // {s} The number of seconds over which saved prices decay
     AggregatorV3Interface chainlinkFeed; // Feed units: {target/ref}
@@ -74,6 +76,7 @@ contract FiatCollateral is ICollateral, Asset {
         if (config.defaultThreshold > 0) {
             require(config.delayUntilDefault > 0, "delayUntilDefault zero");
         }
+        require(config.delayUntilDefault <= 1209600, "delayUntilDefault too long");
 
         targetName = config.targetName;
         delayUntilDefault = config.delayUntilDefault;

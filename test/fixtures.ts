@@ -161,7 +161,7 @@ async function collateralFixture(
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
-  const defaultThreshold = fp('0.05') // 5%
+  const defaultThreshold = fp('0.01') // 1%
   const delayUntilDefault = bn('86400') // 24h
 
   const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
