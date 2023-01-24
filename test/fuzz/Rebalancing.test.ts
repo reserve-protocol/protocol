@@ -101,7 +101,7 @@ describe('The Rebalancing scenario', () => {
     await helpers.impersonateAccount(carolAddr)
     await helpers.impersonateAccount(main.address)
 
-    await helpers.mine(300, {interval: 12}) // charge battery
+    await helpers.mine(300, { interval: 12 }) // charge battery
 
     startState = await helpers.takeSnapshot()
   })
@@ -1265,7 +1265,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('can manage scenario states - basket switch - covered by RSR', async () => {
-    await scenario.setIssuanceThrottleParams({amtRate: fp('30000'), pctRate: fp('0.05')})
+    await scenario.setIssuanceThrottleParams({ amtRate: fp('30000'), pctRate: fp('0.05') })
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
@@ -1436,7 +1436,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('can manage scenario states - collateral default - partially covered by RSR', async () => {
-    await scenario.setIssuanceThrottleParams({amtRate: fp('400000'), pctRate: fp('0.05')})
+    await scenario.setIssuanceThrottleParams({ amtRate: fp('400000'), pctRate: fp('0.05') })
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 

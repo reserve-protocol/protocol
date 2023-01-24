@@ -101,7 +101,7 @@ describe('The Chaos Operations scenario', () => {
     await helpers.impersonateAccount(carolAddr)
     await helpers.impersonateAccount(main.address)
 
-    await helpers.mine(300, {interval: 12}) // charge battery
+    await helpers.mine(300, { interval: 12 }) // charge battery
 
     startState = await helpers.takeSnapshot()
   })

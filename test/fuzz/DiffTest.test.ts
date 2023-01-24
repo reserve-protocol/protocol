@@ -97,7 +97,7 @@ describe('The Differential Testing scenario', () => {
     await helpers.impersonateAccount(p0.address)
     await helpers.impersonateAccount(p1.address)
 
-    await helpers.mine(300, {interval: 12}) // charge battery
+    await helpers.mine(300, { interval: 12 }) // charge battery
 
     startState = await helpers.takeSnapshot()
   })

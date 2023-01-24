@@ -6,7 +6,7 @@ import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../../test/utils/impersonation'
 import { RoundingMode, TradeStatus, CollateralStatus } from '../../common/constants'
-import { advanceTime, advanceBlocks } from '../../test/utils/time'
+import { advanceTime } from '../../test/utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
@@ -101,7 +101,7 @@ describe('The Normal Operations scenario', () => {
     await helpers.impersonateAccount(carolAddr)
     await helpers.impersonateAccount(main.address)
 
-    await helpers.mine(300, {interval: 12}) // charge battery
+    await helpers.mine(300, { interval: 12 }) // charge battery
 
     startState = await helpers.takeSnapshot()
   })

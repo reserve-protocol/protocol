@@ -112,6 +112,7 @@ contract RevenueTraderP0Fuzz is RevenueTraderP0 {
 
 contract RTokenP0Fuzz is IRTokenFuzz, RTokenP0 {
     using FixLib for uint192;
+    
     /// The tokens and underlying quantities needed to issue `amount` qRTokens.
     /// @dev this is distinct from basketHandler().quote() b/c the input is in RTokens, not BUs.
     /// @param amount {qRTok} quantity of qRTokens to quote.
