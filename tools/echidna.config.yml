@@ -11,9 +11,9 @@ testMode: "property"
 prefix: echidna_
 
 # seqLen defines how many transactions are in a test sequence
-seqLen: 50
+seqLen: 100
 # testLimit is the number of test sequences to run
-testLimit: 1000
+testLimit: 10000000
 
 # estimateGas makes echidna perform analysis of maximum gas costs for functions (experimental)
 # estimateGas: false
