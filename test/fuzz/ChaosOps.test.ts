@@ -101,6 +101,8 @@ describe('The Chaos Operations scenario', () => {
     await helpers.impersonateAccount(carolAddr)
     await helpers.impersonateAccount(main.address)
 
+    await helpers.mine(300, {interval: 12}) // charge battery
+
     startState = await helpers.takeSnapshot()
   })
 
@@ -320,46 +322,6 @@ describe('The Chaos Operations scenario', () => {
       expect(alice_bal.sub(alice_bal_init)).to.equal(7n * exa)
     })
 
-    it('allows users to cancel rtoken issuance', async () => {
-      let [left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right).to.equal(left)
-
-      // 1e6 > the min block issuance limit, so this is a slow issuance
-      await scenario.connect(alice).issue(1_000_000n * exa)
-
-      // ensure that there's soemthing to cancel
-      ;[left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right.sub(left)).to.equal(1)
-
-      await scenario.connect(alice).cancelIssuance(1, true)
-      ;[left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right).to.equal(left)
-    })
-
-    it('allows users to vest rtoken issuance', async () => {
-      const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
-
-      // As Alice, issue 1e6 rtoken
-      // 1e6 > 1e5, the min block issuance limit, so this is a slow issuance
-      await scenario.connect(alice).issue(1_000_000n * exa)
-
-      // Now there are outstanding issuances
-      let [left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right.sub(left)).to.equal(1)
-
-      // Wait, then vest as Alice
-      // 1e6 / 1e5 == 10 blocks
-      await helpers.mine(100)
-      await scenario.connect(alice).vestIssuance(1)
-
-      // Now there are no outstanding issuances
-      ;[left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right).to.equal(left)
-      // and Alice has her tokens
-      const alice_bal = await comp.rToken.balanceOf(aliceAddr)
-      expect(alice_bal.sub(alice_bal_init)).to.equal(1_000_000n * exa)
-    })
-
     it('allows users to redeem rtokens', async () => {
       const bal0 = await comp.rToken.balanceOf(aliceAddr)
 
@@ -507,7 +469,7 @@ describe('The Chaos Operations scenario', () => {
       expect(await c0.rewardAmt()).to.equal(2n * exa)
 
       // claim rewards for each rewardable contract, assert balance changes
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 3; i++) {
         const bal0 = await r0.balanceOf(rewardables[i])
         await scenario.claimRewards(i) // claim rewards
         const bal1 = await r0.balanceOf(rewardables[i])
@@ -516,9 +478,7 @@ describe('The Chaos Operations scenario', () => {
       }
 
       const bal2 = await r0.balanceOf(comp.backingManager.address)
-      await scenario.sweepRewards() // sweep will sweep only the rewards at rtoken.
-      const bal3 = await r0.balanceOf(comp.backingManager.address)
-      expect(bal3.sub(bal2)).to.equal(2n * exa)
+      expect(bal2).to.equal(2n * exa)
     })
 
     // return a (mapping string => BigNumber)
@@ -1172,12 +1132,9 @@ describe('The Chaos Operations scenario', () => {
         const token = await ConAt('ERC20Fuzz', tokenAddrs[i])
         await token.connect(alice).approve(comp.rToken.address, amts[i])
       }
+
       // Issue RTokens
       await scenario.connect(alice).justIssue(15000n * exa)
-
-      // Wait, then vest as Alice
-      await helpers.mine(100)
-      await scenario.connect(alice).vestIssuance(1)
 
       // No c0 tokens in backing manager
       expect(await c0.balanceOf(comp.backingManager.address)).to.equal(0)
@@ -1294,8 +1251,6 @@ describe('The Chaos Operations scenario', () => {
     }
     // Issue RTokens and succeed
     await scenario.connect(alice).justIssue(20000n * exa)
-
-    await comp.rToken.assertIssuances(aliceAddr)
 
     expect(await scenario.echidna_rTokenInvariants()).to.be.true
   })

@@ -533,7 +533,7 @@ contract ChaosOpsScenario {
     }
 
     function claimRewards(uint8 which) public {
-        which %= 4;
+        which %= 3;
         if (which == 0) main.rTokenTrader().claimRewards();
         else if (which == 1) main.rsrTrader().claimRewards();
         else if (which == 2) main.backingManager().claimRewards();

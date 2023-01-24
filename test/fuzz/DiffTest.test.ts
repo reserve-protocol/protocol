@@ -97,6 +97,8 @@ describe('The Differential Testing scenario', () => {
     await helpers.impersonateAccount(p0.address)
     await helpers.impersonateAccount(p1.address)
 
+    await helpers.mine(300, {interval: 12}) // charge battery
+
     startState = await helpers.takeSnapshot()
   })
 
@@ -312,16 +314,6 @@ describe('The Differential Testing scenario', () => {
       await scenario.connect(alice).stake(1)
       await advanceTime(86400)
       expect(await scenario.callStatic.echidna_bhEqualThunks()).to.be.true
-    })
-    it('cancel does assetRegistry.refresh() only in P1', async () => {
-      // Cause a default
-      await scenario.swapRegisteredAsset(0, 0, 0, 0, false, false)
-      await scenario.refreshBasket()
-      // Set error state for something in the basket
-      await scenario.setErrorState(5, true, true)
-      await scenario.connect(alice).cancelIssuance(0, false)
-      await advanceTime(86400)
-      expect(await scenario.callStatic.echidna_bhEqualPrices()).to.be.true
     })
     it('assetsEqualPrices was not wise to rtokenAsset.lotPrice() failing', async () => {
       await scenario.connect(alice).issueTo(1, 2)

@@ -357,6 +357,7 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
 
     function invariantsHold() external view returns (bool) {
         requireValidBUExchangeRate();
+        return true;
     }
 }
 

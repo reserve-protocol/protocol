@@ -6,7 +6,9 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDistributor.sol";
+import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/libraries/Throttle.sol";
 
 import "contracts/fuzz/CollateralMock.sol";
 
@@ -550,7 +552,7 @@ contract RebalancingScenario {
     }
 
     function claimRewards(uint8 which) public {
-        which %= 4;
+        which %= 3;
         if (which == 0) main.rTokenTrader().claimRewards();
         else if (which == 1) main.rsrTrader().claimRewards();
         else if (which == 2) main.backingManager().claimRewards();
@@ -824,6 +826,14 @@ contract RebalancingScenario {
 
     function setLongFreeze(uint48 freeze) public {
         main.setLongFreeze(freeze);
+    }
+
+    function setIssuanceThrottleParams(ThrottleLib.Params calldata params) public {
+        TestIRToken(address(main.rToken())).setIssuanceThrottleParams(params);
+    }
+
+    function setRedemptionThrottleParams(ThrottleLib.Params calldata params) public {
+        TestIRToken(address(main.rToken())).setRedemptionThrottleParams(params);
     }
 
     // Grant/Revoke Roles

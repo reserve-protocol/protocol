@@ -101,6 +101,8 @@ describe('The Normal Operations scenario', () => {
     await helpers.impersonateAccount(carolAddr)
     await helpers.impersonateAccount(main.address)
 
+    await helpers.mine(300, {interval: 12}) // charge battery
+
     startState = await helpers.takeSnapshot()
   })
 
@@ -296,46 +298,6 @@ describe('The Normal Operations scenario', () => {
       expect(alice_bal.sub(alice_bal_init)).to.equal(7n * exa)
     })
 
-    it('allows users to cancel rtoken issuance', async () => {
-      let [left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right).to.equal(left)
-
-      // 1e6 > the min block issuance limit, so this is a slow issuance
-      await scenario.connect(alice).issue(1_000_000n * exa)
-
-      // ensure that there's soemthing to cancel
-      ;[left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right.sub(left)).to.equal(1)
-
-      await scenario.connect(alice).cancelIssuance(1, true)
-      ;[left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right).to.equal(left)
-    })
-
-    it('allows users to vest rtoken issuance', async () => {
-      const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
-
-      // As Alice, issue 1e6 rtoken
-      // 1e6 > 1e5, the min block issuance limit, so this is a slow issuance
-      await scenario.connect(alice).issue(1_000_000n * exa)
-
-      // Now there are outstanding issuances
-      let [left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right.sub(left)).to.equal(1)
-
-      // Wait, then vest as Alice
-      // 1e6 / 1e5 == 10 blocks
-      await advanceBlocks(100)
-      await scenario.connect(alice).vestIssuance(1)
-
-      // Now there are no outstanding issuances
-      ;[left, right] = await comp.rToken.idRange(aliceAddr)
-      expect(right).to.equal(left)
-      // and Alice has her tokens
-      const alice_bal = await comp.rToken.balanceOf(aliceAddr)
-      expect(alice_bal.sub(alice_bal_init)).to.equal(1_000_000n * exa)
-    })
-
     it('allows users to redeem rtokens', async () => {
       const bal0 = await comp.rToken.balanceOf(aliceAddr)
 
@@ -480,7 +442,7 @@ describe('The Normal Operations scenario', () => {
       await scenario.updateRewards(0, 2n * exa) // set C0 rewards to 2exa R0
 
       // claim rewards for each rewardable contract, assert balance changes
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 3; i++) {
         const bal0 = await r0.balanceOf(rewardables[i])
         await scenario.claimRewards(i) // claim rewards
         const bal1 = await r0.balanceOf(rewardables[i])
@@ -489,9 +451,7 @@ describe('The Normal Operations scenario', () => {
       }
 
       const bal2 = await r0.balanceOf(comp.backingManager.address)
-      await scenario.sweepRewards() // sweep will sweep only the rewards at rtoken.
-      const bal3 = await r0.balanceOf(comp.backingManager.address)
-      expect(bal3.sub(bal2)).to.equal(2n * exa)
+      expect(bal2).to.equal(2n * exa)
     })
 
     // return a (mapping string => BigNumber)
