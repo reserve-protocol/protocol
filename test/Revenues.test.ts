@@ -4,7 +4,13 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
+import {
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+  CollateralStatus,
+} from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, fp, near } from '../common/numbers'
 import {
@@ -440,12 +446,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await setOraclePrice(collateral0.address, bn('0.5e8'))
         await collateral0.refresh()
         await advanceTime((await collateral0.delayUntilDefault()).toString())
+        expect(await collateral0.status()).to.equal(CollateralStatus.DISABLED)
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
 
         // Trade should have extremely nonzero worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
-        expect(await trade.worstCasePrice()).to.be.gte(fp('0.95'))
+        expect(await trade.initBal()).to.equal(issueAmount)
+        expect(await trade.worstCasePrice()).to.be.gte(fp('0.775'))
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {

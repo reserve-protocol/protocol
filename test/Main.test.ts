@@ -1559,7 +1559,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // expect(toks.length).to.equal(0)
     })
 
-    it('Should exclude defaulted collateral when checking basket price', async () => {
+    it('Should include value of defaulted collateral when checking basket price', async () => {
       // Check status and price
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
@@ -1580,10 +1580,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
-      // Check BU price
-      await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR, true)
+      // Check BU price -- 1/4 of the basket has lost half its value
+      await expectPrice(basketHandler.address, fp('0.875'), ORACLE_ERROR, true)
 
-      // Price should recover after basket change
+      // Set collateral1 price to invalid value that should produce [0, FIX_MAX]
+      await setOraclePrice(collateral1.address, MAX_UINT192)
+
+      // Check BU price -- 1/4 of the basket has lost all its value
+      const asset = await ethers.getContractAt('Asset', basketHandler.address)
+      const [lowPrice, highPrice] = await asset.price()
+      expect(lowPrice).to.be.closeTo(fp('0.75'), fp('0.75').div(100)) // within 1%
+      expect(highPrice).to.equal(MAX_UINT192)
 
       // Set basket config
       await expect(
