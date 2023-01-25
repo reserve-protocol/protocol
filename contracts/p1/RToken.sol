@@ -120,7 +120,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         // Downcast is safe because an actual quantity of qBUs fits in uint192
         uint192 amtBaskets = uint192(
-            supply > 0 ? mulDiv256(basketsNeeded, amount, supply) : amount
+            supply > 0 ? mulDiv256(basketsNeeded, amount, supply, CEIL) : amount
         );
         emit Issuance(issuer, recipient, amount, amtBaskets);
 
