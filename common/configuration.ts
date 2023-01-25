@@ -319,3 +319,4 @@ export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)
 export const MAX_TRADING_DELAY = 31536000 // 1 year
 export const MAX_AUCTION_LENGTH = 604800 // 1 week
 export const MAX_UNSTAKING_DELAY = 31536000 // 1 year
+export const MAX_DELAY_UNTIL_DEFAULT = 1209600 // 2 weeks

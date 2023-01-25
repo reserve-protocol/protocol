@@ -1691,7 +1691,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         maxTradeVolume: fp('1e36'),
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.05'),
+        defaultThreshold: fp('0.01'),
         delayUntilDefault: bn(86400),
       })
       await assetRegistry.register(coll.address)

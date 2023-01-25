@@ -84,3 +84,4 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
   - ++`RToken.IssuanceThrottleSet`
   - ++`RToken.RedemptionThrottleSet`
 - Allow redemption while DISABLED
+- Collateral default threshold: 5% -> 1% (+ include oracleError)

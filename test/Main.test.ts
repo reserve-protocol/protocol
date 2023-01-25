@@ -66,7 +66,7 @@ import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime } from './utils/time'
 import { useEnv } from '#/utils/env'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
 const createFixtureLoader = waffle.createFixtureLoader
 

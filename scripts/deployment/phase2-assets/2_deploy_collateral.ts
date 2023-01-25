@@ -47,7 +47,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', daiCollateral)).refresh()
@@ -66,7 +66,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', usdcCollateral)).refresh()
@@ -85,7 +85,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', usdtCollateral)).refresh()
@@ -104,7 +104,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', usdpCollateral)).refresh()
@@ -123,7 +123,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.013').toString(), // 1.3%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', tusdCollateral)).refresh()
@@ -140,7 +140,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.015').toString(), // 1.5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', busdCollateral)).refresh()
@@ -184,7 +184,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', aDaiCollateral)).refresh()
@@ -227,7 +227,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', aUsdcCollateral)).refresh()
@@ -270,7 +270,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', aUsdtCollateral)).refresh()
@@ -312,7 +312,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.015').toString(), // 1.5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', aBusdCollateral)).refresh()
@@ -355,7 +355,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', aUsdpCollateral)).refresh()
@@ -375,7 +375,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
@@ -396,7 +396,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
@@ -417,7 +417,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
@@ -438,7 +438,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
@@ -464,7 +464,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('BTC'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
@@ -505,7 +505,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: ethers.utils.formatBytes32String('BTC'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', wBTCCollateral)).refresh()
@@ -545,7 +545,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: ethers.utils.formatBytes32String('EURO'),
-    defaultThreshold: fp('0.05').toString(), // 5%
+    defaultThreshold: fp('0.03').toString(), // 3%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await (<Asset>await ethers.getContractAt('Asset', eurtCollateral)).refresh()

@@ -72,7 +72,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let ATokenCollateralFactory: ContractFactory
   let CTokenCollateralFactory: ContractFactory
 
-  const DEFAULT_THRESHOLD = fp('0.05') // 5%
+  const DEFAULT_THRESHOLD = fp('0.01') // 1%
   const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
   const MAX_UOA = fp('1e29')
 
@@ -739,7 +739,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: MAX_ORACLE_TIMEOUT,
           targetName: targetUnit,
-          defaultThreshold: fp('0.05'),
+          defaultThreshold: fp('0.01'),
           delayUntilDefault: bn('86400'),
         })
         if (firstCollateral === undefined) firstCollateral = collateral

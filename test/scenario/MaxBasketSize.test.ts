@@ -37,7 +37,7 @@ import { expectPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
 import { useEnv } from '#/utils/env'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const REPORT_GAS = useEnv('REPORT_GAS')
