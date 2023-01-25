@@ -23,7 +23,7 @@ import {
   MAX_UINT192,
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
-import { expectPrice, setOraclePrice } from './utils/oracles'
+import { expectPrice, expectUnpriced, setOraclePrice } from './utils/oracles'
 import { bn, fp } from '../common/numbers'
 import {
   Asset,
@@ -1647,7 +1647,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
 
-      // Set fallback to 0 for one of the collaterals (swapping the collateral)
+      // Swap in mock collateral with overflowing price
       const MockableCollateralFactory: ContractFactory = await ethers.getContractFactory(
         'MockableCollateral'
       )
@@ -1662,16 +1662,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: await collateral2.delayUntilDefault(),
       })
-
       await assetRegistry.connect(owner).swapRegistered(newColl.address)
-
-      await setOraclePrice(newColl.address, bn('1e41'))
+      await setOraclePrice(newColl.address, MAX_UINT192) // overflow
+      await expectUnpriced(newColl.address)
       await newColl.setTargetPerRef(1)
-
       await basketHandler.setPrimeBasket([await newColl.erc20()], [fp('1000')])
       await basketHandler.refreshBasket()
 
-      await expectPrice(basketHandler.address, MAX_UINT192, ORACLE_ERROR, true, bn('1'))
+      // Expect [something > 0, FIX_MAX]
+      const bh = await ethers.getContractAt('Asset', basketHandler.address)
+      const [lowPrice, highPrice] = await bh.price()
+      expect(lowPrice).to.be.gt(0)
+      expect(highPrice).to.equal(MAX_UINT192)
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
@@ -1907,6 +1909,33 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       for (let i = 0; i < newBasket.length; i++) {
         expect(newBasket[i]).to.not.equal(token0.address)
       }
+    })
+
+    it('Should skip over IFFY collateral in switchBasket', async () => {
+      // Set up IFFY collateral
+      await setOraclePrice(collateral1.address, bn('0.5'))
+      await assetRegistry.refresh()
+      expect(await collateral1.status()).to.equal(CollateralStatus.IFFY)
+
+      // Set basket backup config
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
+            token0.address, // still SOUND
+            token1.address,
+          ])
+      ).to.emit(basketHandler, 'BackupConfigSet')
+
+      // Change basket
+      expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
+      await basketHandler.connect(owner).refreshBasket()
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      const [tokens] = await basketHandler.quote(fp('1'), 0)
+      expect(tokens.length).to.equal(3)
+      expect(tokens[0]).to.not.equal(collateral1.address)
+      expect(tokens[1]).to.not.equal(collateral1.address)
+      expect(tokens[2]).to.not.equal(collateral1.address)
     })
   })
 
