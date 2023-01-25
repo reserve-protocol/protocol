@@ -1479,7 +1479,17 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, rTokenPrice2, ORACLE_ERROR)
       })
 
-      it('Should recollateralize correctly when switching basket - Using RSR for remainder', async () => {
+      it('Should recollateralize correctly when switching basket - Necessary RSR overcollateralization', async () => {
+        // Eliminate minTradeVolume
+        await backingManager.connect(owner).setMinTradeVolume(0)
+
+        // Reduce stake to just necessary overcollateralization
+        const necessaryStake = issueAmount.mul(51).div(1000) // 5.1% of RToken supply
+        await stRSR.connect(addr1).unstake(stakeAmount.sub(necessaryStake))
+        await advanceTime(config.unstakingDelay.toString())
+        await stRSR.withdraw(addr1.address, 1)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(necessaryStake)
+
         // Set prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
@@ -1495,8 +1505,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check stakes
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
-        expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(necessaryStake)
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(necessaryStake)
 
         // Switch Basket
         await expect(basketHandler.connect(owner).refreshBasket())
@@ -1548,10 +1558,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
-
-        // Check price in USD of the current RToken -- retains price because of
-        // over-collateralization
-        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check Gnosis
         expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
@@ -1629,10 +1635,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken -- retains price because of
-        // over-collateralization
-        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
-
         // Check Gnosis
         expect(await rsr.balanceOf(gnosis.address)).to.equal(sellAmtRSR)
 
@@ -1683,6 +1685,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           toBNDecimals(issueAmount, 6)
         )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
+        expect(await rToken.basketsNeeded()).to.equal(issueAmount) // no haircut
 
         // Check price in USD of the current RToken
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
