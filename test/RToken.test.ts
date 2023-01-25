@@ -951,12 +951,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Redemption
         await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
         expect(await rToken.totalSupply()).to.equal(0)
-
-        // Returned amounts can be off by 1 atto
-        expect(await token0.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
-        expect(await token1.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
-        expect(await token2.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
-        expect(await token3.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
+        expect(await token0.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token3.balanceOf(addr1.address)).to.be.equal(initialBal)
       })
 
       it('Should transfer full balance if de-valuation #fast', async function () {
