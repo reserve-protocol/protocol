@@ -914,14 +914,63 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
       })
 
-      it('Should revert if basket is DISABLED #fast', async function () {
+      it('Should prorate redemption if basket is DISABLED from fallen refPerTok() #fast', async function () {
         // Default immediately
-        await token3.setExchangeRate(fp('0.999999'))
+        await token2.setExchangeRate(fp('0.1')) // 90% decrease
 
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
-          'collateral default'
+        // Even though a single BU requires 10x token2 as before, it should still hand out evenly
+
+        // 1st redemption
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.emit(rToken, 'Redemption')
+        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
+
+        // 2nd redemption
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.emit(rToken, 'Redemption')
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+      })
+
+      it('Should not interact with unregistered collateral while DISABLED #fast', async function () {
+        // Unregister collateral2
+        await assetRegistry.connect(owner).unregister(collateral2.address)
+
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
+        expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+      })
+
+      it('Should redeem prorata when refPerTok() is 0 #fast', async function () {
+        // Set refPerTok to FIX_MAX
+        await token2.setExchangeRate(fp('0'))
+
+        // Redemption
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Returned amounts can be off by 1 atto
+        expect(await token0.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
+        expect(await token1.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
+        expect(await token2.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
+        expect(await token3.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
+      })
+
+      it('Should transfer full balance if de-valuation #fast', async function () {
+        // Unregister collateral3
+        await assetRegistry.connect(owner).unregister(collateral3.address)
+
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token3.balanceOf(addr1.address)).to.equal(
+          initialBal.sub(issueAmount.div(bn('1e10')).div(4).mul(50)) // decimal shift + quarter of basket + cToken
         )
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
 
       context('And redemption throttling', function () {

@@ -126,9 +126,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         // solhint-disable-next-line no-empty-blocks
         try main.furnace().melt() {} catch {}
 
-        IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
-
         // Revert if redemption exceeds either supply throttle
         issuanceThrottle.useAvailable(totalSupply(), -int256(amount));
         redemptionThrottle.useAvailable(totalSupply(), int256(amount)); // reverts on overuse
@@ -138,7 +135,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         assert(basketsRedeemed.lte(basketsNeeded));
         emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
 
-        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(
+        (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
             basketsRedeemed,
             FLOOR
         );
