@@ -222,6 +222,78 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(2e7) // 20%
     })
 
+    it.only('Should not allow double vote weights - c4 regression', async () => {
+      const stkAmt1: BigNumber = bn('1000e18')
+      const voteAmt1: BigNumber = bn('1e8')
+
+      // Initially no supply at all
+      let currBlockNumber: number = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(0)
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(0)
+
+      // Stake some RSR with addr1
+      await rsr.connect(addr1).approve(stRSRVotes.address, stkAmt1)
+      await stRSRVotes.connect(addr1).stake(stkAmt1)
+      await advanceBlocks(2)
+      currBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.balanceOf(addr1.address)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(0)
+
+      // Stake half as much RSR with addr3
+      await rsr.connect(addr3).approve(stRSRVotes.address, stkAmt1.div(4))
+      await stRSRVotes.connect(addr3).stake(stkAmt1.div(4))
+      await advanceBlocks(2)
+      currBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.balanceOf(addr3.address)).to.equal(stkAmt1.div(4))
+      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(0)
+
+      // addr1/addr3 delegate to selves to earn voting power
+      await stRSRVotes.connect(addr1).delegate(addr1.address)
+      await stRSRVotes.connect(addr3).delegate(addr3.address)
+      await advanceBlocks(2)
+      currBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(
+        voteAmt1.mul(4).div(5)
+      )
+      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(0)
+      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(voteAmt1.div(5))
+
+      // addr1 delegate to addr2
+      await stRSRVotes.connect(addr1).delegate(addr2.address)
+      await advanceBlocks(2)
+      currBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(0)
+      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(
+        voteAmt1.mul(4).div(5)
+      )
+      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(voteAmt1.div(5))
+
+      // addr2 delegate back to addr1 -- should have no effect
+      await stRSRVotes.connect(addr2).delegate(addr1.address)
+      await advanceBlocks(2)
+      currBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(0)
+      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(
+        voteAmt1.mul(4).div(5)
+      )
+      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(voteAmt1.div(5))
+
+      // Transfer addr1 -> addr2
+      await stRSRVotes.connect(addr1).transfer(addr2.address, stkAmt1)
+      await advanceBlocks(2)
+      currBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSRVotes.balanceOf(addr2.address)).to.equal(stkAmt1)
+
+      // This is what _should_ happen
+      // Instead it looks like addr1 gets voteAmt1.mul(4).div(5) and addr2 gets 0
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(0)
+      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(
+        voteAmt1.mul(4).div(5)
+      )
+      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(voteAmt1.div(5))
+    })
+
     it('Should be able to return if supports Interface', async () => {
       // Governor interface
       let interfaceID: BigNumber = ethers.constants.Zero
