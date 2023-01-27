@@ -270,7 +270,49 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
     })
 
-    it('Should allow melt - two periods, all at once', async () => {
+    it('Should accumulate negligible error - parallel furnaces', async () => {
+      // Maintain two furnaces in parallel, one burning every block and one burning annually
+      // We have to use two brand new instances here to ensure their timestamps are synced
+      const firstFurnace = await deployNewFurnace()
+      const secondFurnace = await deployNewFurnace()
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      // Populate balances
+      const hndAmt: BigNumber = bn('1e18')
+      await rToken.connect(addr1).transfer(firstFurnace.address, hndAmt)
+      await rToken.connect(addr1).transfer(secondFurnace.address, hndAmt)
+      await firstFurnace.init(main.address, config.rewardRatio)
+      await secondFurnace.init(main.address, config.rewardRatio)
+      await advanceBlocks(1)
+
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
+
+      const oneDay = bn('86400')
+      for (let i = 0; i < Number(oneDay.div(ONE_PERIOD)); i++) {
+        // Advance a period
+        await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+        await expect(firstFurnace.melt()).to.emit(rToken, 'Melted')
+        // secondFurnace does not melt
+      }
+
+      // SecondFurnace melts once
+      await expect(secondFurnace.melt()).to.emit(rToken, 'Melted')
+
+      const one = await rToken.balanceOf(firstFurnace.address)
+      const two = await rToken.balanceOf(secondFurnace.address)
+      const diff = one.sub(two).abs() // {qRTok}
+      const expectedDiff = bn(3555) // empirical exact diff
+      // At a rate of 3555 qRToken per day error, a year's worth of error would result in
+      // a difference only starting in the 12th decimal place: .000000000001
+      // This seems more than acceptable
+
+      expect(diff).to.be.lte(expectedDiff)
+    })
+
+    it('Should accumulate negligible error - a year all at once', async () => {
       const hndAmt: BigNumber = bn('10e18')
 
       // Transfer
@@ -278,22 +320,22 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Get past first noop melt
       await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
-
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
-      // Advance 2 more periods
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 2 * Number(ONE_PERIOD))
+      const periods = 2628000 // one year worth
 
+      // Advance a year's worth of periods
+      await setNextBlockTimestamp(
+        Number(await getLatestBlockTimestamp()) + periods * Number(ONE_PERIOD)
+      )
+
+      // Precise JS calculation should be within 3 atto
       const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt = decayFn(hndAmt, 2) // 2 periods
-
-      // TODO confirm error ok
+      const expAmt = decayFn(hndAmt, periods)
       const error = bn('3')
       await expect(furnace.melt()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt).add(error))
-
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt.sub(error))
     })
