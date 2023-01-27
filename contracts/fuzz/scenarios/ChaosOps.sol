@@ -351,61 +351,16 @@ contract ChaosOpsScenario {
         priceModels.push(_priceModel);
     }
 
-    // ==== user functions: rtoken ====
-
-    // Issuance "span" model, to track changes to the rtoken supply, so we can flag failure if
-    // supply grows faster than the issuance rate
-
-    // startBlock is the block when the current "issuance span" began
-    // issuance span: a span of blocks during which some issuance is not yet vested
-    // At any point in any issuance span:
-    //   vested / (block.numer - startBlock) > maxIssuanceRate * max_span(totalSupply)
-
-    // So span model:
-    uint256 public spanStartBlock;
-    uint256 public spanPending;
-    uint256 public spanVested;
-    uint256 public spanMaxSupply;
-
-    function noteQuickIssuance(uint256 amount) internal {
-        if (spanPending == 0) spanStartBlock = block.number;
-        spanVested += amount;
-
-        uint256 supply = main.rToken().totalSupply();
-        spanMaxSupply = supply > spanMaxSupply ? supply : spanMaxSupply;
-    }
-
-    function noteIssuance(uint256 amount) internal {
-        if (spanPending == 0) spanStartBlock = block.number;
-        spanPending += amount;
-
-        uint256 supply = main.rToken().totalSupply();
-        spanMaxSupply = supply > spanMaxSupply ? supply : spanMaxSupply;
-    }
-
     // do issuance without doing allowances first
     function justIssue(uint256 amount) public asSender {
-        uint256 preSupply = main.rToken().totalSupply();
-
         main.rToken().issue(amount);
-
-        uint256 postSupply = main.rToken().totalSupply();
-
-        if (postSupply == preSupply) noteIssuance(amount);
-        else noteQuickIssuance(amount);
     }
 
     // do issuance without doing allowances first, to a different recipient
     function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
         address recipient = main.someAddr(recipientID);
-        uint256 preSupply = main.rToken().totalSupply();
 
         main.rToken().issueTo(recipient, amount);
-
-        uint256 postSupply = main.rToken().totalSupply();
-
-        if (postSupply == preSupply) noteIssuance(amount);
-        else noteQuickIssuance(amount);
     }
 
     // do allowances as needed, and *then* do issuance
@@ -420,11 +375,6 @@ contract ChaosOpsScenario {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
         main.rToken().issue(amount);
-
-        uint256 postSupply = main.rToken().totalSupply();
-
-        if (postSupply == preSupply) noteIssuance(amount);
-        else noteQuickIssuance(amount);
     }
 
     // do allowances as needed, and *then* do issuance
@@ -440,11 +390,6 @@ contract ChaosOpsScenario {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
         main.rToken().issueTo(recipient, amount);
-
-        uint256 postSupply = main.rToken().totalSupply();
-
-        if (postSupply == preSupply) noteIssuance(amount);
-        else noteQuickIssuance(amount);
     }
 
     function redeem(uint256 amount) public asSender {
