@@ -184,9 +184,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(redeemer), "insufficient balance");
 
-        // Allow redemption during IFFY + UNPRICED
-        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
-
         // Failure to melt results in a lower redemption price, so we can allow it when paused
         // solhint-disable-next-line no-empty-blocks
         try main.furnace().melt() {} catch {}
