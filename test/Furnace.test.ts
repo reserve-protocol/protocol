@@ -272,31 +272,36 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
     it('Should accumulate negligible error - parallel furnaces', async () => {
       // Maintain two furnaces in parallel, one burning every block and one burning annually
+      // We have to use two brand new instances here to ensure their timestamps are synced
+      const firstFurnace = await deployNewFurnace()
       const secondFurnace = await deployNewFurnace()
-      await secondFurnace.init(main.address, config.rewardRatio)
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
 
       // Populate balances
       const hndAmt: BigNumber = bn('1e18')
-      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+      await rToken.connect(addr1).transfer(firstFurnace.address, hndAmt)
       await rToken.connect(addr1).transfer(secondFurnace.address, hndAmt)
+      await firstFurnace.init(main.address, config.rewardRatio)
+      await secondFurnace.init(main.address, config.rewardRatio)
+      await advanceBlocks(1)
 
-      // Get past first noop melt
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
-      await expect(secondFurnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
 
       const oneDay = bn('86400')
       for (let i = 0; i < Number(oneDay.div(ONE_PERIOD)); i++) {
         // Advance a period
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-        await expect(furnace.melt()).to.emit(rToken, 'Melted')
+        await expect(firstFurnace.melt()).to.emit(rToken, 'Melted')
         // secondFurnace does not melt
       }
 
       // SecondFurnace melts once
       await expect(secondFurnace.melt()).to.emit(rToken, 'Melted')
 
-      const one = await rToken.balanceOf(furnace.address)
+      const one = await rToken.balanceOf(firstFurnace.address)
       const two = await rToken.balanceOf(secondFurnace.address)
       const diff = one.sub(two).abs() // {qRTok}
       const expectedDiff = bn(3555) // empirical exact diff
