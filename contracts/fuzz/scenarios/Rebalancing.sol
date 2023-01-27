@@ -427,6 +427,11 @@ contract RebalancingScenario {
         main.rToken().redeem(amount);
     }
 
+    function redeemTo(uint256 amount, uint8 recipientID) public asSender {
+        address recipient = main.someAddr(recipientID);
+        main.rToken().redeemTo(recipient, amount);
+    }
+
     // ==== user functions: strsr ====
     function justStake(uint256 amount) public asSender {
         main.stRSR().stake(amount);
