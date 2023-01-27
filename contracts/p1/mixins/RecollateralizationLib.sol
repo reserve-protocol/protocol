@@ -233,11 +233,10 @@ library RecollateralizationLibP1 {
         // - Discounting assets with unbounded worst-case price
         // - Discounting dust amounts for collateral in the basket + non-dust assets
 
-        uint192 potentialDustLoss; // {UoA}
+        uint192 basketsHeld = components.bh.basketsHeldBy(address(components.bm)); // {BU}
 
         // Accumulate:
         // - assetsHigh: sum(bal(e)*price(e).high for e ... )
-        // - potentialDustLoss: sum(minTradeVolume(e) for e ... )
         // - assetsLow: sum(bal(e)*price(e).low for e ... )
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             // Exclude RToken balances to avoid double counting value
@@ -250,34 +249,53 @@ library RecollateralizationLibP1 {
                 bal = bal.plus(reg.assets[i].bal(address(components.stRSR)));
             }
 
-            (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/tok}
-            (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
-
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            if (
-                components.bh.quantity(reg.erc20s[i]) == 0 &&
-                !TradeLib.isEnoughToSell(reg.assets[i], bal, lotLow, rules.minTradeVolume)
-            ) continue;
+            // {tok} = {tok/BU * {BU}
+            uint192 inBaskets = components.bh.quantity(reg.erc20s[i]).mul(basketsHeld, FLOOR);
+            if (bal < inBaskets) inBaskets = bal; // not sure if needed
 
-            // Intentionally include value of IFFY/DISABLED collateral when low is nonzero
-            // {UoA} = {UoA} + {UoA/tok} * {tok}
-            assetsLow += low.mul(bal, FLOOR);
-            // += is same as Fix.plus
+            // Skip over dust-balance assets not in the basket
+            {
+                (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
 
-            // assetsHigh += high.mul(bal, CEIL), where assetsHigh is [0, FIX_MAX]
-            // {UoA} = {UoA/tok} * {tok}
-            uint192 val = components.bm.safeMulDivCeil(high, bal, FIX_ONE);
-            if (uint256(assetsHigh) + val >= FIX_MAX) assetsHigh = FIX_MAX;
-            else assetsHigh += val;
-            // += is same as Fix.plus
+                // Intentionally include value of IFFY/DISABLED collateral
+                if (
+                    inBaskets == 0 &&
+                    !TradeLib.isEnoughToSell(reg.assets[i], bal, lotLow, rules.minTradeVolume)
+                ) continue;
+            }
 
-            // Accumulate potential losses to dust
-            potentialDustLoss = potentialDustLoss.plus(rules.minTradeVolume);
+            (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/tok}
+
+            // assetsLow
+            assert(inBaskets == 0 || high != FIX_MAX); // saves overflow proctection below
+            {
+                // Use high price for inBaskets, and low for excess. see basketRange():L201
+                // {UoA} = {UoA} + {UoA/tok} * {tok} + {UoA} + {UoA/tok} * {tok}
+                uint192 assetLow = high.mul(inBaskets, FLOOR) + low.mul(bal - inBaskets, FLOOR);
+                assetsLow += assetLow;
+                assetsLow -= fixMin(assetLow, rules.minTradeVolume); // losses to dust
+                // +/- is same as Fix.plus/Fix.minus
+            }
+
+            // assetsHigh
+            // Requires overflow protection
+            {
+                // Case 1: Any capital that definitely does not need to be traded
+                // {UoA} = {UoA/tok} * {tok}
+                uint192 assetHigh = components.bm.safeMulDivCeil(low, inBaskets, FIX_ONE);
+                // use low price to have contribution canceled out later. see basketRange():L172
+                if (uint256(assetsHigh) + assetHigh >= FIX_MAX) assetsHigh = FIX_MAX;
+                else assetsHigh += assetHigh;
+
+                // Case 2: Any capital that could possibly need to be traded
+                // {UoA} = {UoA/tok} * {tok}
+                assetHigh = components.bm.safeMulDivCeil(high, bal - inBaskets, FIX_ONE);
+                if (uint256(assetsHigh) + assetHigh >= FIX_MAX) assetsHigh = FIX_MAX;
+                else assetsHigh += assetHigh;
+                // += is same as Fix.plus
+            }
         }
-
-        // Account for all the places dust could get stuck
-        // assetsLow' = max(assetsLow-potentialDustLoss, 0)
-        assetsLow = assetsLow.gt(potentialDustLoss) ? assetsLow.minus(potentialDustLoss) : FIX_ZERO;
     }
 
     // Used in memory in `nextTradePair` to duck the stack limit
