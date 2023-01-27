@@ -268,9 +268,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           quantities: initialQuantities,
         })
 
-        // Basket should not switch yet
-        await expect(basketHandler.refreshBasket())
-
         // Advance time post delayUntilDefault
         await advanceTime((await collateral1.delayUntilDefault()).toString())
 
@@ -301,7 +298,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         ]
         await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(3, newTokens, basketsNeededAmts, false)
+          .withArgs(2, newTokens, basketsNeededAmts, false)
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)

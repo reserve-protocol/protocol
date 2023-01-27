@@ -625,7 +625,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
     }
 
-    /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
+    /// Good collateral is registered, collateral, SOUND, has the expected targetName,
     /// and not a system token or 0 addr
     function goodCollateral(bytes32 targetName, IERC20 erc20) private view returns (bool) {
         if (erc20 == IERC20(address(0))) return false;
@@ -636,7 +636,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
             return
                 targetName == coll.targetName() &&
-                coll.status() != CollateralStatus.DISABLED &&
+                coll.status() == CollateralStatus.SOUND &&
                 coll.refPerTok() > 0 &&
                 coll.targetPerRef() > 0;
         } catch {
