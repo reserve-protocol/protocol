@@ -3892,13 +3892,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"big.js@npm:^6.1.1":
-  version: 6.2.0
-  resolution: "big.js@npm:6.2.0"
-  checksum: 42bcbf0be703c4ae8669c969d0e108f9e1730f20e85bd779e31f7a92d28f6b3e87de96e25ef8657edc0b5dc945a0f66c184ec2654276b86f49e4e9ba025f131a
-  languageName: node
-  linkType: hard
-
 "bigint-crypto-utils@npm:^3.0.23":
   version: 3.1.7
   resolution: "bigint-crypto-utils@npm:3.1.7"
@@ -5237,6 +5230,13 @@ __metadata:
   version: 4.0.0
   resolution: "decamelize@npm:4.0.0"
   checksum: b7d09b82652c39eead4d6678bb578e3bebd848add894b76d0f6b395bc45b2d692fb88d977e7cfb93c4ed6c119b05a1347cef261174916c2e75c0a8ca57da1809
+  languageName: node
+  linkType: hard
+
+"decimal.js@npm:^10.4.3":
+  version: 10.4.3
+  resolution: "decimal.js@npm:10.4.3"
+  checksum: 796404dcfa9d1dbfdc48870229d57f788b48c21c603c3f6554a1c17c10195fc1024de338b0cf9e1efe0c7c167eeb18f04548979bcc5fdfabebb7cc0ae3287bae
   languageName: node
   linkType: hard
 
@@ -12415,9 +12415,9 @@ fsevents@~2.1.1:
     "@typescript-eslint/parser": ^5.17.0
     "@withtally/tally-publish-dao": ^0.0.5
     axios: ^0.24.0
-    big.js: ^6.1.1
     caip: ^1.1.0
     chai: ^4.3.4
+    decimal.js: ^10.4.3
     dotenv: ^16.0.0
     eslint: ^8.14.0
     eslint-config-prettier: ^8.5.0
