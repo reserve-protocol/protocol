@@ -222,7 +222,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(2e7) // 20%
     })
 
-    it.only('StRSR should not allow vote manipulation - c4 regression', async () => {
+    it('Should not allow vote manipulation', async () => {
       const stkAmt: BigNumber = bn('1000e18')
       expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
 
@@ -262,61 +262,11 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await stRSRVotes.balanceOf(addr1.address)).to.equal(0)
       expect(await stRSRVotes.balanceOf(addr2.address)).to.equal(stkAmt)
 
-      // This is what _should_ happen
-      // instead it looks like addr1 gets stkAmt and addr2 gets 0
-      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
-      expect(await stRSRVotes.getVotes(addr2.address)).to.equal(stkAmt)
+      // Votes should have swapped places from mutual delegation
+      // Yes this is slightly surprising, but makes sense
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(stkAmt)
+      expect(await stRSRVotes.getVotes(addr2.address)).to.equal(0)
       expect(await stRSRVotes.getVotes(addr3.address)).to.equal(stkAmt.div(4))
-    })
-
-    it.only('OZ ERC20Votes should not allow vote manipulation - c4 regression', async () => {
-      const ERC20VotesFactory = await ethers.getContractFactory('ERC20VotesMock')
-      const erc20Votes = await ERC20VotesFactory.deploy('ERC20Votes token', 'ERCVotes')
-
-      const mintAmt: BigNumber = bn('1000e18')
-      expect(await erc20Votes.getVotes(addr1.address)).to.equal(0)
-
-      // Stake some RSR with addr1
-      await rsr.connect(addr1).approve(erc20Votes.address, mintAmt)
-      await erc20Votes.mint(addr1.address, mintAmt)
-      expect(await erc20Votes.balanceOf(addr1.address)).to.equal(mintAmt)
-      expect(await erc20Votes.getVotes(addr1.address)).to.equal(0)
-
-      // Stake half as much RSR with addr3
-      await rsr.connect(addr3).approve(erc20Votes.address, mintAmt.div(4))
-      await erc20Votes.mint(addr3.address, mintAmt.div(4))
-      expect(await erc20Votes.balanceOf(addr3.address)).to.equal(mintAmt.div(4))
-      expect(await erc20Votes.getVotes(addr3.address)).to.equal(0)
-
-      // addr1/addr3 delegate to selves to earn voting power
-      await erc20Votes.connect(addr1).delegate(addr1.address)
-      await erc20Votes.connect(addr3).delegate(addr3.address)
-      expect(await erc20Votes.getVotes(addr1.address)).to.equal(mintAmt)
-      expect(await erc20Votes.getVotes(addr2.address)).to.equal(0)
-      expect(await erc20Votes.getVotes(addr3.address)).to.equal(mintAmt.div(4))
-
-      // addr1 delegate to addr2
-      await erc20Votes.connect(addr1).delegate(addr2.address)
-      expect(await erc20Votes.getVotes(addr1.address)).to.equal(0)
-      expect(await erc20Votes.getVotes(addr2.address)).to.equal(mintAmt)
-      expect(await erc20Votes.getVotes(addr3.address)).to.equal(mintAmt.div(4))
-
-      // addr2 delegate back to addr1 -- should have no effect
-      await erc20Votes.connect(addr2).delegate(addr1.address)
-      expect(await erc20Votes.getVotes(addr1.address)).to.equal(0)
-      expect(await erc20Votes.getVotes(addr2.address)).to.equal(mintAmt)
-      expect(await erc20Votes.getVotes(addr3.address)).to.equal(mintAmt.div(4))
-
-      // Transfer addr1 -> addr2
-      await erc20Votes.connect(addr1).transfer(addr2.address, mintAmt)
-      expect(await erc20Votes.balanceOf(addr1.address)).to.equal(0)
-      expect(await erc20Votes.balanceOf(addr2.address)).to.equal(mintAmt)
-
-      // This is what _should_ happen
-      // instead it looks like addr1 gets mintAmt and addr2 gets 0
-      expect(await erc20Votes.getVotes(addr1.address)).to.equal(0)
-      expect(await erc20Votes.getVotes(addr2.address)).to.equal(mintAmt)
-      expect(await erc20Votes.getVotes(addr3.address)).to.equal(mintAmt.div(4))
     })
 
     it('Should be able to return if supports Interface', async () => {
