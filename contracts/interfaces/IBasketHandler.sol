@@ -71,7 +71,7 @@ interface IBasketHandler is IComponent {
     function status() external view returns (CollateralStatus status);
 
     /// @return {tok/BU} The whole token quantity of token in the reference basket
-    /// Returns 0 if erc20 is not registered, disabled, or not in the basket
+    /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) external view returns (uint192);
@@ -100,9 +100,6 @@ interface IBasketHandler is IComponent {
     /// @return lotLow {UoA/tok} The lower end of the lot price estimate
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
-
-    /// @return The basket nonce, a monotonically increasing unique identifier
-    function nonce() external view returns (uint48);
 
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);

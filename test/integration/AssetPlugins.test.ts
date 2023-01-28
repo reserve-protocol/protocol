@@ -1039,7 +1039,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await usdpCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await tusdCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // Non price Fiat collateral
@@ -1107,7 +1107,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // CTokens Collateral with no price
@@ -1183,7 +1183,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await aBusdCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // AToken collateral with no price
@@ -1244,7 +1244,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await wbtcCollateral.refresh()
       expect(await wbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // Non-Fiat collateral with no price
@@ -1315,7 +1315,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await cWBTCCollateral.refresh()
       expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // CTokens Collateral with no price
@@ -1530,7 +1530,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Refresh should mark status IFFY
       await eurtCollateral.refresh()
 
-      const defaultThreshold = fp('0.05') // 5%
+      const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
       // Non price EURO Fiat collateral
@@ -1632,7 +1632,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(backing.length).to.equal(3)
 
       // Check other values
-      expect(await basketHandler.nonce()).to.be.gt(bn(0))
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
@@ -1643,7 +1642,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
-      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       await expectRTokenPrice(
         rTokenAsset.address,
@@ -1680,7 +1679,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Issue rTokens
-      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check Balances after
       expect(await dai.balanceOf(backingManager.address)).to.equal(issueAmount.div(4)) // 2.5K needed (25% of basket)
@@ -1750,7 +1749,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
       // Issue rTokens
-      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -1943,7 +1942,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Issue rTokens
-      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -2034,7 +2033,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(backing.length).to.equal(5)
 
         // Check initial values
-        expect(await basketHandler.nonce()).to.be.gt(bn(0))
         expect(await basketHandler.timestamp()).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
@@ -2073,10 +2071,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         // Issue one RToken
         const issueAmount: BigNumber = bn('1e18')
-        await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(
-          rToken,
-          'Issuance'
-        )
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
         // Check Balances after
         expect(await wbtc.balanceOf(backingManager.address)).to.equal(toBNDecimals(issueAmount, 8)) //1 full units
@@ -2177,10 +2172,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         // Issue RTokens
         const issueAmount: BigNumber = bn('10e18')
-        await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(
-          rToken,
-          'Issuance'
-        )
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
         // Check RTokens issued to user
         expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -2253,7 +2245,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(backing.length).to.equal(1)
 
         // Check initial values
-        expect(await basketHandler.nonce()).to.be.gt(bn(0))
         expect(await basketHandler.timestamp()).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
@@ -2278,10 +2269,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         // Issue one RToken
         const issueAmount: BigNumber = bn('1e18')
-        await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(
-          rToken,
-          'Issuance'
-        )
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
         // Check Balances after
         expect(await usdt.balanceOf(backingManager.address)).to.equal(toBNDecimals(issueAmount, 6)) //1 full unit
@@ -2442,7 +2430,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
       // Issue rTokens
-      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)

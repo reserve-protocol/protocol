@@ -93,8 +93,6 @@ describe('FacadeRead contract', () => {
     let issueAmount: BigNumber
 
     beforeEach(async () => {
-      await rToken.connect(owner).setIssuanceRate(fp('1'))
-
       // Mint Tokens
       initialBal = bn('10000000000e18')
       await token.connect(owner).mint(addr1.address, initialBal)
@@ -117,7 +115,7 @@ describe('FacadeRead contract', () => {
       await cToken.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
-      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
     })
 
     it('should return the correct facade address', async () => {
@@ -280,22 +278,6 @@ describe('FacadeRead contract', () => {
 
       beforeEach(async () => {
         stRSRP1 = await ethers.getContractAt('StRSRP1', stRSR.address)
-      })
-
-      it('Should return pending issuances', async () => {
-        const largeIssueAmount = initialBal.div(10)
-
-        // Issue rTokens
-        await rToken.connect(addr1)['issue(uint256)'](largeIssueAmount)
-        await rToken.connect(addr1)['issue(uint256)'](largeIssueAmount.add(1))
-        const pendings = await facade.pendingIssuances(rToken.address, addr1.address)
-
-        expect(pendings.length).to.eql(2)
-        expect(pendings[0][0]).to.eql(bn(0)) // index
-        expect(pendings[0][2]).to.eql(largeIssueAmount) // amount
-
-        expect(pendings[1][0]).to.eql(bn(1)) // index
-        expect(pendings[1][2]).to.eql(largeIssueAmount.add(1)) // amount
       })
 
       it('Should return pending unstakings', async () => {

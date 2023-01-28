@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "../libraries/Throttle.sol";
 import "./IAsset.sol";
 import "./IDistributor.sol";
 import "./IGnosis.sol";
@@ -29,8 +30,7 @@ struct DeploymentParams {
     uint48 longFreeze; // {s} how long each freeze extension lasts
     //
     // === Rewards (Furnace + StRSR) ===
-    uint192 rewardRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
-    uint48 rewardPeriod; // {s} the atomic unit of rewards, determines # of exponential rounds
+    uint192 rewardRatio; // the fraction of available revenues that are paid out each 12s period
     //
     // === StRSR ===
     uint48 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
@@ -41,10 +41,9 @@ struct DeploymentParams {
     uint192 backingBuffer; // {1} how much extra backing collateral to keep
     uint192 maxTradeSlippage; // {1} max slippage acceptable in a trade
     //
-    // === RToken ===
-    uint192 issuanceRate; // {1/block} number of RToken to issue per block / (RToken value)
-    uint192 scalingRedemptionRate; // {1/hour} max fraction of supply that can be redeemed hourly
-    uint256 redemptionRateFloor; // {qRTok/hour} the lowest possible hourly redemption limit
+    // === RToken Supply Throttles ===
+    ThrottleLib.Params issuanceThrottle; // see ThrottleLib
+    ThrottleLib.Params redemptionThrottle;
 }
 
 /**

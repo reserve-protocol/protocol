@@ -34,8 +34,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    uint48 public constant PERIOD = 12; // {s} 12 seconds; 1 block on PoS Ethereum
+    uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint48 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = FIX_ONE; // {1} 100%
 
     // === ERC20 ===
@@ -130,9 +131,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // ==== Gov Params ====
     // Promise: Each gov param is set _only_ by the appropriate "set" function.
-    // Invariant: rewardPeriod * 2 <= unstakingDelay
     uint48 public unstakingDelay; // {s} The minimum length of time spent in the draft queue
-    uint48 public rewardPeriod; // {s} The number of seconds between revenue payout events
     uint192 public rewardRatio; // {1} The fraction of the revenue balance to handout per period
 
     // === Rewards Cache ===
@@ -162,7 +161,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         string calldata name_,
         string calldata symbol_,
         uint48 unstakingDelay_,
-        uint48 rewardPeriod_,
         uint192 rewardRatio_
     ) external initializer {
         require(bytes(name_).length > 0, "name empty");
@@ -180,7 +178,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         payoutLastPaid = uint48(block.timestamp);
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         setUnstakingDelay(unstakingDelay_);
-        setRewardPeriod(rewardPeriod_);
         setRewardRatio(rewardRatio_);
 
         beginEra();
@@ -496,8 +493,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //     rewards_N = rewards_0 * (1-payoutRatio) ^ N
     //     payout = rewards_N - rewards_0 = rewards_0 * (1 - (1-payoutRatio)^N)
     function _payoutRewards() internal {
-        if (block.timestamp < payoutLastPaid + rewardPeriod) return;
-        uint48 numPeriods = (uint48(block.timestamp) - payoutLastPaid) / rewardPeriod;
+        if (block.timestamp < payoutLastPaid + PERIOD) return;
+        uint48 numPeriods = (uint48(block.timestamp) - payoutLastPaid) / PERIOD;
 
         uint192 initRate = exchangeRate();
         uint256 payout;
@@ -515,7 +512,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             stakeRSR += payout;
         }
 
-        payoutLastPaid += numPeriods * rewardPeriod;
+        payoutLastPaid += numPeriods * PERIOD;
         rsrRewardsAtLastPayout = rsrRewards();
 
         // stakeRate else case: D18{qStRSR/qRSR} = {qStRSR} * D18 / {qRSR}
@@ -812,18 +809,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @custom:governance
     function setUnstakingDelay(uint48 val) public governance {
-        require(val > 0 && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
+        require(val > MIN_UNSTAKING_DELAY && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
-        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
-    }
-
-    /// @custom:governance
-    function setRewardPeriod(uint48 val) public governance {
-        require(val > 0 && val <= MAX_REWARD_PERIOD, "invalid rewardPeriod");
-        emit RewardPeriodSet(rewardPeriod, val);
-        rewardPeriod = val;
-        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     /// @custom:governance

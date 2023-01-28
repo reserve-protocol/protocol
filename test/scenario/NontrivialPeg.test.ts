@@ -26,7 +26,7 @@ import {
   PRICE_TIMEOUT,
 } from '../fixtures'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -150,7 +150,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
         // Issue
         await token0.connect(addr1).approve(rToken.address, initialBal)
         await token1.connect(addr1).approve(rToken.address, initialBal)
-        await rToken.connect(addr1)['issue(uint256)'](issueAmt)
+        await rToken.connect(addr1).issue(issueAmt)
       })
 
       it('should set quantity correctly', async () => {

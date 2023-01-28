@@ -63,8 +63,6 @@ contract FacadeTest is IFacadeTest {
         main.backingManager().claimRewards();
         main.rsrTrader().claimRewards();
         main.rTokenTrader().claimRewards();
-        rToken.claimRewards();
-        rToken.sweepRewards();
     }
 
     /// Unlike Recollateralizationlib.totalAssetValue, this function _should_ yield a decreasing

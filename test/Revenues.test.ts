@@ -1,10 +1,16 @@
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Contract, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
+import {
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+  CollateralStatus,
+} from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, fp, near } from '../common/numbers'
 import {
@@ -55,7 +61,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -223,22 +229,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           newTrader.init(main.address, ZERO_ADDRESS, bn('100'), config.minTradeVolume)
         ).to.be.revertedWith('invalid token address')
       } else if (IMPLEMENTATION == Implementation.P1) {
-        // Deploy RewardableLib external library
-        const RewardableLibFactory: ContractFactory = await ethers.getContractFactory(
-          'RewardableLibP1'
-        )
-        const rewardableLib: Contract = <Contract>await RewardableLibFactory.deploy()
-
         const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
-          'RevenueTraderP1',
-          {
-            libraries: { RewardableLibP1: rewardableLib.address },
-          }
+          'RevenueTraderP1'
         )
 
         const newTrader = <TestIRevenueTrader>await upgrades.deployProxy(RevenueTraderFactory, [], {
           kind: 'uups',
-          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
+          unsafeAllow: ['delegatecall'], // TradingLib
         })
 
         await expect(
@@ -367,7 +364,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token3.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+        await rToken.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -449,12 +446,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await setOraclePrice(collateral0.address, bn('0.5e8'))
         await collateral0.refresh()
         await advanceTime((await collateral0.delayUntilDefault()).toString())
+        expect(await collateral0.status()).to.equal(CollateralStatus.DISABLED)
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
 
         // Trade should have extremely nonzero worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
-        expect(await trade.worstCasePrice()).to.be.gte(fp('0.95'))
+        expect(await trade.initBal()).to.equal(issueAmount)
+        expect(await trade.worstCasePrice()).to.be.gte(fp('0.775'))
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -2322,7 +2321,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token3.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
-        await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+        await rToken.connect(addr1).issue(issueAmount)
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -3160,7 +3159,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
-      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
 
       // Mint some RSR
       await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -3171,8 +3170,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(backingManager.claimRewards())
       await snapshotGasCost(rsrTrader.claimRewards())
       await snapshotGasCost(rTokenTrader.claimRewards())
-      await snapshotGasCost(rToken.claimRewards())
-      await snapshotGasCost(rToken.sweepRewards())
 
       // Set Rewards
       rewardAmountCOMP = bn('0.8e18')
@@ -3194,8 +3191,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(backingManager.claimRewards())
       await snapshotGasCost(rsrTrader.claimRewards())
       await snapshotGasCost(rTokenTrader.claimRewards())
-      await snapshotGasCost(rToken.claimRewards())
-      await snapshotGasCost(rToken.sweepRewards())
     })
 
     it('Settle Trades / Manage Funds', async () => {

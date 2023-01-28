@@ -86,7 +86,6 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
         string memory name_,
         string memory symbol_,
         uint48 unstakingDelay_,
-        uint48 rewardPeriod_,
         uint192 rewardRatio_
     ) external;
 
@@ -121,10 +120,6 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
 }
 
 interface TestIStRSR is IStRSR {
-    function rewardPeriod() external view returns (uint48);
-
-    function setRewardPeriod(uint48) external;
-
     function rewardRatio() external view returns (uint192);
 
     function setRewardRatio(uint192) external;

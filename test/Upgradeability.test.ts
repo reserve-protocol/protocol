@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ContractFactory, Contract, Wallet } from 'ethers'
+import { ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IComponents, IConfig } from '../common/configuration'
 import { OWNER, SHORT_FREEZER, LONG_FREEZER, PAUSER } from '../common/constants'
@@ -26,7 +26,6 @@ import {
   IBasketHandler,
   MainP1,
   MainP1V2,
-  PermitLib,
   RevenueTraderP1,
   RevenueTraderP1V2,
   RTokenAsset,
@@ -77,8 +76,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let tradingLib: RecollateralizationLibP1
-  let rewardableLib: Contract
-  let permitLib: PermitLib
 
   // Factories
   let MainFactory: ContractFactory
@@ -123,7 +120,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       gnosis,
       rsrTrader,
       rTokenTrader,
-      permitLib,
     } = await loadFixture(defaultFixture))
 
     // Deploy TradingLib external library
@@ -132,34 +128,22 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     )
     tradingLib = <RecollateralizationLibP1>await TradingLibFactory.deploy()
 
-    // Deploy RewardableLib external library
-    const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
-    rewardableLib = <Contract>await RewardableLibFactory.deploy()
-
     // Setup factories
     MainFactory = await ethers.getContractFactory('MainP1')
-    RTokenFactory = await ethers.getContractFactory('RTokenP1', {
-      libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
-    })
+    RTokenFactory = await ethers.getContractFactory('RTokenP1')
     FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
-    RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1', {
-      libraries: { RewardableLibP1: rewardableLib.address },
-    })
+    RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1')
     BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1', {
       libraries: {
-        RewardableLibP1: rewardableLib.address,
         RecollateralizationLibP1: tradingLib.address,
       },
     })
     AssetRegistryFactory = await ethers.getContractFactory('AssetRegistryP1')
-
     BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1')
     DistributorFactory = await ethers.getContractFactory('DistributorP1')
     BrokerFactory = await ethers.getContractFactory('BrokerP1')
     TradeFactory = await ethers.getContractFactory('GnosisTrade')
-    StRSRFactory = await ethers.getContractFactory('StRSRP1Votes', {
-      libraries: { PermitLib: permitLib.address },
-    })
+    StRSRFactory = await ethers.getContractFactory('StRSRP1Votes')
 
     // Import deployed proxies
     await upgrades.forceImport(main.address, MainFactory)
@@ -307,7 +291,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - Furnace', async () => {
       const newFurnace: FurnaceP1 = <FurnaceP1>await upgrades.deployProxy(
         FurnaceFactory,
-        [main.address, config.rewardPeriod, config.rewardRatio],
+        [main.address, config.rewardRatio],
         {
           initializer: 'init',
           kind: 'uups',
@@ -315,7 +299,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       )
       await newFurnace.deployed()
 
-      expect(await newFurnace.period()).to.equal(config.rewardPeriod)
       expect(await newFurnace.ratio()).to.equal(config.rewardRatio)
       expect(await newFurnace.lastPayout()).to.be.gt(0)
       expect(await newFurnace.main()).to.equal(main.address)
@@ -328,7 +311,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
+          unsafeAllow: ['delegatecall'], // Multicall
         }
       )
       await newRevenueTrader.deployed()
@@ -346,14 +329,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
           'RTKN RToken',
           'RTKN',
           'Manifesto',
-          config.issuanceRate,
-          config.scalingRedemptionRate,
-          config.redemptionRateFloor,
+          config.issuanceThrottle,
+          config.redemptionThrottle,
         ],
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking', 'delegatecall'],
         }
       )
       await newRToken.deployed()
@@ -362,25 +343,16 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await newRToken.symbol()).to.equal('RTKN')
       expect(await newRToken.decimals()).to.equal(18)
       expect(await newRToken.totalSupply()).to.equal(bn(0))
-      expect(await newRToken.issuanceRate()).to.equal(config.issuanceRate)
       expect(await newRToken.main()).to.equal(main.address)
     })
 
     it('Should deploy valid implementation - StRSR', async () => {
       const newStRSR: StRSRP1Votes = <StRSRP1Votes>await upgrades.deployProxy(
         StRSRFactory,
-        [
-          main.address,
-          'rtknRSR Token',
-          'rtknRSR',
-          config.unstakingDelay,
-          config.rewardPeriod,
-          config.rewardRatio,
-        ],
+        [main.address, 'rtknRSR Token', 'rtknRSR', config.unstakingDelay, config.rewardRatio],
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking'],
         }
       )
       await newStRSR.deployed()
@@ -390,7 +362,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await newStRSR.decimals()).to.equal(18)
       expect(await newStRSR.totalSupply()).to.equal(0)
       expect(await newStRSR.unstakingDelay()).to.equal(config.unstakingDelay)
-      expect(await newStRSR.rewardPeriod()).to.equal(config.rewardPeriod)
       expect(await newStRSR.rewardRatio()).to.equal(config.rewardRatio)
       expect(await newStRSR.main()).to.equal(main.address)
     })
@@ -486,7 +457,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         'BackingManagerP1V2',
         {
           libraries: {
-            RewardableLibP1: rewardableLib.address,
             RecollateralizationLibP1: tradingLib.address,
           },
         }
@@ -600,7 +570,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(furnaceV2.address).to.equal(furnace.address)
 
       // Check state is preserved
-      expect(await furnaceV2.period()).to.equal(config.rewardPeriod)
       expect(await furnaceV2.ratio()).to.equal(config.rewardRatio)
       expect(await furnaceV2.lastPayout()).to.be.gt(0) // A timestamp is set
       expect(await furnaceV2.main()).to.equal(main.address)
@@ -616,18 +585,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should upgrade correctly - RevenueTrader', async () => {
       // Upgrading
       const RevTraderV2Factory: ContractFactory = await ethers.getContractFactory(
-        'RevenueTraderP1V2',
-        {
-          libraries: {
-            RewardableLibP1: rewardableLib.address,
-          },
-        }
+        'RevenueTraderP1V2'
       )
       const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
         rsrTrader.address,
         RevTraderV2Factory,
         {
-          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
+          unsafeAllow: ['delegatecall'], // Multicall
         }
       )
 
@@ -635,7 +599,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         rTokenTrader.address,
         RevTraderV2Factory,
         {
-          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
+          unsafeAllow: ['delegatecall'], // Multicall
         }
       )
 
@@ -667,15 +631,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
     it('Should upgrade correctly - RToken', async () => {
       // Upgrading
-      const RTokenV2Factory: ContractFactory = await ethers.getContractFactory('RTokenP1V2', {
-        libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
-      })
-      const rTokenV2: RTokenP1V2 = <RTokenP1V2>await upgrades.upgradeProxy(
-        rToken.address,
-        RTokenV2Factory,
-        {
-          unsafeAllow: ['external-library-linking', 'delegatecall'],
-        }
+      const RTokenV2Factory: ContractFactory = await ethers.getContractFactory('RTokenP1V2')
+      const rTokenV2: RTokenP1V2 = <RTokenP1V2>(
+        await upgrades.upgradeProxy(rToken.address, RTokenV2Factory)
       )
 
       // Check address is maintained
@@ -686,8 +644,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await rTokenV2.symbol()).to.equal('RTKN')
       expect(await rTokenV2.decimals()).to.equal(18)
       expect(await rTokenV2.totalSupply()).to.equal(bn(0))
-      expect(await rTokenV2.issuanceRate()).to.equal(config.issuanceRate)
       expect(await rTokenV2.main()).to.equal(main.address)
+      const issThrottle = await rToken.issuanceThrottleParams()
+      expect(issThrottle.amtRate).to.equal(config.issuanceThrottle.amtRate)
+      expect(issThrottle.pctRate).to.equal(config.issuanceThrottle.pctRate)
+      const redemptionThrottle = await rToken.redemptionThrottleParams()
+      expect(redemptionThrottle.amtRate).to.equal(config.redemptionThrottle.amtRate)
+      expect(redemptionThrottle.pctRate).to.equal(config.redemptionThrottle.pctRate)
 
       // Check new version is implemented
       expect(await rTokenV2.version()).to.equal('2.0.0')
@@ -699,15 +662,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
     it('Should upgrade correctly - StRSR', async () => {
       // Upgrading
-      const StRSRV2Factory: ContractFactory = await ethers.getContractFactory('StRSRP1VotesV2', {
-        libraries: { PermitLib: permitLib.address },
-      })
-      const stRSRV2: StRSRP1VotesV2 = <StRSRP1VotesV2>await upgrades.upgradeProxy(
-        stRSR.address,
-        StRSRV2Factory,
-        {
-          unsafeAllow: ['external-library-linking'],
-        }
+      const StRSRV2Factory: ContractFactory = await ethers.getContractFactory('StRSRP1VotesV2')
+      const stRSRV2: StRSRP1VotesV2 = <StRSRP1VotesV2>(
+        await upgrades.upgradeProxy(stRSR.address, StRSRV2Factory)
       )
 
       // Check address is maintained
@@ -719,7 +676,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await stRSRV2.decimals()).to.equal(18)
       expect(await stRSRV2.totalSupply()).to.equal(0)
       expect(await stRSRV2.unstakingDelay()).to.equal(config.unstakingDelay)
-      expect(await stRSRV2.rewardPeriod()).to.equal(config.rewardPeriod)
       expect(await stRSRV2.rewardRatio()).to.equal(config.rewardRatio)
       expect(await stRSRV2.main()).to.equal(main.address)
 

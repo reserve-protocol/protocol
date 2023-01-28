@@ -12,8 +12,6 @@ import {
 } from '../common/constants'
 import { bn, fp, toBNDecimals, divCeil } from '../common/numbers'
 import { IConfig } from '../common/configuration'
-import { expectEvents } from '../common/events'
-import { makeDecayFn } from './utils/rewards'
 import { advanceTime } from './utils/time'
 import { withinQuad } from './utils/matchers'
 import {
@@ -32,9 +30,7 @@ import {
   StaticATokenMock,
   TestIBackingManager,
   TestIDistributor,
-  TestIFurnace,
   TestIRevenueTrader,
-  TestIStRSR,
   TestIRToken,
   USDCMock,
 } from '../typechain'
@@ -49,7 +45,7 @@ import {
 import snapshotGasCost from './utils/snapshotGasCost'
 import { useEnv } from '#/utils/env'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -93,8 +89,6 @@ describe('FacadeAct contract', () => {
 
   // Main
   let rToken: TestIRToken
-  let stRSR: TestIStRSR
-  let furnace: TestIFurnace
   let basketHandler: IBasketHandler
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -146,7 +140,6 @@ describe('FacadeAct contract', () => {
       backingManager,
       basketHandler,
       distributor,
-      stRSR,
       rsr,
       erc20s,
       collateral,
@@ -154,7 +147,6 @@ describe('FacadeAct contract', () => {
       facadeAct,
       rToken,
       config,
-      furnace,
       rTokenTrader,
       rsrTrader,
       gnosis,
@@ -185,8 +177,6 @@ describe('FacadeAct contract', () => {
     let issueAmount: BigNumber
 
     beforeEach(async () => {
-      await rToken.connect(owner).setIssuanceRate(fp('1'))
-
       // Mint Tokens
       initialBal = bn('10000000000e18')
       await token.connect(owner).mint(addr1.address, initialBal)
@@ -212,11 +202,11 @@ describe('FacadeAct contract', () => {
       await cToken.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
-      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
     })
 
     it('No call required', async () => {
-      // Via Facade get next cal - No action required
+      // Via Facade get next call - No action required
       const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(ZERO_ADDRESS)
       expect(data).to.equal('0x')
@@ -742,12 +732,12 @@ describe('FacadeAct contract', () => {
 
       // COMP Rewards for both tokens, in the RToken
       await aToken.setAaveToken(compToken.address) // set it internally in our mock
-      await aToken.setRewards(rToken.address, rewardAmount)
-      await compoundMock.setRewards(rToken.address, rewardAmount)
+      await aToken.setRewards(backingManager.address, rewardAmount)
+      await compoundMock.setRewards(backingManager.address, rewardAmount)
 
       // Via Facade get next call - will Claim and sweep rewards
       const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
-      expect(addr).to.equal(facadeAct.address)
+      expect(addr).to.equal(backingManager.address)
       expect(data).to.not.equal('0x')
 
       await owner.sendTransaction({
@@ -757,138 +747,6 @@ describe('FacadeAct contract', () => {
 
       // Check status - rewards claimed for both collaterals
       expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmount.mul(2))
-    })
-
-    it('Melting', async () => {
-      const hndAmt: BigNumber = bn('10e18')
-      const period: number = 60 * 60 * 24 // 1 day
-
-      // Set time period
-      await furnace.connect(owner).setPeriod(period)
-
-      // Transfer
-      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
-
-      // Advance one period
-      await advanceTime(period + 1)
-
-      // Melt via Facade
-      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
-      expect(addr).to.equal(furnace.address)
-      expect(data).to.not.equal('0x')
-
-      // Call Melt in Furnace
-      await expect(
-        addr1.sendTransaction({
-          to: addr,
-          data,
-        })
-      ).to.not.emit(rToken, 'Melted')
-
-      // Do not melt twice in same period
-      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
-      expect(addr).to.equal(ZERO_ADDRESS)
-      expect(data).to.equal('0x')
-
-      // Get to the end to melt full amount
-      await advanceTime(period + 1)
-
-      const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt = decayFn(hndAmt, 1) // 1 period
-
-      // Melt via Facade
-      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
-      expect(addr).to.equal(furnace.address)
-      expect(data).to.not.equal('0x')
-
-      // Call Melt in Furnace
-      await expect(
-        addr1.sendTransaction({
-          to: addr,
-          data,
-        })
-      )
-        .to.emit(rToken, 'Melted')
-        .withArgs(hndAmt.sub(expAmt))
-
-      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
-    })
-
-    it('Payout StRSR rewards', async () => {
-      const initialRate = fp('1')
-      const stakeAmt: BigNumber = bn('1e18')
-      const amountAdded: BigNumber = bn('10e18')
-      const decayFn: (a: BigNumber, b: number) => BigNumber = makeDecayFn(await stRSR.rewardRatio())
-
-      // Add RSR
-      await rsr.connect(addr1).transfer(stRSR.address, amountAdded)
-
-      // Check RSR balance
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amountAdded)
-
-      // Advance to the end of noop period
-      await advanceTime(Number(config.rewardPeriod) + 1)
-
-      await expectEvents(stRSR.payoutRewards(), [
-        {
-          contract: stRSR,
-          name: 'ExchangeRateSet',
-          args: [initialRate, initialRate],
-          emitted: true,
-        },
-        {
-          contract: stRSR,
-          name: 'RewardsPaid',
-          args: [0],
-          emitted: true,
-        },
-      ])
-
-      // Check exchange rate remains static
-      expect(await stRSR.exchangeRate()).to.equal(initialRate)
-
-      // Stake
-      await rsr.connect(addr1).approve(stRSR.address, stakeAmt)
-      await stRSR.connect(addr1).stake(stakeAmt)
-
-      // Advance to get 1 round of rewards
-      await advanceTime(Number(config.rewardPeriod) + 1)
-
-      // Calculate payout amount
-      const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
-      const newRate: BigNumber = fp(stakeAmt.add(addedRSRStake)).div(stakeAmt)
-
-      // Payout rewards - via Facade
-      // First do a melt which will first be executed from getActCallData
-      await furnace.melt()
-
-      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
-      expect(addr).to.equal(stRSR.address)
-      expect(data).to.not.equal('0x')
-
-      // Payout rewards.
-      await expectEvents(
-        addr1.sendTransaction({
-          to: addr,
-          data,
-        }),
-        [
-          {
-            contract: stRSR,
-            name: 'ExchangeRateSet',
-            emitted: true,
-          },
-          {
-            contract: stRSR,
-            name: 'RewardsPaid',
-            args: [addedRSRStake],
-            emitted: true,
-          },
-        ]
-      )
-
-      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
-      expect(await stRSR.exchangeRate()).to.be.lte(newRate)
     })
 
     it('Should not revert if f=1', async () => {

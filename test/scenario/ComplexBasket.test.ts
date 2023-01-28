@@ -41,7 +41,7 @@ import { expectTrade, getTrade } from '../utils/trades'
 import { expectPrice, expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 const MAX_TRADE_VOLUME = fp('1e7') // $10M
 
@@ -449,7 +449,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(backing.length).to.equal(8)
 
     // Check other values
-    expect(await basketHandler.nonce()).to.be.gt(bn(0))
     expect(await basketHandler.timestamp()).to.be.gt(bn(0))
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
@@ -461,7 +460,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmt)
 
     // Issue
-    await rToken.connect(addr1)['issue(uint256)'](issueAmt)
+    await rToken.connect(addr1).issue(issueAmt)
     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmt)
     expect(await rToken.totalSupply()).to.equal(issueAmt)
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
@@ -707,7 +706,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(quotes[7]).to.equal(bn(6400e8))
 
     // Issue 1 RToken
-    await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+    await rToken.connect(addr1).issue(issueAmount)
 
     const origAssetValue = issueAmount.mul(totalPriceUSD).div(BN_SCALE_FACTOR)
     await expectRTokenPrice(
@@ -1323,7 +1322,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Issue
     const issueAmount = bn('1e18')
 
-    await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+    await rToken.connect(addr1).issue(issueAmount)
 
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
@@ -1548,7 +1547,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Issue
     const issueAmount = bn('200e18')
 
-    await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+    await rToken.connect(addr1).issue(issueAmount)
 
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
 

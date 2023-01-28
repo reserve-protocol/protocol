@@ -29,7 +29,7 @@ import {
 } from '../fixtures'
 import { expectPrice } from '../utils/oracles'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -165,7 +165,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       issueAmt = initialBal.div(100)
       await token0.connect(addr1).approve(rToken.address, issueAmt)
       await wbtc.connect(addr1).approve(rToken.address, issueAmt)
-      await rToken.connect(addr1)['issue(uint256)'](issueAmt)
+      await rToken.connect(addr1).issue(issueAmt)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmt)

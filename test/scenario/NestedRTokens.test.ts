@@ -4,7 +4,7 @@ import { Fixture } from 'ethereum-waffle'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
+import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
 import { bn, divCeil, fp } from '../../common/numbers'
 import { withinQuad } from '../utils/matchers'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
@@ -25,7 +25,7 @@ import {
   PRICE_TIMEOUT,
 } from '../fixtures'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -163,7 +163,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       await one.basketHandler.refreshBasket()
       await staticATokenERC20.connect(owner).mint(addr1.address, issueAmt)
       await staticATokenERC20.connect(addr1).approve(one.rToken.address, issueAmt)
-      await one.rToken.connect(addr1)['issue(uint256)'](issueAmt)
+      await one.rToken.connect(addr1).issue(issueAmt)
       expect(await one.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
 
       // Set up RToken0 to back RToken1 and issue
@@ -171,7 +171,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       await two.basketHandler.connect(owner).setPrimeBasket([one.rToken.address], [fp('1')])
       await two.basketHandler.refreshBasket()
       await one.rToken.connect(addr1).approve(two.rToken.address, issueAmt)
-      await two.rToken.connect(addr1)['issue(uint256)'](issueAmt)
+      await two.rToken.connect(addr1).issue(issueAmt)
       expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
 
       // Grant allowances
@@ -291,7 +291,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       // Issue
       await staticATokenERC20.connect(owner).mint(addr1.address, issueAmt)
       await staticATokenERC20.connect(addr1).approve(one.rToken.address, issueAmt)
-      await one.rToken.connect(addr1)['issue(uint256)'](issueAmt)
+      await one.rToken.connect(addr1).issue(issueAmt)
       expect(await one.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
 
       // Donate the inner RToken to the outer RToken
@@ -419,7 +419,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
           emitted: true,
         },
       ])
-      await advanceTime(one.config.rewardPeriod.toString())
+      await advanceTime(ONE_PERIOD.toString())
       await one.furnace.melt()
 
       // Furnace - melt almost everything

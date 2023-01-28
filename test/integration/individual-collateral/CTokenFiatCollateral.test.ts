@@ -88,19 +88,23 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     rTokenMaxTradeVolume: fp('1e6'), // $1M
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
-    rewardPeriod: bn('604800'), // 1 week
-    rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
+    rewardRatio: bn('1069671574938'), // approx. half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
-    issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    scalingRedemptionRate: fp('0.05'), // 5%
-    redemptionRateFloor: fp('1e6'), // 1M RToken
+    issuanceThrottle: {
+      amtRate: fp('1e6'), // 1M RToken
+      pctRate: fp('0.05'), // 5%
+    },
+    redemptionThrottle: {
+      amtRate: fp('1e6'), // 1M RToken
+      pctRate: fp('0.05'), // 5%
+    },
   }
 
-  const defaultThreshold = fp('0.05') // 5%
+  const defaultThreshold = fp('0.01') // 1%
   const delayUntilDefault = bn('86400') // 24h
 
   let initialBal: BigNumber
@@ -314,7 +318,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(backing.length).to.equal(1)
 
       // Check other values
-      expect(await basketHandler.nonce()).to.be.gt(bn(0))
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
@@ -323,7 +326,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
-      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),
@@ -367,7 +370,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
       // Issue rTokens
-      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -509,7 +512,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
       // Issue rTokens
-      await expect(rToken.connect(addr1)['issue(uint256)'](issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
