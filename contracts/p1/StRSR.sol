@@ -416,6 +416,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // Remove RSR from yet-unpaid rewards (implicitly)
         seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
 
+        rsrRewardsAtLastPayout = rsrRewards();
+
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, exchangeRate());
         IERC20Upgradeable(address(rsr)).safeTransfer(_msgSender(), seizedRSR);

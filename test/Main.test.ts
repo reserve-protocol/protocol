@@ -1014,18 +1014,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('erc20 unregistered')
     })
 
-    it('Should not grant allowances when paused', async () => {
+    it('Should grant allowances when paused', async () => {
       await main.connect(owner).pause()
       await expect(backingManager.grantRTokenAllowance(ZERO_ADDRESS)).to.be.revertedWith(
-        'paused or frozen'
+        'erc20 unregistered'
       )
+      await expect(backingManager.grantRTokenAllowance(erc20s[0].address)).to.not.be.reverted
     })
 
     it('Should not grant allowances when frozen', async () => {
       await main.connect(owner).freezeForever()
-      await expect(backingManager.grantRTokenAllowance(ZERO_ADDRESS)).to.be.revertedWith(
-        'paused or frozen'
-      )
+      await expect(backingManager.grantRTokenAllowance(ZERO_ADDRESS)).to.be.revertedWith('frozen')
     })
 
     it('Should return backing tokens', async () => {

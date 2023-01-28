@@ -198,7 +198,7 @@ library RecollateralizationLibP1 {
 
         // range.bottom: The least amount of BUs we could possibly end up holding after trading
         // {BU} = {UoA} / {UoA/BU}
-        range.bottom = fixMin(assetsLow.div(basketPriceHigh, CEIL), range.top);
+        range.bottom = fixMin(assetsLow.div(basketPriceHigh, FLOOR), range.top);
     }
 
     // ===========================================================================================

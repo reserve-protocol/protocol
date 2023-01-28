@@ -92,6 +92,10 @@ contract DistributorP0 is ComponentP0, IDistributor {
     /// Sets the distribution values - Internals
     function _setDistribution(address dest, RevenueShare memory share) internal {
         require(dest != address(0), "dest cannot be zero");
+        require(
+            dest != address(main.furnace()) && dest != address(main.stRSR()),
+            "destination can not be furnace or strsr directly"
+        );
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
         require(share.rsrDist <= 10000, "RSR distribution too high");

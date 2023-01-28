@@ -282,6 +282,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         seizedRSR += rewardsToTake;
 
         assert(rsrAmount <= seizedRSR);
+        rsrRewardsAtLastPayout = rsrRewards();
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
