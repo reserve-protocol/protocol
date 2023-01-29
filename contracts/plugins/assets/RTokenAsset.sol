@@ -141,15 +141,14 @@ contract RTokenAsset is IAsset {
             // should switch over to an asset with a price feed.
 
             IMain main = backingManager.main();
-            ComponentCache memory components = ComponentCache({
+            TradingContext memory ctx = TradingContext({
+                basketsHeld: basketsHeld,
                 bm: backingManager,
                 bh: main.basketHandler(),
                 reg: main.assetRegistry(),
                 stRSR: main.stRSR(),
                 rsr: main.rsr(),
-                rToken: main.rToken()
-            });
-            TradingRules memory rules = TradingRules({
+                rToken: main.rToken(),
                 minTradeVolume: backingManager.minTradeVolume(),
                 maxTradeSlippage: backingManager.maxTradeSlippage()
             });
@@ -157,7 +156,7 @@ contract RTokenAsset is IAsset {
             Registry memory reg = assetRegistry.getRegistry();
 
             // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(components, rules, reg, basketsHeld);
+            range = RecollateralizationLibP1.basketRange(ctx, reg);
         }
     }
 }

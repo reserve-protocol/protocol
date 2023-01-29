@@ -30,23 +30,23 @@ library TradeLib {
     // If notDust is true, then the returned trade request satisfies:
     //   req.sell == trade.sell and req.buy == trade.buy,
     //   req.minBuyAmount * trade.buyPrice ~=
-    //        trade.sellAmount * trade.sellPrice * (1-rules.maxTradeSlippage),
+    //        trade.sellAmount * trade.sellPrice * (1-maxTradeSlippage),
     //   req.sellAmount == min(trade.sell.maxTradeSize().toQTok(), trade.sellAmount.toQTok(sell)
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
-    function prepareTradeSell(TradeInfo memory trade, TradingRules memory rules)
-        internal
-        view
-        returns (bool notDust, TradeRequest memory req)
-    {
+    function prepareTradeSell(
+        TradeInfo memory trade,
+        uint192 minTradeVolume,
+        uint192 maxTradeSlippage
+    ) internal view returns (bool notDust, TradeRequest memory req) {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
         (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
 
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotLow, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume)) {
             return (false, req);
         }
 
@@ -58,7 +58,7 @@ library TradeLib {
         // {buyTok} = {sellTok} * {1} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = safeMulDivCeil(
             ITrading(address(this)),
-            s.mul(FIX_ONE.minus(rules.maxTradeSlippage)),
+            s.mul(FIX_ONE.minus(maxTradeSlippage)),
             trade.sellPrice, // {UoA/sellTok}
             trade.buyPrice // {UoA/buyTok}
         );
@@ -100,11 +100,11 @@ library TradeLib {
     //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
-    function prepareTradeToCoverDeficit(TradeInfo memory trade, TradingRules memory rules)
-        internal
-        view
-        returns (bool notDust, TradeRequest memory req)
-    {
+    function prepareTradeToCoverDeficit(
+        TradeInfo memory trade,
+        uint192 minTradeVolume,
+        uint192 maxTradeSlippage
+    ) internal view returns (bool notDust, TradeRequest memory req) {
         assert(
             trade.sellPrice > 0 &&
                 trade.sellPrice < FIX_MAX &&
@@ -113,23 +113,17 @@ library TradeLib {
         );
 
         // Don't buy dust.
-        trade.buyAmount = fixMax(
-            trade.buyAmount,
-            minTradeSize(rules.minTradeVolume, trade.buyPrice)
-        );
+        trade.buyAmount = fixMax(trade.buyAmount, minTradeSize(minTradeVolume, trade.buyPrice));
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
         uint192 exactSellAmount = trade.buyAmount.mulDiv(trade.buyPrice, trade.sellPrice, CEIL);
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // slippedSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        uint192 slippedSellAmount = exactSellAmount.div(
-            FIX_ONE.minus(rules.maxTradeSlippage),
-            CEIL
-        );
+        uint192 slippedSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage), CEIL);
 
         trade.sellAmount = fixMin(slippedSellAmount, trade.sellAmount); // {sellTok}
-        return prepareTradeSell(trade, rules);
+        return prepareTradeSell(trade, minTradeVolume, maxTradeSlippage);
     }
 
     /// @param asset The asset in consideration
