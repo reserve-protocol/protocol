@@ -59,7 +59,7 @@ library RecollateralizationLibP1 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
-    function prepareRecollateralizationTrade(IBackingManager bm)
+    function prepareRecollateralizationTrade(IBackingManager bm, uint192 basketsHeld)
         external
         view
         returns (bool doTrade, TradeRequest memory req)
@@ -85,7 +85,7 @@ library RecollateralizationLibP1 {
         // ============================
 
         // Compute basket range -  {BU}
-        BasketRange memory range = basketRange(components, rules, reg);
+        BasketRange memory range = basketRange(components, rules, reg, basketsHeld);
 
         // Select a pair to trade next, if one exists
         TradeInfo memory trade = nextTradePair(components, rules, reg, range);
@@ -152,18 +152,24 @@ library RecollateralizationLibP1 {
     function basketRange(
         ComponentCache memory components,
         TradingRules memory rules,
-        Registry memory reg
+        Registry memory reg,
+        uint192 basketsHeld
     ) internal view returns (BasketRange memory range) {
         // basketPrice: The current UoA value of one basket.
         (uint192 basketPriceLow, uint192 basketPriceHigh) = components.bh.price();
 
-        // assetsHigh: The most value we could get from the assets in erc20,
+        // assetsHigh: The most value we could get from the assets in reg.erc20s,
         //             assuming frictionless trades at currently-estimated prices.
-        // assetsLow: The least value we might get from the assets in erc20,
+        // assetsLow: The least value we might get from the assets in reg.erc20s,
         //            assuming frictionless trades, zero value from unreliable prices, and
         //            dustAmount of assets left in each Asset.
         // {UoA}
-        (uint192 assetsLow, uint192 assetsHigh) = totalAssetValue(components, rules, reg);
+        (uint192 assetsLow, uint192 assetsHigh) = totalAssetValue(
+            components,
+            rules,
+            reg,
+            basketsHeld
+        );
 
         // ==== Calculate range.top ====
 
@@ -208,6 +214,7 @@ library RecollateralizationLibP1 {
     /// Total value of the erc20s under management by BackingManager
     /// This may include BackingManager's balances _and_ staked RSR held by stRSR
     /// @param reg ERC20/Asset registry "under management" by BackingManager in this computation
+    /// @param basketsHeld {BU} The current number of baskets held by the BackingManager
     /// @return assetsLow {UoA} The low estimate of the total value of assets under management
     /// @return assetsHigh {UoA} The high estimate of the total value of assets under management
 
@@ -226,14 +233,13 @@ library RecollateralizationLibP1 {
     function totalAssetValue(
         ComponentCache memory components,
         TradingRules memory rules,
-        Registry memory reg
+        Registry memory reg,
+        uint192 basketsHeld
     ) private view returns (uint192 assetsLow, uint192 assetsHigh) {
         // The low estimate is lower than the high estimate due to:
         // - Using worst-case prices rather than best-case (price().low instead of price().high)
         // - Discounting assets with unbounded worst-case price
         // - Discounting dust amounts for collateral in the basket + non-dust assets
-
-        uint192 basketsHeld = components.bh.basketsHeldBy(address(components.bm)); // {BU}
 
         // Accumulate:
         // - assetsHigh: sum(bal(e)*price(e).high for e ... )
@@ -268,7 +274,7 @@ library RecollateralizationLibP1 {
             (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/tok}
 
             // assetsLow
-            assert(inBaskets == 0 || high != FIX_MAX); // saves overflow proctection below
+            assert(high != FIX_MAX || inBaskets == 0); // saves overflow proctection below
             {
                 // Use high price for inBaskets, and low for excess. see basketRange():L201
                 // {UoA} = {UoA} + {UoA/tok} * {tok} + {UoA} + {UoA/tok} * {tok}

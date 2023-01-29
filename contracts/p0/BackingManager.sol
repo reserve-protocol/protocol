@@ -97,8 +97,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              */
 
+            uint192 basketsHeld = main.basketHandler().basketsHeldBy(address(this));
+
             (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareRecollateralizationTrade(
-                this
+                this,
+                basketsHeld
             );
 
             if (doTrade) {

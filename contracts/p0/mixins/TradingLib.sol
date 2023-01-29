@@ -110,11 +110,12 @@ library TradingLibP0 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
-    function prepareRecollateralizationTrade(IBackingManager bm)
+    function prepareRecollateralizationTrade(IBackingManager bm, uint192 basketsHeld)
         external
         view
         returns (bool doTrade, TradeRequest memory req)
     {
+        // TODO basketsHeld unused for now
         // === Prepare cached values ===
 
         IMain main = bm.main();
