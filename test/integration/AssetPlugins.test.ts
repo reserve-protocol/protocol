@@ -1713,7 +1713,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       ) // approx 10K in value
 
       // Redeem Rtokens
-      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+      await expect(rToken.connect(addr1).redeem(issueAmount, true)).to.emit(rToken, 'Redemption')
 
       // Check funds were transferred
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -1880,7 +1880,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(totalAssetValue3).to.be.gt(totalAssetValue2)
 
       // Redeem Rtokens with the udpated rates
-      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+      await expect(rToken.connect(addr1).redeem(issueAmount, true)).to.emit(rToken, 'Redemption')
 
       // Check funds were transferred
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -2119,7 +2119,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
 
         // Redeem Rtokens
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+        await expect(rToken.connect(addr1).redeem(issueAmount, true)).to.emit(rToken, 'Redemption')
 
         // Check funds were transferred
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -2290,7 +2290,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
 
         // Redeem Rtokens
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+        await expect(rToken.connect(addr1).redeem(issueAmount, true)).to.emit(rToken, 'Redemption')
 
         // Check funds were transferred
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)

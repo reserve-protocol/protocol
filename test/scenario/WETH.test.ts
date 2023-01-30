@@ -216,7 +216,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       await setOraclePrice(wethCollateral.address, bn('2e8')) // doubling of price
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt))
+      expect(await rToken.connect(addr1).redeem(issueAmt, true))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await weth.balanceOf(addr1.address)).to.equal(ethBal)
     })

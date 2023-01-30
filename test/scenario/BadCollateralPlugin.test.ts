@@ -164,7 +164,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
     it('should keep a constant redemption basket as collateral loses value', async () => {
       // Redemption should be restrained to be prorata
       expect(await token0.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(addr1).redeem(initialBal.div(2))
+      await rToken.connect(addr1).redeem(initialBal.div(2), true)
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
       await expectRTokenPrice(
@@ -178,7 +178,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
     it('should increase the issuance basket as collateral loses value', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2))
+      await rToken.connect(addr1).redeem(initialBal.div(2), true)
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
@@ -216,7 +216,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
     it('should not change the redemption basket', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2))
+      await rToken.connect(addr1).redeem(initialBal.div(2), true)
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
@@ -243,14 +243,14 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
 
       // RToken redemption should ignore depegging
-      await rToken.connect(addr1).redeem(initialBal.div(4))
+      await rToken.connect(addr1).redeem(initialBal.div(4), true)
       expect(await rToken.totalSupply()).to.equal(initialBal.div(4))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.mul(3).div(4))
     })
 
     it('should not change the issuance basket', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2))
+      await rToken.connect(addr1).redeem(initialBal.div(2), true)
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 

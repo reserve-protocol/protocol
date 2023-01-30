@@ -149,10 +149,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
+    /// @param lossOk If true, will complete a partial redemption during undercollateralization
     /// @custom:action
     /// @custom:interaction CEI
-    function redeem(uint256 amount) external {
-        redeemTo(_msgSender(), amount);
+    function redeem(uint256 amount, bool lossOk) external {
+        redeemTo(_msgSender(), amount, lossOk);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
@@ -174,8 +175,13 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //     do token.transferFrom(backingManager, caller, min(tokenAmt, prorataAmt))
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
+    /// @param lossOk If true, will complete a partial redemption during undercollateralization
     /// @custom:interaction
-    function redeemTo(address recipient, uint256 amount) public notFrozen {
+    function redeemTo(
+        address recipient,
+        uint256 amount,
+        bool lossOk
+    ) public notFrozen {
         // == Refresh ==
         main.assetRegistry().refresh();
 
@@ -225,7 +231,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
                 ? (prorate * bal) / FIX_ONE // {qTok} = D18{1} * {qTok} / D18
                 : mulDiv256(bal, amount, supply); // {qTok} = {qTok} * {qRTok} / {qRTok}
 
-            if (prorata < amounts[i]) amounts[i] = prorata;
+            if (prorata < amounts[i]) {
+                require(lossOk, "partial redemption");
+                amounts[i] = prorata;
+            }
         }
 
         uint192 newBasketsNeeded = basketsNeeded - basketsRedeemed;
@@ -249,7 +258,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             );
         }
 
-        if (allZero) revert("Empty redemption");
+        if (allZero) revert("empty redemption");
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate

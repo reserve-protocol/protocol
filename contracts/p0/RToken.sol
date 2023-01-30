@@ -105,16 +105,22 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
+    /// @param lossOk If true, will complete a partial redemption during undercollateralization
     /// @custom:interaction
-    function redeem(uint256 amount) external {
-        redeemTo(_msgSender(), amount);
+    function redeem(uint256 amount, bool lossOk) external {
+        redeemTo(_msgSender(), amount, lossOk);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
+    /// @param lossOk If true, will complete a partial redemption during undercollateralization
     /// @custom:interaction
-    function redeemTo(address recipient, uint256 amount) public notFrozen {
+    function redeemTo(
+        address recipient,
+        uint256 amount,
+        bool lossOk
+    ) public notFrozen {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
 
@@ -153,19 +159,22 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
             // {qTok} = {qTok} * {qRTok} / {qRTok}
             uint256 prorata = mulDiv256(bal, amount, totalSupply());
-            amounts[i] = Math.min(amounts[i], prorata);
+            if (prorata < amounts[i]) {
+                require(lossOk, "partial redemption");
+                amounts[i] = prorata;
+            }
 
             // Send withdrawal
             if (amounts[i] > 0) {
                 IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), recipient, amounts[i]);
-                if (allZero) allZero = false;
+                allZero = false;
             }
         }
 
         // Accept and burn RToken, reverts if not enough balance
         _burn(_msgSender(), amount);
 
-        if (allZero) revert("Empty redemption");
+        if (allZero) revert("empty redemption");
     }
 
     // ===
