@@ -64,7 +64,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// Issue an RToken with basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issue(uint256 amount) public notPausedOrFrozen {
+    function issue(uint256 amount) public {
         issueTo(_msgSender(), amount);
     }
 
@@ -72,7 +72,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issueTo(address recipient, uint256 amount) public {
+    function issueTo(address recipient, uint256 amount) public notPausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
@@ -106,7 +106,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
-    function redeem(uint256 amount) external notFrozen {
+    function redeem(uint256 amount) external {
         redeemTo(_msgSender(), amount);
     }
 
@@ -114,7 +114,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
-    function redeemTo(address recipient, uint256 amount) public {
+    function redeemTo(address recipient, uint256 amount) public notFrozen {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
 

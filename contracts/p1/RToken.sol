@@ -83,7 +83,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// Issue an RToken with basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
-    function issue(uint256 amount) public notPausedOrFrozen {
+    function issue(uint256 amount) public {
         issueTo(_msgSender(), amount);
     }
 
@@ -91,7 +91,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issueTo(address recipient, uint256 amount) public {
+    function issueTo(address recipient, uint256 amount) public notPausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
 
         // == Refresh ==
@@ -151,7 +151,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
     /// @custom:interaction CEI
-    function redeem(uint256 amount) external notFrozen {
+    function redeem(uint256 amount) external {
         redeemTo(_msgSender(), amount);
     }
 
@@ -175,7 +175,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
-    function redeemTo(address recipient, uint256 amount) public {
+    function redeemTo(address recipient, uint256 amount) public notFrozen {
         // == Refresh ==
         main.assetRegistry().refresh();
 
