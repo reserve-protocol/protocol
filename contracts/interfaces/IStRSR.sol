@@ -128,10 +128,6 @@ interface TestIStRSR is IStRSR {
 
     function setUnstakingDelay(uint48) external;
 
-    function setName(string calldata) external;
-
-    function setSymbol(string calldata) external;
-
     function increaseAllowance(address, uint256) external returns (bool);
 
     function decreaseAllowance(address, uint256) external returns (bool);
