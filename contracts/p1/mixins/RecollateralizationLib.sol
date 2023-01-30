@@ -26,15 +26,6 @@ struct TradingContext {
     uint192 maxTradeSlippage; // {1}
 }
 
-struct TradeInfo {
-    IAsset sell;
-    IAsset buy;
-    uint192 sellAmount; // {sellTok}
-    uint192 buyAmount; // {buyTok}
-    uint192 sellPrice; // {UoA/sellTok} can be 0
-    uint192 buyPrice; // {UoA/buyTok}
-}
-
 /**
  * @title RecollateralizationLibP1
  * @notice An informal extension of the Trading mixin that provides trade preparation views
@@ -155,16 +146,18 @@ library RecollateralizationLibP1 {
         view
         returns (BasketRange memory range)
     {
-        // needed to duck stack limit
         (uint192 basketPriceLow, uint192 basketPriceHigh) = ctx.bh.price(); // {UoA/BU}
-
-        // ==== Calculate initial basket range ====
 
         // {BU} = {UoA} / {UoA/BU}
         uint192 dust = ctx.minTradeVolume.div(basketPriceLow, CEIL);
 
-        // range.top: The most number of BUs our assets are worth
-        // range.bottom: The least number of BUs our assets are worth
+        // === (1/2) Contribution from held baskets ===
+
+        range.top = ctx.basketsHeld;
+        range.bottom = ctx.basketsHeld;
+
+        // === (2/2) Contribution from baskets-to-be-bought ===
+
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             // Exclude RToken balances to avoid double counting value
             if (reg.erc20s[i] == IERC20(address(ctx.rToken))) continue;
@@ -198,37 +191,30 @@ library RecollateralizationLibP1 {
 
             // throughout this section +/- is same as Fix.plus/Fix.minus
 
-            // range.top
+            // range.top: contribution from balance beyond basketsHeld
             {
-                // Case 1: Excess where trading may be required; sell at high and buy at low
+                // sell at high and buy at low
+                // needs overflow protection: unpriced asset with price [0, FIX_MAX] can overflow
                 // {BU} = {UoA/tok} * {tok} / {UoA/BU}
                 uint192 b = ctx.bm.safeMulDivCeil(high, bal - inBasket, basketPriceLow);
-
-                // Case 2: In basket already, no trading required
-                // {BU} += {UoA/tok} * {tok} / {UoA/BU}
-                b += ctx.bm.safeMulDivCeil(high, inBasket, basketPriceHigh);
                 if (uint256(range.top) + b >= FIX_MAX) range.top = FIX_MAX;
                 else range.top += b;
             }
 
-            // range.bottom
+            // range.bottom: contribution from balance beyond basketsHeld
             {
-                // Case 1: Excess where trading may be required; sell at low and buy at high
-                // {BU} = {UoA/tok} * {tok} / {UoA/BU}
-                uint192 b = low.mul(bal - inBasket, FLOOR).div(basketPriceHigh);
-
-                // Account for potential slippage
-                // {BU} -= {BU} * {1} / {1}
-                b -= b.mul(ctx.maxTradeSlippage, CEIL);
-                // TODO or is it:
-                // b -= b.mulDiv(ctx.maxTradeSlippage, FIX_ONE - ctx.maxTradeSlippage, CEIL);
-
-                // Case 2: In basket already, no trading required
-                // {BU} += {UoA/tok} * {tok} / {UoA/BU}
-                b += low.mul(inBasket, FLOOR).div(basketPriceLow);
+                // sell at low and buy at high
+                // also assume we take maxTradeSlippage loss
+                // {BU} = {UoA/tok} * {tok} / {UoA/BU} * {1}
+                uint192 b = low.mul(bal - inBasket, FLOOR).div(basketPriceHigh).mul(
+                    FIX_ONE.minus(ctx.maxTradeSlippage),
+                    FLOOR
+                );
+                // TODO maybe another maxTradeSlippage factor should be in here?
 
                 // Account for potential dust loss
-                range.bottom += (b < dust) ? 0 : b - dust;
+                b = (b < dust) ? 0 : b - dust;
+                range.bottom += b;
             }
         }
 

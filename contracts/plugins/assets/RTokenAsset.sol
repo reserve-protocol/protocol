@@ -127,7 +127,7 @@ contract RTokenAsset is IAsset {
         view
         returns (RecollateralizationLibP1.BasketRange memory range)
     {
-        uint192 basketsHeld = basketHandler.basketsHeldBy(address(this)); // {BU}
+        uint192 basketsHeld = basketHandler.basketsHeldBy(address(backingManager)); // {BU}
         uint192 basketsNeeded = IRToken(address(erc20)).basketsNeeded(); // {BU}
 
         // if (basketHandler.fullyCollateralized())

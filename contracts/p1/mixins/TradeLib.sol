@@ -8,6 +8,15 @@ import "../../interfaces/ITrading.sol";
 import "../../libraries/Fixed.sol";
 import "./RecollateralizationLib.sol";
 
+struct TradeInfo {
+    IAsset sell;
+    IAsset buy;
+    uint192 sellAmount; // {sellTok}
+    uint192 buyAmount; // {buyTok}
+    uint192 sellPrice; // {UoA/sellTok} can be 0
+    uint192 buyPrice; // {UoA/buyTok}
+}
+
 /**
  * @title TradeLib
  * @notice An internal lib for preparing individual trades on particular asset pairs
