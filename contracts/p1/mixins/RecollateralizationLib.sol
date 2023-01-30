@@ -110,11 +110,9 @@ library RecollateralizationLibP1 {
         uint192 top; // {BU}
     }
 
-    // It's a precondition for all below internal helpers that their `reg.erc20s` argument contains at
+    // It's a precondition for all the below helpers that their `reg.erc20s` argument contains at
     // least all basket collateral, plus any registered assets for which the BackingManager has a
-    // nonzero balance. Any user of these functions should just pass in assetRegistry().erc20s(). We
-    // would prefer to look it up from inside each function, and avoid the extra parameter to get
-    // wrong, but the erc20s() call is pretty expensive.
+    // nonzero balance.
 
     // This function returns a "plausible range of BUs" assuming that the trading process follows
     //     the following rules:
@@ -122,25 +120,19 @@ library RecollateralizationLibP1 {
     // - We will not aim to hold more than rToken.basketsNeeded() BUs
     // - No double trades: if we buy B in one trade, we won't sell B in another trade
     //       Caveat: Unless the asset we're selling is IFFY/DISABLED
-    // - The best amount of an asset we can sell is our balance minus any backing requirements;
-    //       the worst is (our balance) - (backing requirement) - (its dust amount)
+    // - No trading the basketsHeld token balances
     // - The best price we might get for a trade is at the high sell price and low buy price
-    // - The worst price we might get for a trade between assets is at the low sell price and
+    // - The worst price we might get for a trade is at the low sell price and
     //     the high buy price, multiplied by ( 1 - maxTradeSlippage )
+    // - An additional dust balance can be lost, up to minTradeVolume
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
     // Given these assumptions, the following hold:
     //
-    // range.top = min(rToken.basketsNeeded, totalAssetValue(erc20s).top / basket.price().bottom)
-    //   because (totalAssetValue(erc20s).top / basket.price().bottom) is how many BUs we can hold
-    //   given "best plausible" prices, and we shouldn't hold more than rToken(bm).basketsNeeded
-    //
-    // range.bottom = max(0, min(lowBUs, range.top)), where:
-    //   lowBUs = (assetsLow - maxTradeSlippage * buShortfall(range.top)) / basket.price().top
-    //     is the number of BUs that we are *sure* we have the assets to collateralize, and
-    //   buShortfall(range.top) = the total value of the assets we'd need to buy in order
-    //     in order to fully collateralize `range.top` BUs,
-    //
+    // range.top = min(rToken.basketsNeeded, basketsHeld + most baskets possible with excess)
+    // range.bottom = min(rToken.basketsNeeded, basketsHeld + least baskets possible with excess)
+    //   where "least baskets possible" involves trading at low/high prices,
+    //   incurring maxTradeSlippage, and taking up to a minTradeVolume loss.
     function basketRange(TradingContext memory ctx, Registry memory reg)
         internal
         view
@@ -210,7 +202,6 @@ library RecollateralizationLibP1 {
                     FIX_ONE.minus(ctx.maxTradeSlippage),
                     FLOOR
                 );
-                // TODO maybe another maxTradeSlippage factor should be in here?
 
                 // Account for potential dust loss
                 b = (b < dust) ? 0 : b - dust;
