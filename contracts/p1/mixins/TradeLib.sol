@@ -27,7 +27,6 @@ struct TradeInfo {
 library TradeLib {
     using FixLib for uint192;
 
-    /// @dev Caller must be ITrading
     /// Prepare a trade to sell `trade.sellAmount` that guarantees a reasonable closing price,
     /// without explicitly aiming at a particular quantity to purchase.
     /// @param trade:
