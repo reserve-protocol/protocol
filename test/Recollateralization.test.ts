@@ -2220,7 +2220,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
       })
 
-      it('Should recollateralize correctly in case of default - MinTradeVolume too large', async () => {
+      it('Should overcollateralize when minTradeVolume is larger than the collateral deficit', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -2241,8 +2241,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check stakes
-        //expect(await rsr.balanceOf(stRSR.address)).to.equal(await rsrAsset.minTradeSize())
-        //expect(await stRSR.balanceOf(addr1.address)).to.equal(await rsrAsset.minTradeSize())
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmount)
 
@@ -2263,7 +2261,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Check new state after basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        // Asset value is zero, the skip collateral held is defaulted
+        // Asset value is half
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(2)
         )
@@ -2315,15 +2313,64 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        // Raise minTradeVolume
-        await backingManager.connect(owner).setMinTradeVolume(stakeAmount.div(2).sub(1))
+        // Raise minTradeVolume to the whole issueAmount
+        await backingManager.connect(owner).setMinTradeVolume(issueAmount)
+
+        // Run auctions - RSR Auction launched for minTradeVolume
+        const minBuyAmt2 = issueAmount.mul(100).div(101).add(3)
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [anyValue, token0.address, backupToken1.address, sellAmt, sellAmt.div(2)],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            args: [anyValue, rsr.address, backupToken1.address, anyValue, minBuyAmt2],
+            emitted: true,
+          },
+        ])
+
+        const t = await getTrade(backingManager, rsr.address)
+        const sellAmt2 = await t.initBal()
+        expect(minBuyAmt2).to.equal(await toMinBuyAmt(sellAmt2, fp('1'), fp('1')))
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount.sub(sellAmt2))
+
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0) // no dust
+
+        // Should have half of the value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          issueAmount.div(2)
+        )
+        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(sellAmt.div(2))
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check price in USD of the current RToken - overcollateralized and still targeting 1
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+
+        // Perform Mock Bids (addr1 has balance)
+        // Assume fair price, get half of the tokens (because price reduction was 50%)
+        await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt2)
+        await gnosis.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmt2,
+          buyAmount: minBuyAmt2,
+        })
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - NO RSR Auction launched but haircut taken
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [anyValue, token0.address, backupToken1.address, sellAmt, sellAmt.div(2)],
+            args: [anyValue, rsr.address, backupToken1.address, sellAmt2, minBuyAmt2],
             emitted: true,
           },
           {
@@ -2338,23 +2385,22 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        // Should not have seized RSR
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
-
         // Check state
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount.sub(sellAmt2))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0) // no dust
 
-        // Should have half of the value
-        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
-          issueAmount.div(2)
-        )
-        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(sellAmt.div(2))
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
+        // Should have 1.5x starting amounts due to minTradeVolume
+        const bonus = issueAmount.div(2).add(minBuyAmt2)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(bonus)
+        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(bonus)
 
-        // Check price in USD of the current RToken - haircut of 50%
-        await expectRTokenPrice(rTokenAsset.address, fp('0.5'), ORACLE_ERROR)
+        // Should mint the excess in order to re-handout to RToken holders and stakers
+        expect(await rToken.totalSupply()).to.equal(bonus)
+
+        // Check price in USD of the current RToken - overcollateralized and still targeting 1
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
       })
 
       it('Should recollateralize correctly in case of default - Using RSR for remainder - Multiple tokens and auctions - No overshoot', async () => {
@@ -3527,12 +3573,71 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        // Close final auction - Haircut will be taken
+        // Close 2nd to final auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
             args: [anyValue, token1.address, backupToken1.address, sellAmt4, minBuyAmt4],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            args: [anyValue, token1.address, backupToken1.address, anyValue, anyValue],
+            emitted: true,
+          },
+        ])
+
+        auctionTimestamp = await getLatestBlockTimestamp()
+
+        // Check new auction
+        // Token1 -> Backup Token 1 Auction
+        await expectTrade(backingManager, {
+          sell: token1.address,
+          buy: backupToken1.address,
+          endTime: auctionTimestamp + Number(config.auctionLength),
+          externalId: bn('4'),
+        })
+        const t2 = await getTrade(backingManager, token1.address)
+        const sellAmt5 = await t2.initBal() // 6 decimals token
+        const minBuyAmt5 = await toMinBuyAmt(
+          sellAmt5.mul(bn('1e12')), // because of decimals difference
+          fp('1'),
+          fp('1')
+        )
+
+        // Check state after third auction
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+
+        // Check quotes
+        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        expect(quotes).to.eql(newQuotes)
+
+        // Check Backup tokens available
+        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
+          minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmt4)
+        )
+
+        // Perform Mock Bids for the new Token (addr1 has balance)
+        // Assume fair price, get all tokens
+        await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt5)
+        await gnosis.placeBid(4, {
+          bidder: addr1.address,
+          sellAmount: sellAmt5,
+          buyAmount: minBuyAmt5,
+        })
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // Close final auction - should take haircut
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [anyValue, token1.address, backupToken1.address, sellAmt5, minBuyAmt5],
             emitted: true,
           },
           {
@@ -3545,29 +3650,30 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Check final state - Haircut taken, stable but price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        const valLostInFinalTrade = sellAmt4.mul(bn('1e12')).sub(minBuyAmt4)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount
             .div(4)
-            .sub(valLostInFinalTrade) // the issueAmount.div(4) is an overestimate by this amount
             .add(minBuyAmt0)
             .add(minBuyAmt2)
             .add(minBuyAmt3)
+            .sub(sellAmt4.mul(bn('1e12')).sub(minBuyAmt4))
+            .sub(sellAmt5.mul(bn('1e12')).sub(minBuyAmt5))
         )
 
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: [
-            newQuantities[0].sub(sellAmt4),
-            minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmt4),
+            newQuantities[0].sub(sellAmt4).sub(sellAmt5),
+            minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmt4).add(minBuyAmt5),
           ],
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        // Without slippage, haircut of 15.02%
-        // With slippage, haircut of ~17.87%
-        const newPrice = fp('0.82133')
+        // Without slippage (not this test), haircut of 15.02%
+        // With slippage (this test), haircut of ~16.38%
+        const newPrice = fp('0.83721')
+        // const newPrice = fp('0.82133')
         await expectRTokenPrice(rTokenAsset.address, newPrice, ORACLE_ERROR)
 
         // Check quotes - reduced by 15.01% as well (less collateral is required to match the new price)
@@ -3580,7 +3686,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
-          minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmt4)
+          minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmt4).add(minBuyAmt5)
         )
       })
 
@@ -4228,7 +4334,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        // Close penultimate auction - starts final auction
+        // Close auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
@@ -4245,7 +4351,121 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
+            args: [anyValue, token1.address, backupToken2.address, anyValue, anyValue],
+            emitted: true,
+          },
+        ])
+
+        const t2 = await getTrade(backingManager, token1.address)
+        const sellAmt5 = await t2.initBal()
+        const minBuyAmt5 = sellAmt5.mul(bn('1e12')) // because decimals
+
+        auctionTimestamp = await getLatestBlockTimestamp()
+
+        // Check new auction
+        // Token 1 ->  Backup Token 2 Auction
+        await expectTrade(backingManager, {
+          sell: token1.address,
+          buy: backupToken2.address,
+          endTime: auctionTimestamp + Number(config.auctionLength),
+          externalId: bn('5'),
+        })
+
+        // Check state after fifth auction
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check quotes
+        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        expect(quotes).to.eql(newQuotes)
+
+        // Perform Mock Bids for the new Token (addr1 has balance)
+        // Assume fair price, get all tokens
+        await backupToken2.connect(addr1).approve(gnosis.address, minBuyAmt5)
+        await gnosis.placeBid(5, {
+          bidder: addr1.address,
+          sellAmount: sellAmt5,
+          buyAmount: minBuyAmt5,
+        })
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // Close final auction - takes haircut
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [anyValue, token1.address, backupToken2.address, sellAmt5, minBuyAmt5],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            args: [anyValue, backupToken1.address, backupToken2.address, anyValue, anyValue],
+            emitted: true,
+          },
+        ])
+
+        const t3 = await getTrade(backingManager, backupToken1.address)
+        const sellAmtRebalance2 = await t3.initBal()
+
+        auctionTimestamp = await getLatestBlockTimestamp()
+
+        // Check new auction
+        // Backup Token 1 ->  Backup Token 2 Auction
+        await expectTrade(backingManager, {
+          sell: backupToken1.address,
+          buy: backupToken2.address,
+          endTime: auctionTimestamp + Number(config.auctionLength),
+          externalId: bn('6'),
+        })
+
+        // Check state after sixth auction
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check quotes
+        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        expect(quotes).to.eql(newQuotes)
+
+        // Perform Mock Bids for the new Token (addr1 has balance)
+        // Assume fair price, get all tokens
+        await backupToken2.connect(addr1).approve(gnosis.address, sellAmtRebalance2)
+        await gnosis.placeBid(6, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRebalance2,
+          buyAmount: sellAmtRebalance2,
+        })
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // Close final auction - takes haircut
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [
+              anyValue,
+              backupToken1.address,
+              backupToken2.address,
+              sellAmtRebalance2,
+              sellAmtRebalance2,
+            ],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
             emitted: false,
+          },
+          {
+            contract: rToken,
+            name: 'BasketsNeededChanged',
+            emitted: true,
           },
         ])
 
@@ -4257,17 +4477,26 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: [
-            newQuantities[0].sub(sellAmt4),
-            sellAmt0.div(2).add(sellAmt3.div(50).div(2)).sub(sellAmtRebalance),
-            sellAmt2.div(2).add(buyAmt4).add(sellAmtRebalance),
+            newQuantities[0].sub(sellAmt4).sub(sellAmt5),
+            sellAmt0
+              .div(2)
+              .add(sellAmt3.div(50).div(2))
+              .sub(sellAmtRebalance)
+              .sub(sellAmtRebalance2),
+            sellAmt2
+              .div(2)
+              .add(buyAmt4)
+              .add(sellAmtRebalance)
+              .add(sellAmtRebalance2)
+              .add(minBuyAmt5),
           ],
         })
 
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken - Haircut of ~39.7% taken
-        // Haircut trading without low/high estimation would have been 37.5%.
-        const exactRTokenPrice = fp('0.60395621737373737306')
+        // Check price in USD of the current RToken - Haircut of ~37.52% taken
+        // The default was for 37.5% of backing, so this is pretty awesome
+        const exactRTokenPrice = fp('0.62479389858177737')
         await expectRTokenPrice(
           rTokenAsset.address,
           exactRTokenPrice,
@@ -4276,7 +4505,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
         )
 
-        // Check quotes - reduced by ~39.7% as well (less collateral is required to match the new price)
+        // Check quotes - reduced by ~38.15% as well (less collateral is required to match the new price)
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         const finalQuotes = newQuotes.map((q) => {
           return divCeil(q.mul(exactRTokenPrice), fp('1'))
@@ -4285,10 +4514,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
-          sellAmt0.div(2).add(sellAmt3.div(50).div(2)).sub(sellAmtRebalance)
+          sellAmt0.div(2).add(sellAmt3.div(50).div(2)).sub(sellAmtRebalance).sub(sellAmtRebalance2)
         )
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(
-          sellAmt2.div(2).add(buyAmt4).add(sellAmtRebalance)
+          sellAmt2.div(2).add(buyAmt4).add(sellAmtRebalance).add(minBuyAmt5).add(sellAmtRebalance2)
         )
       })
     })
