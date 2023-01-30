@@ -309,19 +309,19 @@ library TradingLibP0 {
             // range.bottom: contribution from balance beyond basketsHeld
             {
                 // sell at low and buy at high
-                // also assume we take maxTradeSlippage loss
-                // {BU} = {UoA/tok} * {tok} / {UoA/BU} * {1}
-                uint192 b = low.mul(bal - inBasket, FLOOR).div(basketPriceHigh).mul(
-                    FIX_ONE.minus(ctx.maxTradeSlippage),
-                    FLOOR
-                );
-
-                // {BU} = {UoA} / {UoA/BU}
-                uint192 dust = ctx.minTradeVolume.div(basketPriceLow, CEIL);
+                // {UoA} = {UoA/tok} * {tok}
+                uint192 b = low.mul(bal - inBasket, FLOOR);
 
                 // Account for potential dust loss
-                b = (b < dust) ? 0 : b - dust;
-                range.bottom += b;
+                b = (b < ctx.minTradeVolume) ? 0 : b - ctx.minTradeVolume;
+
+                // Then assume we take maxTradeSlippage loss
+                // {BU} = {UoA} * {1} / {UoA/BU}
+                range.bottom += b.mulDiv(
+                    FIX_ONE.minus(ctx.maxTradeSlippage),
+                    basketPriceHigh,
+                    FLOOR
+                );
             }
         }
 

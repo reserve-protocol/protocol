@@ -4496,7 +4496,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Check price in USD of the current RToken - Haircut of ~37.52% taken
         // The default was for 37.5% of backing, so this is pretty awesome
-        const exactRTokenPrice = fp('0.62479389858177737')
+        const exactRTokenPrice = fp('0.6247979797979798')
         await expectRTokenPrice(
           rTokenAsset.address,
           exactRTokenPrice,
