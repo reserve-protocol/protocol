@@ -189,6 +189,8 @@ contract FiatCollateral is ICollateral, Asset {
             _whenDefault = NEVER;
         } else if (status_ == CollateralStatus.IFFY) {
             uint256 sum = block.timestamp + uint256(delayUntilDefault);
+            // untestable:
+            //      constructor enforces max length on delayUntilDefault
             if (sum >= NEVER) _whenDefault = NEVER;
             else if (sum < _whenDefault) _whenDefault = uint48(sum);
             // else: no change to _whenDefault
