@@ -86,3 +86,4 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Allow redemption while DISABLED
 - Collateral default threshold: 5% -> 1% (+ include oracleError)
 - RecollateralizationLib: Tighter basket range during recollateralization. Will now do `minTradeVolume`-size auctions to fill in dust rather than haircut.
+- Remove StRSR.setName()/setSymbol()
