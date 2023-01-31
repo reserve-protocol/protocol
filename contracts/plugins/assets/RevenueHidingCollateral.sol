@@ -104,14 +104,19 @@ abstract contract RevenueHidingCollateral is FiatCollateral {
         }
 
         // Check for hard default
-        uint192 referencePrice = refPerTok();
 
         // revenue hiding: do not DISABLE if drawdown is small
         // uint192(<) is equivalent to Fix.lt
-        if (referencePrice < exposedReferencePrice) {
+        uint192 underlyingRefPerTok = _underlyingRefPerTok();
+        if (underlyingRefPerTok < exposedReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         }
-        if (referencePrice > exposedReferencePrice) exposedReferencePrice = referencePrice;
+
+        // {ref/tok} = {ref/tok} * {1}
+        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(FIX_ONE.minus(revenueHiding));
+        if (hiddenReferencePrice > exposedReferencePrice) {
+            exposedReferencePrice = hiddenReferencePrice;
+        }
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
@@ -121,7 +126,7 @@ abstract contract RevenueHidingCollateral is FiatCollateral {
 
     /// @return {ref/tok} Shielded quantity of whole reference units per whole collateral tokens
     function refPerTok() public view virtual override returns (uint192) {
-        return _underlyingRefPerTok();
+        return exposedReferencePrice;
     }
 
     /// Should update in inheritors
