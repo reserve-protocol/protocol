@@ -149,11 +149,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    /// @param lossOk If true, will complete a partial redemption during undercollateralization
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
     /// @custom:action
     /// @custom:interaction CEI
-    function redeem(uint256 amount, bool lossOk) external {
-        redeemTo(_msgSender(), amount, lossOk);
+    function redeem(uint256 amount, bool revertOnPartialRedemption) external {
+        redeemTo(_msgSender(), amount, revertOnPartialRedemption);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
@@ -175,12 +175,12 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //     do token.transferFrom(backingManager, caller, min(tokenAmt, prorataAmt))
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param lossOk If true, will complete a partial redemption during undercollateralization
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
     /// @custom:interaction
     function redeemTo(
         address recipient,
         uint256 amount,
-        bool lossOk
+        bool revertOnPartialRedemption
     ) public notFrozen {
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -216,23 +216,18 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // i.e, set amounts = min(amounts, balances * amount / totalSupply)
         //   where balances[i] = erc20s[i].balanceOf(this)
 
-        // D18{1} = D18 * {qRTok} / {qRTok}
-        // downcast is safe: amount <= balanceOf(redeemer) <= totalSupply(), so prorate < 1e18
-        uint192 prorate = uint192((FIX_ONE_256 * amount) / supply);
-
         // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
         uint256 erc20length = erc20s.length;
         for (uint256 i = 0; i < erc20length; ++i) {
-            // {qTok}
-            uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(address(backingManager));
-
-            // gas-optimization: only do the full mulDiv256 if prorate is 0
-            uint256 prorata = (prorate > 0)
-                ? (prorate * bal) / FIX_ONE // {qTok} = D18{1} * {qTok} / D18
-                : mulDiv256(bal, amount, supply); // {qTok} = {qTok} * {qRTok} / {qRTok}
+            // {qTok} = {qTok} * {qRTok} / {qRTok}
+            uint256 prorata = mulDiv256(
+                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingManager)),
+                amount,
+                supply
+            ); // FLOOR
 
             if (prorata < amounts[i]) {
-                require(lossOk, "partial redemption");
+                require(!revertOnPartialRedemption, "partial redemption");
                 amounts[i] = prorata;
             }
         }

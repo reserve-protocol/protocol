@@ -899,7 +899,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await token2.connect(owner).burn(backingManager.address, bal)
 
         // Should not revert with empty redemption yet
-        await rToken.connect(addr1).redeem(issueAmount.div(2), true)
+        await rToken.connect(addr1).redeem(issueAmount.div(2), false)
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
 
         // Burn the rest
@@ -907,11 +907,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           .connect(owner)
           .burn(backingManager.address, await token3.balanceOf(backingManager.address))
 
-        // Now it should revert - should revert under lossOk and !lossOk
-        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), true)).to.be.revertedWith(
+        // Now it should revert - should revert under revertOnPartialRedemption and !revertOnPartialRedemption
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), false)).to.be.revertedWith(
           'empty redemption'
         )
-        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), false)).to.be.revertedWith(
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), true)).to.be.revertedWith(
           'partial redemption'
         )
 
@@ -919,14 +919,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
       })
 
-      it('Should revert if partial redemption when !lossOk #fast', async function () {
+      it('Should revert if partial redemption when revertOnPartialRedemption #fast', async function () {
         // Default immediately
         await token2.setExchangeRate(fp('0.1')) // 90% decrease
 
         // Even though a single BU requires 10x token2 as before, it should still hand out evenly
 
-        // Should fail if lossOk is false
-        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), false)).to.be.revertedWith(
+        // Should fail if revertOnPartialRedemption is true
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), true)).to.be.revertedWith(
           'partial redemption'
         )
       })
@@ -938,7 +938,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Even though a single BU requires 10x token2 as before, it should still hand out evenly
 
         // 1st redemption
-        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), true)).to.emit(
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), false)).to.emit(
           rToken,
           'Redemption'
         )
@@ -947,7 +947,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
 
         // 2nd redemption
-        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), true)).to.emit(
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), false)).to.emit(
           rToken,
           'Redemption'
         )
@@ -972,7 +972,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await token2.setExchangeRate(fp('0'))
 
         // Redemption
-        await expect(rToken.connect(addr1).redeem(issueAmount, true)).to.emit(rToken, 'Redemption')
+        await expect(rToken.connect(addr1).redeem(issueAmount, false)).to.emit(rToken, 'Redemption')
         expect(await rToken.totalSupply()).to.equal(0)
         expect(await token0.balanceOf(addr1.address)).to.be.equal(initialBal)
         expect(await token1.balanceOf(addr1.address)).to.be.equal(initialBal)
@@ -1029,7 +1029,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             await advanceTime(3600)
             redeemAmount = await rToken.redemptionAvailable()
 
-            await rToken.connect(addr1).redeem(redeemAmount, true)
+            await rToken.connect(addr1).redeem(redeemAmount, false)
             issueAmount = issueAmount.sub(redeemAmount)
             expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
             expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1083,12 +1083,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.issuanceAvailable()).to.equal(throttles.amtRate)
 
           // Issue
-          await expect(rToken.connect(addr1).issue(throttles.amtRate))
+          await rToken.connect(addr1).issue(throttles.amtRate)
           expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(throttles.amtRate))
 
           // Redeem
           expect(await rToken.redemptionAvailable()).to.equal(throttles.amtRate)
-          await expect(rToken.connect(addr1).redeem(throttles.amtRate, true))
+          await rToken.connect(addr1).redeem(throttles.amtRate, true)
           expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
         })
 

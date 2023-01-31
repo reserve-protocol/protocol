@@ -80,19 +80,19 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
 
     /// Redeem RToken for basket collateral
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param lossOk If true, will complete a partial redemption during undercollateralization
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
     /// @custom:interaction
-    function redeem(uint256 amount, bool lossOk) external;
+    function redeem(uint256 amount, bool revertOnPartialRedemption) external;
 
     /// Redeem RToken for basket collateral to a particular recipient
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param lossOk If true, will complete a partial redemption during undercollateralization
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
     /// @custom:interaction
     function redeemTo(
         address recipient,
         uint256 amount,
-        bool lossOk
+        bool revertOnPartialRedemption
     ) external;
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
