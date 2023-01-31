@@ -338,7 +338,7 @@ library TradingLibP0 {
                 // (2) Lose minTradeVolume to dust (why: auctions can return tokens)
                 // Q: Why is this precisely where we should take out minTradeVolume?
                 // A: Our use of isEnoughToSell always uses the low price (lotLow, technically),
-                //   so min trade volumes are always assested based on low prices. At this point
+                //   so min trade volumes are always assesed based on low prices. At this point
                 //   in the calculation we have already calculated the UoA amount corresponding to
                 //   the excess token balance based on its low price, so we are already set up
                 //   to straightforwardly deduct the minTradeVolume before trying to buy BUs.
