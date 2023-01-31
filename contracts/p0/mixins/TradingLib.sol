@@ -298,7 +298,7 @@ library TradingLibP0 {
 
             // range.top: contribution from balance beyond basketsHeld
             {
-                // sell at high and buy at low
+                // pretend we sell the token at its high price and buy BUs at their low price
                 // needs overflow protection: unpriced asset with price [0, FIX_MAX] can overflow
                 // {BU} = {UoA/tok} * {tok} / {UoA/BU}
                 uint192 b = ctx.bm.safeMulDivCeil(high, bal - inBasket, basketPriceLow);
@@ -308,7 +308,7 @@ library TradingLibP0 {
 
             // range.bottom: contribution from balance beyond basketsHeld
             {
-                // sell at low and buy at high
+                // pretend we sell the token at its low price and buy BUs at their high price
                 // {UoA} = {UoA/tok} * {tok}
                 uint192 b = low.mul(bal - inBasket, FLOOR);
 
