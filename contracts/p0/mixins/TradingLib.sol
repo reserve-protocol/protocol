@@ -276,11 +276,6 @@ library TradingLibP0 {
                 bal = bal.plus(asset.bal(address(ctx.stRSR)));
             }
 
-            // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            // {tok} = {tok/BU} * {BU}
-            uint192 inBasket = ctx.bh.quantity(erc20s[i]).mul(ctx.basketsHeld, FLOOR);
-            if (bal < inBasket) inBasket = bal; // not sure if needed
-
             // Skip over dust-balance assets not in the basket
             {
                 (uint192 lotLow, ) = asset.lotPrice(); // {UoA/tok}
@@ -294,9 +289,15 @@ library TradingLibP0 {
 
             (uint192 low, uint192 high) = asset.price(); // {UoA/tok}
 
-            assert(high != FIX_MAX || inBasket == 0); // collateral in the basket must be priced
+            // collateral in the basket must be priced
+            assert(high != FIX_MAX || ctx.bh.quantity(erc20s[i]) == 0);
 
             // throughout this section +/- is same as Fix.plus/Fix.minus
+
+            // Ignore dust amounts for assets not in the basket; their value is inaccessible
+            // {tok} = {tok/BU} * {BU}
+            uint192 inBasket = ctx.bh.quantity(erc20s[i]).mul(ctx.basketsHeld, FLOOR);
+            if (bal < inBasket) inBasket = bal; // not sure if needed
 
             // range.top: contribution from balance beyond basketsHeld
             {

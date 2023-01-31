@@ -160,11 +160,6 @@ library RecollateralizationLibP1 {
 
             uint192 q = ctx.bh.quantity(reg.erc20s[i]); // {tok/BU}
 
-            // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            // {tok} = {tok/BU} * {BU}
-            uint192 inBasket = q.mul(ctx.basketsHeld, FLOOR);
-            if (bal < inBasket) inBasket = bal; // not sure if needed
-
             // Skip over dust-balance assets not in the basket
             {
                 (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
@@ -181,6 +176,11 @@ library RecollateralizationLibP1 {
             assert(high != FIX_MAX || q == 0); // collateral in the basket must be priced
 
             // throughout this section +/- is same as Fix.plus/Fix.minus
+
+            // Ignore dust amounts for assets not in the basket; their value is inaccessible
+            // {tok} = {tok/BU} * {BU}
+            uint192 inBasket = q.mul(ctx.basketsHeld, FLOOR);
+            if (bal < inBasket) inBasket = bal; // not sure if needed
 
             // range.top: contribution from balance beyond basketsHeld
             {
