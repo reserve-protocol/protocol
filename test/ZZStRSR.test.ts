@@ -25,6 +25,7 @@ import { IConfig, MAX_RATIO, MAX_UNSTAKING_DELAY } from '../common/configuration
 import { CollateralStatus, MAX_UINT256, ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
 import {
   advanceBlocks,
+  advanceTime,
   advanceToTimestamp,
   getLatestBlockNumber,
   getLatestBlockTimestamp,
@@ -1705,6 +1706,43 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.sub(one))
       expect(await stRSR.totalSupply()).to.equal(amount.sub(one))
+    })
+
+    it('Should not allow stakeRate manipulation', async () => {
+      // send RSR to stRSR (attempt to manipulate stake rate)
+      await rsr.connect(addr1).transfer(stRSR.address, fp('200'))
+      const attackerBalBefore = await rsr.balanceOf(addr1.address)
+      const stakerBalBefore = await rsr.balanceOf(addr2.address)
+
+      // stake 1 wei
+      await rsr.connect(addr1).approve(stRSR.address, bn(1))
+      await stRSR.connect(addr1).stake(bn(1))
+
+      // wait, then payout rewards
+      await advanceTime(12) // 12 second reward period
+      await stRSR.payoutRewards()
+
+      // addr2 stakes
+      const stakeAmt = fp('10')
+      await rsr.connect(addr2).approve(stRSR.address, stakeAmt)
+      await stRSR.connect(addr2).stake(stakeAmt)
+      let addr2Bal = await stRSR.balanceOf(addr2.address)
+      expect(addr2Bal).to.eq(stakeAmt)
+
+      // attacker unstakes
+      const unstakingDelay = await stRSR.unstakingDelay()
+      await stRSR.connect(addr1).unstake(bn(1))
+      await advanceTime(unstakingDelay)
+      await stRSR.connect(addr1).withdraw(addr1.address, 1)
+      const attackerBalAfter = await rsr.balanceOf(addr1.address)
+      expect(attackerBalAfter).closeTo(attackerBalBefore, bn(10))
+
+      // staker unstakes
+      await stRSR.connect(addr2).unstake(addr2Bal)
+      await advanceTime(unstakingDelay)
+      await stRSR.connect(addr2).withdraw(addr2.address, 1)
+      const stakerBalAFter = await rsr.balanceOf(addr2.address)
+      expect(stakerBalAFter).to.be.gt(stakerBalBefore)
     })
   })
 
