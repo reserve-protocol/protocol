@@ -226,29 +226,39 @@ library TradingLibP0 {
         uint192 bottom; // {BU}
     }
 
-    // It's a precondition for all the below helpers that their `erc20s` argument contains at
-    // least all basket collateral, plus any registered assets for which the BackingManager has a
-    // nonzero balance.
-
-    // This function returns a "plausible range of BUs" assuming that the trading process follows
-    //     the following rules:
+    // Compute the basket range
+    // Algorithm intuition: Trade conservatively. Quantify uncertainty based on the proportion of
+    // token balances requiring trading vs not requiring trading. Decrease uncertainty the largest
+    // amount possible with each trade.
     //
+    // How do we know this algorithm converges?
+    // Assumption: constant prices
+    // Any volume traded narrows the BU band. Why:
+    //   - We might increase `basketsHeld` from run-to-run, but will never decrease it
+    //   - We might decrease the UoA amount of excess balances beyond `basketsHeld` from
+    //       run-to-run, but will never increase it
+    //   - Balances within `basketsHeld` contribute to `range.top` and `range.bottom` equally
+    //   - Balances beyond `basketsHeld` float `range.top` and depress `range.bottom`
+    //
+    // Preconditions:
+    // - ctx is correctly populated with current basketsHeld
+    // - reg contains erc20 + asset arrays in same order and without duplicates
+    // Trading Strategy:
     // - We will not aim to hold more than rToken.basketsNeeded() BUs
     // - No double trades: if we buy B in one trade, we won't sell B in another trade
     //       Caveat: Unless the asset we're selling is IFFY/DISABLED
-    // - No trading the basketsHeld token balances
+    // - No trading token balances corresponding to ctx.basketsHeld
     // - The best price we might get for a trade is at the high sell price and low buy price
     // - The worst price we might get for a trade is at the low sell price and
     //     the high buy price, multiplied by ( 1 - maxTradeSlippage )
-    // - An additional dust balance can be lost, up to minTradeVolume
+    // - In the worst-case an additional dust balance can be lost, up to minTradeVolume
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
-    // Given these assumptions, the following hold:
-    //
-    // range.top = min(rToken.basketsNeeded, basketsHeld + most baskets possible with excess)
-    // range.bottom = min(rToken.basketsNeeded, basketsHeld + least baskets possible with excess)
-    //   where "least baskets possible" involves trading at low/high prices,
-    //   incurring maxTradeSlippage, and taking up to a minTradeVolume loss.
+    // More concretely:
+    // - range.top = min(rToken.basketsNeeded, basketsHeld + most baskets purchaseable)
+    // - range.bottom = min(rToken.basketsNeeded, basketsHeld + least baskets purchaseable)
+    //   where "least baskets purchaseable" involves trading at unfavorable prices,
+    //   incurring maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
     function basketRange(TradingContext memory ctx, IERC20[] memory erc20s)
         internal
         view
@@ -297,11 +307,15 @@ library TradingLibP0 {
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
             // {tok} = {tok/BU} * {BU}
             uint192 inBasket = ctx.bh.quantity(erc20s[i]).mul(ctx.basketsHeld, FLOOR);
-            if (bal < inBasket) inBasket = bal; // not sure if needed
+            if (bal < inBasket) inBasket = bal; // not sure if needed, might be unreachable
 
             // range.top: contribution from balance beyond basketsHeld
             {
-                // pretend we sell the token at its high price and buy BUs at their low price
+                // Suppose the best-case series of events:
+                // 1. Sell tokens at high price
+                // 2. Buy BUs at their low price
+                // Assume no dust balances and 0 slippage
+
                 // needs overflow protection: unpriced asset with price [0, FIX_MAX] can overflow
                 // {BU} = {UoA/tok} * {tok} / {UoA/BU}
                 uint192 b = ctx.bm.safeMulDivCeil(high, bal - inBasket, basketPriceLow);
@@ -311,16 +325,29 @@ library TradingLibP0 {
 
             // range.bottom: contribution from balance beyond basketsHeld
             {
-                // pretend we sell the token at its low price and buy BUs at their high price
+                // Suppose the worst-case series of events:
+                // 1. Sell tokens at low price
+                // 2. Lose minTradeVolume to dust (why: auctions can return tokens)
+                // 3. Buy BUs at their high price with the remaining value
+                // 4. Assume maximum slippage in trade
+
+                // (1) Sell tokens at low price
                 // {UoA} = {UoA/tok} * {tok}
-                uint192 b = low.mul(bal - inBasket, FLOOR);
+                uint192 val = low.mul(bal - inBasket, FLOOR);
 
-                // Account for potential dust loss
-                b = (b < ctx.minTradeVolume) ? 0 : b - ctx.minTradeVolume;
+                // (2) Lose minTradeVolume to dust (why: auctions can return tokens)
+                // Q: Why is this precisely where we should take out minTradeVolume?
+                // A: Our use of isEnoughToSell always uses the low price (lotLow, technically),
+                //   so min trade volumes are always assested based on low prices. At this point
+                //   in the calculation we have already calculated the UoA amount corresponding to
+                //   the excess token balance based on its low price, so we are already set up
+                //   to straightforwardly deduct the minTradeVolume before trying to buy BUs.
+                val = (val < ctx.minTradeVolume) ? 0 : val - ctx.minTradeVolume;
 
-                // Then assume we take maxTradeSlippage loss
+                // (3) Buy BUs at their high price with the remaining value
+                // (4) Assume maximum slippage in trade
                 // {BU} = {UoA} * {1} / {UoA/BU}
-                range.bottom += b.mulDiv(
+                range.bottom += val.mulDiv(
                     FIX_ONE.minus(ctx.maxTradeSlippage),
                     basketPriceHigh,
                     FLOOR
