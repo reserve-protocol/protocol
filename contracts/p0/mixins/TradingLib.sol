@@ -307,7 +307,7 @@ library TradingLibP0 {
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
             // {tok} = {tok/BU} * {BU}
             uint192 inBasket = ctx.bh.quantity(erc20s[i]).mul(ctx.basketsHeld, FLOOR);
-            if (bal < inBasket) inBasket = bal; // not sure if needed, might be unreachable
+            assert(bal >= inBasket); // should not be possible to reach
 
             // range.top: contribution from balance beyond basketsHeld
             {

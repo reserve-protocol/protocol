@@ -190,7 +190,6 @@ library RecollateralizationLibP1 {
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
             // {tok} = {tok/BU} * {BU}
             uint192 inBasket = q.mul(ctx.basketsHeld, FLOOR);
-            if (bal < inBasket) inBasket = bal; // not sure if needed, might be unreachable
 
             // range.top: contribution from balance beyond basketsHeld
             {
