@@ -2176,6 +2176,20 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         stRSRVotes.connect(other).delegateBySig(addr1.address, invalidNonce, expiry, v, r, s)
       ).to.be.revertedWith('ERC20Votes: invalid nonce')
 
+      // Attempt to delegate with invalid signature
+      await expect(
+        stRSRVotes
+          .connect(other)
+          .delegateBySig(
+            addr1.address,
+            nonce,
+            expiry,
+            28,
+            '0x91d1478d8d0aaaafc8cf58fc0c9c1e95a07a78baa730de72981407d3344ddb5d',
+            '0x1d33a68b1b1aaaa5ed119bb71ad14e21c5168120c18700eb1411d6640d1b3d76'
+          )
+      ).to.be.revertedWith('ECDSA: invalid signature')
+
       // Set invalid expiration
       const invalidExpiry = bn(await getLatestBlockNumber())
       buildData.message.nonce = Number(nonce)
