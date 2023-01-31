@@ -91,8 +91,8 @@ interface IBasketHandler is IComponent {
     function basketsHeldBy(address account) external view returns (uint192 baskets);
 
     /// Should not revert
-    /// @return low {UoA/tok} The lower end of the price estimate
-    /// @return high {UoA/tok} The upper end of the price estimate
+    /// @return low {UoA/BU} The lower end of the price estimate
+    /// @return high {UoA/BU} The upper end of the price estimate
     function price() external view returns (uint192 low, uint192 high);
 
     /// Should not revert

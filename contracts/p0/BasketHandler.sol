@@ -290,8 +290,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Should not revert
-    /// @return low {UoA/tok} The lower end of the price estimate
-    /// @return high {UoA/tok} The upper end of the price estimate
+    /// @return low {UoA/BU} The lower end of the price estimate
+    /// @return high {UoA/BU} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
     function price() external view returns (uint192 low, uint192 high) {
         return _price(false);
@@ -299,16 +299,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     /// Should not revert
     /// lowLow should be nonzero when the asset might be worth selling
-    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    /// @return lotLow {UoA/BU} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/BU} The upper end of the lot price estimate
     // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
         return _price(true);
     }
 
     /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
-    /// @return low {UoA/tok} The lower end of the lot price estimate
-    /// @return high {UoA/tok} The upper end of the lot price estimate
+    /// @return low {UoA/BU} The lower end of the lot price estimate
+    /// @return high {UoA/BU} The upper end of the lot price estimate
     function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
         IAssetRegistry reg = main.assetRegistry();
 
@@ -332,8 +332,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Multiply two fixes, rounding up to FIX_MAX and down to 0
-    /// @param a {tok/BU}
-    /// @param b {UoA/tok}
+    /// @param a First param to multiply
+    /// @param b Second param to multiply
     function safeMul(
         uint192 a,
         uint192 b,
