@@ -1726,7 +1726,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const stakeAmt = fp('10')
       await rsr.connect(addr2).approve(stRSR.address, stakeAmt)
       await stRSR.connect(addr2).stake(stakeAmt)
-      let addr2Bal = await stRSR.balanceOf(addr2.address)
+      const addr2Bal = await stRSR.balanceOf(addr2.address)
       expect(addr2Bal).to.eq(stakeAmt)
 
       // attacker unstakes
