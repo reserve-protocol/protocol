@@ -286,8 +286,10 @@ library TradingLibP0 {
                 (uint192 lotLow, ) = asset.lotPrice(); // {UoA/tok}
 
                 // Intentionally include value of IFFY/DISABLED collateral
-                if (inBasket == 0 && !isEnoughToSell(asset, bal, lotLow, ctx.minTradeVolume))
-                    continue;
+                if (
+                    ctx.bh.quantity(erc20s[i]) == 0 &&
+                    !isEnoughToSell(asset, bal, lotLow, ctx.minTradeVolume)
+                ) continue;
             }
 
             (uint192 low, uint192 high) = asset.price(); // {UoA/tok}

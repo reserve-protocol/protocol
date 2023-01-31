@@ -158,9 +158,11 @@ library RecollateralizationLibP1 {
                 bal = bal.plus(reg.assets[i].bal(address(ctx.stRSR)));
             }
 
+            uint192 q = ctx.bh.quantity(reg.erc20s[i]); // {tok/BU}
+
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
             // {tok} = {tok/BU} * {BU}
-            uint192 inBasket = ctx.bh.quantity(reg.erc20s[i]).mul(ctx.basketsHeld, FLOOR);
+            uint192 inBasket = q.mul(ctx.basketsHeld, FLOOR);
             if (bal < inBasket) inBasket = bal; // not sure if needed
 
             // Skip over dust-balance assets not in the basket
@@ -169,14 +171,14 @@ library RecollateralizationLibP1 {
 
                 // Intentionally include value of IFFY/DISABLED collateral
                 if (
-                    inBasket == 0 &&
+                    q == 0 &&
                     !TradeLib.isEnoughToSell(reg.assets[i], bal, lotLow, ctx.minTradeVolume)
                 ) continue;
             }
 
             (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/tok}
 
-            assert(high != FIX_MAX || inBasket == 0); // collateral in the basket must be priced
+            assert(high != FIX_MAX || q == 0); // collateral in the basket must be priced
 
             // throughout this section +/- is same as Fix.plus/Fix.minus
 
