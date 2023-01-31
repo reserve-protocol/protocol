@@ -10,7 +10,9 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     bool public checkSoftDefault = true; // peg
     bool public checkHardDefault = true; // defi invariant
 
-    constructor(CollateralConfig memory config) ATokenFiatCollateral(config) {}
+    constructor(CollateralConfig memory config, uint192 revenueHiding_)
+        ATokenFiatCollateral(config, revenueHiding_)
+    {}
 
     function setSoftDefaultCheck(bool on) external {
         checkSoftDefault = on;
@@ -52,13 +54,17 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
             }
         }
 
-        // Check for hard default
-        uint192 referencePrice = refPerTok();
-        // uint192(<) is equivalent to Fix.lt
-        if (checkHardDefault && referencePrice < prevReferencePrice) {
-            markStatus(CollateralStatus.DISABLED);
+        if (checkHardDefault) {
+            // Check for hard default
+            uint192 referencePrice = refPerTok();
+
+            // revenue hiding: do not DISABLE if drawdown is small
+            // uint192(<) is equivalent to Fix.lt
+            if (referencePrice < exposedReferencePrice) {
+                markStatus(CollateralStatus.DISABLED);
+            }
+            if (referencePrice > exposedReferencePrice) exposedReferencePrice = referencePrice;
         }
-        prevReferencePrice = referencePrice;
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {

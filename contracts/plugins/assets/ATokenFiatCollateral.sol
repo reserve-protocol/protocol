@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
-import "./FiatCollateral.sol";
+import "./RevenueHidingCollateral.sol";
 
 // This interface is redundant with the one from contracts/plugins/aave/IStaticAToken,
 // but it's compiled with a different solidity version.
@@ -31,18 +31,21 @@ interface IStaticAToken is IERC20Metadata {
  * @notice Collateral plugin for an aToken for a UoA-pegged asset, like aUSDC or a aUSDP
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
-contract ATokenFiatCollateral is FiatCollateral {
+contract ATokenFiatCollateral is RevenueHidingCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     // solhint-disable no-empty-blocks
 
-    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+    /// @param revenueHiding_ {1} A value like 1e-6 that represents the maximum refPerTok to hide
+    constructor(CollateralConfig memory config, uint192 revenueHiding_)
+        RevenueHidingCollateral(config, revenueHiding_)
+    {}
 
     // solhint-enable no-empty-blocks
 
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view override returns (uint192) {
+    /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
+    function _underlyingRefPerTok() internal view override returns (uint192) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
         return shiftl_toFix(rateInRAYs, -27);
     }

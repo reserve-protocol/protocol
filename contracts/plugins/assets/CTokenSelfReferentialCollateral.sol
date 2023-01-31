@@ -2,14 +2,14 @@
 pragma solidity 0.8.9;
 
 import "./ICToken.sol";
-import "./SelfReferentialCollateral.sol";
+import "./RevenueHidingCollateral.sol";
 
 /**
  * @title CTokenSelfReferentialCollateral
  * @notice Collateral plugin for a cToken of unpegged collateral, such as cETH.
  * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
-contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
+contract CTokenSelfReferentialCollateral is RevenueHidingCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -19,17 +19,43 @@ contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
 
     IComptroller public immutable comptroller;
 
+    /// @param revenueHiding_ {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param referenceERC20Decimals_ The number of decimals in the reference token
     /// @param comptroller_ The CompoundFinance Comptroller
     constructor(
         CollateralConfig memory config,
+        uint192 revenueHiding_,
         uint8 referenceERC20Decimals_,
         IComptroller comptroller_
-    ) SelfReferentialCollateral(config) {
+    ) RevenueHidingCollateral(config, revenueHiding_) {
+        require(config.defaultThreshold == 0, "default threshold not supported");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptroller_) != address(0), "comptroller missing");
         referenceERC20Decimals = referenceERC20Decimals_;
         comptroller = comptroller_;
+    }
+
+    /// Can revert, used by other contract functions in order to catch errors
+    /// @param low {UoA/tok} The low price estimate
+    /// @param high {UoA/tok} The high price estimate
+    /// @param pegPrice {target/ref}
+    function tryPrice()
+        external
+        view
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
+    {
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+        uint192 delta = p.mul(oracleError);
+
+        low = p - delta;
+        high = p + delta;
+        pegPrice = targetPerRef();
     }
 
     /// Refresh exchange rates and update default status.
@@ -43,8 +69,8 @@ contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
         super.refresh(); // already handles all necessary default checks
     }
 
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view override returns (uint192) {
+    /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
+    function _underlyingRefPerTok() internal view override returns (uint192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
         return shiftl_toFix(rate, shiftLeft);

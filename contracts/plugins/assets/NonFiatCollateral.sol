@@ -43,7 +43,7 @@ contract NonFiatCollateral is FiatCollateral {
         uint192 pricePerTarget = uoaPerTargetFeed.price(oracleTimeout); // {UoA/target}
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        uint192 p = pricePerTarget.mul(pegPrice).mul(refPerTok());
+        uint192 p = pricePerTarget.mul(pegPrice);
 
         // this oracleError is already the combined total oracle error
         uint192 delta = p.mul(oracleError);
