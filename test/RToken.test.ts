@@ -1227,7 +1227,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Melt/Mint #fast', () => {
-    const issueAmount: BigNumber = bn('1e18')
+    const issueAmount: BigNumber = bn('100e18')
 
     beforeEach(async () => {
       // Issue some RTokens
