@@ -17,7 +17,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint192 public constant MIN_TRADE_VOLUME = 1e29; // {UoA}
+    uint192 public constant MAX_TRADE_VOLUME = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
 
     // Peer contracts, immutable after init()
@@ -133,7 +133,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     /// @custom:governance
     function setMinTradeVolume(uint192 val) public governance {
-        require(val <= MIN_TRADE_VOLUME, "invalid minTradeVolume");
+        require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;
     }
