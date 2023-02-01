@@ -10,6 +10,8 @@ import "./OracleLib.sol";
 
 /**
  * @title RevenueHidingCollateral
+ * For appreciating collateral that may need a small amount of revenue hiding
+ * to become truly "up only".
  *
  * For: {tok} != {ref}, {ref} != {target}, {target} == {UoA}
  * Inheritors _must_ implement _underlyingRefPerTok()
@@ -27,17 +29,17 @@ abstract contract RevenueHidingCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    // useful to prevent becoming DISABLED during hiccup downturns
-    uint192 public immutable revenueHiding; // {1} The minimum fraction of refPerTok to show
+    // revenueShowing = FIX_ONE.minus(revenueHiding)
+    uint192 public immutable revenueShowing; // {1} The maximum fraction of refPerTok to show
 
     // does not become nonzero until after first refresh()
     uint192 public exposedReferencePrice; // {ref/tok} max ref price observed, sub revenue hiding
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    /// @param revenueHiding_ {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    constructor(CollateralConfig memory config, uint192 revenueHiding_) FiatCollateral(config) {
-        require(revenueHiding_ < FIX_ONE, "revenueHiding too big");
-        revenueHiding = revenueHiding_;
+    /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
+    constructor(CollateralConfig memory config, uint192 revenueHiding) FiatCollateral(config) {
+        require(revenueHiding < FIX_ONE, "revenueHiding too big");
+        revenueShowing = FIX_ONE.minus(revenueHiding);
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -113,7 +115,7 @@ abstract contract RevenueHidingCollateral is FiatCollateral {
         }
 
         // {ref/tok} = {ref/tok} * {1}
-        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(FIX_ONE.minus(revenueHiding));
+        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
         if (hiddenReferencePrice > exposedReferencePrice) {
             exposedReferencePrice = hiddenReferencePrice;
         }
@@ -124,7 +126,7 @@ abstract contract RevenueHidingCollateral is FiatCollateral {
         }
     }
 
-    /// @return {ref/tok} Shielded quantity of whole reference units per whole collateral tokens
+    /// @return {ref/tok} Exposed quantity of whole reference units per whole collateral tokens
     function refPerTok() public view virtual override returns (uint192) {
         return exposedReferencePrice;
     }

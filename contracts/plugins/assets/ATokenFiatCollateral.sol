@@ -37,9 +37,9 @@ contract ATokenFiatCollateral is RevenueHidingCollateral {
 
     // solhint-disable no-empty-blocks
 
-    /// @param revenueHiding_ {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    constructor(CollateralConfig memory config, uint192 revenueHiding_)
-        RevenueHidingCollateral(config, revenueHiding_)
+    /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        RevenueHidingCollateral(config, revenueHiding)
     {}
 
     // solhint-enable no-empty-blocks

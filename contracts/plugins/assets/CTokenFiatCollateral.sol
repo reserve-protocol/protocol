@@ -21,13 +21,13 @@ contract CTokenFiatCollateral is RevenueHidingCollateral {
 
     IComptroller public immutable comptroller;
 
-    /// @param revenueHiding_ {1} A value like 1e-6 that represents the maximum refPerTok to hide
+    /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param comptroller_ The CompoundFinance Comptroller
     constructor(
         CollateralConfig memory config,
-        uint192 revenueHiding_,
+        uint192 revenueHiding,
         IComptroller comptroller_
-    ) RevenueHidingCollateral(config, revenueHiding_) {
+    ) RevenueHidingCollateral(config, revenueHiding) {
         require(address(comptroller_) != address(0), "comptroller missing");
         ICToken erc20 = ICToken(address(config.erc20));
         referenceERC20Decimals = IERC20Metadata(erc20.underlying()).decimals();

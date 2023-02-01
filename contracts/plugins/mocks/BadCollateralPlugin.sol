@@ -10,8 +10,8 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     bool public checkSoftDefault = true; // peg
     bool public checkHardDefault = true; // defi invariant
 
-    constructor(CollateralConfig memory config, uint192 revenueHiding_)
-        ATokenFiatCollateral(config, revenueHiding_)
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        ATokenFiatCollateral(config, revenueHiding)
     {}
 
     function setSoftDefaultCheck(bool on) external {

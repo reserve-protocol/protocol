@@ -8,8 +8,8 @@ contract MockableCollateral is ATokenFiatCollateral {
 
     uint192 private _targetPerRef;
 
-    constructor(CollateralConfig memory config, uint192 revenueHiding_)
-        ATokenFiatCollateral(config, revenueHiding_)
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        ATokenFiatCollateral(config, revenueHiding)
     {}
 
     function setTargetPerRef(uint192 val) external {

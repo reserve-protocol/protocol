@@ -19,15 +19,15 @@ contract CTokenSelfReferentialCollateral is RevenueHidingCollateral {
 
     IComptroller public immutable comptroller;
 
-    /// @param revenueHiding_ {1} A value like 1e-6 that represents the maximum refPerTok to hide
+    /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param referenceERC20Decimals_ The number of decimals in the reference token
     /// @param comptroller_ The CompoundFinance Comptroller
     constructor(
         CollateralConfig memory config,
-        uint192 revenueHiding_,
+        uint192 revenueHiding,
         uint8 referenceERC20Decimals_,
         IComptroller comptroller_
-    ) RevenueHidingCollateral(config, revenueHiding_) {
+    ) RevenueHidingCollateral(config, revenueHiding) {
         require(config.defaultThreshold == 0, "default threshold not supported");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptroller_) != address(0), "comptroller missing");
