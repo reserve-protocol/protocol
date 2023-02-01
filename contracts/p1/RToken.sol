@@ -9,7 +9,7 @@ import "../libraries/Fixed.sol";
 import "../libraries/Throttle.sol";
 import "../vendor/ERC20PermitUpgradeable.sol";
 import "./mixins/Component.sol";
-
+import "hardhat/console.sol";
 /**
  * @title RTokenP1
  * An ERC20 with an elastic supply and governable exchange rate to basket units.
@@ -274,6 +274,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   totalSupply' = totalSupply - amtRToken
     function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
+        require(totalSupply() >= FIX_ONE, "rToken supply too low to melt");
         emit Melted(amtRToken);
         requireValidBUExchangeRate();
     }
@@ -346,6 +347,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
 
         // 1e9 = FIX_ONE / 1e9; 1e27 = FIX_ONE * 1e9
+        console.log(low, high);
         require(uint192(low) >= 1e9 && uint192(high) <= 1e27, "BU rate out of range");
     }
 

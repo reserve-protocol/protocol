@@ -1227,7 +1227,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Melt/Mint #fast', () => {
-    const issueAmount: BigNumber = bn('100e18')
+    const issueAmount: BigNumber = bn('1e18')
 
     beforeEach(async () => {
       // Issue some RTokens
@@ -1250,6 +1250,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
     })
 
+    it('Should not melt if supply too low', async () => {
+      await expect(rToken.connect(addr1).melt(issueAmount.sub(bn('1e8')))).revertedWith('rToken supply too low to melt')
+    })
+    
     it('Should allow to melt tokens if caller', async () => {
       // Melt tokens
       const meltAmount: BigNumber = bn('10e18')
