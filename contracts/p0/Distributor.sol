@@ -71,9 +71,9 @@ contract DistributorP0 is ComponentP0, IDistributor {
             } else if (addrTo == ST_RSR) {
                 addrTo = address(main.stRSR());
             }
-            erc20.safeTransferFrom(address(this), addrTo, transferAmt);
+            erc20.safeTransferFrom(msg.sender, addrTo, transferAmt);
         }
-        emit RevenueDistributed(erc20, address(this), amount);
+        emit RevenueDistributed(erc20, msg.sender, amount);
     }
 
     /// Returns the rsr + rToken shareTotals
