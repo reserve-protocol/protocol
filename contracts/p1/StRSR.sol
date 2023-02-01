@@ -40,8 +40,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 public constant MAX_REWARD_RATIO = FIX_ONE; // {1} 100%
 
     // === ERC20 ===
-    string public name; // mutable
-    string public symbol; // mutable
+    string public name; // immutable
+    string public symbol; // immutable
     // solhint-disable const-name-snakecase
     uint8 public constant decimals = 18;
 
@@ -810,14 +810,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     // ==== Gov Param Setters ====
-
-    function setName(string calldata name_) external governance {
-        name = name_;
-    }
-
-    function setSymbol(string calldata symbol_) external governance {
-        symbol = symbol_;
-    }
 
     /// @custom:governance
     function setUnstakingDelay(uint48 val) public governance {

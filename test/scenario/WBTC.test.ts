@@ -227,7 +227,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       await targetUnitOracle.updateAnswer(bn('40000e8'))
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt))
+      expect(await rToken.connect(addr1).redeem(issueAmt, true))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await wbtc.balanceOf(addr1.address)).to.equal(initialBal)
     })

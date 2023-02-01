@@ -292,7 +292,7 @@ describe('Assets contracts #fast', () => {
     it('Should not revert RToken price if supply is zero', async () => {
       // Redeem RToken to make price function revert
       // Note: To get RToken price to 0, a full basket refresh needs to occur (covered in RToken tests)
-      await rToken.connect(wallet).redeem(amt)
+      await rToken.connect(wallet).redeem(amt, true)
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),

@@ -195,7 +195,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       await targetUnitOracle.updateAnswer(bn('1e8'))
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt))
+      expect(await rToken.connect(addr1).redeem(issueAmt, true))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await eurt.balanceOf(addr1.address)).to.equal(initialBal)
     })

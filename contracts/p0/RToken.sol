@@ -64,7 +64,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// Issue an RToken with basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issue(uint256 amount) public notPausedOrFrozen {
+    function issue(uint256 amount) public {
         issueTo(_msgSender(), amount);
     }
 
@@ -72,7 +72,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issueTo(address recipient, uint256 amount) public {
+    function issueTo(address recipient, uint256 amount) public notPausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
@@ -105,16 +105,22 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
     /// @custom:interaction
-    function redeem(uint256 amount) external notFrozen {
-        redeemTo(_msgSender(), amount);
+    function redeem(uint256 amount, bool revertOnPartialRedemption) external {
+        redeemTo(_msgSender(), amount, revertOnPartialRedemption);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @custom:interaction
-    function redeemTo(address recipient, uint256 amount) public {
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
+    /// @custom:interactin
+    function redeemTo(
+        address recipient,
+        uint256 amount,
+        bool revertOnPartialRedemption
+    ) public notFrozen {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
 
@@ -152,20 +158,23 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr)); // {qTok}
 
             // {qTok} = {qTok} * {qRTok} / {qRTok}
-            uint256 prorata = mulDiv256(bal, amount, totalSupply());
-            amounts[i] = Math.min(amounts[i], prorata);
+            uint256 prorata = mulDiv256(bal, amount, totalSupply()); // FLOOR
+            if (prorata < amounts[i]) {
+                require(!revertOnPartialRedemption, "partial redemption");
+                amounts[i] = prorata;
+            }
 
             // Send withdrawal
             if (amounts[i] > 0) {
                 IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), recipient, amounts[i]);
-                if (allZero) allZero = false;
+                allZero = false;
             }
         }
 
         // Accept and burn RToken, reverts if not enough balance
         _burn(_msgSender(), amount);
 
-        if (allZero) revert("Empty redemption");
+        if (allZero) revert("empty redemption");
     }
 
     // ===

@@ -2028,27 +2028,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describeP1('Name and Symbol', () => {
-    it('Should allow to set name/symbol if Owner', async () => {
-      // Setup new values
-      const newName = 'newSTRSR Token'
-      const newSymbol = 'newSTRSR'
-
-      // Update name and symbol
-      await stRSR.connect(owner).setName(newName)
-      await stRSR.connect(owner).setSymbol(newSymbol)
-
-      expect(await stRSR.name()).to.equal(newName)
-      expect(await stRSR.symbol()).to.equal(newSymbol)
-
-      // Try to update again if not owner
-      await expect(stRSR.connect(addr1).setName('randomName')).to.be.revertedWith('governance only')
-      await expect(stRSR.connect(addr1).setSymbol('randomSymbol')).to.be.revertedWith(
-        'governance only'
-      )
-    })
-  })
-
   describeP1('ERC20Votes', () => {
     let stRSRVotes: StRSRP1Votes
 
