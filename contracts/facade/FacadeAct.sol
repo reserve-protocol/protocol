@@ -170,6 +170,8 @@ contract FacadeAct is IFacadeAct {
                 // maybe revenue needs to be forwarded from backingManager
                 // only perform if basket is SOUND
                 if (cache.bh.status() == CollateralStatus.SOUND) {
+                    IAsset rsrAsset = cache.reg.toAsset(cache.rsr);
+                    uint192 initialStRSRBal = rsrAsset.bal(address(cache.stRSR)); // {RSR}
                     try cache.bm.manageTokens(erc20s) {
                         // if this unblocked an auction in either revenue trader,
                         // then prepare backingManager.manageTokens
@@ -228,11 +230,11 @@ contract FacadeAct is IFacadeAct {
                         // forward RToken in isolation only, if it's large enough
                         {
                             IAsset rTokenAsset = cache.reg.toAsset(IERC20(address(rToken)));
-                            (, uint192 lotHigh) = rTokenAsset.lotPrice();
+                            (uint192 lotLow, ) = rTokenAsset.lotPrice();
 
                             if (
                                 rTokenAsset.bal(address(cache.rTokenTrader)) >
-                                minTradeSize(cache.rTokenTrader.minTradeVolume(), lotHigh)
+                                minTradeSize(cache.rTokenTrader.minTradeVolume(), lotLow)
                             ) {
                                 try cache.rTokenTrader.manageToken(IERC20(address(rToken))) {
                                     address[] memory oneERC20 = new address[](1);
@@ -249,25 +251,19 @@ contract FacadeAct is IFacadeAct {
                         }
 
                         // forward RSR in isolation only, if it's large enough
+                        // via handoutExcessAssets
                         {
-                            IAsset rsrAsset = cache.reg.toAsset(cache.rsr);
-                            (, uint192 lotHigh) = rsrAsset.lotPrice();
+                            (uint192 lotLow, ) = rsrAsset.lotPrice();
 
                             if (
-                                rsrAsset.bal(address(cache.rsrTrader)) >
-                                minTradeSize(cache.rsrTrader.minTradeVolume(), lotHigh)
+                                rsrAsset.bal(address(cache.stRSR)) - initialStRSRBal >
+                                minTradeSize(cache.rsrTrader.minTradeVolume(), lotLow)
                             ) {
-                                try cache.rsrTrader.manageToken(IERC20(address(cache.rsr))) {
-                                    address[] memory oneERC20 = new address[](1);
-                                    oneERC20[0] = address(cache.rsr);
-                                    return (
-                                        address(cache.bm),
-                                        abi.encodeWithSelector(
-                                            cache.bm.manageTokens.selector,
-                                            oneERC20
-                                        )
-                                    );
-                                } catch {}
+                                IERC20[] memory empty = new IERC20[](0);
+                                return (
+                                    address(cache.bm),
+                                    abi.encodeWithSelector(cache.bm.manageTokens.selector, empty)
+                                );
                             }
                         }
                     } catch {}
