@@ -436,7 +436,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint48 numPeriods = (uint48(block.timestamp) - uint48(payoutLastPaid)) / uint48(PERIOD);
 
         // Do an actual payout if and only if stakers exist!
-        if (totalStaked > FIX_ONE) {
+        if (totalStaked >= FIX_ONE) {
             // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
             uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
             payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);

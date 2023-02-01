@@ -1719,8 +1719,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.connect(addr1).stake(bn(1))
 
       // wait, then payout rewards
-      await advanceTime(12) // 12 second reward period
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12)
+      const preExRate = await stRSR.exchangeRate()
       await stRSR.payoutRewards()
+      const postExRate = await stRSR.exchangeRate()
+      expect(postExRate).eq(preExRate)
 
       // addr2 stakes
       const stakeAmt = fp('10')
@@ -1732,14 +1735,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // attacker unstakes
       const unstakingDelay = await stRSR.unstakingDelay()
       await stRSR.connect(addr1).unstake(bn(1))
-      await advanceTime(unstakingDelay)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + unstakingDelay)
       await stRSR.connect(addr1).withdraw(addr1.address, 1)
       const attackerBalAfter = await rsr.balanceOf(addr1.address)
       expect(attackerBalAfter).closeTo(attackerBalBefore, bn(10))
 
       // staker unstakes
       await stRSR.connect(addr2).unstake(addr2Bal)
-      await advanceTime(unstakingDelay)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + unstakingDelay)
       await stRSR.connect(addr2).withdraw(addr2.address, 1)
       const stakerBalAFter = await rsr.balanceOf(addr2.address)
       expect(stakerBalAFter).to.be.gt(stakerBalBefore)

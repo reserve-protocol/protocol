@@ -498,7 +498,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint256 payout;
 
         // Do an actual payout if and only if enough RSR is staked!
-        if (totalStakes > FIX_ONE) {
+        if (totalStakes >= FIX_ONE) {
             // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
             // Apply payout to RSR backing
             // payoutRatio: D18 = FIX_ONE: D18 - FixLib.powu(): D18
