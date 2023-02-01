@@ -25,7 +25,6 @@ import { IConfig, MAX_RATIO, MAX_UNSTAKING_DELAY } from '../common/configuration
 import { CollateralStatus, MAX_UINT256, ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
 import {
   advanceBlocks,
-  advanceTime,
   advanceToTimestamp,
   getLatestBlockNumber,
   getLatestBlockTimestamp,
