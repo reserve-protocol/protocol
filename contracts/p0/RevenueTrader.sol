@@ -40,7 +40,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         if (erc20 == tokenToBuy) {
             erc20.safeApprove(address(main.distributor()), 0);
             erc20.safeApprove(address(main.distributor()), bal);
-            main.distributor().distribute(erc20, address(this), bal);
+            main.distributor().distribute(erc20, bal);
             return;
         }
 

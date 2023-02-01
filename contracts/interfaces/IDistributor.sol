@@ -41,11 +41,7 @@ interface IDistributor is IComponent {
 
     /// Distribute the `erc20` token across all revenue destinations
     /// @custom:interaction
-    function distribute(
-        IERC20 erc20,
-        address from,
-        uint256 amount
-    ) external;
+    function distribute(IERC20 erc20, uint256 amount) external;
 
     /// @return revTotals The total of all  destinations
     function totals() external view returns (RevenueTotals memory revTotals);

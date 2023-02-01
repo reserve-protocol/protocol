@@ -84,11 +84,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // actions:
     //   for dest where w[dest] != 0:
     //     erc20.transferFrom(from, addrOf(dest), tokensPerShare * w[dest])
-    function distribute(
-        IERC20 erc20,
-        address from,
-        uint256 amount
-    ) external notPausedOrFrozen {
+    function distribute(IERC20 erc20, uint256 amount) external notPausedOrFrozen {
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;
@@ -127,12 +123,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
             });
             numTransfers++;
         }
-        emit RevenueDistributed(erc20, from, amount);
+        emit RevenueDistributed(erc20, address(this), amount);
 
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; i++) {
             Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(from, t.addrTo, t.amount);
+            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(address(this), t.addrTo, t.amount);
         }
     }
 

@@ -60,7 +60,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             // == Interactions then return ==
             IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), 0);
             IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), bal);
-            distributor.distribute(erc20, address(this), bal);
+            distributor.distribute(erc20, bal);
             return;
         }
 
