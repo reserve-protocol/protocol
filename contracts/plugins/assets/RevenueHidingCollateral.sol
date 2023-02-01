@@ -77,6 +77,23 @@ abstract contract RevenueHidingCollateral is FiatCollateral {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
+        // Check for hard default
+        // must happen before price() call since `refPerTok()` now returns a stored value
+
+        // revenue hiding: do not DISABLE if drawdown is small
+        // uint192(<) is equivalent to Fix.lt
+        uint192 underlyingRefPerTok = _underlyingRefPerTok();
+        if (underlyingRefPerTok < exposedReferencePrice) {
+            markStatus(CollateralStatus.DISABLED);
+        }
+
+        // update refPerTok()
+        // {ref/tok} = {ref/tok} * {1}
+        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
+        if (hiddenReferencePrice > exposedReferencePrice) {
+            exposedReferencePrice = hiddenReferencePrice;
+        }
+
         // Check for soft default + save lotPrice
         try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
@@ -103,21 +120,6 @@ abstract contract RevenueHidingCollateral is FiatCollateral {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             markStatus(CollateralStatus.IFFY);
-        }
-
-        // Check for hard default
-
-        // revenue hiding: do not DISABLE if drawdown is small
-        // uint192(<) is equivalent to Fix.lt
-        uint192 underlyingRefPerTok = _underlyingRefPerTok();
-        if (underlyingRefPerTok < exposedReferencePrice) {
-            markStatus(CollateralStatus.DISABLED);
-        }
-
-        // {ref/tok} = {ref/tok} * {1}
-        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
-        if (hiddenReferencePrice > exposedReferencePrice) {
-            exposedReferencePrice = hiddenReferencePrice;
         }
 
         CollateralStatus newStatus = status();

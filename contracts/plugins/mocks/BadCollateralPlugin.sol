@@ -29,6 +29,18 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
+        if (checkHardDefault) {
+            // Check for hard default
+            uint192 referencePrice = refPerTok();
+
+            // revenue hiding: do not DISABLE if drawdown is small
+            // uint192(<) is equivalent to Fix.lt
+            if (referencePrice < exposedReferencePrice) {
+                markStatus(CollateralStatus.DISABLED);
+            }
+            if (referencePrice > exposedReferencePrice) exposedReferencePrice = referencePrice;
+        }
+
         // Check for soft default
         if (checkSoftDefault) {
             try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
@@ -52,18 +64,6 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
-        }
-
-        if (checkHardDefault) {
-            // Check for hard default
-            uint192 referencePrice = refPerTok();
-
-            // revenue hiding: do not DISABLE if drawdown is small
-            // uint192(<) is equivalent to Fix.lt
-            if (referencePrice < exposedReferencePrice) {
-                markStatus(CollateralStatus.DISABLED);
-            }
-            if (referencePrice > exposedReferencePrice) exposedReferencePrice = referencePrice;
         }
 
         CollateralStatus newStatus = status();

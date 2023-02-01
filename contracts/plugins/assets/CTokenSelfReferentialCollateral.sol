@@ -13,7 +13,7 @@ contract CTokenSelfReferentialCollateral is RevenueHidingCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
+    // All v2 cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     uint8 public immutable referenceERC20Decimals;
 
