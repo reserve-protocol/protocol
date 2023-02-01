@@ -188,7 +188,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notPausedOrFrozen {
+    function payoutRewards() external notFrozen {
         _payoutRewards();
     }
 
