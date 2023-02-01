@@ -27,6 +27,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
@@ -104,17 +105,20 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
     )
     collateral0 = await (
       await ethers.getContractFactory('BadCollateralPlugin')
-    ).deploy({
-      priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: chainlinkFeed.address,
-      oracleError: ORACLE_ERROR,
-      erc20: token0.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT,
-      targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: DEFAULT_THRESHOLD,
-      delayUntilDefault: DELAY_UNTIL_DEFAULT,
-    })
+    ).deploy(
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkFeed.address,
+        oracleError: ORACLE_ERROR,
+        erc20: token0.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
+      REVENUE_HIDING
+    )
 
     // Backup
     backupToken = erc20s[2] // USDT

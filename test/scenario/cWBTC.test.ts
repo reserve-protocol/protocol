@@ -28,6 +28,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 import { expectPrice } from '../utils/oracles'
 
@@ -150,6 +151,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       targetUnitOracle.address,
+      REVENUE_HIDING,
       compoundMock.address
     )
 
@@ -261,6 +263,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
       await cWBTC.setExchangeRate(fp('1.5')) // 150% redemption rate
       // Recall cTokens are much inflated relative to underlying. Redemption rate starts at 0.02
+      await cWBTCCollateral.refresh()
       await expectPrice(
         cWBTCCollateral.address,
         fp('95000').mul(3).div(2).div(50),

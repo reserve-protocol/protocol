@@ -29,6 +29,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -141,6 +142,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
         defaultThreshold: bn(0),
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
+      REVENUE_HIDING,
       await weth.decimals(),
       compoundMock.address
     )
