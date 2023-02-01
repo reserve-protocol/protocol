@@ -26,19 +26,29 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     /// Refresh exchange rates and update default status.
     /// @dev Should be general enough to not need to be overridden
     function refresh() public virtual override {
-        if (alreadyDefaulted()) return;
+        if (alreadyDefaulted()) {
+            // continue to update rates
+            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
+            return;
+        }
+
         CollateralStatus oldStatus = status();
 
-        if (checkHardDefault) {
-            // Check for hard default
-            uint192 referencePrice = refPerTok();
+        // Check for hard default
+        // must happen before tryPrice() call since `refPerTok()` returns a stored value
 
-            // revenue hiding: do not DISABLE if drawdown is small
-            // uint192(<) is equivalent to Fix.lt
-            if (referencePrice < exposedReferencePrice) {
-                markStatus(CollateralStatus.DISABLED);
-            }
-            if (referencePrice > exposedReferencePrice) exposedReferencePrice = referencePrice;
+        // revenue hiding: do not DISABLE if drawdown is small
+        uint192 underlyingRefPerTok = _underlyingRefPerTok();
+
+        // {ref/tok} = {ref/tok} * {1}
+        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
+
+        // uint192(<) is equivalent to Fix.lt
+        if (checkHardDefault && underlyingRefPerTok < exposedReferencePrice) {
+            exposedReferencePrice = hiddenReferencePrice;
+            markStatus(CollateralStatus.DISABLED);
+        } else if (!checkHardDefault || hiddenReferencePrice > exposedReferencePrice) {
+            exposedReferencePrice = hiddenReferencePrice;
         }
 
         // Check for soft default

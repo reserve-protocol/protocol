@@ -72,25 +72,30 @@ abstract contract RevenueHidingCollateral is FiatCollateral {
 
     /// Should not revert
     /// Refresh exchange rates and update default status.
-    /// @dev Should be general enough to not need to be overridden
+    /// @dev Should not need to override: can handle collateral with variable refPerTok()
     function refresh() public virtual override {
-        if (alreadyDefaulted()) return;
+        if (alreadyDefaulted()) {
+            // continue to update rates
+            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
+            return;
+        }
+
         CollateralStatus oldStatus = status();
 
         // Check for hard default
-        // must happen before price() call since `refPerTok()` now returns a stored value
+        // must happen before tryPrice() call since `refPerTok()` returns a stored value
 
         // revenue hiding: do not DISABLE if drawdown is small
-        // uint192(<) is equivalent to Fix.lt
         uint192 underlyingRefPerTok = _underlyingRefPerTok();
-        if (underlyingRefPerTok < exposedReferencePrice) {
-            markStatus(CollateralStatus.DISABLED);
-        }
 
-        // update refPerTok()
         // {ref/tok} = {ref/tok} * {1}
         uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
-        if (hiddenReferencePrice > exposedReferencePrice) {
+
+        // uint192(<) is equivalent to Fix.lt
+        if (underlyingRefPerTok < exposedReferencePrice) {
+            exposedReferencePrice = hiddenReferencePrice;
+            markStatus(CollateralStatus.DISABLED);
+        } else if (hiddenReferencePrice > exposedReferencePrice) {
             exposedReferencePrice = hiddenReferencePrice;
         }
 

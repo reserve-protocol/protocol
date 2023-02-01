@@ -115,7 +115,7 @@ contract FiatCollateral is ICollateral, Asset {
 
     /// Should not revert
     /// Refresh exchange rates and update default status.
-    /// @dev Should be general enough to not need to be overridden
+    /// @dev May need to override: limited to handling collateral with refPerTok() = 1
     function refresh() public virtual override(Asset, IAsset) {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
