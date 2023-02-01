@@ -1251,9 +1251,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not melt if supply too low', async () => {
-      await expect(rToken.connect(addr1).melt(issueAmount.sub(bn('1e8')))).revertedWith('rToken supply too low to melt')
+      await expect(rToken.connect(addr1).melt(issueAmount.sub(bn('1e8')))).revertedWith(
+        'rToken supply too low to melt'
+      )
     })
-    
+
     it('Should allow to melt tokens if caller', async () => {
       // Melt tokens
       const meltAmount: BigNumber = bn('10e18')
