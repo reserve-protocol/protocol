@@ -13,6 +13,7 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
+  .addParam('revenueHiding', 'Revenue Hiding')
   .addParam('comptroller', 'Comptroller address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
@@ -38,6 +39,7 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
         delayUntilDefault: params.delayUntilDefault,
       },
       params.targetUnitFeed,
+      params.revenueHiding,
       params.comptroller
     )
     await collateral.deployed()
