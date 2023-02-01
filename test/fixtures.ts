@@ -73,7 +73,7 @@ export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max /
 
 export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 
-export const REVENUE_HIDING = fp('0') // no revenue hiding; tested individually
+export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
 
 export type Collateral =
   | FiatCollateral
