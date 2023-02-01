@@ -1064,7 +1064,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Rewards should not be handed out when frozen but staking should still work', async () => {
       await main.connect(owner).freezeLong()
       await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
-      await expect(stRSR.payoutRewards()).revertedWith('paused or frozen')
+      await expect(stRSR.payoutRewards()).revertedWith('frozen')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
