@@ -356,6 +356,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             defaultThreshold,
             delayUntilDefault,
           },
+          REVENUE_HIDING,
           ZERO_ADDRESS
         )
       ).to.be.revertedWith('comptroller missing')
@@ -742,6 +743,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             defaultThreshold,
             delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
           },
+          REVENUE_HIDING,
           comptroller.address
         )
       )
