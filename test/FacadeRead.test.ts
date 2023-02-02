@@ -162,7 +162,7 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.be.closeTo(fp('1'), 10)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
+      await rToken.connect(addr1).redeem(issueAmount, true)
 
       // Check values = 0 (no supply)
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)

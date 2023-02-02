@@ -259,7 +259,7 @@ describe('FacadeAct contract', () => {
 
     it('Basket - Should handle no valid basket after refresh', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
+      await rToken.connect(addr1).redeem(issueAmount, true)
 
       // Set simple basket with only one collateral
       await basketHandler.connect(owner).setPrimeBasket([aToken.address], [fp('1')])
@@ -529,7 +529,7 @@ describe('FacadeAct contract', () => {
 
     it('Revenues - Should handle assets with invalid claim logic', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
+      await rToken.connect(addr1).redeem(issueAmount, true)
 
       // Setup a new aToken with invalid claim data
       const ATokenCollateralFactory = await ethers.getContractFactory(

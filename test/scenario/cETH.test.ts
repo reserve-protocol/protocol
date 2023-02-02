@@ -251,7 +251,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await setOraclePrice(wethCollateral.address, bn('2e8')) // doubling of price
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt))
+      expect(await rToken.connect(addr1).redeem(issueAmt, true))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cETH.balanceOf(addr1.address)).to.equal(initialBal)
     })
@@ -260,7 +260,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await cETH.setExchangeRate(fp('2')) // doubling of price
 
       // Compound Redemption rate should result in fewer tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt))
+      expect(await rToken.connect(addr1).redeem(issueAmt, true))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cETH.balanceOf(addr1.address)).to.equal(
         initialBal.sub(cTokenAmt.div(1000).div(2))

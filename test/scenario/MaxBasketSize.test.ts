@@ -333,9 +333,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Redemption
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt))
+        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, true))
       } else {
-        await rToken.connect(addr1).redeem(issueAmt)
+        await rToken.connect(addr1).redeem(issueAmt, true)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     })
@@ -467,9 +467,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Redemption
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt))
+        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, true))
       } else {
-        await rToken.connect(addr1).redeem(issueAmt)
+        await rToken.connect(addr1).redeem(issueAmt, true)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     })
