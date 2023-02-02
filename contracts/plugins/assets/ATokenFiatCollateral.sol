@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
-import "./RevenueHidingCollateral.sol";
+import "./AppreciatingFiatCollateral.sol";
 
 // This interface is redundant with the one from contracts/plugins/aave/IStaticAToken,
 // but it's compiled with a different solidity version.
@@ -31,7 +31,7 @@ interface IStaticAToken is IERC20Metadata {
  * @notice Collateral plugin for an aToken for a UoA-pegged asset, like aUSDC or a aUSDP
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
-contract ATokenFiatCollateral is RevenueHidingCollateral {
+contract ATokenFiatCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -39,7 +39,7 @@ contract ATokenFiatCollateral is RevenueHidingCollateral {
 
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding)
-        RevenueHidingCollateral(config, revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
     {}
 
     // solhint-enable no-empty-blocks

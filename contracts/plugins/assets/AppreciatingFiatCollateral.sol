@@ -9,9 +9,8 @@ import "./Asset.sol";
 import "./OracleLib.sol";
 
 /**
- * @title RevenueHidingCollateral
- * For appreciating collateral that may need a small amount of revenue hiding
- * to become truly "up only".
+ * @title AppreciatingFiatCollateral
+ * Collateral that may need revenue hiding to become truly "up only"
  *
  * For: {tok} != {ref}, {ref} != {target}, {target} == {UoA}
  * Inheritors _must_ implement _underlyingRefPerTok()
@@ -25,7 +24,7 @@ import "./OracleLib.sol";
  * Can intentionally disable default checks by setting config.defaultThreshold to 0
  * Can intentionally do no revenue hiding by setting revenueHiding to 0
  */
-abstract contract RevenueHidingCollateral is FiatCollateral {
+abstract contract AppreciatingFiatCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 

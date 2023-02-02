@@ -2,14 +2,14 @@
 pragma solidity 0.8.9;
 
 import "./ICToken.sol";
-import "./RevenueHidingCollateral.sol";
+import "./AppreciatingFiatCollateral.sol";
 
 /**
  * @title CTokenSelfReferentialCollateral
  * @notice Collateral plugin for a cToken of unpegged collateral, such as cETH.
  * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
-contract CTokenSelfReferentialCollateral is RevenueHidingCollateral {
+contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -27,7 +27,7 @@ contract CTokenSelfReferentialCollateral is RevenueHidingCollateral {
         uint192 revenueHiding,
         uint8 referenceERC20Decimals_,
         IComptroller comptroller_
-    ) RevenueHidingCollateral(config, revenueHiding) {
+    ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold == 0, "default threshold not supported");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptroller_) != address(0), "comptroller missing");
