@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
+import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import {
@@ -181,6 +181,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         defaultThreshold,
         delayUntilDefault,
       },
+      REVENUE_HIDING,
       comptroller.address
     )
 
@@ -270,7 +271,9 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await cDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await cDaiCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
       expect(await cDaiCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await cDaiCollateral.prevReferencePrice()).to.equal(await cDaiCollateral.refPerTok())
+      expect(await cDaiCollateral.exposedReferencePrice()).to.equal(
+        await cDaiCollateral.refPerTok()
+      )
       await expectPrice(
         cDaiCollateral.address,
         fp('0.022015105509346448'),
@@ -570,6 +573,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           defaultThreshold,
           delayUntilDefault,
         },
+        REVENUE_HIDING,
         comptroller.address
       )
 
@@ -595,6 +599,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           defaultThreshold,
           delayUntilDefault,
         },
+        REVENUE_HIDING,
         comptroller.address
       )
 
@@ -631,6 +636,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           defaultThreshold,
           delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
         },
+        REVENUE_HIDING,
         comptroller.address
       )
 
@@ -693,6 +699,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           defaultThreshold,
           delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
         },
+        REVENUE_HIDING,
         comptroller.address
       )
       await newCDaiCollateral.refresh()

@@ -40,6 +40,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
   defaultFixture,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -540,17 +541,20 @@ describe('FacadeAct contract', () => {
 
       const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
         InvalidATokenFiatCollateralMock
-      >await ATokenCollateralFactory.deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: chainlinkFeed.address,
-        oracleError: ORACLE_ERROR,
-        erc20: aToken.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: await aTokenAsset.oracleTimeout(),
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: DEFAULT_THRESHOLD,
-        delayUntilDefault: await aTokenAsset.delayUntilDefault(),
-      })
+      >await ATokenCollateralFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: aToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await aTokenAsset.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await aTokenAsset.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
 
       // Perform asset swap
       await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
@@ -710,17 +714,20 @@ describe('FacadeAct contract', () => {
       )
 
       const newATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-        await ATokenCollateralFactory.deploy({
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: chainlinkFeed.address,
-          oracleError: ORACLE_ERROR,
-          erc20: aToken.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: await aTokenAsset.oracleTimeout(),
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: DEFAULT_THRESHOLD,
-          delayUntilDefault: await aTokenAsset.delayUntilDefault(),
-        })
+        await ATokenCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: aToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: await aTokenAsset.oracleTimeout(),
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: await aTokenAsset.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
       )
       // Perform asset swap
       await assetRegistry.connect(owner).swapRegistered(newATokenCollateral.address)

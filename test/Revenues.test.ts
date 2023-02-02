@@ -51,6 +51,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from './fixtures'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { expectTrade, getTrade } from './utils/trades'
@@ -210,10 +211,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       expect(await rsrTrader.main()).to.equal(main.address)
       expect(await rsrTrader.tokenToBuy()).to.equal(rsr.address)
       expect(await rsrTrader.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+      expect(await rsrTrader.minTradeVolume()).to.equal(config.minTradeVolume)
 
       expect(await rTokenTrader.main()).to.equal(main.address)
       expect(await rTokenTrader.tokenToBuy()).to.equal(rToken.address)
       expect(await rTokenTrader.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+      expect(await rsrTrader.minTradeVolume()).to.equal(config.minTradeVolume)
     })
 
     it('Should perform validations on init', async () => {
@@ -2270,17 +2273,20 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
           InvalidATokenFiatCollateralMock
-        >((await ATokenCollateralFactory.deploy({
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: chainlinkFeed.address,
-          oracleError: ORACLE_ERROR,
-          erc20: token2.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: DEFAULT_THRESHOLD,
-          delayUntilDefault: await collateral2.delayUntilDefault(),
-        })) as unknown)
+        >((await ATokenCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: token2.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: await collateral2.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )) as unknown)
 
         // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)

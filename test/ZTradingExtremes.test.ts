@@ -27,7 +27,7 @@ import {
   StaticATokenMock,
 } from '../typechain'
 import { advanceTime } from './utils/time'
-import { defaultFixture, ORACLE_ERROR, PRICE_TIMEOUT, SLOW } from './fixtures'
+import { defaultFixture, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING, SLOW } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { setOraclePrice } from './utils/oracles'
 
@@ -135,17 +135,20 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const chainlinkFeed = <MockV3Aggregator>(
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
-    const collateral = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
-      priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: chainlinkFeed.address,
-      oracleError: ORACLE_ERROR,
-      erc20: erc20.address,
-      maxTradeVolume: MAX_UOA,
-      oracleTimeout: MAX_ORACLE_TIMEOUT,
-      targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: DEFAULT_THRESHOLD,
-      delayUntilDefault: DELAY_UNTIL_DEFAULT,
-    })
+    const collateral = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkFeed.address,
+        oracleError: ORACLE_ERROR,
+        erc20: erc20.address,
+        maxTradeVolume: MAX_UOA,
+        oracleTimeout: MAX_ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
+      REVENUE_HIDING
+    )
 
     await assetRegistry.connect(owner).register(collateral.address)
     return erc20
@@ -179,6 +182,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
+      REVENUE_HIDING,
       compoundMock.address
     )
     await assetRegistry.connect(owner).register(collateral.address)
