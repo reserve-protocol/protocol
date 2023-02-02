@@ -931,7 +931,7 @@ describe('Collateral contracts', () => {
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
 
       // Claim and Sweep rewards - From Main
-      await facadeTest.claimAndSweepRewards(rToken.address)
+      await facadeTest.claimRewards(rToken.address)
 
       // Check rewards were transfered to BackingManager
       expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
@@ -948,7 +948,7 @@ describe('Collateral contracts', () => {
 
       // Force call to fail, set an invalid COMP token in Comptroller
       await compoundMock.connect(owner).setCompToken(cTokenCollateral.address)
-      await expect(facadeTest.claimAndSweepRewards(rToken.address)).to.be.revertedWith(
+      await expect(facadeTest.claimRewards(rToken.address)).to.be.revertedWith(
         'rewards claim failed'
       )
 

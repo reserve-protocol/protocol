@@ -58,7 +58,7 @@ contract FacadeTest is IFacadeTest {
     }
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
-    function claimAndSweepRewards(IRToken rToken) external {
+    function claimRewards(IRToken rToken) external {
         IMain main = rToken.main();
         main.backingManager().claimRewards();
         main.rsrTrader().claimRewards();

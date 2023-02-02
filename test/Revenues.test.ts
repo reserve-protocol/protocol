@@ -870,7 +870,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         // Can also claim through Facade
-        await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1814,7 +1814,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Claim rewards
 
-        await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1943,7 +1943,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Claim rewards
-        await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
