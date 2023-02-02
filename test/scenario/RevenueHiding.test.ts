@@ -235,13 +235,20 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       expect(await basketHandler.quantity(cDAI.address)).to.equal(fp('0'))
     })
 
-    it('price() should include revenue hiding discount', async () => {
-      // Price should be 1 part in 1 million smaller than expected
+    it('ICollateral.price() should include revenue hiding discount; BasketHandler.price() should not', async () => {
+      // Collateral price should be 1 part in 1 million smaller than expected
       const [low, high] = await cDAICollateral.price()
-      const mid = toHiddenAmt(fp('1').div(50))
-      const delta = mid.mul(ORACLE_ERROR).div(fp('1'))
+      let mid = toHiddenAmt(fp('1').div(50))
+      let delta = mid.mul(ORACLE_ERROR).div(fp('1'))
       expect(low).to.equal(mid.sub(delta))
       expect(high).to.equal(mid.add(delta))
+
+      // BasketHandler BU price should NOT include the discount
+      const [lowBaskets, highBaskets] = await basketHandler.price()
+      mid = fp('2') // because DAI collateral
+      delta = mid.mul(ORACLE_ERROR).div(fp('1'))
+      expect(lowBaskets).to.equal(mid.sub(delta))
+      expect(highBaskets).to.equal(mid.add(delta))
     })
 
     it('auction should be launched at slightly discounted price', async () => {
@@ -256,7 +263,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       const sellAmt = await t.initBal()
       const minBuyAmt = await toMinBuyAmt(sellAmt, toHiddenAmt(fp('2').div(50)), fp('1'))
       const expectedPrice = minBuyAmt.mul(fp('1')).div(sellAmt)
-      // price should be within 1 part in a 1 trillion at least
+      // price should be within 1 part in a 1 trillion of our discounted rate
       expect(await t.worstCasePrice()).to.be.closeTo(expectedPrice, expectedPrice.div(bn('1e9')))
     })
   })
