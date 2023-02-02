@@ -37,7 +37,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding) FiatCollateral(config) {
-        require(revenueHiding < FIX_ONE, "revenueHiding too big");
+        require(revenueHiding < FIX_ONE, "revenueHiding out of range");
         revenueShowing = FIX_ONE.minus(revenueHiding);
     }
 
@@ -98,7 +98,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
             exposedReferencePrice = hiddenReferencePrice;
         }
 
-        // Check for soft default + save lotPrice
+        // Check for soft default + save prices
         try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced

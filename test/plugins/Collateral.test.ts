@@ -474,6 +474,46 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('oracle error out of range')
     })
 
+    it('Should not allow out of range revenueHiding', async () => {
+      // === Begin revenueHiding checks ===
+      // ATokenFiatCollateral
+      await expect(
+        ATokenFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await tokenCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: aToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          fp('1')
+        )
+      ).to.be.revertedWith('revenueHiding out of range')
+
+      // CTokenFiatCollateral
+      await expect(
+        CTokenFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await tokenCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: cToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          fp('1'),
+          compoundMock.address
+        )
+      ).to.be.revertedWith('revenueHiding out of range')
+    })
+
     it('Should not allow missing comptroller - CTokens', async () => {
       // CTokenFiatCollateral
       await expect(
@@ -1205,6 +1245,27 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('delayUntilDefault zero')
     })
 
+    it('Should not allow out of range revenueHiding', async () => {
+      await expect(
+        CTokenNonFiatFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: referenceUnitOracle.address,
+            oracleError: ORACLE_ERROR,
+            erc20: cNonFiatToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('BTC'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          targetUnitOracle.address,
+          fp('1'),
+          compoundMock.address
+        )
+      ).to.be.revertedWith('revenueHiding out of range')
+    })
+
     it('Should not allow missing refUnitChainlinkFeed', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
@@ -1589,7 +1650,7 @@ describe('Collateral contracts', () => {
       await cSelfRefToken.connect(owner).mint(owner.address, amt.div(bn('1e10')))
     })
 
-    it('Should not allow missing comptroller', async () => {
+    it('Should not allow out of range revenueHiding', async () => {
       await expect(
         CTokenSelfReferentialFactory.deploy(
           {
@@ -1600,14 +1661,14 @@ describe('Collateral contracts', () => {
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
-            defaultThreshold: bn(0),
+            defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          REVENUE_HIDING,
+          fp('1'),
           await selfRefToken.decimals(),
-          ZERO_ADDRESS
+          compoundMock.address
         )
-      ).to.be.revertedWith('comptroller missing')
+      ).to.be.revertedWith('revenueHiding out of range')
     })
 
     it('Should not allow missing reference erc20 decimals', async () => {
@@ -1629,6 +1690,27 @@ describe('Collateral contracts', () => {
           compoundMock.address
         )
       ).to.be.revertedWith('referenceERC20Decimals missing')
+    })
+
+    it('Should not allow missing comptroller', async () => {
+      await expect(
+        CTokenSelfReferentialFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: cSelfRefToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: bn(0),
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          REVENUE_HIDING,
+          await selfRefToken.decimals(),
+          ZERO_ADDRESS
+        )
+      ).to.be.revertedWith('comptroller missing')
     })
 
     it('Should not allow invalid defaultThreshold', async () => {
