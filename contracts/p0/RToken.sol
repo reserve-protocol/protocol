@@ -59,6 +59,9 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         mandate = mandate_;
         setIssuanceThrottleParams(issuanceThrottleParams_);
         setRedemptionThrottleParams(redemptionThrottleParams_);
+
+        issuanceThrottle.lastTimestamp = uint48(block.timestamp);
+        redemptionThrottle.lastTimestamp = uint48(block.timestamp);
     }
 
     /// Issue an RToken with basket collateral
