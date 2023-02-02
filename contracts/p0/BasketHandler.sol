@@ -280,10 +280,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            uint192 refPerTok = coll.refPerTok();
-            if (refPerTok == 0) return FIX_MAX;
-            // {tok/BU} = {ref/BU} / {ref/tok}
-            return basket.refAmts[erc20].div(refPerTok, CEIL);
+            try coll.refPerTok() returns (uint192 refPerTok) {
+                if (refPerTok > 0) {
+                    // {tok/BU} = {ref/BU} / {ref/tok}
+                    return basket.refAmts[erc20].div(refPerTok, CEIL);
+                }
+            } catch {}
+
+            return FIX_MAX;
         } catch {
             return FIX_ZERO;
         }

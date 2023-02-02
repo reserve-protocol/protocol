@@ -294,17 +294,18 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
     // Returns 0 if erc20 is not registered or not in the basket
-    // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
+    // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0 or reverting.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try assetRegistry.toColl(erc20) returns (ICollateral coll) {
-            uint192 refPerTok = coll.refPerTok(); // {ref/tok}
-            if (refPerTok > 0) {
-                // {tok/BU} = {ref/BU} / {ref/tok}
-                return basket.refAmts[erc20].div(refPerTok, CEIL);
-            } else {
-                return FIX_MAX;
-            }
+            try coll.refPerTok() returns (uint192 refPerTok) {
+                if (refPerTok > 0) {
+                    // {tok/BU} = {ref/BU} / {ref/tok}
+                    return basket.refAmts[erc20].div(refPerTok, CEIL);
+                }
+            } catch {}
+
+            return FIX_MAX;
         } catch {
             return FIX_ZERO;
         }
