@@ -203,7 +203,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       // Redeem half
       const balBefore = await cDAI.balanceOf(addr1.address)
       const redeemAmt = issueAmt.div(2)
-      await rToken.connect(addr1).redeem(redeemAmt)
+      await rToken.connect(addr1).redeem(redeemAmt, true)
       const balAfter = await cDAI.balanceOf(addr1.address)
       const cTokenRedeemAmt = q2.mul(redeemAmt.div(bn('1e10'))).div(fp('1'))
       expect(balAfter).to.equal(balBefore.add(cTokenRedeemAmt))
