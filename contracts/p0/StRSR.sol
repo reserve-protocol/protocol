@@ -120,7 +120,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notPausedOrFrozen {
+    function payoutRewards() external notFrozen {
         _payoutRewards();
     }
 
@@ -280,6 +280,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         seizedRSR += rewardsToTake;
 
         assert(rsrAmount <= seizedRSR);
+        rsrRewardsAtLastPayout = rsrRewards() - seizedRSR;
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());

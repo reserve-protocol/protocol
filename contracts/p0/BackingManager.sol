@@ -42,7 +42,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     // Give RToken max allowance over a registered token
     /// @dev Performs a uniqueness check on the erc20s list in O(n^2)
     /// @custom:interaction
-    function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
+    function grantRTokenAllowance(IERC20 erc20) external notFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         erc20.safeApprove(address(main.rToken()), 0);
         erc20.safeApprove(address(main.rToken()), type(uint256).max);
@@ -126,7 +126,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // Special-case RSR to forward to StRSR pool
         uint256 rsrBal = main.rsr().balanceOf(address(this));
         if (rsrBal > 0) {
-            main.rsr().safeTransfer(address(main.rsrTrader()), rsrBal);
+            main.rsr().safeTransfer(address(main.stRSR()), rsrBal);
         }
 
         // Mint revenue RToken

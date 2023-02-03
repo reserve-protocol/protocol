@@ -14,6 +14,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     // Peer-component addresses
     IBasketHandler private basketHandler;
+    IBackingManager private backingManager;
 
     // Registered ERC20s
     EnumerableSet.AddressSet private _erc20s;
@@ -34,6 +35,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     function init(IMain main_, IAsset[] calldata assets_) external initializer {
         __Component_init(main_);
         basketHandler = main_.basketHandler();
+        backingManager = main_.backingManager();
         uint256 length = assets_.length;
         for (uint256 i = 0; i < length; ++i) {
             _register(assets_[i]);
@@ -173,6 +175,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
         // Refresh to ensure it does not revert, and to save a recent lastPrice
         asset.refresh();
+
+        if (!main.frozen()) {
+            backingManager.grantRTokenAllowance(erc20);
+        }
+
         return true;
     }
 

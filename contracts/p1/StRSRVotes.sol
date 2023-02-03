@@ -130,7 +130,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
             r,
             s
         );
-        require(nonce == _useNonce(signer), "ERC20Votes: invalid nonce");
+        require(nonce == _useDelegationNonce(signer), "ERC20Votes: invalid nonce");
         _delegate(signer, delegatee);
     }
 

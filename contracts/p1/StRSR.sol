@@ -122,6 +122,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // === ERC20Permit ===
     mapping(address => CountersUpgradeable.Counter) private _nonces;
+    // === Delegation ===
+    mapping(address => CountersUpgradeable.Counter) private _delegationNonces;
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private constant _PERMIT_TYPEHASH =
@@ -186,7 +188,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notPausedOrFrozen {
+    function payoutRewards() external notFrozen {
         _payoutRewards();
     }
 
@@ -412,6 +414,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Remove RSR from yet-unpaid rewards (implicitly)
         seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+        rsrRewardsAtLastPayout = rsrRewards() - seizedRSR;
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, exchangeRate());
@@ -784,6 +787,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         return _nonces[owner].current();
     }
 
+    function delegationNonces(address owner) public view returns (uint256) {
+        return _delegationNonces[owner].current();
+    }
+
     // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
         return _domainSeparatorV4();
@@ -791,6 +798,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     function _useNonce(address owner) internal returns (uint256 current) {
         CountersUpgradeable.Counter storage nonce = _nonces[owner];
+        current = nonce.current();
+        nonce.increment();
+    }
+
+    function _useDelegationNonce(address owner) internal returns (uint256 current) {
+        CountersUpgradeable.Counter storage nonce = _delegationNonces[owner];
         current = nonce.current();
         nonce.increment();
     }

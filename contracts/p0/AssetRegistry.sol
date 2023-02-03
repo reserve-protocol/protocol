@@ -135,6 +135,10 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
         swapped = _erc20s.add(address(asset.erc20()));
         assets[asset.erc20()] = asset;
+
+        if (!main.frozen()) {
+            main.backingManager().grantRTokenAllowance(asset.erc20());
+        }
         emit AssetRegistered(asset.erc20(), asset);
     }
 }

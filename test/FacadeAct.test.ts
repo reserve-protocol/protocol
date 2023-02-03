@@ -32,6 +32,7 @@ import {
   TestIDistributor,
   TestIRevenueTrader,
   TestIRToken,
+  TestIStRSR,
   USDCMock,
 } from '../typechain'
 import {
@@ -90,6 +91,7 @@ describe('FacadeAct contract', () => {
 
   // Main
   let rToken: TestIRToken
+  let stRSR: TestIStRSR
   let basketHandler: IBasketHandler
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -147,6 +149,7 @@ describe('FacadeAct contract', () => {
       basket,
       facadeAct,
       rToken,
+      stRSR,
       config,
       rTokenTrader,
       rsrTrader,
@@ -766,12 +769,14 @@ describe('FacadeAct contract', () => {
       expect(addr).to.equal(ZERO_ADDRESS)
       expect(data).to.equal('0x')
 
-      // RSR can be distributed with no issues
+      // RSR can be distributed with no issues - seed stRSR with half as much
       await rsr.connect(addr1).transfer(backingManager.address, hndAmt)
+      await rsr.connect(addr1).transfer(stRSR.address, hndAmt.div(2))
       ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(backingManager.address)
       expect(data).to.not.equal('0x')
 
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(hndAmt.div(2))
       expect(await rsr.balanceOf(backingManager.address)).to.equal(hndAmt)
       expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
 
@@ -782,8 +787,9 @@ describe('FacadeAct contract', () => {
       })
 
       // RSR forwarded
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(hndAmt.add(hndAmt.div(2)))
       expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
-      expect(await rsr.balanceOf(rsrTrader.address)).to.equal(hndAmt)
+      expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
     })
 
     it('Should not revert if f=0', async () => {

@@ -1063,7 +1063,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Rewards should not be handed out when frozen but staking should still work', async () => {
       await main.connect(owner).freezeLong()
       await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
-      await expect(stRSR.payoutRewards()).revertedWith('paused or frozen')
+      await expect(stRSR.payoutRewards()).revertedWith('frozen')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
@@ -2194,6 +2194,20 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         stRSRVotes.connect(other).delegateBySig(addr1.address, invalidNonce, expiry, v, r, s)
       ).to.be.revertedWith('ERC20Votes: invalid nonce')
 
+      // Attempt to delegate with invalid signature
+      await expect(
+        stRSRVotes
+          .connect(other)
+          .delegateBySig(
+            addr1.address,
+            nonce,
+            expiry,
+            28,
+            '0x91d1478d8d0aaaafc8cf58fc0c9c1e95a07a78baa730de72981407d3344ddb5d',
+            '0x1d33a68b1b1aaaa5ed119bb71ad14e21c5168120c18700eb1411d6640d1b3d76'
+          )
+      ).to.be.revertedWith('ECDSA: invalid signature')
+
       // Set invalid expiration
       const invalidExpiry = bn(await getLatestBlockNumber())
       buildData.message.nonce = Number(nonce)
@@ -2206,6 +2220,94 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Check result - No delegates
       expect(await stRSRVotes.delegates(addr1.address)).to.equal(ZERO_ADDRESS)
+    })
+
+    it('Should use independent nonces for permit and delegation', async function () {
+      // Check no delegate
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(ZERO_ADDRESS)
+
+      const amount = bn('10e18')
+
+      const permit = await signERC2612Permit(
+        addr1,
+        stRSR.address,
+        addr1.address,
+        addr2.address,
+        amount.toString()
+      )
+
+      await expect(
+        stRSR.permit(
+          addr1.address,
+          addr2.address,
+          amount,
+          permit.deadline,
+          permit.v,
+          permit.r,
+          permit.s
+        )
+      )
+        .to.emit(stRSR, 'Approval')
+        .withArgs(addr1.address, addr2.address, amount)
+
+      expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(amount)
+
+      const Delegation = [
+        { name: 'delegatee', type: 'address' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'expiry', type: 'uint256' },
+      ]
+
+      const chainId = await getChainId(hre)
+      const expiry = MAX_UINT256
+      const version = '1'
+      const name = await stRSRVotes.name()
+      const verifyingContract = stRSRVotes.address
+
+      const nonce1 = await stRSRVotes.nonces(addr1.address)
+
+      const sig1 = ethers.utils.splitSignature(
+        await addr1._signTypedData(
+          { name, version, chainId, verifyingContract },
+          { Delegation },
+          {
+            delegatee: addr1.address,
+            nonce: nonce1,
+            expiry,
+          }
+        )
+      )
+
+      // Change delegate for addr1 using signature with bad nonce
+      await expect(
+        stRSRVotes
+          .connect(other)
+          .delegateBySig(addr1.address, nonce1, expiry, sig1.v, sig1.r, sig1.s)
+      ).to.be.revertedWith('ERC20Votes: invalid nonce')
+
+      const nonce2 = await stRSRVotes.delegationNonces(addr1.address)
+
+      const sig2 = ethers.utils.splitSignature(
+        await addr1._signTypedData(
+          { name, version, chainId, verifyingContract },
+          { Delegation },
+          {
+            delegatee: addr1.address,
+            nonce: nonce2,
+            expiry,
+          }
+        )
+      )
+
+      // Change delegate for addr1 using signature with good nonce
+      await expect(
+        stRSRVotes
+          .connect(other)
+          .delegateBySig(addr1.address, nonce2, expiry, sig2.v, sig2.r, sig2.s)
+      ).to.not.be.reverted
+
+      // Check result
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(addr1.address)
     })
 
     it('Should count votes properly when staking', async function () {

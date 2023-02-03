@@ -5,6 +5,7 @@
   "singleQuote": true,
   "bracketSpacing": true,
   "useTabs": false,
+  "endOfLine": "lf",
   "overrides": [
     {
       "files": "*.sol",

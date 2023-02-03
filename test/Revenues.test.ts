@@ -1601,17 +1601,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await main.connect(owner).pause()
 
-        await expect(
-          distributor.distribute(rsr.address, backingManager.address, distAmount)
-        ).to.be.revertedWith('paused or frozen')
+        await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
+          'paused or frozen'
+        )
 
         await main.connect(owner).unpause()
 
         await main.connect(owner).freezeShort()
 
-        await expect(
-          distributor.distribute(rsr.address, backingManager.address, distAmount)
-        ).to.be.revertedWith('paused or frozen')
+        await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
+          'paused or frozen'
+        )
       })
 
       it('Should allow anyone to call distribute', async () => {
@@ -1645,10 +1645,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Distribute the RSR
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           await rsr.connect(bmSigner).approve(distributor.address, distAmount)
+
+          await expect(distributor.connect(bmSigner).distribute(rsr.address, distAmount))
+            .to.emit(distributor, 'RevenueDistributed')
+            .withArgs(rsr.address, backingManager.address, distAmount)
         })
-        await expect(distributor.distribute(rsr.address, backingManager.address, distAmount))
-          .to.emit(distributor, 'RevenueDistributed')
-          .withArgs(rsr.address, backingManager.address, distAmount)
 
         //  Check all funds distributed to StRSR
         expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
@@ -1678,9 +1679,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(STRSR_DEST, bn(0), bn(0))
 
-        await expect(
-          distributor.distribute(rsr.address, backingManager.address, bn(100))
-        ).to.be.revertedWith('nothing to distribute')
+        await expect(distributor.distribute(rsr.address, bn(100))).to.be.revertedWith(
+          'nothing to distribute'
+        )
 
         //  Check funds, nothing changed
         expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
@@ -2018,9 +2019,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Attempt to distribute COMP token
         await whileImpersonating(basketHandler.address, async (signer) => {
           await expect(
-            distributor
-              .connect(signer)
-              .distribute(compToken.address, backingManager.address, rewardAmountCOMP)
+            distributor.connect(signer).distribute(compToken.address, rewardAmountCOMP)
           ).to.be.revertedWith('RSR or RToken')
         })
         //  Check nothing changed
