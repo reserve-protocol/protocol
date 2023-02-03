@@ -147,6 +147,20 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
         'invalid ratio'
       )
     })
+
+    it('Should allow to update ratio correctly if frozen', async () => {
+      // Setup a new value
+      const newRatio: BigNumber = bn('100000')
+
+      main.freezeShort();
+
+      await expect(furnace.connect(owner).setRatio(newRatio))
+        .to.emit(furnace, 'RatioSet')
+        .withArgs(config.rewardRatio, newRatio)
+        .to.not.emit(rToken, 'Melted')
+
+      expect(await furnace.ratio()).to.equal(newRatio)
+    })
   })
 
   describe('Do Melt #fast', () => {
