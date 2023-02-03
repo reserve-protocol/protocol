@@ -133,4 +133,6 @@ interface TestIRToken is IRToken {
     function increaseAllowance(address, uint256) external returns (bool);
 
     function decreaseAllowance(address, uint256) external returns (bool);
+
+    function monetizeDonations(IERC20) external;
 }

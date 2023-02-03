@@ -1647,6 +1647,39 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
   })
 
+  describe('monetizeDonations #fast', () => {
+    const donationAmt = fp('100')
+    beforeEach(async () => {
+      await token3.mint(rToken.address, donationAmt)
+      expect(await token3.balanceOf(rToken.address)).to.equal(donationAmt)
+    })
+
+    it('should require erc20 is registered', async () => {
+      await assetRegistry.connect(owner).unregister(collateral3.address)
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith(
+        'erc20 unregistered'
+      )
+    })
+
+    it('should not monetize while paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not monetize while frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should monetize registered erc20s', async () => {
+      const backingManagerBalBefore = await token3.balanceOf(backingManager.address)
+      await expect(rToken.monetizeDonations(token3.address)).to.emit(token3, 'Transfer')
+      expect(await token3.balanceOf(rToken.address)).to.equal(0)
+      const backingManagerBalAfter = await token3.balanceOf(backingManager.address)
+      expect(backingManagerBalAfter.sub(backingManagerBalBefore)).to.equal(donationAmt)
+    })
+  })
+
   describe('ERC1271 permit #fast', () => {
     const issueAmount = bn('100e18') // fits into one block
     let erc1271Mock: ERC1271Mock
