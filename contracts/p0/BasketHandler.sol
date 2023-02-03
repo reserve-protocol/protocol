@@ -287,7 +287,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
-    /// Like quantity(), but unsafe becausfe it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
+    /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
     /// @param asset The registered asset plugin contract for the erc20
     /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.

@@ -77,7 +77,7 @@ interface IBasketHandler is IComponent {
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) external view returns (uint192);
 
-    /// Like quantity(), but unsafe becausfe it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
+    /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
     /// @param erc20 The ERC20 token contract for the asset
     /// @param asset The registered asset plugin contract for the erc20
     /// @return {tok/BU} The whole token quantity of token in the reference basket
