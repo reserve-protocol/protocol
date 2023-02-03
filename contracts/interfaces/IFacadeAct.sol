@@ -18,5 +18,5 @@ interface IFacadeAct {
     function getActCalldata(RTokenP1 rToken) external returns (address to, bytes memory calldata_);
 
     /// Claims rewards from all places they can accrue.
-    function claimAndSweepRewards(RTokenP1 rToken) external;
+    function claimRewards(RTokenP1 rToken) external;
 }

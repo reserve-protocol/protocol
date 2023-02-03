@@ -127,8 +127,12 @@ contract RTokenAsset is IAsset {
         view
         returns (RecollateralizationLibP1.BasketRange memory range)
     {
-        if (basketHandler.fullyCollateralized()) {
-            range.bottom = IRToken(address(erc20)).basketsNeeded();
+        uint192 basketsHeld = basketHandler.basketsHeldBy(address(backingManager)); // {BU}
+        uint192 basketsNeeded = IRToken(address(erc20)).basketsNeeded(); // {BU}
+
+        // if (basketHandler.fullyCollateralized())
+        if (basketsHeld >= basketsNeeded) {
+            range.bottom = basketsNeeded;
             range.top = range.bottom;
         } else {
             // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
@@ -137,15 +141,14 @@ contract RTokenAsset is IAsset {
             // should switch over to an asset with a price feed.
 
             IMain main = backingManager.main();
-            ComponentCache memory components = ComponentCache({
+            TradingContext memory ctx = TradingContext({
+                basketsHeld: basketsHeld,
                 bm: backingManager,
                 bh: main.basketHandler(),
                 reg: main.assetRegistry(),
                 stRSR: main.stRSR(),
                 rsr: main.rsr(),
-                rToken: main.rToken()
-            });
-            TradingRules memory rules = TradingRules({
+                rToken: main.rToken(),
                 minTradeVolume: backingManager.minTradeVolume(),
                 maxTradeSlippage: backingManager.maxTradeSlippage()
             });
@@ -153,7 +156,7 @@ contract RTokenAsset is IAsset {
             Registry memory reg = assetRegistry.getRegistry();
 
             // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(components, rules, reg);
+            range = RecollateralizationLibP1.basketRange(ctx, reg);
         }
     }
 }

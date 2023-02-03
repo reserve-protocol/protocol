@@ -35,6 +35,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 import { BN_SCALE_FACTOR, CollateralStatus, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
 import { expectTrade, getTrade } from '../utils/trades'
@@ -297,6 +298,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
+      revenueHiding: REVENUE_HIDING.toString(),
       comptroller: compoundMock.address,
       noOutput: true,
     })
@@ -318,6 +320,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
+      revenueHiding: REVENUE_HIDING.toString(),
       noOutput: true,
     })
 
@@ -362,6 +365,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: hre.ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
+      revenueHiding: REVENUE_HIDING.toString(),
       comptroller: compoundMock.address,
       noOutput: true,
     })
@@ -408,6 +412,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         maxTradeVolume: MAX_TRADE_VOLUME.toString(),
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
+        revenueHiding: REVENUE_HIDING.toString(),
         comptroller: compoundMock.address,
         referenceERC20Decimals: bn(18).toString(),
         noOutput: true,
@@ -739,6 +744,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Token7:  6095.23 cETH @ 25.2 = $153,600 USD
     const [, newQuotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
 
+    await assetRegistry.refresh() // refresh to update refPerTok()
     const expectedTkn2: BigNumber = toBNDecimals(
       issueAmount.mul(targetAmts[2]).div(await collateral[2].refPerTok()),
       8

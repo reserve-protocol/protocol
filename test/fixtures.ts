@@ -73,6 +73,8 @@ export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max /
 
 export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 
+export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
+
 export type Collateral =
   | FiatCollateral
   | CTokenFiatCollateral
@@ -247,6 +249,7 @@ async function collateralFixture(
         defaultThreshold: defaultThreshold,
         delayUntilDefault: delayUntilDefault,
       },
+      REVENUE_HIDING,
       comptroller.address
     )
     await coll.refresh()
@@ -263,17 +266,20 @@ async function collateralFixture(
     )
     await erc20.setAaveToken(aaveToken.address)
 
-    const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
-      priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: chainlinkAddr,
-      oracleError: ORACLE_ERROR,
-      erc20: erc20.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT,
-      targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: defaultThreshold,
-      delayUntilDefault: delayUntilDefault,
-    })
+    const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkAddr,
+        oracleError: ORACLE_ERROR,
+        erc20: erc20.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: defaultThreshold,
+        delayUntilDefault: delayUntilDefault,
+      },
+      REVENUE_HIDING
+    )
     await coll.refresh()
     return [erc20, coll]
   }

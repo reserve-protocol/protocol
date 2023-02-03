@@ -61,6 +61,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 
 interface RSRFixture {
@@ -212,6 +213,7 @@ async function collateralFixture(
         defaultThreshold,
         delayUntilDefault,
       },
+      REVENUE_HIDING,
       comptroller.address
     )
     await coll.refresh()
@@ -235,17 +237,20 @@ async function collateralFixture(
         'stat' + symbol
       )
     )
-    const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
-      priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: chainlinkAddr,
-      oracleError: ORACLE_ERROR,
-      erc20: staticErc20.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT,
-      targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold,
-      delayUntilDefault,
-    })
+    const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkAddr,
+        oracleError: ORACLE_ERROR,
+        erc20: staticErc20.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault,
+      },
+      REVENUE_HIDING
+    )
     await coll.refresh()
     return [staticErc20 as IERC20Metadata, coll]
   }
@@ -298,6 +303,7 @@ async function collateralFixture(
         delayUntilDefault,
       },
       targetUnitOracleAddr,
+      REVENUE_HIDING,
       comptroller.address
     )
     await coll.refresh()
@@ -347,6 +353,7 @@ async function collateralFixture(
           defaultThreshold: bn(0),
           delayUntilDefault,
         },
+        REVENUE_HIDING,
         referenceERC20Decimals,
         comptroller.address
       )

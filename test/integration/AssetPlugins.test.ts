@@ -8,6 +8,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 import { defaultFixture } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
@@ -450,6 +451,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       for (const tkInf of tokenInfos) {
         // Fiat Token Assets
+        expect(await tkInf.tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await tkInf.tokenCollateral.isCollateral()).to.equal(true)
         expect(await tkInf.tokenCollateral.erc20()).to.equal(tkInf.token.address)
         expect(await tkInf.tokenCollateral.erc20()).to.equal(tkInf.tokenAddress)
@@ -524,6 +526,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       for (const ctkInf of cTokenInfos) {
         // CToken
+        expect(await ctkInf.cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
         expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
           await ctkInf.token.decimals()
@@ -539,7 +542,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('0.001')
         )
         expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
+        expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
           await ctkInf.cTokenCollateral.refPerTok()
         )
 
@@ -628,6 +631,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       for (const atkInf of aTokenInfos) {
         // AToken
+        expect(await atkInf.aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await atkInf.aTokenCollateral.isCollateral()).to.equal(true)
         expect(await atkInf.aTokenCollateral.erc20()).to.equal(atkInf.stataToken.address)
         expect(await atkInf.stataToken.decimals()).to.equal(await atkInf.token.decimals())
@@ -637,7 +641,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await atkInf.aTokenCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.095'))
 
         expect(await atkInf.aTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        expect(await atkInf.aTokenCollateral.prevReferencePrice()).to.be.closeTo(
+        expect(await atkInf.aTokenCollateral.exposedReferencePrice()).to.be.closeTo(
           await atkInf.aTokenCollateral.refPerTok(),
           fp('0.000005')
         )
@@ -703,6 +707,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       for (const tkInf of tokenInfos) {
         // Non-Fiat Token Assets
+        expect(await tkInf.nonFiatTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await tkInf.nonFiatTokenCollateral.isCollateral()).to.equal(true)
         expect(await tkInf.nonFiatTokenCollateral.erc20()).to.equal(tkInf.nonFiatToken.address)
         expect(await tkInf.nonFiatTokenCollateral.erc20()).to.equal(tkInf.nonFiatTokenAddress)
@@ -767,6 +772,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       for (const ctkInf of cTokenInfos) {
         // CToken
+        expect(await ctkInf.cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
         expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
           await ctkInf.token.decimals()
@@ -784,7 +790,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
         expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
 
-        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
+        expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
           await ctkInf.cTokenCollateral.refPerTok()
         )
 
@@ -829,6 +835,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       for (const tkInf of tokenInfos) {
         // Non-Fiat Token Assets
+        expect(await tkInf.selfRefTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await tkInf.selfRefTokenCollateral.isCollateral()).to.equal(true)
         expect(await tkInf.selfRefTokenCollateral.erc20()).to.equal(tkInf.selfRefToken.address)
         expect(await tkInf.selfRefTokenCollateral.erc20()).to.equal(tkInf.selfRefTokenAddress)
@@ -882,6 +889,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       for (const ctkInf of cTokenInfos) {
         // CToken
+        expect(await ctkInf.cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
         expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
           await ctkInf.token.decimals()
@@ -898,7 +906,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('0.001')
         )
         expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
+        expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
           await ctkInf.cTokenCollateral.refPerTok()
         )
 
@@ -945,6 +953,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       for (const tkInf of tokenInfos) {
         // Non-Fiat Token Assets
+        expect(await tkInf.eurFiatTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await tkInf.eurFiatTokenCollateral.isCollateral()).to.equal(true)
         expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatToken.address)
         expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatTokenAddress)
@@ -1091,6 +1100,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
 
     it('Should handle invalid/stale Price - Collateral - CTokens Fiat', async () => {
+      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.SOUND)
+
       // Does not revert with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
@@ -1125,6 +1138,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
+        REVENUE_HIDING,
         compoundMock.address
       )
       // CTokens - Collateral with no price info should revert
@@ -1149,6 +1163,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
+        REVENUE_HIDING,
         compoundMock.address
       )
       await zeropriceCtokenCollateral.refresh()
@@ -1189,17 +1204,20 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // AToken collateral with no price
       const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
         await ethers.getContractFactory('ATokenFiatCollateral')
-      ).deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: NO_PRICE_DATA_FEED,
-        oracleError: ORACLE_ERROR,
-        erc20: stataDai.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: MAX_ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-      })
+      ).deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: NO_PRICE_DATA_FEED,
+          oracleError: ORACLE_ERROR,
+          erc20: stataDai.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: MAX_ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+        },
+        REVENUE_HIDING
+      )
 
       // ATokens - Collateral with no price info should revert
       await expect(nonpriceAtokenCollateral.price()).to.be.revertedWith('')
@@ -1211,17 +1229,20 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Does not revert with a feed with zero price
       const zeroPriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
         await ethers.getContractFactory('ATokenFiatCollateral')
-      ).deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: mockChainlinkFeed.address,
-        oracleError: ORACLE_ERROR,
-        erc20: stataDai.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: MAX_ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-      })
+      ).deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: mockChainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: stataDai.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: MAX_ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+        },
+        REVENUE_HIDING
+      )
       await zeroPriceAtokenCollateral.refresh()
 
       await setOraclePrice(zeroPriceAtokenCollateral.address, bn(0))
@@ -1335,6 +1356,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             delayUntilDefault,
           },
           NO_PRICE_DATA_FEED,
+          REVENUE_HIDING,
           compoundMock.address
         )
       )
@@ -1363,7 +1385,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             delayUntilDefault,
           },
           mockChainlinkFeed.address,
-
+          REVENUE_HIDING,
           compoundMock.address
         )
       )
@@ -1473,6 +1495,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold: bn('0'),
           delayUntilDefault,
         },
+        REVENUE_HIDING,
         await weth.decimals(),
         compoundMock.address
       )
@@ -1503,6 +1526,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold: bn('0'),
           delayUntilDefault,
         },
+        REVENUE_HIDING,
         await weth.decimals(),
         compoundMock.address
       )
@@ -1793,8 +1817,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await advanceTime(10000)
       await advanceBlocks(10000)
 
-      // Refresh cToken manually (required)
-      await cDaiCollateral.refresh()
+      // Refresh assets
+      await assetRegistry.refresh()
 
       // Check rates and prices - Have changed, slight inrease
       const [aDaiPriceLow2, aDaiPriceHigh2] = await aDaiCollateral.price() // ~1.07548
@@ -1840,7 +1864,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await advanceBlocks(100000000)
 
       // Refresh cToken manually (required)
-      await cDaiCollateral.refresh()
+      await assetRegistry.refresh()
 
       // Check rates and prices - Have changed significantly
       const [aDaiPriceLow3, aDaiPriceHigh3] = await aDaiCollateral.price() // ~1.1873

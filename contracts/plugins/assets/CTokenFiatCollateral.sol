@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "./FiatCollateral.sol";
+import "./AppreciatingFiatCollateral.sol";
 import "./ICToken.sol";
 import "../../libraries/Fixed.sol";
 
@@ -11,18 +11,23 @@ import "../../libraries/Fixed.sol";
  * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
-contract CTokenFiatCollateral is FiatCollateral {
+contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
+    // All v2 cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     uint8 public immutable referenceERC20Decimals;
 
     IComptroller public immutable comptroller;
 
+    /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param comptroller_ The CompoundFinance Comptroller
-    constructor(CollateralConfig memory config, IComptroller comptroller_) FiatCollateral(config) {
+    constructor(
+        CollateralConfig memory config,
+        uint192 revenueHiding,
+        IComptroller comptroller_
+    ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(address(comptroller_) != address(0), "comptroller missing");
         ICToken erc20 = ICToken(address(config.erc20));
         referenceERC20Decimals = IERC20Metadata(erc20.underlying()).decimals();
@@ -40,8 +45,8 @@ contract CTokenFiatCollateral is FiatCollateral {
         super.refresh(); // already handles all necessary default checks
     }
 
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view override returns (uint192) {
+    /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
+    function _underlyingRefPerTok() internal view override returns (uint192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
         return shiftl_toFix(rate, shiftLeft);

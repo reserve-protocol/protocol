@@ -19,12 +19,14 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
 
     /// @param config.chainlinkFeed Feed units: {target/ref}
     /// @param targetUnitChainlinkFeed_ Feed units: {UoA/target}
+    /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param comptroller_ The CompoundFinance Comptroller
     constructor(
         CollateralConfig memory config,
         AggregatorV3Interface targetUnitChainlinkFeed_,
+        uint192 revenueHiding,
         IComptroller comptroller_
-    ) CTokenFiatCollateral(config, comptroller_) {
+    ) CTokenFiatCollateral(config, revenueHiding, comptroller_) {
         require(
             address(targetUnitChainlinkFeed_) != address(0),
             "missing target unit chainlink feed"

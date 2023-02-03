@@ -8,7 +8,13 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../deployment/common'
-import { combinedError, priceTimeout, getOracleTimeout, verifyContract } from '../deployment/utils'
+import {
+  combinedError,
+  priceTimeout,
+  getOracleTimeout,
+  revenueHiding,
+  verifyContract,
+} from '../deployment/utils'
 import { ATokenMock, ATokenFiatCollateral } from '../../typechain'
 
 let deployments: IAssetCollDeployments
@@ -82,6 +88,7 @@ async function main() {
         defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
+      revenueHiding.toString(),
     ],
     'contracts/plugins/assets/ATokenFiatCollateral.sol:ATokenFiatCollateral'
   )
@@ -101,6 +108,7 @@ async function main() {
         defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
+      revenueHiding.toString(),
       networkConfig[chainId].COMPTROLLER,
     ],
     'contracts/plugins/assets/CTokenFiatCollateral.sol:CTokenFiatCollateral'
@@ -127,6 +135,7 @@ async function main() {
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       networkConfig[chainId].chainlinkFeeds.BTC,
+      revenueHiding.toString(),
       networkConfig[chainId].COMPTROLLER,
     ],
     'contracts/plugins/assets/CTokenNonFiatCollateral.sol:CTokenNonFiatCollateral'
@@ -147,6 +156,7 @@ async function main() {
         defaultThreshold: '0',
         delayUntilDefault: '0',
       },
+      revenueHiding.toString(),
       '18',
       networkConfig[chainId].COMPTROLLER,
     ],

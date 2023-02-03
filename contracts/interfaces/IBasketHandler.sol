@@ -76,9 +76,6 @@ interface IBasketHandler is IComponent {
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) external view returns (uint192);
 
-    /// @return erc20s The ERC20 tokens in the reference basket
-    function basketTokens() external view returns (IERC20[] memory erc20s);
-
     /// @param amount {BU}
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
     /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
@@ -91,8 +88,8 @@ interface IBasketHandler is IComponent {
     function basketsHeldBy(address account) external view returns (uint192 baskets);
 
     /// Should not revert
-    /// @return low {UoA/tok} The lower end of the price estimate
-    /// @return high {UoA/tok} The upper end of the price estimate
+    /// @return low {UoA/BU} The lower end of the price estimate
+    /// @return high {UoA/BU} The upper end of the price estimate
     function price() external view returns (uint192 low, uint192 high);
 
     /// Should not revert

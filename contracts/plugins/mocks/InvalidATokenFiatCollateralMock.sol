@@ -4,7 +4,9 @@ pragma solidity 0.8.9;
 import "../assets/ATokenFiatCollateral.sol";
 
 contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
-    constructor(CollateralConfig memory config) ATokenFiatCollateral(config) {}
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        ATokenFiatCollateral(config, revenueHiding)
+    {}
 
     /// Reverting claimRewards function
     function claimRewards() external pure override {

@@ -10,7 +10,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../common'
-import { combinedError, priceTimeout, getOracleTimeout } from '../utils'
+import { combinedError, priceTimeout, getOracleTimeout, revenueHiding } from '../utils'
 import { Asset, ATokenMock, StaticATokenLM } from '../../../typechain'
 
 async function main() {
@@ -168,10 +168,6 @@ async function main() {
     )
   )
   await adaiStaticToken.deployed()
-
-  // Sleep 20s to allow sync
-  await new Promise((r) => setTimeout(r, 20000))
-
   console.log(
     `Deployed StaticAToken for aDAI on ${hre.network.name} (${chainId}): ${adaiStaticToken.address} `
   )
@@ -186,6 +182,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
   })
   await (<Asset>await ethers.getContractAt('Asset', aDaiCollateral)).refresh()
 
@@ -212,9 +209,6 @@ async function main() {
   )
   await ausdcStaticToken.deployed()
 
-  // Sleep 20s to allow sync
-  await new Promise((r) => setTimeout(r, 20000))
-
   console.log(
     `Deployed StaticAToken for aUSDC on ${hre.network.name} (${chainId}): ${ausdcStaticToken.address} `
   )
@@ -229,6 +223,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
   })
   await (<Asset>await ethers.getContractAt('Asset', aUsdcCollateral)).refresh()
 
@@ -255,9 +250,6 @@ async function main() {
   )
   await ausdtStaticToken.deployed()
 
-  // Sleep 20s to allow sync
-  await new Promise((r) => setTimeout(r, 20000))
-
   console.log(
     `Deployed StaticAToken for aUSDT on ${hre.network.name} (${chainId}): ${ausdtStaticToken.address} `
   )
@@ -272,6 +264,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
   })
   await (<Asset>await ethers.getContractAt('Asset', aUsdtCollateral)).refresh()
 
@@ -297,9 +290,6 @@ async function main() {
   )
   await abusdStaticToken.deployed()
 
-  // Sleep 20s to allow sync
-  await new Promise((r) => setTimeout(r, 20000))
-
   console.log(
     `Deployed StaticAToken for aBUSD on ${hre.network.name} (${chainId}): ${abusdStaticToken.address} `
   )
@@ -314,6 +304,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.015').toString(), // 1.5%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
   })
   await (<Asset>await ethers.getContractAt('Asset', aBusdCollateral)).refresh()
 
@@ -340,9 +331,6 @@ async function main() {
   )
   await ausdpStaticToken.deployed()
 
-  // Sleep 20s to allow sync
-  await new Promise((r) => setTimeout(r, 20000))
-
   console.log(
     `Deployed StaticAToken for aUSDP on ${hre.network.name} (${chainId}): ${ausdpStaticToken.address} `
   )
@@ -357,6 +345,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
   })
   await (<Asset>await ethers.getContractAt('Asset', aUsdpCollateral)).refresh()
 
@@ -377,6 +366,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
   await (<Asset>await ethers.getContractAt('Asset', cDaiCollateral)).refresh()
@@ -398,6 +388,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
   await (<Asset>await ethers.getContractAt('Asset', cUsdcCollateral)).refresh()
@@ -419,6 +410,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
   await (<Asset>await ethers.getContractAt('Asset', cUsdtCollateral)).refresh()
@@ -440,6 +432,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
   await (<Asset>await ethers.getContractAt('Asset', cUsdpCollateral)).refresh()
@@ -466,6 +459,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
     delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
   await (<Asset>await ethers.getContractAt('Asset', cWBTCCollateral)).refresh()
@@ -485,6 +479,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
+    revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
     referenceERC20Decimals: '18',
   })
