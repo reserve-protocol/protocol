@@ -210,6 +210,7 @@ Some collateral positions require a synthetic reference unit. Here are 3 ways on
    Good for: tokens without obvious revenue mechanisms on their own
 3. [Revenue Hiding](#revenue-hiding)
    Good for: tokens that _almost_ have a nondecreasing exchange rate but not quite
+   Update: Most of our collateral now have revenue hiding by default. See [AppreciatingFiatCollateral.sol](../contracts/plugins/AppreciatingFiatCollateral.sol)
 
 In general these approaches can be combined, though we don't recommend it!
 
@@ -281,6 +282,8 @@ Downside: Collateral can only be automatically substituted in the basket with co
 An alternative to demurrage is to hide revenue from the protocol via a discounted `refPerTok()` function. `refPerTok()` should return X% less than the largest _actual_ refPerTok exchange rate that has been observed in the underlying Defi protocol. When the actual rate falls below this value, the collateral should be marked defaulted via the `refresh()` function.
 
 When implementing Revenue Hiding, the `price()/strictPrice()` functions should NOT hide revenue; they should use the current underlying exchange rate to calculate a best-effort estimate of what the collateral will trade at on secondary markets. A side-effect of this approach is that the RToken's price on markets becomes more variable. As such, it's best if the amount of hiding necessary is small. If the token will only rarely decrease in exchange rate---and only then a little---then revenue-hiding may be a good fit.
+
+We already have an implementation of a Revenue Hiding contract at `contracts/plugins/assets/AppreciatingFiatCollateral.sol` that can be inherited from to create Revenue Hiding collateral.
 
 ## Important Properties for Collateral Plugins
 

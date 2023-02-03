@@ -6,11 +6,11 @@ The Reserve Protocol enables a class of token called RToken: self-issued tokens 
 
 RTokens can be minted by depositing a basket of _collateral tokens_, and redeemed for the basket as well. Thus, an RToken will tend to trade at the market value of the entire basket that backs it, as any lower or higher price could be arbitraged.
 
-The definition of the collateral basket is set dynamically on a block-by-block basis with respect to a _reference basket_. While the RToken often does its internal calculus in terms of a single unit of account (USD), what constitutes appreciation is entirely a function of the reference basket.
+The definition of the collateral basket is set dynamically on a block-by-block basis with respect to a _reference basket_. While the RToken often does its internal calculus in terms of a single unit of account (USD), what constitutes appreciation is entirely a function of the reference basket, which will often be associated with a variety of units.
 
 RTokens can be over-collateralized, which means that if any of their collateral tokens default, there's a pool of value available to make up for the loss. RToken over-collateralization is provided by Reserve Rights (RSR) holders, who may choose to stake their RSR on an RToken instance. Staked RSR can be seized in the case of a default, in a process that is entirely mechanistic based on on-chain price-feeds, and does not depend on governance votes or human judgment.
 
-But markets do not over-collateralize holders for free. In order to incentivize RSR holders to stake in an RToken instance, each RToken instance can choose to offer an arbitrary portion of its revenue to be directed towards its RSR over-collateralization pool. This simultaneously encourages staking in order to provision an over-collateralization buffer, while increasing the size of that buffer over time.
+But markets do not over-collateralize holders for free. In order to incentivize RSR holders to stake in an RToken instance, each RToken instance can choose to offer an arbitrary portion of its revenue to be directed towards its RSR over-collateralization pool. This encourages staking in order to provision over-collateralization.
 
 As with any smart contract application, the actual behavior may vary from the intended behavior. It's safest to observe an application in use for a long period of time before trusting it to behave as expected. This overview describes its _intended_ behavior.
 
@@ -25,7 +25,7 @@ For a much more detailed explanation of the economic design, including an hour-l
 - [Our Solidity Style](docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, estpecially where those go beyond standard practice.
 - [Writing Collateral Plugins](docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
 - [MEV](docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programatically.
-- [Trading Algorithm](docs/recollateralization.md): Description of our trading algorithm during the recollateralization process
+- [Rebalancing Algorithm](docs/recollateralization.md): Description of our trading algorithm during the recollateralization process
 - [Changelog](CHANGELOG.md): Release changelog
 
 ## Mainnet Addresses (v1.1.0)
@@ -62,6 +62,8 @@ We have a `p0` and `p1` implementation for each contract in our core system. The
 
 We implement and maintain both of these systems in the name of correctness. Implementing p0 helps us to specify the exact intended behavior of the protocol without needing to deal simultaneously with gas optimization; maintaining equivalent behavior of both serves as a substantial extra form of testing. The behavior of each contract in `p1` should be _identical_ to the behavior of the corresponding contract in `p0`, so we can perform [differential testing](https://en.wikipedia.org/wiki/Differential_testing) between them - checking that they behave identicially, both in our explicit tests and in arbitrary randomized tests.
 
+We thought `p0` and `p1` would end up being a lot more different than they ended up being. For the most part the contracts only really differ for `StRSR.sol`, and a little for `RToken.sol`.
+
 ### Properties of P0
 
 P0 implements our "abstract" economic protocol; it should have equivalent observable behavior to P1, but be expressed just as clearly as we can manage it in Solidity. In several places, we achieve that clarity by forgoing any attempt to be realistic to deploy to Ethereum.
@@ -85,7 +87,7 @@ P1 is the production version of the economic protocol.
 `contracts` holds our smart contracts:
 
 - `p0` and `p1` each contain an entire implementations of our core protocol. `p0` is as easy as possible to understand; `p1` is our gas-efficient system to deploy in production.
-- The core protocol requires a plugin contract for each asset it handles and each auction platform it can use. `plugins` contains our initial implementations of these (`plugins/assets`, `plugins/markets`), as well as mock implementations of each asset and auction platform that we're using for testing purposes (`plugins/mocks`).
+- The core protocol requires a plugin contract for each asset it handles and each auction platform it can use. `plugins` contains our initial implementations of these (`plugins/assets`, `plugins/trading`), as well as mock implementations of each asset and auction platform that we're using for testing purposes (`plugins/mocks`).
 - `interfaces` contains the contract interfaces for all of those implementations.
 
 `test` holds our Typescript system tests, driven through Hardhat.
