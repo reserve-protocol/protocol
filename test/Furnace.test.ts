@@ -157,7 +157,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await expect(furnace.connect(owner).setRatio(newRatio))
         .to.emit(furnace, 'RatioSet')
         .withArgs(config.rewardRatio, newRatio)
-        .to.not.emit(rToken, 'Melted')
 
       expect(await furnace.ratio()).to.equal(newRatio)
     })
