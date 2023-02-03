@@ -235,33 +235,40 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       expect(await basketHandler.quantity(cDAI.address)).to.equal(fp('0'))
     })
 
-    it('ICollateral.price() should include revenue hiding discount; BasketHandler.price() should not', async () => {
-      // Collateral price should be 1 part in 1 million smaller than expected
+    it('ICollateral.price() should include revenue hiding in high/low delta', async () => {
+      // cDAICollateral should include discount in price for low estimate, and not for high
       const [low, high] = await cDAICollateral.price()
-      let mid = toHiddenAmt(fp('1').div(50))
-      let delta = mid.mul(ORACLE_ERROR).div(fp('1'))
-      expect(low).to.equal(mid.sub(delta))
-      expect(high).to.equal(mid.add(delta))
+      let mid = fp('1').div(50)
+      expect(low).to.equal(toHiddenAmt(mid).sub(toHiddenAmt(mid).mul(ORACLE_ERROR).div(fp('1'))))
+      expect(high).to.equal(mid.add(mid.mul(ORACLE_ERROR).div(fp('1'))))
 
-      // BasketHandler BU price should NOT include the discount
+      // BasketHandler BU price
       const [lowBaskets, highBaskets] = await basketHandler.price()
       mid = fp('2') // because DAI collateral
-      delta = mid.mul(ORACLE_ERROR).div(fp('1'))
-      expect(lowBaskets).to.equal(mid.sub(delta))
-      expect(highBaskets).to.equal(mid.add(delta))
+      const delta = mid.mul(ORACLE_ERROR).div(fp('1'))
+      expect(lowBaskets).to.eq(mid.sub(delta))
+      expect(highBaskets).to.be.gt(mid.add(delta)) // should be above expected
+      expect(highBaskets).to.be.closeTo(mid.add(delta), mid.add(delta).div(bn('1e6')))
+
+      // RToken price
+      const [lowRToken, highRToken] = await basketHandler.price()
+      expect(lowRToken).to.eq(mid.sub(delta))
+      expect(highRToken).to.be.gt(mid.add(delta)) // should be above expected
+      expect(highRToken).to.be.closeTo(mid.add(delta), mid.add(delta).div(bn('1e6')))
     })
 
-    it('auction should be launched at slightly discounted price', async () => {
+    it('auction should be launched at discounted low price', async () => {
       // Double exchange rate and launch auctions
       await cDAI.setExchangeRate(fp('2')) // double rate
       await backingManager.manageTokens([cDAI.address]) // transfers tokens to Traders
       await expect(rTokenTrader.manageToken(cDAI.address)).to.emit(rTokenTrader, 'TradeStarted')
       await expect(rsrTrader.manageToken(cDAI.address)).to.emit(rsrTrader, 'TradeStarted')
 
-      // Auctions launched should have slightly larger sell amounts than expected
+      // Auctions launched should be at discounted low price
       const t = await getTrade(rsrTrader, cDAI.address)
       const sellAmt = await t.initBal()
-      const minBuyAmt = await toMinBuyAmt(sellAmt, toHiddenAmt(fp('2').div(50)), fp('1'))
+      const sellPrice = toHiddenAmt(fp('2')).div(50)
+      const minBuyAmt = await toMinBuyAmt(sellAmt, sellPrice, fp('1'))
       const expectedPrice = minBuyAmt.mul(fp('1')).div(sellAmt)
       // price should be within 1 part in a 1 trillion of our discounted rate
       expect(await t.worstCasePrice()).to.be.closeTo(expectedPrice, expectedPrice.div(bn('1e9')))

@@ -35,29 +35,6 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
         comptroller = comptroller_;
     }
 
-    /// Can revert, used by other contract functions in order to catch errors
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
-    /// @param pegPrice {target/ref}
-    function tryPrice()
-        external
-        view
-        override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192 pegPrice
-        )
-    {
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(refPerTok());
-        uint192 delta = p.mul(oracleError);
-
-        low = p - delta;
-        high = p + delta;
-        pegPrice = targetPerRef();
-    }
-
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() public virtual override {
