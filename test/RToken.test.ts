@@ -1276,6 +1276,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
     })
 
+    it('Should not melt if supply too low', async () => {
+      await expect(rToken.connect(addr1).melt(issueAmount.sub(bn('1e8')))).revertedWith(
+        'rToken supply too low to melt'
+      )
+    })
+
     it('Should allow to melt tokens if caller', async () => {
       // Melt tokens
       const meltAmount: BigNumber = bn('10e18')
@@ -1365,11 +1371,24 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow melt to set BU exchange rate to below 1e-9', async () => {
+      await rToken.setIssuanceThrottleParams({ amtRate: bn('1e28'), pctRate: fp('1') })
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
+      const largeIssueAmt = bn('1e28')
+
+      // Issue more RTokens
+      await Promise.all(
+        tokens.map((t) => t.connect(owner).mint(addr1.address, largeIssueAmt.sub(issueAmount)))
+      )
+      await Promise.all(
+        tokens.map((t) => t.connect(addr1).approve(rToken.address, largeIssueAmt.sub(issueAmount)))
+      )
+      await rToken.connect(addr1).issue(largeIssueAmt.sub(issueAmount))
+
       // melt()
       await expect(
-        rToken.connect(addr1).melt(issueAmount.sub(issueAmount.div(bn('1e9'))).add(1))
+        rToken.connect(addr1).melt(largeIssueAmt.sub(largeIssueAmt.div(bn('1e9'))).add(1))
       ).to.be.revertedWith('BU rate out of range')
-      await rToken.connect(addr1).melt(issueAmount.sub(issueAmount.div(bn('1e9'))))
+      await rToken.connect(addr1).melt(largeIssueAmt.sub(largeIssueAmt.div(bn('1e9'))))
     })
   })
 

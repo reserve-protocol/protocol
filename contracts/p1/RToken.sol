@@ -281,6 +281,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   totalSupply' = totalSupply - amtRToken
     function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
+        require(totalSupply() >= FIX_ONE, "rToken supply too low to melt");
         emit Melted(amtRToken);
         requireValidBUExchangeRate();
     }
