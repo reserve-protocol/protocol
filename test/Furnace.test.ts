@@ -148,11 +148,11 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       )
     })
 
-    it('Should allow to update ratio correctly if frozen', async () => {
+    it.only('Should allow to update ratio correctly if frozen', async () => {
       // Setup a new value
       const newRatio: BigNumber = bn('100000')
 
-      main.freezeShort();
+      await main.freezeShort()
 
       await expect(furnace.connect(owner).setRatio(newRatio))
         .to.emit(furnace, 'RatioSet')
