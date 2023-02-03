@@ -42,6 +42,7 @@ contract NonFiatCollateral is FiatCollateral {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
         uint192 pricePerTarget = uoaPerTargetFeed.price(oracleTimeout); // {UoA/target}
 
+        // Assumption: {ref/tok} = 1; inherit from `AppreciatingFiatCollateral` if need appreciation
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         uint192 p = pricePerTarget.mul(pegPrice);
 
