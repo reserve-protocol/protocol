@@ -284,7 +284,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         'invalid rewardRatio'
       )
     })
-    
+
     it('Should payout rewards before updating the reward ratio', async () => {
       const startBal = await rsr.balanceOf(addr1.address)
       const stakeAmt = bn('100e18')
@@ -301,10 +301,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.connect(addr1).unstake(stakeAmt)
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1209600)
       await stRSR.connect(addr1).withdraw(addr1.address, 1)
-      
+
       const endingBal = await rsr.balanceOf(addr1.address)
       expect(endingBal.sub(startBal)).gt(0)
-      
     })
   })
 
