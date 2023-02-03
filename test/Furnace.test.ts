@@ -148,7 +148,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       )
     })
 
-    it.only('Should allow to update ratio correctly if frozen', async () => {
+    it('Should allow to update ratio correctly if frozen', async () => {
       // Setup a new value
       const newRatio: BigNumber = bn('100000')
 
