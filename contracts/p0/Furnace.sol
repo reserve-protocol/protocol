@@ -30,7 +30,7 @@ contract FurnaceP0 is ComponentP0, IFurnace {
 
     /// Performs any melting that has vested since last call.
     /// @custom:refresher
-    function melt() external notPausedOrFrozen {
+    function melt() public notPausedOrFrozen {
         if (uint48(block.timestamp) < uint64(lastPayout) + PERIOD) return;
 
         // # of whole periods that have passed since lastPayout
@@ -50,6 +50,7 @@ contract FurnaceP0 is ComponentP0, IFurnace {
     /// Ratio setting
     /// @custom:governance
     function setRatio(uint192 ratio_) public governance {
+        melt();
         require(ratio_ <= MAX_RATIO, "invalid ratio");
         // The ratio can safely be set to 0, though it is not recommended
         emit RatioSet(ratio, ratio_);
