@@ -70,11 +70,21 @@ interface IBasketHandler is IComponent {
     /// @return status The worst CollateralStatus of all collateral in the basket
     function status() external view returns (CollateralStatus status);
 
+    /// @param erc20 The ERC20 token contract for the asset
     /// @return {tok/BU} The whole token quantity of token in the reference basket
     /// Returns 0 if erc20 is not registered or not in the basket
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) external view returns (uint192);
+
+    /// Like quantity(), but unsafe becausfe it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
+    /// @param erc20 The ERC20 token contract for the asset
+    /// @param asset The registered asset plugin contract for the erc20
+    /// @return {tok/BU} The whole token quantity of token in the reference basket
+    /// Returns 0 if erc20 is not registered or not in the basket
+    /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
+    /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
+    function quantityUnsafe(IERC20 erc20, IAsset asset) external view returns (uint192);
 
     /// @param amount {BU}
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
