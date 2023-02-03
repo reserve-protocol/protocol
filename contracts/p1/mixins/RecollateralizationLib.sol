@@ -168,7 +168,7 @@ library RecollateralizationLibP1 {
                 bal = bal.plus(reg.assets[i].bal(address(ctx.stRSR)));
             }
 
-            uint192 q = ctx.bh.quantity(reg.erc20s[i]); // {tok/BU}
+            uint192 q = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]); // {tok/BU}
 
             // Skip over dust-balance assets not in the basket
             {
@@ -300,7 +300,11 @@ library RecollateralizationLibP1 {
 
             // {tok} = {BU} * {tok/BU}
             // needed(Top): token balance needed for range.top baskets: quantity(e) * range.top
-            uint192 needed = range.top.mul(ctx.bh.quantity(reg.erc20s[i]), CEIL); // {tok}
+            uint192 needed = range.top.mul(
+                ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]),
+                CEIL
+            ); // {tok}
+
             if (bal.gt(needed)) {
                 uint192 low; // {UoA/sellTok}
 
@@ -344,7 +348,11 @@ library RecollateralizationLibP1 {
                 }
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range
-                needed = range.bottom.mul(ctx.bh.quantity(reg.erc20s[i]), CEIL); // {buyTok};
+                needed = range.bottom.mul(
+                    ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]),
+                    CEIL
+                ); // {buyTok};
+
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
                     (, uint192 high) = reg.assets[i].price(); // {UoA/buyTok}

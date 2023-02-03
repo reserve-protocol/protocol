@@ -292,23 +292,43 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
+    /// @param erc20 The token contract to check for quantity for
     /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
     // Returns 0 if erc20 is not registered or not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0 or reverting.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
-        try assetRegistry.toColl(erc20) returns (ICollateral coll) {
-            try coll.refPerTok() returns (uint192 refPerTok) {
-                if (refPerTok > 0) {
-                    // {tok/BU} = {ref/BU} / {ref/tok}
-                    return basket.refAmts[erc20].div(refPerTok, CEIL);
-                }
-            } catch {}
-
-            return FIX_MAX;
+        try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
+            return _quantity(erc20, coll);
         } catch {
             return FIX_ZERO;
         }
+    }
+
+    /// Like quantity(), but unsafe becausfe it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
+    /// @param erc20 The ERC20 token contract for the asset
+    /// @param asset The registered asset plugin contract for the erc20
+    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
+    // Returns 0 if erc20 is not registered or not in the basket
+    // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
+    // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
+    function quantityUnsafe(IERC20 erc20, IAsset asset) public view returns (uint192) {
+        if (!asset.isCollateral()) return FIX_ZERO;
+        return _quantity(erc20, ICollateral(address(asset)));
+    }
+
+    /// @param erc20 The token contract
+    /// @param coll The registered collateral plugin contract
+    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
+    // Returns 0 if coll is not in the basket
+    // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
+    // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
+    function _quantity(IERC20 erc20, ICollateral coll) internal view returns (uint192) {
+        uint192 refPerTok = coll.refPerTok();
+        if (refPerTok == 0) return FIX_MAX;
+
+        // {tok/BU} = {ref/BU} / {ref/tok}
+        return basket.refAmts[erc20].div(refPerTok, CEIL);
     }
 
     /// Should not revert
