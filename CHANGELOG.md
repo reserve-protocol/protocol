@@ -85,6 +85,14 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
   - ++`RToken.IssuanceThrottleSet`
   - ++`RToken.RedemptionThrottleSet`
 - Allow redemption while DISABLED
+- Disallow staking while FROZEN
+- Allow `grantRTokenAllowances()` while paused
+- Add `RToken.monetizeDonations()` escape hatch for accidentally donated tokens
 - Collateral default threshold: 5% -> 1% (+ include oracleError)
 - RecollateralizationLib: Tighter basket range during recollateralization. Will now do `minTradeVolume`-size auctions to fill in dust rather than haircut.
 - Remove StRSR.setName()/setSymbol()
+- Prevent RToken exchange rate manipulation at low supply
+- Prevent StRSR exchange rate manipulation at low supply
+- Forward RSR directly to StRSR, bypassing RSRTrader
+- Accumulate melting on `Furnace.setRatio()`
+- Payout RSR rewards on `StRSR.setRatio()`
