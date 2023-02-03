@@ -61,6 +61,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime } from './utils/time'
@@ -1619,17 +1620,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const ZeroPriceATokenFiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
         'InvalidATokenFiatCollateralMock'
       )
-      const newColl2 = <ATokenFiatCollateral>await ZeroPriceATokenFiatCollateralFactory.deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: await collateral2.chainlinkFeed(),
-        oracleError: ORACLE_ERROR,
-        erc20: await collateral2.erc20(),
-        maxTradeVolume: await collateral2.maxTradeVolume(),
-        oracleTimeout: await collateral2.oracleTimeout(),
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: DEFAULT_THRESHOLD,
-        delayUntilDefault: await collateral2.delayUntilDefault(),
-      })
+      const newColl2 = <ATokenFiatCollateral>await ZeroPriceATokenFiatCollateralFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral2.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral2.erc20(),
+          maxTradeVolume: await collateral2.maxTradeVolume(),
+          oracleTimeout: await collateral2.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral2.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
 
       // Swap collateral
       await assetRegistry.connect(owner).swapRegistered(newColl2.address)
@@ -1651,17 +1655,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const MockableCollateralFactory: ContractFactory = await ethers.getContractFactory(
         'MockableCollateral'
       )
-      const newColl = <MockableCollateral>await MockableCollateralFactory.deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: await collateral2.chainlinkFeed(),
-        oracleError: ORACLE_ERROR,
-        erc20: await collateral2.erc20(),
-        maxTradeVolume: await collateral2.maxTradeVolume(),
-        oracleTimeout: await collateral2.oracleTimeout(),
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: DEFAULT_THRESHOLD,
-        delayUntilDefault: await collateral2.delayUntilDefault(),
-      })
+      const newColl = <MockableCollateral>await MockableCollateralFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral2.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral2.erc20(),
+          maxTradeVolume: await collateral2.maxTradeVolume(),
+          oracleTimeout: await collateral2.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral2.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
       await assetRegistry.connect(owner).swapRegistered(newColl.address)
       await setOraclePrice(newColl.address, MAX_UINT192) // overflow
       await expectUnpriced(newColl.address)
@@ -1817,6 +1824,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Set Token2 to hard default - Zero rate
       await token2.setExchangeRate(fp('0'))
+      await collateral2.refresh()
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
     })
 
@@ -1825,6 +1833,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Set Token2 to hard default - Zero rate
       await token2.setExchangeRate(fp('0'))
+      await collateral2.refresh()
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
     })
 
@@ -1833,6 +1842,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Set RefperTok = 0
       await token2.setExchangeRate(fp('0'))
+      await collateral2.refresh()
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
 
       // Check BU price
@@ -1844,23 +1854,28 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Swap out collateral plugin for one that can return a 0 price without raising FIX_MAX
       const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
-      const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: await collateral2.chainlinkFeed(),
-        oracleError: ORACLE_ERROR,
-        erc20: await collateral2.erc20(),
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: await collateral2.oracleTimeout(),
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: DEFAULT_THRESHOLD,
-        delayUntilDefault: await collateral2.delayUntilDefault(),
-      })
+      const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral2.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral2.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await collateral2.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral2.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
 
       await assetRegistry.connect(owner).swapRegistered(coll.address)
       await basketHandler.refreshBasket()
 
       // Set RefperTok = 0
       await token2.setExchangeRate(fp('0'))
+      await coll.refresh()
+      // await assetRegistry.refresh()
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
 
       // Check BU price

@@ -28,6 +28,7 @@ import {
   TestIBackingManager,
   TestIRToken,
   USDCMock,
+  UnpricedAssetMock,
 } from '../../typechain'
 import {
   Collateral,
@@ -436,7 +437,7 @@ describe('Assets contracts #fast', () => {
 
     it('Should not save prices if try/price returns unpriced', async () => {
       const UnpricedAssetFactory = await ethers.getContractFactory('UnpricedAssetMock')
-      const unpricedRSRAsset: Asset = <Asset>(
+      const unpricedRSRAsset: UnpricedAssetMock = <UnpricedAssetMock>(
         await UnpricedAssetFactory.deploy(
           PRICE_TIMEOUT,
           await rsrAsset.chainlinkFeed(),

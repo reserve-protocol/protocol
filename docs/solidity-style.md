@@ -227,7 +227,7 @@ Anything that doesn't fit these two policies precisely must be carefully and ful
 
 - `RToken.issue()` is almost but not quite in the CEI pattern; it treats `refundSpan` as something like a refresher, and is careful to reread any state necessary to achieve a consistent contract view afterwards.
 
-- `RewardableLib.claimAndSweepRewards()`
+- `RewardableLib.claimRewards()`
 
 - The entire `GnosisTrade` contract is using the moral equivalent of `ReentrancyGuard` to ensure its own reentrancy-safety, but since it's also using the state machine pattern, it can do both with the same state varible and save gas on SLOADs and SSTOREs.
 

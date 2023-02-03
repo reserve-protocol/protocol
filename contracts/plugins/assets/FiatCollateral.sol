@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../interfaces/IAsset.sol";
 import "../../libraries/Fixed.sol";
-import "./FiatCollateral.sol";
 import "./Asset.sol";
 import "./OracleLib.sol";
 
@@ -58,9 +57,6 @@ contract FiatCollateral is ICollateral, Asset {
 
     uint192 public immutable pegTop; // {target/ref} The top of the peg
 
-    // does not become nonzero until after first refresh()
-    uint192 public prevReferencePrice; // previous rate, {ref/tok}
-
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config)
         Asset(
@@ -110,17 +106,16 @@ contract FiatCollateral is ICollateral, Asset {
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
-        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
-        uint192 p = pegPrice.mul(refPerTok());
-        uint192 delta = p.mul(oracleError);
+        // {target/ref} = {target/ref} * {1}
+        uint192 delta = pegPrice.mul(oracleError);
 
-        low = p - delta;
-        high = p + delta;
+        low = pegPrice - delta;
+        high = pegPrice + delta;
     }
 
     /// Should not revert
     /// Refresh exchange rates and update default status.
-    /// @dev Should be general enough to not need to be overridden
+    /// @dev May need to override: limited to handling collateral with refPerTok() = 1
     function refresh() public virtual override(Asset, IAsset) {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
@@ -152,14 +147,6 @@ contract FiatCollateral is ICollateral, Asset {
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             markStatus(CollateralStatus.IFFY);
         }
-
-        // Check for hard default
-        uint192 referencePrice = refPerTok();
-        // uint192(<) is equivalent to Fix.lt
-        if (referencePrice < prevReferencePrice) {
-            markStatus(CollateralStatus.DISABLED);
-        }
-        prevReferencePrice = referencePrice;
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {

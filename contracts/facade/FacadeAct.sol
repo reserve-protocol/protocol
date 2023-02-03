@@ -303,17 +303,17 @@ contract FacadeAct is IFacadeAct {
             } catch {}
 
             // look at rewards from all sources + the RToken sweep
-            try this.claimAndSweepRewards(rToken) {
+            try this.claimRewards(rToken) {
                 // See if any token bals grew sufficiently
                 for (uint256 i = 0; i < erc20s.length; ++i) {
                     (uint192 lotLow, ) = cache.reg.toAsset(erc20s[i]).lotPrice(); // {tok}
 
                     uint256 bal = erc20s[i].balanceOf(address(cache.bm));
                     if (bal - initialBals[i] > minTradeSize(minTradeVolume, lotLow)) {
-                        // It's large enough to trade! Return claimAndSweepRewards as next step.
+                        // It's large enough to trade! Return claimRewards as next step.
                         return (
                             address(this),
-                            abi.encodeWithSelector(this.claimAndSweepRewards.selector, rToken)
+                            abi.encodeWithSelector(this.claimRewards.selector, rToken)
                         );
                     }
                 }
@@ -323,7 +323,7 @@ contract FacadeAct is IFacadeAct {
         return (address(0), new bytes(0));
     }
 
-    function claimAndSweepRewards(RTokenP1 rToken) public {
+    function claimRewards(RTokenP1 rToken) public {
         IMain main = rToken.main();
         main.backingManager().claimRewards();
         main.rTokenTrader().claimRewards();

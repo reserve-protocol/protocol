@@ -23,6 +23,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
@@ -138,17 +139,20 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       )
       aTokenCollateral = await (
         await ethers.getContractFactory('ATokenFiatCollateral')
-      ).deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: chainlinkFeed.address,
-        oracleError: ORACLE_ERROR,
-        erc20: staticATokenERC20.address,
-        maxTradeVolume: one.config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: DEFAULT_THRESHOLD,
-        delayUntilDefault: DELAY_UNTIL_DEFAULT,
-      })
+      ).deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: staticATokenERC20.address,
+          maxTradeVolume: one.config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        },
+        REVENUE_HIDING
+      )
       const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral')
       rTokenCollateral = await RTokenCollateralFactory.deploy(
         one.rToken.address,

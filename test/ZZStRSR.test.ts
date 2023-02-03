@@ -220,7 +220,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         newStRSR = <TestIStRSR>await StRSRFactory.deploy()
         newStRSR = <TestIStRSR>await upgrades.deployProxy(StRSRFactory, [], {
           kind: 'uups',
-          unsafeAllow: ['external-library-linking'],
         })
       }
 
