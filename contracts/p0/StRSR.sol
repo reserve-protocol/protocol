@@ -280,12 +280,11 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         seizedRSR += rewardsToTake;
 
         assert(rsrAmount <= seizedRSR);
+        rsrRewardsAtLastPayout = rsrRewards() - seizedRSR;
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
         main.rsr().safeTransfer(_msgSender(), seizedRSR);
-
-        rsrRewardsAtLastPayout = rsrRewards();
     }
 
     function bankruptStakers() internal returns (uint256 seizedRSR) {
