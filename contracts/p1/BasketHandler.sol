@@ -188,7 +188,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         require(
             main.hasRole(OWNER, _msgSender()) ||
-                (status() == CollateralStatus.DISABLED && !main.frozen()),
+                (status() == CollateralStatus.DISABLED && !main.pausedOrFrozen()),
             "basket unrefreshable"
         );
         _switchBasket();
