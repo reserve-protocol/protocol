@@ -79,7 +79,7 @@ interface IFacadeRead {
 
     /// @return tokens The ERC20s backing the RToken
     /// @custom:view
-    function basketTokens(IRToken rToken) external view returns (IERC20[] memory tokens);
+    function basketTokens(IRToken rToken) external view returns (address[] memory tokens);
 
     /// @return stTokenAddress The address of the corresponding stToken address
     /// @custom:view

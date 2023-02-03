@@ -3,7 +3,7 @@
 Recollateralization takes place in the central loop of [`BackingManager.manageTokens()`](../contracts/p1/BackingManager). Since the BackingManager can only have open 1 trade at a time, it needs to know which tokens to try to trade and how much. This algorithm should not be gameable and should not result in unnecessary losses.
 
 ```solidity
-(bool doTrade, TradeRequest memory req) = RecollateralizationLibP1.prepareRecollateralizationTrade(this);
+(bool doTrade, TradeRequest memory req) = RecollateralizationLibP1.prepareRecollateralizationTrade(...);
 ```
 
 The trading algorithm is isolated in [RecollateralizationLib.sol](../contracts/p1/mixins/RecollateralizationLib.sol). This document describes the algorithm implemented by the library at a high-level, as well as the concepts required to evaluate the correctness of the implementation.
@@ -28,24 +28,17 @@ The trading algorithm is isolated in [RecollateralizationLib.sol](../contracts/p
 
 The BU price band is a two-sided range in units of `{BU}` that describes the realistic range of basket units that the protocol expects to end up with after it is done trading. The lower bound indicates the number of basket units that the protocol will hold if future trading proceeds as pessimistically as possible. The upper bound indicates how many BUs the BackingManager will hold if trading proceeds as optimistically as possible.
 
-The spread represents uncertainty and arises from (i) the uncertainty fundamental in asset prices: [`IAsset.price() returns (uint192 low, uint192 high)`](../contracts/interfaces/IAsset.sol), (ii) the [`BackingManager.maxTradeSlippage`](system-design.md#maxTradeSlippage) governance param, and (iii) potentially accruable dust balances due to the [`minTradeVolume`](system-design.md#rTokenMinTradeVolume) (unique per asset).
+The spread represents uncertainty that arises from (i) the uncertainty fundamental in asset prices: [`IAsset.price() returns (uint192 low, uint192 high)`](../contracts/interfaces/IAsset.sol), (ii) the [`BackingManager.maxTradeSlippage`](system-design.md#maxTradeSlippage) governance param, and (iii) potentially accruable dust balances due to the [`minTradeVolume`](system-design.md#rTokenMinTradeVolume) (unique per asset).
 
 As trades complete, the distance between the top and bottom of the BU price band _strictly decreases_; it should not even remain the same (assuming the trade cleared for nonzero volume).
 
 #### `basketRange.top`
 
-`basketRange.top` is the lesser of `RToken.basketsNeeded()` and `assetsHigh.div(basketPriceLow)`, where:
-
-- `assetsHigh` is the value of all assets under management (includes staked RSR) if assets were worth their most
-- `basketPriceLow` is the price of one `{BU}` if assets were worth their least
+In the optimistic case we assume we have `basketsHeldBy(backingManager)` basket units that all balances above this convert from their high price to the low price of a basket unit.
 
 #### `basketRange.bottom`
 
-`basketRange.bottom` is the lesser of `basketRange.top` and `assetsLow.minus(shortfallSlippage).div(basketPriceHigh)`, where:
-
-- `assetsLow` is the value of all assets under management (includes staked RSR) if assets were worth their least, and up to [`minTradeVolume`](system-design.md#minTradeVolume) dust accrued everywhere
-- `shortfallSlippage` is the largest possible loss that could be taken during recollateralization trading due solely to [`maxTradeSlippage`](system-design.md#maxTradeSlippage)
-- `basketPriceHigh` is the price of one `{BU}` if assets were worth their most
+In the optimistic case, we assume we have with `basketsHeldBy(backingManager)` basket units, and trade all balances above this at the low sell price for the high price of a basket unit, as well as account for maxTradeSlippage and potentially up to a minTradeVolume dust loss.
 
 ### Selecting the Trade - `nextTradePair()`
 
@@ -93,7 +86,6 @@ TODO
 
 ## Summary
 
-- The trading algorithm is conservative in its definition of token balance surplus and deficit
-- It first sells bad collateral before good collateral
-- It trades as much as it can without risking future double-trading
-- With each successive trade the BU price band narrows, opening up more token balance for surplus or providing sufficient justification for the purchase of more deficit collateral, often in some combination
+- Sell bad collateral before good collateral
+- Trade as much as possible without risking future double-trading
+- With each successive trade the BU price band should narrow, opening up more token balance for surplus or providing sufficient justification for the purchase of more deficit collateral.
