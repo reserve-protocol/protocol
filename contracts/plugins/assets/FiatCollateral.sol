@@ -57,6 +57,9 @@ contract FiatCollateral is ICollateral, Asset {
 
     uint192 public immutable pegTop; // {target/ref} The top of the peg
 
+    // does not become nonzero until after first refresh()
+    uint192 public prevReferencePrice; // previous rate, {ref/tok}
+
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config)
         Asset(
@@ -147,6 +150,14 @@ contract FiatCollateral is ICollateral, Asset {
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             markStatus(CollateralStatus.IFFY);
         }
+
+        // Check for hard default
+        uint192 referencePrice = refPerTok();
+        // uint192(<) is equivalent to Fix.lt
+        if (referencePrice < prevReferencePrice) {
+            markStatus(CollateralStatus.DISABLED);
+        }
+        prevReferencePrice = referencePrice;
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {

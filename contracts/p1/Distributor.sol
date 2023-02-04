@@ -123,12 +123,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
             });
             numTransfers++;
         }
-        emit RevenueDistributed(erc20, msg.sender, amount);
+        emit RevenueDistributed(erc20, _msgSender(), amount);
 
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; i++) {
             Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(msg.sender, t.addrTo, t.amount);
+            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(_msgSender(), t.addrTo, t.amount);
         }
     }
 
