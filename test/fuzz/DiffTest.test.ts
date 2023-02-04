@@ -48,7 +48,8 @@ const componentsOfP1 = async (main: sc.IMainFuzz) => ({
 })
 type ComponentsP1 = Awaited<ReturnType<typeof componentsOfP1>>
 
-describe('The Differential Testing scenario', () => {
+// deprecated 2/4/23
+describe.skip('The Differential Testing scenario', () => {
   let scenario: sc.DiffTestScenario
 
   let p0: sc.MainP0Fuzz

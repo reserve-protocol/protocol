@@ -591,14 +591,14 @@ describe('The Rebalancing scenario', () => {
       expect(stRSR_bal_init).to.equal(0)
 
       // Try to distribute tokens without approval, reverts
-      await expect(scenario.connect(alice).justDistributeRevenue(24, aliceAddr, 100n * exa)).to.be
+      await expect(scenario.connect(alice).justDistributeRevenue(24, 0, 100n * exa)).to.be
         .reverted
 
       // As Alice, make allowance
       await comp.rsr.connect(alice).approve(distribAddr, 100n * exa)
 
       // Distribute as any user
-      await scenario.connect(alice).justDistributeRevenue(24, aliceAddr, 100n * exa)
+      await scenario.connect(alice).justDistributeRevenue(24, 0, 100n * exa)
 
       // Check balances, tokens distributed to stRSR
       const alice_bal = await comp.rsr.balanceOf(aliceAddr)
