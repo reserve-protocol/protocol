@@ -126,13 +126,16 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
     }
 
     function saveSurplusAndDeficitTokens() external {
-        ComponentCache memory components = ComponentCache({
+        TradingContext memory components = TradingContext({
+            basketsHeld: IMainFuzz(address(main)).basketHandler().basketsHeldBy(address(this)),
             bm: IBackingManager(address(this)),
             bh: IMainFuzz(address(main)).basketHandler(),
             reg: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
             rsr: IMainFuzz(address(main)).rsr(),
-            rToken: IMainFuzz(address(main)).rToken()
+            rToken: IMainFuzz(address(main)).rToken(),
+            minTradeVolume: ITrading(address(this)).minTradeVolume(),
+            maxTradeSlippage: ITrading(address(this)).maxTradeSlippage()
         });
 
         IERC20[] memory erc20s = components.reg.erc20s();
@@ -189,21 +192,20 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         view
         returns (RecollateralizationLibP1.BasketRange memory)
     {
-        ComponentCache memory components = ComponentCache({
+        TradingContext memory components = TradingContext({
+            basketsHeld: IMainFuzz(address(main)).basketHandler().basketsHeldBy(address(this)),
             bm: IBackingManager(address(this)),
             bh: IMainFuzz(address(main)).basketHandler(),
             reg: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
             rsr: IMainFuzz(address(main)).rsr(),
-            rToken: IMainFuzz(address(main)).rToken()
-        });
-        TradingRules memory rules = TradingRules({
+            rToken: IMainFuzz(address(main)).rToken(),
             minTradeVolume: ITrading(address(this)).minTradeVolume(),
             maxTradeSlippage: ITrading(address(this)).maxTradeSlippage()
         });
 
         return
-            RecollateralizationLibP1.basketRange(components, rules, components.reg.getRegistry());
+            RecollateralizationLibP1.basketRange(components, components.reg.getRegistry());
     }
 
     function _msgSender() internal view virtual override returns (address) {

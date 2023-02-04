@@ -387,9 +387,9 @@ contract DiffTestScenario {
         }
     }
 
-    function redeem(uint256 amount) public asSender {
+    function redeem(uint256 amount, bool revertOnPartialRedemption) public asSender {
         for (uint256 N = 0; N < 2; N++) {
-            p[N].rToken().redeem(amount);
+            p[N].rToken().redeem(amount, revertOnPartialRedemption);
         }
     }
 
@@ -572,33 +572,27 @@ contract DiffTestScenario {
 
     function justDistributeRevenue(
         uint256 tokenID,
-        uint8 fromID,
         uint256 amount
     ) public asSender {
         for (uint256 N = 0; N < 2; N++) {
             IMainFuzz main = p[N];
             IERC20 token = main.someToken(tokenID);
-            address dest = main.someAddr(fromID);
-            main.distributor().distribute(token, dest, amount);
+            main.distributor().distribute(token, amount);
         }
     }
 
     // do revenue distribution granting allowance first - only RSR or RToken
     function distributeRevenue(
         bool doRSR,
-        uint8 fromID,
         uint256 amount
     ) public {
         for (uint256 N = 0; N < 2; N++) {
             IERC20 token = IERC20(doRSR ? address(p[N].rsr()) : address(p[N].rToken()));
-            address fromUser = p[N].someAddr(fromID);
 
             // Grant allowances from fromID
-            p[N].spoof(address(this), fromUser);
             token.approve(address(p[N].distributor()), amount);
-            p[N].unspoof(address(this));
 
-            p[N].distributor().distribute(token, fromUser, amount);
+            p[N].distributor().distribute(token, amount);
         }
     }
 

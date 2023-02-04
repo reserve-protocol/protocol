@@ -392,13 +392,13 @@ contract ChaosOpsScenario {
         main.rToken().issueTo(recipient, amount);
     }
 
-    function redeem(uint256 amount) public asSender {
-        main.rToken().redeem(amount);
+    function redeem(uint256 amount, bool revertOnPartialRedemption) public asSender {
+        main.rToken().redeem(amount, revertOnPartialRedemption);
     }
 
-    function redeemTo(uint256 amount, uint8 recipientID) public asSender {
+    function redeemTo(uint256 amount, uint8 recipientID, bool revertOnPartialRedemption) public asSender {
         address recipient = main.someAddr(recipientID);
-        main.rToken().redeemTo(recipient, amount);
+        main.rToken().redeemTo(recipient, amount, revertOnPartialRedemption);
     }
 
     // ==== user functions: strsr ====
@@ -532,17 +532,15 @@ contract ChaosOpsScenario {
     // do revenue distribution without doing allowances first
     function justDistributeRevenue(
         uint256 tokenID,
-        uint8 fromID,
         uint256 amount
     ) public asSender {
         IERC20 token = main.someToken(tokenID);
-        main.distributor().distribute(token, main.someAddr(fromID), amount);
+        main.distributor().distribute(token, amount);
     }
 
     // do revenue distribution granting allowance first - only RSR or RToken
     function distributeRevenue(
         uint8 which,
-        uint8 fromID,
         uint256 amount
     ) public {
         IERC20 token;
@@ -551,13 +549,9 @@ contract ChaosOpsScenario {
         if (which == 0) token = IERC20(address(main.rsr()));
         else token = IERC20(address(main.rToken()));
 
-        // Grant allowances from fromID
-        address fromUser = main.someAddr(fromID);
-        main.spoof(address(this), fromUser);
         token.approve(address(main.distributor()), amount);
-        main.unspoof(address(this));
 
-        main.distributor().distribute(token, fromUser, amount);
+        main.distributor().distribute(token, amount);
     }
 
     function payRSRProfits() public {
