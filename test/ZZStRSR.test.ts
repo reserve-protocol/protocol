@@ -361,7 +361,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
-    it('Should allow to stake if Main is Frozen', async () => {
+    it('Should not allow to stake if Main is Frozen', async () => {
       // Perform stake
       const amount: BigNumber = bn('1000e18')
 
@@ -370,13 +370,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await stRSR.connect(addr1).stake(amount)
-
-      // Check deposit registered
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('frozen')
     })
 
     it('Should allow to stake/deposit in RSR', async () => {
@@ -1071,20 +1065,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Rewards should not be handed out when paused but staking should still work', async () => {
       await main.connect(owner).pause()
       await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
-
-      // Stake
-      await rsr.connect(addr1).approve(stRSR.address, stake)
-      await stRSR.connect(addr1).stake(stake)
-
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
-      expect(await stRSR.exchangeRate()).to.equal(initialRate)
-    })
-
-    it('Rewards should not be handed out when frozen but staking should still work', async () => {
-      await main.connect(owner).freezeLong()
-      await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
-      await expect(stRSR.payoutRewards()).revertedWith('frozen')
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)

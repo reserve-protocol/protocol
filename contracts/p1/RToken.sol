@@ -297,6 +297,16 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         requireValidBUExchangeRate();
     }
 
+    /// Sends all token balance of erc20 (if it is registered) to the BackingManager
+    /// @custom:interaction
+    function monetizeDonations(IERC20 erc20) external notPausedOrFrozen {
+        require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
+        IERC20Upgradeable(address(erc20)).safeTransfer(
+            address(backingManager),
+            erc20.balanceOf(address(this))
+        );
+    }
+
     // ==== Throttle setters/getters ====
 
     /// @return {qRTok} The maximum issuance that can be performed in the current block

@@ -34,7 +34,9 @@ contract SelfReferentialCollateral is FiatCollateral {
         )
     {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+        uint192 p = chainlinkFeed.price(oracleTimeout);
+        // danger for inheritance: this assumes refPerTok() is 1
+
         uint192 delta = p.mul(oracleError);
 
         low = p - delta;

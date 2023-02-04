@@ -208,10 +208,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // actions:
     //   rsr.transferFrom(account, this, rsrAmount)
-    function stake(uint256 rsrAmount) external {
+    function stake(uint256 rsrAmount) external notFrozen {
         require(rsrAmount > 0, "Cannot stake zero");
 
-        if (!main.pausedOrFrozen()) _payoutRewards();
+        _payoutRewards();
 
         // Compute stake amount
         // This is not an overflow risk according to our expected ranges:

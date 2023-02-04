@@ -127,14 +127,13 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and over-collateralized
     /// the system
     /// @param rsrAmount {qRSR}
-    /// @dev Staking continues while paused/frozen, without reward handouts
+    /// @dev Staking continues while paused, without reward handouts
     /// @custom:interaction
-    function stake(uint256 rsrAmount) external {
+    function stake(uint256 rsrAmount) external notFrozen {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
-        // Call state keepers -- only subset that work while paused/frozen
-        if (!main.pausedOrFrozen()) _payoutRewards();
+        _payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:

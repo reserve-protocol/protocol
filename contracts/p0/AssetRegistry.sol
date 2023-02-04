@@ -48,11 +48,15 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
-        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+
+        IBasketHandler basketHandler = main.basketHandler();
+        try basketHandler.quantity(asset.erc20()) returns (uint192 quantity) {
+            if (quantity.gt(0)) basketHandler.disableBasket(); // not an interaction
+        } catch {
+            basketHandler.disableBasket();
+        }
 
         swapped = _registerIgnoringCollisions(asset);
-
-        if (quantity.gt(FIX_ZERO)) main.basketHandler().disableBasket();
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -60,13 +64,17 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     function unregister(IAsset asset) external governance {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
-        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+
+        IBasketHandler basketHandler = main.basketHandler();
+        try basketHandler.quantity(asset.erc20()) returns (uint192 quantity) {
+            if (quantity.gt(0)) basketHandler.disableBasket(); // not an interaction
+        } catch {
+            basketHandler.disableBasket();
+        }
 
         _erc20s.remove(address(asset.erc20()));
         assets[asset.erc20()] = IAsset(address(0));
         emit AssetUnregistered(asset.erc20(), asset);
-
-        if (quantity.gt(FIX_ZERO)) main.basketHandler().disableBasket();
     }
 
     /// Return the Asset modelling this ERC20, or revert

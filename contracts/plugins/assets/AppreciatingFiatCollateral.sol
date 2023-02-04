@@ -59,14 +59,18 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
             uint192 pegPrice
         )
     {
+        // Should include revenue hiding discount in the low discount but not high
+
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
         // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
-        uint192 p = pegPrice.mul(refPerTok());
-        uint192 delta = p.mul(oracleError);
+        uint192 pLow = pegPrice.mul(refPerTok());
 
-        low = p - delta;
-        high = p + delta;
+        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
+        uint192 pHigh = pegPrice.mul(_underlyingRefPerTok());
+
+        low = pLow - pLow.mul(oracleError);
+        high = pHigh + pHigh.mul(oracleError);
     }
 
     /// Should not revert

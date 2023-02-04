@@ -2340,6 +2340,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Increase redemption rate for AToken to double
         await token2.setExchangeRate(fp('2'))
+        await collateral2.refresh()
 
         // Check Price (unchanged) and Assets value increment by 50%
         const excessValue: BigNumber = issueAmount.div(2)
@@ -2757,6 +2758,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Change redemption rate for AToken and CToken to double
         await token2.setExchangeRate(fp('2'))
         await token3.setExchangeRate(fp('2'))
+        await collateral2.refresh()
+        await collateral3.refresh()
 
         // Check Price (unchanged) and Assets value (now doubled)
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
@@ -2874,6 +2877,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Change redemption rates for AToken and CToken - Higher for the AToken
         await token2.setExchangeRate(fp('2'))
         await token3.setExchangeRate(fp('1.6'))
+        await collateral2.refresh()
+        await collateral3.refresh()
 
         // Check Price (unchanged) and Assets value (now 80% higher)
         const excessTotalValue: BigNumber = issueAmount.mul(80).div(100)
