@@ -235,14 +235,14 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       expect(await basketHandler.quantity(cDAI.address)).to.equal(fp('0'))
     })
 
-    it('ICollateral.price() should include revenue hiding in high/low delta', async () => {
+    it('prices should be correct', async () => {
       // cDAICollateral should include discount in price for low estimate, and not for high
       const [low, high] = await cDAICollateral.price()
       let mid = fp('1').div(50)
       expect(low).to.equal(toHiddenAmt(mid).sub(toHiddenAmt(mid).mul(ORACLE_ERROR).div(fp('1'))))
       expect(high).to.equal(mid.add(mid.mul(ORACLE_ERROR).div(fp('1'))))
 
-      // BasketHandler BU price
+      // BasketHandler BU price - should overprice at the high end
       const [lowBaskets, highBaskets] = await basketHandler.price()
       mid = fp('2') // because DAI collateral
       const delta = mid.mul(ORACLE_ERROR).div(fp('1'))
@@ -250,7 +250,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       expect(highBaskets).to.be.gt(mid.add(delta)) // should be above expected
       expect(highBaskets).to.be.closeTo(mid.add(delta), mid.add(delta).div(bn('1e6')))
 
-      // RToken price
+      // RToken price - should overprice at the high end
       const [lowRToken, highRToken] = await basketHandler.price()
       expect(lowRToken).to.eq(mid.sub(delta))
       expect(highRToken).to.be.gt(mid.add(delta)) // should be above expected
