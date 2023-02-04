@@ -326,11 +326,11 @@ describe('The Rebalancing scenario', () => {
       const bal1 = await comp.rToken.balanceOf(aliceAddr)
       expect(bal1.sub(bal0)).to.equal(7n * exa)
 
-      await scenario.connect(alice).redeem(5n * exa)
+      await scenario.connect(alice).redeem(5n * exa, true)
       const bal2 = await comp.rToken.balanceOf(aliceAddr)
       expect(bal2.sub(bal1)).to.equal(-5n * exa)
 
-      await scenario.connect(alice).redeem(2n * exa)
+      await scenario.connect(alice).redeem(2n * exa, true)
       const bal3 = await comp.rToken.balanceOf(aliceAddr)
       expect(bal3.sub(bal2)).to.equal(-2n * exa)
     })
@@ -598,7 +598,7 @@ describe('The Rebalancing scenario', () => {
       await comp.rsr.connect(alice).approve(distribAddr, 100n * exa)
 
       // Distribute as any user
-      await scenario.connect(bob).justDistributeRevenue(24, 0, 100n * exa)
+      await scenario.connect(alice).justDistributeRevenue(24, aliceAddr, 100n * exa)
 
       // Check balances, tokens distributed to stRSR
       const alice_bal = await comp.rsr.balanceOf(aliceAddr)
@@ -609,7 +609,7 @@ describe('The Rebalancing scenario', () => {
       // Can also distribute directly, forcing approval
       // It does not matter who sends the transaction,as it
       // will always make approvals as the `from` user (2nd parameter)
-      await scenario.connect(carol).distributeRevenue(24, 0, 20n * exa)
+      await scenario.connect(alice).distributeRevenue(24, 0, 20n * exa)
 
       // Check new balances
       const alice_bal_end = await comp.rsr.balanceOf(aliceAddr)

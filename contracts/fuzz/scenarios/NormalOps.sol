@@ -372,15 +372,21 @@ contract NormalOpsScenario {
     // do revenue distribution without doing allowances first
     function justDistributeRevenue(
         uint256 tokenID,
+        uint8 fromID,
         uint256 amount
     ) public asSender {
         IERC20 token = main.someToken(tokenID);
+        // distribute now uses msg.sender (2/1/23), so spoof from caller
+        address fromUser = main.someAddr(fromID);
+        main.spoof(address(this), fromUser);
         main.distributor().distribute(token, amount);
+        main.unspoof(address(this));
     }
 
     // do revenue distribution granting allowance first - only RSR or RToken
     function distributeRevenue(
         uint8 which,
+        uint8 fromID,
         uint256 amount
     ) public {
         IERC20 token;
@@ -389,9 +395,12 @@ contract NormalOpsScenario {
         if (which == 0) token = IERC20(address(main.rsr()));
         else token = IERC20(address(main.rToken()));
 
+        // Grant allowances from fromID
+        address fromUser = main.someAddr(fromID);
+        main.spoof(address(this), fromUser);
         token.approve(address(main.distributor()), amount);
-
         main.distributor().distribute(token, amount);
+        main.unspoof(address(this));
     }
 
     function payRSRProfits() public {
