@@ -1659,7 +1659,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true, bn('1e8'))
 
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
