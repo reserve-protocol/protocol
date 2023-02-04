@@ -60,7 +60,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             // == Interactions then return ==
             IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), 0);
             IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), bal);
-            distributor.distribute(erc20, address(this), bal);
+            distributor.distribute(erc20, bal);
             return;
         }
 
@@ -79,14 +79,14 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             sellPrice: sellPrice,
             buyPrice: buyPrice
         });
-        TradingRules memory rules = TradingRules({
-            minTradeVolume: minTradeVolume,
-            maxTradeSlippage: maxTradeSlippage
-        });
 
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
-        (bool launch, TradeRequest memory req) = TradeLib.prepareTradeSell(trade, rules);
+        (bool launch, TradeRequest memory req) = TradeLib.prepareTradeSell(
+            trade,
+            minTradeVolume,
+            maxTradeSlippage
+        );
 
         if (launch) {
             tryTrade(req);

@@ -30,7 +30,7 @@ import {
   PRICE_TIMEOUT,
 } from '../fixtures'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -209,11 +209,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should revert during redemption', async () => {
-      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.revertedWith('No Decimals')
+      await expect(rToken.connect(addr1).redeem(issueAmt, true)).to.be.revertedWith('No Decimals')
 
       // Should work now
       await token0.setRevertDecimals(false)
-      await rToken.connect(addr1).redeem(issueAmt)
+      await rToken.connect(addr1).redeem(issueAmt, true)
     })
 
     it('should revert during trading', async () => {
@@ -300,12 +300,12 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should revert during redemption', async () => {
-      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.revertedWith('censored')
+      await expect(rToken.connect(addr1).redeem(issueAmt, true)).to.be.revertedWith('censored')
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
       await token0.setCensored(rToken.address, false)
-      await rToken.connect(addr1).redeem(issueAmt)
+      await rToken.connect(addr1).redeem(issueAmt, true)
     })
 
     it('should revert during trading', async () => {

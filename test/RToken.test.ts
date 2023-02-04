@@ -747,13 +747,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   describe('Redeem', function () {
     it('Should revert if zero amount #fast', async function () {
       const zero: BigNumber = bn('0')
-      await expect(rToken.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
+      await expect(rToken.connect(addr1).redeem(zero, true)).to.be.revertedWith(
+        'Cannot redeem zero'
+      )
     })
 
     it('Should revert if no balance of RToken #fast', async function () {
       const redeemAmount: BigNumber = bn('20000e18')
 
-      await expect(rToken.connect(addr1).redeem(redeemAmount)).to.be.revertedWith(
+      await expect(rToken.connect(addr1).redeem(redeemAmount, true)).to.be.revertedWith(
         'insufficient balance'
       )
     })
@@ -780,7 +782,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
         // Redeem rTokens
-        await rToken.connect(addr1).redeem(redeemAmount)
+        await rToken.connect(addr1).redeem(redeemAmount, true)
 
         // Check funds were transferred
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -803,7 +805,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
 
         // Redeem rTokens to another account
-        await expect(rToken.connect(addr1).redeemTo(addr2.address, issueAmount))
+        await expect(rToken.connect(addr1).redeemTo(addr2.address, issueAmount, true))
           .to.emit(rToken, 'Redemption')
           .withArgs(addr1.address, addr2.address, issueAmount, issueAmount)
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -829,7 +831,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
 
         // Redeem rTokens
-        await rToken.connect(addr1).redeem(redeemAmount)
+        await rToken.connect(addr1).redeem(redeemAmount, true)
 
         // Check asset value
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
@@ -837,7 +839,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
 
         // Redeem rTokens with another user
-        await rToken.connect(addr2).redeem(redeemAmount)
+        await rToken.connect(addr2).redeem(redeemAmount, true)
 
         // Check funds were transferred
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -862,20 +864,20 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Default one of the tokens - 50% price reduction and mark default as probable
         await setOraclePrice(collateral3.address, bn('0.5e8'))
 
-        await rToken.connect(addr1).redeem(issueAmount)
+        await rToken.connect(addr1).redeem(issueAmount, true)
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
       it('Should redeem if basket is UNPRICED #fast', async function () {
         await advanceTime(ORACLE_TIMEOUT.toString())
 
-        await rToken.connect(addr1).redeem(issueAmount)
+        await rToken.connect(addr1).redeem(issueAmount, true)
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
       it('Should redeem if paused #fast', async function () {
         await main.connect(owner).pause()
-        await rToken.connect(addr1).redeem(issueAmount)
+        await rToken.connect(addr1).redeem(issueAmount, true)
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
@@ -883,7 +885,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await main.connect(owner).freezeShort()
 
         // Try to redeem
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('frozen')
+        await expect(rToken.connect(addr1).redeem(issueAmount, true)).to.be.revertedWith('frozen')
 
         // Check values
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -897,7 +899,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await token2.connect(owner).burn(backingManager.address, bal)
 
         // Should not revert with empty redemption yet
-        await rToken.connect(addr1).redeem(issueAmount.div(2))
+        await rToken.connect(addr1).redeem(issueAmount.div(2), false)
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
 
         // Burn the rest
@@ -905,23 +907,91 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           .connect(owner)
           .burn(backingManager.address, await token3.balanceOf(backingManager.address))
 
-        // Now it should revert
-        await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.be.revertedWith(
-          'Empty redemption'
+        // Now it should revert - should revert under revertOnPartialRedemption and !revertOnPartialRedemption
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), false)).to.be.revertedWith(
+          'empty redemption'
+        )
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), true)).to.be.revertedWith(
+          'partial redemption'
         )
 
         // Check values
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
       })
 
-      it('Should revert if basket is DISABLED #fast', async function () {
+      it('Should revert if partial redemption when revertOnPartialRedemption #fast', async function () {
         // Default immediately
-        await token3.setExchangeRate(fp('0.999999'))
+        await token2.setExchangeRate(fp('0.1')) // 90% decrease
 
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
-          'collateral default'
+        // Even though a single BU requires 10x token2 as before, it should still hand out evenly
+
+        // Should fail if revertOnPartialRedemption is true
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), true)).to.be.revertedWith(
+          'partial redemption'
         )
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
+      })
+
+      it('Should prorate redemption if basket is DISABLED from fallen refPerTok() #fast', async function () {
+        // Default immediately
+        await token2.setExchangeRate(fp('0.1')) // 90% decrease
+
+        // Even though a single BU requires 10x token2 as before, it should still hand out evenly
+
+        // 1st redemption
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), false)).to.emit(
+          rToken,
+          'Redemption'
+        )
+        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
+
+        // 2nd redemption
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2), false)).to.emit(
+          rToken,
+          'Redemption'
+        )
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+      })
+
+      it('Should not interact with unregistered collateral while DISABLED #fast', async function () {
+        // Unregister collateral2
+        await assetRegistry.connect(owner).unregister(collateral2.address)
+
+        await expect(rToken.connect(addr1).redeem(issueAmount, true)).to.emit(rToken, 'Redemption')
+        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
+        expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+      })
+
+      it('Should redeem prorata when refPerTok() is 0 #fast', async function () {
+        // Set refPerTok to FIX_MAX
+        await token2.setExchangeRate(fp('0'))
+
+        // Redemption
+        await expect(rToken.connect(addr1).redeem(issueAmount, false)).to.emit(rToken, 'Redemption')
+        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await token0.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token3.balanceOf(addr1.address)).to.be.equal(initialBal)
+      })
+
+      it('Should transfer full balance if de-valuation #fast', async function () {
+        // Unregister collateral3
+        await assetRegistry.connect(owner).unregister(collateral3.address)
+
+        await expect(rToken.connect(addr1).redeem(issueAmount, true)).to.emit(rToken, 'Redemption')
+        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token3.balanceOf(addr1.address)).to.equal(
+          initialBal.sub(issueAmount.div(bn('1e10')).div(4).mul(50)) // decimal shift + quarter of basket + cToken
+        )
       })
 
       context('And redemption throttling', function () {
@@ -959,7 +1029,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             await advanceTime(3600)
             redeemAmount = await rToken.redemptionAvailable()
 
-            await rToken.connect(addr1).redeem(redeemAmount)
+            await rToken.connect(addr1).redeem(redeemAmount, false)
             issueAmount = issueAmount.sub(redeemAmount)
             expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
             expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -979,10 +1049,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
 
           redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
-          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.revertedWith(
+          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1), true)).to.be.revertedWith(
             'supply change throttled'
           )
-          await rToken.connect(addr1).redeem(redeemAmount)
+          await rToken.connect(addr1).redeem(redeemAmount, true)
 
           // Check updated redemption throttle
           expect(await rToken.redemptionAvailable()).to.equal(bn(0))
@@ -1013,12 +1083,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.issuanceAvailable()).to.equal(throttles.amtRate)
 
           // Issue
-          await expect(rToken.connect(addr1).issue(throttles.amtRate))
+          await rToken.connect(addr1).issue(throttles.amtRate)
           expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(throttles.amtRate))
 
           // Redeem
           expect(await rToken.redemptionAvailable()).to.equal(throttles.amtRate)
-          await expect(rToken.connect(addr1).redeem(throttles.amtRate))
+          await rToken.connect(addr1).redeem(throttles.amtRate, true)
           expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
         })
 
@@ -1028,12 +1098,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
 
           // Large redemption should fail
-          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.revertedWith(
+          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1), true)).to.be.revertedWith(
             'supply change throttled'
           )
 
           // amtRate redemption should succeed
-          await expect(rToken.connect(addr1).redeem(redeemAmount)).to.emit(rToken, 'Redemption')
+          await expect(rToken.connect(addr1).redeem(redeemAmount, true)).to.emit(
+            rToken,
+            'Redemption'
+          )
 
           // Check redemption throttle is 0
           expect(await rToken.redemptionAvailable()).to.equal(bn(0))
@@ -1048,7 +1121,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
 
           // Redeem #1
-          await rToken.connect(addr1).redeem(redeemAmount.div(2))
+          await rToken.connect(addr1).redeem(redeemAmount.div(2), true)
 
           // Check redemption throttle updated
           expect(await rToken.redemptionAvailable()).to.equal(redeemAmount.div(2))
@@ -1057,7 +1130,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
 
           // Redeem #2
-          await rToken.connect(addr1).redeem(redeemAmount.div(2))
+          await rToken.connect(addr1).redeem(redeemAmount.div(2), true)
 
           // Check redemption throttle updated - very small
           expect(await rToken.redemptionAvailable()).to.be.closeTo(fp('0.002638'), fp('0.000001'))
@@ -1066,9 +1139,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
 
           // Redeem #3 - should not be processed
-          await expect(rToken.connect(addr1).redeem(redeemAmount.div(100))).to.be.revertedWith(
-            'supply change throttled'
-          )
+          await expect(
+            rToken.connect(addr1).redeem(redeemAmount.div(100), true)
+          ).to.be.revertedWith('supply change throttled')
 
           // Advance time significantly
           await advanceTime(10000000000)
@@ -1099,7 +1172,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
           // Redeem #1 -  Will be processed
           redeemAmount = fp('12.5')
-          await rToken.connect(addr1).redeem(redeemAmount)
+          await rToken.connect(addr1).redeem(redeemAmount, true)
 
           // Check redemption throttle updated
           expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
@@ -1109,7 +1182,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
           // Attempt to redeem max amt, should not be processed
           await expect(
-            rToken.connect(addr1).redeem(redemptionThrottleParams.amtRate)
+            rToken.connect(addr1).redeem(redemptionThrottleParams.amtRate, true)
           ).to.be.revertedWith('supply change throttled')
 
           // Advance one hour. Redemption should be fully rechardged
@@ -1122,7 +1195,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
 
           // Redeem #2 - will be processed
-          await rToken.connect(addr1).redeem(redemptionThrottleParams.amtRate)
+          await rToken.connect(addr1).redeem(redemptionThrottleParams.amtRate, true)
 
           // Check redemption throttle emptied
           expect(await rToken.redemptionAvailable()).to.equal(bn(0))
@@ -1162,7 +1235,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           // Redeem #1 -  Will be processed
           redeemAmount = fp('10000')
           await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-          await rToken.connect(addr1).redeem(redeemAmount)
+          await rToken.connect(addr1).redeem(redeemAmount, true)
 
           // Check redemption throttle updated
           expect(await rToken.redemptionAvailable()).to.equal(redeemAmountUpd.sub(redeemAmount))
@@ -1201,6 +1274,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Should not melt if frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('Should not melt if supply too low', async () => {
+      await expect(rToken.connect(addr1).melt(issueAmount.sub(bn('1e8')))).revertedWith(
+        'rToken supply too low to melt'
+      )
     })
 
     it('Should allow to melt tokens if caller', async () => {
@@ -1292,11 +1371,24 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow melt to set BU exchange rate to below 1e-9', async () => {
+      await rToken.setIssuanceThrottleParams({ amtRate: bn('1e28'), pctRate: fp('1') })
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
+      const largeIssueAmt = bn('1e28')
+
+      // Issue more RTokens
+      await Promise.all(
+        tokens.map((t) => t.connect(owner).mint(addr1.address, largeIssueAmt.sub(issueAmount)))
+      )
+      await Promise.all(
+        tokens.map((t) => t.connect(addr1).approve(rToken.address, largeIssueAmt.sub(issueAmount)))
+      )
+      await rToken.connect(addr1).issue(largeIssueAmt.sub(issueAmount))
+
       // melt()
       await expect(
-        rToken.connect(addr1).melt(issueAmount.sub(issueAmount.div(bn('1e9'))).add(1))
+        rToken.connect(addr1).melt(largeIssueAmt.sub(largeIssueAmt.div(bn('1e9'))).add(1))
       ).to.be.revertedWith('BU rate out of range')
-      await rToken.connect(addr1).melt(issueAmount.sub(issueAmount.div(bn('1e9'))))
+      await rToken.connect(addr1).melt(largeIssueAmt.sub(largeIssueAmt.div(bn('1e9'))))
     })
   })
 
@@ -1555,6 +1647,39 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
   })
 
+  describe('monetizeDonations #fast', () => {
+    const donationAmt = fp('100')
+    beforeEach(async () => {
+      await token3.mint(rToken.address, donationAmt)
+      expect(await token3.balanceOf(rToken.address)).to.equal(donationAmt)
+    })
+
+    it('should require erc20 is registered', async () => {
+      await assetRegistry.connect(owner).unregister(collateral3.address)
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith(
+        'erc20 unregistered'
+      )
+    })
+
+    it('should not monetize while paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not monetize while frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should monetize registered erc20s', async () => {
+      const backingManagerBalBefore = await token3.balanceOf(backingManager.address)
+      await expect(rToken.monetizeDonations(token3.address)).to.emit(token3, 'Transfer')
+      expect(await token3.balanceOf(rToken.address)).to.equal(0)
+      const backingManagerBalAfter = await token3.balanceOf(backingManager.address)
+      expect(backingManagerBalAfter.sub(backingManagerBalBefore)).to.equal(donationAmt)
+    })
+  })
+
   describe('ERC1271 permit #fast', () => {
     const issueAmount = bn('100e18') // fits into one block
     let erc1271Mock: ERC1271Mock
@@ -1642,7 +1767,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         maxTradeVolume: fp('1e36'),
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.05'),
+        defaultThreshold: fp('0.01'),
         delayUntilDefault: bn(86400),
       })
       await assetRegistry.register(coll.address)
@@ -1752,7 +1877,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // ==== Redeem tokens
 
-      await rToken.connect(addr2).redeem(toRedeem)
+      await rToken.connect(addr2).redeem(toRedeem, true)
       expect(await rToken.balanceOf(addr2.address)).to.equal(0)
     }
 
@@ -1836,7 +1961,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Redemption', async () => {
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount.div(2))
-      await snapshotGasCost(rToken.connect(addr1).redeem(issueAmount.div(2)))
+      await snapshotGasCost(rToken.connect(addr1).redeem(issueAmount.div(2), true))
     })
   })
 })

@@ -68,7 +68,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // checks: erc20 in assetRegistry
     // action: set allowance on erc20 for rToken to UINT_MAX
     // Using two safeApprove calls instead of safeIncreaseAllowance to support USDT
-    function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
+    function grantRTokenAllowance(IERC20 erc20) external notFrozen {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
         IERC20Upgradeable(address(erc20)).safeApprove(address(main.rToken()), 0);
@@ -112,7 +112,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         uint48 basketTimestamp = basketHandler.timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        if (basketHandler.fullyCollateralized()) {
+        uint192 basketsHeld = basketHandler.basketsHeldBy(address(this));
+
+        // if (basketHandler.fullyCollateralized())
+        if (basketsHeld >= rToken.basketsNeeded()) {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
         } else {
@@ -131,7 +134,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              */
 
             (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
-                .prepareRecollateralizationTrade(this);
+                .prepareRecollateralizationTrade(this, basketsHeld);
 
             if (doTrade) {
                 // Seize RSR if needed
@@ -172,7 +175,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         if (rsr.balanceOf(address(this)) > 0) {
             // For CEI, this is an interaction "within our system" even though RSR is already live
             IERC20Upgradeable(address(rsr)).safeTransfer(
-                address(rsrTrader),
+                address(stRSR),
                 rsr.balanceOf(address(this))
             );
         }

@@ -19,12 +19,14 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
 
     /// @param config.chainlinkFeed Feed units: {target/ref}
     /// @param targetUnitChainlinkFeed_ Feed units: {UoA/target}
+    /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param comptroller_ The CompoundFinance Comptroller
     constructor(
         CollateralConfig memory config,
         AggregatorV3Interface targetUnitChainlinkFeed_,
+        uint192 revenueHiding,
         IComptroller comptroller_
-    ) CTokenFiatCollateral(config, comptroller_) {
+    ) CTokenFiatCollateral(config, revenueHiding, comptroller_) {
         require(
             address(targetUnitChainlinkFeed_) != address(0),
             "missing target unit chainlink feed"
@@ -50,12 +52,13 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
 
         uint192 pricePerTarget = targetUnitChainlinkFeed.price(oracleTimeout); // {UoA/target}
 
-        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        uint192 p = pricePerTarget.mul(pegPrice).mul(refPerTok());
+        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
+        uint192 pLow = pricePerTarget.mul(pegPrice).mul(refPerTok());
 
-        // this oracleError is already the combined total oracle error
-        uint192 delta = p.mul(oracleError);
-        low = p - delta;
-        high = p + delta;
+        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
+        uint192 pHigh = pricePerTarget.mul(pegPrice).mul(_underlyingRefPerTok());
+
+        low = pLow - pLow.mul(oracleError);
+        high = pHigh + pHigh.mul(oracleError);
     }
 }

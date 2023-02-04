@@ -23,9 +23,10 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -138,17 +139,20 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       )
       aTokenCollateral = await (
         await ethers.getContractFactory('ATokenFiatCollateral')
-      ).deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: chainlinkFeed.address,
-        oracleError: ORACLE_ERROR,
-        erc20: staticATokenERC20.address,
-        maxTradeVolume: one.config.rTokenMaxTradeVolume,
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: DEFAULT_THRESHOLD,
-        delayUntilDefault: DELAY_UNTIL_DEFAULT,
-      })
+      ).deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: staticATokenERC20.address,
+          maxTradeVolume: one.config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        },
+        REVENUE_HIDING
+      )
       const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral')
       rTokenCollateral = await RTokenCollateralFactory.deploy(
         one.rToken.address,
@@ -207,10 +211,10 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       expect(await staticATokenERC20.balanceOf(addr1.address)).to.equal(0)
       expect(await one.rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
-      await two.rToken.connect(addr1).redeem(issueAmt)
+      await two.rToken.connect(addr1).redeem(issueAmt, true)
       expect(await one.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
       expect(await two.rToken.balanceOf(addr1.address)).to.equal(0)
-      await one.rToken.connect(addr1).redeem(issueAmt)
+      await one.rToken.connect(addr1).redeem(issueAmt, true)
       expect(await one.rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await two.rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await one.rToken.totalSupply()).to.equal(0)

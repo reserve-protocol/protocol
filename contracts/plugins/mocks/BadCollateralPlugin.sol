@@ -10,7 +10,9 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     bool public checkSoftDefault = true; // peg
     bool public checkHardDefault = true; // defi invariant
 
-    constructor(CollateralConfig memory config) ATokenFiatCollateral(config) {}
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        ATokenFiatCollateral(config, revenueHiding)
+    {}
 
     function setSoftDefaultCheck(bool on) external {
         checkSoftDefault = on;
@@ -24,8 +26,30 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     /// Refresh exchange rates and update default status.
     /// @dev Should be general enough to not need to be overridden
     function refresh() public virtual override {
-        if (alreadyDefaulted()) return;
+        if (alreadyDefaulted()) {
+            // continue to update rates
+            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
+            return;
+        }
+
         CollateralStatus oldStatus = status();
+
+        // Check for hard default
+        // must happen before tryPrice() call since `refPerTok()` returns a stored value
+
+        // revenue hiding: do not DISABLE if drawdown is small
+        uint192 underlyingRefPerTok = _underlyingRefPerTok();
+
+        // {ref/tok} = {ref/tok} * {1}
+        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
+
+        // uint192(<) is equivalent to Fix.lt
+        if (checkHardDefault && underlyingRefPerTok < exposedReferencePrice) {
+            exposedReferencePrice = hiddenReferencePrice;
+            markStatus(CollateralStatus.DISABLED);
+        } else if (!checkHardDefault || hiddenReferencePrice > exposedReferencePrice) {
+            exposedReferencePrice = hiddenReferencePrice;
+        }
 
         // Check for soft default
         if (checkSoftDefault) {
@@ -51,14 +75,6 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
         }
-
-        // Check for hard default
-        uint192 referencePrice = refPerTok();
-        // uint192(<) is equivalent to Fix.lt
-        if (checkHardDefault && referencePrice < prevReferencePrice) {
-            markStatus(CollateralStatus.DISABLED);
-        }
-        prevReferencePrice = referencePrice;
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {

@@ -28,6 +28,7 @@ import {
   TestIBackingManager,
   TestIRToken,
   USDCMock,
+  UnpricedAssetMock,
 } from '../../typechain'
 import {
   Collateral,
@@ -39,7 +40,7 @@ import {
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 describe('Assets contracts #fast', () => {
@@ -292,7 +293,7 @@ describe('Assets contracts #fast', () => {
     it('Should not revert RToken price if supply is zero', async () => {
       // Redeem RToken to make price function revert
       // Note: To get RToken price to 0, a full basket refresh needs to occur (covered in RToken tests)
-      await rToken.connect(wallet).redeem(amt)
+      await rToken.connect(wallet).redeem(amt, true)
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),
@@ -436,7 +437,7 @@ describe('Assets contracts #fast', () => {
 
     it('Should not save prices if try/price returns unpriced', async () => {
       const UnpricedAssetFactory = await ethers.getContractFactory('UnpricedAssetMock')
-      const unpricedRSRAsset: Asset = <Asset>(
+      const unpricedRSRAsset: UnpricedAssetMock = <UnpricedAssetMock>(
         await UnpricedAssetFactory.deploy(
           PRICE_TIMEOUT,
           await rsrAsset.chainlinkFeed(),

@@ -84,11 +84,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // actions:
     //   for dest where w[dest] != 0:
     //     erc20.transferFrom(from, addrOf(dest), tokensPerShare * w[dest])
-    function distribute(
-        IERC20 erc20,
-        address from,
-        uint256 amount
-    ) external notPausedOrFrozen {
+    function distribute(IERC20 erc20, uint256 amount) external notPausedOrFrozen {
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;
@@ -127,12 +123,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
             });
             numTransfers++;
         }
-        emit RevenueDistributed(erc20, from, amount);
+        emit RevenueDistributed(erc20, msg.sender, amount);
 
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; i++) {
             Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(from, t.addrTo, t.amount);
+            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(msg.sender, t.addrTo, t.amount);
         }
     }
 
@@ -160,6 +156,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
     //   distribution' = distribution.set(dest, share)
     function _setDistribution(address dest, RevenueShare memory share) internal {
         require(dest != address(0), "dest cannot be zero");
+        require(
+            dest != furnace && dest != stRSR,
+            "destination can not be furnace or strsr directly"
+        );
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
         require(share.rsrDist <= 10000, "RSR distribution too high");

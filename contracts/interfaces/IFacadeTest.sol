@@ -18,7 +18,7 @@ interface IFacadeTest {
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
     /// @custom:interaction
-    function claimAndSweepRewards(IRToken rToken) external;
+    function claimRewards(IRToken rToken) external;
 
     /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
     /// @custom:static-call

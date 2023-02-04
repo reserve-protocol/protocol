@@ -59,12 +59,15 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         mandate = mandate_;
         setIssuanceThrottleParams(issuanceThrottleParams_);
         setRedemptionThrottleParams(redemptionThrottleParams_);
+
+        issuanceThrottle.lastTimestamp = uint48(block.timestamp);
+        redemptionThrottle.lastTimestamp = uint48(block.timestamp);
     }
 
     /// Issue an RToken with basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issue(uint256 amount) public notPausedOrFrozen {
+    function issue(uint256 amount) public {
         issueTo(_msgSender(), amount);
     }
 
@@ -72,7 +75,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issueTo(address recipient, uint256 amount) public {
+    function issueTo(address recipient, uint256 amount) public notPausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
@@ -105,16 +108,22 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
     /// @custom:interaction
-    function redeem(uint256 amount) external notFrozen {
-        redeemTo(_msgSender(), amount);
+    function redeem(uint256 amount, bool revertOnPartialRedemption) external {
+        redeemTo(_msgSender(), amount, revertOnPartialRedemption);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @custom:interaction
-    function redeemTo(address recipient, uint256 amount) public {
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
+    /// @custom:interactin
+    function redeemTo(
+        address recipient,
+        uint256 amount,
+        bool revertOnPartialRedemption
+    ) public notFrozen {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
 
@@ -126,9 +135,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         // solhint-disable-next-line no-empty-blocks
         try main.furnace().melt() {} catch {}
 
-        IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
-
         // Revert if redemption exceeds either supply throttle
         issuanceThrottle.useAvailable(totalSupply(), -int256(amount));
         redemptionThrottle.useAvailable(totalSupply(), int256(amount)); // reverts on overuse
@@ -138,7 +144,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         assert(basketsRedeemed.lte(basketsNeeded));
         emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
 
-        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(
+        (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
             basketsRedeemed,
             FLOOR
         );
@@ -155,20 +161,23 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr)); // {qTok}
 
             // {qTok} = {qTok} * {qRTok} / {qRTok}
-            uint256 prorata = mulDiv256(bal, amount, totalSupply());
-            amounts[i] = Math.min(amounts[i], prorata);
+            uint256 prorata = mulDiv256(bal, amount, totalSupply()); // FLOOR
+            if (prorata < amounts[i]) {
+                require(!revertOnPartialRedemption, "partial redemption");
+                amounts[i] = prorata;
+            }
 
             // Send withdrawal
             if (amounts[i] > 0) {
                 IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), recipient, amounts[i]);
-                if (allZero) allZero = false;
+                allZero = false;
             }
         }
 
         // Accept and burn RToken, reverts if not enough balance
         _burn(_msgSender(), amount);
 
-        if (allZero) revert("Empty redemption");
+        if (allZero) revert("empty redemption");
     }
 
     // ===
@@ -187,6 +196,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qRTok} The amount to be melted
     function melt(uint256 amount) external notPausedOrFrozen {
         _burn(_msgSender(), amount);
+        require(totalSupply() >= FIX_ONE, "rToken supply too low to melt");
         emit Melted(amount);
         requireValidBUExchangeRate();
     }
@@ -198,6 +208,13 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
         requireValidBUExchangeRate();
+    }
+
+    /// Sends all token balance of erc20 (if it is registered) to the BackingManager
+    /// @custom:interaction
+    function monetizeDonations(IERC20 erc20) external notPausedOrFrozen {
+        require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
+        erc20.safeTransfer(address(main.backingManager()), erc20.balanceOf(address(this)));
     }
 
     // ==== Throttle setters/getters ====

@@ -35,13 +35,14 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 import { BN_SCALE_FACTOR, CollateralStatus, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
 import { expectTrade, getTrade } from '../utils/trades'
 import { expectPrice, expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 const MAX_TRADE_VOLUME = fp('1e7') // $10M
 
@@ -297,6 +298,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
+      revenueHiding: REVENUE_HIDING.toString(),
       comptroller: compoundMock.address,
       noOutput: true,
     })
@@ -318,6 +320,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
+      revenueHiding: REVENUE_HIDING.toString(),
       noOutput: true,
     })
 
@@ -362,6 +365,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: hre.ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
+      revenueHiding: REVENUE_HIDING.toString(),
       comptroller: compoundMock.address,
       noOutput: true,
     })
@@ -408,6 +412,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         maxTradeVolume: MAX_TRADE_VOLUME.toString(),
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
+        revenueHiding: REVENUE_HIDING.toString(),
         comptroller: compoundMock.address,
         referenceERC20Decimals: bn(18).toString(),
         noOutput: true,
@@ -523,7 +528,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(expectedTkn7).to.equal(quotes[7])
 
     // Redeem
-    await rToken.connect(addr1).redeem(issueAmt)
+    await rToken.connect(addr1).redeem(issueAmt, true)
     expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     expect(await rToken.totalSupply()).to.equal(0)
 
@@ -739,6 +744,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Token7:  6095.23 cETH @ 25.2 = $153,600 USD
     const [, newQuotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
 
+    await assetRegistry.refresh() // refresh to update refPerTok()
     const expectedTkn2: BigNumber = toBNDecimals(
       issueAmount.mul(targetAmts[2]).div(await collateral[2].refPerTok()),
       8

@@ -78,12 +78,15 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         mandate = mandate_;
         setIssuanceThrottleParams(issuanceThrottleParams_);
         setRedemptionThrottleParams(redemptionThrottleParams_);
+
+        issuanceThrottle.lastTimestamp = uint48(block.timestamp);
+        redemptionThrottle.lastTimestamp = uint48(block.timestamp);
     }
 
     /// Issue an RToken with basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
-    function issue(uint256 amount) public notPausedOrFrozen {
+    function issue(uint256 amount) public {
         issueTo(_msgSender(), amount);
     }
 
@@ -91,7 +94,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issueTo(address recipient, uint256 amount) public {
+    function issueTo(address recipient, uint256 amount) public notPausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
 
         // == Refresh ==
@@ -149,10 +152,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
     /// @custom:action
     /// @custom:interaction CEI
-    function redeem(uint256 amount) external notFrozen {
-        redeemTo(_msgSender(), amount);
+    function redeem(uint256 amount, bool revertOnPartialRedemption) external {
+        redeemTo(_msgSender(), amount, revertOnPartialRedemption);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
@@ -174,8 +178,13 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //     do token.transferFrom(backingManager, caller, min(tokenAmt, prorataAmt))
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
+    /// @param revertOnPartialRedemption If true, will revert on partial redemption
     /// @custom:interaction
-    function redeemTo(address recipient, uint256 amount) public {
+    function redeemTo(
+        address recipient,
+        uint256 amount,
+        bool revertOnPartialRedemption
+    ) public notFrozen {
         // == Refresh ==
         main.assetRegistry().refresh();
 
@@ -183,9 +192,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(redeemer), "insufficient balance");
-
-        // Allow redemption during IFFY + UNPRICED
-        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
         // Failure to melt results in a lower redemption price, so we can allow it when paused
         // solhint-disable-next-line no-empty-blocks
@@ -213,22 +219,20 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // i.e, set amounts = min(amounts, balances * amount / totalSupply)
         //   where balances[i] = erc20s[i].balanceOf(this)
 
-        // D18{1} = D18 * {qRTok} / {qRTok}
-        // downcast is safe: amount <= balanceOf(redeemer) <= totalSupply(), so prorate < 1e18
-        uint192 prorate = uint192((FIX_ONE_256 * amount) / supply);
-
         // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
         uint256 erc20length = erc20s.length;
         for (uint256 i = 0; i < erc20length; ++i) {
-            // {qTok}
-            uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(address(backingManager));
+            // {qTok} = {qTok} * {qRTok} / {qRTok}
+            uint256 prorata = mulDiv256(
+                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingManager)),
+                amount,
+                supply
+            ); // FLOOR
 
-            // gas-optimization: only do the full mulDiv256 if prorate is 0
-            uint256 prorata = (prorate > 0)
-                ? (prorate * bal) / FIX_ONE // {qTok} = D18{1} * {qTok} / D18
-                : mulDiv256(bal, amount, supply); // {qTok} = {qTok} * {qRTok} / {qRTok}
-
-            if (prorata < amounts[i]) amounts[i] = prorata;
+            if (prorata < amounts[i]) {
+                require(!revertOnPartialRedemption, "partial redemption");
+                amounts[i] = prorata;
+            }
         }
 
         uint192 newBasketsNeeded = basketsNeeded - basketsRedeemed;
@@ -252,7 +256,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             );
         }
 
-        if (allZero) revert("Empty redemption");
+        if (allZero) revert("empty redemption");
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
@@ -277,6 +281,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   totalSupply' = totalSupply - amtRToken
     function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
+        require(totalSupply() >= FIX_ONE, "rToken supply too low to melt");
         emit Melted(amtRToken);
         requireValidBUExchangeRate();
     }
@@ -290,6 +295,16 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
         requireValidBUExchangeRate();
+    }
+
+    /// Sends all token balance of erc20 (if it is registered) to the BackingManager
+    /// @custom:interaction
+    function monetizeDonations(IERC20 erc20) external notPausedOrFrozen {
+        require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
+        IERC20Upgradeable(address(erc20)).safeTransfer(
+            address(backingManager),
+            erc20.balanceOf(address(this))
+        );
     }
 
     // ==== Throttle setters/getters ====

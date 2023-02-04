@@ -19,7 +19,7 @@ require('#/tasks')
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
-const TIMEOUT = useEnv('SLOW') ? 3_000_000 : 300_000
+const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }

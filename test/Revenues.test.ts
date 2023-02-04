@@ -4,7 +4,13 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
+import {
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+  CollateralStatus,
+} from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, fp, near } from '../common/numbers'
 import {
@@ -45,6 +51,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from './fixtures'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { expectTrade, getTrade } from './utils/trades'
@@ -55,7 +62,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -204,10 +211,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       expect(await rsrTrader.main()).to.equal(main.address)
       expect(await rsrTrader.tokenToBuy()).to.equal(rsr.address)
       expect(await rsrTrader.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+      expect(await rsrTrader.minTradeVolume()).to.equal(config.minTradeVolume)
 
       expect(await rTokenTrader.main()).to.equal(main.address)
       expect(await rTokenTrader.tokenToBuy()).to.equal(rToken.address)
       expect(await rTokenTrader.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+      expect(await rsrTrader.minTradeVolume()).to.equal(config.minTradeVolume)
     })
 
     it('Should perform validations on init', async () => {
@@ -440,12 +449,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await setOraclePrice(collateral0.address, bn('0.5e8'))
         await collateral0.refresh()
         await advanceTime((await collateral0.delayUntilDefault()).toString())
+        expect(await collateral0.status()).to.equal(CollateralStatus.DISABLED)
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
 
         // Trade should have extremely nonzero worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
-        expect(await trade.worstCasePrice()).to.be.gte(fp('0.95'))
+        expect(await trade.initBal()).to.equal(issueAmount)
+        expect(await trade.worstCasePrice()).to.be.gte(fp('0.775'))
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -859,7 +870,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         // Can also claim through Facade
-        await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1590,17 +1601,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await main.connect(owner).pause()
 
-        await expect(
-          distributor.distribute(rsr.address, backingManager.address, distAmount)
-        ).to.be.revertedWith('paused or frozen')
+        await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
+          'paused or frozen'
+        )
 
         await main.connect(owner).unpause()
 
         await main.connect(owner).freezeShort()
 
-        await expect(
-          distributor.distribute(rsr.address, backingManager.address, distAmount)
-        ).to.be.revertedWith('paused or frozen')
+        await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
+          'paused or frozen'
+        )
       })
 
       it('Should allow anyone to call distribute', async () => {
@@ -1634,10 +1645,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Distribute the RSR
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           await rsr.connect(bmSigner).approve(distributor.address, distAmount)
+
+          await expect(distributor.connect(bmSigner).distribute(rsr.address, distAmount))
+            .to.emit(distributor, 'RevenueDistributed')
+            .withArgs(rsr.address, backingManager.address, distAmount)
         })
-        await expect(distributor.distribute(rsr.address, backingManager.address, distAmount))
-          .to.emit(distributor, 'RevenueDistributed')
-          .withArgs(rsr.address, backingManager.address, distAmount)
 
         //  Check all funds distributed to StRSR
         expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
@@ -1667,9 +1679,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(STRSR_DEST, bn(0), bn(0))
 
-        await expect(
-          distributor.distribute(rsr.address, backingManager.address, bn(100))
-        ).to.be.revertedWith('nothing to distribute')
+        await expect(distributor.distribute(rsr.address, bn(100))).to.be.revertedWith(
+          'nothing to distribute'
+        )
 
         //  Check funds, nothing changed
         expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
@@ -1803,7 +1815,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Claim rewards
 
-        await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1932,7 +1944,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Claim rewards
-        await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -2007,9 +2019,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Attempt to distribute COMP token
         await whileImpersonating(basketHandler.address, async (signer) => {
           await expect(
-            distributor
-              .connect(signer)
-              .distribute(compToken.address, backingManager.address, rewardAmountCOMP)
+            distributor.connect(signer).distribute(compToken.address, rewardAmountCOMP)
           ).to.be.revertedWith('RSR or RToken')
         })
         //  Check nothing changed
@@ -2262,17 +2272,20 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
           InvalidATokenFiatCollateralMock
-        >((await ATokenCollateralFactory.deploy({
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: chainlinkFeed.address,
-          oracleError: ORACLE_ERROR,
-          erc20: token2.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: DEFAULT_THRESHOLD,
-          delayUntilDefault: await collateral2.delayUntilDefault(),
-        })) as unknown)
+        >((await ATokenCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: token2.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: await collateral2.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )) as unknown)
 
         // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
@@ -2327,6 +2340,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Increase redemption rate for AToken to double
         await token2.setExchangeRate(fp('2'))
+        await collateral2.refresh()
 
         // Check Price (unchanged) and Assets value increment by 50%
         const excessValue: BigNumber = issueAmount.div(2)
@@ -2744,6 +2758,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Change redemption rate for AToken and CToken to double
         await token2.setExchangeRate(fp('2'))
         await token3.setExchangeRate(fp('2'))
+        await collateral2.refresh()
+        await collateral3.refresh()
 
         // Check Price (unchanged) and Assets value (now doubled)
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
@@ -2861,6 +2877,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Change redemption rates for AToken and CToken - Higher for the AToken
         await token2.setExchangeRate(fp('2'))
         await token3.setExchangeRate(fp('1.6'))
+        await collateral2.refresh()
+        await collateral3.refresh()
 
         // Check Price (unchanged) and Assets value (now 80% higher)
         const excessTotalValue: BigNumber = issueAmount.mul(80).div(100)

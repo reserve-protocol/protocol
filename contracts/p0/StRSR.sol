@@ -120,21 +120,20 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notPausedOrFrozen {
+    function payoutRewards() external notFrozen {
         _payoutRewards();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and over-collateralized
     /// the system
     /// @param rsrAmount {qRSR}
-    /// @dev Staking continues while paused/frozen, without reward handouts
+    /// @dev Staking continues while paused, without reward handouts
     /// @custom:interaction
-    function stake(uint256 rsrAmount) external {
+    function stake(uint256 rsrAmount) external notFrozen {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
-        // Call state keepers -- only subset that work while paused/frozen
-        if (!main.pausedOrFrozen()) _payoutRewards();
+        _payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:
@@ -280,6 +279,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         seizedRSR += rewardsToTake;
 
         assert(rsrAmount <= seizedRSR);
+        rsrRewardsAtLastPayout = rsrRewards() - seizedRSR;
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
@@ -436,7 +436,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint48 numPeriods = (uint48(block.timestamp) - uint48(payoutLastPaid)) / uint48(PERIOD);
 
         // Do an actual payout if and only if stakers exist!
-        if (totalStaked > 0) {
+        if (totalStaked >= FIX_ONE) {
             // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
             uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
             payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
@@ -524,6 +524,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function setRewardRatio(uint192 val) public governance {
+        if (!main.frozen()) _payoutRewards();
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;

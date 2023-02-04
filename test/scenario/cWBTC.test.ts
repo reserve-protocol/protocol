@@ -28,10 +28,11 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
 } from '../fixtures'
 import { expectPrice } from '../utils/oracles'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -150,6 +151,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       targetUnitOracle.address,
+      REVENUE_HIDING,
       compoundMock.address
     )
 
@@ -261,6 +263,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
       await cWBTC.setExchangeRate(fp('1.5')) // 150% redemption rate
       // Recall cTokens are much inflated relative to underlying. Redemption rate starts at 0.02
+      await cWBTCCollateral.refresh()
       await expectPrice(
         cWBTCCollateral.address,
         fp('95000').mul(3).div(2).div(50),
@@ -274,7 +277,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('10000e8'))
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt))
+      expect(await rToken.connect(addr1).redeem(issueAmt, true))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cWBTC.balanceOf(addr1.address)).to.equal(initialBal)
     })
@@ -283,7 +286,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await cWBTC.setExchangeRate(fp('2')) // doubling of price
 
       // Compound Redemption rate should result in fewer tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt))
+      expect(await rToken.connect(addr1).redeem(issueAmt, true))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cWBTC.balanceOf(addr1.address)).to.equal(
         initialBal.sub(cTokenAmt.div(1000).div(2))

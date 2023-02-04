@@ -32,6 +32,7 @@ import {
   TestIDistributor,
   TestIRevenueTrader,
   TestIRToken,
+  TestIStRSR,
   USDCMock,
 } from '../typechain'
 import {
@@ -40,12 +41,13 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
+  REVENUE_HIDING,
   defaultFixture,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { useEnv } from '#/utils/env'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -89,6 +91,7 @@ describe('FacadeAct contract', () => {
 
   // Main
   let rToken: TestIRToken
+  let stRSR: TestIStRSR
   let basketHandler: IBasketHandler
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -146,6 +149,7 @@ describe('FacadeAct contract', () => {
       basket,
       facadeAct,
       rToken,
+      stRSR,
       config,
       rTokenTrader,
       rsrTrader,
@@ -258,7 +262,7 @@ describe('FacadeAct contract', () => {
 
     it('Basket - Should handle no valid basket after refresh', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
+      await rToken.connect(addr1).redeem(issueAmount, true)
 
       // Set simple basket with only one collateral
       await basketHandler.connect(owner).setPrimeBasket([aToken.address], [fp('1')])
@@ -528,7 +532,7 @@ describe('FacadeAct contract', () => {
 
     it('Revenues - Should handle assets with invalid claim logic', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
+      await rToken.connect(addr1).redeem(issueAmount, true)
 
       // Setup a new aToken with invalid claim data
       const ATokenCollateralFactory = await ethers.getContractFactory(
@@ -540,17 +544,20 @@ describe('FacadeAct contract', () => {
 
       const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
         InvalidATokenFiatCollateralMock
-      >await ATokenCollateralFactory.deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: chainlinkFeed.address,
-        oracleError: ORACLE_ERROR,
-        erc20: aToken.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: await aTokenAsset.oracleTimeout(),
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: DEFAULT_THRESHOLD,
-        delayUntilDefault: await aTokenAsset.delayUntilDefault(),
-      })
+      >await ATokenCollateralFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: aToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await aTokenAsset.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await aTokenAsset.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
 
       // Perform asset swap
       await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
@@ -710,17 +717,20 @@ describe('FacadeAct contract', () => {
       )
 
       const newATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-        await ATokenCollateralFactory.deploy({
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: chainlinkFeed.address,
-          oracleError: ORACLE_ERROR,
-          erc20: aToken.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: await aTokenAsset.oracleTimeout(),
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: DEFAULT_THRESHOLD,
-          delayUntilDefault: await aTokenAsset.delayUntilDefault(),
-        })
+        await ATokenCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: aToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: await aTokenAsset.oracleTimeout(),
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: await aTokenAsset.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
       )
       // Perform asset swap
       await assetRegistry.connect(owner).swapRegistered(newATokenCollateral.address)
@@ -759,12 +769,14 @@ describe('FacadeAct contract', () => {
       expect(addr).to.equal(ZERO_ADDRESS)
       expect(data).to.equal('0x')
 
-      // RSR can be distributed with no issues
+      // RSR can be distributed with no issues - seed stRSR with half as much
       await rsr.connect(addr1).transfer(backingManager.address, hndAmt)
+      await rsr.connect(addr1).transfer(stRSR.address, hndAmt.div(2))
       ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(backingManager.address)
       expect(data).to.not.equal('0x')
 
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(hndAmt.div(2))
       expect(await rsr.balanceOf(backingManager.address)).to.equal(hndAmt)
       expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
 
@@ -775,8 +787,9 @@ describe('FacadeAct contract', () => {
       })
 
       // RSR forwarded
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(hndAmt.add(hndAmt.div(2)))
       expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
-      expect(await rsr.balanceOf(rsrTrader.address)).to.equal(hndAmt)
+      expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
     })
 
     it('Should not revert if f=0', async () => {

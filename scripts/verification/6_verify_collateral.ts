@@ -8,7 +8,13 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../deployment/common'
-import { combinedError, priceTimeout, getOracleTimeout, verifyContract } from '../deployment/utils'
+import {
+  combinedError,
+  priceTimeout,
+  getOracleTimeout,
+  revenueHiding,
+  verifyContract,
+} from '../deployment/utils'
 import { ATokenMock, ATokenFiatCollateral } from '../../typechain'
 
 let deployments: IAssetCollDeployments
@@ -40,7 +46,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: getOracleTimeout(chainId).toString(),
         targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.05').toString(), // 5%
+        defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
     ],
@@ -79,9 +85,10 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: getOracleTimeout(chainId).toString(),
         targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.05').toString(), // 5%
+        defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
+      revenueHiding.toString(),
     ],
     'contracts/plugins/assets/ATokenFiatCollateral.sol:ATokenFiatCollateral'
   )
@@ -98,9 +105,10 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: getOracleTimeout(chainId).toString(),
         targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.05').toString(), // 5%
+        defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
+      revenueHiding.toString(),
       networkConfig[chainId].COMPTROLLER,
     ],
     'contracts/plugins/assets/CTokenFiatCollateral.sol:CTokenFiatCollateral'
@@ -123,10 +131,11 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: getOracleTimeout(chainId).toString(),
         targetName: hre.ethers.utils.formatBytes32String('BTC'),
-        defaultThreshold: fp('0.05').toString(), // 5%
+        defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       networkConfig[chainId].chainlinkFeeds.BTC,
+      revenueHiding.toString(),
       networkConfig[chainId].COMPTROLLER,
     ],
     'contracts/plugins/assets/CTokenNonFiatCollateral.sol:CTokenNonFiatCollateral'
@@ -147,6 +156,7 @@ async function main() {
         defaultThreshold: '0',
         delayUntilDefault: '0',
       },
+      revenueHiding.toString(),
       '18',
       networkConfig[chainId].COMPTROLLER,
     ],
@@ -165,7 +175,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: getOracleTimeout(chainId).toString(),
         targetName: ethers.utils.formatBytes32String('BTC'),
-        defaultThreshold: fp('0.05').toString(), // 5%
+        defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       networkConfig[chainId].chainlinkFeeds.BTC,
@@ -205,7 +215,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: getOracleTimeout(chainId).toString(),
         targetName: ethers.utils.formatBytes32String('EURO'),
-        defaultThreshold: fp('0.05').toString(), // 5%
+        defaultThreshold: fp('0.03').toString(), // 3%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       networkConfig[chainId].chainlinkFeeds.EUR,

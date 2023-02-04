@@ -26,7 +26,7 @@ import {
   PRICE_TIMEOUT,
 } from '../fixtures'
 
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -165,7 +165,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
       })
 
       it('should respect differing scales during redemption', async () => {
-        await rToken.connect(addr1).redeem(issueAmt)
+        await rToken.connect(addr1).redeem(issueAmt, true)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
       })

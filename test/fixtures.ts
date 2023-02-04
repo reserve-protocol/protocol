@@ -54,7 +54,7 @@ import {
   USDCMock,
   NonFiatCollateral,
 } from '../typechain'
-import { advanceTime } from './utils/time'
+import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
 
 export enum Implementation {
@@ -72,6 +72,8 @@ export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
 
 export const ORACLE_ERROR = fp('0.01') // 1% oracle error
+
+export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
 
 export type Collateral =
   | FiatCollateral
@@ -161,7 +163,7 @@ async function collateralFixture(
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
-  const defaultThreshold = fp('0.05') // 5%
+  const defaultThreshold = fp('0.01') // 1%
   const delayUntilDefault = bn('86400') // 24h
 
   const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
@@ -247,6 +249,7 @@ async function collateralFixture(
         defaultThreshold: defaultThreshold,
         delayUntilDefault: delayUntilDefault,
       },
+      REVENUE_HIDING,
       comptroller.address
     )
     await coll.refresh()
@@ -263,17 +266,20 @@ async function collateralFixture(
     )
     await erc20.setAaveToken(aaveToken.address)
 
-    const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
-      priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: chainlinkAddr,
-      oracleError: ORACLE_ERROR,
-      erc20: erc20.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume,
-      oracleTimeout: ORACLE_TIMEOUT,
-      targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: defaultThreshold,
-      delayUntilDefault: delayUntilDefault,
-    })
+    const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkAddr,
+        oracleError: ORACLE_ERROR,
+        erc20: erc20.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: defaultThreshold,
+        delayUntilDefault: delayUntilDefault,
+      },
+      REVENUE_HIDING
+    )
     await coll.refresh()
     return [erc20, coll]
   }
@@ -639,7 +645,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   }
 
   // Charge throttle
-  await advanceTime(3600)
+  await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
 
   return {
     rsr,

@@ -40,8 +40,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 public constant MAX_REWARD_RATIO = FIX_ONE; // {1} 100%
 
     // === ERC20 ===
-    string public name; // mutable
-    string public symbol; // mutable
+    string public name; // immutable
+    string public symbol; // immutable
     // solhint-disable const-name-snakecase
     uint8 public constant decimals = 18;
 
@@ -122,6 +122,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // === ERC20Permit ===
     mapping(address => CountersUpgradeable.Counter) private _nonces;
+    // === Delegation ===
+    mapping(address => CountersUpgradeable.Counter) private _delegationNonces;
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private constant _PERMIT_TYPEHASH =
@@ -186,7 +188,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notPausedOrFrozen {
+    function payoutRewards() external notFrozen {
         _payoutRewards();
     }
 
@@ -206,10 +208,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // actions:
     //   rsr.transferFrom(account, this, rsrAmount)
-    function stake(uint256 rsrAmount) external {
+    function stake(uint256 rsrAmount) external notFrozen {
         require(rsrAmount > 0, "Cannot stake zero");
 
-        if (!main.pausedOrFrozen()) _payoutRewards();
+        _payoutRewards();
 
         // Compute stake amount
         // This is not an overflow risk according to our expected ranges:
@@ -412,6 +414,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Remove RSR from yet-unpaid rewards (implicitly)
         seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+        rsrRewardsAtLastPayout = rsrRewards() - seizedRSR;
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, exchangeRate());
@@ -497,8 +500,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint192 initRate = exchangeRate();
         uint256 payout;
 
-        // Do an actual payout if and only if stakers exist!
-        if (totalStakes > 0) {
+        // Do an actual payout if and only if enough RSR is staked!
+        if (totalStakes >= FIX_ONE) {
             // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
             // Apply payout to RSR backing
             // payoutRatio: D18 = FIX_ONE: D18 - FixLib.powu(): D18
@@ -784,6 +787,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         return _nonces[owner].current();
     }
 
+    function delegationNonces(address owner) public view returns (uint256) {
+        return _delegationNonces[owner].current();
+    }
+
     // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
         return _domainSeparatorV4();
@@ -795,15 +802,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         nonce.increment();
     }
 
+    function _useDelegationNonce(address owner) internal returns (uint256 current) {
+        CountersUpgradeable.Counter storage nonce = _delegationNonces[owner];
+        current = nonce.current();
+        nonce.increment();
+    }
+
     // ==== Gov Param Setters ====
-
-    function setName(string calldata name_) external governance {
-        name = name_;
-    }
-
-    function setSymbol(string calldata symbol_) external governance {
-        symbol = symbol_;
-    }
 
     /// @custom:governance
     function setUnstakingDelay(uint48 val) public governance {
@@ -814,6 +819,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @custom:governance
     function setRewardRatio(uint192 val) public governance {
+        if (!main.frozen()) _payoutRewards();
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;

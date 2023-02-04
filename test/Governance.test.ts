@@ -222,6 +222,53 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(2e7) // 20%
     })
 
+    it('Should not allow vote manipulation', async () => {
+      const stkAmt: BigNumber = bn('1000e18')
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+
+      // Stake some RSR with addr1
+      await rsr.connect(addr1).approve(stRSRVotes.address, stkAmt)
+      await stRSRVotes.connect(addr1).stake(stkAmt)
+      expect(await stRSRVotes.balanceOf(addr1.address)).to.equal(stkAmt)
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+
+      // Stake half as much RSR with addr3
+      await rsr.connect(addr3).approve(stRSRVotes.address, stkAmt.div(4))
+      await stRSRVotes.connect(addr3).stake(stkAmt.div(4))
+      expect(await stRSRVotes.balanceOf(addr3.address)).to.equal(stkAmt.div(4))
+      expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+
+      // addr1/addr3 delegate to selves to earn voting power
+      await stRSRVotes.connect(addr1).delegate(addr1.address)
+      await stRSRVotes.connect(addr3).delegate(addr3.address)
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(stkAmt)
+      expect(await stRSRVotes.getVotes(addr2.address)).to.equal(0)
+      expect(await stRSRVotes.getVotes(addr3.address)).to.equal(stkAmt.div(4))
+
+      // addr1 delegate to addr2
+      await stRSRVotes.connect(addr1).delegate(addr2.address)
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+      expect(await stRSRVotes.getVotes(addr2.address)).to.equal(stkAmt)
+      expect(await stRSRVotes.getVotes(addr3.address)).to.equal(stkAmt.div(4))
+
+      // addr2 delegate back to addr1 -- should have no effect
+      await stRSRVotes.connect(addr2).delegate(addr1.address)
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+      expect(await stRSRVotes.getVotes(addr2.address)).to.equal(stkAmt)
+      expect(await stRSRVotes.getVotes(addr3.address)).to.equal(stkAmt.div(4))
+
+      // Transfer addr1 -> addr2
+      await stRSRVotes.connect(addr1).transfer(addr2.address, stkAmt)
+      expect(await stRSRVotes.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSRVotes.balanceOf(addr2.address)).to.equal(stkAmt)
+
+      // Votes should have swapped places from mutual delegation
+      // Yes this is slightly surprising, but makes sense
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(stkAmt)
+      expect(await stRSRVotes.getVotes(addr2.address)).to.equal(0)
+      expect(await stRSRVotes.getVotes(addr3.address)).to.equal(stkAmt.div(4))
+    })
+
     it('Should be able to return if supports Interface', async () => {
       // Governor interface
       let interfaceID: BigNumber = ethers.constants.Zero
