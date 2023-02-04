@@ -2662,14 +2662,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Do accretion
       if (rsrAccreted.gt(0)) {
         await rsr.connect(owner).mint(stRSR.address, rsrAccreted)
-        await stRSR.connect(owner).setRewardRatio(fp('1'))
-        await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
-
-        await expect(stRSR.payoutRewards())
-          .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), fp('1'))
-        // first payout only registers the mint
-
+        await stRSR.connect(owner).setRewardRatio(fp('1')) // this pays out rewards
         await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
         await expect(stRSR.payoutRewards())
         // now the mint has been fully paid out
