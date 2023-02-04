@@ -539,8 +539,9 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
     })
 
-    it('Melt - Many periods, all at once', async () => {
+    it('Melt - A million periods, all at once', async () => {
       const hndAmt: BigNumber = bn('10e18')
+      const numPeriods = bn('1e6')
 
       // Transfer
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
@@ -550,10 +551,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       await snapshotGasCost(furnace.connect(addr1).melt())
       // Advance to the end to melt full amount
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 10 * Number(ONE_PERIOD))
+      await setNextBlockTimestamp(
+        Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD.mul(numPeriods))
+      )
 
       const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt = decayFn(hndAmt, 10) // 10 periods
+      const expAmt = decayFn(hndAmt, Number(numPeriods)) // 10 periods
 
       await snapshotGasCost(furnace.connect(addr1).melt())
 

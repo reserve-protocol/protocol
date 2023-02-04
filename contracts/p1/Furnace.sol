@@ -21,8 +21,8 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     uint192 public ratio; // {1} What fraction of balance to melt each period
 
     // === Cached ===
-    uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
     uint48 public lastPayout; // {seconds} The last time we did a payout
+    uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
 
     // ==== Invariants ====
     // ratio <= MAX_RATIO = 1e18
@@ -83,7 +83,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     /// @custom:governance
     function setRatio(uint192 ratio_) public governance {
         // solhint-disable-next-line no-empty-blocks
-        try this.melt() {} catch {}
+        if (lastPayout > 0) try this.melt() {} catch {}
         require(ratio_ <= MAX_RATIO, "invalid ratio");
         // The ratio can safely be set to 0 to turn off payouts, though it is not recommended
         emit RatioSet(ratio, ratio_);
