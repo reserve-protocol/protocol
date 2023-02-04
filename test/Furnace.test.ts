@@ -147,6 +147,19 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
         'invalid ratio'
       )
     })
+
+    it('Should allow to update ratio correctly if frozen', async () => {
+      // Setup a new value
+      const newRatio: BigNumber = bn('100000')
+
+      await main.freezeShort()
+
+      await expect(furnace.connect(owner).setRatio(newRatio))
+        .to.emit(furnace, 'RatioSet')
+        .withArgs(config.rewardRatio, newRatio)
+
+      expect(await furnace.ratio()).to.equal(newRatio)
+    })
   })
 
   describe('Do Melt #fast', () => {
@@ -377,6 +390,38 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt2)
+    })
+
+    it('Should melt before updating the ratio', async () => {
+      const hndAmt: BigNumber = bn('10e18')
+
+      // Transfer
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
+
+      // Advance to the end to melt full amount
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+
+      const decayFn = makeDecayFn(await furnace.ratio())
+      const expAmt = decayFn(hndAmt, 1) // 1 period
+
+      // Melt
+      await expect(furnace.setRatio(bn('1e17')))
+        .to.emit(rToken, 'Melted')
+        .withArgs(hndAmt.sub(expAmt))
+
+      // Another call to melt should have no impact
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
     })
   })
 

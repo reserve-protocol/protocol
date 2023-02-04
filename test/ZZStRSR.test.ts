@@ -284,6 +284,27 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         'invalid rewardRatio'
       )
     })
+
+    it('Should payout rewards before updating the reward ratio', async () => {
+      const startBal = await rsr.balanceOf(addr1.address)
+      const stakeAmt = bn('100e18')
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmt)
+      await stRSR.connect(addr1).stake(stakeAmt)
+
+      // send some rewards
+      await rsr.connect(addr2).transfer(stRSR.address, bn('10e18'))
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1200)
+
+      await stRSR.setRewardRatio(bn('1e17'))
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1200)
+
+      await stRSR.connect(addr1).unstake(stakeAmt)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1209600)
+      await stRSR.connect(addr1).withdraw(addr1.address, 1)
+
+      const endingBal = await rsr.balanceOf(addr1.address)
+      expect(endingBal.sub(startBal)).gt(0)
+    })
   })
 
   describe('Deposits/Staking', () => {
@@ -2743,14 +2764,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Do accretion
       if (rsrAccreted.gt(0)) {
         await rsr.connect(owner).mint(stRSR.address, rsrAccreted)
-        await stRSR.connect(owner).setRewardRatio(fp('1'))
-        await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
-
-        await expect(stRSR.payoutRewards())
-          .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), fp('1'))
-        // first payout only registers the mint
-
+        await stRSR.connect(owner).setRewardRatio(fp('1')) // this pays out rewards
         await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
         await expect(stRSR.payoutRewards())
         // now the mint has been fully paid out

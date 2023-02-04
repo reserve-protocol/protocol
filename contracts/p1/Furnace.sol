@@ -82,6 +82,8 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     /// Ratio setting
     /// @custom:governance
     function setRatio(uint192 ratio_) public governance {
+        // solhint-disable-next-line no-empty-blocks
+        try this.melt() {} catch {}
         require(ratio_ <= MAX_RATIO, "invalid ratio");
         // The ratio can safely be set to 0 to turn off payouts, though it is not recommended
         emit RatioSet(ratio, ratio_);
