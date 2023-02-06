@@ -570,8 +570,7 @@ describe('The Normal Operations scenario', () => {
       expect(stRSR_bal_init).to.equal(0)
 
       // Try to distribute tokens without approval, reverts
-      await expect(scenario.connect(alice).justDistributeRevenue(8, 0, 100n * exa)).to.be
-        .reverted
+      await expect(scenario.connect(alice).justDistributeRevenue(8, 0, 100n * exa)).to.be.reverted
 
       // As Alice, make allowance
       await comp.rsr.connect(alice).approve(distribAddr, 100n * exa)
@@ -794,14 +793,14 @@ describe('The Normal Operations scenario', () => {
     })
   })
 
-  it('sends rtoken donations to the backing manager', async() => {
+  it('sends rtoken donations to the backing manager', async () => {
     const tokenAddr = await main.someToken(0)
     const token = await ConAt('ERC20Fuzz', tokenAddr)
     const amt = fp('10')
     const bmBalBefore = await token.balanceOf(comp.backingManager.address)
     const rTokBalBefore = await token.balanceOf(comp.rToken.address)
     await token.connect(alice).transfer(comp.rToken.address, amt)
-    scenario.monetizeDonations(0)
+    await scenario.monetizeDonations(0)
     const bmBalAFter = await token.balanceOf(comp.backingManager.address)
     const rTokBalAfter = await token.balanceOf(comp.rToken.address)
     expect(rTokBalAfter).to.equal(0)
