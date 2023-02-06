@@ -15,9 +15,18 @@ interface ICometRewards {
 
     function rewardConfig(address) external view returns (RewardConfig memory);
 
-    function claim(address comet, address src, bool shouldAccrue) external;
+    function claim(
+        address comet,
+        address src,
+        bool shouldAccrue
+    ) external;
 
     function getRewardOwed(address comet, address account) external returns (RewardOwed memory);
 
-    function claimTo(address comet, address src, address to, bool shouldAccrue) external;
+    function claimTo(
+        address comet,
+        address src,
+        address to,
+        bool shouldAccrue
+    ) external;
 }

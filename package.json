@@ -27,6 +27,7 @@
     "test:gas:integration": "FORK=1 REPORT_GAS=1 PROTO_IMPL=1 hardhat test test/integration/**/*.test.ts",
     "test:coverage": "PROTO_IMPL=1 hardhat coverage --testfiles 'test/{libraries,plugins,scenario}/*.test.ts test/*.test.ts'",
     "test:unit:coverage": "PROTO_IMPL=1 SLOW= hardhat coverage --testfiles 'test/*.test.ts test/libraries/*.test.ts test/plugins/*.test.ts'",
+    "eslint": "eslint test/",
     "lint": "bash tools/lint && eslint test/",
     "prettier": "prettier --ignore-path .gitignore --loglevel warn --write \"./**/*.{js,ts,sol,json,md}\"",
     "size": "hardhat size-contracts",

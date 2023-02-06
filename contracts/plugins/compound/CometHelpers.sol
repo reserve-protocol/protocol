@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 contract CometHelpers {
     uint64 internal constant BASE_INDEX_SCALE = 1e15;
-    uint256 constant EXP_SCALE = 1e18;
+    uint256 public constant EXP_SCALE = 1e18;
 
     error InvalidUInt64();
     error InvalidUInt104();
@@ -20,21 +20,24 @@ contract CometHelpers {
         return int256(n);
     }
 
-    function presentValueSupply(
-        uint64 baseSupplyIndex_,
-        uint104 principalValue_
-    ) internal pure returns (uint256) {
+    function presentValueSupply(uint64 baseSupplyIndex_, uint104 principalValue_)
+        internal
+        pure
+        returns (uint256)
+    {
         return (uint256(principalValue_) * baseSupplyIndex_) / BASE_INDEX_SCALE;
     }
 
     /**
      * @dev The present value projected backward by the supply index (rounded down)
-     *  Note: This will overflow (revert) at 2^104/1e18=~20 trillion principal for assets with 18 decimals.
+     *  Note: This will overflow (revert) at 2^104/1e18=~20 trillion principal for assets with 18 
+     decimals.
      */
-    function principalValueSupply(
-        uint64 baseSupplyIndex_,
-        uint256 presentValue_
-    ) internal pure returns (uint104) {
+    function principalValueSupply(uint64 baseSupplyIndex_, uint256 presentValue_)
+        internal
+        pure
+        returns (uint104)
+    {
         return safe104((presentValue_ * BASE_INDEX_SCALE) / baseSupplyIndex_);
     }
 

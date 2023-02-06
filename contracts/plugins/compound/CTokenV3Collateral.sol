@@ -86,10 +86,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         }
 
         int256 cometReserves = comet.getReserves();
-        if (
-            cometReserves < 0 ||
-            uint256(cometReserves) < reservesThresholdDisabled
-        ) {
+        if (cometReserves < 0 || uint256(cometReserves) < reservesThresholdDisabled) {
             markStatus(CollateralStatus.DISABLED);
         } else if (uint256(cometReserves) < reservesThresholdIffy) {
             markStatus(CollateralStatus.IFFY);
