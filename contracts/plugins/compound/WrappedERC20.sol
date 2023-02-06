@@ -296,22 +296,4 @@ contract WrappedERC20 is IERC20 {
     function hasPermission(address owner, address manager) public view returns (bool) {
         return owner == manager || isAllowed[owner][manager];
     }
-
-    /**
-     * @dev Hook that is called before any transfer of tokens. This does not include
-     * minting and burning.
-     *
-     * Calling conditions:
-     *
-     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * will be transferred to `to`.
-     * - when `from` is zero, `amount` tokens will be minted for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
-     * - `from` and `to` are never both zero.
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual {}
 }
