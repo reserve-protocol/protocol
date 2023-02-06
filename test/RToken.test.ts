@@ -281,6 +281,22 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
       ).to.be.revertedWith('redemption pctRate too big')
     })
+
+    it('Should return a price of 0 if the assets become unregistered', async () => {
+      const startPrice = await basketHandler.price()
+
+      expect(startPrice[0]).to.gt(0)
+      expect(startPrice[1]).to.gt(0)
+
+      for (let i = 0; i < basket.length; i++) {
+        await assetRegistry.connect(owner).unregister(basket[i].address)
+      }
+
+      const endPrice = await basketHandler.price()
+
+      expect(endPrice[0]).to.eq(0)
+      expect(endPrice[1]).to.eq(0)
+    })
   })
 
   describe('Issuance', function () {
