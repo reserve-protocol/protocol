@@ -33,7 +33,7 @@ contract SelfReferentialCollateral is FiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        // {UoA/tok} = {UoA/ref} * {ref/tok} (1)
         uint192 p = chainlinkFeed.price(oracleTimeout);
         // danger for inheritance: this assumes refPerTok() is 1
 

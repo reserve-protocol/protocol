@@ -49,13 +49,12 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout);
+        uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
 
-        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 pLow = p.mul(refPerTok());
 
-        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 pHigh = p.mul(_underlyingRefPerTok());
 
         low = pLow - pLow.mul(oracleError);
