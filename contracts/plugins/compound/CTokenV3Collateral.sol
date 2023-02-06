@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: ISC
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/FiatCollateral.sol";
+import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import "./ICusdcV3Wrapper.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -9,7 +9,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
-contract CTokenV3Collateral is FiatCollateral {
+contract CTokenV3Collateral is AppreciatingFiatCollateral {
     struct CometCollateralConfig {
         IERC20 rewardERC20;
         uint256 reservesThresholdIffy;
@@ -24,7 +24,11 @@ contract CTokenV3Collateral is FiatCollateral {
     uint256 public immutable reservesThresholdIffy;
     uint256 public immutable reservesThresholdDisabled;
 
-    constructor(CollateralConfig memory config, CometCollateralConfig memory cometConfig) FiatCollateral(config) {
+    constructor(
+        CollateralConfig memory config,
+        CometCollateralConfig memory cometConfig,
+        uint192 revenueHiding
+    ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(address(cometConfig.rewardERC20) != address(0), "rewardERC20 missing");
         require(cometConfig.reservesThresholdIffy > 0, "reservesThresholdIffy zero");
         require(cometConfig.reservesThresholdDisabled > 0, "reservesThresholdDisabled zero");
@@ -32,23 +36,57 @@ contract CTokenV3Collateral is FiatCollateral {
         rewardERC20 = cometConfig.rewardERC20;
         reservesThresholdIffy = cometConfig.reservesThresholdIffy;
         reservesThresholdDisabled = cometConfig.reservesThresholdDisabled;
-        prevReferencePrice = refPerTok();
         comet = IComet(ICusdcV3Wrapper(address(erc20)).underlyingComet());
+        exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
+    }
+
+    function bal(address account) external view returns (uint192) {
+        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
+    }
+
+    function claimRewards() external {
+        IERC20 comp = rewardERC20;
+        uint256 oldBal = comp.balanceOf(address(this));
+        ICusdcV3Wrapper(address(erc20)).claimTo(address(this), address(this));
+        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
+    }
+
+    function _underlyingRefPerTok() internal view virtual override returns (uint192) {
+        return _safeWrap(ICusdcV3Wrapper(address(erc20)).exchangeRate());
     }
 
     /// Refresh exchange rates and update default status.
-    /// @custom:interaction RCEI
-    function refresh() public virtual override(FiatCollateral) {
-        // == Refresh ==
-        if (alreadyDefaulted()) return;
+    /// @dev Should not need to override: can handle collateral with variable refPerTok()
+    function refresh() public virtual override {
+        ICusdcV3Wrapper(address(erc20)).accrue();
+
+        if (alreadyDefaulted()) {
+            // continue to update rates
+            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
+            return;
+        }
+
         CollateralStatus oldStatus = status();
 
         // Check for hard default
-        uint192 referencePrice = refPerTok();
-        int256 cometReserves = comet.getReserves();
+        // must happen before tryPrice() call since `refPerTok()` returns a stored value
 
+        // revenue hiding: do not DISABLE if drawdown is small
+        uint192 underlyingRefPerTok = _underlyingRefPerTok();
+
+        // {ref/tok} = {ref/tok} * {1}
+        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
+
+        // uint192(<) is equivalent to Fix.lt
+        if (underlyingRefPerTok < exposedReferencePrice) {
+            exposedReferencePrice = hiddenReferencePrice;
+            markStatus(CollateralStatus.DISABLED);
+        } else if (hiddenReferencePrice > exposedReferencePrice) {
+            exposedReferencePrice = hiddenReferencePrice;
+        }
+
+        int256 cometReserves = comet.getReserves();
         if (
-            referencePrice < prevReferencePrice ||
             cometReserves < 0 ||
             uint256(cometReserves) < reservesThresholdDisabled
         ) {
@@ -56,7 +94,7 @@ contract CTokenV3Collateral is FiatCollateral {
         } else if (uint256(cometReserves) < reservesThresholdIffy) {
             markStatus(CollateralStatus.IFFY);
         } else {
-            // Check for soft default + save lotPrice
+            // Check for soft default + save prices
             try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
                 // {UoA/tok}, {UoA/tok}, {target/ref}
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
@@ -84,32 +122,10 @@ contract CTokenV3Collateral is FiatCollateral {
                 markStatus(CollateralStatus.IFFY);
             }
         }
-        prevReferencePrice = referencePrice;
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit CollateralStatusChanged(oldStatus, newStatus);
         }
-
-        // No interactions beyond the initial refresher
-    }
-
-    /// @dev Returns the exchange rate between the underlying balance of CUSDC and the balance
-    ///   of the wCUSDC.
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view override returns (uint192) {
-        uint256 exchangeRate = ICusdcV3Wrapper(address(erc20)).exchangeRate();
-        return _safeWrap(exchangeRate);
-    }
-
-    function bal(address account) external view returns (uint192) {
-        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
-    }
-
-    function claimRewards() external {
-        IERC20 comp = rewardERC20;
-        uint256 oldBal = comp.balanceOf(address(this));
-        ICusdcV3Wrapper(address(erc20)).claimTo(address(this), address(this));
-        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
     }
 }

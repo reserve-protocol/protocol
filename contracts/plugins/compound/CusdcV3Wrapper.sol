@@ -163,6 +163,16 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         return (balance * EXP_SCALE) / totalSupply_;
     }
 
+    function cometRate() public view returns (uint256) {   
+        underlyingComet.totalSupply()
+            * 1e15 // BASE_INDEX_SCALE
+            / underlyingComet.totalsBasic().totalSupplyBase;
+    }
+
+    function accrue() public {
+        underlyingComet.accrueAccount(address(underlyingComet));
+    }
+
     function claimTo(address src, address to) external {
         address sender = msg.sender;
         if (!hasPermission(src, sender)) revert Unauthorized();

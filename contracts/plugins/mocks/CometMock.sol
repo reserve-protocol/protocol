@@ -25,4 +25,8 @@ contract CometMock {
     function getReserves() public view returns (int256) {
         return _reserves;
     }
+    
+    function accrueAccount(address account) public {
+
+    }
 }

@@ -356,6 +356,7 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<CToke
       reservesThresholdIffy: opts.reservesThresholdIffy,
       reservesThresholdDisabled: opts.reservesThresholdDisabled,
     },
+    0
   )
   await collateral.deployed()
 
