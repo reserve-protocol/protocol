@@ -62,11 +62,20 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         _deposit(msg.sender, msg.sender, account, amount);
     }
 
-    function depositFrom(address from, address dst, uint256 amount) external {
+    function depositFrom(
+        address from,
+        address dst,
+        uint256 amount
+    ) external {
         _deposit(msg.sender, from, dst, amount);
     }
 
-    function _deposit(address operator, address from, address dst, uint256 amount) internal {
+    function _deposit(
+        address operator,
+        address from,
+        address dst,
+        uint256 amount
+    ) internal {
         if (!hasPermission(from, operator)) revert Unauthorized();
 
         underlyingComet.accrueAccount(address(this));
@@ -105,7 +114,11 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         _withdraw(msg.sender, msg.sender, to, amount);
     }
 
-    function withdrawFrom(address src, address to, uint256 amount) external {
+    function withdrawFrom(
+        address src,
+        address to,
+        uint256 amount
+    ) external {
         _withdraw(msg.sender, src, to, amount);
     }
 
@@ -113,7 +126,12 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
      * @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number of underlying tokens.
      * @param amount The amount of Wrapped cUSDC being withdrawn.
      */
-    function _withdraw(address operator, address src, address to, uint256 amount) internal {
+    function _withdraw(
+        address operator,
+        address src,
+        address to,
+        uint256 amount
+    ) internal {
         if (!hasPermission(src, operator)) revert Unauthorized();
 
         underlyingComet.accrueAccount(address(this));
@@ -163,10 +181,8 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         return (balance * EXP_SCALE) / totalSupply_;
     }
 
-    function cometRate() public view returns (uint256) {   
-        underlyingComet.totalSupply()
-            * 1e15 // BASE_INDEX_SCALE
-            / underlyingComet.totalsBasic().totalSupplyBase;
+    function cometRate() public view returns (uint256) {
+        (underlyingComet.totalSupply() * 1e15) / underlyingComet.totalsBasic().totalSupplyBase; // BASE_INDEX_SCALE
     }
 
     function accrue() public {
@@ -225,10 +241,11 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         userBasic[account] = updatedAccountIndices(basic, 0);
     }
 
-    function updatedAccountIndices(
-        UserBasic memory basic,
-        int256 changeToPrincipal
-    ) internal view returns (UserBasic memory) {
+    function updatedAccountIndices(UserBasic memory basic, int256 changeToPrincipal)
+        internal
+        view
+        returns (UserBasic memory)
+    {
         uint104 principal = basic.principal;
         (uint64 baseSupplyIndex, uint64 trackingSupplyIndex) = getSupplyIndices();
 

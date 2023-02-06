@@ -62,11 +62,13 @@ abstract contract CometExtInterface {
 
     /**
      * ===== ERC20 interfaces =====
-     * Does not include the following functions/events, which are defined in `CometMainInterface` instead:
+     * Does not include the following functions/events, which are defined in `CometMainInterface`
+     * instead:
      * - function decimals() virtual external view returns (uint8)
      * - function totalSupply() virtual external view returns (uint256)
      * - function transfer(address dst, uint amount) virtual external returns (bool)
-     * - function transferFrom(address src, address dst, uint amount) virtual external returns (bool)
+     * - function transferFrom(address src, address dst, uint amount) virtual external returns
+        (bool)
      * - function balanceOf(address owner) virtual external view returns (uint256)
      * - event Transfer(address indexed from, address indexed to, uint256 amount)
      */

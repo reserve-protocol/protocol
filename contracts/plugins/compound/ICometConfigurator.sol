@@ -38,8 +38,6 @@ interface ICometConfigurator {
 
     function getConfiguration(address cometProxy) external view returns (Configuration memory);
 
-    function setBaseTrackingSupplySpeed(
-        address cometProxy,
-        uint64 newBaseTrackingSupplySpeed
-    ) external;
+    function setBaseTrackingSupplySpeed(address cometProxy, uint64 newBaseTrackingSupplySpeed)
+        external;
 }

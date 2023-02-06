@@ -37,8 +37,6 @@ export enum CollateralStatus {
   DISABLED,
 }
 
-type ImpersonationFunction<T> = (signer: SignerWithAddress) => Promise<T>
-
 export const allocateERC20 = async (
   token: ERC20Mock,
   from: string,

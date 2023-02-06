@@ -1,25 +1,24 @@
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { Wallet } from 'ethers'
 import hre, { ethers, network, waffle } from 'hardhat'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
-import { allocateUSDC, COMP, resetFork, enableRewardsAccrual, mintWcUSDC } from './helpers'
+import { allocateUSDC, COMP, enableRewardsAccrual, mintWcUSDC } from './helpers'
 import { cusdcFixture } from './fixtures'
 import { ERC20Mock, CometInterface, CusdcV3Wrapper } from '../../../../typechain'
-import { bn, fp } from '../../../../common/numbers'
+import { bn } from '../../../../common/numbers'
 import { getChainId } from '../../../../common/blockchain-utils'
-import { IConfig, MAX_ORACLE_TIMEOUT, networkConfig } from '../../../../common/configuration'
+import { networkConfig } from '../../../../common/configuration'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 describe('Wrapped CUSDCv3', () => {
-  let owner: SignerWithAddress;
-  let bob: SignerWithAddress;
-  let charles: SignerWithAddress;
-  let don: SignerWithAddress;
-  let usdc: ERC20Mock;
-  let wcusdcV3: CusdcV3Wrapper;
-  let cusdcV3: CometInterface;
+  let bob: SignerWithAddress
+  let charles: SignerWithAddress
+  let don: SignerWithAddress
+  let usdc: ERC20Mock
+  let wcusdcV3: CusdcV3Wrapper
+  let cusdcV3: CometInterface
 
   let wallet: Wallet
   let chainId: number
@@ -37,12 +36,8 @@ describe('Wrapped CUSDCv3', () => {
   })
 
   beforeEach(async () => {
-    ;[owner, bob, charles, don] = await ethers.getSigners()
-    ;({
-      usdc,
-      wcusdcV3,
-      cusdcV3,
-    } = await loadFixture(cusdcFixture))
+    ;[, bob, charles, don] = await ethers.getSigners()
+    ;({ usdc, wcusdcV3, cusdcV3 } = await loadFixture(cusdcFixture))
   })
 
   describe('deposit', () => {
@@ -181,7 +176,7 @@ describe('Wrapped CUSDCv3', () => {
       const wcusdcV3AsB = wcusdcV3.connect(bob)
 
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
-      expect(await wcusdcV3AsB.withdraw(ethers.constants.MaxUint256)).to.changeTokenBalance(
+      await expect(wcusdcV3AsB.withdraw(ethers.constants.MaxUint256)).to.changeTokenBalance(
         wcusdcV3,
         bob,
         0
@@ -440,9 +435,9 @@ describe('Wrapped CUSDCv3', () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
       await advanceTime(1000)
       await enableRewardsAccrual(cusdcV3)
-      await expect(
-        wcusdcV3.connect(don).claimTo(bob.address, bob.address)
-      ).to.be.revertedWith('Unauthorized')
+      await expect(wcusdcV3.connect(don).claimTo(bob.address, bob.address)).to.be.revertedWith(
+        'Unauthorized'
+      )
 
       await wcusdcV3.connect(bob).allow(don.address, true)
       expect(await wcusdcV3.isAllowed(bob.address, don.address)).to.eq(true)
@@ -520,8 +515,7 @@ describe('Wrapped CUSDCv3', () => {
       const donsReward = await wcusdcV3.callStatic.getRewardOwed(don.address)
 
       expect(bobsReward).to.be.greaterThan(donsReward)
-      const accrued =
-        (await (await wcusdcV3.baseTrackingAccrued(bob.address))).mul(bn('1e12'))
+      const accrued = (await await wcusdcV3.baseTrackingAccrued(bob.address)).mul(bn('1e12'))
       expect(bobsReward).to.equal(accrued)
 
       await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
