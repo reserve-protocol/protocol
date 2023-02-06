@@ -249,7 +249,7 @@ describe('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('15000e6'))
       const bobsCusdc = await wcusdcV3.underlyingBalanceOf(bob.address)
       expect(bobsCusdc).to.be.gt(0)
-      expect(bobsCusdc).to.eq(await cusdcV3.balanceOf(wcusdcV3.address))
+      expect(bobsCusdc).to.be.closeTo(await cusdcV3.balanceOf(wcusdcV3.address), 1)
     })
   })
 

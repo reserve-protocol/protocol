@@ -22,4 +22,6 @@ interface ICusdcV3Wrapper is IERC20, IERC20Metadata {
     function targetReserves() external view returns (uint256);
 
     function getReserves() external view returns (int256);
+
+    function accrue() external;
 }

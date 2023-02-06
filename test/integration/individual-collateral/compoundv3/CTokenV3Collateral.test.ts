@@ -58,7 +58,7 @@ describeFork('CTokenV3Collateral', () => {
         reservesThresholdDisabled: defaultCollateralOpts.reservesThresholdDisabled,
       }
       
-      await expect(CTokenV3CollateralFactory.deploy(opts1, opts2)).to.be.revertedWith('targetName missing')
+      await expect(CTokenV3CollateralFactory.deploy(opts1, opts2, 0)).to.be.revertedWith('targetName missing')
     })
   
     it('does not allow missing ERC20', async () => {
@@ -207,8 +207,8 @@ describeFork('CTokenV3Collateral', () => {
         await wcusdcV3AsB.depositTo(bob.address, ethers.constants.MaxUint256)
 
         await advanceBlocks(1000)
-        await advanceTime(12000)
-    
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+        await collateral.refresh()
         expect(await collateral.refPerTok()).to.be.gt(prevRefPerTok)
 
         const [newLow, newHigh] = await collateral.price()
@@ -378,7 +378,7 @@ describeFork('CTokenV3Collateral', () => {
       })
     
       it('enters IFFY state when price becomes stale', async () => {
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + ORACLE_TIMEOUT.toNumber())
         await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
       })
