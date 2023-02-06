@@ -89,7 +89,8 @@ contract NormalOpsScenario {
                     growing, // refPerTok model
                     justOne, // targetPerRef model
                     justOne, // uoaPerTarget model
-                    stable // deviation model
+                    stable, // deviation model,
+                    0
                 )
             );
             collateralTokens.push(IERC20(token));
@@ -113,7 +114,8 @@ contract NormalOpsScenario {
                     justOne,
                     stable,
                     justOne,
-                    justOne
+                    justOne,
+                    0
                 )
             );
             backupTokens.push(IERC20(token));

@@ -34,7 +34,8 @@ describe('CollateralMock', () => {
       refPerTok, // refPerTokModel_
       targetPerRef, // targetPerRefModel_
       uoaPerTarget, // uoaPerTargetModel_
-      deviation // deviationModel_
+      deviation, // deviationModel_
+      0
     )
   }
 

@@ -100,7 +100,8 @@ contract DiffTestScenario {
                         refPerTokModel_: growing,
                         targetPerRefModel_: justOne,
                         uoaPerTargetModel_: justOne,
-                        deviationModel_: stable
+                        deviationModel_: stable,
+                        revenueHiding: 0
                     })
                 );
                 collateralTokens.push(IERC20(token));
@@ -128,7 +129,8 @@ contract DiffTestScenario {
                         refPerTokModel_: justOne,
                         targetPerRefModel_: stable,
                         uoaPerTargetModel_: justOne,
-                        deviationModel_: justOne
+                        deviationModel_: justOne,
+                        revenueHiding: 0
                     })
                 );
                 backupTokens.push(IERC20(token));
@@ -906,7 +908,8 @@ contract DiffTestScenario {
             refPerTokModel_: isStable ? growing : getNextPriceModel(),
             targetPerRefModel_: isStable ? justOne : getNextPriceModel(),
             uoaPerTargetModel_: isStable ? justOne : getNextPriceModel(),
-            deviationModel_: isStable ? stable : getNextPriceModel()
+            deviationModel_: isStable ? stable : getNextPriceModel(),
+            revenueHiding: 0
         });
         return lastCreatedColl;
     }

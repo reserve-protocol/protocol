@@ -118,19 +118,22 @@ contract RebalancingScenario {
 
                 // Register Collateral
                 main.assetRegistry().register(
-                    new CollateralMock({
-                        erc20_: IERC20Metadata(address(token)),
-                        maxTradeVolume_: maxTradeVolume,
-                        priceTimeout_: 806400,
-                        oracleError_: 0.005e18,
-                        defaultThreshold_: 0.05e18,
-                        delayUntilDefault_: 86400,
-                        targetName_: targetName,
-                        refPerTokModel_: [growing, growing, mayHardDefault][k],
-                        targetPerRefModel_: [justOne, mayDepeg, justOne][k],
-                        uoaPerTargetModel_: [justOne, justOne, justOne][k],
-                        deviationModel_: [stable, volatile, volatile][k]
-                    })
+                    new CollateralMock(
+                        {
+                            erc20_: IERC20Metadata(address(token)),
+                            maxTradeVolume_: maxTradeVolume,
+                            priceTimeout_: 806400,
+                            oracleError_: 0.005e18,
+                            defaultThreshold_: 0.05e18,
+                            delayUntilDefault_: 86400,
+                            targetName_: targetName,
+                            refPerTokModel_: [growing, growing, mayHardDefault][k],
+                            targetPerRefModel_: [justOne, mayDepeg, justOne][k],
+                            uoaPerTargetModel_: [justOne, justOne, justOne][k],
+                            deviationModel_: [stable, volatile, volatile][k],
+                            revenueHiding: 0
+                        }
+                    )
                 );
                 collateralTokens.push(IERC20(token));
             }
@@ -156,7 +159,8 @@ contract RebalancingScenario {
                         refPerTokModel_: justOne,
                         targetPerRefModel_: stable,
                         uoaPerTargetModel_: justOne,
-                        deviationModel_: justOne
+                        deviationModel_: justOne,
+                        revenueHiding: 0
                     })
                 );
                 backupTokens[targetName].push(IERC20(token));
@@ -850,7 +854,8 @@ contract RebalancingScenario {
                 refPerTokModel_: isStable ? growing : getNextPriceModel(),
                 targetPerRefModel_: isStable ? justOne : getNextPriceModel(),
                 uoaPerTargetModel_: isStable ? justOne : getNextPriceModel(),
-                deviationModel_: isStable ? stable : getNextPriceModel()
+                deviationModel_: isStable ? stable : getNextPriceModel(),
+                revenueHiding: 0
             });
     }
 

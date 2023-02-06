@@ -10,9 +10,9 @@ import "contracts/fuzz/PriceModel.sol";
 import "contracts/fuzz/Utils.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/FiatCollateral.sol";
+import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 
-contract CollateralMock is OracleErrorMock, FiatCollateral {
+contract CollateralMock is OracleErrorMock, AppreciatingFiatCollateral {
     using FixLib for uint192;
     using PriceModelLib for PriceModel;
 
@@ -34,11 +34,12 @@ contract CollateralMock is OracleErrorMock, FiatCollateral {
         PriceModel memory refPerTokModel_, // Ref units per token
         PriceModel memory targetPerRefModel_, // Target units per ref unit
         PriceModel memory uoaPerTargetModel_, // Units-of-account per target unit
-        PriceModel memory deviationModel_
+        PriceModel memory deviationModel_,
+        uint192 revenueHiding
     )
         // deviationModel is the deviation of price() from the combination of the above.
         // that is: price() = deviation * uoaPerTarget * targetPerRef * refPerTok
-        FiatCollateral(
+        AppreciatingFiatCollateral(
             CollateralConfig({
                 priceTimeout: priceTimeout_,
                 chainlinkFeed: AggregatorV3Interface(address(1)),
@@ -49,7 +50,8 @@ contract CollateralMock is OracleErrorMock, FiatCollateral {
                 targetName: targetName_,
                 defaultThreshold: defaultThreshold_,
                 delayUntilDefault: delayUntilDefault_
-            })
+            }),
+            revenueHiding
         )
     {
         refPerTokModel = refPerTokModel_;
@@ -119,6 +121,10 @@ contract CollateralMock is OracleErrorMock, FiatCollateral {
     function claimRewards() public override {
         ERC20Fuzz(address(erc20)).payRewards(address(this));
     }
+
+    function _underlyingRefPerTok() internal view virtual override returns (uint192) {
+        return refPerTok();
+    }
 }
 
 // A CollateralMock that does not use decaying lotPrice()s, but instead just returns the last saved
@@ -149,7 +155,8 @@ contract CollateralNoDecay is CollateralMock {
         PriceModel memory refPerTokModel_, // Ref units per token
         PriceModel memory targetPerRefModel_, // Target units per ref unit
         PriceModel memory uoaPerTargetModel_, // Units-of-account per target unit
-        PriceModel memory deviationModel_
+        PriceModel memory deviationModel_,
+        uint192 revenueHiding
     )
         CollateralMock(
             erc20_,
@@ -162,7 +169,8 @@ contract CollateralNoDecay is CollateralMock {
             refPerTokModel_,
             targetPerRefModel_,
             uoaPerTargetModel_,
-            deviationModel_
+            deviationModel_,
+            revenueHiding
         )
     {}
 }
