@@ -182,7 +182,7 @@ export const makewCSUDC = async (): Promise<WrappedcUSDCFixture> => {
 }
 
 export const cusdcFixture: Fixture<WrappedcUSDCFixture> =
-  async function ([]): Promise<WrappedcUSDCFixture> {
+  async function (): Promise<WrappedcUSDCFixture> {
     const cusdcV3 = <CometInterface>await ethers.getContractAt('CometInterface', CUSDC_V3)
     const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
       await ethers.getContractFactory('CusdcV3Wrapper')

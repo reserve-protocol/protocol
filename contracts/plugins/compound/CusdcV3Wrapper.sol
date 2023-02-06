@@ -125,9 +125,9 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     }
 
     /**
-     * @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number 
-     * of underlying tokens.
-     * @param amount The amount of Wrapped cUSDC being withdrawn.
+        @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number 
+        of underlying tokens.
+        @param amount The amount of Wrapped cUSDC being withdrawn.
      */
     function _withdraw(
         address operator,
@@ -185,9 +185,9 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     }
 
     function cometRate() public view returns (uint256) {
-         // BASE_INDEX_SCALE = 1e15
-        return (underlyingComet.totalSupply() * 1e15)
-            / underlyingComet.totalsBasic().totalSupplyBase;
+        // BASE_INDEX_SCALE = 1e15
+        uint256 totalSupplyBase = underlyingComet.totalsBasic().totalSupplyBase;
+        return (underlyingComet.totalSupply() * 1e15) / totalSupplyBase;
     }
 
     function accrue() public {
