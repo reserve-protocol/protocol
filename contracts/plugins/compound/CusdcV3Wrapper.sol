@@ -14,8 +14,8 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         uint64 baseTrackingIndex;
     }
 
-    uint256 constant TRACKING_INDEX_SCALE = 1e15;
-    uint64 constant RESCALE_FACTOR = 1e12;
+    uint256 public constant TRACKING_INDEX_SCALE = 1e15;
+    uint64 public constant RESCALE_FACTOR = 1e12;
 
     address public immutable underlying;
     IERC20 public immutable underlyingERC20;
@@ -56,7 +56,8 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     }
 
     /**
-     * @dev Allow a user to deposit underlying tokens and mint the corresponding number of wrapped tokens.
+     * @dev Allow a user to deposit underlying tokens and mint the corresponding number of wrapped
+        tokens.
      */
     function depositTo(address account, uint256 amount) external {
         _deposit(msg.sender, msg.sender, account, amount);
@@ -96,7 +97,8 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
             basic.principal = principalValueSupply(baseSupplyIndex, balance);
         }
 
-        // We use this contract's baseTrackingIndex from Comet so we do not over-accrue user's rewards.
+        // We use this contract's baseTrackingIndex from Comet so we do not over-accrue user's
+        // rewards.
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         basic.baseTrackingIndex = wrappedBasic.baseTrackingIndex;
 
@@ -123,7 +125,8 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     }
 
     /**
-     * @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number of underlying tokens.
+     * @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number 
+     * of underlying tokens.
      * @param amount The amount of Wrapped cUSDC being withdrawn.
      */
     function _withdraw(
@@ -182,7 +185,9 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     }
 
     function cometRate() public view returns (uint256) {
-        (underlyingComet.totalSupply() * 1e15) / underlyingComet.totalsBasic().totalSupplyBase; // BASE_INDEX_SCALE
+         // BASE_INDEX_SCALE = 1e15
+        return (underlyingComet.totalSupply() * 1e15)
+            / underlyingComet.totalsBasic().totalSupplyBase;
     }
 
     function accrue() public {
