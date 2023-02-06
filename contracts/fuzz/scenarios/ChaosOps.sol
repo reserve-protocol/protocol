@@ -405,6 +405,11 @@ contract ChaosOpsScenario {
         main.rToken().redeemTo(recipient, amount, revertOnPartialRedemption);
     }
 
+    function monetizeDonations(uint8 tokenID) public {
+        IERC20 erc20 = main.someToken(tokenID);
+        TestIRToken(address(main.rToken())).monetizeDonations(erc20);
+    }
+
     // ==== user functions: strsr ====
     function justStake(uint256 amount) public asSender {
         main.stRSR().stake(amount);

@@ -793,4 +793,18 @@ describe('The Normal Operations scenario', () => {
       expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
     })
   })
+
+  it('sends rtoken donations to the backing manager', async() => {
+    const tokenAddr = await main.someToken(0)
+    const token = await ConAt('ERC20Fuzz', tokenAddr)
+    const amt = fp('10')
+    const bmBalBefore = await token.balanceOf(comp.backingManager.address)
+    const rTokBalBefore = await token.balanceOf(comp.rToken.address)
+    await token.connect(alice).transfer(comp.rToken.address, amt)
+    scenario.monetizeDonations(0)
+    const bmBalAFter = await token.balanceOf(comp.backingManager.address)
+    const rTokBalAfter = await token.balanceOf(comp.rToken.address)
+    expect(rTokBalAfter).to.equal(0)
+    expect(bmBalAFter).to.equal(bmBalBefore.add(rTokBalBefore).add(amt))
+  })
 })
