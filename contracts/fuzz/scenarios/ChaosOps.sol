@@ -400,7 +400,11 @@ contract ChaosOpsScenario {
         main.rToken().redeem(amount, revertOnPartialRedemption);
     }
 
-    function redeemTo(uint256 amount, uint8 recipientID, bool revertOnPartialRedemption) public asSender {
+    function redeemTo(
+        uint256 amount,
+        uint8 recipientID,
+        bool revertOnPartialRedemption
+    ) public asSender {
         address recipient = main.someAddr(recipientID);
         main.rToken().redeemTo(recipient, amount, revertOnPartialRedemption);
     }

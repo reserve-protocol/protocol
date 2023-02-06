@@ -53,11 +53,11 @@ contract FiatCollateral is ICollateral, Asset {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
-    uint192 public pegBottom; // fuzz needs this to not be immutable!
     // {target/ref} The bottom of the peg
+    uint192 public pegBottom; // fuzz needs this to not be immutable!
 
-    uint192 public pegTop; // fuzz needs this to not be immutable!
     // {target/ref} The top of the peg
+    uint192 public pegTop; // fuzz needs this to not be immutable!
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config)
