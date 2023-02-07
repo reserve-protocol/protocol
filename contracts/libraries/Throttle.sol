@@ -51,6 +51,7 @@ library ThrottleLib {
         if (amount > 0) {
             require(uint256(amount) <= available, "supply change throttled");
             available -= uint256(amount);
+            // untestable: the final else statement, amount will never be 0
         } else if (amount < 0) {
             available += uint256(-amount);
         }
