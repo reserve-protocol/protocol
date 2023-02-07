@@ -56,7 +56,7 @@ import { useEnv } from '#/utils/env'
 const BLOCKS_PER_HOUR = bn(300)
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 const createFixtureLoader = waffle.createFixtureLoader
 

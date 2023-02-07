@@ -42,6 +42,7 @@ Deploy commit [d757d3a5a6097ae42c71fc03a7c787ec001d2efc](https://github.com/rese
 
 Candidate release for the "all clear" milestone. There wasn't any real usage of the 1.0.0/1.1.0 releases; this is the first release that we are going to spend real effort to remain backwards compatible with.
 
+- Bump solidity version to 0.8.17
 - Support multiple beneficiaries via the [`FacadeWrite`](contracts/facade/FacadeWrite.sol)
 - Add `RToken.issueTo(address recipient, uint256 amount, ..)` and `RToken.redeemTo(address recipient, uint256 amount, ..)` to support issuance/redemption to a different address than `msg.sender`
 - Add `RToken.issue*(.., bool revertOnPartialRedemption)` and `RToken.redeem*(.., bool revertOnPartialRedemption)` to enable msg sender to control whether they will accept partial redemptions or not
