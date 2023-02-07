@@ -22,8 +22,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     uint256 public constant MIN_THROTTLE_RATE_AMT = 1e18; // {qRTok}
     uint256 public constant MAX_THROTTLE_RATE_AMT = 1e48; // {qRTok}
     uint192 public constant MAX_THROTTLE_PCT_AMT = 1e18; // {qRTok}
-    uint192 public constant MIN_EXCHANGE_RATE = 1e9; // {BU/rTok}
-    uint192 public constant MAX_EXCHANGE_RATE = 1e27; // {BU/rTok}
+    uint192 public constant MIN_EXCHANGE_RATE = 1e9; // D18{BU/rTok}
+    uint192 public constant MAX_EXCHANGE_RATE = 1e27; // D18{BU/rTok}
 
     /// The mandate describes what goals its governors should try to achieve. By succinctly
     /// explaining the RToken’s purpose and what the RToken is intended to do, it provides common
@@ -86,6 +86,22 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.lastTimestamp = uint48(block.timestamp);
     }
 
+    /// after fn(), assert exchangeRate in [MIN_EXCHANGE_RATE, MAX_EXCHANGE_RATE]
+    modifier exchangeRateIsValidAfter() {
+        _;
+        uint256 supply = totalSupply();
+        if (supply == 0) return;
+
+        // Note: These are D18s, even though they are uint256s. This is because
+        // we cannot assume we stay inside our valid range here, as that is what
+        // we are checking in the first place
+        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
+        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
+
+        // here we take advantage of an implicit upcast from uint192 exchange rates
+        require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
+    }
+
     /// Issue an RToken with basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
@@ -97,7 +113,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issueTo(address recipient, uint256 amount) public notPausedOrFrozen {
+    function issueTo(address recipient, uint256 amount)
+        public
+        notPausedOrFrozen
+        exchangeRateIsValidAfter
+    {
         require(amount > 0, "Cannot issue zero");
 
         // == Refresh ==
@@ -187,7 +207,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         address recipient,
         uint256 amount,
         bool revertOnPartialRedemption
-    ) public notFrozen {
+    ) public notFrozen exchangeRateIsValidAfter {
         // == Refresh ==
         main.assetRegistry().refresh();
 
@@ -270,10 +290,13 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // effects:
     //   bal'[recipient] = bal[recipient] + amtRToken
     //   totalSupply' = totalSupply + amtRToken
-    function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
+    function mint(address recipient, uint256 amtRToken)
+        external
+        notPausedOrFrozen
+        exchangeRateIsValidAfter
+    {
         require(_msgSender() == address(backingManager), "not backing manager");
         _mint(recipient, amtRToken);
-        requireValidBUExchangeRate();
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
@@ -282,22 +305,24 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // effects:
     //   bal'[caller] = bal[caller] - amtRToken
     //   totalSupply' = totalSupply - amtRToken
-    function melt(uint256 amtRToken) external notPausedOrFrozen {
+    function melt(uint256 amtRToken) external notPausedOrFrozen exchangeRateIsValidAfter {
         _burn(_msgSender(), amtRToken);
         require(totalSupply() >= FIX_ONE, "rToken supply too low to melt");
         emit Melted(amtRToken);
-        requireValidBUExchangeRate();
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
     // checks: unpaused; unfrozen; caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
-    function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
+    function setBasketsNeeded(uint192 basketsNeeded_)
+        external
+        notPausedOrFrozen
+        exchangeRateIsValidAfter
+    {
         require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
-        requireValidBUExchangeRate();
     }
 
     /// Sends all token balance of erc20 (if it is registered) to the BackingManager
@@ -354,21 +379,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     // ==== Private ====
-
-    /// Require the BU to RToken exchange rate to be in [1e-9, 1e9]
-    function requireValidBUExchangeRate() private view {
-        uint256 supply = totalSupply();
-        if (supply == 0) return;
-
-        // Note: These are D18s, even though they are uint256s. This is because
-        // we cannot assume we stay inside our valid range here, as that is what
-        // we are checking in the first place
-        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
-        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
-
-        // here we take advantage of an implicit upcast from uint192 exchange rates
-        require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
-    }
 
     /**
      * @dev Hook that is called before any transfer of tokens. This includes
