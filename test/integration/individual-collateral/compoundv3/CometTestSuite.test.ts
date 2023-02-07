@@ -1,4 +1,4 @@
-import collateralTests, { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from "../collateralTests";
+import collateralTests, { CollateralFixtureContext, CollateralOpts, MintCollateralFunc, CollateralStatus } from "../collateralTests";
 import { ethers } from 'hardhat'
 import { Fixture } from 'ethereum-waffle'
 import { ContractFactory, BigNumberish } from 'ethers'
@@ -12,8 +12,10 @@ import {
   MockV3Aggregator__factory,
   CometMock,
   CometMock__factory,
+  ICollateral
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
+import { MAX_UINT48 } from '../../../../common/constants'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -99,14 +101,14 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
     reservesThresholdDisabled: bn('5000'),
 }
 
-export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<CTokenV3Collateral> => {
+export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<ICollateral> => {
   opts = { ...defaultCometCollateralOpts, ...opts }
 
   const CTokenV3CollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CTokenV3Collateral'
   )
 
-  const collateral = <CTokenV3Collateral>await CTokenV3CollateralFactory.deploy(
+  const collateral = <ICollateral>await CTokenV3CollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -159,13 +161,45 @@ export const makeCollateralFixtureContext = (opts: CometCollateralOpts = {}): Fi
     const cusdcV3 = <CometInterface>fix.cusdcV3
     const { wcusdcV3, usdc } = fix
 
-    collateralOpts.erc20 = fix.wcusdcV3.address
+    collateralOpts.erc20 = wcusdcV3.address
 
     const collateral = await deployCollateral(collateralOpts)
-    return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc }
+    return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3 }
   }
 
   return makeCollateralFixtureContext
+}
+
+interface CollateralWithMockComet extends CollateralFixtureContext {
+  cusdcV3: CometMock
+  wcusdcV3: CusdcV3Wrapper
+  usdc: ERC20Mock
+}
+
+export const deployCollateralCometMockContext = async (
+  opts: CometCollateralOpts = {}
+): Promise<CollateralWithMockComet> => {
+  const collateralOpts = { ...defaultCometCollateralOpts, ...opts }
+
+  const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
+    await ethers.getContractFactory('MockV3Aggregator')
+  )
+  const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
+  collateralOpts.chainlinkFeed = chainlinkFeed.address
+
+  const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
+  const cusdcV3 = <CometMock>await CometFactory.deploy(bn('5e15'), bn('1e15'))
+
+  const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
+    await ethers.getContractFactory('CusdcV3Wrapper')
+  )
+  const wcusdcV3 = <CusdcV3Wrapper>(
+    await CusdcV3WrapperFactory.deploy(cusdcV3.address, REWARDS, COMP)
+  )
+  collateralOpts.erc20 = wcusdcV3.address
+  const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
+  const collateral = await deployCollateral(collateralOpts)
+  return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3 }
 }
 
 
@@ -204,27 +238,93 @@ export const mintCollateralTo = async (ctx: CometCollateralFixtureContext, amoun
     await ctx.wcusdcV3.connect(user).depositTo(user.address, ethers.constants.MaxUint256)
 }
 
-
-
-
 /*
   Define collateral-specific tests
 */
 
 const collateralSpecificConstructorTests = () => {
-    it('does not allow 0 reservesThresholdIffy', async () => {
-        await expect(
-          deployCollateral({ erc20: CUSDC_V3, reservesThresholdIffy: 0 })
-        ).to.be.revertedWith('reservesThresholdIffy zero')
-    })
+  it('does not allow 0 reservesThresholdIffy', async () => {
+    await expect(
+      deployCollateral({ erc20: CUSDC_V3, reservesThresholdIffy: 0 })
+    ).to.be.revertedWith('reservesThresholdIffy zero')
+  })
 
-    it('does not allow 0 reservesThresholdDisabled', async () => {
-        await expect(
-            deployCollateral({ erc20: CUSDC_V3, reservesThresholdDisabled: 0 })
-        ).to.be.revertedWith('reservesThresholdDisabled zero')
-    })
+  it('does not allow 0 reservesThresholdDisabled', async () => {
+    await expect(
+      deployCollateral({ erc20: CUSDC_V3, reservesThresholdDisabled: 0 })
+    ).to.be.revertedWith('reservesThresholdDisabled zero')
+  })
 }
 
+const collateralSpecificStatusTests = () => {
+  it('enters DISABLED state if reserves go negative', async () => {
+    const mockOpts = { reservesThresholdDisabled: 1000n }
+    const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
+
+    // Check initial state
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+    expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+    // cUSDC/Comet's reserves gone down to 19% of target reserves
+    await cusdcV3.setReserves(-1)
+
+    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
+    // State remains the same
+    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
+  })
+
+  it('soft-defaults when compound reserves are below target reserves iffy threshold', async () => {
+    const mockOpts = { reservesThresholdIffy: 5000n, reservesThresholdDisabled: 1000n }
+    const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
+    const delayUntilDefault = await collateral.delayUntilDefault()
+
+    // Check initial state
+    await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+    expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+    // cUSDC/Comet's reserves gone down below reservesThresholdIffy
+    await cusdcV3.setReserves(4000n)
+
+    const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+    await setNextBlockTimestamp(nextBlockTimestamp)
+    const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+
+    await expect(collateral.refresh())
+      .to.emit(collateral, 'CollateralStatusChanged')
+      .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+    expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+    expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+    // Move time forward past delayUntilDefault
+    await advanceTime(delayUntilDefault)
+    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+
+    // Nothing changes if attempt to refresh after default for CTokenV3
+    const prevWhenDefault: bigint = (await collateral.whenDefault()).toBigInt()
+    await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
+  })
+
+  it('hard-defaults when reserves threshold is at disabled levels', async () => {
+    const mockOpts = { reservesThresholdDisabled: 1000n }
+    const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
+
+    // Check initial state
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+    expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+    // cUSDC/Comet's reserves gone down to 19% of target reserves
+    await cusdcV3.setReserves(900n)
+
+    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
+    // State remains the same
+    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
+  })
+}
 
 
 
@@ -236,8 +336,9 @@ const opts = {
     oracleError,
     deployCollateral,
     collateralSpecificConstructorTests,
+    collateralSpecificStatusTests,
     makeCollateralFixtureContext,
-    mintCollateralTo
+    mintCollateralTo,
 }
 
 collateralTests(opts)

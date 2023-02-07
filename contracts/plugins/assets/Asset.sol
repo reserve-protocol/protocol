@@ -18,9 +18,9 @@ contract Asset is IAsset {
 
     uint192 public immutable override maxTradeVolume; // {UoA}
 
-    uint48 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
+    uint48 public immutable override oracleTimeout; // {s}
 
-    uint192 public immutable oracleError; // {1} The max % deviation allowed by the oracle
+    uint192 public immutable override oracleError; // {1}
 
     // === Lot price ===
 
