@@ -1,5 +1,4 @@
-import collateralTests from "../collateralTests";
-
+import collateralTests, { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from "../collateralTests";
 import { ethers } from 'hardhat'
 import { Fixture } from 'ethereum-waffle'
 import { ContractFactory, BigNumberish } from 'ethers'
@@ -16,7 +15,6 @@ import {
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
-import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from "../collateralTests";
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
@@ -87,7 +85,7 @@ interface WrappedcUSDCFixture {
 */
 
 export const defaultCometCollateralOpts: CometCollateralOpts = {
-    erc20: COLLATERAL_TOKEN_ADDRESS,
+    erc20: CUSDC_V3,
     targetName: ethers.utils.formatBytes32String('USD'),
     rewardERC20: COMP,
     priceTimeout: ORACLE_TIMEOUT,
@@ -125,7 +123,8 @@ export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<
       reservesThresholdIffy: opts.reservesThresholdIffy,
       reservesThresholdDisabled: opts.reservesThresholdDisabled,
     },
-    0
+    0,
+    {gasLimit: 2000000000}
   )
   await collateral.deployed()
 
@@ -160,9 +159,7 @@ export const makeCollateralFixtureContext = (opts: CometCollateralOpts = {}): Fi
     const cusdcV3 = <CometInterface>fix.cusdcV3
     const { wcusdcV3, usdc } = fix
 
-    if (collateralOpts.erc20 === undefined) {
-      collateralOpts.erc20 = fix.wcusdcV3.address
-    }
+    collateralOpts.erc20 = fix.wcusdcV3.address
 
     const collateral = await deployCollateral(collateralOpts)
     return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc }

@@ -74,6 +74,7 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<CToke
   const CTokenV3CollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CTokenV3Collateral'
   )
+  console.log('deployment options', opts)
   const collateral = <CTokenV3Collateral>await CTokenV3CollateralFactory.deploy(
     {
       erc20: opts.erc20,
