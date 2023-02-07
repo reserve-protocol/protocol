@@ -39,6 +39,7 @@ library ThrottleLib {
         uint256 supply,
         int256 amount
     ) internal {
+        // untestable: amtRate will always be greater > 0 due to previous validations
         if (throttle.params.amtRate == 0 && throttle.params.pctRate == 0) return;
 
         // Calculate hourly limit
