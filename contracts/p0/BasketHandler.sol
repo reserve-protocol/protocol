@@ -383,6 +383,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             else if (rounding == RoundingMode.CEIL) shiftDelta += FIX_ONE - 1;
 
             if (shiftDelta < rawDelta) return FIX_MAX;
+            if (shiftDelta / FIX_ONE > FIX_MAX) return FIX_MAX;
 
             // return _div(rawDelta, FIX_ONE, rounding)
             return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
