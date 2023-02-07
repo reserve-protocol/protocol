@@ -1383,6 +1383,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
     })
 
+    it('Should not mint if paused', async () => {
+      await main.connect(owner).pause()
+
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+    })
+
+    it('Should not mint if frozen', async () => {
+      await main.connect(owner).freezeShort()
+
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+    })
+
     it('Should not allow setBasketsNeeded to set BU exchange rate to outside [1e-9, 1e9]', async () => {
       // setBasketsNeeded()
       await whileImpersonating(backingManager.address, async (signer) => {
