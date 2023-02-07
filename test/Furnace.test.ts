@@ -162,7 +162,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Do Melt #fast', () => {
+  describe('Do Melt', () => {
     beforeEach(async () => {
       // Approvals for issuance
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -181,17 +181,17 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr2).issue(issueAmount)
     })
 
-    it('Should not melt if paused', async () => {
+    it('Should not melt if paused #fast', async () => {
       await main.connect(owner).pause()
       await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
     })
 
-    it('Should not melt if frozen', async () => {
+    it('Should not melt if frozen #fast', async () => {
       await main.connect(owner).freezeShort()
       await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
     })
 
-    it('Should not melt any funds in the initial block', async () => {
+    it('Should not melt any funds in the initial block #fast', async () => {
       const hndAmt: BigNumber = bn('2e18')
 
       // Set automine to false for multiple transactions in one block
@@ -214,7 +214,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await hre.network.provider.send('evm_setAutomine', [true])
     })
 
-    it('Should not melt if no funds available', async () => {
+    it('Should not melt if no funds available #fast', async () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
@@ -229,7 +229,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(0)
     })
 
-    it('Should melt 0 for first period, even if funds available', async () => {
+    it('Should melt 0 for first period, even if funds available #fast', async () => {
       const hndAmt: BigNumber = bn('10e18')
 
       // Transfer
@@ -251,7 +251,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
     })
 
-    it('Should allow melt - one period', async () => {
+    it('Should allow melt - one period #fast', async () => {
       const hndAmt: BigNumber = bn('10e18')
 
       // Transfer
@@ -353,7 +353,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt.sub(error))
     })
 
-    it('Should allow melt - two periods, one at a time', async () => {
+    it('Should allow melt - two periods, one at a time #fast', async () => {
       const hndAmt: BigNumber = bn('10e18')
 
       // Transfer
@@ -392,7 +392,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt2)
     })
 
-    it('Should melt before updating the ratio', async () => {
+    it('Should melt before updating the ratio #fast', async () => {
       const hndAmt: BigNumber = bn('10e18')
 
       // Transfer
