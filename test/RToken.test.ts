@@ -4,7 +4,7 @@ import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { IConfig, ThrottleParams } from '../common/configuration'
+import { IConfig, ThrottleParams, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
   CollateralStatus,
@@ -349,6 +349,31 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn('0'))
+    })
+
+    it('Should not allow overflow issuance -- regression test for C4 truncation bug', async function () {
+      // Max out issuance throttle
+      await rToken
+        .connect(owner)
+        .setIssuanceThrottleParams({ amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 })
+
+      // Try to issue
+      await expect(rToken.connect(addr1).issue(MAX_THROTTLE_AMT_RATE.add(1))).to.be.revertedWith(
+        'supply change throttled'
+      )
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(0)
+      expect(await rToken.basketsNeeded()).to.equal(0)
+
+      // Issue under limit, ensure correct number of baskets is set and we do not overflow
+      await Promise.all(tokens.map((t) => t.mint(addr1.address, MAX_THROTTLE_AMT_RATE)))
+      await Promise.all(
+        tokens.map((t) => t.connect(addr1).approve(rToken.address, MAX_THROTTLE_AMT_RATE))
+      )
+      await rToken.connect(addr1).issue(MAX_THROTTLE_AMT_RATE)
+      expect(await rToken.totalSupply()).to.equal(MAX_THROTTLE_AMT_RATE)
+      expect(await rToken.basketsNeeded()).to.equal(MAX_THROTTLE_AMT_RATE)
     })
 
     it('Should revert if user did not provide approval for Token transfer', async function () {

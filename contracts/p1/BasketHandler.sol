@@ -368,6 +368,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             high256 += safeMul(qty, highP, RoundingMode.ROUND);
         }
 
+        // safe downcast: FIX_MAX is type(uint192).max
         low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
         high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
     }
@@ -413,6 +414,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             //      a must be between 1e19 & 1e20 in order for b in (C) to be uint192,
             //      but a would have to be < 1e18 in order for (A) to overflow
             if (shiftDelta < rawDelta) return FIX_MAX;
+
+            // return FIX_MAX if return result would truncate
+            if (shiftDelta / FIX_ONE > FIX_MAX) return FIX_MAX;
 
             // return _div(rawDelta, FIX_ONE, rounding)
             return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
