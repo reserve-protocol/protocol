@@ -27,7 +27,7 @@ import { useEnv } from '#/utils/env'
 const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let owner: SignerWithAddress

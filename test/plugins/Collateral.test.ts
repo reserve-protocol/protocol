@@ -52,7 +52,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
-const describeGas = process.env.REPORT_GAS ? describe : describe.skip
+const describeGas = process.env.REPORT_GAS ? describe.only : describe.skip
 
 describe('Collateral contracts', () => {
   let owner: SignerWithAddress
