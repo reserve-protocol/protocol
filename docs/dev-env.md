@@ -45,9 +45,9 @@ You should also setup `slither`. The [Trail of Bits tools][tob-suite] require so
 # Install solc-select and slither
 pip3 install solc-select slither-analyzer
 
-# Install and use solc version 0.8.9
-solc-select install 0.8.9
-solc-select use 0.8.9
+# Install and use solc version 0.8.17
+solc-select install 0.8.17
+solc-select use 0.8.17
 
 # Double-check that your slither version is at least 0.8.3!
 hash -r && slither --version

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 // solhint-disable func-name-mixedcase func-visibility
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type uint192
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>
@@ -65,7 +65,7 @@ RoundingMode constant CEIL = RoundingMode.CEIL;
 
 /* @dev Solidity 0.8.x only allows you to change one of type or size per type conversion.
    Thus, all the tedious-looking double conversions like uint256(uint256 (foo))
-   See: https://docs.soliditylang.org/en/v0.8.9/080-breaking-changes.html#new-restrictions
+   See: https://docs.soliditylang.org/en/v0.8.17/080-breaking-changes.html#new-restrictions
  */
 
 /// Explicitly convert a uint256 to a uint192. Revert if the input is out of bounds.

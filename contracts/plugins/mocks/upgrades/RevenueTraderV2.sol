@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "../../../p1/RevenueTrader.sol";
 
