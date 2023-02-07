@@ -12,7 +12,7 @@ contract InvalidFiatCollateral is FiatCollateral {
     constructor(CollateralConfig memory config) FiatCollateral(config) {}
 
     // Mock price function, reverts with specific error or runs out of gas
-    function price() public view virtual returns (uint192, uint192) {
+    function price() public view virtual override(Asset, IAsset) returns (uint192, uint192) {
         if (simplyRevert) {
             revert("errormsg"); // Revert with no reason
         } else {

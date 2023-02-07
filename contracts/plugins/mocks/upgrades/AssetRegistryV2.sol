@@ -10,7 +10,7 @@ contract AssetRegistryP1V2 is AssetRegistryP1 {
         newValue = newValue_;
     }
 
-    function version() public pure override returns (string memory) {
+    function version() public pure override(Versioned, IVersioned) returns (string memory) {
         return "2.0.0";
     }
 }

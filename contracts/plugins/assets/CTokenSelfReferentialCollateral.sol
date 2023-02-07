@@ -83,7 +83,7 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
 
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @dev delegatecall
-    function claimRewards() external virtual override {
+    function claimRewards() external virtual override(Asset, IRewardable) {
         IERC20 comp = IERC20(comptroller.getCompAddress());
         uint256 oldBal = comp.balanceOf(address(this));
         comptroller.claimComp(address(this));
