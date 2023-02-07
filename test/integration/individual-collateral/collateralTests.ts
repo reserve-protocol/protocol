@@ -65,6 +65,23 @@ export enum CollateralStatus {
   DISABLED,
 }
 
+export const resetFork = async () => {
+  // Need to reset state since running the whole test suites to all
+  // test cases in this file to fail. Strangely, all test cases
+  // pass when running just this file alone.
+  await hre.network.provider.request({
+    method: 'hardhat_reset',
+    params: [
+      {
+        forking: {
+          jsonRpcUrl: process.env.MAINNET_RPC_URL,
+          blockNumber: 15850930,
+        },
+      },
+    ],
+  })
+}
+
 export default function fn<X extends CollateralFixtureContext>(fixtures: CollateralTestSuiteFixtures<X>) {
     const {
         oracleError,
@@ -128,9 +145,6 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
             let wallet: Wallet
             let chainId: number
         
-            let usdc: ERC20Mock
-            let wcusdcV3: CusdcV3Wrapper
-            let cusdcV3: CometInterface
             let collateral: CTokenV3Collateral
             let chainlinkFeed: MockV3Aggregator
         
@@ -151,7 +165,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
               ;(ctx = await loadFixture(
                 makeCollateralFixtureContext({})
               ))
-              // ;({ collateral, chainlinkFeed } = ctx)
+              ;({ chainlinkFeed, collateral } = ctx)
             })
         
             // describe('functions', () => {
