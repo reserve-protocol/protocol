@@ -15,12 +15,15 @@ import "./mixins/Component.sol";
  * An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
 contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
+    using FixLib for uint192;
     using ThrottleLib for ThrottleLib.Throttle;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint256 public constant MIN_THROTTLE_RATE_AMT = 1e18; // {qRTok}
     uint256 public constant MAX_THROTTLE_RATE_AMT = 1e48; // {qRTok}
     uint192 public constant MAX_THROTTLE_PCT_AMT = 1e18; // {qRTok}
+    uint192 public constant MIN_EXCHANGE_RATE = 1e9; // {BU/rTok}
+    uint192 public constant MAX_EXCHANGE_RATE = 1e27; // {BU/rTok}
 
     /// The mandate describes what goals its governors should try to achieve. By succinctly
     /// explaining the RToken’s purpose and what the RToken is intended to do, it provides common
@@ -121,10 +124,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // amtBaskets: the BU change to be recorded by this issuance
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        // Downcast is safe because an actual quantity of qBUs fits in uint192
-        uint192 amtBaskets = uint192(
-            supply > 0 ? mulDiv256(basketsNeeded, amount, supply, CEIL) : amount
-        );
+        // revert-on-overflow provided by FixLib functions
+        uint192 amtBaskets = supply > 0
+            ? basketsNeeded.muluDivu(amount, supply, CEIL)
+            : _safeWrap(amount);
         emit Issuance(issuer, recipient, amount, amtBaskets);
 
         (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(
@@ -207,7 +210,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         // downcast is safe: amount < totalSupply and basketsNeeded < 1e57 < 2^190 (just barely)
-        uint192 basketsRedeemed = uint192(mulDiv256(basketsNeeded, amount, supply));
+        uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, supply); // FLOOR
         emit Redemption(redeemer, recipient, amount, basketsRedeemed);
 
         (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(
@@ -363,8 +366,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
         uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
 
-        // 1e9 = FIX_ONE / 1e9; 1e27 = FIX_ONE * 1e9
-        require(uint192(low) >= 1e9 && uint192(high) <= 1e27, "BU rate out of range");
+        // here we take advantage of an implicit upcast from uint192 exchange rates
+        require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
     }
 
     /**

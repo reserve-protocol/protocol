@@ -28,6 +28,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     uint256 public constant MIN_THROTTLE_RATE_AMT = 1e18; // {qRTok}
     uint256 public constant MAX_THROTTLE_RATE_AMT = 1e48; // {qRTok}
     uint192 public constant MAX_THROTTLE_PCT_AMT = 1e18; // {qRTok}
+    uint192 public constant MIN_EXCHANGE_RATE = 1e9; // {BU/rTok}
+    uint192 public constant MAX_EXCHANGE_RATE = 1e27; // {BU/rTok}
 
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
     string public mandate;
@@ -89,7 +91,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (totalSupply() > 0) // {BU}
-            ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
+            ? basketsNeeded.muluDivu(amount, totalSupply(), CEIL) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
         (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(baskets, CEIL);
@@ -267,16 +269,11 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         uint256 supply = totalSupply();
         if (supply == 0) return;
 
-        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply;
-        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply;
+        uint256 low = mulDiv256(FIX_ONE_256, basketsNeeded, supply); // {BU/tok}
+        uint256 high = mulDiv256(FIX_ONE_256, basketsNeeded, supply, CEIL); // {BU/tok}
 
-        // We can't assume we can downcast to uint192 safely. Note that the
-        // uint192 check below is redundant but this is P0 so we keep it.
         require(
-            low <= type(uint192).max &&
-                high <= type(uint192).max &&
-                uint192(low) >= FIX_ONE / 1e9 &&
-                uint192(high) <= FIX_ONE * 1e9,
+            _safeWrap(low).gte(MIN_EXCHANGE_RATE) && _safeWrap(high).lte(MAX_EXCHANGE_RATE),
             "BU rate out of range"
         );
     }

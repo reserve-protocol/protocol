@@ -351,6 +351,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             high256 += safeMul(qty, highP, RoundingMode.ROUND);
         }
 
+        // safe downcast: FIX_MAX is type(uint192).max
         low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
         high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
     }

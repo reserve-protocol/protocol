@@ -415,7 +415,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             //      but a would have to be < 1e18 in order for (A) to overflow
             if (shiftDelta < rawDelta) return FIX_MAX;
 
-            // return FIX_MAX if return result would exceed it
+            // return FIX_MAX if return result would truncate
             if (shiftDelta / FIX_ONE > FIX_MAX) return FIX_MAX;
 
             // return _div(rawDelta, FIX_ONE, rounding)
