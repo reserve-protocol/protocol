@@ -72,14 +72,13 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         uint256 supply = totalSupply();
         if (supply == 0) return;
 
-        // Note: These are D18s, even though they are uint256s. This is because
-        // we cannot assume we stay inside our valid range here, as that is what
-        // we are checking in the first place
-        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
-        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
+        uint256 low = mulDiv256(FIX_ONE_256, basketsNeeded, supply); // {BU/tok}
+        uint256 high = mulDiv256(FIX_ONE_256, basketsNeeded, supply, CEIL); // {BU/tok}
 
-        // here we take advantage of an implicit upcast from uint192 exchange rates
-        require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
+        require(
+            _safeWrap(low).gte(MIN_EXCHANGE_RATE) && _safeWrap(high).lte(MAX_EXCHANGE_RATE),
+            "BU rate out of range"
+        );
     }
 
     /// Issue an RToken with basket collateral
