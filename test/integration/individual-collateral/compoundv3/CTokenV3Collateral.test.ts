@@ -7,7 +7,7 @@ import {
   CTokenV3Collateral,
   MockV3Aggregator,
   ERC20Mock,
-  CometInterface,
+  CometInterface
 } from '../../../../typechain'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -38,6 +38,8 @@ import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48, MAX_UINT192 } from '../../../../common/constants'
+
+const { getContractAt } = hre.ethers
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
@@ -149,6 +151,40 @@ describeFork('CTokenV3Collateral', () => {
       ;({ usdc, wcusdcV3, cusdcV3, collateral, chainlinkFeed } = await loadFixture(
         makeCollateral()
       ))
+    })
+
+    describe('functions', () => {
+      // unskip once rewards are turned on
+      it.skip('claims rewards', async () => {
+        const balance = bn('100e6')
+        await allocateUSDC(bob.address, balance)
+        await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
+        await cusdcV3.connect(bob).supply(usdc.address, balance)
+        await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
+        await wcusdcV3.connect(bob).depositTo(bob.address, ethers.constants.MaxUint256)
+        await wcusdcV3.connect(bob).transfer(collateral.address, balance)
+
+        await advanceBlocks(1000)
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+        
+        const comp = <ERC20Mock>(await getContractAt('ERC20Mock', COMP))
+        const balBefore = await comp.balanceOf(collateral.address)
+        await collateral.claimRewards()
+        const balAfter = await comp.balanceOf(collateral.address)
+        expect(balAfter).gt(balBefore)
+      })
+
+      it('returns the correct bal', async () => {
+        const balance = bn('100e6')
+        await allocateUSDC(bob.address, balance)
+        await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
+        await cusdcV3.connect(bob).supply(usdc.address, balance)
+        await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
+        await wcusdcV3.connect(bob).depositTo(bob.address, ethers.constants.MaxUint256)
+
+        const bobBal = await collateral.bal(bob.address)
+        expect(bobBal).to.closeTo(balance.mul(bn('1e12')), bn('50e12'))
+      })
     })
 
     describe('prices', () => {
@@ -412,6 +448,24 @@ describeFork('CTokenV3Collateral', () => {
         await invalidChainlinkFeed.setSimplyRevert(false)
         await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
         expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+      })
+
+      it('enters DISABLED state if reserves go negative', async () => {
+        const { collateral, cusdcV3 } = await loadFixture(
+          makeCollateralCometMock({ reservesThresholdDisabled: 1000n })
+        )
+
+        // Check initial state
+        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+        // cUSDC/Comet's reserves gone down to 19% of target reserves
+        await cusdcV3.setReserves(-1)
+
+        await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
+        // State remains the same
+        expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
       })
     })
   })
