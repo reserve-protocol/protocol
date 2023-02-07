@@ -131,6 +131,14 @@ describe('FacadeRead contract', () => {
         bn('40000000000e18')
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
+
+      // Redeem all RTokens
+      await rToken.connect(addr1).redeem(issueAmount, true)
+
+      // With 0 baskets needed - Returns correct value
+      expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
+        bn('40000000000e18')
+      )
     })
 
     it('Should return backingOverview correctly', async () => {
