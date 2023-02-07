@@ -15,6 +15,8 @@ import {
     MockV3Aggregator,
     ERC20Mock,
     CometInterface,
+    ICollateral,
+    IERC20
   } from '../../../typechain'
 import {
   advanceTime,
@@ -31,8 +33,9 @@ const describeFork = useEnv('FORK') ? describe : describe.skip
 const createFixtureLoader = waffle.createFixtureLoader
 
 export interface CollateralFixtureContext {
-  collateral: CTokenV3Collateral
+  collateral: ICollateral
   chainlinkFeed: MockV3Aggregator
+  tok: IERC20
 }
 
 export interface CollateralOpts {
@@ -48,13 +51,14 @@ export interface CollateralOpts {
     delayUntilDefault?: BigNumberish
 }
 
-type DeployCollateralFunc = (opts: CollateralOpts) => Promise<BaseContract>
+type DeployCollateralFunc = (opts: CollateralOpts) => Promise<ICollateral>
 type MakeCollateralFixtureFunc<T extends CollateralFixtureContext> = (opts: CollateralOpts) => Fixture<T>
 export type MintCollateralFunc<T extends CollateralFixtureContext> = (ctx: T, amount: BigNumberish, user: SignerWithAddress) => Promise<void>
 interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext> {
     oracleError: BigNumberish
     deployCollateral: DeployCollateralFunc
     collateralSpecificConstructorTests: () => void
+    collateralSpecificStatusTests: () => void
     makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
     mintCollateralTo: MintCollateralFunc<T>
 }
@@ -87,6 +91,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
         oracleError,
         deployCollateral,
         collateralSpecificConstructorTests,
+        collateralSpecificStatusTests,
         makeCollateralFixtureContext,
         mintCollateralTo
     } = fixtures
@@ -145,7 +150,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
             let wallet: Wallet
             let chainId: number
         
-            let collateral: CTokenV3Collateral
+            let collateral: ICollateral
             let chainlinkFeed: MockV3Aggregator
         
             let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -291,190 +296,113 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
               })
             })
         
-            // describe('status', () => {
-            //   it('maintains status in normal situations', async () => {
-            //     // Check initial state
-            //     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            //     expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+            describe('status', () => {
+              it('maintains status in normal situations', async () => {
+                // Check initial state
+                expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+                expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         
-            //     // Force updates (with no changes)
-            //     await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+                // Force updates (with no changes)
+                await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
         
-            //     // State remains the same
-            //     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            //     expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-            //   })
+                // State remains the same
+                expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+                expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+              })
         
-            //   it('soft-defaults when reference unit depegs beyond threshold', async () => {
-            //     const { collateral, chainlinkFeed } = await loadFixture(makeCollateralCometMock())
-            //     const delayUntilDefault = await collateral.delayUntilDefault()
+              it('soft-defaults when reference unit depegs beyond threshold', async () => {
+                const delayUntilDefault = await collateral.delayUntilDefault()
         
-            //     // Check initial state
-            //     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            //     expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+                // Check initial state
+                expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+                expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         
-            //     // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-            //     const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
-            //     await updateAnswerTx.wait()
+                // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
+                const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+                await updateAnswerTx.wait()
         
-            //     // Set next block timestamp - for deterministic result
-            //     const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-            //     await setNextBlockTimestamp(nextBlockTimestamp)
-            //     const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+                // Set next block timestamp - for deterministic result
+                const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+                await setNextBlockTimestamp(nextBlockTimestamp)
+                const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
         
-            //     await expect(collateral.refresh())
-            //       .to.emit(collateral, 'CollateralStatusChanged')
-            //       .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-            //     expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-            //     expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+                await expect(collateral.refresh())
+                  .to.emit(collateral, 'CollateralStatusChanged')
+                  .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+                expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+                expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
         
-            //     // Move time forward past delayUntilDefault
-            //     await advanceTime(delayUntilDefault)
-            //     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+                // Move time forward past delayUntilDefault
+                await advanceTime(delayUntilDefault)
+                expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
         
-            //     // Nothing changes if attempt to refresh after default for CTokenV3
-            //     const prevWhenDefault: bigint = (await collateral.whenDefault()).toBigInt()
-            //     await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-            //     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-            //     expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
-            //   })
+                // Nothing changes if attempt to refresh after default for CTokenV3
+                const prevWhenDefault: bigint = (await collateral.whenDefault()).toBigInt()
+                await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+                expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+                expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
+              })
         
-            //   it('soft-defaults when compound reserves are below target reserves iffy threshold', async () => {
-            //     const { collateral, cusdcV3 } = await loadFixture(
-            //       makeCollateralCometMock({
-            //         reservesThresholdIffy: 5000n,
-            //         reservesThresholdDisabled: 1000n,
-            //       })
-            //     )
-            //     const delayUntilDefault = await collateral.delayUntilDefault()
+              // it('hard-defaults when refPerTok() decreases', async () => {
+              //   // Check initial state
+              //   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+              //   expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         
-            //     // Check initial state
-            //     await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-            //     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            //     expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+              //   await mintCollateralTo(ctx, bn('20000e6'), bob)
         
-            //     // cUSDC/Comet's reserves gone down below reservesThresholdIffy
-            //     await cusdcV3.setReserves(4000n)
+              //   await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+              //   // State remains the same
+              //   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+              //   expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         
-            //     const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-            //     await setNextBlockTimestamp(nextBlockTimestamp)
-            //     const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+              //   // Force refresh to get new reference price from exchange rate
+              //   await advanceTime(1000)
+              //   const oldExchangeRate = await wcusdcV3.exchangeRate()
+              //   await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
         
-            //     await expect(collateral.refresh())
-            //       .to.emit(collateral, 'CollateralStatusChanged')
-            //       .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-            //     expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-            //     expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+              //   // Withdraw ~99% of supply so that exchange rate will go down
+              //   await wcusdcV3.connect(bob).withdraw(bn('19900e6'))
+              //   expect(oldExchangeRate).to.be.gt(await wcusdcV3.exchangeRate())
         
-            //     // Move time forward past delayUntilDefault
-            //     await advanceTime(delayUntilDefault)
-            //     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+              //   // Collateral defaults due to refPerTok() going down
+              //   await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
+              //   expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+              //   expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
+              // })
+      
+              it('enters IFFY state when price becomes stale', async () => {
+                const oracleTimeout = await collateral.oracleTimeout()
+                await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+                await collateral.refresh()
+                expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+              })
         
-            //     // Nothing changes if attempt to refresh after default for CTokenV3
-            //     const prevWhenDefault: bigint = (await collateral.whenDefault()).toBigInt()
-            //     await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-            //     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-            //     expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
-            //   })
+              it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+                const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+                  'InvalidMockV3Aggregator'
+                )
+                const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
+                  await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
+                )
         
-            //   it('hard-defaults when refPerTok() decreases', async () => {
-            //     // Check initial state
-            //     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            //     expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+                const invalidCollateral = await deployCollateral({
+                  erc20: ctx.tok.address,
+                  chainlinkFeed: invalidChainlinkFeed.address,
+                })
         
-            //     await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+                // Reverting with no reason
+                await invalidChainlinkFeed.setSimplyRevert(true)
+                await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+                expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
         
-            //     await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-            //     // State remains the same
-            //     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            //     expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-        
-            //     // Force refresh to get new reference price from exchange rate
-            //     await advanceTime(1000)
-            //     const oldExchangeRate = await wcusdcV3.exchangeRate()
-            //     await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-        
-            //     // Withdraw ~99% of supply so that exchange rate will go down
-            //     await wcusdcV3.connect(bob).withdraw(bn('19900e6'))
-            //     expect(oldExchangeRate).to.be.gt(await wcusdcV3.exchangeRate())
-        
-            //     // Collateral defaults due to refPerTok() going down
-            //     await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
-            //     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-            //     expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-            //   })
-        
-            //   it('hard-defaults when reserves threshold is at disabled levels', async () => {
-            //     const { collateral, cusdcV3 } = await loadFixture(
-            //       makeCollateralCometMock({ reservesThresholdDisabled: 1000n })
-            //     )
-        
-            //     // Check initial state
-            //     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            //     expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-        
-            //     // cUSDC/Comet's reserves gone down to 19% of target reserves
-            //     await cusdcV3.setReserves(900n)
-        
-            //     await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
-            //     // State remains the same
-            //     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-            //     expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-            //   })
-        
-            //   it('enters IFFY state when price becomes stale', async () => {
-            //     await setNextBlockTimestamp((await getLatestBlockTimestamp()) + ORACLE_TIMEOUT.toNumber())
-            //     await collateral.refresh()
-            //     expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-            //   })
-        
-            //   it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
-            //     const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-            //       'InvalidMockV3Aggregator'
-            //     )
-            //     const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
-            //       await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
-            //     )
-        
-            //     const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
-            //       await ethers.getContractFactory('CusdcV3Wrapper')
-            //     )
-            //     const wcusdcV3 = <CusdcV3Wrapper>await CusdcV3WrapperFactory.deploy(CUSDC_V3, REWARDS, COMP)
-        
-            //     const invalidCollateral = await deployCollateral({
-            //       erc20: wcusdcV3.address,
-            //       chainlinkFeed: invalidChainlinkFeed.address,
-            //     })
-        
-            //     // Reverting with no reason
-            //     await invalidChainlinkFeed.setSimplyRevert(true)
-            //     await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-            //     expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-        
-            //     // Runnning out of gas (same error)
-            //     await invalidChainlinkFeed.setSimplyRevert(false)
-            //     await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-            //     expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-            //   })
-        
-            //   it('enters DISABLED state if reserves go negative', async () => {
-            //     const { collateral, cusdcV3 } = await loadFixture(
-            //       makeCollateralCometMock({ reservesThresholdDisabled: 1000n })
-            //     )
-        
-            //     // Check initial state
-            //     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            //     expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-        
-            //     // cUSDC/Comet's reserves gone down to 19% of target reserves
-            //     await cusdcV3.setReserves(-1)
-        
-            //     await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
-            //     // State remains the same
-            //     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-            //     expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-            //   })
-            // })
+                // Runnning out of gas (same error)
+                await invalidChainlinkFeed.setSimplyRevert(false)
+                await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+                expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+              })
+
+              describe('collatral-specific tests', collateralSpecificStatusTests)
+            })
           })
     })
 }
