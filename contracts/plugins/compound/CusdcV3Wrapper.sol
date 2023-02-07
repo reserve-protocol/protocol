@@ -184,12 +184,6 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         return (balance * EXP_SCALE) / totalSupply_;
     }
 
-    function cometRate() public view returns (uint256) {
-        // BASE_INDEX_SCALE = 1e15
-        uint256 totalSupplyBase = underlyingComet.totalsBasic().totalSupplyBase;
-        return (underlyingComet.totalSupply() * 1e15) / totalSupplyBase;
-    }
-
     function accrue() public {
         underlyingComet.accrueAccount(address(underlyingComet));
     }
