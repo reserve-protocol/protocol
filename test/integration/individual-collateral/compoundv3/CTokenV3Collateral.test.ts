@@ -7,7 +7,7 @@ import {
   CTokenV3Collateral,
   MockV3Aggregator,
   ERC20Mock,
-  CometInterface
+  CometInterface,
 } from '../../../../typechain'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -166,8 +166,8 @@ describeFork('CTokenV3Collateral', () => {
 
         await advanceBlocks(1000)
         await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
-        
-        const comp = <ERC20Mock>(await getContractAt('ERC20Mock', COMP))
+
+        const comp = <ERC20Mock>await getContractAt('ERC20Mock', COMP)
         const balBefore = await comp.balanceOf(collateral.address)
         await collateral.claimRewards()
         const balAfter = await comp.balanceOf(collateral.address)
