@@ -88,6 +88,10 @@ describe('Wrapped CUSDCv3', () => {
 
       expect(await wcusdcV3.balanceOf(charles.address)).to.eq(0)
       await cusdcV3AsB.allow(wcusdcV3.address, true)
+      await expect(wcusdcV3
+        .connect(don)
+        .depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
+        ).revertedWith('Unauthorized()')
       await wcusdcV3AsB.connect(bob).allow(don.address, true)
       await wcusdcV3
         .connect(don)
@@ -300,7 +304,14 @@ describe('Wrapped CUSDCv3', () => {
     })
   })
 
-  describe('accrueAccount', () => {
+  describe('accure / accrueAccount', () => {
+    it('accrues internally for the comet', async () => {
+      const initAccrueTime = (await cusdcV3.totalsBasic()).lastAccrualTime
+      await wcusdcV3.accrue();
+      const endAccrueTime = (await cusdcV3.totalsBasic()).lastAccrualTime
+      expect(endAccrueTime).gt(initAccrueTime)
+    })
+
     it('accrues rewards over time', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
       expect(await wcusdcV3.baseTrackingAccrued(bob.address)).to.eq(0)
@@ -324,6 +335,11 @@ describe('Wrapped CUSDCv3', () => {
   })
 
   describe('underlying balance', () => {
+    it('returns the correct amount of decimals', async () => {
+      const decimals = await wcusdcV3.decimals()
+      expect(decimals).to.equal(6)
+    })
+    
     it('returns underlying balance of user which includes revenue', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
       const wrappedBalance = await wcusdcV3.balanceOf(bob.address)
