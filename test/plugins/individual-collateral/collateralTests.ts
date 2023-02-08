@@ -27,12 +27,12 @@ export default function fn<X extends CollateralFixtureContext>(
     deployCollateral,
     collateralSpecificConstructorTests,
     collateralSpecificStatusTests,
+    beforeEachRewardsTest,
     makeCollateralFixtureContext,
     mintCollateralTo,
     reduceRefPerTok,
     itClaimsRewards,
     resetFork,
-    beforeFunctionTests,
     collateralName
   } = fixtures
 
@@ -114,24 +114,6 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('functions', () => {
-        beforeEach(async () => {
-          await beforeFunctionTests(ctx)
-        })
-
-        itClaimsRewards('claims rewards', async () => {
-          const amount = bn('101e6')
-          await mintCollateralTo(ctx, amount, alice, collateral.address)
-
-          await advanceBlocks(1000)
-          // await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
-          await advanceTime(12000)
-
-          const balBefore = await ctx.rewardToken.balanceOf(collateral.address)
-          await collateral.claimRewards()
-          const balAfter = await ctx.rewardToken.balanceOf(collateral.address)
-          expect(balAfter).gt(balBefore)
-        })
-
         it('returns the correct bal', async () => {
           const amount = bn('1000e6')
           await mintCollateralTo(ctx, amount, alice, alice.address)
@@ -141,6 +123,30 @@ export default function fn<X extends CollateralFixtureContext>(
             amount.mul(bn(10).pow(18 - ctx.tokDecimals)),
             bn('50').pow(18 - ctx.tokDecimals)
           )
+        })
+      })
+
+      describe('rewards', () => {
+        beforeEach(async () => {
+          await beforeEachRewardsTest(ctx)
+        })
+
+        it('does not revert', async () => {
+          await collateral.claimRewards()
+        })
+
+        it('claims rewards', async () => {  
+          const amount = bn('20000e6')
+          await mintCollateralTo(ctx, amount, alice, collateral.address)
+      
+          await advanceBlocks(1000)
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+      
+          const balBefore = await ctx.rewardToken.balanceOf(collateral.address)
+          await expect(collateral.claimRewards())
+            .to.emit(collateral, 'RewardsClaimed')
+          const balAfter = await ctx.rewardToken.balanceOf(collateral.address)
+          expect(balAfter).gt(balBefore)
         })
       })
 

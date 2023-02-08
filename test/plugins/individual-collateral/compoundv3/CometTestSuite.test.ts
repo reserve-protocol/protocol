@@ -205,10 +205,6 @@ const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
   await ctx.wcusdcV3.connect(ctx.alice as SignerWithAddress).withdraw(bn('19900e6'))
 }
 
-const beforeFunctionTests = async (ctx: CometCollateralFixtureContext) => {
-  await enableRewardsAccrual(ctx.cusdcV3)
-}
-
 /*
   Define collateral-specific tests
 */
@@ -297,6 +293,10 @@ const collateralSpecificStatusTests = () => {
   })
 }
 
+const beforeEachRewardsTest = async (ctx: CometCollateralFixtureContext) => {
+  await enableRewardsAccrual(ctx.cusdcV3)
+}
+
 /*
   Run the test suite
 */
@@ -305,12 +305,12 @@ const opts = {
   deployCollateral,
   collateralSpecificConstructorTests,
   collateralSpecificStatusTests,
+  beforeEachRewardsTest,
   makeCollateralFixtureContext,
   mintCollateralTo,
   reduceRefPerTok,
   itClaimsRewards: it.skip,
   resetFork,
-  beforeFunctionTests,
   collateralName: "CompoundV3USDC"
 }
 
