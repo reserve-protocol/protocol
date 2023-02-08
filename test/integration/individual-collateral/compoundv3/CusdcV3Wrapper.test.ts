@@ -1,9 +1,10 @@
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import hre, { ethers, network, waffle } from 'hardhat'
+import { useEnv } from '#/utils/env'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
-import { allocateUSDC, COMP, enableRewardsAccrual, mintWcUSDC } from './helpers'
-import { cusdcFixture } from './fixtures'
+import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
+import { COMP } from './constants'
 import { ERC20Mock, CometInterface, CusdcV3Wrapper } from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { getChainId } from '../../../../common/blockchain-utils'
@@ -12,7 +13,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('Wrapped CUSDCv3', () => {
+const describeFork = useEnv('FORK') ? describe : describe.skip
+
+describeFork('Wrapped CUSDCv3', () => {
   let bob: SignerWithAddress
   let charles: SignerWithAddress
   let don: SignerWithAddress
@@ -26,6 +29,7 @@ describe('Wrapped CUSDCv3', () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
 
   before(async () => {
+    await resetFork()
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
 
@@ -37,7 +41,7 @@ describe('Wrapped CUSDCv3', () => {
 
   beforeEach(async () => {
     ;[, bob, charles, don] = await ethers.getSigners()
-    ;({ usdc, wcusdcV3, cusdcV3 } = await loadFixture(cusdcFixture))
+    ;({ usdc, wcusdcV3, cusdcV3 } = await loadFixture(makewCSUDC))
   })
 
   describe('deposit', () => {
@@ -138,7 +142,7 @@ describe('Wrapped CUSDCv3', () => {
     })
 
     it('user that deposits must have same baseTrackingIndex as this Token in Comet', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       expect((await cusdcV3.callStatic.userBasic(wcusdcV3.address)).baseTrackingIndex).to.equal(
         await wcusdcV3.baseTrackingIndex(bob.address)
       )
@@ -178,12 +182,10 @@ describe('Wrapped CUSDCv3', () => {
     it('withdraws to own account', async () => {
       const wcusdcV3AsB = wcusdcV3.connect(bob)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
-      await expect(wcusdcV3AsB.withdraw(ethers.constants.MaxUint256)).to.changeTokenBalance(
-        wcusdcV3,
-        bob,
-        0
-      )
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+      await wcusdcV3AsB.withdraw(ethers.constants.MaxUint256)
+      const bal = await wcusdcV3.balanceOf(bob.address)
+      await expect(bal).to.eq(0)
 
       expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(bn('20000e6'), 50)
     })
@@ -191,7 +193,7 @@ describe('Wrapped CUSDCv3', () => {
     it('withdraws to a different account', async () => {
       const wcusdcV3AsB = wcusdcV3.connect(bob)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await wcusdcV3AsB.withdrawTo(don.address, ethers.constants.MaxUint256)
       expect(await cusdcV3.balanceOf(don.address)).to.be.closeTo(bn('20000e6'), 50)
       expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(bn(0), 50)
@@ -201,7 +203,7 @@ describe('Wrapped CUSDCv3', () => {
     it('withdraws from a different account', async () => {
       const wcusdcV3AsB = wcusdcV3.connect(bob)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
 
       await expect(
         wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, bn('20000e6'))
@@ -220,7 +222,7 @@ describe('Wrapped CUSDCv3', () => {
     it('withdraws all underlying balance via multiple withdrawals', async () => {
       const wcusdcV3AsB = wcusdcV3.connect(bob)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
 
       await advanceTime(1000)
       await wcusdcV3AsB.withdraw(bn('10000e6'))
@@ -233,7 +235,7 @@ describe('Wrapped CUSDCv3', () => {
     it('withdraws 0', async () => {
       const wcusdcV3AsB = wcusdcV3.connect(bob)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await wcusdcV3AsB.withdraw(0)
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('20000e6'))
     })
@@ -241,7 +243,7 @@ describe('Wrapped CUSDCv3', () => {
     it('updates and principals in withdrawn account', async () => {
       const wcusdcV3AsB = wcusdcV3.connect(bob)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await wcusdcV3AsB.withdraw(bn('5000e6'))
 
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('15000e6'))
@@ -253,7 +255,7 @@ describe('Wrapped CUSDCv3', () => {
 
   describe('transfer', () => {
     it('does not transfer without approval', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
 
       await expect(
         wcusdcV3.connect(bob).transferFrom(don.address, bob.address, bn('10000e6'))
@@ -261,8 +263,8 @@ describe('Wrapped CUSDCv3', () => {
     })
 
     it('updates accruals and principals in sender and receiver', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
 
       await enableRewardsAccrual(cusdcV3)
       await advanceTime(1000)
@@ -312,7 +314,7 @@ describe('Wrapped CUSDCv3', () => {
     })
 
     it('accrues rewards over time', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       expect(await wcusdcV3.baseTrackingAccrued(bob.address)).to.eq(0)
       await enableRewardsAccrual(cusdcV3)
       await advanceTime(1000)
@@ -325,7 +327,7 @@ describe('Wrapped CUSDCv3', () => {
     })
 
     it('does not accrue when accruals are not enabled in Comet', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       expect(await wcusdcV3.baseTrackingAccrued(bob.address)).to.eq(0)
 
       await advanceTime(1000)
@@ -340,7 +342,7 @@ describe('Wrapped CUSDCv3', () => {
     })
 
     it('returns underlying balance of user which includes revenue', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       const wrappedBalance = await wcusdcV3.balanceOf(bob.address)
       await advanceTime(1000)
       expect(wrappedBalance).to.equal(await wcusdcV3.balanceOf(bob.address))
@@ -350,7 +352,7 @@ describe('Wrapped CUSDCv3', () => {
         await cusdcV3.balanceOf(wcusdcV3.address)
       )
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
       await advanceTime(1000)
       const totalBalances =
         (await wcusdcV3.underlyingBalanceOf(don.address)).toBigInt() +
@@ -367,7 +369,7 @@ describe('Wrapped CUSDCv3', () => {
 
     it('also accrues account in Comet to ensure that global indices are updated', async () => {
       await enableRewardsAccrual(cusdcV3)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       const oldTrackingSupplyIndex = (await cusdcV3.totalsBasic()).trackingSupplyIndex
 
       await advanceTime(1000)
@@ -385,14 +387,14 @@ describe('Wrapped CUSDCv3', () => {
       await allocateUSDC(bob.address, bn('20000e6'))
       await usdcAsB.approve(cusdcV3.address, ethers.constants.MaxUint256)
       await cusdcV3AsB.supply(usdc.address, bn('20000e6'))
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await advanceBlocks(1)
       await network.provider.send('evm_setAutomine', [true])
 
       // Minting more wcUSDC to other accounts should not affect
       // Bob's underlying balance
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, charles, bn('20000e6'))
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, charles, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
       await advanceTime(100000)
 
       let totalBalances =
@@ -436,7 +438,7 @@ describe('Wrapped CUSDCv3', () => {
     })
 
     it('computes exchange rate based on total underlying balance and total supply of wrapped token', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       const totalSupply = (await wcusdcV3.totalSupply()).toBigInt()
       const underlyingBalance = (await cusdcV3.balanceOf(wcusdcV3.address)).toBigInt()
       expect(await wcusdcV3.exchangeRate()).to.equal(
@@ -447,7 +449,7 @@ describe('Wrapped CUSDCv3', () => {
 
   describe('claiming rewards', () => {
     it('does not claim rewards when user has no permission', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await advanceTime(1000)
       await enableRewardsAccrual(cusdcV3)
       await expect(wcusdcV3.connect(don).claimTo(bob.address, bob.address)).to.be.revertedWith(
@@ -463,7 +465,7 @@ describe('Wrapped CUSDCv3', () => {
     })
 
     it('claims rewards and sends to claimer', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
       expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
       await advanceTime(1000)
@@ -479,8 +481,8 @@ describe('Wrapped CUSDCv3', () => {
     it('claims rewards by participation', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
 
       await enableRewardsAccrual(cusdcV3)
       await advanceTime(1000)
@@ -507,7 +509,7 @@ describe('Wrapped CUSDCv3', () => {
     it('claims no rewards when rewards accrual is not enabled', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await advanceTime(1000)
       await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
       expect(await compToken.balanceOf(bob.address)).to.equal(0)
@@ -515,8 +517,8 @@ describe('Wrapped CUSDCv3', () => {
 
     it('returns reward owed after accrual and claims', async () => {
       await enableRewardsAccrual(cusdcV3)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
 
       await advanceTime(1000)
 
@@ -544,7 +546,7 @@ describe('Wrapped CUSDCv3', () => {
   describe('baseTrackingAccrued', () => {
     it('matches baseTrackingAccrued in cUSDCv3 over time', async () => {
       await enableRewardsAccrual(cusdcV3)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       let wrappedTokenAccrued = await cusdcV3.baseTrackingAccrued(wcusdcV3.address)
       expect(wrappedTokenAccrued).to.equal(await wcusdcV3.baseTrackingAccrued(bob.address))
 
@@ -556,8 +558,8 @@ describe('Wrapped CUSDCv3', () => {
         await wcusdcV3.baseTrackingIndex(bob.address)
       )
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, charles, bn('20000e6'))
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, charles, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
 
       await advanceTime(1000)
 
@@ -580,8 +582,8 @@ describe('Wrapped CUSDCv3', () => {
 
     it('matches baseTrackingAccrued in cUSDCv3 after withdrawals', async () => {
       await enableRewardsAccrual(cusdcV3)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'))
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'))
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
 
       await advanceTime(1000)
       await wcusdcV3.connect(bob).withdrawTo(bob.address, bn('10000e6'))
