@@ -228,24 +228,7 @@ const collateralSpecificConstructorTests = () => {
 }
 
 const collateralSpecificStatusTests = () => {
-  it('enters DISABLED state if reserves go negative', async () => {
-    const mockOpts = { reservesThresholdDisabled: 1000n }
-    const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
-
-    // Check initial state
-    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-    expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-
-    // cUSDC/Comet's reserves gone down to -1
-    await cusdcV3.setReserves(-1)
-
-    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
-    // State remains the same
-    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-    expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-  })
-
-  it('soft-defaults when compound reserves are below target reserves iffy threshold', async () => {
+  it('enters IFFY state when compound reserves are below target reserves iffy threshold', async () => {
     const mockOpts = { reservesThresholdIffy: 5000n, reservesThresholdDisabled: 1000n }
     const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
     const delayUntilDefault = await collateral.delayUntilDefault()
@@ -279,7 +262,7 @@ const collateralSpecificStatusTests = () => {
     expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
   })
 
-  it('hard-defaults when reserves threshold is at disabled levels', async () => {
+  it('enters DISABLED state when reserves threshold is at disabled levels', async () => {
     const mockOpts = { reservesThresholdDisabled: 1000n }
     const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
 
@@ -289,6 +272,23 @@ const collateralSpecificStatusTests = () => {
 
     // cUSDC/Comet's reserves gone down to 19% of target reserves
     await cusdcV3.setReserves(900n)
+
+    await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
+    // State remains the same
+    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
+  })
+
+  it('enters DISABLED state if reserves go negative', async () => {
+    const mockOpts = { reservesThresholdDisabled: 1000n }
+    const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
+
+    // Check initial state
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+    expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+    // cUSDC/Comet's reserves gone down to -1
+    await cusdcV3.setReserves(-1)
 
     await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
     // State remains the same
@@ -310,7 +310,8 @@ const opts = {
   reduceRefPerTok,
   itClaimsRewards: it.skip,
   resetFork,
-  beforeFunctionTests
+  beforeFunctionTests,
+  collateralName: "CompoundV3USDC"
 }
 
 collateralTests(opts)

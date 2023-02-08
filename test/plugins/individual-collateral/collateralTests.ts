@@ -32,12 +32,13 @@ export default function fn<X extends CollateralFixtureContext>(
     reduceRefPerTok,
     itClaimsRewards,
     resetFork,
-    beforeFunctionTests
+    beforeFunctionTests,
+    collateralName
   } = fixtures
 
   before(resetFork)
 
-  describeFork('CTokenV3Collateral', () => {
+  describeFork(`Collateral: ${collateralName}`, () => {
     describe('constructor validation', () => {
       it('validates targetName', async () => {
         await expect(
@@ -248,7 +249,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         })
 
-        it('soft-defaults when reference unit depegs beyond threshold', async () => {
+        it('enters IFFY state when reference unit depegs beyond threshold', async () => {
           const delayUntilDefault = await collateral.delayUntilDefault()
 
           // Check initial state
@@ -269,19 +270,37 @@ export default function fn<X extends CollateralFixtureContext>(
             .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
           expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        })
+
+        it('enters DISABLED state when reference unit depegs for too long', async () => {
+          const delayUntilDefault = await collateral.delayUntilDefault()
+
+          // Check initial state
+          expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+          // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
+          const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+          await updateAnswerTx.wait()
+
+          // Set next block timestamp - for deterministic result
+          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+          await setNextBlockTimestamp(nextBlockTimestamp)
+          await collateral.refresh()
+          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
 
           // Move time forward past delayUntilDefault
           await advanceTime(delayUntilDefault)
           expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
 
-          // Nothing changes if attempt to refresh after default for CTokenV3
+          // Nothing changes if attempt to refresh after default
           const prevWhenDefault: bigint = (await collateral.whenDefault()).toBigInt()
           await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
           expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
           expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
         })
 
-        it('hard-defaults when refPerTok() decreases', async () => {
+        it('enters DISABLED state when refPerTok() decreases', async () => {
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
