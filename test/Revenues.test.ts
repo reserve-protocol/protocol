@@ -329,6 +329,20 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .connect(owner)
           .setDistribution(ZERO_ADDRESS, { rTokenDist: bn(5), rsrDist: bn(5) })
       ).to.be.revertedWith('dest cannot be zero')
+
+      // Cannot set Furnace as beneficiary
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(furnace.address, { rTokenDist: bn(5), rsrDist: bn(5) })
+      ).to.be.revertedWith('destination can not be furnace or strsr directly')
+
+      // Cannot set StRSR as beneficiary
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(stRSR.address, { rTokenDist: bn(5), rsrDist: bn(5) })
+      ).to.be.revertedWith('destination can not be furnace or strsr directly')
     })
 
     it('Should validate number of destinations', async () => {
