@@ -1283,7 +1283,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        NO_PRICE_DATA_FEED
+        NO_PRICE_DATA_FEED,
+        MAX_ORACLE_TIMEOUT
       )
 
       // Non-fiat Collateral with no price should revert
@@ -1308,7 +1309,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        mockChainlinkFeed.address
+        mockChainlinkFeed.address,
+        MAX_ORACLE_TIMEOUT
       )
       await zeroPriceNonFiatCollateral.refresh()
 
@@ -1356,6 +1358,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             delayUntilDefault,
           },
           NO_PRICE_DATA_FEED,
+          MAX_ORACLE_TIMEOUT,
           REVENUE_HIDING,
           compoundMock.address
         )
@@ -1385,6 +1388,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             delayUntilDefault,
           },
           mockChainlinkFeed.address,
+          MAX_ORACLE_TIMEOUT,
           REVENUE_HIDING,
           compoundMock.address
         )
@@ -1572,7 +1576,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        NO_PRICE_DATA_FEED
+        NO_PRICE_DATA_FEED,
+        MAX_ORACLE_TIMEOUT
       )
 
       // Collateral with no price should revert
@@ -1597,12 +1602,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        mockChainlinkFeed.address
+        mockChainlinkFeed.address,
+        MAX_ORACLE_TIMEOUT
       )
       await invalidPriceEURCollateral.refresh()
 
       // Set price = 0
-      const chainlinkFeedAddr = await invalidPriceEURCollateral.uoaPerTargetFeed()
+      const chainlinkFeedAddr = await invalidPriceEURCollateral.targetUnitChainlinkFeed()
       const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
       await v3Aggregator.updateAnswer(bn(0))
 
