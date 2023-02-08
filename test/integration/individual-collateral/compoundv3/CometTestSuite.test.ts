@@ -1,6 +1,11 @@
-import collateralTests from "../collateralTests";
-import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc, CollateralStatus } from '../types'
-import { mintWcUSDC, makewCSUDC, resetFork } from "./helpers";
+import collateralTests from '../collateralTests'
+import {
+  CollateralFixtureContext,
+  CollateralOpts,
+  MintCollateralFunc,
+  CollateralStatus,
+} from '../types'
+import { mintWcUSDC, makewCSUDC, resetFork, enableRewardsAccrual } from './helpers'
 import { ethers } from 'hardhat'
 import { Fixture } from 'ethereum-waffle'
 import { ContractFactory, BigNumberish } from 'ethers'
@@ -13,17 +18,13 @@ import {
   MockV3Aggregator__factory,
   CometMock,
   CometMock__factory,
-  ICollateral
+  ICollateral,
 } from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
 import { expect } from 'chai'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import {
-  advanceTime,
-  getLatestBlockTimestamp,
-  setNextBlockTimestamp,
-} from '../../../utils/time'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../../../utils/time'
 import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -36,7 +37,6 @@ import {
   REWARDS,
   USDC,
 } from './constants'
-
 
 /*
   Define interfaces
@@ -64,18 +64,18 @@ interface CometCollateralOpts extends CollateralOpts {
 */
 
 export const defaultCometCollateralOpts: CometCollateralOpts = {
-    erc20: CUSDC_V3,
-    targetName: ethers.utils.formatBytes32String('USD'),
-    rewardERC20: COMP,
-    priceTimeout: ORACLE_TIMEOUT,
-    chainlinkFeed: USDC_USD_PRICE_FEED,
-    oracleTimeout: ORACLE_TIMEOUT,
-    oracleError: ORACLE_ERROR,
-    maxTradeVolume: MAX_TRADE_VOL,
-    defaultThreshold: DEFAULT_THRESHOLD,
-    delayUntilDefault: DELAY_UNTIL_DEFAULT,
-    reservesThresholdIffy: bn('10000'),
-    reservesThresholdDisabled: bn('5000'),
+  erc20: CUSDC_V3,
+  targetName: ethers.utils.formatBytes32String('USD'),
+  rewardERC20: COMP,
+  priceTimeout: ORACLE_TIMEOUT,
+  chainlinkFeed: USDC_USD_PRICE_FEED,
+  oracleTimeout: ORACLE_TIMEOUT,
+  oracleError: ORACLE_ERROR,
+  maxTradeVolume: MAX_TRADE_VOL,
+  defaultThreshold: DEFAULT_THRESHOLD,
+  delayUntilDefault: DELAY_UNTIL_DEFAULT,
+  reservesThresholdIffy: bn('10000'),
+  reservesThresholdDisabled: bn('5000'),
 }
 
 export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<ICollateral> => {
@@ -103,14 +103,17 @@ export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<
       reservesThresholdDisabled: opts.reservesThresholdDisabled,
     },
     0,
-    {gasLimit: 2000000000}
+    { gasLimit: 2000000000 }
   )
   await collateral.deployed()
 
   return collateral
 }
 
-const makeCollateralFixtureContext = (alice: SignerWithAddress, opts: CometCollateralOpts = {}): Fixture<CometCollateralFixtureContext> => {
+const makeCollateralFixtureContext = (
+  alice: SignerWithAddress,
+  opts: CometCollateralOpts = {}
+): Fixture<CometCollateralFixtureContext> => {
   const collateralOpts = { ...defaultCometCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
@@ -133,7 +136,17 @@ const makeCollateralFixtureContext = (alice: SignerWithAddress, opts: CometColla
 
     const tokDecimals = await wcusdcV3.decimals()
 
-    return { alice, collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3, rewardToken, tokDecimals }
+    return {
+      alice,
+      collateral,
+      chainlinkFeed,
+      cusdcV3,
+      wcusdcV3,
+      usdc,
+      tok: wcusdcV3,
+      rewardToken,
+      tokDecimals,
+    }
   }
 
   return makeCollateralFixtureContext
@@ -167,17 +180,28 @@ const deployCollateralCometMockContext = async (
 
   const tokDecimals = await wcusdcV3.decimals()
 
-  return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3, rewardToken, tokDecimals }
+  return {
+    collateral,
+    chainlinkFeed,
+    cusdcV3,
+    wcusdcV3,
+    usdc,
+    tok: wcusdcV3,
+    rewardToken,
+    tokDecimals,
+  }
 }
-
-
-
 
 /*
   Define helper functions
 */
 
-const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = async (ctx: CometCollateralFixtureContext, amount: BigNumberish, user: SignerWithAddress, recipient: string) => {
+const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = async (
+  ctx: CometCollateralFixtureContext,
+  amount: BigNumberish,
+  user: SignerWithAddress,
+  recipient: string
+) => {
   await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.wcusdcV3, user, amount, recipient)
 }
 
@@ -185,7 +209,9 @@ const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
   await ctx.wcusdcV3.connect(ctx.alice as SignerWithAddress).withdraw(bn('19900e6'))
 }
 
-
+const beforeFunctionTests = async (ctx: CometCollateralFixtureContext) => {
+  await enableRewardsAccrual(ctx.cusdcV3, )
+}
 
 /*
   Define collateral-specific tests
@@ -259,7 +285,7 @@ const collateralSpecificStatusTests = () => {
 
   it('hard-defaults when reserves threshold is at disabled levels', async () => {
     const mockOpts = { reservesThresholdDisabled: 1000n }
-    const { collateral, cusdcV3 } = await deployCollateralCometMockContext( mockOpts)
+    const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
 
     // Check initial state
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -275,21 +301,20 @@ const collateralSpecificStatusTests = () => {
   })
 }
 
-
-
 /*
   Run the test suite
 */
 
 const opts = {
-    deployCollateral,
-    collateralSpecificConstructorTests,
-    collateralSpecificStatusTests,
-    makeCollateralFixtureContext,
-    mintCollateralTo,
-    reduceRefPerTok,
-    itClaimsRewards: it.skip,
-    resetFork
+  deployCollateral,
+  collateralSpecificConstructorTests,
+  collateralSpecificStatusTests,
+  makeCollateralFixtureContext,
+  mintCollateralTo,
+  reduceRefPerTok,
+  itClaimsRewards: it.skip,
+  resetFork,
+  beforeFunctionTests
 }
 
 collateralTests(opts)

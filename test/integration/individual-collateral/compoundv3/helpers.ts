@@ -6,12 +6,21 @@ import {
   ICometConfigurator,
   ICometProxyAdmin,
   CusdcV3Wrapper,
-  CusdcV3Wrapper__factory
+  CusdcV3Wrapper__factory,
 } from '../../../../typechain'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { bn } from '../../../../common/numbers'
 import { BigNumberish } from 'ethers'
-import { USDC_HOLDER, USDC, COMET_CONFIGURATOR, COMET_PROXY_ADMIN, CUSDC_V3, REWARDS, COMP, FORK_BLOCK } from './constants';
+import {
+  USDC_HOLDER,
+  USDC,
+  COMET_CONFIGURATOR,
+  COMET_PROXY_ADMIN,
+  CUSDC_V3,
+  REWARDS,
+  COMP,
+  FORK_BLOCK,
+} from './constants'
 import { getResetFork } from '../helpers'
 
 export const enableRewardsAccrual = async (
@@ -34,12 +43,7 @@ export const enableRewardsAccrual = async (
   })
 }
 
-const allocateERC20 = async (
-  token: ERC20Mock,
-  from: string,
-  to: string,
-  balance: BigNumberish
-) => {
+const allocateERC20 = async (token: ERC20Mock, from: string, to: string, balance: BigNumberish) => {
   await whileImpersonating(from, async (signer) => {
     await token.connect(signer).transfer(to, balance)
   })
