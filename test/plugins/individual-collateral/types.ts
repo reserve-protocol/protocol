@@ -7,7 +7,7 @@ export interface CollateralFixtureContext {
   collateral: ICollateral
   chainlinkFeed: MockV3Aggregator
   tok: IERC20
-  tokDecimals: number
+  tokDecimals: number // tldr; IERC20 does not include decimals()
   rewardToken: IERC20
   alice?: SignerWithAddress
 }

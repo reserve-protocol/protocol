@@ -122,7 +122,8 @@ export default function fn<X extends CollateralFixtureContext>(
           await mintCollateralTo(ctx, amount, alice, collateral.address)
 
           await advanceBlocks(1000)
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+          // await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+          await advanceTime(12000)
 
           const balBefore = await ctx.rewardToken.balanceOf(collateral.address)
           await collateral.claimRewards()
