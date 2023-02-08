@@ -25,7 +25,8 @@ contract EURFiatCollateral is FiatCollateral {
         AggregatorV3Interface targetUnitChainlinkFeed_,
         uint48 targetUnitOracleTimeout_
     ) FiatCollateral(config) {
-        require(address(targetUnitChainlinkFeed_) != address(0), "missing uoaPerTarget feed");
+        require(address(targetUnitChainlinkFeed_) != address(0), "missing targetUnit feed");
+        require(targetUnitOracleTimeout_ > 0, "targetUnitOracleTimeout zero");
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
     }

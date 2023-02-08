@@ -30,10 +30,8 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         uint192 revenueHiding,
         IComptroller comptroller_
     ) CTokenFiatCollateral(config, revenueHiding, comptroller_) {
-        require(
-            address(targetUnitChainlinkFeed_) != address(0),
-            "missing target unit chainlink feed"
-        );
+        require(address(targetUnitChainlinkFeed_) != address(0), "missing targetUnit feed");
+        require(targetUnitOracleTimeout_ > 0, "targetUnitOracleTimeout zero");
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
         targetUnitOracleTimeout = targetUnitOracleTimeout_;
     }
