@@ -1305,6 +1305,78 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.toColl(token2.address)).to.equal(collateral2.address)
       expect(await assetRegistry.toColl(token3.address)).to.equal(collateral3.address)
     })
+
+    it('Should allow to register/unregister/swap Assets when frozen', async () => {
+      // Setup new Asset
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>await AssetFactory.deploy(
+        PRICE_TIMEOUT,
+        await collateral0.chainlinkFeed(), // any feed will do
+        ORACLE_ERROR,
+        erc20s[5].address,
+        config.rTokenMaxTradeVolume,
+        1
+      )
+
+      // Get previous length for assets
+      const previousLength = (await assetRegistry.erc20s()).length
+
+      // Freeze Main
+      await main.connect(owner).freezeShort()
+
+      // Add new asset
+      await expect(assetRegistry.connect(owner).register(newAsset.address))
+        .to.emit(assetRegistry, 'AssetRegistered')
+        .withArgs(erc20s[5].address, newAsset.address)
+
+      // Check it was added
+      let allERC20s = await assetRegistry.erc20s()
+      expect(allERC20s).to.contain(erc20s[5].address)
+      expect(allERC20s.length).to.equal(previousLength + 1)
+
+      // Remove asset
+      await expect(assetRegistry.connect(owner).unregister(newAsset.address))
+        .to.emit(assetRegistry, 'AssetUnregistered')
+        .withArgs(erc20s[5].address, newAsset.address)
+
+      // Check if it was removed
+      allERC20s = await assetRegistry.erc20s()
+      expect(allERC20s).to.not.contain(erc20s[5].address)
+      expect(allERC20s.length).to.equal(previousLength)
+
+      // SWAP an asset - Reusing token
+      const swapAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          await collateral0.chainlinkFeed(),
+          ORACLE_ERROR,
+          token0.address,
+          config.rTokenMaxTradeVolume,
+          1
+        )
+      )
+
+      // Swap Asset
+      await expectEvents(assetRegistry.connect(owner).swapRegistered(swapAsset.address), [
+        {
+          contract: assetRegistry,
+          name: 'AssetUnregistered',
+          args: [token0.address, collateral0.address],
+          emitted: true,
+        },
+        {
+          contract: assetRegistry,
+          name: 'AssetRegistered',
+          args: [token0.address, swapAsset.address],
+          emitted: true,
+        },
+      ])
+
+      // Check length is not modified and erc20 remains registered
+      allERC20s = await assetRegistry.erc20s()
+      expect(allERC20s).to.contain(token0.address)
+      expect(allERC20s.length).to.equal(previousLength)
+    })
   })
 
   describe('Basket Handling', () => {
