@@ -1,8 +1,7 @@
 import { expect } from 'chai'
 import hre, { ethers, waffle } from 'hardhat'
-import { Fixture } from 'ethereum-waffle'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import {  Wallet, BigNumberish } from 'ethers'
+import { Wallet, BigNumberish } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
@@ -11,8 +10,7 @@ import {
     InvalidMockV3Aggregator,
     MockV3Aggregator,
     ICollateral,
-    IERC20
-  } from '../../../typechain'
+} from '../../../typechain'
 import {
   advanceTime,
   advanceBlocks,
@@ -20,59 +18,18 @@ import {
   setNextBlockTimestamp,
 } from '../../utils/time'
 import { MAX_UINT48, MAX_UINT192 } from '../../../common/constants'
-
-const { getContractAt } = hre.ethers
+import {
+  CollateralFixtureContext,
+  CollateralTestSuiteFixtures,
+  CollateralStatus
+} from './types'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-export interface CollateralFixtureContext {
-  collateral: ICollateral
-  chainlinkFeed: MockV3Aggregator
-  tok: IERC20
-  tokDecimals: number
-  rewardToken: IERC20
-  alice?: SignerWithAddress
-}
-
-export interface CollateralOpts {
-    erc20?: string
-    targetName?: string
-    rewardERC20?: string
-    priceTimeout?: BigNumberish
-    chainlinkFeed?: string
-    oracleError?: BigNumberish
-    oracleTimeout?: BigNumberish
-    maxTradeVolume?: BigNumberish
-    defaultThreshold?: BigNumberish
-    delayUntilDefault?: BigNumberish
-}
-
-type DeployCollateralFunc = (opts: CollateralOpts) => Promise<ICollateral>
-type MakeCollateralFixtureFunc<T extends CollateralFixtureContext> = (alice: SignerWithAddress, opts: CollateralOpts) => Fixture<T>
-export type MintCollateralFunc<T extends CollateralFixtureContext> = (ctx: T, amount: BigNumberish, user: SignerWithAddress, recipient: string) => Promise<void>
-interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext> {
-    oracleError: BigNumberish
-    deployCollateral: DeployCollateralFunc
-    collateralSpecificConstructorTests: () => void
-    collateralSpecificStatusTests: () => void
-    makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
-    mintCollateralTo: MintCollateralFunc<T>
-    reduceRefPerTok: (ctx: T) => void
-    itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
-    resetFork: () => void
-}
-
-export enum CollateralStatus {
-  SOUND,
-  IFFY,
-  DISABLED,
-}
-
 export default function fn<X extends CollateralFixtureContext>(fixtures: CollateralTestSuiteFixtures<X>) {
     const {
-        oracleError,
         deployCollateral,
         collateralSpecificConstructorTests,
         collateralSpecificStatusTests,
@@ -190,6 +147,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
               it('prices change as USDC feed price changes', async () => {
                 const { answer } = await chainlinkFeed.latestRoundData()
                 const decimals = await chainlinkFeed.decimals()
+                const oracleError = await collateral.oracleError()
                 const expectedPrice = answer.mul(bn(10).pow(18 - decimals))
                 const expectedDelta = expectedPrice.mul(oracleError).div(fp(1))
         
@@ -223,6 +181,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
                 expect(prevRefPerTok).to.equal(bn('1e18'))
         
                 const decimals = await chainlinkFeed.decimals()
+                const oracleError = await collateral.oracleError()
         
                 const initData = await chainlinkFeed.latestRoundData()
                 const expectedPrice = initData.answer.mul(bn(10).pow(18 - decimals))
