@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import hre, { ethers, waffle } from 'hardhat'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { Wallet, BigNumberish } from 'ethers'
+import { Wallet } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'

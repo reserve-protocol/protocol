@@ -1,7 +1,7 @@
 import collateralTests from "../collateralTests";
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc, CollateralStatus } from '../types'
 import { mintWcUSDC, makewCSUDC, resetFork } from "./helpers";
-import hre, { ethers } from 'hardhat'
+import { ethers } from 'hardhat'
 import { Fixture } from 'ethereum-waffle'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
@@ -15,9 +15,8 @@ import {
   CometMock__factory,
   ICollateral
 } from '../../../../typechain'
-import { bn, fp } from '../../../../common/numbers'
+import { bn } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
-import { whileImpersonating } from '../../../utils/impersonation'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
@@ -36,10 +35,7 @@ import {
   DELAY_UNTIL_DEFAULT,
   REWARDS,
   USDC,
-  FORK_BLOCK
 } from './constants'
-import { getResetFork } from '../helpers';
-
 
 
 /*
