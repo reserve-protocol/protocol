@@ -77,7 +77,11 @@ export const mintWcUSDC = async (
   await usdc.connect(account).approve(cusdc.address, ethers.constants.MaxUint256)
   await cusdc.connect(account).supply(usdc.address, amount)
   await cusdc.connect(account).allow(wcusdc.address, true)
-  await wcusdc.connect(account).depositTo(recipient, amount)
+  if (account.address == recipient) {
+    await wcusdc.connect(account).deposit(amount)
+  } else {
+    await wcusdc.connect(account).depositTo(recipient, amount)
+  }
 }
 
 export const makewCSUDC = async (): Promise<WrappedcUSDCFixture> => {

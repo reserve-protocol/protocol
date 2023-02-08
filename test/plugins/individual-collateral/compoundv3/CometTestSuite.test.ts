@@ -129,11 +129,8 @@ const makeCollateralFixtureContext = (
     const { wcusdcV3, usdc } = fix
 
     collateralOpts.erc20 = wcusdcV3.address
-
     const collateral = await deployCollateral(collateralOpts)
-
     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-
     const tokDecimals = await wcusdcV3.decimals()
 
     return {
@@ -177,7 +174,6 @@ const deployCollateralCometMockContext = async (
   const collateral = await deployCollateral(collateralOpts)
 
   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-
   const tokDecimals = await wcusdcV3.decimals()
 
   return {
@@ -240,7 +236,7 @@ const collateralSpecificStatusTests = () => {
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
     expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-    // cUSDC/Comet's reserves gone down to 19% of target reserves
+    // cUSDC/Comet's reserves gone down to -1
     await cusdcV3.setReserves(-1)
 
     await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
