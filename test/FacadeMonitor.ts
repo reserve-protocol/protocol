@@ -250,8 +250,6 @@ describe('FacadeMonitor Contract', () => {
 
       const response3 = await facadeMonitor.callStatic.getTradesForBackingManager(rToken.address)
 
-      console.log(response3)
-
       expect(
         response3.tradesToBeSettled.filter((e) => e != ethers.constants.AddressZero).length == 0
       ).to.be.true

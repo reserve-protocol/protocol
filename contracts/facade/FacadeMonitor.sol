@@ -17,7 +17,7 @@ contract FacadeMonitor {
     using FixLib for uint192;
 
     struct TradeResponse {
-        address[] tradesToBeSettled;
+        IERC20[] tradesToBeSettled;
         IERC20[] tradesToBeStarted;
     }
 
@@ -35,12 +35,12 @@ contract FacadeMonitor {
         // Let's check if there are any trades that we can settle.
         if (backingManager.tradesOpen() > 0) {
             uint256 tradeSettleCount;
-            address[] memory tradesToBeSettled = new address[](erc20s.length);
+            IERC20[] memory tradesToBeSettled = new IERC20[](erc20s.length);
 
             for (uint256 i = 0; i < erc20s.length; ) {
                 ITrade trade = backingManager.trades(erc20s[i]);
                 if (address(trade) != address(0) && trade.canSettle()) {
-                    tradesToBeSettled[tradeSettleCount] = address(trade);
+                    tradesToBeSettled[tradeSettleCount] = erc20s[i];
 
                     unchecked {
                         ++tradeSettleCount;
@@ -88,13 +88,13 @@ contract FacadeMonitor {
         // Let's check if there are any trades that we can settle.
         if (trader.tradesOpen() > 0) {
             uint256 tradeSettleCount;
-            address[] memory tradesToBeSettled = new address[](erc20Count);
+            IERC20[] memory tradesToBeSettled = new IERC20[](erc20Count);
 
             for (uint256 i = 0; i < erc20Count; ) {
                 ITrade trade = trader.trades(erc20s[i]);
 
                 if (address(trade) != address(0) && trade.canSettle()) {
-                    tradesToBeSettled[tradeSettleCount] = address(trade);
+                    tradesToBeSettled[tradeSettleCount] = erc20s[i];
 
                     unchecked {
                         ++tradeSettleCount;
