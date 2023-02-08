@@ -10,7 +10,8 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
   .addParam('oracleError', 'The oracle error in the reference unit feed')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
-  .addParam('oracleTimeout', 'Max oracle timeout')
+  .addParam('oracleTimeout', 'Max oracle timeout to use for the reference feed')
+  .addParam('targetUnitOracleTimeout', 'Max oracle timeout for the target unit feed')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
@@ -35,7 +36,8 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
         defaultThreshold: params.defaultThreshold,
         delayUntilDefault: params.delayUntilDefault,
       },
-      params.targetUnitFeed
+      params.targetUnitFeed,
+      params.targetUnitOracleTimeout
     )
     await collateral.deployed()
 
