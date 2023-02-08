@@ -10,7 +10,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../common'
-import { combinedError, priceTimeout, getOracleTimeout, revenueHiding } from '../utils'
+import { combinedError, priceTimeout, oracleTimeout, revenueHiding } from '../utils'
 import { Asset, ATokenMock, StaticATokenLM } from '../../../typechain'
 
 async function main() {
@@ -45,7 +45,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.DAI,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -64,7 +64,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.USDC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -83,7 +83,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.USDT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -102,7 +102,7 @@ async function main() {
     oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.USDP,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -121,7 +121,7 @@ async function main() {
     oracleError: fp('0.003').toString(), // 0.3%
     tokenAddress: networkConfig[chainId].tokens.TUSD,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.013').toString(), // 1.3%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -138,7 +138,7 @@ async function main() {
     oracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.BUSD,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.015').toString(), // 1.5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -178,7 +178,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: adaiStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -219,7 +219,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: ausdcStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -260,7 +260,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: ausdtStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -300,7 +300,7 @@ async function main() {
     oracleError: fp('0.005').toString(), // 0.5%
     staticAToken: abusdStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.015').toString(), // 1.5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -341,7 +341,7 @@ async function main() {
     oracleError: fp('0.01').toString(), // 1%
     staticAToken: ausdpStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -362,7 +362,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cDAI,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -384,7 +384,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cUSDC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -406,7 +406,7 @@ async function main() {
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cUSDT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -428,7 +428,7 @@ async function main() {
     oracleError: fp('0.01').toString(), // 1%
     cToken: networkConfig[chainId].tokens.cUSDP,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -455,7 +455,8 @@ async function main() {
     combinedOracleError: combinedBTCWBTCError.toString(),
     cToken: networkConfig[chainId].tokens.cWBTC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
+    targetUnitOracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -477,7 +478,7 @@ async function main() {
     oracleError: fp('0.005').toString(), // 0.5%
     cToken: networkConfig[chainId].tokens.cETH,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
@@ -498,7 +499,8 @@ async function main() {
     combinedOracleError: combinedBTCWBTCError.toString(),
     tokenAddress: networkConfig[chainId].tokens.WBTC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
+    targetUnitOracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -518,7 +520,7 @@ async function main() {
     oracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.WETH,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
   })
   await (<Asset>await ethers.getContractAt('Asset', wETHCollateral)).refresh()
@@ -538,7 +540,8 @@ async function main() {
     oracleError: eurtError.toString(), // 2%
     tokenAddress: networkConfig[chainId].tokens.EURT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
+    targetUnitOracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: ethers.utils.formatBytes32String('EURO'),
     defaultThreshold: fp('0.03').toString(), // 3%
     delayUntilDefault: bn('86400').toString(), // 24h

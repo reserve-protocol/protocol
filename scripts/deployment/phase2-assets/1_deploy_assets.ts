@@ -10,7 +10,7 @@ import {
   IAssetCollDeployments,
   fileExists,
 } from '../../deployment/common'
-import { priceTimeout, getOracleTimeout } from '../../deployment/utils'
+import { priceTimeout, oracleTimeout } from '../../deployment/utils'
 import { Asset } from '../../../typechain'
 
 async function main() {
@@ -43,7 +43,7 @@ async function main() {
     oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
   })
   await (<Asset>await ethers.getContractAt('Asset', stkAAVEAsset)).refresh()
 
@@ -57,7 +57,7 @@ async function main() {
     oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.COMP,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
   })
   await (<Asset>await ethers.getContractAt('Asset', compAsset)).refresh()
 
