@@ -2,21 +2,16 @@ import { expect } from 'chai'
 import hre, { ethers, waffle } from 'hardhat'
 import { Fixture } from 'ethereum-waffle'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ContractFactory, Wallet, BaseContract, BigNumberish } from 'ethers'
+import {  Wallet, BigNumberish } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
 import {
     InvalidMockV3Aggregator,
-    CusdcV3Wrapper,
-    CusdcV3Wrapper__factory,
-    CTokenV3Collateral,
     MockV3Aggregator,
-    ERC20Mock,
-    CometInterface,
     ICollateral,
-    ERC20
+    IERC20
   } from '../../../typechain'
 import {
   advanceTime,
@@ -35,8 +30,9 @@ const createFixtureLoader = waffle.createFixtureLoader
 export interface CollateralFixtureContext {
   collateral: ICollateral
   chainlinkFeed: MockV3Aggregator
-  tok: ERC20
-  rewardToken: ERC20
+  tok: IERC20
+  tokDecimals: number
+  rewardToken: IERC20
   alice?: SignerWithAddress
 }
 
@@ -64,30 +60,14 @@ interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext> {
     makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
     mintCollateralTo: MintCollateralFunc<T>
     reduceRefPerTok: (ctx: T) => void
-    itClaimsRewards: Mocha.TestFunction
+    itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
+    resetFork: () => void
 }
 
 export enum CollateralStatus {
   SOUND,
   IFFY,
   DISABLED,
-}
-
-export const resetFork = async () => {
-  // Need to reset state since running the whole test suites to all
-  // test cases in this file to fail. Strangely, all test cases
-  // pass when running just this file alone.
-  await hre.network.provider.request({
-    method: 'hardhat_reset',
-    params: [
-      {
-        forking: {
-          jsonRpcUrl: process.env.MAINNET_RPC_URL,
-          blockNumber: 15850930,
-        },
-      },
-    ],
-  })
 }
 
 export default function fn<X extends CollateralFixtureContext>(fixtures: CollateralTestSuiteFixtures<X>) {
@@ -99,8 +79,11 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
         makeCollateralFixtureContext,
         mintCollateralTo,
         reduceRefPerTok,
-        itClaimsRewards
+        itClaimsRewards,
+        resetFork
     } = fixtures
+
+    before(resetFork)
 
     describeFork('CTokenV3Collateral', () => {
         describe('constructor validation', () => {
@@ -199,8 +182,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
                 mintCollateralTo(ctx, amount, alice, collateral.address)
         
                 const aliceBal = await collateral.bal(alice.address)
-                const decimals = await ctx.tok.decimals()
-                expect(aliceBal).to.closeTo(amount.mul(bn(10).pow(18 - decimals)), bn('50').pow(18 - decimals))
+                expect(aliceBal).to.closeTo(amount.mul(bn(10).pow(18 - ctx.tokDecimals)), bn('50').pow(18 - ctx.tokDecimals))
               })
             })
         
