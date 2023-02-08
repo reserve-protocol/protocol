@@ -161,8 +161,12 @@ contract RTokenAsset is IAsset {
     }
 
     // To make the inheritance chain play nice
-    function oracleError() external view returns (uint192) { return 0; }
+    function oracleError() external pure returns (uint192) {
+        return 0;
+    }
 
     // To make the inheritance chain play nice
-    function oracleTimeout() external view returns (uint48) { return type(uint48).max; }
+    function oracleTimeout() external pure returns (uint48) {
+        return type(uint48).max;
+    }
 }
