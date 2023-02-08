@@ -206,7 +206,7 @@ const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
 }
 
 const beforeFunctionTests = async (ctx: CometCollateralFixtureContext) => {
-  await enableRewardsAccrual(ctx.cusdcV3, )
+  await enableRewardsAccrual(ctx.cusdcV3)
 }
 
 /*
