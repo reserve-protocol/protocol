@@ -40,12 +40,12 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   deployCollateral: DeployCollateralFunc
   collateralSpecificConstructorTests: () => void
   collateralSpecificStatusTests: () => void
+  beforeEachRewardsTest: (ctx: T) => void
   makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
   mintCollateralTo: MintCollateralFunc<T>
   reduceRefPerTok: (ctx: T) => void
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
   resetFork: () => void
-  beforeFunctionTests: (ctx: T) => void
   collateralName: string
 }
 
