@@ -264,7 +264,7 @@ describeFork('Wrapped CUSDCv3', () => {
 
     it('updates accruals and principals in sender and receiver', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await enableRewardsAccrual(cusdcV3)
       await advanceTime(1000)
@@ -352,7 +352,7 @@ describeFork('Wrapped CUSDCv3', () => {
         await cusdcV3.balanceOf(wcusdcV3.address)
       )
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
       await advanceTime(1000)
       const totalBalances =
         (await wcusdcV3.underlyingBalanceOf(don.address)).toBigInt() +
@@ -393,8 +393,8 @@ describeFork('Wrapped CUSDCv3', () => {
 
       // Minting more wcUSDC to other accounts should not affect
       // Bob's underlying balance
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, charles, bn('20000e6'), bob.address)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, charles, bn('20000e6'), charles.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
       await advanceTime(100000)
 
       let totalBalances =
@@ -482,7 +482,7 @@ describeFork('Wrapped CUSDCv3', () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await enableRewardsAccrual(cusdcV3)
       await advanceTime(1000)
@@ -518,7 +518,7 @@ describeFork('Wrapped CUSDCv3', () => {
     it('returns reward owed after accrual and claims', async () => {
       await enableRewardsAccrual(cusdcV3)
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await advanceTime(1000)
 
@@ -558,8 +558,8 @@ describeFork('Wrapped CUSDCv3', () => {
         await wcusdcV3.baseTrackingIndex(bob.address)
       )
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, charles, bn('20000e6'), bob.address)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, charles, bn('20000e6'), charles.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await advanceTime(1000)
 
@@ -583,7 +583,7 @@ describeFork('Wrapped CUSDCv3', () => {
     it('matches baseTrackingAccrued in cUSDCv3 after withdrawals', async () => {
       await enableRewardsAccrual(cusdcV3)
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await advanceTime(1000)
       await wcusdcV3.connect(bob).withdrawTo(bob.address, bn('10000e6'))
