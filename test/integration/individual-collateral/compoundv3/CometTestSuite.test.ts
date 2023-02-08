@@ -1,5 +1,5 @@
 import collateralTests, { CollateralFixtureContext, CollateralOpts, MintCollateralFunc, CollateralStatus } from "../collateralTests";
-import { ethers } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { Fixture } from 'ethereum-waffle'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
@@ -172,7 +172,9 @@ export const makeCollateralFixtureContext = (alice: SignerWithAddress, opts: Com
 
     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
-    return { alice, collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3, rewardToken }
+    const tokDecimals = await wcusdcV3.decimals()
+
+    return { alice, collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3, rewardToken, tokDecimals }
   }
 
   return makeCollateralFixtureContext
@@ -204,7 +206,9 @@ export const deployCollateralCometMockContext = async (
 
   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
-  return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3, rewardToken }
+  const tokDecimals = await wcusdcV3.decimals()
+
+  return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3, rewardToken, tokDecimals }
 }
 
 
@@ -245,6 +249,23 @@ export const mintCollateralTo = async (ctx: CometCollateralFixtureContext, amoun
 
 const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
   await ctx.wcusdcV3.connect(ctx.alice as SignerWithAddress).withdraw(bn('19900e6'))
+}
+
+export const resetFork = async () => {
+  // Need to reset state since running the whole test suites to all
+  // test cases in this file to fail. Strangely, all test cases
+  // pass when running just this file alone.
+  await hre.network.provider.request({
+    method: 'hardhat_reset',
+    params: [
+      {
+        forking: {
+          jsonRpcUrl: process.env.MAINNET_RPC_URL,
+          blockNumber: 15850930,
+        },
+      },
+    ],
+  })
 }
 
 /*
@@ -349,7 +370,8 @@ const opts = {
     makeCollateralFixtureContext,
     mintCollateralTo,
     reduceRefPerTok,
-    itClaimsRewards
+    itClaimsRewards,
+    resetFork
 }
 
 collateralTests(opts)
