@@ -45,41 +45,29 @@ describeFork('Wrapped CUSDCv3', () => {
   })
 
   describe('deposit', () => {
-    it('deposit to own account', async () => {
-      const balance = bn('20000e6')
-      await allocateUSDC(bob.address, balance)
+    const amount = bn('20000e6')
+
+    beforeEach(async () => {
+      await allocateUSDC(bob.address, amount)
       await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
       await cusdcV3.connect(bob).supply(usdc.address, bn('20000e6'))
-      expect(await usdc.balanceOf(bob.address)).to.equal(0)
-
       await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
+    })
+
+    it('deposit to own account', async () => {
       await wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256)
-      expect(await wcusdcV3.balanceOf(bob.address)).to.be.closeTo(balance, 50)
+      expect(await wcusdcV3.balanceOf(bob.address)).to.be.closeTo(amount, 50)
     })
 
     it('deposits for someone else', async () => {
-      const balance = bn('20000e6')
-      await allocateUSDC(bob.address, balance)
-      await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
-      await cusdcV3.connect(bob).supply(usdc.address, bn('20000e6'))
-      expect(await usdc.balanceOf(bob.address)).to.equal(0)
-
-      await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
       await wcusdcV3.connect(bob).depositTo(don.address, ethers.constants.MaxUint256)
 
       expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
-      expect(await wcusdcV3.balanceOf(don.address)).to.be.closeTo(balance, 50)
+      expect(await wcusdcV3.balanceOf(don.address)).to.be.closeTo(amount, 50)
     })
 
     it('deposits from a different account', async () => {
-      const balance = bn('20000e6')
-      await allocateUSDC(bob.address, balance)
-      await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
-      await cusdcV3.connect(bob).supply(usdc.address, bn('20000e6'))
-      expect(await usdc.balanceOf(bob.address)).to.equal(0)
-
       expect(await wcusdcV3.balanceOf(charles.address)).to.eq(0)
-      await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
       await expect(
         wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
       ).revertedWith('Unauthorized()')
@@ -89,31 +77,17 @@ describeFork('Wrapped CUSDCv3', () => {
         .depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
 
       expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
-      expect(await wcusdcV3.balanceOf(charles.address)).to.be.closeTo(balance, 50)
+      expect(await wcusdcV3.balanceOf(charles.address)).to.be.closeTo(amount, 50)
     })
 
     it('deposits max uint256 and mints available amount of wrapped cusdc', async () => {
-      const balance = bn('20000e6')
-      await allocateUSDC(bob.address, balance)
-      await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
-      await cusdcV3.connect(bob).supply(usdc.address, bn('20000e6'))
-      expect(await usdc.balanceOf(bob.address)).to.equal(0)
-
-      await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
       await wcusdcV3.connect(bob).depositTo(bob.address, ethers.constants.MaxUint256)
       expect(await cusdcV3.balanceOf(bob.address)).to.equal(0)
       expect(await usdc.balanceOf(bob.address)).to.equal(0)
-      expect(await wcusdcV3.balanceOf(bob.address)).to.be.closeTo(balance, 100)
+      expect(await wcusdcV3.balanceOf(bob.address)).to.be.closeTo(amount, 100)
     })
 
     it('deposits less than available cusdc', async () => {
-      const balance = bn('20000e6')
-      await allocateUSDC(bob.address, balance)
-
-      await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
-      await cusdcV3.connect(bob).supply(usdc.address, bn('20000e6'))
-      expect(await usdc.balanceOf(bob.address)).to.equal(0)
-
       await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
       await wcusdcV3.connect(bob).depositTo(bob.address, bn('10000e6'))
       expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(bn('10000e6'), 100)
@@ -129,23 +103,13 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('multiple deposits lead to accurate balances', async () => {
-      const balance = bn('40000e6')
-      await allocateUSDC(bob.address, balance)
-      await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
-      await cusdcV3.connect(bob).supply(usdc.address, balance)
-      await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
-
-      await wcusdcV3.connect(bob).depositTo(bob.address, bn('10000e6'))
-      await advanceTime(1000)
-      await wcusdcV3.connect(bob).depositTo(bob.address, bn('10000e6'))
-      await advanceTime(1000)
       await wcusdcV3.connect(bob).depositTo(bob.address, bn('10000e6'))
       await advanceTime(1000)
       await wcusdcV3.connect(bob).depositTo(bob.address, bn('10000e6'))
 
       // The more wcUSDCv3 is minted, the higher its value is relative to cUSDCv3.
-      expect(await wcusdcV3.underlyingBalanceOf(bob.address)).to.be.gt(balance)
-      expect(await wcusdcV3.balanceOf(bob.address)).to.be.closeTo(balance, bn('10e6'))
+      expect(await wcusdcV3.underlyingBalanceOf(bob.address)).to.be.gt(amount)
+      expect(await wcusdcV3.balanceOf(bob.address)).to.be.closeTo(amount, bn('10e6'))
 
       expect(await wcusdcV3.underlyingBalanceOf(bob.address)).to.be.closeTo(
         await cusdcV3.balanceOf(wcusdcV3.address),
@@ -155,8 +119,11 @@ describeFork('Wrapped CUSDCv3', () => {
   })
 
   describe('withdraw', () => {
-    it('withdraws to own account', async () => {
+    beforeEach(async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+    })
+
+    it('withdraws to own account', async () => {
       await wcusdcV3.connect(bob).withdraw(ethers.constants.MaxUint256)
       const bal = await wcusdcV3.balanceOf(bob.address)
       await expect(bal).to.eq(0)
@@ -165,7 +132,6 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('withdraws to a different account', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await wcusdcV3.connect(bob).withdrawTo(don.address, ethers.constants.MaxUint256)
       expect(await cusdcV3.balanceOf(don.address)).to.be.closeTo(bn('20000e6'), 50)
       expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(bn(0), 50)
@@ -173,8 +139,6 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('withdraws from a different account', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
-
       await expect(
         wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, bn('20000e6'))
       ).to.be.revertedWith('Unauthorized')
@@ -190,8 +154,6 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('withdraws all underlying balance via multiple withdrawals', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
-
       await advanceTime(1000)
       await wcusdcV3.connect(bob).withdraw(bn('10000e6'))
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('10000e6'))
@@ -201,13 +163,11 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('withdraws 0', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await wcusdcV3.connect(bob).withdraw(0)
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('20000e6'))
     })
 
     it('updates and principals in withdrawn account', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await wcusdcV3.connect(bob).withdraw(bn('5000e6'))
 
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('15000e6'))
@@ -218,16 +178,17 @@ describeFork('Wrapped CUSDCv3', () => {
   })
 
   describe('transfer', () => {
-    it('does not transfer without approval', async () => {
+    beforeEach(async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+    })
 
+    it('does not transfer without approval', async () => {
       await expect(
         wcusdcV3.connect(bob).transferFrom(don.address, bob.address, bn('10000e6'))
       ).to.be.revertedWith('Unauthorized')
     })
 
     it('updates accruals and principals in sender and receiver', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await enableRewardsAccrual(cusdcV3)
@@ -409,8 +370,11 @@ describeFork('Wrapped CUSDCv3', () => {
   })
 
   describe('claiming rewards', () => {
-    it('does not claim rewards when user has no permission', async () => {
+    beforeEach(async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+    })
+
+    it('does not claim rewards when user has no permission', async () => {
       await advanceTime(1000)
       await enableRewardsAccrual(cusdcV3)
       await expect(wcusdcV3.connect(don).claimTo(bob.address, bob.address)).to.be.revertedWith(
@@ -426,7 +390,6 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('claims rewards and sends to claimer', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
       expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
       await advanceTime(1000)
@@ -442,7 +405,6 @@ describeFork('Wrapped CUSDCv3', () => {
     it('claims rewards by participation', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await enableRewardsAccrual(cusdcV3)
@@ -470,7 +432,6 @@ describeFork('Wrapped CUSDCv3', () => {
     it('claims no rewards when rewards accrual is not enabled', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await advanceTime(1000)
       await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
       expect(await compToken.balanceOf(bob.address)).to.equal(0)
@@ -478,7 +439,6 @@ describeFork('Wrapped CUSDCv3', () => {
 
     it('returns reward owed after accrual and claims', async () => {
       await enableRewardsAccrual(cusdcV3)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await advanceTime(1000)
