@@ -2,9 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../fixtures'
-import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
-import { getChainId } from '../../../common/blockchain-utils'
+import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../../fixtures'
+import { defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
+import { getChainId } from '../../../../common/blockchain-utils'
 import {
   IConfig,
   IGovParams,
@@ -12,13 +12,13 @@ import {
   IRTokenConfig,
   IRTokenSetup,
   networkConfig,
-} from '../../../common/configuration'
-import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../../common/constants'
-import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
-import { bn, fp, toBNDecimals } from '../../../common/numbers'
-import { whileImpersonating } from '../../utils/impersonation'
-import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../../utils/oracles'
-import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
+} from '../../../../common/configuration'
+import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
+import { expectEvents, expectInIndirectReceipt } from '../../../../common/events'
+import { bn, fp, toBNDecimals } from '../../../../common/numbers'
+import { whileImpersonating } from '../../../utils/impersonation'
+import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../../../utils/oracles'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../../utils/time'
 import {
   Asset,
   ComptrollerMock,
@@ -37,7 +37,7 @@ import {
   TestIDeployer,
   TestIMain,
   TestIRToken,
-} from '../../../typechain'
+} from '../../../../typechain'
 import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader

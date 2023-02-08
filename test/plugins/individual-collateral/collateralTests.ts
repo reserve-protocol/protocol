@@ -117,7 +117,7 @@ export default function fn<X extends CollateralFixtureContext>(
           await beforeFunctionTests(ctx)
         })
 
-        it('claims rewards', async () => {
+        itClaimsRewards('claims rewards', async () => {
           const amount = bn('100e6')
           await mintCollateralTo(ctx, amount, alice, collateral.address)
 
