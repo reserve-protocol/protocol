@@ -305,6 +305,45 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const endingBal = await rsr.balanceOf(addr1.address)
       expect(endingBal.sub(startBal)).gt(0)
     })
+
+    it('Should not payout rewards when updating the reward ratio, if frozen', async () => {
+      const startBal = await rsr.balanceOf(addr1.address)
+      const stakeAmt = bn('100e18')
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmt)
+      await stRSR.connect(addr1).stake(stakeAmt)
+
+      // send some rewards
+      await rsr.connect(addr2).transfer(stRSR.address, bn('10e18'))
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1200)
+
+      // Freeze Main
+      await main.connect(owner).freezeShort()
+
+      // Set reward ratio - no rewards payout
+      await expectEvents(stRSR.setRewardRatio(bn('1e17')), [
+        {
+          contract: stRSR,
+          name: 'ExchangeRateSet',
+          emitted: false,
+        },
+        {
+          contract: stRSR,
+          name: 'RewardsPaid',
+          emitted: false,
+        },
+      ])
+
+      // Unfreeze Main
+      await main.connect(owner).unfreeze()
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1200)
+
+      await stRSR.connect(addr1).unstake(stakeAmt)
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1209600)
+      await stRSR.connect(addr1).withdraw(addr1.address, 1)
+
+      const endingBal = await rsr.balanceOf(addr1.address)
+      expect(endingBal).to.equal(startBal)
+    })
   })
 
   describe('Deposits/Staking', () => {
@@ -1069,6 +1108,24 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
       await stRSR.connect(addr1).stake(stake)
+
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
+    })
+
+    it('Rewards should not be handed out when frozen', async () => {
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, stake)
+      await stRSR.connect(addr1).stake(stake)
+
+      await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
+
+      // Freeze main
+      await main.connect(owner).freezeShort()
+
+      // Attempt to payout rewards
+      await expect(stRSR.payoutRewards()).to.be.revertedWith('frozen')
 
       expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
