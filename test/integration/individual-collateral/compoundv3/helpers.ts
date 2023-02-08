@@ -1,4 +1,4 @@
-import hre, { ethers } from 'hardhat'
+import { ethers } from 'hardhat'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   ERC20Mock,
@@ -9,7 +9,7 @@ import {
   CusdcV3Wrapper__factory
 } from '../../../../typechain'
 import { whileImpersonating } from '../../../utils/impersonation'
-import { bn, fp } from '../../../../common/numbers'
+import { bn } from '../../../../common/numbers'
 import { BigNumberish } from 'ethers'
 import { USDC_HOLDER, USDC, COMET_CONFIGURATOR, COMET_PROXY_ADMIN, CUSDC_V3, REWARDS, COMP, FORK_BLOCK } from './constants';
 import { getResetFork } from '../helpers'
