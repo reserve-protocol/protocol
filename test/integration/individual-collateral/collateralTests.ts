@@ -16,7 +16,7 @@ import {
     ERC20Mock,
     CometInterface,
     ICollateral,
-    IERC20
+    ERC20
   } from '../../../typechain'
 import {
   advanceTime,
@@ -35,7 +35,8 @@ const createFixtureLoader = waffle.createFixtureLoader
 export interface CollateralFixtureContext {
   collateral: ICollateral
   chainlinkFeed: MockV3Aggregator
-  tok: IERC20
+  tok: ERC20
+  rewardToken: ERC20
   alice?: SignerWithAddress
 }
 
@@ -54,7 +55,7 @@ export interface CollateralOpts {
 
 type DeployCollateralFunc = (opts: CollateralOpts) => Promise<ICollateral>
 type MakeCollateralFixtureFunc<T extends CollateralFixtureContext> = (alice: SignerWithAddress, opts: CollateralOpts) => Fixture<T>
-export type MintCollateralFunc<T extends CollateralFixtureContext> = (ctx: T, amount: BigNumberish, user: SignerWithAddress) => Promise<void>
+export type MintCollateralFunc<T extends CollateralFixtureContext> = (ctx: T, amount: BigNumberish, user: SignerWithAddress, recipient: string) => Promise<void>
 interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext> {
     oracleError: BigNumberish
     deployCollateral: DeployCollateralFunc
@@ -63,6 +64,7 @@ interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext> {
     makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
     mintCollateralTo: MintCollateralFunc<T>
     reduceRefPerTok: (ctx: T) => void
+    itClaimsRewards: Mocha.TestFunction
 }
 
 export enum CollateralStatus {
@@ -96,7 +98,8 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
         collateralSpecificStatusTests,
         makeCollateralFixtureContext,
         mintCollateralTo,
-        reduceRefPerTok
+        reduceRefPerTok,
+        itClaimsRewards
     } = fixtures
 
     describeFork('CTokenV3Collateral', () => {
@@ -176,39 +179,30 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
               ;({ chainlinkFeed, collateral } = ctx)
             })
         
-            // describe('functions', () => {
-            //   // unskip once rewards are turned on
-            //   it.skip('claims rewards', async () => {
-            //     const balance = bn('100e6')
-            //     await allocateUSDC(alice.address, balance)
-            //     await usdc.connect(alice).approve(cusdcV3.address, ethers.constants.MaxUint256)
-            //     await cusdcV3.connect(alice).supply(usdc.address, balance)
-            //     await cusdcV3.connect(alice).allow(wcusdcV3.address, true)
-            //     await wcusdcV3.connect(alice).depositTo(alice.address, ethers.constants.MaxUint256)
-            //     await wcusdcV3.connect(alice).transfer(collateral.address, balance)
+            describe('functions', () => {
+              // unskip once rewards are turned on
+              itClaimsRewards('claims rewards', async () => {
+                const amount = bn('100e6')
+                mintCollateralTo(ctx, amount, alice, collateral.address)
         
-            //     await advanceBlocks(1000)
-            //     await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+                await advanceBlocks(1000)
+                await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+
+                const balBefore = await ctx.rewardToken.balanceOf(collateral.address)
+                await collateral.claimRewards()
+                const balAfter = await ctx.rewardToken.balanceOf(collateral.address)
+                expect(balAfter).gt(balBefore)
+              })
         
-            //     const comp = <ERC20Mock>await getContractAt('ERC20Mock', COMP)
-            //     const balBefore = await comp.balanceOf(collateral.address)
-            //     await collateral.claimRewards()
-            //     const balAfter = await comp.balanceOf(collateral.address)
-            //     expect(balAfter).gt(balBefore)
-            //   })
+              it('returns the correct bal', async () => {
+                const amount = bn('100e6')
+                mintCollateralTo(ctx, amount, alice, collateral.address)
         
-            //   it('returns the correct bal', async () => {
-            //     const balance = bn('100e6')
-            //     await allocateUSDC(alice.address, balance)
-            //     await usdc.connect(alice).approve(cusdcV3.address, ethers.constants.MaxUint256)
-            //     await cusdcV3.connect(alice).supply(usdc.address, balance)
-            //     await cusdcV3.connect(alice).allow(wcusdcV3.address, true)
-            //     await wcusdcV3.connect(alice).depositTo(alice.address, ethers.constants.MaxUint256)
-        
-            //     const aliceBal = await collateral.bal(alice.address)
-            //     expect(aliceBal).to.closeTo(balance.mul(bn('1e12')), bn('50e12'))
-            //   })
-            // })
+                const aliceBal = await collateral.bal(alice.address)
+                const decimals = await ctx.tok.decimals()
+                expect(aliceBal).to.closeTo(amount.mul(bn(10).pow(18 - decimals)), bn('50').pow(18 - decimals))
+              })
+            })
         
             describe('prices', () => {
               it('prices change as USDC feed price changes', async () => {
@@ -257,7 +251,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
         
                 // need to deposit in order to get an exchange rate
                 const amount = bn('20000e6')
-                await mintCollateralTo(ctx, amount, alice)
+                await mintCollateralTo(ctx, amount, alice, alice.address)
 
                 await advanceBlocks(1000)
                 await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
@@ -351,7 +345,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
                 expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
                 expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         
-                await mintCollateralTo(ctx, bn('20000e6'), alice)
+                await mintCollateralTo(ctx, bn('20000e6'), alice, alice.address)
         
                 await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
                 // State remains the same

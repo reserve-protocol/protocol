@@ -50,8 +50,7 @@ export const USDC_DECIMALS = bn(6)
 
 const COLLATERAL_TOKEN_ADDRESS = CUSDC_V3
 const oracleError = ORACLE_ERROR
-
-
+const itClaimsRewards = it.skip
 
 /*
   Define interfaces
@@ -170,7 +169,10 @@ export const makeCollateralFixtureContext = (alice: SignerWithAddress, opts: Com
     collateralOpts.erc20 = wcusdcV3.address
 
     const collateral = await deployCollateral(collateralOpts)
-    return { alice, collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3 }
+
+    const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
+
+    return { alice, collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3, rewardToken }
   }
 
   return makeCollateralFixtureContext
@@ -199,7 +201,10 @@ export const deployCollateralCometMockContext = async (
   collateralOpts.erc20 = wcusdcV3.address
   const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
   const collateral = await deployCollateral(collateralOpts)
-  return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3 }
+
+  const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
+
+  return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3, rewardToken }
 }
 
 
@@ -230,12 +235,12 @@ export const allocateUSDC = async (
     await allocateERC20(usdc, from, to, balance)
 }
 
-export const mintCollateralTo = async (ctx: CometCollateralFixtureContext, amount: BigNumberish, user: SignerWithAddress) => {
+export const mintCollateralTo = async (ctx: CometCollateralFixtureContext, amount: BigNumberish, user: SignerWithAddress, recipient: string) => {
     await allocateUSDC(user.address, amount)
     await ctx.usdc.connect(user).approve(ctx.cusdcV3.address, ethers.constants.MaxUint256)
     await ctx.cusdcV3.connect(user).supply(ctx.usdc.address, amount)
     await ctx.cusdcV3.connect(user).allow(ctx.wcusdcV3.address, true)
-    await ctx.wcusdcV3.connect(user).depositTo(user.address, ethers.constants.MaxUint256)
+    await ctx.wcusdcV3.connect(user).depositTo(recipient, ethers.constants.MaxUint256)
 }
 
 const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
@@ -343,7 +348,8 @@ const opts = {
     collateralSpecificStatusTests,
     makeCollateralFixtureContext,
     mintCollateralTo,
-    reduceRefPerTok
+    reduceRefPerTok,
+    itClaimsRewards
 }
 
 collateralTests(opts)
