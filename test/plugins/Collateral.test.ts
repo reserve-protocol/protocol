@@ -991,7 +991,8 @@ describe('Collateral contracts', () => {
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
-        targetUnitOracle.address
+        targetUnitOracle.address,
+        ORACLE_TIMEOUT
       )
       await nonFiatCollateral.refresh()
 
@@ -1013,12 +1014,13 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
           },
-          targetUnitOracle.address
+          targetUnitOracle.address,
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('delayUntilDefault zero')
     })
 
-    it('Should not allow missing uoaPerTargetFeed', async () => {
+    it('Should not allow missing targetUnitChainlinkFeed', async () => {
       await expect(
         NonFiatCollFactory.deploy(
           {
@@ -1032,9 +1034,10 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          ZERO_ADDRESS
+          ZERO_ADDRESS,
+          ORACLE_TIMEOUT
         )
-      ).to.be.revertedWith('missing uoaPerTarget feed')
+      ).to.be.revertedWith('missing targetUnit feed')
     })
 
     it('Should not allow missing targetPerRefFeed', async () => {
@@ -1051,15 +1054,36 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          targetUnitOracle.address
+          targetUnitOracle.address,
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('missing chainlink feed')
+    })
+
+    it('Should not allow 0 targetUnitOracleTimeout', async () => {
+      await expect(
+        NonFiatCollFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: referenceUnitOracle.address,
+            oracleError: ORACLE_ERROR,
+            erc20: nonFiatToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('BTC'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          targetUnitOracle.address,
+          bn('0')
+        )
+      ).to.be.revertedWith('targetUnitOracleTimeout zero')
     })
 
     it('Should setup collateral correctly', async function () {
       // Non-Fiat Token
       expect(await nonFiatCollateral.isCollateral()).to.equal(true)
-      expect(await nonFiatCollateral.uoaPerTargetFeed()).to.equal(targetUnitOracle.address)
+      expect(await nonFiatCollateral.targetUnitChainlinkFeed()).to.equal(targetUnitOracle.address)
       expect(await nonFiatCollateral.chainlinkFeed()).to.equal(referenceUnitOracle.address)
       expect(await nonFiatCollateral.erc20()).to.equal(nonFiatToken.address)
       expect(await nonFiatToken.decimals()).to.equal(18) // Due to Mock, wbtc has 8 decimals (covered in integration test)
@@ -1215,6 +1239,7 @@ describe('Collateral contracts', () => {
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         targetUnitOracle.address,
+        ORACLE_TIMEOUT,
         REVENUE_HIDING,
         compoundMock.address
       )
@@ -1239,6 +1264,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: bn(0),
           },
           targetUnitOracle.address,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING,
           compoundMock.address
         )
@@ -1260,6 +1286,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
+          ORACLE_TIMEOUT,
           fp('1'),
           compoundMock.address
         )
@@ -1281,6 +1308,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING,
           compoundMock.address
         )
@@ -1302,10 +1330,33 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           ZERO_ADDRESS,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING,
           compoundMock.address
         )
-      ).to.be.revertedWith('missing target unit chainlink feed')
+      ).to.be.revertedWith('missing targetUnit feed')
+    })
+
+    it('Should not allow 0 targetUnitOracleTimeout', async () => {
+      await expect(
+        CTokenNonFiatFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: referenceUnitOracle.address,
+            oracleError: ORACLE_ERROR,
+            erc20: cNonFiatToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('BTC'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          targetUnitOracle,
+          bn('0'),
+          REVENUE_HIDING,
+          compoundMock.address
+        )
+      ).to.be.revertedWith('missing targetUnit feed')
     })
 
     it('Should not allow missing comptroller', async () => {
@@ -1323,6 +1374,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING,
           ZERO_ADDRESS
         )
@@ -1887,12 +1939,13 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
           },
-          targetUnitOracle.address
+          targetUnitOracle.address,
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('delayUntilDefault zero')
     })
 
-    it('Should not allow missing uoaPerTarget feed', async () => {
+    it('Should not allow missing targetUnit feed', async () => {
       await expect(
         EURFiatCollateralFactory.deploy(
           {
@@ -1906,12 +1959,13 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          ZERO_ADDRESS
+          ZERO_ADDRESS,
+          ORACLE_TIMEOUT
         )
-      ).to.be.revertedWith('missing uoaPerTarget feed')
+      ).to.be.revertedWith('missing targetUnit feed')
     })
 
-    it('Should not allow missing uoaPerRef feed', async () => {
+    it('Should not allow missing reference feed', async () => {
       await expect(
         EURFiatCollateralFactory.deploy(
           {
@@ -1925,13 +1979,34 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          targetUnitOracle.address
+          targetUnitOracle.address,
+          ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('missing chainlink feed')
     })
 
+    it('Should not allow 0 targetUnitOracleTimeout', async () => {
+      await expect(
+        EURFiatCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: referenceUnitOracle.address,
+            oracleError: ORACLE_ERROR,
+            erc20: eurFiatToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('BTC'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          targetUnitOracle.address,
+          bn('0')
+        )
+      ).to.be.revertedWith('targetUnitOracleTimeout zero')
+    })
+
     it('Should not revert during refresh when price2 is 0', async () => {
-      const targetFeedAddr = await eurFiatCollateral.uoaPerTargetFeed()
+      const targetFeedAddr = await eurFiatCollateral.targetUnitChainlinkFeed()
       const targetFeed = await ethers.getContractAt('MockV3Aggregator', targetFeedAddr)
       await targetFeed.updateAnswer(0)
       await eurFiatCollateral.refresh()
@@ -1941,7 +2016,7 @@ describe('Collateral contracts', () => {
     it('Should setup collateral correctly', async function () {
       // Non-Fiat Token
       expect(await eurFiatCollateral.isCollateral()).to.equal(true)
-      expect(await eurFiatCollateral.uoaPerTargetFeed()).to.equal(targetUnitOracle.address)
+      expect(await eurFiatCollateral.targetUnitChainlinkFeed()).to.equal(targetUnitOracle.address)
       expect(await eurFiatCollateral.chainlinkFeed()).to.equal(referenceUnitOracle.address)
       expect(await eurFiatCollateral.erc20()).to.equal(eurFiatToken.address)
       expect(await eurFiatToken.decimals()).to.equal(18)
