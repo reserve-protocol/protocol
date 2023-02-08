@@ -6,7 +6,7 @@ Our usage of Echidna is immature; we've used it only just enough to get a handfu
 
 ## Installation
 
-First, you need solc-select and slither, Echidna requires both. These are part of our [core tools setup](dev-env.md). To handle recent Solidity language changes, you'll need to use Echidna 2.0. Setup following [their instructions](https://github.com/crytic/echidna/#installation). 
+First, you need solc-select and slither, Echidna requires both. These are part of our [core tools setup](dev-env.md). To handle recent Solidity language changes, you'll need to use Echidna 2.0. Setup following [their instructions](https://github.com/crytic/echidna/#installation).
 
 If you're using the "mostly-static" precompiled binaries for MacOS, putting the contents of that build somewhere in your `PATH` will install it. However, that build is a binary plus a handful of dynamic libs that it's expecting to find as siblings in its directory. To keep things clean, I recommend installing the binary to its own directory somewhere, and then putting an executable symlink in your PATH.
 
@@ -17,7 +17,7 @@ For Echidna to run, our Solidity code [cannot contain dynamic libraries](https:/
 In order to support this:
 
 - All of our fuzzing work happens in the `fuzz` branch, which is a long-lived branch downstream of `master`.
-- The contract code in `fuzz` is rearranged as needed to be static-libraries. This should be the only reason why target-system contract code is different between `fuzz` and `master`. 
+- The contract code in `fuzz` is rearranged as needed to be static-libraries. This should be the only reason why target-system contract code is different between `fuzz` and `master`.
 
 Given all that, **never merge `fuzz` into `master`**.
 

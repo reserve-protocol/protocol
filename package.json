@@ -28,7 +28,7 @@
     "test:coverage": "PROTO_IMPL=1 hardhat coverage --testfiles 'test/{libraries,plugins,scenario}/*.test.ts test/*.test.ts'",
     "test:unit:coverage": "PROTO_IMPL=1 SLOW= hardhat coverage --testfiles 'test/*.test.ts test/libraries/*.test.ts test/plugins/*.test.ts'",
     "lint": "bash tools/lint && eslint test/",
-    "prettier": "prettier --ignore-path .gitignore --loglevel warn --write \"./**/*.{js,ts,sol,json}\"",
+    "prettier": "prettier --ignore-path .gitignore --loglevel warn --write \"./**/*.{js,ts,sol,json,md}\"",
     "size": "hardhat size-contracts",
     "slither": "python3 tools/slither.py",
     "prepare": "husky install"
