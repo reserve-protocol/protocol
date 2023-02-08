@@ -14,15 +14,20 @@ contract EURFiatCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    AggregatorV3Interface public immutable uoaPerTargetFeed; // {UoA/target}
+    AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
+    uint48 public immutable targetUnitOracleTimeout; // {s}
 
     /// @param config.chainlinkFeed Feed units:{UoA/ref}
-    /// @param uoaPerTargetFeed_ Feed units: {UoA/target}
-    constructor(CollateralConfig memory config, AggregatorV3Interface uoaPerTargetFeed_)
-        FiatCollateral(config)
-    {
-        require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
-        uoaPerTargetFeed = uoaPerTargetFeed_;
+    /// @param targetUnitChainlinkFeed_ Feed units: {UoA/target}
+    /// @param targetUnitOracleTimeout_ {s} oracle timeout to use for targetUnitChainlinkFeed
+    constructor(
+        CollateralConfig memory config,
+        AggregatorV3Interface targetUnitChainlinkFeed_,
+        uint48 targetUnitOracleTimeout_
+    ) FiatCollateral(config) {
+        require(address(targetUnitChainlinkFeed_) != address(0), "missing uoaPerTarget feed");
+        targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
+        targetUnitOracleTimeout = targetUnitOracleTimeout_;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -40,10 +45,12 @@ contract EURFiatCollateral is FiatCollateral {
         )
     {
         uint192 refPrice = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
-        uint192 targetPrice = uoaPerTargetFeed.price(oracleTimeout); // {UoA/target}
+
+        // {UoA/target}
+        uint192 pricePerTarget = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
 
         // div-by-zero later
-        if (targetPrice == 0) {
+        if (pricePerTarget == 0) {
             return (0, FIX_MAX, 0);
         }
 
@@ -52,6 +59,6 @@ contract EURFiatCollateral is FiatCollateral {
         high = refPrice + delta;
 
         // {target/ref} = {UoA/ref} / {UoA/target}
-        pegPrice = refPrice.div(targetPrice);
+        pegPrice = refPrice.div(pricePerTarget);
     }
 }

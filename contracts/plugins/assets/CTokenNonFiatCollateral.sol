@@ -16,14 +16,17 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
 
     AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
+    uint48 public immutable targetUnitOracleTimeout; // {s}
 
     /// @param config.chainlinkFeed Feed units: {target/ref}
     /// @param targetUnitChainlinkFeed_ Feed units: {UoA/target}
+    /// @param targetUnitOracleTimeout_ {s} oracle timeout to use for targetUnitChainlinkFeed
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param comptroller_ The CompoundFinance Comptroller
     constructor(
         CollateralConfig memory config,
         AggregatorV3Interface targetUnitChainlinkFeed_,
+        uint48 targetUnitOracleTimeout_,
         uint192 revenueHiding,
         IComptroller comptroller_
     ) CTokenFiatCollateral(config, revenueHiding, comptroller_) {
@@ -32,6 +35,7 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
             "missing target unit chainlink feed"
         );
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
+        targetUnitOracleTimeout = targetUnitOracleTimeout_;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -49,7 +53,9 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         )
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
-        uint192 pricePerTarget = targetUnitChainlinkFeed.price(oracleTimeout); // {UoA/target}
+
+        // {UoA/target}
+        uint192 pricePerTarget = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         uint192 pLow = pricePerTarget.mul(pegPrice).mul(refPerTok());
