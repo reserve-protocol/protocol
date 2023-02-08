@@ -36,6 +36,7 @@ export interface CollateralFixtureContext {
   collateral: ICollateral
   chainlinkFeed: MockV3Aggregator
   tok: IERC20
+  alice?: SignerWithAddress
 }
 
 export interface CollateralOpts {
@@ -52,7 +53,7 @@ export interface CollateralOpts {
 }
 
 type DeployCollateralFunc = (opts: CollateralOpts) => Promise<ICollateral>
-type MakeCollateralFixtureFunc<T extends CollateralFixtureContext> = (opts: CollateralOpts) => Fixture<T>
+type MakeCollateralFixtureFunc<T extends CollateralFixtureContext> = (alice: SignerWithAddress, opts: CollateralOpts) => Fixture<T>
 export type MintCollateralFunc<T extends CollateralFixtureContext> = (ctx: T, amount: BigNumberish, user: SignerWithAddress) => Promise<void>
 interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext> {
     oracleError: BigNumberish
@@ -61,6 +62,7 @@ interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext> {
     collateralSpecificStatusTests: () => void
     makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
     mintCollateralTo: MintCollateralFunc<T>
+    reduceRefPerTok: (ctx: T) => void
 }
 
 export enum CollateralStatus {
@@ -93,7 +95,8 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
         collateralSpecificConstructorTests,
         collateralSpecificStatusTests,
         makeCollateralFixtureContext,
-        mintCollateralTo
+        mintCollateralTo,
+        reduceRefPerTok
     } = fixtures
 
     describeFork('CTokenV3Collateral', () => {
@@ -145,7 +148,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
 
         describe('collateral functionality', () => {
             let ctx: X
-            let bob: SignerWithAddress
+            let alice: SignerWithAddress
         
             let wallet: Wallet
             let chainId: number
@@ -166,9 +169,9 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
             })
         
             beforeEach(async () => {
-              ;[, bob] = await ethers.getSigners()
+              ;[, alice] = await ethers.getSigners()
               ;(ctx = await loadFixture(
-                makeCollateralFixtureContext({})
+                makeCollateralFixtureContext(alice, {})
               ))
               ;({ chainlinkFeed, collateral } = ctx)
             })
@@ -177,12 +180,12 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
             //   // unskip once rewards are turned on
             //   it.skip('claims rewards', async () => {
             //     const balance = bn('100e6')
-            //     await allocateUSDC(bob.address, balance)
-            //     await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
-            //     await cusdcV3.connect(bob).supply(usdc.address, balance)
-            //     await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
-            //     await wcusdcV3.connect(bob).depositTo(bob.address, ethers.constants.MaxUint256)
-            //     await wcusdcV3.connect(bob).transfer(collateral.address, balance)
+            //     await allocateUSDC(alice.address, balance)
+            //     await usdc.connect(alice).approve(cusdcV3.address, ethers.constants.MaxUint256)
+            //     await cusdcV3.connect(alice).supply(usdc.address, balance)
+            //     await cusdcV3.connect(alice).allow(wcusdcV3.address, true)
+            //     await wcusdcV3.connect(alice).depositTo(alice.address, ethers.constants.MaxUint256)
+            //     await wcusdcV3.connect(alice).transfer(collateral.address, balance)
         
             //     await advanceBlocks(1000)
             //     await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
@@ -196,14 +199,14 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
         
             //   it('returns the correct bal', async () => {
             //     const balance = bn('100e6')
-            //     await allocateUSDC(bob.address, balance)
-            //     await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
-            //     await cusdcV3.connect(bob).supply(usdc.address, balance)
-            //     await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
-            //     await wcusdcV3.connect(bob).depositTo(bob.address, ethers.constants.MaxUint256)
+            //     await allocateUSDC(alice.address, balance)
+            //     await usdc.connect(alice).approve(cusdcV3.address, ethers.constants.MaxUint256)
+            //     await cusdcV3.connect(alice).supply(usdc.address, balance)
+            //     await cusdcV3.connect(alice).allow(wcusdcV3.address, true)
+            //     await wcusdcV3.connect(alice).depositTo(alice.address, ethers.constants.MaxUint256)
         
-            //     const bobBal = await collateral.bal(bob.address)
-            //     expect(bobBal).to.closeTo(balance.mul(bn('1e12')), bn('50e12'))
+            //     const aliceBal = await collateral.bal(alice.address)
+            //     expect(aliceBal).to.closeTo(balance.mul(bn('1e12')), bn('50e12'))
             //   })
             // })
         
@@ -254,7 +257,7 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
         
                 // need to deposit in order to get an exchange rate
                 const amount = bn('20000e6')
-                await mintCollateralTo(ctx, amount, bob)
+                await mintCollateralTo(ctx, amount, alice)
 
                 await advanceBlocks(1000)
                 await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
@@ -343,32 +346,26 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
                 expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
               })
         
-              // it('hard-defaults when refPerTok() decreases', async () => {
-              //   // Check initial state
-              //   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-              //   expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+              it('hard-defaults when refPerTok() decreases', async () => {
+                // Check initial state
+                expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+                expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         
-              //   await mintCollateralTo(ctx, bn('20000e6'), bob)
+                await mintCollateralTo(ctx, bn('20000e6'), alice)
         
-              //   await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-              //   // State remains the same
-              //   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-              //   expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+                await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+                // State remains the same
+                expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+                expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         
-              //   // Force refresh to get new reference price from exchange rate
-              //   await advanceTime(1000)
-              //   const oldExchangeRate = await wcusdcV3.exchangeRate()
-              //   await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+                // Withdraw ~99% of supply so that exchange rate will go down
+                await reduceRefPerTok(ctx)
         
-              //   // Withdraw ~99% of supply so that exchange rate will go down
-              //   await wcusdcV3.connect(bob).withdraw(bn('19900e6'))
-              //   expect(oldExchangeRate).to.be.gt(await wcusdcV3.exchangeRate())
-        
-              //   // Collateral defaults due to refPerTok() going down
-              //   await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
-              //   expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-              //   expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-              // })
+                // Collateral defaults due to refPerTok() going down
+                await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
+                expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+                expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
+              })
       
               it('enters IFFY state when price becomes stale', async () => {
                 const oracleTimeout = await collateral.oracleTimeout()
@@ -403,6 +400,6 @@ export default function fn<X extends CollateralFixtureContext>(fixtures: Collate
 
               describe('collatral-specific tests', collateralSpecificStatusTests)
             })
-          })
+        })
     })
 }

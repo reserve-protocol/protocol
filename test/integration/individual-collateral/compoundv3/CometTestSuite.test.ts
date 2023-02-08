@@ -63,6 +63,12 @@ interface CometCollateralFixtureContext extends CollateralFixtureContext {
   usdc: ERC20Mock
 }
 
+interface CometCollateralFixtureContextMockComet extends CollateralFixtureContext {
+  cusdcV3: CometMock
+  wcusdcV3: CusdcV3Wrapper
+  usdc: ERC20Mock
+}
+
 interface CometCollateralOpts extends CollateralOpts {
   reservesThresholdIffy?: BigNumberish
   reservesThresholdDisabled?: BigNumberish
@@ -146,7 +152,7 @@ export const makewCSUDC = async (): Promise<WrappedcUSDCFixture> => {
   return { cusdcV3, wcusdcV3, usdc }
 }
 
-export const makeCollateralFixtureContext = (opts: CometCollateralOpts = {}): Fixture<CometCollateralFixtureContext> => {
+export const makeCollateralFixtureContext = (alice: SignerWithAddress, opts: CometCollateralOpts = {}): Fixture<CometCollateralFixtureContext> => {
   const collateralOpts = { ...defaultCometCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
@@ -164,21 +170,15 @@ export const makeCollateralFixtureContext = (opts: CometCollateralOpts = {}): Fi
     collateralOpts.erc20 = wcusdcV3.address
 
     const collateral = await deployCollateral(collateralOpts)
-    return { collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3 }
+    return { alice, collateral, chainlinkFeed, cusdcV3, wcusdcV3, usdc, tok: wcusdcV3 }
   }
 
   return makeCollateralFixtureContext
 }
 
-interface CollateralWithMockComet extends CollateralFixtureContext {
-  cusdcV3: CometMock
-  wcusdcV3: CusdcV3Wrapper
-  usdc: ERC20Mock
-}
-
 export const deployCollateralCometMockContext = async (
   opts: CometCollateralOpts = {}
-): Promise<CollateralWithMockComet> => {
+): Promise<CometCollateralFixtureContextMockComet> => {
   const collateralOpts = { ...defaultCometCollateralOpts, ...opts }
 
   const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
@@ -236,6 +236,10 @@ export const mintCollateralTo = async (ctx: CometCollateralFixtureContext, amoun
     await ctx.cusdcV3.connect(user).supply(ctx.usdc.address, amount)
     await ctx.cusdcV3.connect(user).allow(ctx.wcusdcV3.address, true)
     await ctx.wcusdcV3.connect(user).depositTo(user.address, ethers.constants.MaxUint256)
+}
+
+const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
+  await ctx.wcusdcV3.connect(ctx.alice as SignerWithAddress).withdraw(bn('19900e6'))
 }
 
 /*
@@ -310,7 +314,7 @@ const collateralSpecificStatusTests = () => {
 
   it('hard-defaults when reserves threshold is at disabled levels', async () => {
     const mockOpts = { reservesThresholdDisabled: 1000n }
-    const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
+    const { collateral, cusdcV3 } = await deployCollateralCometMockContext( mockOpts)
 
     // Check initial state
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -339,6 +343,7 @@ const opts = {
     collateralSpecificStatusTests,
     makeCollateralFixtureContext,
     mintCollateralTo,
+    reduceRefPerTok
 }
 
 collateralTests(opts)
