@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../interfaces/IMain.sol";
@@ -14,6 +14,7 @@ import "../assets/RTokenAsset.sol";
  *   - {target} = RToken's basket
  * Warning: This plugin is pretty gas-inefficient and it should be replaced with one that uses
  *  a chainlink oracle ASAP. This is basically just for testing.
+ * Stronger yet: This should not be used in a production system, period.
  */
 contract RTokenCollateral is RTokenAsset, ICollateral {
     using FixLib for uint192;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../interfaces/IAsset.sol";
@@ -24,7 +24,7 @@ struct CollateralConfig {
 
 /**
  * @title FiatCollateral
- * Parent class for all collateral. Can be extended to support changing refPerToks or non-fiat
+ * Parent class for all collateral. Can be extended to support appreciating collateral
  *
  * For: {tok} == {ref}, {ref} != {target}, {target} == {UoA}
  * Can be easily extended by (optionally) re-implementing:
@@ -32,7 +32,8 @@ struct CollateralConfig {
  *   - refPerTok()
  *   - targetPerRef()
  *   - claimRewards()
- * Should not have to re-implement any other methods.
+ * If you have appreciating collateral, then you should use AppreciatingFiatCollateral or
+ * override refresh() yourself.
  *
  * Can intentionally disable default checks by setting config.defaultThreshold to 0
  */

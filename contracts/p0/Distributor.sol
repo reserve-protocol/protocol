@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -71,9 +71,9 @@ contract DistributorP0 is ComponentP0, IDistributor {
             } else if (addrTo == ST_RSR) {
                 addrTo = address(main.stRSR());
             }
-            erc20.safeTransferFrom(msg.sender, addrTo, transferAmt);
+            erc20.safeTransferFrom(_msgSender(), addrTo, transferAmt);
         }
-        emit RevenueDistributed(erc20, msg.sender, amount);
+        emit RevenueDistributed(erc20, _msgSender(), amount);
     }
 
     /// Returns the rsr + rToken shareTotals
