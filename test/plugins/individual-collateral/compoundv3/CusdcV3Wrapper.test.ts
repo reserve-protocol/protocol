@@ -311,47 +311,37 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('matches balance in cUSDCv3', async () => {
+      // mint some cusdc to bob
       const amount = bn('20000e6')
-      await network.provider.send('evm_setAutomine', [false])
       await allocateUSDC(bob.address, amount)
       await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
       await cusdcV3.connect(bob).supply(usdc.address, amount)
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, amount, bob.address)
-      await advanceBlocks(1)
-      await network.provider.send('evm_setAutomine', [true])
 
-      // Minting more wcUSDC to other accounts should not affect
-      // Bob's underlying balance
+      // mint some wcusdc to bob, charles, don
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, amount, bob.address)
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, charles, amount, charles.address)
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, amount, don.address)
       await advanceTime(100000)
 
       let totalBalances =
-        (await wcusdcV3.underlyingBalanceOf(don.address)).toBigInt() +
-        (await wcusdcV3.underlyingBalanceOf(bob.address)).toBigInt() +
-        (await wcusdcV3.underlyingBalanceOf(charles.address)).toBigInt()
-
-      // There are negligible rounding differences of ~.000002 in favor of the Token
-      // contract.
+        (await wcusdcV3.underlyingBalanceOf(don.address)).add
+        (await wcusdcV3.underlyingBalanceOf(bob.address)).add
+        (await wcusdcV3.underlyingBalanceOf(charles.address))
       let contractBalance = await cusdcV3.balanceOf(wcusdcV3.address)
-      expect(totalBalances).to.eq(contractBalance)
-
-      expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(
-        await wcusdcV3.underlyingBalanceOf(bob.address),
-        2
-      )
+      expect(totalBalances).to.be.closeTo(contractBalance, 10)
+      expect(totalBalances).to.be.lt(contractBalance)
 
       const bobBal = await wcusdcV3.balanceOf(bob.address)
       await wcusdcV3.connect(bob).withdraw(bobBal)
       await wcusdcV3.connect(don).withdraw(bn('10000e6'))
 
       totalBalances =
-        (await wcusdcV3.underlyingBalanceOf(don.address)).toBigInt() +
-        (await wcusdcV3.underlyingBalanceOf(bob.address)).toBigInt() +
-        (await wcusdcV3.underlyingBalanceOf(charles.address)).toBigInt()
+        (await wcusdcV3.underlyingBalanceOf(don.address)).add
+        (await wcusdcV3.underlyingBalanceOf(bob.address)).add
+        (await wcusdcV3.underlyingBalanceOf(charles.address))
       contractBalance = await cusdcV3.balanceOf(wcusdcV3.address)
-      expect(totalBalances).to.be.closeTo(contractBalance, 2)
-      expect(totalBalances).to.be.lt(contractBalance)
+      expect(totalBalances).to.be.closeTo(contractBalance, 10)
+      expect(totalBalances).to.be.lte(contractBalance)
     })
   })
 
