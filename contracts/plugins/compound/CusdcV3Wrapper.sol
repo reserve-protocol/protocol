@@ -18,7 +18,7 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     uint64 public constant RESCALE_FACTOR = 1e12;
 
     address public immutable underlying;
-    IERC20 public immutable underlyingERC20;
+    IERC20 public immutable cometERC20;
     IERC20 public immutable rewardERC20;
     CometInterface public immutable underlyingComet;
     ICometRewards public immutable rewardsAddr;
@@ -43,7 +43,7 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         underlying = cusdcv3;
         rewardsAddr = ICometRewards(rewardsAddr_);
         rewardERC20 = IERC20(rewardERC20_);
-        underlyingERC20 = IERC20(cusdcv3);
+        cometERC20 = IERC20(cusdcv3);
         underlyingComet = CometInterface(cusdcv3);
     }
 
@@ -79,33 +79,30 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     ) internal {
         if (!hasPermission(from, operator)) revert Unauthorized();
 
-        underlyingComet.accrueAccount(address(this));
-        uint256 mintAmount;
-
-        UserBasic memory basic = userBasic[dst];
-        uint256 underlyingBalance = underlyingERC20.balanceOf(from);
-        uint256 rate = exchangeRate();
-        if (amount > underlyingBalance) {
-            mintAmount = (underlyingBalance * EXP_SCALE) / rate;
-            CometInterface.UserBasic memory cometBasic = underlyingComet.userBasic(from);
-            basic.principal += uint104(cometBasic.principal);
-        } else {
-            mintAmount = (amount * EXP_SCALE) / rate;
-            uint104 principal = basic.principal;
-            (uint64 baseSupplyIndex, ) = getSupplyIndices();
-            uint256 balance = presentValueSupply(baseSupplyIndex, principal) + amount;
-            basic.principal = principalValueSupply(baseSupplyIndex, balance);
+        if (amount == type(uint256).max) {
+            amount = underlyingComet.balanceOf(from);
         }
+
+        underlyingComet.accrueAccount(address(this));
+        underlyingComet.accrueAccount(from);
+
+        UserBasic memory dstBasic = userBasic[dst];
+
+        (uint64 baseSupplyIndex, ) = getSupplyIndices();
+        uint104 principal = dstBasic.principal;
+        uint256 balance = presentValueSupply(baseSupplyIndex, principal) + amount;
+        dstBasic.principal = principalValueSupply(baseSupplyIndex, balance);
 
         // We use this contract's baseTrackingIndex from Comet so we do not over-accrue user's
         // rewards.
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
-        basic.baseTrackingIndex = wrappedBasic.baseTrackingIndex;
+        dstBasic.baseTrackingIndex = wrappedBasic.baseTrackingIndex;
 
-        userBasic[dst] = basic;
+        userBasic[dst] = dstBasic;
+        uint256 mintAmount = principalValueSupply(baseSupplyIndex, uint104(amount));
         _mint(dst, mintAmount);
 
-        SafeERC20.safeTransferFrom(underlyingERC20, from, address(this), amount);
+        SafeERC20.safeTransferFrom(cometERC20, from, address(this), amount);
     }
 
     function withdraw(uint256 amount) external {
@@ -138,15 +135,20 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         if (!hasPermission(src, operator)) revert Unauthorized();
 
         underlyingComet.accrueAccount(address(this));
-        uint256 balance = balanceOf(src);
-        uint256 burnAmount = (amount > balance) ? balance : amount;
-        uint256 transferAmount = (burnAmount * exchangeRate()) / EXP_SCALE;
+        underlyingComet.accrueAccount(to);
+
+        if (amount == type(uint256).max) {
+            amount = balanceOf(src);
+        }
+
+        TotalsBasic memory totals = underlyingComet.totalsBasic();
+        uint256 transferAmount = presentValueSupply(totals.baseSupplyIndex, uint104(amount));
 
         UserBasic memory basic = userBasic[src];
         userBasic[src] = updatedAccountIndices(basic, -signed256(transferAmount));
 
-        _burn(src, burnAmount);
-        SafeERC20.safeTransfer(underlyingERC20, to, transferAmount);
+        _burn(src, amount);
+        SafeERC20.safeTransfer(cometERC20, to, transferAmount);
     }
 
     function _beforeTokenTransfer(
@@ -172,16 +174,27 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         if (balance == 0) {
             return 0;
         }
-        return (balance * exchangeRate()) / EXP_SCALE;
+        return convertStaticToDynamic(uint104(balance));
     }
 
-    function exchangeRate() public view returns (uint256) {
-        uint256 totalSupply_ = totalSupply();
-        if (totalSupply_ == 0) {
-            return EXP_SCALE;
-        }
-        uint256 balance = underlyingERC20.balanceOf(address(this));
-        return (balance * EXP_SCALE) / totalSupply_;
+    function getLastExchangeRate() public view returns (uint256) {
+        (uint64 baseSupplyIndex, ) = getSupplyIndices();
+        return presentValueSupply(baseSupplyIndex, uint104(10 ** underlyingComet.decimals()));
+    }
+
+    function getCurrentExchangeRate() public view returns (uint256) {
+        (uint64 baseSupplyIndex, ) = getUpdatedSupplyIndicies();
+        return presentValueSupply(baseSupplyIndex, uint104(10 ** underlyingComet.decimals()));
+    }
+
+    function convertStaticToDynamic(uint104 amount) public view returns (uint256) {
+        (uint64 baseSupplyIndex, ) = getUpdatedSupplyIndicies();
+        return presentValueSupply(baseSupplyIndex, amount);
+    }
+
+    function convertDynamicToStatic(uint256 amount) public view returns (uint104) {
+        (uint64 baseSupplyIndex, ) = getUpdatedSupplyIndicies();
+        return principalValueSupply(baseSupplyIndex, amount);
     }
 
     function accrue() public {
@@ -234,6 +247,16 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         trackingSupplyIndex_ = totals.trackingSupplyIndex;
     }
 
+    function getUpdatedSupplyIndicies()
+        internal
+        view
+        returns (uint64 baseSupplyIndex_, uint64 trackingSupplyIndex_)
+    {
+        TotalsBasic memory totals = underlyingComet.totalsBasic();
+        uint40 timeDelta = uint40(block.timestamp) - totals.lastAccrualTime;
+        return accruedInterestIndices(timeDelta);
+    }
+
     function accrueAccount(address account) public {
         UserBasic memory basic = userBasic[account];
         underlyingComet.accrueAccount(address(this));
@@ -262,5 +285,22 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         }
 
         return basic;
+    }
+
+    /**
+     * @dev Calculate accrued interest indices for base token supply and borrows
+     **/
+    function accruedInterestIndices(uint timeElapsed) internal view returns (uint64, uint64) {
+        TotalsBasic memory totals = underlyingComet.totalsBasic();
+        uint64 baseSupplyIndex_ = totals.baseSupplyIndex;
+        uint64 baseBorrowIndex_ = totals.baseBorrowIndex;
+        if (timeElapsed > 0) {
+            uint utilization = underlyingComet.getUtilization();
+            uint supplyRate = underlyingComet.getSupplyRate(utilization);
+            uint borrowRate = underlyingComet.getBorrowRate(utilization);
+            baseSupplyIndex_ += safe64(mulFactor(baseSupplyIndex_, supplyRate * timeElapsed));
+            baseBorrowIndex_ += safe64(mulFactor(baseBorrowIndex_, borrowRate * timeElapsed));
+        }
+        return (baseSupplyIndex_, baseBorrowIndex_);
     }
 }
