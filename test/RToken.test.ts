@@ -376,6 +376,32 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(MAX_THROTTLE_AMT_RATE)
     })
 
+    it.only('Should not allow issuance to set BU exchange rate above 1e9', async () => {
+      const issueAmount: BigNumber = fp('1')
+
+      // Set single basket token for simplification
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount))
+        .to.emit(rToken, 'Issuance')
+        .withArgs(addr1.address, addr1.address, issueAmount, issueAmount)
+
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+      // setBasketsNeeded()
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await rToken.connect(signer).setBasketsNeeded(issueAmount.mul(bn('1e9')))
+      })
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(1)).to.be.revertedWith('BU rate out of range')
+    })
+
     it('Should revert if user did not provide approval for Token transfer', async function () {
       const issueAmount: BigNumber = bn('10e18')
 
