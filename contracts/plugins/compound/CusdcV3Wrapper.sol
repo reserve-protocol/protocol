@@ -19,7 +19,6 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     uint64 public constant RESCALE_FACTOR = 1e12;
 
     address public immutable underlying;
-    IERC20 public immutable cometERC20;
     IERC20 public immutable rewardERC20;
     CometInterface public immutable underlyingComet;
     ICometRewards public immutable rewardsAddr;
@@ -44,11 +43,10 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         underlying = cusdcv3;
         rewardsAddr = ICometRewards(rewardsAddr_);
         rewardERC20 = IERC20(rewardERC20_);
-        cometERC20 = IERC20(cusdcv3);
         underlyingComet = CometInterface(cusdcv3);
     }
 
-    function decimals() public pure override returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return 6;
     }
 
@@ -93,7 +91,6 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         uint104 principal = dstBasic.principal;
         uint256 balance = presentValueSupply(baseSupplyIndex, principal) + amount;
         dstBasic.principal = principalValueSupply(baseSupplyIndex, balance);
-        // dstBasic.principal = addPresentToPrincipal(baseSupplyIndex, principal, amount);
 
         // We use this contract's baseTrackingIndex from Comet so we do not over-accrue user's
         // rewards.
@@ -101,10 +98,8 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         dstBasic.baseTrackingIndex = wrappedBasic.baseTrackingIndex;
 
         userBasic[dst] = dstBasic;
-        uint256 mintAmount = principalValueSupply(baseSupplyIndex, uint104(amount));
-        // _mint(dst, mintAmount);
 
-        SafeERC20.safeTransferFrom(cometERC20, from, address(this), amount);
+        SafeERC20.safeTransferFrom(IERC20(address(underlyingComet)), from, address(this), amount);
     }
 
     function addPresentToPrincipal(uint64 baseSupplyIndex_, uint104 principalValue_, uint256 presentAmount)
@@ -143,40 +138,23 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         uint256 presentWithdrawAmt
     ) internal {
         if (presentWithdrawAmt == 0) return;
-        // console.log("withdraw time", block.timestamp);
         if (!hasPermission(src, operator)) revert Unauthorized();
 
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(to);
 
         if (presentWithdrawAmt == type(uint256).max) {
-            // console.log("cap");
             presentWithdrawAmt = underlyingBalanceOf(src);
         }
 
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         TotalsBasic memory totals = underlyingComet.totalsBasic();
-        uint256 wrapperPresent = presentValueSupply(totals.baseSupplyIndex, uint104(wrappedBasic.principal));
-        // uint256 transferAmount = presentValueSupply(totals.baseSupplyIndex, uint104(presentWithdrawAmt));
         UserBasic memory basic = userBasic[src];
         uint256 userPresent = presentValueSupply(totals.baseSupplyIndex, uint104(basic.principal));
         uint104 userPrincipalNew = principalValueSupply(totals.baseSupplyIndex, userPresent - presentWithdrawAmt);
-
-        // uint256 principalWithdrawAmt = principalValueSupply(totals.baseSupplyIndex, presentWithdrawAmt);
-
-        // console.log(uint256(int256(wrappedBasic.principal)), uint256(basic.principal), userPrincipalNew);
-        // console.log(wrapperPresent, userPresent, presentWithdrawAmt);
-
         userBasic[src] = updatedAccountIndices(basic, userPrincipalNew);
 
-        // _burn(src, presentWithdrawAmt);
-        // SafeERC20.safeTransfer(cometERC20, to, presentWithdrawAmt);
-        try cometERC20.transfer(to, presentWithdrawAmt) {
-            // console.log("passed");
-        } catch (bytes memory e) {
-            // console.logBytes(e);
-            revert();
-        }
+        SafeERC20.safeTransfer(IERC20(address(underlyingComet)), to, presentWithdrawAmt);
     }
 
     function _beforeTokenTransfer(
@@ -310,17 +288,13 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         uint104 principal = basic.principal;
         basic.principal = newPrincipal;
 
-        (uint64 baseSupplyIndex, uint64 trackingSupplyIndex) = getSupplyIndices();
+        (, uint64 trackingSupplyIndex) = getSupplyIndices();
 
         uint256 indexDelta = uint256(trackingSupplyIndex - basic.baseTrackingIndex);
         basic.baseTrackingAccrued += safe64(
             (uint104(principal) * indexDelta) / TRACKING_INDEX_SCALE
         );
         basic.baseTrackingIndex = trackingSupplyIndex;
-        // if (changeToPrincipal != 0) {
-        //     uint256 newPrincipal = unsigned256(signed256(basic.principal) + changeToPrincipal);
-        //     basic.principal = uint104(newPrincipal);
-        // }
 
         return basic;
     }
