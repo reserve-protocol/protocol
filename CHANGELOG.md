@@ -97,3 +97,4 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Forward RSR directly to StRSR, bypassing RSRTrader
 - Accumulate melting on `Furnace.setRatio()`
 - Payout RSR rewards on `StRSR.setRatio()`
+- Distinguish oracle timeouts when dealing with multiple oracles in one plugin
