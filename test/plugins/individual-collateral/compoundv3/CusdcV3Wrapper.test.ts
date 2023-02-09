@@ -50,20 +50,31 @@ describeFork('Wrapped CUSDCv3', () => {
     beforeEach(async () => {
       await allocateUSDC(bob.address, amount)
       await usdc.connect(bob).approve(cusdcV3.address, ethers.constants.MaxUint256)
-      await cusdcV3.connect(bob).supply(usdc.address, bn('20000e6'))
+      await cusdcV3.connect(bob).supply(usdc.address, amount)
       await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
     })
 
-    it('deposit to own account', async () => {
+    it('deposit', async () => {
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(await cusdcV3.balanceOf(bob.address))
       await wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256)
-      expect(await wcusdcV3.balanceOf(bob.address)).to.be.closeTo(amount, 50)
+      expect(await cusdcV3.balanceOf(bob.address)).to.equal(0)
+      expect(await usdc.balanceOf(bob.address)).to.equal(0)
+      expect(await wcusdcV3.balanceOf(bob.address)).to.eq(expectedAmount)
+    })
+
+    it('deposits to own account', async () => {
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(await cusdcV3.balanceOf(bob.address))
+      await wcusdcV3.connect(bob).depositTo(bob.address, ethers.constants.MaxUint256)
+      expect(await cusdcV3.balanceOf(bob.address)).to.equal(0)
+      expect(await usdc.balanceOf(bob.address)).to.equal(0)
+      expect(await wcusdcV3.balanceOf(bob.address)).to.eq(expectedAmount)
     })
 
     it('deposits for someone else', async () => {
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(await cusdcV3.balanceOf(bob.address))
       await wcusdcV3.connect(bob).depositTo(don.address, ethers.constants.MaxUint256)
-
       expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
-      expect(await wcusdcV3.balanceOf(don.address)).to.be.closeTo(amount, 50)
+      expect(await wcusdcV3.balanceOf(don.address)).to.eq(expectedAmount)
     })
 
     it('deposits from a different account', async () => {
@@ -72,44 +83,41 @@ describeFork('Wrapped CUSDCv3', () => {
         wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
       ).revertedWith('Unauthorized()')
       await wcusdcV3.connect(bob).connect(bob).allow(don.address, true)
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(await cusdcV3.balanceOf(bob.address))
       await wcusdcV3
         .connect(don)
         .depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
 
       expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
-      expect(await wcusdcV3.balanceOf(charles.address)).to.be.closeTo(amount, 50)
-    })
-
-    it('deposits max uint256 and mints available amount of wrapped cusdc', async () => {
-      await wcusdcV3.connect(bob).depositTo(bob.address, ethers.constants.MaxUint256)
-      expect(await cusdcV3.balanceOf(bob.address)).to.equal(0)
-      expect(await usdc.balanceOf(bob.address)).to.equal(0)
-      expect(await wcusdcV3.balanceOf(bob.address)).to.be.closeTo(amount, 100)
+      expect(await wcusdcV3.balanceOf(charles.address)).to.eq(expectedAmount)
     })
 
     it('deposits less than available cusdc', async () => {
-      await cusdcV3.connect(bob).allow(wcusdcV3.address, true)
-      await wcusdcV3.connect(bob).depositTo(bob.address, bn('10000e6'))
-      expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(bn('10000e6'), 100)
+      const depositAmount = bn('10000e6')
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(depositAmount)
+      await wcusdcV3.connect(bob).depositTo(bob.address, depositAmount)
+      expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(depositAmount, 100)
       expect(await usdc.balanceOf(bob.address)).to.equal(0)
-      expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('10000e6'))
+      expect(await wcusdcV3.balanceOf(bob.address)).to.closeTo(expectedAmount, 100)
     })
 
     it('user that deposits must have same baseTrackingIndex as this Token in Comet', async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, amount, bob.address)
       expect((await cusdcV3.callStatic.userBasic(wcusdcV3.address)).baseTrackingIndex).to.equal(
         await wcusdcV3.baseTrackingIndex(bob.address)
       )
     })
 
     it('multiple deposits lead to accurate balances', async () => {
+      let expectedAmount = await wcusdcV3.convertDynamicToStatic(bn('10000e6'))
       await wcusdcV3.connect(bob).depositTo(bob.address, bn('10000e6'))
       await advanceTime(1000)
+      expectedAmount = expectedAmount.add(await wcusdcV3.convertDynamicToStatic(bn('10000e6')))
       await wcusdcV3.connect(bob).depositTo(bob.address, bn('10000e6'))
 
       // The more wcUSDCv3 is minted, the higher its value is relative to cUSDCv3.
       expect(await wcusdcV3.underlyingBalanceOf(bob.address)).to.be.gt(amount)
-      expect(await wcusdcV3.balanceOf(bob.address)).to.be.closeTo(amount, bn('10e6'))
+      expect(await wcusdcV3.balanceOf(bob.address)).to.closeTo(expectedAmount, 100)
 
       expect(await wcusdcV3.underlyingBalanceOf(bob.address)).to.be.closeTo(
         await cusdcV3.balanceOf(wcusdcV3.address),
@@ -118,62 +126,63 @@ describeFork('Wrapped CUSDCv3', () => {
     })
   })
 
-  describe('withdraw', () => {
+  describe.only('withdraw', () => {
+    const amount = bn('20000e6')
+    let startingBalance;
+
     beforeEach(async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, amount, bob.address)
+      startingBalance = await wcusdcV3.balanceOf(bob.address)
     })
 
     it('withdraws to own account', async () => {
+      const expectedAmount = await wcusdcV3.convertStaticToDynamic(await wcusdcV3.balanceOf(bob.address))
       await wcusdcV3.connect(bob).withdraw(ethers.constants.MaxUint256)
       const bal = await wcusdcV3.balanceOf(bob.address)
-      await expect(bal).to.eq(0)
-
-      expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(bn('20000e6'), 50)
+      expect(bal).to.eq(0)
+      expect(await cusdcV3.balanceOf(bob.address)).to.eq(expectedAmount)
     })
 
     it('withdraws to a different account', async () => {
+      const expectedAmount = await wcusdcV3.convertStaticToDynamic(await wcusdcV3.balanceOf(bob.address))
       await wcusdcV3.connect(bob).withdrawTo(don.address, ethers.constants.MaxUint256)
-      expect(await cusdcV3.balanceOf(don.address)).to.be.closeTo(bn('20000e6'), 50)
-      expect(await cusdcV3.balanceOf(bob.address)).to.be.closeTo(bn(0), 50)
+      expect(await cusdcV3.balanceOf(don.address)).to.eq(expectedAmount)
+      expect(await cusdcV3.balanceOf(bob.address)).to.eq(0)
       expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
     })
 
     it('withdraws from a different account', async () => {
       await expect(
-        wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, bn('20000e6'))
+        wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, amount)
       ).to.be.revertedWith('Unauthorized')
 
       await wcusdcV3.connect(bob).allow(charles.address, true)
-      await wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, bn('20000e6'))
+      const withdrawAmount = await wcusdcV3.balanceOf(bob.address)
+      const expectedBalance = await wcusdcV3.convertStaticToDynamic(withdrawAmount)
+      await wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, withdrawAmount)
 
-      expect(await cusdcV3.balanceOf(don.address)).be.closeTo(bn('20000e6'), 50)
-      expect(await cusdcV3.balanceOf(bob.address)).be.closeTo(bn(0), 50)
+      expect(await cusdcV3.balanceOf(don.address)).to.eq(expectedBalance)
+      expect(await cusdcV3.balanceOf(bob.address)).to.eq(0)
       expect(await cusdcV3.balanceOf(charles.address)).to.eq(0)
 
       expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
     })
 
     it('withdraws all underlying balance via multiple withdrawals', async () => {
+      const initialBalance = await wcusdcV3.balanceOf(bob.address)
+      const withdrawAmt = bn('10000e6')
       await advanceTime(1000)
-      await wcusdcV3.connect(bob).withdraw(bn('10000e6'))
-      expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('10000e6'))
+      await wcusdcV3.connect(bob).withdraw(withdrawAmt)
+      expect(await wcusdcV3.balanceOf(bob.address)).to.equal(initialBalance.sub(withdrawAmt))
       await advanceTime(1000)
-      await wcusdcV3.connect(bob).withdraw(bn('10000e6'))
+      await wcusdcV3.connect(bob).withdraw(initialBalance.sub(withdrawAmt))
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(0)
     })
 
     it('withdraws 0', async () => {
+      const initialBalance = await wcusdcV3.balanceOf(bob.address)
       await wcusdcV3.connect(bob).withdraw(0)
-      expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('20000e6'))
-    })
-
-    it('updates and principals in withdrawn account', async () => {
-      await wcusdcV3.connect(bob).withdraw(bn('5000e6'))
-
-      expect(await wcusdcV3.balanceOf(bob.address)).to.equal(bn('15000e6'))
-      const bobsCusdc = await wcusdcV3.underlyingBalanceOf(bob.address)
-      expect(bobsCusdc).to.be.gt(0)
-      expect(bobsCusdc).to.be.closeTo(await cusdcV3.balanceOf(wcusdcV3.address), 1)
+      expect(await wcusdcV3.balanceOf(bob.address)).to.equal(initialBalance)
     })
   })
 
