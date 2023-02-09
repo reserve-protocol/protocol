@@ -7,7 +7,7 @@ import "./FiatCollateral.sol";
 
 /**
  * @title EURFiatCollateral
- * @notice Collateral plugin for a EURO fiatcoin collateral, like EURT
+ * @notice Collateral plugin for a EUR fiatcoin collateral, like EURT
  * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaults, {target} != {UoA}
  */
 contract EURFiatCollateral is FiatCollateral {

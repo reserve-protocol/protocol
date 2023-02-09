@@ -499,7 +499,7 @@ async function collateralFixture(
     networkConfig[chainId].tokens.EURT as string,
     networkConfig[chainId].chainlinkFeeds.EURT as string,
     networkConfig[chainId].chainlinkFeeds.EUR as string,
-    'EURO'
+    'EUR'
   )
 
   const erc20s = [

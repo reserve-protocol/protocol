@@ -276,7 +276,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetUnitOracleTimeout: ORACLE_TIMEOUT.toString(),
-      targetName: ethers.utils.formatBytes32String('EURO'),
+      targetName: ethers.utils.formatBytes32String('EUR'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       noOutput: true,

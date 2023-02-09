@@ -216,7 +216,7 @@ async function main() {
         erc20: networkConfig[chainId].tokens.EURT,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: oracleTimeout(chainId, '86400').toString(),
-        targetName: ethers.utils.formatBytes32String('EURO'),
+        targetName: ethers.utils.formatBytes32String('EUR'),
         defaultThreshold: fp('0.03').toString(), // 3%
         delayUntilDefault: bn('86400').toString(), // 24h
       },

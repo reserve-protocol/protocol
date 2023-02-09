@@ -334,7 +334,7 @@ describe('FacadeRead contract', () => {
         // Expect empty config for non-USD
         ;[erc20s, max] = await facade.backupConfig(
           rToken.address,
-          ethers.utils.formatBytes32String('EURO')
+          ethers.utils.formatBytes32String('EUR')
         )
         expect(erc20s.length).to.equal(0)
         expect(max).to.equal(0)

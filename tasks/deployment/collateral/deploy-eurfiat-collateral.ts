@@ -3,7 +3,7 @@ import { task } from 'hardhat/config'
 import { ContractFactory } from 'ethers'
 import { EURFiatCollateral } from '../../../typechain'
 
-task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
+task('deploy-eurfiat-collateral', 'Deploys an EUR fiat Collateral')
   .addParam('priceTimeout', 'The amount of time before a price decays to 0')
   .addParam('referenceUnitFeed', 'Reference Price Feed address')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
@@ -43,7 +43,7 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
 
     if (!params.noOutput) {
       console.log(
-        `Deployed EURO Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+        `Deployed EUR Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
       )
     }
     return { collateral: collateral.address }

@@ -530,7 +530,7 @@ async function main() {
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
-  /********  Deploy EURO Fiat Collateral  - EURT **************************/
+  /********  Deploy EUR Fiat Collateral  - EURT **************************/
   const eurtError = fp('0.02') // 2%
 
   const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {
@@ -542,7 +542,7 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetUnitOracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
-    targetName: ethers.utils.formatBytes32String('EURO'),
+    targetName: ethers.utils.formatBytes32String('EUR'),
     defaultThreshold: fp('0.03').toString(), // 3%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
