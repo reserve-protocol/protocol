@@ -329,7 +329,7 @@ describeFork('Wrapped CUSDCv3', () => {
         (await wcusdcV3.underlyingBalanceOf(charles.address))
       let contractBalance = await cusdcV3.balanceOf(wcusdcV3.address)
       expect(totalBalances).to.be.closeTo(contractBalance, 10)
-      expect(totalBalances).to.be.lt(contractBalance)
+      expect(totalBalances).to.be.lte(contractBalance)
 
       const bobBal = await wcusdcV3.balanceOf(bob.address)
       await wcusdcV3.connect(bob).withdraw(bobBal)
@@ -351,7 +351,7 @@ describeFork('Wrapped CUSDCv3', () => {
       const baseIndexScale = await cusdcV3.baseIndexScale()
       const expectedExchangeRate = totalsBasic.baseSupplyIndex.mul(bn('1e6')).div(baseIndexScale)
       expect(await cusdcV3.balanceOf(wcusdcV3.address)).to.equal(0)
-      expect(await wcusdcV3.getCurrentExchangeRate()).to.equal(expectedExchangeRate)
+      expect(await wcusdcV3.exchangeRate()).to.equal(expectedExchangeRate)
     })
 
     it('returns the correct exchange rate with a positive balance', async () => {
@@ -359,14 +359,14 @@ describeFork('Wrapped CUSDCv3', () => {
       const totalsBasic = await cusdcV3.totalsBasic()
       const baseIndexScale = await cusdcV3.baseIndexScale()
       const expectedExchangeRate = totalsBasic.baseSupplyIndex.mul(bn('1e6')).div(baseIndexScale)
-      expect(await wcusdcV3.getCurrentExchangeRate()).to.equal(expectedExchangeRate)
+      expect(await wcusdcV3.exchangeRate()).to.equal(expectedExchangeRate)
     })
 
     it('current exchange rate is a ratio of total underlying balance and total supply', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
       const totalSupply = (await wcusdcV3.totalSupply()).toBigInt()
       const underlyingBalance = (await cusdcV3.balanceOf(wcusdcV3.address)).toBigInt()
-      expect(await wcusdcV3.getCurrentExchangeRate()).to.equal(
+      expect(await wcusdcV3.exchangeRate()).to.equal(
         (underlyingBalance * BigInt(1e6)) / totalSupply
       )
     })

@@ -102,14 +102,6 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         SafeERC20.safeTransferFrom(IERC20(address(underlyingComet)), from, address(this), amount);
     }
 
-    function addPresentToPrincipal(uint64 baseSupplyIndex_, uint104 principalValue_, uint256 presentAmount)
-        internal
-        pure
-        returns (uint104)
-    {
-        return uint104(((uint256(principalValue_) * baseSupplyIndex_) + (presentAmount * BASE_INDEX_SCALE)) / baseSupplyIndex_);
-    }
-
     function withdraw(uint256 amount) external {
         _withdraw(msg.sender, msg.sender, msg.sender, amount);
     }
@@ -166,10 +158,6 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
 
         super._beforeTokenTransfer(from, to, amount);
 
-        if (from == address(0) || to == address(0)) {
-            return;
-        }
-
         UserBasic memory fromBasic = userBasic[from];
         userBasic[from] = updatedAccountIndices(fromBasic, fromBasic.principal - uint104(amount));
 
@@ -194,12 +182,7 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         return uint256(int256(wrappedBasic.principal));
     }
 
-    function getLastExchangeRate() public view returns (uint256) {
-        (uint64 baseSupplyIndex, ) = getSupplyIndices();
-        return presentValueSupply(baseSupplyIndex, uint104(10 ** underlyingComet.decimals()));
-    }
-
-    function getCurrentExchangeRate() public view returns (uint256) {
+    function exchangeRate() public view returns (uint256) {
         (uint64 baseSupplyIndex, ) = getUpdatedSupplyIndicies();
         return presentValueSupply(baseSupplyIndex, uint104(10 ** underlyingComet.decimals()));
     }

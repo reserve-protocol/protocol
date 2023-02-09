@@ -13,7 +13,7 @@ interface IComet {
 interface ICusdcV3Wrapper is IERC20, IERC20Metadata {
     function getLastExchangeRate() external view returns (uint256);
 
-    function getCurrentExchangeRate() external view returns (uint256);
+    function exchangeRate() external view returns (uint256);
 
     function convertStaticToDynamic(uint104 amount) external view returns (uint256);
 
