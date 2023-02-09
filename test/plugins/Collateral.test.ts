@@ -1157,7 +1157,8 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          targetUnitOracle.address
+          targetUnitOracle.address,
+          ORACLE_TIMEOUT
         )
       )
 
@@ -1184,7 +1185,8 @@ describe('Collateral contracts', () => {
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
-        invalidChainlinkFeed.address
+        invalidChainlinkFeed.address,
+        ORACLE_TIMEOUT
       )
 
       // Reverting with no reason
@@ -1351,12 +1353,12 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          targetUnitOracle,
+          targetUnitOracle.address,
           bn('0'),
           REVENUE_HIDING,
           compoundMock.address
         )
-      ).to.be.revertedWith('missing targetUnit feed')
+      ).to.be.revertedWith('targetUnitOracleTimeout zero')
     })
 
     it('Should not allow missing comptroller', async () => {
@@ -1480,6 +1482,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           targetUnitOracle.address,
+          ORACLE_TIMEOUT,
           REVENUE_HIDING,
           compoundMock.address
         )
@@ -1509,6 +1512,7 @@ describe('Collateral contracts', () => {
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
         invalidChainlinkFeed.address,
+        ORACLE_TIMEOUT,
         REVENUE_HIDING,
         compoundMock.address
       )
@@ -1917,7 +1921,8 @@ describe('Collateral contracts', () => {
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
-        targetUnitOracle.address
+        targetUnitOracle.address,
+        ORACLE_TIMEOUT
       )
       await eurFiatCollateral.refresh()
 
@@ -2088,7 +2093,8 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          targetUnitOracle.address
+          targetUnitOracle.address,
+          ORACLE_TIMEOUT
         )
       )
 
@@ -2115,7 +2121,8 @@ describe('Collateral contracts', () => {
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
-        invalidChainlinkFeed.address
+        invalidChainlinkFeed.address,
+        ORACLE_TIMEOUT
       )
 
       // Reverting with no reason
