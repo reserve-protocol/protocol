@@ -376,7 +376,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(MAX_THROTTLE_AMT_RATE)
     })
 
-    it.only('Should not allow issuance to set BU exchange rate above 1e9', async () => {
+    it.only('Should not allow issuance to set BU exchange rate below 1e-9', async () => {
       const issueAmount: BigNumber = fp('1')
 
       // Set single basket token for simplification
@@ -395,7 +395,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // setBasketsNeeded()
       await whileImpersonating(backingManager.address, async (signer) => {
-        await rToken.connect(signer).setBasketsNeeded(issueAmount.mul(bn('1e9')))
+        await rToken.connect(signer).setBasketsNeeded(bn('1e9'))
       })
 
       // Issue rTokens
