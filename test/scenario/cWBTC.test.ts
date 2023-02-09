@@ -129,7 +129,8 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
-      targetUnitOracle.address
+      targetUnitOracle.address,
+      ORACLE_TIMEOUT
     )
 
     // cWBTC
@@ -151,6 +152,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       targetUnitOracle.address,
+      ORACLE_TIMEOUT,
       REVENUE_HIDING,
       compoundMock.address
     )

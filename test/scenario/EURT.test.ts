@@ -119,7 +119,8 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
-      targetUnitOracle.address
+      targetUnitOracle.address,
+      ORACLE_TIMEOUT
     )
 
     // Basket configuration
