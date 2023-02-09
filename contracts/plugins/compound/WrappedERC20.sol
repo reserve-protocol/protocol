@@ -29,7 +29,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * by listening to said events. Other implementations of the EIP may not emit
  * these events, as it isn't required by the specification.
  */
-contract WrappedERC20 is IERC20 {
+abstract contract WrappedERC20 is IERC20 {
     error BadAmount();
     error Unauthorized();
     error ZeroAddress();
@@ -70,37 +70,6 @@ contract WrappedERC20 is IERC20 {
      */
     function symbol() public view virtual returns (string memory) {
         return _symbol;
-    }
-
-    /**
-     * @dev Returns the number of decimals used to get its user representation.
-     * For example, if `decimals` equals `2`, a balance of `505` tokens should
-     * be displayed to a user as `5.05` (`505 / 10 ** 2`).
-     *
-     * Tokens usually opt for a value of 18, imitating the relationship between
-     * Ether and Wei. This is the value {ERC20} uses, unless this function is
-     * overridden;
-     *
-     * NOTE: This information is only used for _display_ purposes: it in
-     * no way affects any of the arithmetic of the contract, including
-     * {IERC20-balanceOf} and {IERC20-transfer}.
-     */
-    function decimals() public view virtual returns (uint8) {
-        return 18;
-    }
-
-    /**
-     * @dev See {IERC20-totalSupply}.
-     */
-    function totalSupply() public view virtual override returns (uint256) {
-        return _totalSupply;
-    }
-
-    /**
-     * @dev See {IERC20-balanceOf}.
-     */
-    function balanceOf(address account) public view virtual override returns (uint256) {
-        return _balances[account];
     }
 
     /**
@@ -200,55 +169,7 @@ contract WrappedERC20 is IERC20 {
 
         _beforeTokenTransfer(from, to, amount);
 
-        // uint256 fromBalance = _balances[from];
-        // if (amount > fromBalance) revert ExceedsBalance(amount);
-        // unchecked {
-        //     _balances[from] = fromBalance - amount;
-        // }
-        // _balances[to] += amount;
-
         emit Transfer(from, to, amount);
-    }
-
-    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
-     *
-     * Emits a {Transfer} event with `from` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     */
-    function _mint(address account, uint256 amount) internal virtual {
-        if (account == address(0)) revert ZeroAddress();
-
-        _totalSupply += amount;
-        _balances[account] += amount;
-        emit Transfer(address(0), account, amount);
-    }
-
-    /**
-     * @dev Destroys `amount` tokens from `account`, reducing the
-     * total supply.
-     *
-     * Emits a {Transfer} event with `to` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
-     */
-    function _burn(address account, uint256 amount) internal virtual {
-        if (account == address(0)) revert ZeroAddress();
-
-        uint256 accountBalance = _balances[account];
-        if (amount > accountBalance) revert ExceedsBalance(amount);
-        unchecked {
-            _balances[account] = accountBalance - amount;
-        }
-        _totalSupply -= amount;
-
-        emit Transfer(account, address(0), amount);
     }
 
     /**
