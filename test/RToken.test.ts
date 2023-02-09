@@ -1061,6 +1061,25 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
       })
 
+      it.only('Should not allow redeem to set BU exchange rate above 1e9', async function () {
+        // Leave only 1 RToken issue
+        await rToken.connect(addr1).redeem(issueAmount.sub(bn('1e18')), true)
+
+        expect(await rToken.totalSupply()).to.equal(fp('1'))
+
+        // setBasketsNeeded()
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await rToken.connect(signer).setBasketsNeeded(fp('1e9'))
+        })
+
+        const redeemAmount: BigNumber = bn('1.5e9')
+
+        // Redeem rTokens
+        await expect(rToken.connect(addr1).redeem(bn(redeemAmount), false)).to.be.revertedWith(
+          'BU rate out of range'
+        )
+      })
+
       context('And redemption throttling', function () {
         // the fixture-configured redemption throttle uses 5%
         let redemptionThrottleParams: ThrottleParams
