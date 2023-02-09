@@ -28,6 +28,7 @@ async function main() {
     'phase1-common/5_deploy_deployer.ts',
     'phase1-common/6_deploy_facadeWrite.ts',
     'phase1-common/7_deploy_facadeAct.ts',
+    'phase1-common/8_deploy_facadeMonitor.ts',
     // =============================================
     'phase2-assets/0_setup_deployments.ts',
     'phase2-assets/1_deploy_assets.ts',
