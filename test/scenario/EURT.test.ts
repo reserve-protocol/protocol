@@ -115,11 +115,12 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
         erc20: eurt.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('EURO'),
+        targetName: ethers.utils.formatBytes32String('EUR'),
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
-      targetUnitOracle.address
+      targetUnitOracle.address,
+      ORACLE_TIMEOUT
     )
 
     // Basket configuration
@@ -222,7 +223,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
     })
 
     it('should enter basket disabled state after slow default', async () => {
-      // Depeg EURT from EURO
+      // Depeg EURT from the euro
       await eurtCollateral.refresh()
       await referenceUnitOracle.updateAnswer(bn('0.25e8')) // halving
       await eurtCollateral.refresh()

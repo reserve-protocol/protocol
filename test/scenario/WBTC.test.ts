@@ -121,7 +121,8 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
-      targetUnitOracle.address
+      targetUnitOracle.address,
+      ORACLE_TIMEOUT
     )
 
     // Backup

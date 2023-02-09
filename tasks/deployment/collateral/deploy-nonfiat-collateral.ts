@@ -10,7 +10,8 @@ task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
   .addParam('combinedOracleError', 'The combined % error from both oracle sources')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
-  .addParam('oracleTimeout', 'Max oracle timeout')
+  .addParam('oracleTimeout', 'Max oracle timeout for the reference unit feed')
+  .addParam('targetUnitOracleTimeout', 'Max oracle timeout for the target unit feed')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
@@ -35,7 +36,8 @@ task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
         defaultThreshold: params.defaultThreshold,
         delayUntilDefault: params.delayUntilDefault,
       },
-      params.targetUnitFeed
+      params.targetUnitFeed,
+      params.targetUnitOracleTimeout
     )
     await collateral.deployed()
 
