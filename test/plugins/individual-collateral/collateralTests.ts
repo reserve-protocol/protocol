@@ -20,6 +20,8 @@ const describeFork = useEnv('FORK') ? describe : describe.skip
 
 const createFixtureLoader = waffle.createFixtureLoader
 
+// TODO: these tests to do not account for anything but revenueHiding=0
+
 export default function fn<X extends CollateralFixtureContext>(
   fixtures: CollateralTestSuiteFixtures<X>
 ) {
@@ -152,46 +154,47 @@ export default function fn<X extends CollateralFixtureContext>(
 
       describe('prices', () => {
         it('prices change as USDC feed price changes', async () => {
-          const { answer } = await chainlinkFeed.latestRoundData()
+          const clData = await chainlinkFeed.latestRoundData()
           const decimals = await chainlinkFeed.decimals()
           const oracleError = await collateral.oracleError()
-          const expectedPrice = answer.mul(bn(10).pow(18 - decimals))
+          const refPerTok = await collateral.refPerTok()
+          const expectedPrice = clData.answer.mul(bn(10).pow(18 - decimals)).mul(refPerTok).div(fp('1'))
           const expectedDelta = expectedPrice.mul(oracleError).div(fp(1))
 
           // Check initial prices
           const [initLow, initHigh] = await collateral.price()
           expect(initLow).to.equal(expectedPrice.sub(expectedDelta))
           expect(initHigh).to.equal(expectedPrice.add(expectedDelta))
-
           // Get refPerTok initial values
           const initialRefPerTok = await collateral.refPerTok()
 
           // Update values in Oracles increase by 10-20%
-          const newPrice = bn('11e6')
+          const newPrice = bn('11e5')
           const updateAnswerTx = await chainlinkFeed.updateAnswer(newPrice)
           await updateAnswerTx.wait()
 
           // Check new prices
-          const newExpectedPrice = newPrice.mul(bn(10).pow(18 - decimals))
+          const newclData = await chainlinkFeed.latestRoundData()
+          const newRefPerTok = await collateral.refPerTok()
+          const newExpectedPrice = newclData.answer.mul(bn(10).pow(18 - decimals)).mul(newRefPerTok).div(fp('1'))
           const newExpectedDelta = newExpectedPrice.mul(oracleError).div(fp(1))
           const [newLow, newHigh] = await collateral.price()
           expect(newLow).to.equal(newExpectedPrice.sub(newExpectedDelta))
           expect(newHigh).to.equal(newExpectedPrice.add(newExpectedDelta))
 
-          // Check refPerTok remains the same
+          // Check refPerTok remains the same (because we have not refreshed)
           const finalRefPerTok = await collateral.refPerTok()
           expect(finalRefPerTok).to.equal(initialRefPerTok)
         })
 
         it('prices change as refPerTok changes', async () => {
-          const prevRefPerTok = await collateral.refPerTok()
-          expect(prevRefPerTok).to.equal(bn('1e18'))
+          const initRefPerTok = await collateral.refPerTok()
 
           const decimals = await chainlinkFeed.decimals()
           const oracleError = await collateral.oracleError()
 
           const initData = await chainlinkFeed.latestRoundData()
-          const expectedPrice = initData.answer.mul(bn(10).pow(18 - decimals))
+          const expectedPrice = initData.answer.mul(bn(10).pow(18 - decimals)).mul(initRefPerTok).div(fp('1'))
           const expectedDelta = expectedPrice.mul(oracleError).div(fp(1))
           const [initLow, initHigh] = await collateral.price()
           expect(initLow).to.equal(expectedPrice.sub(expectedDelta))
@@ -205,7 +208,7 @@ export default function fn<X extends CollateralFixtureContext>(
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 
           await collateral.refresh()
-          expect(await collateral.refPerTok()).to.be.gt(prevRefPerTok)
+          expect(await collateral.refPerTok()).to.be.gt(initRefPerTok)
 
           const [newLow, newHigh] = await collateral.price()
           expect(newLow).to.be.gt(initLow)
