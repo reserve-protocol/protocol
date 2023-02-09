@@ -478,7 +478,7 @@ async function main() {
     oracleError: fp('0.005').toString(), // 0.5%
     cToken: networkConfig[chainId].tokens.cETH,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
@@ -520,7 +520,7 @@ async function main() {
     oracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.WETH,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
   })
   await (<Asset>await ethers.getContractAt('Asset', wETHCollateral)).refresh()
