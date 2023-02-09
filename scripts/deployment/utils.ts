@@ -14,9 +14,9 @@ export const revenueHiding = fp('1e-6') // 1 part in a million
 
 export const longOracleTimeout = bn('4294967296')
 
-// Returns the base plus 2 minutes
+// Returns the base plus 1 minute
 export const oracleTimeout = (chainId: string, base: BigNumberish) => {
-  return chainId == '1' ? bn('120').add(base) : longOracleTimeout
+  return chainId == '1' ? bn('60').add(base) : longOracleTimeout
 }
 
 export const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
