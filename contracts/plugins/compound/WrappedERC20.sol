@@ -200,12 +200,12 @@ contract WrappedERC20 is IERC20 {
 
         _beforeTokenTransfer(from, to, amount);
 
-        uint256 fromBalance = _balances[from];
-        if (amount > fromBalance) revert ExceedsBalance(amount);
-        unchecked {
-            _balances[from] = fromBalance - amount;
-        }
-        _balances[to] += amount;
+        // uint256 fromBalance = _balances[from];
+        // if (amount > fromBalance) revert ExceedsBalance(amount);
+        // unchecked {
+        //     _balances[from] = fromBalance - amount;
+        // }
+        // _balances[to] += amount;
 
         emit Transfer(from, to, amount);
     }

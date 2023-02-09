@@ -6,6 +6,7 @@ import "./vendor/CometInterface.sol";
 import "./WrappedERC20.sol";
 import "./ICometRewards.sol";
 import "./CometHelpers.sol";
+import "hardhat/console.sol";
 
 contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     struct UserBasic {
@@ -92,6 +93,7 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         uint104 principal = dstBasic.principal;
         uint256 balance = presentValueSupply(baseSupplyIndex, principal) + amount;
         dstBasic.principal = principalValueSupply(baseSupplyIndex, balance);
+        // dstBasic.principal = addPresentToPrincipal(baseSupplyIndex, principal, amount);
 
         // We use this contract's baseTrackingIndex from Comet so we do not over-accrue user's
         // rewards.
@@ -100,9 +102,17 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
 
         userBasic[dst] = dstBasic;
         uint256 mintAmount = principalValueSupply(baseSupplyIndex, uint104(amount));
-        _mint(dst, mintAmount);
+        // _mint(dst, mintAmount);
 
         SafeERC20.safeTransferFrom(cometERC20, from, address(this), amount);
+    }
+
+    function addPresentToPrincipal(uint64 baseSupplyIndex_, uint104 principalValue_, uint256 presentAmount)
+        internal
+        pure
+        returns (uint104)
+    {
+        return uint104(((uint256(principalValue_) * baseSupplyIndex_) + (presentAmount * BASE_INDEX_SCALE)) / baseSupplyIndex_);
     }
 
     function withdraw(uint256 amount) external {
@@ -124,31 +134,49 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     /**
         @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number 
         of underlying tokens.
-        @param amount The amount of Wrapped cUSDC being withdrawn.
+        @param presentWithdrawAmt The amount of Wrapped cUSDC being withdrawn.
      */
     function _withdraw(
         address operator,
         address src,
         address to,
-        uint256 amount
+        uint256 presentWithdrawAmt
     ) internal {
+        if (presentWithdrawAmt == 0) return;
+        // console.log("withdraw time", block.timestamp);
         if (!hasPermission(src, operator)) revert Unauthorized();
 
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(to);
 
-        if (amount == type(uint256).max) {
-            amount = balanceOf(src);
+        if (presentWithdrawAmt == type(uint256).max) {
+            // console.log("cap");
+            presentWithdrawAmt = underlyingBalanceOf(src);
         }
 
+        CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         TotalsBasic memory totals = underlyingComet.totalsBasic();
-        uint256 transferAmount = presentValueSupply(totals.baseSupplyIndex, uint104(amount));
-
+        uint256 wrapperPresent = presentValueSupply(totals.baseSupplyIndex, uint104(wrappedBasic.principal));
+        // uint256 transferAmount = presentValueSupply(totals.baseSupplyIndex, uint104(presentWithdrawAmt));
         UserBasic memory basic = userBasic[src];
-        userBasic[src] = updatedAccountIndices(basic, -signed256(transferAmount));
+        uint256 userPresent = presentValueSupply(totals.baseSupplyIndex, uint104(basic.principal));
+        uint104 userPrincipalNew = principalValueSupply(totals.baseSupplyIndex, userPresent - presentWithdrawAmt);
 
-        _burn(src, amount);
-        SafeERC20.safeTransfer(cometERC20, to, transferAmount);
+        // uint256 principalWithdrawAmt = principalValueSupply(totals.baseSupplyIndex, presentWithdrawAmt);
+
+        // console.log(uint256(int256(wrappedBasic.principal)), uint256(basic.principal), userPrincipalNew);
+        // console.log(wrapperPresent, userPresent, presentWithdrawAmt);
+
+        userBasic[src] = updatedAccountIndices(basic, userPrincipalNew);
+
+        // _burn(src, presentWithdrawAmt);
+        // SafeERC20.safeTransfer(cometERC20, to, presentWithdrawAmt);
+        try cometERC20.transfer(to, presentWithdrawAmt) {
+            // console.log("passed");
+        } catch (bytes memory e) {
+            // console.logBytes(e);
+            revert();
+        }
     }
 
     function _beforeTokenTransfer(
@@ -156,6 +184,8 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         address to,
         uint256 amount
     ) internal virtual override {
+        underlyingComet.accrueAccount(address(this));
+
         super._beforeTokenTransfer(from, to, amount);
 
         if (from == address(0) || to == address(0)) {
@@ -163,10 +193,10 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         }
 
         UserBasic memory fromBasic = userBasic[from];
-        userBasic[from] = updatedAccountIndices(fromBasic, -signed256(amount));
+        userBasic[from] = updatedAccountIndices(fromBasic, fromBasic.principal - uint104(amount));
 
         UserBasic memory toBasic = userBasic[to];
-        userBasic[to] = updatedAccountIndices(toBasic, signed256(amount));
+        userBasic[to] = updatedAccountIndices(toBasic, toBasic.principal + uint104(amount));
     }
 
     function underlyingBalanceOf(address account) public view returns (uint256) {
@@ -175,6 +205,15 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
             return 0;
         }
         return convertStaticToDynamic(uint104(balance));
+    }
+
+    function balanceOf(address account) public view override returns (uint256) {
+        return userBasic[account].principal;
+    }
+
+    function totalSupply() public view virtual override returns (uint256) {
+        CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
+        return uint256(int256(wrappedBasic.principal));
     }
 
     function getLastExchangeRate() public view returns (uint256) {
@@ -216,7 +255,7 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
             emit RewardClaimed(src, to, address(rewardERC20), owed);
             rewardsAddr.claimTo(underlying, address(this), address(this), true);
             SafeERC20.safeTransfer(rewardERC20, to, owed);
-        }
+        } 
     }
 
     function getRewardOwed(address account) external returns (uint256) {
@@ -260,15 +299,17 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
     function accrueAccount(address account) public {
         UserBasic memory basic = userBasic[account];
         underlyingComet.accrueAccount(address(this));
-        userBasic[account] = updatedAccountIndices(basic, 0);
+        userBasic[account] = updatedAccountIndices(basic, basic.principal);
     }
 
-    function updatedAccountIndices(UserBasic memory basic, int256 changeToPrincipal)
+    function updatedAccountIndices(UserBasic memory basic, uint104 newPrincipal)
         internal
         view
         returns (UserBasic memory)
     {
         uint104 principal = basic.principal;
+        basic.principal = newPrincipal;
+
         (uint64 baseSupplyIndex, uint64 trackingSupplyIndex) = getSupplyIndices();
 
         uint256 indexDelta = uint256(trackingSupplyIndex - basic.baseTrackingIndex);
@@ -276,13 +317,10 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
             (uint104(principal) * indexDelta) / TRACKING_INDEX_SCALE
         );
         basic.baseTrackingIndex = trackingSupplyIndex;
-
-        if (changeToPrincipal != 0) {
-            uint256 balance = unsigned256(
-                signed256(presentValueSupply(baseSupplyIndex, basic.principal)) + changeToPrincipal
-            );
-            basic.principal = principalValueSupply(baseSupplyIndex, balance);
-        }
+        // if (changeToPrincipal != 0) {
+        //     uint256 newPrincipal = unsigned256(signed256(basic.principal) + changeToPrincipal);
+        //     basic.principal = uint104(newPrincipal);
+        // }
 
         return basic;
     }
