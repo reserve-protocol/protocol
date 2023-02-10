@@ -74,12 +74,15 @@ export const mintWcUSDC = async (
   recipient: string
 ) => {
   const initBal = await cusdc.balanceOf(account.address)
+
+  // do these actions together to move rate as little as possible
   await hre.network.provider.send('evm_setAutomine', [false])
   const usdcAmount = await wcusdc.convertStaticToDynamic(amount)
   await allocateUSDC(account.address, usdcAmount)
   await usdc.connect(account).approve(cusdc.address, ethers.constants.MaxUint256)
   await cusdc.connect(account).allow(wcusdc.address, true)
   await hre.network.provider.send('evm_setAutomine', [true])
+
   await cusdc.connect(account).supply(usdc.address, usdcAmount)
   const nowBal = await cusdc.balanceOf(account.address)
   if (account.address == recipient) {
