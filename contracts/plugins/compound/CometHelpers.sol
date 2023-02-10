@@ -28,17 +28,20 @@ contract CometHelpers {
         return (uint256(principalValue_) * baseSupplyIndex_) / BASE_INDEX_SCALE;
     }
 
-    /**
-     * @dev The present value projected backward by the supply index (rounded down)
-     *  Note: This will overflow (revert) at 2^104/1e18=~20 trillion principal for assets with 18 
-     decimals.
-     */
     function principalValueSupply(uint64 baseSupplyIndex_, uint256 presentValue_)
         internal
         pure
         returns (uint104)
     {
         return safe104((presentValue_ * BASE_INDEX_SCALE) / baseSupplyIndex_);
+    }
+
+    function addPresentToPrincipal(
+        uint64 bsi,
+        uint104 principal,
+        uint256 present
+    ) internal pure returns (uint104) {
+        return safe104(((uint256(principal) * bsi) + (present * BASE_INDEX_SCALE)) / bsi);
     }
 
     function safe104(uint256 n) internal pure returns (uint104) {

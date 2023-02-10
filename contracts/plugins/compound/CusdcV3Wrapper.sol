@@ -89,8 +89,9 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
         (uint64 baseSupplyIndex, ) = getSupplyIndices();
         uint104 principal = dstBasic.principal;
-        uint256 balance = presentValueSupply(baseSupplyIndex, principal) + amount;
-        dstBasic.principal = principalValueSupply(baseSupplyIndex, balance);
+        // uint256 newPresent = presentValueSupply(baseSupplyIndex, principal) + amount;
+        // dstBasic.principal = principalValueSupply(baseSupplyIndex, newPresent);
+        dstBasic.principal = addPresentToPrincipal(baseSupplyIndex, principal, amount);
 
         // We use this contract's baseTrackingIndex from Comet so we do not over-accrue user's
         // rewards.
@@ -136,8 +137,8 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
         uint64 bsi = underlyingComet.totalsBasic().baseSupplyIndex;
         UserBasic memory basic = userBasic[src];
-        uint256 userPresent = presentValueSupply(bsi, safe104(basic.principal));
-        uint104 userPrincipalNew = principalValueSupply(bsi, userPresent - presentWithdrawAmt);
+        uint256 newPresent = presentValueSupply(bsi, safe104(basic.principal)) - presentWithdrawAmt;
+        uint104 userPrincipalNew = principalValueSupply(bsi, newPresent);
         userBasic[src] = updatedAccountIndices(basic, userPrincipalNew);
 
         SafeERC20.safeTransfer(IERC20(address(underlyingComet)), to, presentWithdrawAmt);
