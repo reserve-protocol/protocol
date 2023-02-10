@@ -86,19 +86,23 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         underlyingComet.accrueAccount(from);
 
         UserBasic memory dstBasic = userBasic[dst];
-
-        (uint64 baseSupplyIndex, ) = getSupplyIndices();
-        uint104 principal = dstBasic.principal;
-        dstBasic.principal = addPresentToPrincipal(baseSupplyIndex, principal, amount);
+        uint104 userPrePrincipal = dstBasic.principal;
 
         // We use this contract's baseTrackingIndex from Comet so we do not over-accrue user's
         // rewards.
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         dstBasic.baseTrackingIndex = wrappedBasic.baseTrackingIndex;
+        int104 wrapperPrePrinc = wrappedBasic.principal;
+        
+        SafeERC20.safeTransferFrom(IERC20(address(underlyingComet)), from, address(this), amount);
+
+        wrappedBasic = underlyingComet.userBasic(address(this));
+        int104 wrapperPostPrinc = wrappedBasic.principal;
+
+        // safe to cast because amount is positive
+        dstBasic.principal = userPrePrincipal + uint104(wrapperPostPrinc - wrapperPrePrinc);
 
         userBasic[dst] = dstBasic;
-
-        SafeERC20.safeTransferFrom(IERC20(address(underlyingComet)), from, address(this), amount);
     }
 
     function withdraw(uint256 amount) external {
@@ -133,13 +137,19 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
             presentWithdrawAmt = underlyingBalanceOf(src);
         }
 
-        uint64 bsi = underlyingComet.totalsBasic().baseSupplyIndex;
-        UserBasic memory basic = userBasic[src];
-        uint256 newPresent = presentValueSupply(bsi, safe104(basic.principal)) - presentWithdrawAmt;
-        uint104 userPrincipalNew = principalValueSupply(bsi, newPresent);
-        userBasic[src] = updatedAccountIndices(basic, userPrincipalNew);
+        UserBasic memory srcBasic = userBasic[src];
+        uint104 srcPrePrinc = srcBasic.principal;
+        CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
+        int104 wrapperPrePrinc = wrappedBasic.principal;
 
         SafeERC20.safeTransfer(IERC20(address(underlyingComet)), to, presentWithdrawAmt);
+
+        wrappedBasic = underlyingComet.userBasic(address(this));
+        int104 wrapperPostPrinc = wrappedBasic.principal;
+
+        // safe to cast because principal can't go negative, wrapper is not borrowing
+        uint104 srcPrincipalNew = srcPrePrinc - uint104(wrapperPrePrinc - wrapperPostPrinc);
+        userBasic[src] = updatedAccountIndices(srcBasic, srcPrincipalNew);
     }
 
     function _beforeTokenTransfer(

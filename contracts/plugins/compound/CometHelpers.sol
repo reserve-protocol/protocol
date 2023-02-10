@@ -36,14 +36,6 @@ contract CometHelpers {
         return safe104((presentValue_ * BASE_INDEX_SCALE) / baseSupplyIndex_);
     }
 
-    function addPresentToPrincipal(
-        uint64 bsi,
-        uint104 principal,
-        uint256 present
-    ) internal pure returns (uint104) {
-        return safe104(((uint256(principal) * bsi) + (present * BASE_INDEX_SCALE)) / bsi);
-    }
-
     function safe104(uint256 n) internal pure returns (uint104) {
         if (n > type(uint104).max) revert InvalidUInt104();
         return uint104(n);
