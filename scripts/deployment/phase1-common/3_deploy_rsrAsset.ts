@@ -6,7 +6,12 @@ import { networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 import { fp } from '../../../common/numbers'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../../deployment/common'
-import { priceTimeout, getOracleTimeout, validateImplementations } from '../../deployment/utils'
+import {
+  priceTimeout,
+  longOracleTimeout,
+  oracleTimeout,
+  validateImplementations,
+} from '../../deployment/utils'
 import { Asset } from '../../../typechain'
 
 let rsrAsset: Asset
@@ -36,7 +41,7 @@ async function main() {
     tokenAddress: deployments.prerequisites.RSR,
     rewardToken: ZERO_ADDRESS,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h
   })
 
   rsrAsset = <Asset>await ethers.getContractAt('Asset', rsrAssetAddr)

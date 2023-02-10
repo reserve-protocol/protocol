@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -28,6 +28,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     uint256 public constant MIN_THROTTLE_RATE_AMT = 1e18; // {qRTok}
     uint256 public constant MAX_THROTTLE_RATE_AMT = 1e48; // {qRTok}
     uint192 public constant MAX_THROTTLE_PCT_AMT = 1e18; // {qRTok}
+    uint192 public constant MIN_EXCHANGE_RATE = 1e9; // D18{BU/rTok}
+    uint192 public constant MAX_EXCHANGE_RATE = 1e27; // D18{BU/rTok}
 
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
     string public mandate;
@@ -64,6 +66,21 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.lastTimestamp = uint48(block.timestamp);
     }
 
+    /// after fn(), assert exchangeRate in [MIN_EXCHANGE_RATE, MAX_EXCHANGE_RATE]
+    modifier exchangeRateIsValidAfter() {
+        _;
+        uint256 supply = totalSupply();
+        if (supply == 0) return;
+
+        uint256 low = mulDiv256(FIX_ONE_256, basketsNeeded, supply); // {BU/tok}
+        uint256 high = mulDiv256(FIX_ONE_256, basketsNeeded, supply, CEIL); // {BU/tok}
+
+        require(
+            _safeWrap(low).gte(MIN_EXCHANGE_RATE) && _safeWrap(high).lte(MAX_EXCHANGE_RATE),
+            "BU rate out of range"
+        );
+    }
+
     /// Issue an RToken with basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
@@ -75,7 +92,11 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issueTo(address recipient, uint256 amount) public notPausedOrFrozen {
+    function issueTo(address recipient, uint256 amount)
+        public
+        notPausedOrFrozen
+        exchangeRateIsValidAfter
+    {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
@@ -89,7 +110,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (totalSupply() > 0) // {BU}
-            ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
+            ? basketsNeeded.muluDivu(amount, totalSupply(), CEIL) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
         (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(baskets, CEIL);
@@ -123,7 +144,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         address recipient,
         uint256 amount,
         bool revertOnPartialRedemption
-    ) public notFrozen {
+    ) public notFrozen exchangeRateIsValidAfter {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
 
@@ -186,28 +207,33 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
     /// @custom:protected
-    function mint(address recipient, uint256 amount) external notPausedOrFrozen {
+    function mint(address recipient, uint256 amount)
+        external
+        notPausedOrFrozen
+        exchangeRateIsValidAfter
+    {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
-        requireValidBUExchangeRate();
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amount {qRTok} The amount to be melted
-    function melt(uint256 amount) external notPausedOrFrozen {
+    function melt(uint256 amount) external notPausedOrFrozen exchangeRateIsValidAfter {
         _burn(_msgSender(), amount);
         require(totalSupply() >= FIX_ONE, "rToken supply too low to melt");
         emit Melted(amount);
-        requireValidBUExchangeRate();
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
+    function setBasketsNeeded(uint192 basketsNeeded_)
+        external
+        notPausedOrFrozen
+        exchangeRateIsValidAfter
+    {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
-        requireValidBUExchangeRate();
     }
 
     /// Sends all token balance of erc20 (if it is registered) to the BackingManager
@@ -261,25 +287,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     }
 
     // === Private ===
-
-    /// Require the BU to RToken exchange rate to be in [1e-9, 1e9]
-    function requireValidBUExchangeRate() private view {
-        uint256 supply = totalSupply();
-        if (supply == 0) return;
-
-        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply;
-        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply;
-
-        // We can't assume we can downcast to uint192 safely. Note that the
-        // uint192 check below is redundant but this is P0 so we keep it.
-        require(
-            low <= type(uint192).max &&
-                high <= type(uint192).max &&
-                uint192(low) >= FIX_ONE / 1e9 &&
-                uint192(high) <= FIX_ONE * 1e9,
-            "BU rate out of range"
-        );
-    }
 
     /**
      * @dev Hook that is called before any transfer of tokens. This includes

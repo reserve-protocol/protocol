@@ -359,7 +359,17 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     }
 
     function invariantsHold() external view returns (bool) {
-        requireValidBUExchangeRate();
+        uint256 supply = totalSupply();
+        if (supply == 0) return;
+
+        // Note: These are D18s, even though they are uint256s. This is because
+        // we cannot assume we stay inside our valid range here, as that is what
+        // we are checking in the first place
+        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
+        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
+
+        // here we take advantage of an implicit upcast from uint192 exchange rates
+        require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
         return true;
     }
 }

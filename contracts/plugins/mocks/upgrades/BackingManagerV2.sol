@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "../../../p1/BackingManager.sol";
 
@@ -11,7 +11,7 @@ contract BackingManagerP1V2 is BackingManagerP1 {
         newValue = newValue_;
     }
 
-    function version() public pure override returns (string memory) {
+    function version() public pure override(Versioned, IVersioned) returns (string memory) {
         return "2.0.0";
     }
 }

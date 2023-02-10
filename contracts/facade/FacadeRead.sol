@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IAsset.sol";
@@ -86,11 +86,9 @@ contract FacadeRead is IFacadeRead {
         try rToken.main().furnace().melt() {} catch {}
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        uint192 amtBaskets = uint192(
-            rToken.totalSupply() > 0
-                ? mulDiv256(rToken.basketsNeeded(), FIX_ONE, rToken.totalSupply())
-                : FIX_ONE
-        );
+        uint192 amtBaskets = rToken.totalSupply() > 0
+            ? rToken.basketsNeeded().muluDivu(FIX_ONE, rToken.totalSupply(), CEIL)
+            : _safeWrap(rToken.totalSupply());
 
         (erc20s, deposits) = basketHandler.quote(amtBaskets, CEIL);
 

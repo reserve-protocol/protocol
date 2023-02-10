@@ -926,7 +926,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       }
     })
 
-    it('Should setup collateral correctly - EURO Fiatcoins', async () => {
+    it('Should setup collateral correctly - EUR Fiatcoins', async () => {
       // Define interface required for each Eur-fiat coin
       interface TokenInfo {
         eurFiatToken: ERC20Mock
@@ -947,7 +947,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           eurFiatTokenCollateral: eurtCollateral,
           targetPrice: fp('1.07025'), // approx price EUR-USD June 6, 2022
           refPrice: fp('1.073'), // approx price EURT-USD June 6, 2022
-          targetName: 'EURO',
+          targetName: 'EUR',
         },
       ]
 
@@ -1283,7 +1283,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        NO_PRICE_DATA_FEED
+        NO_PRICE_DATA_FEED,
+        MAX_ORACLE_TIMEOUT
       )
 
       // Non-fiat Collateral with no price should revert
@@ -1308,7 +1309,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        mockChainlinkFeed.address
+        mockChainlinkFeed.address,
+        MAX_ORACLE_TIMEOUT
       )
       await zeroPriceNonFiatCollateral.refresh()
 
@@ -1356,6 +1358,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             delayUntilDefault,
           },
           NO_PRICE_DATA_FEED,
+          MAX_ORACLE_TIMEOUT,
           REVENUE_HIDING,
           compoundMock.address
         )
@@ -1385,6 +1388,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             delayUntilDefault,
           },
           mockChainlinkFeed.address,
+          MAX_ORACLE_TIMEOUT,
           REVENUE_HIDING,
           compoundMock.address
         )
@@ -1545,7 +1549,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
     })
 
-    it('Should handle invalid/stale Price - Collateral - EURO Fiat', async () => {
+    it('Should handle invalid/stale Price - Collateral - EUR Fiat', async () => {
       // Does not revert with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
@@ -1557,7 +1561,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const defaultThreshold = fp('0.01') // 1%
       const delayUntilDefault = bn('86400') // 24h
 
-      // Non price EURO Fiat collateral
+      // Non price EUR Fiat collateral
       const nonPriceEURCollateral: EURFiatCollateral = <EURFiatCollateral>await (
         await ethers.getContractFactory('EURFiatCollateral')
       ).deploy(
@@ -1572,7 +1576,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        NO_PRICE_DATA_FEED
+        NO_PRICE_DATA_FEED,
+        MAX_ORACLE_TIMEOUT
       )
 
       // Collateral with no price should revert
@@ -1597,12 +1602,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        mockChainlinkFeed.address
+        mockChainlinkFeed.address,
+        MAX_ORACLE_TIMEOUT
       )
       await invalidPriceEURCollateral.refresh()
 
       // Set price = 0
-      const chainlinkFeedAddr = await invalidPriceEURCollateral.uoaPerTargetFeed()
+      const chainlinkFeedAddr = await invalidPriceEURCollateral.targetUnitChainlinkFeed()
       const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
       await v3Aggregator.updateAnswer(bn(0))
 

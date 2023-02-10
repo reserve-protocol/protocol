@@ -42,7 +42,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress

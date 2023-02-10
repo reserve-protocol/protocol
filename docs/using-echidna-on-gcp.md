@@ -1,5 +1,3 @@
-
-
 How to fuzz with echidna-parade on a Google Cloud VM instance.
 
 # 1) Get a VM instance
@@ -10,13 +8,13 @@ This is mostly from the GCP [compute engine docs](https://cloud.google.com/compu
 
 I'm assuming you've already got `gcloud` installed on your dev machine. If not, https://cloud.google.com/sdk/docs/install .
 
-``` bash
+```bash
 gcloud auth login
 gcloud config set project rtoken-fuzz
 gcloud config list project
 
 # assumed defaults
-gcloud config set compute/region us-central1 
+gcloud config set compute/region us-central1
 gcloud config set compute/zone us-central1-a
 ```
 NOTE: **google cloud limits the number of n2 CPU cores that can be used in a given region to 8**. therefore, be sure to put each vm in a new region (or a maximum of 2 vms in 1 region). [gcloud regions](https://cloud.google.com/compute/docs/regions-zones)
@@ -25,7 +23,7 @@ NOTE: **google cloud limits the number of n2 CPU cores that can be used in a giv
 It is recommended to run each fuzzing scenario (NormalOps, RebalancingOps, ChaosOps) on its own VM.
 ### Option A: Create a new VM
 
-Seems like N2 is the best instance type. I've done a little bit of performance testing here, but it's not totally obvious. One issue is that each project is limited to a quote of 8 N2 CPUs by default; 
+Seems like N2 is the best instance type. I've done a little bit of performance testing here, but it's not totally obvious. One issue is that each project is limited to a quote of 8 N2 CPUs by default;
 
 We won't bother with adding disks. By default, GCP gives you a single boot disk of no less than 10GB. That's the smallest disk it'll give you, and that's actually way more than we're going to need.
 
@@ -50,10 +48,12 @@ gcloud compute config-ssh
 ssh ${NODENAME}.us-central1-a.rtoken-fuzz
 ```
 
+
 # 2) Install everything on the VM
+
 ## Initial setup
 
-I drop in my personal setup, for tmux and emacs QoL improvements 
+I drop in my personal setup, for tmux and emacs QoL improvements
 
 ```bash
 git clone https://github.com/fiddlemath/dotfiles.git
@@ -62,7 +62,7 @@ cd dotfiles && . install.sh && cd ..
 
 ## Install system packages
 
-``` bash
+```bash
 sudo apt update
 # I setup emacs so that there's an editor at all. Use whatever you prefer!
 sudo apt install emacs-nox python3-pip unzip moreutils
@@ -74,7 +74,7 @@ echo 'export PATH="$PATH:$HOME/.local/bin"' >> .bashrc
 # install python packages
 pip3 install solc-select slither_analyzer echidna_parade
 # Maybe overkill, but it won't take too long
-solc-select install all 
+solc-select install all
 
 # Install node. Use the snap, instead of the apt pacakge, to avoid installing
 # _way too much_ other junk
@@ -97,14 +97,14 @@ sudo bash add-google-cloud-ops-agent-repo.sh --also-install
 
 ## Install and test-run our code
 
-``` bash
+```bash
 # Get our code
 git clone https://github.com/reserve-protocol/protocol.git
 cd protocol
 git switch fuzz
 
 # Install local dependencies. --force is necessary; seems to work fine.
-npm install --force 
+npm install --force
 
 # Compile our code
 TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile
@@ -130,8 +130,7 @@ echidna-parade follows an initial run of echidna with lots and lots of further e
 
 Write `launch-parade.sh` (should already exist if using the `fuzzbox` gcp machine image):
 
-``` bash
-#!/bin/bash
+```bash
 nice echidna-parade protocol --name parade \
     --contract $1 \
     --config protocol/tools/echidna.config.yml \
@@ -144,7 +143,7 @@ nice echidna-parade protocol --name parade \
 
 Back in the shell, run parade for a scenario:
 
-``` bash
+```bash
 tmux  # Easy way to ensure you're in a detachable session.
 bash launch-parade.sh NormalOpsScenario
 ```
