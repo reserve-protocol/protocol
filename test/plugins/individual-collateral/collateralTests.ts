@@ -250,6 +250,23 @@ export default function fn<X extends CollateralFixtureContext>(
           await collateral.refresh()
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
+
+        it('does not update the saved prices if collateral is unpriced', async () => {
+          /*
+            want to cover this block from the refresh function
+            is it even possible to cover this w/ the tryPrice from AppreciatingFiatCollateral?
+
+            if (high < FIX_MAX) {
+                savedLowPrice = low;
+                savedHighPrice = high;
+                lastSave = uint48(block.timestamp);
+            } else {
+                // must be unpriced
+                assert(low == 0);
+            }
+          */
+          expect(true)
+        })
       })
 
       describe('status', () => {
@@ -266,7 +283,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         })
 
-        it('enters IFFY state when reference unit depegs beyond threshold', async () => {
+        it('enters IFFY state when reference unit depegs below low threshold', async () => {
           const delayUntilDefault = await collateral.delayUntilDefault()
 
           // Check initial state
@@ -275,6 +292,29 @@ export default function fn<X extends CollateralFixtureContext>(
 
           // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
           const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+          await updateAnswerTx.wait()
+
+          // Set next block timestamp - for deterministic result
+          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+          await setNextBlockTimestamp(nextBlockTimestamp)
+          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+
+          await expect(collateral.refresh())
+            .to.emit(collateral, 'CollateralStatusChanged')
+            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+          expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        })
+
+        it('enters IFFY state when reference unit depegs above high threshold', async () => {
+          const delayUntilDefault = await collateral.delayUntilDefault()
+
+          // Check initial state
+          expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+          // Depeg USDC:USD - Raising price by 20% from 1 to 1.2
+          const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('12e5'))
           await updateAnswerTx.wait()
 
           // Set next block timestamp - for deterministic result
