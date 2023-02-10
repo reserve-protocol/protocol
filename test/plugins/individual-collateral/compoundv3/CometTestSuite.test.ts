@@ -13,7 +13,6 @@ import {
   ERC20Mock,
   MockV3Aggregator,
   CometInterface,
-  CusdcV3Wrapper,
   ICusdcV3Wrapper,
   ICusdcV3WrapperMock,
   CusdcV3WrapperMock,
@@ -134,9 +133,16 @@ const makeCollateralFixtureContext = (
     const cusdcV3 = <CometInterface>fix.cusdcV3
     const { wcusdcV3, usdc } = fix
 
-    const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>await ethers.getContractFactory('CusdcV3WrapperMock')
-    const wcusdcV3Mock = <ICusdcV3WrapperMock>(await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address) as ICusdcV3WrapperMock)
-    const realMock = (await ethers.getContractAt('ICusdcV3WrapperMock', wcusdcV3Mock.address) as ICusdcV3WrapperMock)
+    const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
+      await ethers.getContractFactory('CusdcV3WrapperMock')
+    )
+    const wcusdcV3Mock = <ICusdcV3WrapperMock>(
+      ((await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)) as ICusdcV3WrapperMock)
+    )
+    const realMock = (await ethers.getContractAt(
+      'ICusdcV3WrapperMock',
+      wcusdcV3Mock.address
+    )) as ICusdcV3WrapperMock
     collateralOpts.erc20 = realMock.address
     const collateral = await deployCollateral(collateralOpts)
     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
@@ -179,16 +185,21 @@ const deployCollateralCometMockContext = async (
   const wcusdcV3 = <ICusdcV3Wrapper>(
     await CusdcV3WrapperFactory.deploy(cusdcV3.address, REWARDS, COMP)
   )
-  const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>await ethers.getContractFactory('CusdcV3WrapperMock')
-  const wcusdcV3Mock = await <ICusdcV3WrapperMock>await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)
+  const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
+    await ethers.getContractFactory('CusdcV3WrapperMock')
+  )
+  const wcusdcV3Mock = await (<ICusdcV3WrapperMock>(
+    await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)
+  ))
 
-  const realMock = (await ethers.getContractAt('ICusdcV3WrapperMock', wcusdcV3Mock.address) as ICusdcV3WrapperMock)
+  const realMock = (await ethers.getContractAt(
+    'ICusdcV3WrapperMock',
+    wcusdcV3Mock.address
+  )) as ICusdcV3WrapperMock
   collateralOpts.erc20 = wcusdcV3.address
   collateralOpts.erc20 = realMock.address
   const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
   const collateral = await deployCollateral(collateralOpts)
-
-
 
   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
   const tokDecimals = await wcusdcV3.decimals()
@@ -328,9 +339,9 @@ const opts = {
   makeCollateralFixtureContext,
   mintCollateralTo,
   reduceRefPerTok,
-  itClaimsRewards: it.skip,
+  itClaimsRewards: it,
   resetFork,
-  collateralName: "CompoundV3USDC"
+  collateralName: 'CompoundV3USDC',
 }
 
 collateralTests(opts)

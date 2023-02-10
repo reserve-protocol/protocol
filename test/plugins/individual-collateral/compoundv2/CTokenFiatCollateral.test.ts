@@ -17,7 +17,12 @@ import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/c
 import { expectEvents, expectInIndirectReceipt } from '../../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
-import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../../../utils/oracles'
+import {
+  expectPrice,
+  expectRTokenPrice,
+  expectUnpriced,
+  setOraclePrice,
+} from '../../../utils/oracles'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../../utils/time'
 import {
   Asset,

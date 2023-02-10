@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./vendor/CometInterface.sol";
 
-
 interface ICusdcV3Wrapper is IERC20 {
     function deposit(uint256 amount) external;
 
@@ -40,7 +39,7 @@ interface ICusdcV3Wrapper is IERC20 {
     function totalSupply() external view returns (uint256);
 
     function getRewardOwed(address account) external returns (uint256);
-    
+
     function exchangeRate() external view returns (uint256);
 
     function convertStaticToDynamic(uint104 amount) external view returns (uint256);

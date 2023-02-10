@@ -2,7 +2,10 @@ import { expect } from 'chai'
 import { Wallet, BigNumberish } from 'ethers'
 import hre, { ethers, network, waffle } from 'hardhat'
 import { useEnv } from '#/utils/env'
-import { advanceTime, advanceBlocks, setNextBlockTimestamp, getLatestBlockTimestamp } from '../../../utils/time'
+import {
+  advanceTime,
+  advanceBlocks,
+} from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
 import { COMP } from './constants'
 import { ERC20Mock, CometInterface, ICusdcV3Wrapper } from '../../../../typechain'
@@ -55,7 +58,9 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('deposit', async () => {
-      const expectedAmount = await wcusdcV3.convertDynamicToStatic(await cusdcV3.balanceOf(bob.address))
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(
+        await cusdcV3.balanceOf(bob.address)
+      )
       await wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256)
       expect(await cusdcV3.balanceOf(bob.address)).to.equal(0)
       expect(await usdc.balanceOf(bob.address)).to.equal(0)
@@ -63,7 +68,9 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('deposits to own account', async () => {
-      const expectedAmount = await wcusdcV3.convertDynamicToStatic(await cusdcV3.balanceOf(bob.address))
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(
+        await cusdcV3.balanceOf(bob.address)
+      )
       await wcusdcV3.connect(bob).depositTo(bob.address, ethers.constants.MaxUint256)
       expect(await cusdcV3.balanceOf(bob.address)).to.equal(0)
       expect(await usdc.balanceOf(bob.address)).to.equal(0)
@@ -71,7 +78,9 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('deposits for someone else', async () => {
-      const expectedAmount = await wcusdcV3.convertDynamicToStatic(await cusdcV3.balanceOf(bob.address))
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(
+        await cusdcV3.balanceOf(bob.address)
+      )
       await wcusdcV3.connect(bob).depositTo(don.address, ethers.constants.MaxUint256)
       expect(await wcusdcV3.balanceOf(bob.address)).to.eq(0)
       expect(await wcusdcV3.balanceOf(don.address)).to.eq(expectedAmount)
@@ -83,7 +92,9 @@ describeFork('Wrapped CUSDCv3', () => {
         wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
       ).revertedWith('Unauthorized()')
       await wcusdcV3.connect(bob).connect(bob).allow(don.address, true)
-      const expectedAmount = await wcusdcV3.convertDynamicToStatic(await cusdcV3.balanceOf(bob.address))
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(
+        await cusdcV3.balanceOf(bob.address)
+      )
       await wcusdcV3
         .connect(don)
         .depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
@@ -127,12 +138,10 @@ describeFork('Wrapped CUSDCv3', () => {
   })
 
   describe('withdraw', () => {
-    const initUsdcAmt = bn('20000e6')
-    let startingBalance: BigNumberish;
+    const initwusdcAmt = bn('20000e6')
 
     beforeEach(async () => {
-      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, initUsdcAmt, bob.address)
-      startingBalance = await wcusdcV3.balanceOf(bob.address)
+      await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, initwusdcAmt, bob.address)
     })
 
     it('withdraws to own account', async () => {
@@ -170,7 +179,10 @@ describeFork('Wrapped CUSDCv3', () => {
       const initialBalance = await wcusdcV3.underlyingBalanceOf(bob.address)
       const withdrawAmt = bn('10000e6')
       await wcusdcV3.connect(bob).withdraw(withdrawAmt)
-      expect(await wcusdcV3.underlyingBalanceOf(bob.address)).to.closeTo(initialBalance.sub(withdrawAmt), 50)
+      expect(await wcusdcV3.underlyingBalanceOf(bob.address)).to.closeTo(
+        initialBalance.sub(withdrawAmt),
+        50
+      )
       await advanceTime(1000)
       await wcusdcV3.connect(bob).withdraw(ethers.constants.MaxUint256)
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(0)
@@ -286,9 +298,9 @@ describeFork('Wrapped CUSDCv3', () => {
 
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
       await advanceTime(1000)
-      const totalBalances =
-        (await wcusdcV3.underlyingBalanceOf(don.address)).add
-        (await wcusdcV3.underlyingBalanceOf(bob.address))
+      const totalBalances = (await wcusdcV3.underlyingBalanceOf(don.address)).add(
+        await wcusdcV3.underlyingBalanceOf(bob.address)
+      )
 
       const contractBalance = await cusdcV3.balanceOf(wcusdcV3.address)
       expect(totalBalances).to.closeTo(contractBalance, 10)
@@ -324,10 +336,9 @@ describeFork('Wrapped CUSDCv3', () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, amount, don.address)
       await advanceTime(100000)
 
-      let totalBalances =
-        (await wcusdcV3.underlyingBalanceOf(don.address)).add
-        (await wcusdcV3.underlyingBalanceOf(bob.address)).add
-        (await wcusdcV3.underlyingBalanceOf(charles.address))
+      let totalBalances = (await wcusdcV3.underlyingBalanceOf(don.address))
+        .add(await wcusdcV3.underlyingBalanceOf(bob.address))
+        .add(await wcusdcV3.underlyingBalanceOf(charles.address))
       let contractBalance = await cusdcV3.balanceOf(wcusdcV3.address)
       expect(totalBalances).to.be.closeTo(contractBalance, 10)
       expect(totalBalances).to.be.lte(contractBalance)
@@ -336,10 +347,9 @@ describeFork('Wrapped CUSDCv3', () => {
       await wcusdcV3.connect(bob).withdraw(bobBal)
       await wcusdcV3.connect(don).withdraw(bn('10000e6'))
 
-      totalBalances =
-        (await wcusdcV3.underlyingBalanceOf(don.address)).add
-        (await wcusdcV3.underlyingBalanceOf(bob.address)).add
-        (await wcusdcV3.underlyingBalanceOf(charles.address))
+      totalBalances = (await wcusdcV3.underlyingBalanceOf(don.address))
+        .add(await wcusdcV3.underlyingBalanceOf(bob.address))
+        .add(await wcusdcV3.underlyingBalanceOf(charles.address))
       contractBalance = await cusdcV3.balanceOf(wcusdcV3.address)
       expect(totalBalances).to.be.closeTo(contractBalance, 10)
       expect(totalBalances).to.be.lte(contractBalance)
@@ -365,14 +375,14 @@ describeFork('Wrapped CUSDCv3', () => {
 
     it('current exchange rate is a ratio of total underlying balance and total supply', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
-      const totalSupply = (await wcusdcV3.totalSupply())
-      const underlyingBalance = (await cusdcV3.balanceOf(wcusdcV3.address))
+      const totalSupply = await wcusdcV3.totalSupply()
+      const underlyingBalance = await cusdcV3.balanceOf(wcusdcV3.address)
       expect(await wcusdcV3.exchangeRate()).to.equal(
         underlyingBalance.mul(bn('1e6')).div(totalSupply)
       )
     })
   })
-  
+
   describe('claiming rewards', () => {
     beforeEach(async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
