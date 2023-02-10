@@ -1,11 +1,8 @@
 import { expect } from 'chai'
-import { Wallet, BigNumberish } from 'ethers'
+import { Wallet } from 'ethers'
 import hre, { ethers, network, waffle } from 'hardhat'
 import { useEnv } from '#/utils/env'
-import {
-  advanceTime,
-  advanceBlocks,
-} from '../../../utils/time'
+import { advanceTime, advanceBlocks } from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
 import { COMP } from './constants'
 import { ERC20Mock, CometInterface, ICusdcV3Wrapper } from '../../../../typechain'
