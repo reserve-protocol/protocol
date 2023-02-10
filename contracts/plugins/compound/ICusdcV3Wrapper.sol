@@ -4,8 +4,9 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./vendor/CometInterface.sol";
+import "./IWrappedERC20.sol";
 
-interface ICusdcV3Wrapper is IERC20 {
+interface ICusdcV3Wrapper is IWrappedERC20 {
     function deposit(uint256 amount) external;
 
     function depositTo(address account, uint256 amount) external;
