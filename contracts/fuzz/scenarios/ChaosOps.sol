@@ -676,6 +676,30 @@ contract ChaosOpsScenario {
     }
 
     // ==== governance changes ====
+    function setIssuanceThrottleParams(uint256 amtRateSeed, uint256 pctRateSeed) public {
+        RTokenP1Fuzz rToken = RTokenP1Fuzz(address(main.rToken()));
+        uint256 amtRate = between(
+            rToken.MIN_THROTTLE_RATE_AMT(),
+            rToken.MAX_THROTTLE_RATE_AMT(),
+            amtRateSeed
+        );
+        uint256 pctRate = between(0, rToken.MAX_THROTTLE_PCT_AMT(), pctRateSeed);
+        ThrottleLib.Params memory tParams = ThrottleLib.Params(amtRate, _safeWrap(pctRate));
+        RTokenP1Fuzz(address(main.rToken())).setIssuanceThrottleParams(tParams);
+    }
+
+    function setRedemptionThrottleParams(uint256 amtRateSeed, uint256 pctRateSeed) public {
+        RTokenP1Fuzz rToken = RTokenP1Fuzz(address(main.rToken()));
+        uint256 amtRate = between(
+            rToken.MIN_THROTTLE_RATE_AMT(),
+            rToken.MAX_THROTTLE_RATE_AMT(),
+            amtRateSeed
+        );
+        uint256 pctRate = between(0, rToken.MAX_THROTTLE_PCT_AMT(), pctRateSeed);
+        ThrottleLib.Params memory tParams = ThrottleLib.Params(amtRate, _safeWrap(pctRate));
+        RTokenP1Fuzz(address(main.rToken())).setRedemptionThrottleParams(tParams);
+    }
+
     function setDistribution(
         uint256 seedID,
         uint16 rTokenDist,
