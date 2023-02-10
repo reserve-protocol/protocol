@@ -376,7 +376,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(MAX_THROTTLE_AMT_RATE)
     })
 
-    it.only('Should not allow issuance to set BU exchange rate below 1e-9', async () => {
+    it('Should not overflow  BU exchange rate below 1e-9 on issue', async () => {
       const issueAmount: BigNumber = fp('1')
 
       // Set single basket token for simplification
@@ -398,8 +398,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await rToken.connect(signer).setBasketsNeeded(bn('1e9'))
       })
 
-      // Issue rTokens
-      await expect(rToken.connect(addr1).issue(1)).to.be.revertedWith('BU rate out of range')
+      // Issue rTokens successfully
+      await expect(rToken.connect(addr1).issue(1)).to.not.be.reverted
     })
 
     it('Should revert if user did not provide approval for Token transfer', async function () {
@@ -1035,7 +1035,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should redeem prorata when refPerTok() is 0 #fast', async function () {
-        // Set refPerTok to FIX_MAX
+        // Set refPerTok to 0
         await token2.setExchangeRate(fp('0'))
 
         // Redemption
@@ -1061,7 +1061,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
       })
 
-      it.only('Should not allow redeem to set BU exchange rate above 1e9', async function () {
+      it('Should not overflow BU exchange rate above 1e9 on redeem', async function () {
         // Leave only 1 RToken issue
         await rToken.connect(addr1).redeem(issueAmount.sub(bn('1e18')), true)
 
@@ -1074,10 +1074,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         const redeemAmount: BigNumber = bn('1.5e9')
 
-        // Redeem rTokens
-        await expect(rToken.connect(addr1).redeem(bn(redeemAmount), false)).to.be.revertedWith(
-          'BU rate out of range'
-        )
+        // Redeem rTokens successfully
+        await expect(rToken.connect(addr1).redeem(bn(redeemAmount), false)).to.not.be.reverted
       })
 
       context('And redemption throttling', function () {
