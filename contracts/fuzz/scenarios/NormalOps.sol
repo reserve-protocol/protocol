@@ -42,6 +42,8 @@ contract NormalOpsScenario {
 
     IERC20[] public collateralTokens;
     IERC20[] public backupTokens;
+    bool public didIssueOrRedeem;
+    uint256 public lastBUExchangeRate;
 
     // Once constructed, everything is set up for random echidna runs to happen:
     // - main and its components are up
@@ -219,10 +221,19 @@ contract NormalOpsScenario {
         ERC20Fuzz(address(token)).burn(main.someUser(userID), amount);
     }
 
+    function _saveBUExchangeRate() internal {
+        lastBUExchangeRate = RTokenP1Fuzz(address(main.rToken())).getExchangeRate();
+    }
+
+    function _markIssueRedeem() internal {
+        didIssueOrRedeem = true;
+    }
+
     // do issuance without doing allowances first
     function justIssue(uint256 amount) public asSender {
         _saveRTokenRate();
         main.rToken().issue(amount);
+        _markIssueRedeem();
     }
 
     // do allowances as needed, and *then* do issuance
@@ -238,6 +249,7 @@ contract NormalOpsScenario {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
         main.rToken().issue(amount);
+        _markIssueRedeem();
     }
 
     // do issuance without doing allowances first, to a different recipient
@@ -246,6 +258,7 @@ contract NormalOpsScenario {
         address recipient = main.someAddr(recipientID);
 
         main.rToken().issueTo(recipient, amount);
+        _markIssueRedeem();
     }
 
     // do allowances as needed, and *then* do issuance
@@ -262,11 +275,13 @@ contract NormalOpsScenario {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
         main.rToken().issueTo(recipient, amount);
+        _markIssueRedeem();
     }
 
     function redeem(uint256 amount, bool revertOnPartialRedemption) public asSender {
         _saveRTokenRate();
         main.rToken().redeem(amount, revertOnPartialRedemption);
+        _markIssueRedeem();
     }
 
     function redeemTo(
@@ -277,6 +292,7 @@ contract NormalOpsScenario {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         main.rToken().redeemTo(recipient, amount, revertOnPartialRedemption);
+        _markIssueRedeem();
     }
 
     function monetizeDonations(uint8 tokenID) public {
@@ -623,5 +639,15 @@ contract NormalOpsScenario {
 
     function echidna_stRSRInvariants() external view returns (bool) {
         return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
+    }
+
+    function echidna_rTokenExchangeRateInvariant() external returns (bool) {
+        if (didIssueOrRedeem) {
+            didIssueOrRedeem = false;
+            if (RTokenP1Fuzz(address(main.rToken())).getExchangeRate() < lastBUExchangeRate) {
+                return false;
+            }
+        }
+        return true;
     }
 }
