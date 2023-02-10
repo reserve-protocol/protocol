@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, Contract, ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import {
   IConfig,
@@ -38,6 +38,7 @@ import {
   GnosisTrade,
   IAssetRegistry,
   IBasketHandler,
+  InvalidRefPerTokCollateralMock,
   MockV3Aggregator,
   MockableCollateral,
   RTokenAsset,
@@ -52,7 +53,6 @@ import {
   TestIRToken,
   TestIStRSR,
   USDCMock,
-  ZeroRefPerTokCollateralMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import {
@@ -1378,6 +1378,66 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(allERC20s).to.contain(token0.address)
       expect(allERC20s.length).to.equal(previousLength)
     })
+
+    context('With quantity reverting', function () {
+      let InvalidRefPerTokFiatCollFactory: ContractFactory
+      let revertCollateral: InvalidRefPerTokCollateralMock
+
+      beforeEach(async function () {
+        // Setup collateral that can revert on refPerTok
+        InvalidRefPerTokFiatCollFactory = await ethers.getContractFactory(
+          'InvalidRefPerTokCollateralMock'
+        )
+        revertCollateral = <InvalidRefPerTokCollateralMock>(
+          await InvalidRefPerTokFiatCollFactory.deploy(
+            {
+              priceTimeout: PRICE_TIMEOUT,
+              chainlinkFeed: await collateral2.chainlinkFeed(),
+              oracleError: ORACLE_ERROR,
+              erc20: erc20s[5].address,
+              maxTradeVolume: config.rTokenMaxTradeVolume,
+              oracleTimeout: await collateral2.oracleTimeout(),
+              targetName: ethers.utils.formatBytes32String('USD'),
+              defaultThreshold: DEFAULT_THRESHOLD,
+              delayUntilDefault: await collateral2.delayUntilDefault(),
+            },
+            REVENUE_HIDING
+          )
+        )
+
+        // Register new asset
+        await assetRegistry.connect(owner).register(revertCollateral.address)
+        await revertCollateral.refresh()
+      })
+
+      it('Should disable basket when quantity reverts on Unregister', async () => {
+        // Check basket is sound
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+        // Set the collateral to revert on refPerTok
+        await revertCollateral.setRefPerTokRevert(true)
+
+        // Unregister the new collateral - Will disable basket
+        await assetRegistry.connect(owner).unregister(revertCollateral.address)
+
+        // Basket is now disabled
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      })
+
+      it('Should disable basket when quantity reverts on Swap', async () => {
+        // Check basket is sound
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+        // Set the collateral to revert on refPerTok
+        await revertCollateral.setRefPerTokRevert(true)
+
+        // Attempt to swap the new collateral - Will disable basket
+        await assetRegistry.connect(owner).swapRegistered(revertCollateral.address)
+
+        // Basket is now disabled
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      })
+    })
   })
 
   describe('Basket Handling', () => {
@@ -1913,10 +1973,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
 
       // Swap collateral with one that can have refPerTok = 0 without defaulting
-      const ZeroRefPerTokFiatCollFactory = await ethers.getContractFactory(
-        'ZeroRefPerTokCollateralMock'
+      const InvalidRefPerTokFiatCollFactory = await ethers.getContractFactory(
+        'InvalidRefPerTokCollateralMock'
       )
-      const newColl = <ZeroRefPerTokCollateralMock>await ZeroRefPerTokFiatCollFactory.deploy(
+      const newColl = <InvalidRefPerTokCollateralMock>await InvalidRefPerTokFiatCollFactory.deploy(
         {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await collateral2.chainlinkFeed(),

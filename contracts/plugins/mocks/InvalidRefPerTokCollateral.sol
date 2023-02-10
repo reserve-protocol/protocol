@@ -6,14 +6,15 @@ import "../../libraries/Fixed.sol";
 import "../assets/AppreciatingFiatCollateral.sol";
 
 /**
- * @title ZeroRefPerTokCollateralMock
- * @notice Collateral mock plugin which allows to set refPerTok=0 at anytime without default
+ * @title InvalidoRefPerTokCollateralMock
+ * @notice Collateral mock plugin which allows to set refPerTok=0 or revert
  */
-contract ZeroRefPerTokCollateralMock is AppreciatingFiatCollateral {
+contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    uint192 rateMock = FIX_ONE;
+    uint192 public rateMock = FIX_ONE;
+    bool public refPerTokRevert;
 
     // solhint-disable no-empty-blocks
 
@@ -62,7 +63,13 @@ contract ZeroRefPerTokCollateralMock is AppreciatingFiatCollateral {
         rateMock = rate;
     }
 
+    // Setter to make refPerTok revert
+    function setRefPerTokRevert(bool on) external {
+        refPerTokRevert = on;
+    }
+
     function refPerTok() public view virtual override returns (uint192) {
+        if (refPerTokRevert) revert(); // Revert with no reason
         return rateMock;
     }
 
