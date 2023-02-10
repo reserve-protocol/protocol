@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import "./ICusdcV3Wrapper.sol";
+import "./IComet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -20,7 +21,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     using FixLib for uint192;
 
     IERC20 public immutable rewardERC20;
-    CometInterface public immutable comet;
+    IComet public immutable comet;
     uint256 public immutable reservesThresholdIffy;
     uint256 public immutable reservesThresholdDisabled;
 
@@ -36,7 +37,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         rewardERC20 = cometConfig.rewardERC20;
         reservesThresholdIffy = cometConfig.reservesThresholdIffy;
         reservesThresholdDisabled = cometConfig.reservesThresholdDisabled;
-        comet = ICusdcV3Wrapper(address(erc20)).underlyingComet();
+        comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
 
