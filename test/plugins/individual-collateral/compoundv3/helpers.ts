@@ -6,7 +6,6 @@ import {
   ICometConfigurator,
   ICometProxyAdmin,
   ICusdcV3Wrapper,
-  CusdcV3Wrapper,
   CusdcV3Wrapper__factory,
 } from '../../../../typechain'
 import { whileImpersonating } from '../../../utils/impersonation'
@@ -23,10 +22,6 @@ import {
   FORK_BLOCK,
 } from './constants'
 import { getResetFork } from '../helpers'
-import {
-  advanceBlocks,
-  advanceTime
-} from '../../../utils/time'
 
 export const enableRewardsAccrual = async (
   cusdcV3: CometInterface,

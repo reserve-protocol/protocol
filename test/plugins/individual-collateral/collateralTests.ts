@@ -35,7 +35,7 @@ export default function fn<X extends CollateralFixtureContext>(
     reduceRefPerTok,
     itClaimsRewards,
     resetFork,
-    collateralName
+    collateralName,
   } = fixtures
 
   before(resetFork)
@@ -137,16 +137,15 @@ export default function fn<X extends CollateralFixtureContext>(
           await collateral.claimRewards()
         })
 
-        it('claims rewards', async () => {  
+        itClaimsRewards('claims rewards', async () => {
           const amount = bn('20000e6')
           await mintCollateralTo(ctx, amount, alice, collateral.address)
-      
+
           await advanceBlocks(1000)
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
-      
+
           const balBefore = await ctx.rewardToken.balanceOf(collateral.address)
-          await expect(collateral.claimRewards())
-            .to.emit(collateral, 'RewardsClaimed')
+          await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
           const balAfter = await ctx.rewardToken.balanceOf(collateral.address)
           expect(balAfter).gt(balBefore)
         })
@@ -158,7 +157,10 @@ export default function fn<X extends CollateralFixtureContext>(
           const decimals = await chainlinkFeed.decimals()
           const oracleError = await collateral.oracleError()
           const refPerTok = await collateral.refPerTok()
-          const expectedPrice = clData.answer.mul(bn(10).pow(18 - decimals)).mul(refPerTok).div(fp('1'))
+          const expectedPrice = clData.answer
+            .mul(bn(10).pow(18 - decimals))
+            .mul(refPerTok)
+            .div(fp('1'))
           const expectedDelta = expectedPrice.mul(oracleError).div(fp(1))
 
           // Check initial prices
@@ -176,7 +178,10 @@ export default function fn<X extends CollateralFixtureContext>(
           // Check new prices
           const newclData = await chainlinkFeed.latestRoundData()
           const newRefPerTok = await collateral.refPerTok()
-          const newExpectedPrice = newclData.answer.mul(bn(10).pow(18 - decimals)).mul(newRefPerTok).div(fp('1'))
+          const newExpectedPrice = newclData.answer
+            .mul(bn(10).pow(18 - decimals))
+            .mul(newRefPerTok)
+            .div(fp('1'))
           const newExpectedDelta = newExpectedPrice.mul(oracleError).div(fp(1))
           const [newLow, newHigh] = await collateral.price()
           expect(newLow).to.equal(newExpectedPrice.sub(newExpectedDelta))
@@ -194,7 +199,10 @@ export default function fn<X extends CollateralFixtureContext>(
           const oracleError = await collateral.oracleError()
 
           const initData = await chainlinkFeed.latestRoundData()
-          const expectedPrice = initData.answer.mul(bn(10).pow(18 - decimals)).mul(initRefPerTok).div(fp('1'))
+          const expectedPrice = initData.answer
+            .mul(bn(10).pow(18 - decimals))
+            .mul(initRefPerTok)
+            .div(fp('1'))
           const expectedDelta = expectedPrice.mul(oracleError).div(fp(1))
           const [initLow, initHigh] = await collateral.price()
           expect(initLow).to.equal(expectedPrice.sub(expectedDelta))
