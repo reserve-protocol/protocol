@@ -221,11 +221,13 @@ contract NormalOpsScenario {
 
     // do issuance without doing allowances first
     function justIssue(uint256 amount) public asSender {
+        _saveRTokenRate();
         main.rToken().issue(amount);
     }
 
     // do allowances as needed, and *then* do issuance
     function issue(uint256 amount) public asSender {
+        _saveRTokenRate();
         uint256 preSupply = main.rToken().totalSupply();
         require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
 
@@ -240,6 +242,7 @@ contract NormalOpsScenario {
 
     // do issuance without doing allowances first, to a different recipient
     function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
+        _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
 
         main.rToken().issueTo(recipient, amount);
@@ -247,6 +250,7 @@ contract NormalOpsScenario {
 
     // do allowances as needed, and *then* do issuance
     function issueTo(uint256 amount, uint8 recipientID) public asSender {
+        _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         uint256 preSupply = main.rToken().totalSupply();
         require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
@@ -261,6 +265,7 @@ contract NormalOpsScenario {
     }
 
     function redeem(uint256 amount, bool revertOnPartialRedemption) public asSender {
+        _saveRTokenRate();
         main.rToken().redeem(amount, revertOnPartialRedemption);
     }
 
@@ -269,6 +274,7 @@ contract NormalOpsScenario {
         uint8 recipientID,
         bool revertOnPartialRedemption
     ) public asSender {
+        _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         main.rToken().redeemTo(recipient, amount, revertOnPartialRedemption);
     }
@@ -553,6 +559,10 @@ contract NormalOpsScenario {
     // pseudo-mutator for saving old rates...
     function saveRates() public {
         prevRSRRate = main.stRSR().exchangeRate();
+        _saveRTokenRate();
+    }
+
+    function _saveRTokenRate() internal {
         prevRTokenRate = rTokenRate();
     }
 

@@ -357,11 +357,13 @@ contract ChaosOpsScenario {
 
     // do issuance without doing allowances first
     function justIssue(uint256 amount) public asSender {
+        _saveRTokenRate();
         main.rToken().issue(amount);
     }
 
     // do issuance without doing allowances first, to a different recipient
     function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
+        _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
 
         main.rToken().issueTo(recipient, amount);
@@ -369,6 +371,7 @@ contract ChaosOpsScenario {
 
     // do allowances as needed, and *then* do issuance
     function issue(uint256 amount) public asSender {
+        _saveRTokenRate();
         uint256 preSupply = main.rToken().totalSupply();
         require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
 
@@ -383,6 +386,7 @@ contract ChaosOpsScenario {
 
     // do allowances as needed, and *then* do issuance
     function issueTo(uint256 amount, uint8 recipientID) public asSender {
+        _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         uint256 preSupply = main.rToken().totalSupply();
         require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
@@ -397,6 +401,7 @@ contract ChaosOpsScenario {
     }
 
     function redeem(uint256 amount, bool revertOnPartialRedemption) public asSender {
+        _saveRTokenRate();
         main.rToken().redeem(amount, revertOnPartialRedemption);
     }
 
@@ -405,6 +410,7 @@ contract ChaosOpsScenario {
         uint8 recipientID,
         bool revertOnPartialRedemption
     ) public asSender {
+        _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         main.rToken().redeemTo(recipient, amount, revertOnPartialRedemption);
     }
@@ -731,38 +737,6 @@ contract ChaosOpsScenario {
         // 1e18 is Furnace.MAX_RATIO
     }
 
-    function setIssuanceThrottleParams(uint256 seed) public {
-        RTokenP1 rtoken = RTokenP1(address(main.rToken()));
-        rtoken.setIssuanceThrottleParams(
-            ThrottleLib.Params(
-                { 
-                    amtRate: between(
-                        rtoken.MIN_THROTTLE_RATE_AMT(), rtoken.MAX_THROTTLE_RATE_AMT(), seed
-                    ), 
-                    pctRate: uint192(between(
-                        0, rtoken.MAX_THROTTLE_PCT_AMT(), seed
-                    ))
-                }
-            )
-        );
-    }
-
-    function setRedemptionThrottleParams(uint256 seed) public {
-        RTokenP1 rtoken = RTokenP1(address(main.rToken()));
-        rtoken.setRedemptionThrottleParams(
-            ThrottleLib.Params(
-                { 
-                    amtRate: between(
-                        rtoken.MIN_THROTTLE_RATE_AMT(), rtoken.MAX_THROTTLE_RATE_AMT(), seed
-                    ), 
-                    pctRate: uint192(between(
-                        0, rtoken.MAX_THROTTLE_PCT_AMT(), seed
-                    ))
-                }
-            )
-        );
-    }
-
     function setRSRTraderMaxTradeSlippage(uint256 seed) public {
         RevenueTraderP1(address(main.rsrTrader())).setMaxTradeSlippage(
             uint192(between(0, 1e18, seed))
@@ -904,11 +878,21 @@ contract ChaosOpsScenario {
     // pseudo-mutator for saving old rates...
     function saveRates() public {
         prevRSRRate = main.stRSR().exchangeRate();
+        _saveRTokenRate();
+    }
+
+    function _saveRTokenRate() internal {
         prevRTokenRate = rTokenRate();
     }
 
     function assertFurnacePayouts() public view {
         FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
+    }
+
+    function echidna_ratesNeverFall() external view returns (bool) {
+        if (main.stRSR().exchangeRate() < prevRSRRate) return false;
+        if (rTokenRate() < prevRTokenRate) return false;
+        return true;
     }
 
     function echidna_mainInvariants() external view returns (bool) {
