@@ -358,6 +358,10 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 
+    function getExchangeRate() external view returns (uint256) {
+        return (FIX_ONE_256 * basketsNeeded) / totalSupply();
+    }
+
     function invariantsHold() external view returns (bool) {
         uint256 supply = totalSupply();
         if (supply == 0) return true;
