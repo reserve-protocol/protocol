@@ -52,6 +52,7 @@ import {
   TestIRToken,
   TestIStRSR,
   USDCMock,
+  ZeroRefPerTokCollateralMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import {
@@ -1899,12 +1900,46 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
     })
 
-    it('Should return no basketsHeld when refPerTok = 0', async () => {
+    it('Should return no basketsHeld when collateral is disabled', async () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
 
       // Set Token2 to hard default - Zero rate
       await token2.setExchangeRate(fp('0'))
       await collateral2.refresh()
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+    })
+
+    it('Should return no basketsHeld when refPerTok = 0', async () => {
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+
+      // Swap collateral with one that can have refPerTok = 0 without defaulting
+      const ZeroRefPerTokFiatCollFactory = await ethers.getContractFactory(
+        'ZeroRefPerTokCollateralMock'
+      )
+      const newColl = <ZeroRefPerTokCollateralMock>await ZeroRefPerTokFiatCollFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral2.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral2.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await collateral2.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral2.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
+
+      await assetRegistry.connect(owner).swapRegistered(newColl.address)
+      await newColl.refresh()
+
+      // Change basket - valid at this point
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Set refPerTok = 0
+      await newColl.setRate(bn(0))
+
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
     })
 
