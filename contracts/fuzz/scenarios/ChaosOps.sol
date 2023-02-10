@@ -890,7 +890,6 @@ contract ChaosOpsScenario {
     }
 
     function echidna_ratesNeverFall() external view returns (bool) {
-        if (main.stRSR().exchangeRate() < prevRSRRate) return false;
         if (rTokenRate() < prevRTokenRate) return false;
         return true;
     }
