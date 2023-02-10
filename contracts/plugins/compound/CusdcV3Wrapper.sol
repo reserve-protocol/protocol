@@ -7,7 +7,6 @@ import "./WrappedERC20.sol";
 import "./ICometRewards.sol";
 import "./ICusdcV3Wrapper.sol";
 import "./CometHelpers.sol";
-import "hardhat/console.sol";
 
 contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     struct UserBasic {
@@ -101,11 +100,6 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         userBasic[dst] = dstBasic;
 
         SafeERC20.safeTransferFrom(IERC20(address(underlyingComet)), from, address(this), amount);
-        // try IERC20(address(underlyingComet)).transferFrom(from, address(this), amount) {
-        //     console.log("passed");
-        // } catch (bytes memory e) {
-        //     console.logBytes(e);
-        // }
     }
 
     function withdraw(uint256 amount) external {
@@ -124,11 +118,6 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         _withdraw(msg.sender, src, to, amount);
     }
 
-    /**
-        @dev Allow a user to burn a number of wrapped tokens and withdraw the corresponding number 
-        of underlying tokens.
-        @param presentWithdrawAmt The amount of Wrapped cUSDC being withdrawn.
-     */
     function _withdraw(
         address operator,
         address src,
