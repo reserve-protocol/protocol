@@ -1,10 +1,11 @@
-import { ethers } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   ERC20Mock,
   CometInterface,
   ICometConfigurator,
   ICometProxyAdmin,
+  ICusdcV3Wrapper,
   CusdcV3Wrapper,
   CusdcV3Wrapper__factory,
 } from '../../../../typechain'
@@ -22,6 +23,10 @@ import {
   FORK_BLOCK,
 } from './constants'
 import { getResetFork } from '../helpers'
+import {
+  advanceBlocks,
+  advanceTime
+} from '../../../utils/time'
 
 export const enableRewardsAccrual = async (
   cusdcV3: CometInterface,
@@ -61,26 +66,31 @@ export const allocateUSDC = async (
 
 interface WrappedcUSDCFixture {
   cusdcV3: CometInterface
-  wcusdcV3: CusdcV3Wrapper
+  wcusdcV3: ICusdcV3Wrapper
   usdc: ERC20Mock
 }
 
 export const mintWcUSDC = async (
   usdc: ERC20Mock,
   cusdc: CometInterface,
-  wcusdc: CusdcV3Wrapper,
+  wcusdc: ICusdcV3Wrapper,
   account: SignerWithAddress,
   amount: BigNumberish,
   recipient: string
 ) => {
-  await allocateUSDC(account.address, amount)
+  const initBal = await cusdc.balanceOf(account.address)
+  await hre.network.provider.send('evm_setAutomine', [false])
+  const usdcAmount = await wcusdc.convertStaticToDynamic(amount)
+  await allocateUSDC(account.address, usdcAmount)
   await usdc.connect(account).approve(cusdc.address, ethers.constants.MaxUint256)
-  await cusdc.connect(account).supply(usdc.address, amount)
   await cusdc.connect(account).allow(wcusdc.address, true)
+  await hre.network.provider.send('evm_setAutomine', [true])
+  await cusdc.connect(account).supply(usdc.address, usdcAmount)
+  const nowBal = await cusdc.balanceOf(account.address)
   if (account.address == recipient) {
-    await wcusdc.connect(account).deposit(amount)
+    await wcusdc.connect(account).deposit(nowBal.sub(initBal))
   } else {
-    await wcusdc.connect(account).depositTo(recipient, amount)
+    await wcusdc.connect(account).depositTo(recipient, nowBal.sub(initBal))
   }
 }
 
@@ -89,7 +99,7 @@ export const makewCSUDC = async (): Promise<WrappedcUSDCFixture> => {
   const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
     await ethers.getContractFactory('CusdcV3Wrapper')
   )
-  const wcusdcV3 = <CusdcV3Wrapper>(
+  const wcusdcV3 = <ICusdcV3Wrapper>(
     await CusdcV3WrapperFactory.deploy(cusdcV3.address, REWARDS, COMP)
   )
   const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)

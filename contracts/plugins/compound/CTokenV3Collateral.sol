@@ -20,7 +20,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     using FixLib for uint192;
 
     IERC20 public immutable rewardERC20;
-    IComet public immutable comet;
+    CometInterface public immutable comet;
     uint256 public immutable reservesThresholdIffy;
     uint256 public immutable reservesThresholdDisabled;
 
@@ -36,7 +36,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         rewardERC20 = cometConfig.rewardERC20;
         reservesThresholdIffy = cometConfig.reservesThresholdIffy;
         reservesThresholdDisabled = cometConfig.reservesThresholdDisabled;
-        comet = IComet(ICusdcV3Wrapper(address(erc20)).underlyingComet());
+        comet = ICusdcV3Wrapper(address(erc20)).underlyingComet();
         exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
 

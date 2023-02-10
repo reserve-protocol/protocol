@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 contract CometMock {
     int256 internal _reserves;
     uint256 internal _targetReserves;
-    address public extensionDelegate;
+    address public externalDelegate;
 
     struct TotalsBasic {
         // 1st slot
@@ -30,7 +30,7 @@ contract CometMock {
     constructor(uint256 targetReserves_, int256 reserves_, address delegate) {
         _targetReserves = targetReserves_;
         _reserves = reserves_;
-        extensionDelegate = delegate;
+        externalDelegate = delegate;
     }
 
     function setReserves(int256 amount) external {
@@ -52,7 +52,7 @@ contract CometMock {
     function accrueAccount(address account) public {}
 
     fallback() external payable {
-        address delegate = extensionDelegate;
+        address delegate = externalDelegate;
         assembly {
             calldatacopy(0, 0, calldatasize())
             let result := call(gas(), delegate, 0, 0, calldatasize(), 0, 0)
