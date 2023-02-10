@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: ISC
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 contract CometHelpers {
     uint64 internal constant BASE_INDEX_SCALE = 1e15;
