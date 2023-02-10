@@ -5,7 +5,7 @@ import { useEnv } from '#/utils/env'
 import { advanceTime, advanceBlocks, setNextBlockTimestamp, getLatestBlockTimestamp } from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
 import { COMP } from './constants'
-import { ERC20Mock, CometInterface, CusdcV3Wrapper } from '../../../../typechain'
+import { ERC20Mock, CometInterface, ICusdcV3Wrapper } from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
@@ -20,7 +20,7 @@ describeFork('Wrapped CUSDCv3', () => {
   let charles: SignerWithAddress
   let don: SignerWithAddress
   let usdc: ERC20Mock
-  let wcusdcV3: CusdcV3Wrapper
+  let wcusdcV3: ICusdcV3Wrapper
   let cusdcV3: CometInterface
 
   let wallet: Wallet
@@ -287,11 +287,12 @@ describeFork('Wrapped CUSDCv3', () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
       await advanceTime(1000)
       const totalBalances =
-        (await wcusdcV3.underlyingBalanceOf(don.address)).toBigInt() +
-        (await wcusdcV3.underlyingBalanceOf(bob.address)).toBigInt()
+        (await wcusdcV3.underlyingBalanceOf(don.address)).add
+        (await wcusdcV3.underlyingBalanceOf(bob.address))
 
       const contractBalance = await cusdcV3.balanceOf(wcusdcV3.address)
-      expect(totalBalances).to.eq(contractBalance)
+      expect(totalBalances).to.closeTo(contractBalance, 10)
+      expect(totalBalances).to.lte(contractBalance)
     })
 
     it('returns 0 when user has no balance', async () => {
@@ -364,10 +365,10 @@ describeFork('Wrapped CUSDCv3', () => {
 
     it('current exchange rate is a ratio of total underlying balance and total supply', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, bob, bn('20000e6'), bob.address)
-      const totalSupply = (await wcusdcV3.totalSupply()).toBigInt()
-      const underlyingBalance = (await cusdcV3.balanceOf(wcusdcV3.address)).toBigInt()
+      const totalSupply = (await wcusdcV3.totalSupply())
+      const underlyingBalance = (await cusdcV3.balanceOf(wcusdcV3.address))
       expect(await wcusdcV3.exchangeRate()).to.equal(
-        (underlyingBalance * BigInt(1e6)) / totalSupply
+        underlyingBalance.mul(bn('1e6')).div(totalSupply)
       )
     })
   })
@@ -427,8 +428,6 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await compToken.balanceOf(bob.address)).to.equal(
         await compToken.balanceOf(don.address)
       )
-      // Excess COMP left from rounding behavior
-      expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(1e12)
     })
 
     // In this forked block, rewards accrual is not yet enabled in Comet

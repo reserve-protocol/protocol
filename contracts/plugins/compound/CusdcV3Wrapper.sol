@@ -5,10 +5,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./vendor/CometInterface.sol";
 import "./WrappedERC20.sol";
 import "./ICometRewards.sol";
+import "./ICusdcV3Wrapper.sol";
 import "./CometHelpers.sol";
 import "hardhat/console.sol";
 
-contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
+contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     struct UserBasic {
         uint104 principal;
         uint64 baseTrackingAccrued;
@@ -100,6 +101,11 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         userBasic[dst] = dstBasic;
 
         SafeERC20.safeTransferFrom(IERC20(address(underlyingComet)), from, address(this), amount);
+        // try IERC20(address(underlyingComet)).transferFrom(from, address(this), amount) {
+        //     console.log("passed");
+        // } catch (bytes memory e) {
+        //     console.logBytes(e);
+        // }
     }
 
     function withdraw(uint256 amount) external {
@@ -173,11 +179,11 @@ contract CusdcV3Wrapper is WrappedERC20, CometHelpers {
         return convertStaticToDynamic(uint104(balance));
     }
 
-    function balanceOf(address account) public view override returns (uint256) {
+    function balanceOf(address account) public view override(ICusdcV3Wrapper, IERC20) returns (uint256) {
         return userBasic[account].principal;
     }
 
-    function totalSupply() public view virtual override returns (uint256) {
+    function totalSupply() public view virtual override(ICusdcV3Wrapper, IERC20) returns (uint256) {
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         return uint256(int256(wrappedBasic.principal));
     }
