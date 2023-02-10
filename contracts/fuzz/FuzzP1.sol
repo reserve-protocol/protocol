@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -360,7 +360,7 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
 
     function invariantsHold() external view returns (bool) {
         uint256 supply = totalSupply();
-        if (supply == 0) return;
+        if (supply == 0) return true;
 
         // Note: These are D18s, even though they are uint256s. This is because
         // we cannot assume we stay inside our valid range here, as that is what
