@@ -89,8 +89,6 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
         (uint64 baseSupplyIndex, ) = getSupplyIndices();
         uint104 principal = dstBasic.principal;
-        // uint256 newPresent = presentValueSupply(baseSupplyIndex, principal) + amount;
-        // dstBasic.principal = principalValueSupply(baseSupplyIndex, newPresent);
         dstBasic.principal = addPresentToPrincipal(baseSupplyIndex, principal, amount);
 
         // We use this contract's baseTrackingIndex from Comet so we do not over-accrue user's
