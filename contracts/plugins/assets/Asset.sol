@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -148,7 +148,7 @@ contract Asset is IAsset {
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
-    function bal(address account) external view returns (uint192) {
+    function bal(address account) external view virtual returns (uint192) {
         return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
     }
 

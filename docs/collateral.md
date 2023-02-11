@@ -172,10 +172,10 @@ The _target unit_, `{target}`, is the type of value that the Collateral is expec
 The target unit has to do with a concept called the Target Basket, and ultimately comes down to the reasons why this collateral might be chosen as backing in the first place. For instance, if you create an RToken in Register, the deployer selects a linear combination of target units such as:
 
 - 1 USD
-- 0.5 USD + 0.55 EURO
-- 0.5 USD + 0.35 EURO + 0.00001 BTC
+- 0.5 USD + 0.55 EUR
+- 0.5 USD + 0.35 EUR + 0.00001 BTC
 
-These Target Baskets have been selected to start with a market price of about \$1, assuming a slightly weak EURO and \$20k BTC. Over time, these RTokens would each have very different overall price trajectories.
+These Target Baskets have been selected to start with a market price of about \$1, assuming a slightly weak EUR and \$20k BTC. Over time, these RTokens would each have very different overall price trajectories.
 
 (Note: the Target Basket never manifests in the code directly. In the code, we have a slightly more specific concept called the Prime Basket. But the Target Basket is a coherent concept for someone thinking about the UX of an RToken. You can think of it like a simplified view of the Prime Basket.)
 
@@ -186,7 +186,7 @@ The target unit and reference unit must be even more tightly connected than the 
 
 Moreover, `{target}` should be the simplest and most common unit that can satisfy those constraints. A major purpose of the Reserve protocol is to automatically move funds stored in a defaulting token into backup positions. Collateral A can have Collateral B as a backup token if and only if they have the same target unit.
 
-Given those desired properties, after you've selected a collateral unit and reference unit, it's typically simple to choose a sensible target unit. For USDC the target unit would be USD; for EURT it would be the EURO; for WBTC it would be BTC.
+Given those desired properties, after you've selected a collateral unit and reference unit, it's typically simple to choose a sensible target unit. For USDC the target unit would be USD; for EURT it would be the EUR; for WBTC it would be BTC.
 
 ### Unit of Account `{UoA}`
 
@@ -283,7 +283,7 @@ An alternative to demurrage is to hide revenue from the protocol via a discounte
 
 When implementing Revenue Hiding, the `price()/strictPrice()` functions should NOT hide revenue; they should use the current underlying exchange rate to calculate a best-effort estimate of what the collateral will trade at on secondary markets. A side-effect of this approach is that the RToken's price on markets becomes more variable. As such, it's best if the amount of hiding necessary is small. If the token will only rarely decrease in exchange rate---and only then a little---then revenue-hiding may be a good fit.
 
-We already have an implementation of a Revenue Hiding contract at `contracts/plugins/assets/AppreciatingFiatCollateral.sol` that can be inherited from to create Revenue Hiding collateral.
+We already have an implementation of a Revenue Hiding contract at `contracts/plugins/assets/AppreciatingFiatCollateral.sol` that can be inherited from to create Revenue Hiding
 
 ## Important Properties for Collateral Plugins
 
@@ -477,7 +477,7 @@ Should return `True`.
 The target name is just a bytes32 serialization of the target unit string. Here are some common values below:
 
 - USD: `0x5553440000000000000000000000000000000000000000000000000000000000`
-- EURO: `0x4555524f00000000000000000000000000000000000000000000000000000000`
+- EUR: `0x4555524f00000000000000000000000000000000000000000000000000000000`
 - ETH: `0x4554480000000000000000000000000000000000000000000000000000000000`
 - BTC: `0x4254430000000000000000000000000000000000000000000000000000000000`
 

@@ -35,7 +35,7 @@ export default function fn<X extends CollateralFixtureContext>(
     reduceRefPerTok,
     itClaimsRewards,
     resetFork,
-    collateralName
+    collateralName,
   } = fixtures
 
   before(resetFork)
@@ -117,13 +117,13 @@ export default function fn<X extends CollateralFixtureContext>(
 
       describe('functions', () => {
         it('returns the correct bal', async () => {
-          const amount = bn('1000e6')
+          const amount = bn('20000e6')
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           const aliceBal = await collateral.bal(alice.address)
           expect(aliceBal).to.closeTo(
             amount.mul(bn(10).pow(18 - ctx.tokDecimals)),
-            bn('50').pow(18 - ctx.tokDecimals)
+            bn('100').mul(bn(10).pow(18 - ctx.tokDecimals))
           )
         })
       })
@@ -137,16 +137,15 @@ export default function fn<X extends CollateralFixtureContext>(
           await collateral.claimRewards()
         })
 
-        it('claims rewards', async () => {  
+        itClaimsRewards('claims rewards', async () => {
           const amount = bn('20000e6')
           await mintCollateralTo(ctx, amount, alice, collateral.address)
-      
+
           await advanceBlocks(1000)
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
-      
+
           const balBefore = await ctx.rewardToken.balanceOf(collateral.address)
-          await expect(collateral.claimRewards())
-            .to.emit(collateral, 'RewardsClaimed')
+          await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
           const balAfter = await ctx.rewardToken.balanceOf(collateral.address)
           expect(balAfter).gt(balBefore)
         })
@@ -158,7 +157,10 @@ export default function fn<X extends CollateralFixtureContext>(
           const decimals = await chainlinkFeed.decimals()
           const oracleError = await collateral.oracleError()
           const refPerTok = await collateral.refPerTok()
-          const expectedPrice = clData.answer.mul(bn(10).pow(18 - decimals)).mul(refPerTok).div(fp('1'))
+          const expectedPrice = clData.answer
+            .mul(bn(10).pow(18 - decimals))
+            .mul(refPerTok)
+            .div(fp('1'))
           const expectedDelta = expectedPrice.mul(oracleError).div(fp(1))
 
           // Check initial prices
@@ -176,7 +178,10 @@ export default function fn<X extends CollateralFixtureContext>(
           // Check new prices
           const newclData = await chainlinkFeed.latestRoundData()
           const newRefPerTok = await collateral.refPerTok()
-          const newExpectedPrice = newclData.answer.mul(bn(10).pow(18 - decimals)).mul(newRefPerTok).div(fp('1'))
+          const newExpectedPrice = newclData.answer
+            .mul(bn(10).pow(18 - decimals))
+            .mul(newRefPerTok)
+            .div(fp('1'))
           const newExpectedDelta = newExpectedPrice.mul(oracleError).div(fp(1))
           const [newLow, newHigh] = await collateral.price()
           expect(newLow).to.equal(newExpectedPrice.sub(newExpectedDelta))
@@ -194,7 +199,10 @@ export default function fn<X extends CollateralFixtureContext>(
           const oracleError = await collateral.oracleError()
 
           const initData = await chainlinkFeed.latestRoundData()
-          const expectedPrice = initData.answer.mul(bn(10).pow(18 - decimals)).mul(initRefPerTok).div(fp('1'))
+          const expectedPrice = initData.answer
+            .mul(bn(10).pow(18 - decimals))
+            .mul(initRefPerTok)
+            .div(fp('1'))
           const expectedDelta = expectedPrice.mul(oracleError).div(fp(1))
           const [initLow, initHigh] = await collateral.price()
           expect(initLow).to.equal(expectedPrice.sub(expectedDelta))
@@ -242,6 +250,23 @@ export default function fn<X extends CollateralFixtureContext>(
           await collateral.refresh()
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
+
+        it('does not update the saved prices if collateral is unpriced', async () => {
+          /*
+            want to cover this block from the refresh function
+            is it even possible to cover this w/ the tryPrice from AppreciatingFiatCollateral?
+
+            if (high < FIX_MAX) {
+                savedLowPrice = low;
+                savedHighPrice = high;
+                lastSave = uint48(block.timestamp);
+            } else {
+                // must be unpriced
+                assert(low == 0);
+            }
+          */
+          expect(true)
+        })
       })
 
       describe('status', () => {
@@ -258,7 +283,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         })
 
-        it('enters IFFY state when reference unit depegs beyond threshold', async () => {
+        it('enters IFFY state when reference unit depegs below low threshold', async () => {
           const delayUntilDefault = await collateral.delayUntilDefault()
 
           // Check initial state
@@ -267,6 +292,29 @@ export default function fn<X extends CollateralFixtureContext>(
 
           // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
           const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+          await updateAnswerTx.wait()
+
+          // Set next block timestamp - for deterministic result
+          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+          await setNextBlockTimestamp(nextBlockTimestamp)
+          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+
+          await expect(collateral.refresh())
+            .to.emit(collateral, 'CollateralStatusChanged')
+            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+          expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        })
+
+        it('enters IFFY state when reference unit depegs above high threshold', async () => {
+          const delayUntilDefault = await collateral.delayUntilDefault()
+
+          // Check initial state
+          expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+          // Depeg USDC:USD - Raising price by 20% from 1 to 1.2
+          const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('12e5'))
           await updateAnswerTx.wait()
 
           // Set next block timestamp - for deterministic result

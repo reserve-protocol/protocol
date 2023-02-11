@@ -14,7 +14,7 @@ Function comments contain:
 
 - returns: The return value. Omitted if it's on a relatively obvious view function.
 
-I'm generally not documenting our governance-parameter setters like this, though I *am* thinking through what checks they make.
+I'm generally not documenting our governance-parameter setters like this, though I _am_ thinking through what checks they make.
 
 # General Notes
 

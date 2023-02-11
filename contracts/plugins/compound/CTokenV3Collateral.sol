@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: ISC
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import "./ICusdcV3Wrapper.sol";
+import "./IComet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -36,15 +37,15 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         rewardERC20 = cometConfig.rewardERC20;
         reservesThresholdIffy = cometConfig.reservesThresholdIffy;
         reservesThresholdDisabled = cometConfig.reservesThresholdDisabled;
-        comet = IComet(ICusdcV3Wrapper(address(erc20)).underlyingComet());
+        comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
 
-    function bal(address account) external view returns (uint192) {
+    function bal(address account) external view override(Asset, IAsset) returns (uint192) {
         return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
     }
 
-    function claimRewards() external {
+    function claimRewards() external override(Asset, IRewardable) {
         IERC20 comp = rewardERC20;
         uint256 oldBal = comp.balanceOf(address(this));
         ICusdcV3Wrapper(address(erc20)).claimTo(address(this), address(this));

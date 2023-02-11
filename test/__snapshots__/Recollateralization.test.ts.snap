@@ -1,17 +1,17 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `63844`;
+exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `63713`;
 
-exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `1736932`;
+exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `1683673`;
 
-exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `396642`;
+exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `391216`;
 
-exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `186068`;
+exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `184727`;
 
-exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `1707540`;
+exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `1656383`;
 
-exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `186086`;
+exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `184744`;
 
-exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 7`] = `1781230`;
+exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 7`] = `1728545`;
 
-exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 8`] = `214212`;
+exports[`Recollateralization - P1 Gas Reporting Settle Trades / Manage Funds 8`] = `212844`;

@@ -1,11 +1,11 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`BrokerP1 contract #fast Gas Reporting Initialize Trade  1`] = `452693`;
+exports[`BrokerP1 contract #fast Gas Reporting Initialize Trade  1`] = `451349`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Open Trade  1`] = `553529`;
+exports[`BrokerP1 contract #fast Gas Reporting Open Trade  1`] = `551897`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Open Trade  2`] = `541367`;
+exports[`BrokerP1 contract #fast Gas Reporting Open Trade  2`] = `539735`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Open Trade  3`] = `543505`;
+exports[`BrokerP1 contract #fast Gas Reporting Open Trade  3`] = `541873`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Settle Trade  1`] = `113592`;
+exports[`BrokerP1 contract #fast Gas Reporting Settle Trade  1`] = `113056`;

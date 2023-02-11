@@ -9,7 +9,8 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
   .addParam('combinedOracleError', 'The combined % error from both oracle sources')
   .addParam('cToken', 'CToken address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
-  .addParam('oracleTimeout', 'Max oracle timeout')
+  .addParam('oracleTimeout', 'Max oracle timeout for the reference unit feed')
+  .addParam('targetUnitOracleTimeout', 'Max oracle timeout for the target unit feed')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
@@ -39,6 +40,7 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
         delayUntilDefault: params.delayUntilDefault,
       },
       params.targetUnitFeed,
+      params.targetUnitOracleTimeout,
       params.revenueHiding,
       params.comptroller
     )

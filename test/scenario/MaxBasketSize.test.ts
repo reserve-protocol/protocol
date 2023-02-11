@@ -36,12 +36,12 @@ import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
 import { expectPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
-import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
-const REPORT_GAS = useEnv('REPORT_GAS')
+const REPORT_GAS = process.env.REPORT_GAS
+const describeGas = REPORT_GAS ? describe.only : describe
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -297,7 +297,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     rewardAmount = bn('0.5e18')
   })
 
-  describe('Fiatcoins', function () {
+  describeGas('Fiatcoins', function () {
     const maxBasketSize = 100
     const numBackupTokens = 1
     const tokensToDefault = 99
@@ -431,7 +431,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     })
   })
 
-  describe('ATokens/CTokens', function () {
+  describeGas('ATokens/CTokens', function () {
     const maxBasketSize = 100
     const numBackupTokens = 20
     const tokensToDefault = 20

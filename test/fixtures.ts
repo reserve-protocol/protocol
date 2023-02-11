@@ -53,6 +53,7 @@ import {
   RecollateralizationLibP1,
   USDCMock,
   NonFiatCollateral,
+  FacadeMonitor,
 } from '../typechain'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
@@ -377,6 +378,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   facade: FacadeRead
   facadeAct: FacadeAct
   facadeTest: FacadeTest
+  facadeMonitor: FacadeMonitor
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -428,6 +430,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Deploy FacadeAct
   const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
   const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
+
+  // Deploy FacadeMonitor
+  const FacadeMonitorFactory: ContractFactory = await ethers.getContractFactory('FacadeMonitor')
+  const facadeMonitor = <FacadeMonitor>await FacadeMonitorFactory.deploy()
 
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
@@ -677,6 +683,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     easyAuction,
     facade,
     facadeAct,
+    facadeMonitor,
     facadeTest,
     rsrTrader,
     rTokenTrader,

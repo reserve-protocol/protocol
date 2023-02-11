@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
@@ -54,7 +54,7 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
 
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @dev Use delegatecall
-    function claimRewards() external virtual {
+    function claimRewards() external virtual override(Asset, IRewardable) {
         IERC20 stkAAVE = IStaticAToken(address(erc20)).REWARD_TOKEN();
         uint256 oldBal = stkAAVE.balanceOf(address(this));
         IStaticAToken(address(erc20)).claimRewardsToSelf(true);

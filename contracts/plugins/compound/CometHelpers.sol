@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: ISC
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 contract CometHelpers {
     uint64 internal constant BASE_INDEX_SCALE = 1e15;
@@ -28,11 +28,6 @@ contract CometHelpers {
         return (uint256(principalValue_) * baseSupplyIndex_) / BASE_INDEX_SCALE;
     }
 
-    /**
-     * @dev The present value projected backward by the supply index (rounded down)
-     *  Note: This will overflow (revert) at 2^104/1e18=~20 trillion principal for assets with 18 
-     decimals.
-     */
     function principalValueSupply(uint64 baseSupplyIndex_, uint256 presentValue_)
         internal
         pure

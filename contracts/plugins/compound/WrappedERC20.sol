@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: ISC
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IWrappedERC20.sol";
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -29,7 +29,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * by listening to said events. Other implementations of the EIP may not emit
  * these events, as it isn't required by the specification.
  */
-abstract contract WrappedERC20 is IERC20 {
+abstract contract WrappedERC20 is IWrappedERC20 {
     error BadAmount();
     error Unauthorized();
     error ZeroAddress();
