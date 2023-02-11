@@ -4,8 +4,8 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "reserve/contracts/libraries/Fixed.sol";
-import "reserve/contracts/interfaces/IAsset.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/interfaces/IAsset.sol";
 import "./PoolTokens.sol";
 
 interface IWrappedStakedCvx {

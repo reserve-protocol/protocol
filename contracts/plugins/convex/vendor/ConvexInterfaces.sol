@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 interface ICurveGauge {
     function deposit(uint256) external;
@@ -34,11 +34,13 @@ interface IWalletChecker {
 }
 
 interface IVoting {
-    function vote(uint256, bool, bool) external; //voteId, support, executeIfDecided
+    function vote(
+        uint256,
+        bool,
+        bool
+    ) external; //voteId, support, executeIfDecided
 
-    function getVote(
-        uint256
-    )
+    function getVote(uint256)
         external
         view
         returns (
@@ -78,7 +80,11 @@ interface IStaker {
 
     function withdraw(address) external;
 
-    function withdraw(address, address, uint256) external;
+    function withdraw(
+        address,
+        address,
+        uint256
+    ) external;
 
     function withdrawAll(address, address) external;
 
@@ -98,7 +104,11 @@ interface IStaker {
 
     function setStashAccess(address, bool) external;
 
-    function vote(uint256, address, bool) external;
+    function vote(
+        uint256,
+        address,
+        bool
+    ) external;
 
     function voteGaugeWeight(address, uint256) external;
 
@@ -172,13 +182,29 @@ interface IDeposit {
 
     function totalSupply() external view returns (uint256);
 
-    function poolInfo(
+    function poolInfo(uint256)
+        external
+        view
+        returns (
+            address,
+            address,
+            address,
+            address,
+            address,
+            bool
+        );
+
+    function rewardClaimed(
+        uint256,
+        address,
         uint256
-    ) external view returns (address, address, address, address, address, bool);
+    ) external;
 
-    function rewardClaimed(uint256, address, uint256) external;
-
-    function withdrawTo(uint256, uint256, address) external;
+    function withdrawTo(
+        uint256,
+        uint256,
+        address
+    ) external;
 
     function claimRewards(uint256, address) external returns (bool);
 
@@ -200,7 +226,11 @@ interface IRewardFactory {
 
     function CreateCrvRewards(uint256, address) external returns (address);
 
-    function CreateTokenRewards(address, address, address) external returns (address);
+    function CreateTokenRewards(
+        address,
+        address,
+        address
+    ) external returns (address);
 
     function activeRewardCount(address) external view returns (uint256);
 
@@ -210,7 +240,12 @@ interface IRewardFactory {
 }
 
 interface IStashFactory {
-    function CreateStash(uint256, address, address, uint256) external returns (address);
+    function CreateStash(
+        uint256,
+        address,
+        address,
+        uint256
+    ) external returns (address);
 }
 
 interface ITokenFactory {
@@ -232,9 +267,17 @@ interface IPools {
 
     function shutdownPool(uint256 _pid) external returns (bool);
 
-    function poolInfo(
-        uint256
-    ) external view returns (address, address, address, address, address, bool);
+    function poolInfo(uint256)
+        external
+        view
+        returns (
+            address,
+            address,
+            address,
+            address,
+            address,
+            bool
+        );
 
     function poolLength() external view returns (uint256);
 
@@ -244,8 +287,7 @@ interface IPools {
 }
 
 interface IVestedEscrow {
-    function fund(
-        address[] calldata _recipient,
-        uint256[] calldata _amount
-    ) external returns (bool);
+    function fund(address[] calldata _recipient, uint256[] calldata _amount)
+        external
+        returns (bool);
 }

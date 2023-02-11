@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: ISC
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "reserve/contracts/plugins/assets/OracleLib.sol";
-import "reserve/contracts/libraries/Fixed.sol";
+import "contracts/plugins/assets/OracleLib.sol";
+import "contracts/libraries/Fixed.sol";
 import "hardhat/console.sol";
 
 interface ICurvePool {
@@ -31,7 +31,7 @@ interface ICurvePool {
     ) external;
 }
 
-contract CurvePoolTokens {
+contract CvxCurvePoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 

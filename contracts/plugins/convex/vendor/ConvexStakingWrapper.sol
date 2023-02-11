@@ -228,7 +228,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
             if (_accounts[u] == collateralVault) continue;
             if (_isClaim && u != 0) continue; //only update/claim for first address and use second as forwarding
 
-            uint userI = reward.reward_integral_for[_accounts[u]];
+            uint256 userI = reward.reward_integral_for[_accounts[u]];
             if (_isClaim || userI < reward.reward_integral) {
                 if (_isClaim) {
                     uint256 receiveable = reward.claimable_reward[_accounts[u]].add(
@@ -442,7 +442,11 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         emit Withdrawn(msg.sender, _amount, true);
     }
 
-    function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal override {
+    function _beforeTokenTransfer(
+        address _from,
+        address _to,
+        uint256 _amount
+    ) internal override {
         _checkpoint([_from, _to]);
     }
 }

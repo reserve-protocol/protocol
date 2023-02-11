@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.9;
+pragma solidity 0.8.17;
 
 import "./ConvexInterfaces.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -90,7 +90,11 @@ contract ConvexBooster {
         poolManager = _poolM;
     }
 
-    function setFactories(address _rfactory, address _sfactory, address _tfactory) external {
+    function setFactories(
+        address _rfactory,
+        address _sfactory,
+        address _tfactory
+    ) external {
         require(msg.sender == owner, "!auth");
 
         //reward factory only allow this to be called once even if owner
@@ -245,7 +249,7 @@ contract ConvexBooster {
         require(msg.sender == owner, "!auth");
         isShutdown = true;
 
-        for (uint i = 0; i < poolInfo.length; i++) {
+        for (uint256 i = 0; i < poolInfo.length; i++) {
             PoolInfo storage pool = poolInfo[i];
             if (pool.shutdown) continue;
 
@@ -260,7 +264,11 @@ contract ConvexBooster {
     }
 
     //deposit lp tokens and stake
-    function deposit(uint256 _pid, uint256 _amount, bool _stake) public returns (bool) {
+    function deposit(
+        uint256 _pid,
+        uint256 _amount,
+        bool _stake
+    ) public returns (bool) {
         require(!isShutdown, "shutdown");
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.shutdown == false, "pool is closed");
@@ -306,7 +314,12 @@ contract ConvexBooster {
     }
 
     //withdraw lp tokens
-    function _withdraw(uint256 _pid, uint256 _amount, address _from, address _to) internal {
+    function _withdraw(
+        uint256 _pid,
+        uint256 _amount,
+        address _from,
+        address _to
+    ) internal {
         PoolInfo storage pool = poolInfo[_pid];
         address lptoken = pool.lptoken;
         address gauge = pool.gauge;
@@ -349,7 +362,11 @@ contract ConvexBooster {
     }
 
     //allow reward contracts to send here and withdraw to user
-    function withdrawTo(uint256 _pid, uint256 _amount, address _to) external returns (bool) {
+    function withdrawTo(
+        uint256 _pid,
+        uint256 _amount,
+        address _to
+    ) external returns (bool) {
         address rewardContract = poolInfo[_pid].crvRewards;
         require(msg.sender == rewardContract, "!auth");
 
@@ -358,7 +375,11 @@ contract ConvexBooster {
     }
 
     //delegate address votes on dao
-    function vote(uint256 _voteId, address _votingAddress, bool _support) external returns (bool) {
+    function vote(
+        uint256 _voteId,
+        address _votingAddress,
+        bool _support
+    ) external returns (bool) {
         require(msg.sender == voteDelegate, "!auth");
         require(_votingAddress == voteOwnership || _votingAddress == voteParameter, "!voteAddr");
 
@@ -366,10 +387,10 @@ contract ConvexBooster {
         return true;
     }
 
-    function voteGaugeWeight(
-        address[] calldata _gauge,
-        uint256[] calldata _weight
-    ) external returns (bool) {
+    function voteGaugeWeight(address[] calldata _gauge, uint256[] calldata _weight)
+        external
+        returns (bool)
+    {
         require(msg.sender == voteDelegate, "!auth");
 
         for (uint256 i = 0; i < _gauge.length; i++) {
