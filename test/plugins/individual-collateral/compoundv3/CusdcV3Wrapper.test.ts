@@ -194,7 +194,7 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(initialBalance)
     })
 
-    it.only('handles complex withdrawal sequence', async () => {
+    it('handles complex withdrawal sequence', async () => {
       let bobWithdrawn = bn('0');
       let charlesWithdrawn = bn('0');
       let donWithdrawn = bn('0');
