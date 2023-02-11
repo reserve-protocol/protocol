@@ -72,29 +72,30 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
     function _deposit(
         address operator,
-        address from,
+        address src,
         address dst,
         uint256 amount
     ) internal {
-        if (!hasPermission(from, operator)) revert Unauthorized();
-
-        if (amount == type(uint256).max) {
-            amount = underlyingComet.balanceOf(from);
-        }
+        if (!hasPermission(src, operator)) revert Unauthorized();
 
         underlyingComet.accrueAccount(address(this));
-        underlyingComet.accrueAccount(from);
+        underlyingComet.accrueAccount(src);
+
+        uint256 srcBal = underlyingComet.balanceOf(src);
+        if (amount > srcBal) amount = srcBal;
+
+        if (amount == 0) return;
 
         UserBasic memory dstBasic = userBasic[dst];
         uint104 userPrePrincipal = dstBasic.principal;
 
-        // We use this contract's baseTrackingIndex from Comet so we do not over-accrue user's
+        // We use this contract's baseTrackingIndex src Comet so we do not over-accrue user's
         // rewards.
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         dstBasic.baseTrackingIndex = wrappedBasic.baseTrackingIndex;
         int104 wrapperPrePrinc = wrappedBasic.principal;
         
-        SafeERC20.safeTransferFrom(IERC20(address(underlyingComet)), from, address(this), amount);
+        SafeERC20.safeTransferFrom(IERC20(address(underlyingComet)), src, address(this), amount);
 
         wrappedBasic = underlyingComet.userBasic(address(this));
         int104 wrapperPostPrinc = wrappedBasic.principal;
@@ -124,17 +125,21 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     function _withdraw(
         address operator,
         address src,
-        address to,
+        address dst,
         uint256 presentWithdrawAmt
     ) internal {
         if (presentWithdrawAmt == 0) return;
         if (!hasPermission(src, operator)) revert Unauthorized();
 
         underlyingComet.accrueAccount(address(this));
-        underlyingComet.accrueAccount(to);
+        underlyingComet.accrueAccount(src);
 
-        if (presentWithdrawAmt == type(uint256).max) {
-            presentWithdrawAmt = underlyingBalanceOf(src);
+        uint256 currentPresetBal = underlyingBalanceOf(src);
+        if (currentPresetBal < presentWithdrawAmt) {
+            presentWithdrawAmt = currentPresetBal;
+        }
+        if (presentWithdrawAmt == 0) {
+            return;
         }
 
         UserBasic memory srcBasic = userBasic[src];
@@ -142,13 +147,17 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         int104 wrapperPrePrinc = wrappedBasic.principal;
 
-        SafeERC20.safeTransfer(IERC20(address(underlyingComet)), to, presentWithdrawAmt);
+        // conservative rounding in favor of the wrapper
+        SafeERC20.safeTransfer(IERC20(address(underlyingComet)), dst, presentWithdrawAmt / 10 * 10);
 
         wrappedBasic = underlyingComet.userBasic(address(this));
         int104 wrapperPostPrinc = wrappedBasic.principal;
 
         // safe to cast because principal can't go negative, wrapper is not borrowing
-        uint104 srcPrincipalNew = srcPrePrinc - uint104(wrapperPrePrinc - wrapperPostPrinc);
+        uint104 srcPrincipalNew = 0;
+        if (srcPrePrinc > uint104(wrapperPrePrinc - wrapperPostPrinc)) {
+            srcPrincipalNew = srcPrePrinc - uint104(wrapperPrePrinc - wrapperPostPrinc);
+        }
         userBasic[src] = updatedAccountIndices(srcBasic, srcPrincipalNew);
     }
 
@@ -276,6 +285,8 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         view
         returns (UserBasic memory)
     {
+        // UserBasic memory basic = userBasic[user];
+
         uint104 principal = basic.principal;
         basic.principal = newPrincipal;
 
