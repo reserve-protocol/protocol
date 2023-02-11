@@ -47,7 +47,7 @@
   "homepage": "https://github.com/reserve-protocol/protocol#readme",
   "devDependencies": {
     "@aave/protocol-v2": "^1.0.1",
-    "@chainlink/contracts": "^0.4.1",
+    "@chainlink/contracts": "^0.5.1",
     "@ethersproject/providers": "^5.7.2",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.3",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
