@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 contract CometHelpers {
     uint64 internal constant BASE_INDEX_SCALE = 1e15;
     uint256 public constant EXP_SCALE = 1e18;
+    uint256 public constant BASE_SCALE = 1e6;
 
     error InvalidUInt64();
     error InvalidUInt104();
@@ -51,5 +52,9 @@ contract CometHelpers {
      */
     function mulFactor(uint256 n, uint256 factor) internal pure returns (uint256) {
         return (n * factor) / EXP_SCALE;
+    }
+
+    function divBaseWei(uint256 n, uint256 baseWei) internal pure returns (uint256) {
+        return (n * BASE_SCALE) / baseWei;
     }
 }

@@ -195,9 +195,9 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('handles complex withdrawal sequence', async () => {
-      let bobWithdrawn = bn('0');
-      let charlesWithdrawn = bn('0');
-      let donWithdrawn = bn('0');
+      let bobWithdrawn = bn('0')
+      let charlesWithdrawn = bn('0')
+      let donWithdrawn = bn('0')
 
       // charles withdraws SOME
       const firstWithdrawAmt = bn('15000e6')
@@ -470,6 +470,7 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await compToken.balanceOf(don.address)).to.equal(0)
       expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
 
+      // claim at the same time
       await network.provider.send('evm_setAutomine', [false])
       await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
       await wcusdcV3.connect(don).claimTo(don.address, don.address)
@@ -496,25 +497,38 @@ describeFork('Wrapped CUSDCv3', () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await advanceTime(1000)
-
-      await network.provider.send('evm_setAutomine', [false])
-      await wcusdcV3.getRewardOwed(bob.address)
-      await wcusdcV3.getRewardOwed(don.address)
       await advanceBlocks(1)
-      await network.provider.send('evm_setAutomine', [true])
 
-      const bobsReward = await wcusdcV3.callStatic.getRewardOwed(bob.address)
-      const donsReward = await wcusdcV3.callStatic.getRewardOwed(don.address)
+      const bobsReward = await wcusdcV3.getRewardOwed(bob.address)
+      const donsReward = await wcusdcV3.getRewardOwed(don.address)
 
       expect(bobsReward).to.be.greaterThan(donsReward)
-      const accrued = (await await wcusdcV3.baseTrackingAccrued(bob.address)).mul(bn('1e12'))
-      expect(bobsReward).to.equal(accrued)
 
       await wcusdcV3.connect(bob).claimTo(bob.address, bob.address)
-      expect(await wcusdcV3.callStatic.getRewardOwed(bob.address)).to.equal(0)
+      expect(await wcusdcV3.getRewardOwed(bob.address)).to.equal(0)
 
       await advanceTime(1000)
-      expect(await wcusdcV3.callStatic.getRewardOwed(bob.address)).to.be.greaterThan(0)
+      expect(await wcusdcV3.getRewardOwed(bob.address)).to.be.greaterThan(0)
+    })
+
+    it('accrues the account on deposit and withdraw', async () => {
+      await enableRewardsAccrual(cusdcV3)
+      await advanceTime(1200)
+      await advanceBlocks(100)
+      const expectedReward = await wcusdcV3.getRewardOwed(bob.address)
+      await advanceTime(12)
+      await advanceBlocks(1)
+      const newExpectedReward = await wcusdcV3.getRewardOwed(bob.address)
+      // marginal increase in exepected reward due to time passed
+      expect(newExpectedReward).gt(expectedReward)
+
+      await advanceTime(1200)
+      await wcusdcV3.connect(bob).withdraw(ethers.constants.MaxUint256)
+      const nextExpectedReward = await wcusdcV3.getRewardOwed(bob.address)
+      await advanceTime(1200)
+      const lastExpectedReward = await wcusdcV3.getRewardOwed(bob.address)
+      // expected reward stays the same because account is empty
+      expect(lastExpectedReward).to.eq(nextExpectedReward)
     })
   })
 

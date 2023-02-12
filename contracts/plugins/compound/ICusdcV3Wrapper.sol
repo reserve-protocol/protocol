@@ -7,6 +7,19 @@ import "./vendor/CometInterface.sol";
 import "./IWrappedERC20.sol";
 
 interface ICusdcV3Wrapper is IWrappedERC20 {
+    event RewardClaimed(
+        address indexed src,
+        address indexed recipient,
+        address indexed token,
+        uint256 amount
+    );
+
+    struct UserBasic {
+        uint104 principal;
+        uint64 baseTrackingAccrued;
+        uint64 baseTrackingIndex;
+    }
+
     function deposit(uint256 amount) external;
 
     function depositTo(address account, uint256 amount) external;
@@ -39,7 +52,7 @@ interface ICusdcV3Wrapper is IWrappedERC20 {
 
     function totalSupply() external view returns (uint256);
 
-    function getRewardOwed(address account) external returns (uint256);
+    function getRewardOwed(address account) external view returns (uint256);
 
     function exchangeRate() external view returns (uint256);
 
