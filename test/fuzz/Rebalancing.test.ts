@@ -1264,7 +1264,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('can manage scenario states - basket switch - covered by RSR', async () => {
-    await scenario.setIssuanceThrottleParams(fp('30000'), fp('0.5'))
+    await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('30000'), pctRate: fp('0.5')})
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
@@ -1435,7 +1435,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('can manage scenario states - collateral default - partially covered by RSR', async () => {
-    await scenario.setIssuanceThrottleParams(fp('400000'), fp('0.05'))
+    await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('400000'), pctRate: fp('0.05')})
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
