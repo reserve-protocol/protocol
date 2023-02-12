@@ -752,6 +752,14 @@ contract RebalancingScenario {
     //     RTokenP1Fuzz(address(main.rToken())).setRedemptionThrottleParams(tParams);
     // }
 
+    function setIssuanceThrottleParamsDirect(ThrottleLib.Params calldata params) public {
+        TestIRToken(address(main.rToken())).setIssuanceThrottleParams(params);
+    }
+
+    function setRedemptionThrottleParamsDirect(ThrottleLib.Params calldata params) public {
+        TestIRToken(address(main.rToken())).setRedemptionThrottleParams(params);
+    }
+
     function setDistribution(
         uint256 seedID,
         uint16 rTokenDist,
