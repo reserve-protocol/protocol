@@ -116,7 +116,7 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('functions', () => {
-        it('returns the correct bal', async () => {
+        it('returns the correct bal (18 decimals)', async () => {
           const amount = bn('20000').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
