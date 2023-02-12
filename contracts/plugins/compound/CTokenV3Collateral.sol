@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import "./ICusdcV3Wrapper.sol";
-import "./IComet.sol";
+import "./vendor/IComet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";

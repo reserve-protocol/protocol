@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./vendor/CometInterface.sol";
 import "./WrappedERC20.sol";
-import "./ICometRewards.sol";
+import "./vendor/ICometRewards.sol";
 import "./ICusdcV3Wrapper.sol";
 import "./CometHelpers.sol";
 
