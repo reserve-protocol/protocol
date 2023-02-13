@@ -65,7 +65,7 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Add `.div(1 - maxTradeSlippage)` to calculation of `shortfallSlippage` in [RecollateralizationLib.sol:L188](contracts/p1/mixins/RecollateralizationLib.sol).
 - FacadeRead:
   - remove `.pendingIssuances()` + `.endIdForVest()`
-  - modify logic in `basketBreakdown()`
+  - refactor calculations in `basketBreakdown()` 
 - Bugfix: Fix claim rewards from traders in `FacadeAct`
 - Bugfix: Do not handout RSR rewards when no one is staked
 - Bugfix: Support small redemptions even when the RToken supply is massive
