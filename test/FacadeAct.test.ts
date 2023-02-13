@@ -759,6 +759,29 @@ describe('FacadeAct contract', () => {
       expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmount.mul(2))
     })
 
+    it('Revenues - Should claim rewards in Revenue Traders', async () => {
+      const rewardAmountAAVE = bn('0.5e18')
+
+      // AAVE Rewards
+      await aToken.setRewards(rsrTrader.address, rewardAmountAAVE)
+      await aToken.setRewards(rTokenTrader.address, rewardAmountAAVE)
+
+      // Via Facade get next call - will claim rewards from Traders, via Facade
+      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(facadeAct.address)
+      expect(data).to.not.equal('0x')
+
+      // Claim rewards
+      await owner.sendTransaction({
+        to: addr,
+        data,
+      })
+
+      // Check rewards collected
+      expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmountAAVE)
+      expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE)
+    })
+
     it('Should not revert if f=1', async () => {
       await distributor.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: 0, rsrDist: 0 })
       // Transfer free tokens to RTokenTrader
