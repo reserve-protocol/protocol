@@ -116,8 +116,8 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('functions', () => {
-        it('returns the correct bal', async () => {
-          const amount = bn('20000e6')
+        it('returns the correct bal (18 decimals)', async () => {
+          const amount = bn('20000').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           const aliceBal = await collateral.bal(alice.address)
@@ -138,7 +138,7 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         itClaimsRewards('claims rewards', async () => {
-          const amount = bn('20000e6')
+          const amount = bn('20000').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, collateral.address)
 
           await advanceBlocks(1000)
@@ -209,7 +209,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(initHigh).to.equal(expectedPrice.add(expectedDelta))
 
           // need to deposit in order to get an exchange rate
-          const amount = bn('20000e6')
+          const amount = bn('20000').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           await advanceBlocks(1000)

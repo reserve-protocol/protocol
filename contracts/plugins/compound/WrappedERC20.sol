@@ -24,6 +24,9 @@ import "./IWrappedERC20.sol";
  *   - Adds `hasPermission` which works the same as `allowance` and checks whether
  *   a user is authorized to make balance transfers.
  *
+ *   - Some state variables are removed in anticipation of this contract
+ *   being inherited by the cUSDCv3 wrapper
+ *
  * Additionally, an {Approval} event is emitted on calls to {transferFrom}.
  * This allows applications to reconstruct the allowance for all accounts just
  * by listening to said events. Other implementations of the EIP may not emit
@@ -35,10 +38,7 @@ abstract contract WrappedERC20 is IWrappedERC20 {
     error ZeroAddress();
     error ExceedsBalance(uint256 amount);
 
-    mapping(address => uint256) private _balances;
     mapping(address => mapping(address => bool)) public isAllowed;
-
-    uint256 private _totalSupply;
 
     string private _name;
     string private _symbol;
