@@ -288,7 +288,6 @@ contract FacadeAct is IFacadeAct {
                     (uint192 lotLow, ) = cache.reg.toAsset(erc20s[i]).lotPrice(); // {tok}
 
                     uint256 bal = erc20s[i].balanceOf(address(cache.bm));
-
                     if (bal - initialBals[i] > minTradeSize(minTradeVolume, lotLow)) {
                         // It's large enough to trade! Return bm.claimRewards as next step.
                         return (
@@ -313,10 +312,8 @@ contract FacadeAct is IFacadeAct {
                 for (uint256 i = 0; i < erc20s.length; ++i) {
                     (uint192 lotLow, ) = cache.reg.toAsset(erc20s[i]).lotPrice(); // {tok}
 
-                    // Get Trader Balances
-                    // RToken
+                    // Get balances for revenue traders
                     uint256 balRTokenTrader = erc20s[i].balanceOf(address(cache.rTokenTrader));
-                    // RSR
                     uint256 balRSRTrader = erc20s[i].balanceOf(address(cache.rsrTrader));
 
                     // Check both traders
