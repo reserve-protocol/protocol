@@ -1815,7 +1815,48 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(highPrice).to.equal(MAX_UINT192)
     })
 
-    it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX]', async () => {
+    it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX] - case 1', async () => {
+      // Swap collateral with one that can have refPerTok modified
+      const InvalidRefPerTokFiatCollFactory = await ethers.getContractFactory(
+        'InvalidRefPerTokCollateralMock'
+      )
+      const newColl = <InvalidRefPerTokCollateralMock>await InvalidRefPerTokFiatCollFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral2.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral2.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await collateral2.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral2.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
+
+      // Register collateral
+      await assetRegistry.connect(owner).swapRegistered(newColl.address)
+      await newColl.refresh()
+
+      // Set basket with single collateral
+      await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1000')])
+
+      // Change basket - valid at this point
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Set refPerTok = 1
+      await newColl.setRate(bn(1))
+
+      const newPrice: BigNumber = MAX_UINT192.div(bn('1e10'))
+      await setOraclePrice(collateral2.address, newPrice.sub(newPrice.div(100))) // oracle error
+
+      const [lowPrice, highPrice] = await basketHandler.price()
+      expect(lowPrice).to.equal(MAX_UINT192)
+      expect(highPrice).to.equal(MAX_UINT192)
+    })
+
+    it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX] - case 2', async () => {
       // Set basket with single collateral
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1.1')])
       await basketHandler.refreshBasket()
