@@ -5,6 +5,7 @@ import { CollateralStatus } from '../../common/constants'
 import { advanceTime } from '../utils/time'
 import { PriceModelKind, PriceModel } from './common'
 import * as sc from '../../typechain' // All smart contract types
+import { BigNumberish } from 'ethers'
 
 describe('CollateralMock', () => {
   let token: sc.ERC20Mock
@@ -56,6 +57,7 @@ describe('CollateralMock', () => {
 
   it('combines price models ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    await coll.refresh()
     await priceAround(coll, fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(1))
@@ -75,6 +77,7 @@ describe('CollateralMock', () => {
 
   it('should default collateral - hard default ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    await coll.refresh()
     await priceAround(coll, fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(1))
@@ -94,6 +97,7 @@ describe('CollateralMock', () => {
 
   it('should default collateral - soft default ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    await coll.refresh()
     await priceAround(coll, fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(1))

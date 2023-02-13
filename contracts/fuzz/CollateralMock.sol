@@ -90,11 +90,6 @@ contract CollateralMock is OracleErrorMock, AppreciatingFiatCollateral {
         (low, high) = errRange(p, oracleError);
     }
 
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view virtual override returns (uint192) {
-        return refPerTokModel.price();
-    }
-
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() public view virtual override returns (uint192) {
         return targetPerRefModel.price();
@@ -110,6 +105,7 @@ contract CollateralMock is OracleErrorMock, AppreciatingFiatCollateral {
         targetPerRefModel.update(b);
         uoaPerTargetModel.update(c);
         deviationModel.update(d);
+        refresh();
     }
 
     function partialUpdate(uint192 a, uint192 b) public {
@@ -123,7 +119,7 @@ contract CollateralMock is OracleErrorMock, AppreciatingFiatCollateral {
     }
 
     function _underlyingRefPerTok() internal view virtual override returns (uint192) {
-        return refPerTok();
+        return refPerTokModel.price();
     }
 }
 
