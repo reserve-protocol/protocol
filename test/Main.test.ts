@@ -1815,6 +1815,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(highPrice).to.equal(MAX_UINT192)
     })
 
+    it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX]', async () => {
+      // Set basket with single collateral
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1.1')])
+      await basketHandler.refreshBasket()
+
+      const newPrice: BigNumber = MAX_UINT192.div(bn('1e10'))
+      await setOraclePrice(collateral0.address, newPrice.sub(newPrice.div(100))) // oracle error
+
+      const [lowPrice, highPrice] = await basketHandler.price()
+      expect(lowPrice).to.equal(MAX_UINT192)
+      expect(highPrice).to.equal(MAX_UINT192)
+    })
+
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
       // Check values
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
