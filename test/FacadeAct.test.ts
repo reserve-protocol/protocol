@@ -762,12 +762,11 @@ describe('FacadeAct contract', () => {
     it('Revenues - Should claim rewards in Revenue Traders', async () => {
       const rewardAmountAAVE = bn('0.5e18')
 
-      // AAVE Rewards
+      // AAVE Rewards - RSR Trader
       await aToken.setRewards(rsrTrader.address, rewardAmountAAVE)
-      await aToken.setRewards(rTokenTrader.address, rewardAmountAAVE)
 
       // Via Facade get next call - will claim rewards from Traders, via Facade
-      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(facadeAct.address)
       expect(data).to.not.equal('0x')
 
@@ -778,8 +777,38 @@ describe('FacadeAct contract', () => {
       })
 
       // Check rewards collected
-      expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmountAAVE)
       expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE)
+      expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(bn(0))
+
+      // Via Facade get next call - will create a trade from the RSR Trader trade
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(rsrTrader.address)
+      expect(data).to.not.equal('0x')
+
+      await expect(
+        owner.sendTransaction({
+          to: addr,
+          data,
+        })
+      ).to.emit(rsrTrader, 'TradeStarted')
+
+      // AAVE Rewards - RToken Trader
+      await aToken.setRewards(rTokenTrader.address, rewardAmountAAVE)
+
+      // Via Facade get next call - will claim rewards from Traders, via Facade
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(facadeAct.address)
+      expect(data).to.not.equal('0x')
+
+      // Claim rewards
+      await owner.sendTransaction({
+        to: addr,
+        data,
+      })
+
+      // Check rewards collected - there are funds in the RTokenTrader now
+      expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(bn(0)) // moved to trade
+      expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmountAAVE)
     })
 
     it('Should not revert if f=1', async () => {
