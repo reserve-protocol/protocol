@@ -862,7 +862,8 @@ describe('The Rebalancing scenario', () => {
 
       const tokenInBasket = await ConAt('ERC20Fuzz', newTokenAddrs[0])
       expect(await tokenInBasket.symbol()).to.equal('CA1')
-      expect(amts[0]).to.equal(fp('1'))
+      // 1/1,000,000% revenue hiding
+      expect(amts[0]).to.closeTo(fp('1.000001'), fp('0.0000001'))
     })
 
     it('can set backup basket and refresh', async () => {
@@ -921,9 +922,10 @@ describe('The Rebalancing scenario', () => {
       expect(await token8.symbol()).to.equal(expectedSyms[8])
 
       // Check correct weights assigned for new added tokens
-      expect(amts[6]).to.equal(fp('0.1'))
-      expect(amts[7]).to.equal(fp('0.1'))
-      expect(amts[8]).to.equal(fp('0.1'))
+      // 1/1,000,000% revenue hiding
+      expect(amts[6]).to.closeTo(fp('0.1000002'), fp('0.00000001'))
+      expect(amts[7]).to.closeTo(fp('0.1000002'), fp('0.00000001'))
+      expect(amts[8]).to.closeTo(fp('0.1000002'), fp('0.00000001'))
     })
 
     it('can handle freezing/pausing with roles', async () => {

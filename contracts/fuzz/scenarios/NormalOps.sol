@@ -61,9 +61,8 @@ contract NormalOpsScenario {
             ERC20Fuzz token = new ERC20Fuzz(concat("Collateral ", num), concat("C", num), main);
             main.addToken(token);
 
-            ERC20Fuzz reward;
             if (i < 2) {
-                reward = new ERC20Fuzz(concat("Reward ", num), concat("R", num), main);
+                ERC20Fuzz reward = new ERC20Fuzz(concat("Reward ", num), concat("R", num), main);
                 main.addToken(reward);
                 main.assetRegistry().register(
                     new AssetMock(
@@ -90,7 +89,7 @@ contract NormalOpsScenario {
                     justOne, // targetPerRef model
                     justOne, // uoaPerTarget model
                     stable, // deviation model,
-                    0
+                    uint192(i * 1e12) // 1/1,000,000 % hiding
                 )
             );
             collateralTokens.push(IERC20(token));
@@ -115,7 +114,7 @@ contract NormalOpsScenario {
                     stable,
                     justOne,
                     justOne,
-                    0
+                    uint192(i * 1e12) // 1/1,000,000 % hiding
                 )
             );
             backupTokens.push(IERC20(token));

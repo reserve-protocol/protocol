@@ -131,7 +131,7 @@ contract RebalancingScenario {
                             targetPerRefModel_: [justOne, mayDepeg, justOne][k],
                             uoaPerTargetModel_: [justOne, justOne, justOne][k],
                             deviationModel_: [stable, volatile, volatile][k],
-                            revenueHiding: 0
+                            revenueHiding: uint192(k * 1e12) // 1/1,000,000 % hiding
                         }
                     )
                 );
@@ -160,7 +160,7 @@ contract RebalancingScenario {
                         targetPerRefModel_: stable,
                         uoaPerTargetModel_: justOne,
                         deviationModel_: justOne,
-                        revenueHiding: 0
+                        revenueHiding: uint192(j * 1e12) // 1/1,000,000 % hiding
                     })
                 );
                 backupTokens[targetName].push(IERC20(token));
