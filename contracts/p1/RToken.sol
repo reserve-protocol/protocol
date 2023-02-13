@@ -115,7 +115,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction
     // untestable:
     //      `else` branch of `exchangeRateIsValidAfter` (ie. revert)
-    //       It is not possible to change the BU exchange rate through issue
+    //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function issueTo(address recipient, uint256 amount)
         public
         notPausedOrFrozen
@@ -204,7 +204,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //     do token.transferFrom(backingManager, caller, min(tokenAmt, prorataAmt))
     // untestable:
     //      `else` branch of `exchangeRateIsValidAfter` (ie. revert)
-    //       It is not possible to change the BU exchange rate through redeem
+    //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param revertOnPartialRedemption If true, will revert on partial redemption
