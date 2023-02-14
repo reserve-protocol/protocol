@@ -83,19 +83,21 @@ ssh test-exhaustive.us-central1-a.rtoken-fuzz
 ```
 
 ## 3) Run the tests
-Pull the repo, checkout latest `master` branch (or whichever branch you want to test):
+Pull the repo, checkout latest `master` branch (or whichever branch you want to test), install packages, and compile:
 
 ```
 git clone https://github.com/reserve-protocol/protocol.git
 cd protocol
 git checkout master
 git pull
+yarn install
+yarn compile
 ```
 
 Tmux and run the tests:
 ```
 tmux
-./scripts/run-exhaustive-tests.sh |& tee exhaustive-tests.log
+bash ./scripts/run-exhaustive-tests.sh |& tee exhaustive-tests.log
 ```
 
 When the test are complete, you'll find the console output in `exhaustive-tests.log`.
