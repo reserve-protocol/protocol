@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { fp } from '../../common/numbers'
+import { fp, bn } from '../../common/numbers'
 import { CollateralStatus } from '../../common/constants'
 import { advanceTime } from '../utils/time'
 import { PriceModelKind, PriceModel } from './common'
@@ -21,7 +21,8 @@ describe('CollateralMock', () => {
     refPerTok: PriceModel,
     targetPerRef: PriceModel,
     uoaPerTarget: PriceModel,
-    deviation: PriceModel
+    deviation: PriceModel,
+    revenueHiding: BigNumberish
   ): Promise<sc.CollateralMock> {
     const f: sc.CollateralMock__factory = await ethers.getContractFactory('CollateralMock')
     return await f.deploy(
@@ -36,7 +37,7 @@ describe('CollateralMock', () => {
       targetPerRef, // targetPerRefModel_
       uoaPerTarget, // uoaPerTargetModel_
       deviation, // deviationModel_
-      0
+      revenueHiding // revenueHiding
     )
   }
 
@@ -51,12 +52,12 @@ describe('CollateralMock', () => {
   }
 
   it('has isCollateral() == true', async () => {
-    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM, bn(0))
     expect(await coll.isCollateral()).equal(true)
   })
 
   it('combines price models ', async () => {
-    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM, bn(0))
     await coll.refresh()
     await priceAround(coll, fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
@@ -76,7 +77,7 @@ describe('CollateralMock', () => {
   })
 
   it('should default collateral - hard default ', async () => {
-    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM, bn(0))
     await coll.refresh()
     await priceAround(coll, fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
@@ -96,7 +97,7 @@ describe('CollateralMock', () => {
   })
 
   it('should default collateral - soft default ', async () => {
-    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM, bn(0))
     await coll.refresh()
     await priceAround(coll, fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
@@ -127,5 +128,31 @@ describe('CollateralMock', () => {
     await priceAround(coll, fp(0.8))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(0.8))
+  })
+
+  it('should default collateral - hidden revenue', async () => {
+    // 0.1% revenue hidden
+    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM, fp('0.01'))
+    await coll.refresh()
+    await priceAround(coll, fp(1))
+
+    expect(await coll.refPerTok()).equal(fp('0.99'))
+    expect(await coll.targetPerRef()).equal(fp(1))
+    expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+
+    // If refPerTok does not change significantly nothing happens
+    await coll.update(fp('0.999'), fp(1), fp(1), fp(1))
+    await coll.refresh()
+    expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+
+    // If refPerTok falls below revenue hiding threshold, then default
+    await coll.update(fp('0.98'), fp(1), fp(1), fp(1))
+    await coll.refresh()
+    expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
+
+    // If refPerTok returns status stays disabled
+    await coll.update(fp(1), fp(1), fp(1), fp(1))
+    await coll.refresh()
+    expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
   })
 })
