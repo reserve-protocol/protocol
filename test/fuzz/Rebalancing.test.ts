@@ -3,7 +3,7 @@ import { ethers } from 'hardhat'
 import { Wallet, Signer, BigNumber } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
-import { fp } from '../../common/numbers'
+import { fp, bn } from '../../common/numbers'
 import { whileImpersonating } from '../utils/impersonation'
 import { CollateralStatus, RoundingMode, TradeStatus } from '../../common/constants'
 import { advanceTime, advanceBlocks } from '../utils/time'
@@ -1592,5 +1592,16 @@ describe('The Rebalancing scenario', () => {
     const rTokBalAfter = await token.balanceOf(comp.rToken.address)
     expect(rTokBalAfter).to.equal(0)
     expect(bmBalAFter).to.equal(bmBalBefore.add(rTokBalBefore).add(amt))
+  })
+
+  it('does not have the basket-range-smaller-when-rebalancing bug', async () => {
+    await advanceBlocks(1)
+    await advanceTime(1)
+    await scenario.connect(alice).issue(1)
+    await scenario.connect(alice).updatePrice(bn('121264033233888225265565220287352453623468700216813183789095321412050641'),0,0,bn('3345326469100492675282932145461459020125568694023126'),bn('191742294295487260193499953977383353501355709782'))
+    await scenario.connect(alice).refreshBasket()
+    await scenario.connect(alice).issue(1)
+    const check = await scenario.echidna_basketRangeSmallerWhenRebalancing()
+    expect(check).to.eq(true)
   })
 })
