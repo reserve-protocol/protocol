@@ -31,6 +31,9 @@ const createFixtureLoader = waffle.createFixtureLoader
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
+const describeExtreme = 
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
+
 describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -425,7 +428,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Extreme Bounds', () => {
+  describeExtreme('Extreme Bounds', () => {
     const applyParameters = async (ratio: BigNumber, bal: BigNumber): Promise<TestIFurnace> => {
       // Deploy fixture
       ;({ main, rToken, furnace } = await loadFixture(defaultFixture))
