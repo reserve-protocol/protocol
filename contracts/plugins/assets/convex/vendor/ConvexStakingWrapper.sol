@@ -2,15 +2,41 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "./IRewardStaking.sol";
-import "./IConvexDeposits.sol";
-import "./CvxMining.sol";
-import "./IBooster.sol";
 import "@openzeppelin/contracts-v0.7/math/SafeMath.sol";
 import "@openzeppelin/contracts-v0.7/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v0.7/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-v0.7/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-v0.7/utils/ReentrancyGuard.sol";
+import "./IRewardStaking.sol";
+import "./CvxMining.sol";
+
+interface IBooster {
+    function poolInfo(uint256 _pid)
+        external
+        view
+        returns (
+            address _lptoken,
+            address _token,
+            address _gauge,
+            address _crvRewards,
+            address _stash,
+            bool _shutdown
+        );
+}
+
+interface IConvexDeposits {
+    function deposit(
+        uint256 _pid,
+        uint256 _amount,
+        bool _stake
+    ) external returns (bool);
+
+    function deposit(
+        uint256 _amount,
+        bool _lock,
+        address _stakeAddress
+    ) external;
+}
 
 //Example of a tokenize a convex staked position.
 //if used as collateral some modifications will be needed to fit the specific platform
