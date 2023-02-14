@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: ISC
 pragma solidity 0.8.17;
 
-import "../compound/CusdcV3Wrapper.sol";
-import "../compound/ICusdcV3Wrapper.sol";
+import "contracts/plugins/assets/compound/CusdcV3Wrapper.sol";
+import "contracts/plugins/assets/compound/ICusdcV3Wrapper.sol";
 
 interface ICusdcV3WrapperMock is ICusdcV3Wrapper {
     function setMockExchangeRate(bool setMock, uint256 mockValue) external;
@@ -13,9 +13,7 @@ contract CusdcV3WrapperMock {
     mapping(bytes4 => bool) internal isMocking;
     uint256 internal mockExchangeRate_;
 
-    constructor(
-        address mockTarget_
-    ) {
+    constructor(address mockTarget_) {
         mockTarget = mockTarget_;
     }
 
@@ -39,8 +37,12 @@ contract CusdcV3WrapperMock {
             let result := delegatecall(gas(), target, 0, calldatasize(), 0, 0)
             returndatacopy(0, 0, returndatasize())
             switch result
-            case 0 { revert(0, returndatasize()) }
-            default { return(0, returndatasize()) }
+            case 0 {
+                revert(0, returndatasize())
+            }
+            default {
+                return(0, returndatasize())
+            }
         }
     }
 }
