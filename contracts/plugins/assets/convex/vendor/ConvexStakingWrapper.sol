@@ -38,10 +38,9 @@ interface IConvexDeposits {
     ) external;
 }
 
-//Example of a tokenize a convex staked position.
-//if used as collateral some modifications will be needed to fit the specific platform
+// if used as collateral some modifications will be needed to fit the specific platform
 
-//Based on Curve.fi's gauge wrapper implementations at https://github.com/curvefi/curve-dao-contracts/tree/master/contracts/gauges/wrappers
+// Based on audited contracts: https://github.com/convex-eth/platform/blob/main/contracts/contracts/wrappers/CvxCrvStakingWrapper.sol
 // TODO check on contract size to see if blocker
 contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
