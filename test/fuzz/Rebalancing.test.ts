@@ -34,7 +34,7 @@ const componentsOf = async (main: sc.IMainFuzz) => ({
 })
 type Components = Awaited<ReturnType<typeof componentsOf>>
 
-describe.only('The Rebalancing scenario', () => {
+describe('The Rebalancing scenario', () => {
   let scenario: sc.RebalancingScenario
   let main: sc.MainP1Fuzz
   let comp: Components
