@@ -38,6 +38,7 @@ import {
   GnosisTrade,
   IAssetRegistry,
   IBasketHandler,
+  InvalidRefPerTokCollateralMock,
   MockV3Aggregator,
   MockableCollateral,
   RTokenAsset,
@@ -1305,6 +1306,138 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.toColl(token2.address)).to.equal(collateral2.address)
       expect(await assetRegistry.toColl(token3.address)).to.equal(collateral3.address)
     })
+
+    it('Should allow to register/unregister/swap Assets when frozen', async () => {
+      // Setup new Asset
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>await AssetFactory.deploy(
+        PRICE_TIMEOUT,
+        await collateral0.chainlinkFeed(), // any feed will do
+        ORACLE_ERROR,
+        erc20s[5].address,
+        config.rTokenMaxTradeVolume,
+        1
+      )
+
+      // Get previous length for assets
+      const previousLength = (await assetRegistry.erc20s()).length
+
+      // Freeze Main
+      await main.connect(owner).freezeShort()
+
+      // Add new asset
+      await expect(assetRegistry.connect(owner).register(newAsset.address))
+        .to.emit(assetRegistry, 'AssetRegistered')
+        .withArgs(erc20s[5].address, newAsset.address)
+
+      // Check it was added
+      let allERC20s = await assetRegistry.erc20s()
+      expect(allERC20s).to.contain(erc20s[5].address)
+      expect(allERC20s.length).to.equal(previousLength + 1)
+
+      // Remove asset
+      await expect(assetRegistry.connect(owner).unregister(newAsset.address))
+        .to.emit(assetRegistry, 'AssetUnregistered')
+        .withArgs(erc20s[5].address, newAsset.address)
+
+      // Check if it was removed
+      allERC20s = await assetRegistry.erc20s()
+      expect(allERC20s).to.not.contain(erc20s[5].address)
+      expect(allERC20s.length).to.equal(previousLength)
+
+      // SWAP an asset - Reusing token
+      const swapAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          await collateral0.chainlinkFeed(),
+          ORACLE_ERROR,
+          token0.address,
+          config.rTokenMaxTradeVolume,
+          1
+        )
+      )
+
+      // Swap Asset
+      await expectEvents(assetRegistry.connect(owner).swapRegistered(swapAsset.address), [
+        {
+          contract: assetRegistry,
+          name: 'AssetUnregistered',
+          args: [token0.address, collateral0.address],
+          emitted: true,
+        },
+        {
+          contract: assetRegistry,
+          name: 'AssetRegistered',
+          args: [token0.address, swapAsset.address],
+          emitted: true,
+        },
+      ])
+
+      // Check length is not modified and erc20 remains registered
+      allERC20s = await assetRegistry.erc20s()
+      expect(allERC20s).to.contain(token0.address)
+      expect(allERC20s.length).to.equal(previousLength)
+    })
+
+    context('With quantity reverting', function () {
+      let InvalidRefPerTokFiatCollFactory: ContractFactory
+      let revertCollateral: InvalidRefPerTokCollateralMock
+
+      beforeEach(async function () {
+        // Setup collateral that can revert on refPerTok
+        InvalidRefPerTokFiatCollFactory = await ethers.getContractFactory(
+          'InvalidRefPerTokCollateralMock'
+        )
+        revertCollateral = <InvalidRefPerTokCollateralMock>(
+          await InvalidRefPerTokFiatCollFactory.deploy(
+            {
+              priceTimeout: PRICE_TIMEOUT,
+              chainlinkFeed: await collateral2.chainlinkFeed(),
+              oracleError: ORACLE_ERROR,
+              erc20: erc20s[5].address,
+              maxTradeVolume: config.rTokenMaxTradeVolume,
+              oracleTimeout: await collateral2.oracleTimeout(),
+              targetName: ethers.utils.formatBytes32String('USD'),
+              defaultThreshold: DEFAULT_THRESHOLD,
+              delayUntilDefault: await collateral2.delayUntilDefault(),
+            },
+            REVENUE_HIDING
+          )
+        )
+
+        // Register new asset
+        await assetRegistry.connect(owner).register(revertCollateral.address)
+        await revertCollateral.refresh()
+      })
+
+      it('Should disable basket when quantity reverts on Unregister', async () => {
+        // Check basket is sound
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+        // Set the collateral to revert on refPerTok
+        await revertCollateral.setRefPerTokRevert(true)
+
+        // Unregister the new collateral - Will disable basket
+        await assetRegistry.connect(owner).unregister(revertCollateral.address)
+
+        // Basket is now disabled
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      })
+
+      it('Should disable basket when quantity reverts on Swap', async () => {
+        // Check basket is sound
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+        // Set the collateral to revert on refPerTok
+        await revertCollateral.setRefPerTokRevert(true)
+
+        // Attempt to swap the new collateral - Will disable basket
+        await assetRegistry.connect(owner).swapRegistered(revertCollateral.address)
+
+        // Basket is now disabled
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      })
+    })
   })
 
   describe('Basket Handling', () => {
@@ -1682,6 +1815,60 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(highPrice).to.equal(MAX_UINT192)
     })
 
+    it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX] - case 1', async () => {
+      // Swap collateral with one that can have refPerTok modified
+      const InvalidRefPerTokFiatCollFactory = await ethers.getContractFactory(
+        'InvalidRefPerTokCollateralMock'
+      )
+      const newColl = <InvalidRefPerTokCollateralMock>await InvalidRefPerTokFiatCollFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral2.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral2.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await collateral2.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral2.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
+
+      // Register collateral
+      await assetRegistry.connect(owner).swapRegistered(newColl.address)
+      await newColl.refresh()
+
+      // Set basket with single collateral
+      await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1000')])
+
+      // Change basket - valid at this point
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Set refPerTok = 1
+      await newColl.setRate(bn(1))
+
+      const newPrice: BigNumber = MAX_UINT192.div(bn('1e10'))
+      await setOraclePrice(collateral2.address, newPrice.sub(newPrice.div(100))) // oracle error
+
+      const [lowPrice, highPrice] = await basketHandler.price()
+      expect(lowPrice).to.equal(MAX_UINT192)
+      expect(highPrice).to.equal(MAX_UINT192)
+    })
+
+    it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX] - case 2', async () => {
+      // Set basket with single collateral
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1.1')])
+      await basketHandler.refreshBasket()
+
+      const newPrice: BigNumber = MAX_UINT192.div(bn('1e10'))
+      await setOraclePrice(collateral0.address, newPrice.sub(newPrice.div(100))) // oracle error
+
+      const [lowPrice, highPrice] = await basketHandler.price()
+      expect(lowPrice).to.equal(MAX_UINT192)
+      expect(highPrice).to.equal(MAX_UINT192)
+    })
+
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
       // Check values
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
@@ -1827,12 +2014,46 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
     })
 
-    it('Should return no basketsHeld when refPerTok = 0', async () => {
+    it('Should return no basketsHeld when collateral is disabled', async () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
 
       // Set Token2 to hard default - Zero rate
       await token2.setExchangeRate(fp('0'))
       await collateral2.refresh()
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+    })
+
+    it('Should return no basketsHeld when refPerTok = 0', async () => {
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+
+      // Swap collateral with one that can have refPerTok = 0 without defaulting
+      const InvalidRefPerTokFiatCollFactory = await ethers.getContractFactory(
+        'InvalidRefPerTokCollateralMock'
+      )
+      const newColl = <InvalidRefPerTokCollateralMock>await InvalidRefPerTokFiatCollFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral2.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral2.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await collateral2.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral2.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
+
+      await assetRegistry.connect(owner).swapRegistered(newColl.address)
+      await newColl.refresh()
+
+      // Change basket - valid at this point
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Set refPerTok = 0
+      await newColl.setRate(bn(0))
+
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
     })
 

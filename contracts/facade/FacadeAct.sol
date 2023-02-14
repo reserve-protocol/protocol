@@ -298,14 +298,31 @@ contract FacadeAct is IFacadeAct {
                 }
             } catch {}
 
-            // look at rewards from all sources + the RToken sweep
+            // save initial balances for both Revenue Traders
+            uint256[] memory initialBalsRTokenTrader = new uint256[](erc20s.length);
+            uint256[] memory initialBalsRSRTrader = new uint256[](erc20s.length);
+            for (uint256 i = 0; i < erc20s.length; ++i) {
+                initialBalsRTokenTrader[i] = erc20s[i].balanceOf(address(cache.rTokenTrader));
+                initialBalsRSRTrader[i] = erc20s[i].balanceOf(address(cache.rsrTrader));
+            }
+
+            // look at rewards from all sources
             try this.claimRewards(rToken) {
                 // See if any token bals grew sufficiently
                 for (uint256 i = 0; i < erc20s.length; ++i) {
                     (uint192 lotLow, ) = cache.reg.toAsset(erc20s[i]).lotPrice(); // {tok}
 
-                    uint256 bal = erc20s[i].balanceOf(address(cache.bm));
-                    if (bal - initialBals[i] > minTradeSize(minTradeVolume, lotLow)) {
+                    // Get balances for revenue traders
+                    uint256 balRTokenTrader = erc20s[i].balanceOf(address(cache.rTokenTrader));
+                    uint256 balRSRTrader = erc20s[i].balanceOf(address(cache.rsrTrader));
+
+                    // Check both traders
+                    if (
+                        (balRTokenTrader - initialBalsRTokenTrader[i]) >
+                        minTradeSize(minTradeVolume, lotLow) ||
+                        (balRSRTrader - initialBalsRSRTrader[i]) >
+                        minTradeSize(minTradeVolume, lotLow)
+                    ) {
                         // It's large enough to trade! Return claimRewards as next step.
                         return (
                             address(this),

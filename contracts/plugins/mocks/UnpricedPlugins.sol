@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../assets/Asset.sol";
+import "../assets/AppreciatingFiatCollateral.sol";
 import "../assets/OracleLib.sol";
 
 contract UnpricedAssetMock is Asset {
@@ -43,6 +44,58 @@ contract UnpricedAssetMock is Asset {
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
         uint192 delta = p.mul(oracleError);
         return (p - delta, p + delta, 0);
+    }
+
+    function setUnpriced(bool on) external {
+        unpriced = on;
+    }
+}
+
+contract UnpricedAppreciatingFiatCollateralMock is AppreciatingFiatCollateral {
+    using FixLib for uint192;
+    using OracleLib for AggregatorV3Interface;
+
+    bool public unpriced = false;
+
+    uint192 public mockRefPerTok = FIX_ONE;
+
+    // solhint-disable no-empty-blocks
+
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
+    {}
+
+    /// tryPrice: mock unpriced by returning (0, FIX_MAX)
+    function tryPrice()
+        external
+        view
+        virtual
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
+    {
+        // If unpriced is marked, return 0, FIX_MAX
+        if (unpriced) return (0, FIX_MAX, 0);
+
+        // Should include revenue hiding discount in the low discount but not high
+        pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
+
+        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
+        uint192 pLow = pegPrice.mul(refPerTok());
+
+        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
+        uint192 pHigh = pegPrice.mul(_underlyingRefPerTok());
+
+        low = pLow - pLow.mul(oracleError);
+        high = pHigh + pHigh.mul(oracleError);
+    }
+
+    /// Mock function, required but not used in tests
+    function _underlyingRefPerTok() internal view override returns (uint192) {
+        return mockRefPerTok;
     }
 
     function setUnpriced(bool on) external {
