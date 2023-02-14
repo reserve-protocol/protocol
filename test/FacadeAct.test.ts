@@ -759,6 +759,58 @@ describe('FacadeAct contract', () => {
       expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmount.mul(2))
     })
 
+    it('Revenues - Should claim rewards in Revenue Traders', async () => {
+      const rewardAmountAAVE = bn('0.5e18')
+
+      // AAVE Rewards - RSR Trader
+      await aToken.setRewards(rsrTrader.address, rewardAmountAAVE)
+
+      // Via Facade get next call - will claim rewards from Traders, via Facade
+      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(facadeAct.address)
+      expect(data).to.not.equal('0x')
+
+      // Claim rewards
+      await owner.sendTransaction({
+        to: addr,
+        data,
+      })
+
+      // Check rewards collected
+      expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE)
+      expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(bn(0))
+
+      // Via Facade get next call - will create a trade from the RSR Trader trade
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(rsrTrader.address)
+      expect(data).to.not.equal('0x')
+
+      await expect(
+        owner.sendTransaction({
+          to: addr,
+          data,
+        })
+      ).to.emit(rsrTrader, 'TradeStarted')
+
+      // AAVE Rewards - RToken Trader
+      await aToken.setRewards(rTokenTrader.address, rewardAmountAAVE)
+
+      // Via Facade get next call - will claim rewards from Traders, via Facade
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(facadeAct.address)
+      expect(data).to.not.equal('0x')
+
+      // Claim rewards
+      await owner.sendTransaction({
+        to: addr,
+        data,
+      })
+
+      // Check rewards collected - there are funds in the RTokenTrader now
+      expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(bn(0)) // moved to trade
+      expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmountAAVE)
+    })
+
     it('Should not revert if f=1', async () => {
       await distributor.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: 0, rsrDist: 0 })
       // Transfer free tokens to RTokenTrader

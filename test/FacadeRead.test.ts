@@ -92,6 +92,25 @@ describe('FacadeRead contract', () => {
   describe('Views', () => {
     let issueAmount: BigNumber
 
+    const expectValidBasketBreakdown = async (rToken: TestIRToken) => {
+      const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
+      expect(erc20s.length).to.equal(4)
+      expect(breakdown.length).to.equal(4)
+      expect(targets.length).to.equal(4)
+      expect(erc20s[0]).to.equal(token.address)
+      expect(erc20s[1]).to.equal(usdc.address)
+      expect(erc20s[2]).to.equal(aToken.address)
+      expect(erc20s[3]).to.equal(cToken.address)
+      expect(breakdown[0]).to.be.closeTo(fp('0.25'), 10)
+      expect(breakdown[1]).to.be.closeTo(fp('0.25'), 10)
+      expect(breakdown[2]).to.be.closeTo(fp('0.25'), 10)
+      expect(breakdown[3]).to.be.closeTo(fp('0.25'), 10)
+      expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
+    }
+
     beforeEach(async () => {
       // Mint Tokens
       initialBal = bn('10000000000e18')
@@ -131,6 +150,14 @@ describe('FacadeRead contract', () => {
         bn('40000000000e18')
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
+
+      // Redeem all RTokens
+      await rToken.connect(addr1).redeem(issueAmount, true)
+
+      // With 0 baskets needed - Returns correct value
+      expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
+        bn('40000000000e18')
+      )
     })
 
     it('Should return backingOverview correctly', async () => {
@@ -215,22 +242,16 @@ describe('FacadeRead contract', () => {
 
     it('Should return basketBreakdown correctly for paused token', async () => {
       await main.connect(owner).pause()
-      const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
-      expect(erc20s.length).to.equal(4)
-      expect(breakdown.length).to.equal(4)
-      expect(targets.length).to.equal(4)
-      expect(erc20s[0]).to.equal(token.address)
-      expect(erc20s[1]).to.equal(usdc.address)
-      expect(erc20s[2]).to.equal(aToken.address)
-      expect(erc20s[3]).to.equal(cToken.address)
-      expect(breakdown[0]).to.be.closeTo(fp('0.25'), 10)
-      expect(breakdown[1]).to.be.closeTo(fp('0.25'), 10)
-      expect(breakdown[2]).to.be.closeTo(fp('0.25'), 10)
-      expect(breakdown[3]).to.be.closeTo(fp('0.25'), 10)
-      expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
+      await expectValidBasketBreakdown(rToken)
+    })
+
+    it('Should return basketBreakdown correctly when RToken supply = 0', async () => {
+      // Redeem all RTokens
+      await rToken.connect(addr1).redeem(issueAmount, true)
+
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+
+      await expectValidBasketBreakdown(rToken)
     })
 
     it('Should return basketBreakdown correctly for tokens with (0,FIXED_MAX) price', async () => {

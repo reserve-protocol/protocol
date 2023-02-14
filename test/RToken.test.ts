@@ -376,6 +376,32 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(MAX_THROTTLE_AMT_RATE)
     })
 
+    it('Should not overflow  BU exchange rate below 1e-9 on issue', async () => {
+      const issueAmount: BigNumber = fp('1')
+
+      // Set single basket token for simplification
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount))
+        .to.emit(rToken, 'Issuance')
+        .withArgs(addr1.address, addr1.address, issueAmount, issueAmount)
+
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+      // setBasketsNeeded()
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await rToken.connect(signer).setBasketsNeeded(bn('1e9'))
+      })
+
+      // Issue rTokens successfully
+      await expect(rToken.connect(addr1).issue(1)).to.not.be.reverted
+    })
+
     it('Should revert if user did not provide approval for Token transfer', async function () {
       const issueAmount: BigNumber = bn('10e18')
 
@@ -1009,7 +1035,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should redeem prorata when refPerTok() is 0 #fast', async function () {
-        // Set refPerTok to FIX_MAX
+        // Set refPerTok to 0
         await token2.setExchangeRate(fp('0'))
 
         // Redemption
@@ -1033,6 +1059,23 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token3.balanceOf(addr1.address)).to.equal(
           initialBal.sub(issueAmount.div(bn('1e10')).div(4).mul(50)) // decimal shift + quarter of basket + cToken
         )
+      })
+
+      it('Should not overflow BU exchange rate above 1e9 on redeem', async function () {
+        // Leave only 1 RToken issue
+        await rToken.connect(addr1).redeem(issueAmount.sub(bn('1e18')), true)
+
+        expect(await rToken.totalSupply()).to.equal(fp('1'))
+
+        // setBasketsNeeded()
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await rToken.connect(signer).setBasketsNeeded(fp('1e9'))
+        })
+
+        const redeemAmount: BigNumber = bn('1.5e9')
+
+        // Redeem rTokens successfully
+        await expect(rToken.connect(addr1).redeem(bn(redeemAmount), false)).to.not.be.reverted
       })
 
       context('And redemption throttling', function () {
@@ -1383,6 +1426,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
     })
 
+    it('Should not mint if paused', async () => {
+      await main.connect(owner).pause()
+
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+    })
+
+    it('Should not mint if frozen', async () => {
+      await main.connect(owner).freezeShort()
+
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+    })
+
     it('Should not allow setBasketsNeeded to set BU exchange rate to outside [1e-9, 1e9]', async () => {
       // setBasketsNeeded()
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -1395,6 +1458,42 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await rToken.connect(signer).setBasketsNeeded(issueAmount.mul(bn('1e9')))
         await rToken.connect(signer).setBasketsNeeded(issueAmount.div(bn('1e9')))
       })
+    })
+
+    it('Should not allow setBasketsNeeded if paused', async () => {
+      // Check initial status
+      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Try to set baskets needed
+      await whileImpersonating(backingManager.address, async (bhSigner) => {
+        await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+
+      // Check value remains the same
+      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
+    })
+
+    it('Should not allow setBasketsNeeded if frozen', async () => {
+      // Check initial status
+      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
+
+      // Freeze Main
+      await main.connect(owner).freezeShort()
+
+      // Try to set baskets needed
+      await whileImpersonating(backingManager.address, async (bhSigner) => {
+        await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+
+      // Check value remains the same
+      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
     })
 
     it('Should not allow mint to set BU exchange rate to above 1e9', async () => {

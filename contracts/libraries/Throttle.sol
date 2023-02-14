@@ -39,6 +39,7 @@ library ThrottleLib {
         uint256 supply,
         int256 amount
     ) internal {
+        // untestable: amtRate will always be greater > 0 due to previous validations
         if (throttle.params.amtRate == 0 && throttle.params.pctRate == 0) return;
 
         // Calculate hourly limit
@@ -51,6 +52,7 @@ library ThrottleLib {
         if (amount > 0) {
             require(uint256(amount) <= available, "supply change throttled");
             available -= uint256(amount);
+            // untestable: the final else statement, amount will never be 0
         } else if (amount < 0) {
             available += uint256(-amount);
         }

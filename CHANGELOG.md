@@ -63,7 +63,10 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Introduce config struct to encapsulate Collateral constructor params more neatly
 - In general it should be easier to write Collateral plugins. Implementors should _only_ ever have to override 4 functions: `tryPrice()`, `refPerTok()`, `targetPerRef()`, and `claimRewards()`.
 - Add `.div(1 - maxTradeSlippage)` to calculation of `shortfallSlippage` in [RecollateralizationLib.sol:L188](contracts/p1/mixins/RecollateralizationLib.sol).
-- FacadeRead: remove `.pendingIssuances()` + `.endIdForVest()`
+- FacadeRead:
+  - remove `.pendingIssuances()` + `.endIdForVest()`
+  - refactor calculations in `basketBreakdown()` 
+- Bugfix: Fix claim rewards from traders in `FacadeAct`
 - Bugfix: Do not handout RSR rewards when no one is staked
 - Bugfix: Support small redemptions even when the RToken supply is massive
 - Bump component-wide `version()` getter to 2.0.0
