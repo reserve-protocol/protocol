@@ -53,9 +53,9 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# Install and use node v16
-nvm install 16
-nvm use 16
+# Install and use node v18
+nvm install 18
+nvm use 18
 
 # Install npm & yarn
 apt install npm
@@ -97,13 +97,15 @@ yarn compile
 Tmux and run the tests:
 ```
 tmux
-bash ./scripts/run-exhaustive-tests.sh |& tee exhaustive-tests.log
+bash ./scripts/run-exhaustive-tests.sh |& tee tests.log
 ```
 
-When the test are complete, you'll find the console output in `exhaustive-tests.log`.
+When the test are complete, you'll find the console output in `tests.log`.
 
 Detach from the tmux session:
 ```
 ctrl-z
 d
 ```
+
+If you run into this error `SyntaxError: Unexpected token '?'`, just `nvm uninstall <version>; nvm install <version>; nvm use <version>;`.
