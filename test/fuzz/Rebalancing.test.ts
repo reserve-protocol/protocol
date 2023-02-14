@@ -1594,7 +1594,7 @@ describe.only('The Rebalancing scenario', () => {
     expect(bmBalAFter).to.equal(bmBalBefore.add(rTokBalBefore).add(amt))
   })
 
-  it.only('issue/redeem not allowed during a rebalance', async () => {
+  it('issue/redeem not allowed during a rebalance', async () => {
     // similar case to false negatives seen in fuzzing
     await advanceBlocks(1)
     await advanceTime(1)
