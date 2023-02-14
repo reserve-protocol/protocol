@@ -158,7 +158,7 @@ contract CvxCurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     }
 
     // Override this later to implement non-stable pools
-    function _anyDepegged() internal view returns (bool) {
+    function _anyDepegged() internal view virtual returns (bool) {
         // Check reference token oracles
         for (uint8 i = 0; i < nTokens; i++) {
             try this.tokenPrice(i) returns (uint192 low, uint192 high) {
