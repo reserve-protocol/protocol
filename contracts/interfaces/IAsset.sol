@@ -45,16 +45,16 @@ interface IAsset is IRewardable {
 
     /// @param {UoA} The max trade volume, in UoA
     function maxTradeVolume() external view returns (uint192);
+}
+
+interface TestIAsset is IAsset {
+    function chainlinkFeed() external view returns (AggregatorV3Interface);
 
     /// {1} The max % deviation allowed by the oracle
     function oracleError() external view returns (uint192);
 
     /// @return {s} Seconds that an oracle value is considered valid
     function oracleTimeout() external view returns (uint48);
-}
-
-interface TestIAsset is IAsset {
-    function chainlinkFeed() external view returns (AggregatorV3Interface);
 }
 
 /// CollateralStatus must obey a linear ordering. That is:
@@ -98,12 +98,6 @@ interface ICollateral is IAsset {
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
     function status() external view returns (CollateralStatus);
 
-    /// @return The epoch timestamp when the collateral will default from IFFY to DISABLED
-    function whenDefault() external view returns (uint256);
-
-    /// @return The amount of time a collateral must be in IFFY status until being DISABLED
-    function delayUntilDefault() external view returns (uint48);
-
     // ==== Exchange Rates ====
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
@@ -111,4 +105,12 @@ interface ICollateral is IAsset {
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() external view returns (uint192);
+}
+
+interface TestICollateral is ICollateral {
+    /// @return The epoch timestamp when the collateral will default from IFFY to DISABLED
+    function whenDefault() external view returns (uint256);
+
+    /// @return The amount of time a collateral must be in IFFY status until being DISABLED
+    function delayUntilDefault() external view returns (uint48);
 }
