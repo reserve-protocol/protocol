@@ -307,7 +307,8 @@ contract RebalancingScenario {
         uint256 defaultThresholdSeed,
         uint48 delayUntilDefaultSeed,
         bool isColl,
-        bool isStable
+        bool isStable,
+        uint256 revenueHidingSeed
     ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
         bytes32 targetName = someTargetName(targetNameID);
         IAssetRegistry reg = main.assetRegistry();
@@ -316,7 +317,14 @@ contract RebalancingScenario {
 
         if (isColl) {
             reg.register(
-                createColl(erc20, isStable, defaultThresholdSeed, delayUntilDefaultSeed, targetName)
+                createColl(
+                    erc20,
+                    isStable,
+                    defaultThresholdSeed,
+                    delayUntilDefaultSeed,
+                    targetName,
+                    revenueHidingSeed
+                )
             );
         } else {
             reg.register(createAsset(erc20));
@@ -330,7 +338,8 @@ contract RebalancingScenario {
         uint256 defaultThresholdSeed,
         uint48 delayUntilDefaultSeed,
         bool isColl,
-        bool isStable
+        bool isStable,
+        uint256 revenueHidingSeed
     ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
         IERC20 erc20 = main.someToken(tokenID);
         IAssetRegistry reg = main.assetRegistry();
@@ -343,7 +352,14 @@ contract RebalancingScenario {
 
         if (isColl) {
             reg.swapRegistered(
-                createColl(erc20, isStable, defaultThresholdSeed, delayUntilDefaultSeed, targetName)
+                createColl(
+                    erc20,
+                    isStable,
+                    defaultThresholdSeed,
+                    delayUntilDefaultSeed,
+                    targetName,
+                    revenueHidingSeed
+                )
             );
         } else {
             reg.swapRegistered(createAsset(erc20));
@@ -879,7 +895,8 @@ contract RebalancingScenario {
         bool isStable,
         uint256 defaultThresholdSeed,
         uint48 delayUntilDefaultSeed,
-        bytes32 targetName
+        bytes32 targetName,
+        uint256 revenueHidingSeed
     ) internal returns (CollateralMock) {
         return
             new CollateralMock({
@@ -894,7 +911,7 @@ contract RebalancingScenario {
                 targetPerRefModel_: isStable ? justOne : getNextPriceModel(),
                 uoaPerTargetModel_: isStable ? justOne : getNextPriceModel(),
                 deviationModel_: isStable ? stable : getNextPriceModel(),
-                revenueHiding: 0
+                revenueHiding: uint192(between(0, 1e17, revenueHidingSeed))
             });
     }
 
