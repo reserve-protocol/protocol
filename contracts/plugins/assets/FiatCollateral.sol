@@ -49,7 +49,7 @@ contract FiatCollateral is ICollateral, Asset {
     uint48 private constant NEVER = type(uint48).max;
     uint48 private _whenDefault = NEVER;
 
-    uint48 public immutable override delayUntilDefault; // {s} e.g 86400
+    uint48 public immutable delayUntilDefault; // {s} e.g 86400
 
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
@@ -91,9 +91,9 @@ contract FiatCollateral is ICollateral, Asset {
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
     /// @dev Override this when pricing is more complicated than just a single oracle
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
-    /// @param pegPrice {target/ref} The actual price observed in the peg
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
+    /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
         external
         view

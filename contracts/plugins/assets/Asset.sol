@@ -18,9 +18,9 @@ contract Asset is IAsset {
 
     uint192 public immutable override maxTradeVolume; // {UoA}
 
-    uint48 public immutable override oracleTimeout; // {s}
+    uint48 public immutable oracleTimeout; // {s}
 
-    uint192 public immutable override oracleError; // {1}
+    uint192 public immutable oracleError; // {1}
 
     // === Lot price ===
 
@@ -64,8 +64,8 @@ contract Asset is IAsset {
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
     /// @dev The third (unused) variable is only here for compatibility with Collateral
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
     function tryPrice()
         external
         view
