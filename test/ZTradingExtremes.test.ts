@@ -33,7 +33,7 @@ import { setOraclePrice } from './utils/oracles'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
+describe(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress

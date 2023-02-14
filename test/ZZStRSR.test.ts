@@ -2756,7 +2756,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe(`Extreme Bounds (SLOW=${SLOW})`, () => {
+  describe(`Extreme Bounds ${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     // Dimensions
     //
     // StRSR economics can be broken down into 4 "places" that RSR can be.

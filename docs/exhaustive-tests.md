@@ -20,7 +20,17 @@ gcloud config set compute/zone us-central1-a
 Create the VM:
 
 ```bash
-gcloud compute instances create exhaustive --custom-extensions --custom-vm-type=n2 --custom-cpu=4 --custom-memory=32 --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
+gcloud compute instances create test-exhaustive --machine-type=n2d-highmem-4 --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
+```
+
+Pull the ssh-config from gcp:
+```
+gcloud compute config-ssh
+```
+
+Jump onto the instance:
+```
+ssh test-exhaustive.us-central1-a.rtoken-fuzz
 ```
 
 Add Matt's special seasoning, for tmux and emacs QoL improvements (NOTE: This sets the tmux `ctrl-b` to `ctrl-z`):
@@ -39,7 +49,9 @@ apt update
 
 # Install nvm
 curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash 
-source ~/.bashrc
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 # Install and use node v16
 nvm install 16
@@ -57,7 +69,7 @@ sudo bash add-google-cloud-ops-agent-repo.sh --also-install
 ### Option B: Create a VM from existing Machine Image
 We currently (__???????__) have a pre-cooked machine image that can be used for exhaustive testing.  It comes will all the above setup pre-installed.  Use the following command to launch a VM using this image.
 ```bash
-gcloud compute instances create exhaustive --source-machine-image=exhaustivebox --zone=us-west1-a
+gcloud compute instances create test-exhaustive --source-machine-image=exhaustivebox --zone=us-west1-a
 ```
 
 ## 2) SSH onto the box
@@ -67,14 +79,29 @@ gcloud compute config-ssh
 ```
 Jump onto the instance:
 ```
-ssh exhaustive.us-west1-a.rtoken-fuzz
+ssh test-exhaustive.us-central1-a.rtoken-fuzz
 ```
 
-## 3) Pull the repo, run the tests
+## 3) Run the tests
+Pull the repo, checkout latest `master` branch (or whichever branch you want to test):
+
 ```
 git clone https://github.com/reserve-protocol/protocol.git
 cd protocol
 git checkout master
 git pull
-NODE_OPTIONS=--max-old-space-size=30000 SLOW=1 PROTO_IMPL=1 npx hardhat test test/Z*.test.ts
+```
+
+Tmux and run the tests:
+```
+tmux
+./scripts/run-exhaustive-tests.sh |& tee exhaustive-tests.log
+```
+
+When the test are complete, you'll find the console output in `exhaustive-tests.log`.
+
+Detach from the tmux session:
+```
+ctrl-z
+d
 ```
