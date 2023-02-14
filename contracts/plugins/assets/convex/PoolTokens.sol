@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
-import "hardhat/console.sol";
 
 // solhint-disable func-name-mixedcase
 interface ICurvePool {
@@ -41,8 +40,6 @@ contract PoolTokens {
 
     error WrongIndex(uint8 maxLength);
     error NoToken(uint8 tokenNumber);
-
-    uint8 constant MAX_UINT8 = 255;
 
     enum CurvePoolType {
         Plain,
@@ -315,7 +312,7 @@ contract PoolTokens {
     }
 
     function minFeedsLength(AggregatorV3Interface[][] memory feeds) private pure returns (uint8) {
-        uint8 minLength = MAX_UINT8;
+        uint8 minLength = type(uint8).max;
         for (uint8 i = 0; i < feeds.length; ++i) {
             minLength = uint8(Math.min(minLength, feeds[i].length));
         }
