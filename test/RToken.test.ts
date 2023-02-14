@@ -1989,8 +1989,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       }
 
       // Set up throttles
-      const issuanceThrottleParams = { amtRate: MAX_UINT256, pctRate: issuancePctAmt }
-      const redemptionThrottleParams = { amtRate: MAX_UINT256, pctRate: redemptionPctAmt }
+      const issuanceThrottleParams = { amtRate: bn('1e48'), pctRate: issuancePctAmt }
+      const redemptionThrottleParams = { amtRate: bn('1e48'), pctRate: redemptionPctAmt }
 
       await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
       await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
@@ -2004,7 +2004,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Issue the toIssue supply to addr1
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(owner).issue(toIssue)
+      await rToken.connect(addr1).issue(toIssue)
       expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
 
       // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
