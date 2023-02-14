@@ -144,7 +144,7 @@ contract ChaosOpsScenario {
                         targetPerRefModel_: stable,
                         uoaPerTargetModel_: justOne,
                         deviationModel_: justOne,
-                        revenueHiding: uint192(j * 1e12) // 1/1,000,000 % hiding
+                        revenueHiding: 0
                     })
                 );
                 backupTokens[targetName].push(IERC20(token));
