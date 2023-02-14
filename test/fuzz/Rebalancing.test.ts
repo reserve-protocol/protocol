@@ -34,7 +34,7 @@ const componentsOf = async (main: sc.IMainFuzz) => ({
 })
 type Components = Awaited<ReturnType<typeof componentsOf>>
 
-describe('The Rebalancing scenario', () => {
+describe.only('The Rebalancing scenario', () => {
   let scenario: sc.RebalancingScenario
   let main: sc.MainP1Fuzz
   let comp: Components
@@ -1594,14 +1594,18 @@ describe('The Rebalancing scenario', () => {
     expect(bmBalAFter).to.equal(bmBalBefore.add(rTokBalBefore).add(amt))
   })
 
-  it('does not have the basket-range-smaller-when-rebalancing bug', async () => {
+  it.only('issue/redeem not allowed during a rebalance', async () => {
+    // similar case to false negatives seen in fuzzing
     await advanceBlocks(1)
     await advanceTime(1)
     await scenario.connect(alice).issue(1)
     await scenario.connect(alice).updatePrice(bn('121264033233888225265565220287352453623468700216813183789095321412050641'),0,0,bn('3345326469100492675282932145461459020125568694023126'),bn('191742294295487260193499953977383353501355709782'))
     await scenario.connect(alice).refreshBasket()
-    await scenario.connect(alice).issue(1)
-    const check = await scenario.echidna_basketRangeSmallerWhenRebalancing()
-    expect(check).to.eq(true)
+    await expect(scenario.connect(alice).justIssue(1)).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).justIssueTo(1, 0)).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).issue(1)).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).issueTo(1, 0)).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).redeem(1, false)).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).redeemTo(1, 0, false)).revertedWith("Not valid for current state")
   })
 })

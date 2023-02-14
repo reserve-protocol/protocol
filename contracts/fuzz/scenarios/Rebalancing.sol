@@ -403,13 +403,21 @@ contract RebalancingScenario {
     }
 
     // do issuance without doing allowances first
-    function justIssue(uint256 amount) public asSender {
+    function justIssue(uint256 amount)
+        public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+        asSender
+    {
         _saveRTokenRate();
         main.rToken().issue(amount);
     }
 
     // do issuance without doing allowances first
-    function justIssueTo(uint256 amount, uint8 recipientID) public asSender {
+    function justIssueTo(uint256 amount, uint8 recipientID)
+        public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+        asSender
+    {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
 
@@ -417,7 +425,11 @@ contract RebalancingScenario {
     }
 
     // do allowances as needed, and *then* do issuance
-    function issue(uint256 amount) public asSender {
+    function issue(uint256 amount)
+        public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+        asSender
+    {
         _saveRTokenRate();
         uint256 preSupply = main.rToken().totalSupply();
         require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
@@ -432,7 +444,11 @@ contract RebalancingScenario {
     }
 
     // do allowances as needed, and *then* do issuance
-    function issueTo(uint256 amount, uint8 recipientID) public asSender {
+    function issueTo(uint256 amount, uint8 recipientID)
+        public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+        asSender
+    {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         uint256 preSupply = main.rToken().totalSupply();
@@ -447,7 +463,11 @@ contract RebalancingScenario {
         main.rToken().issueTo(recipient, amount);
     }
 
-    function redeem(uint256 amount, bool revertOnPartialRedemption) public asSender {
+    function redeem(uint256 amount, bool revertOnPartialRedemption)
+        public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+        asSender
+    {
         _saveRTokenRate();
         main.rToken().redeem(amount, revertOnPartialRedemption);
     }
@@ -456,7 +476,10 @@ contract RebalancingScenario {
         uint256 amount,
         uint8 recipientID,
         bool revertOnPartialRedemption
-    ) public asSender {
+    )   public
+        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
+        asSender
+    {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         main.rToken().redeemTo(recipient, amount, revertOnPartialRedemption);
