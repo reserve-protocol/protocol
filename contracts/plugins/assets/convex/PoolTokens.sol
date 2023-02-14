@@ -8,6 +8,7 @@ import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 import "hardhat/console.sol";
 
+// solhint-disable func-name-mixedcase
 interface ICurvePool {
     function coins(uint256) external view returns (address);
 
@@ -30,6 +31,8 @@ interface ICurvePool {
         uint256
     ) external;
 }
+
+// solhint-enable func-name-mixedcase
 
 /// Supports CvxCurve stable pools for up to 4 tokens
 contract PoolTokens {
