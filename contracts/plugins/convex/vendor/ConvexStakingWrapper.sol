@@ -16,6 +16,7 @@ import "@openzeppelin/contracts-v0.7/utils/ReentrancyGuard.sol";
 //if used as collateral some modifications will be needed to fit the specific platform
 
 //Based on Curve.fi's gauge wrapper implementations at https://github.com/curvefi/curve-dao-contracts/tree/master/contracts/gauges/wrappers
+// TODO check on contract size to see if blocker
 contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -51,9 +52,9 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     mapping(address => uint256) public registeredRewards;
 
     //management
-    bool public isShutdown;
     bool public isInit;
     address public owner;
+    bool internal _isShutdown;
 
     string internal _tokenname;
     string internal _tokensymbol;
@@ -83,7 +84,6 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
 
         _tokenname = string(abi.encodePacked("Staked ", ERC20(_token).name()));
         _tokensymbol = string(abi.encodePacked("stk", ERC20(_token).symbol()));
-        isShutdown = false;
         isInit = true;
 
         // collateralVault = _vault;
@@ -122,7 +122,13 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     }
 
     function shutdown() external onlyOwner {
-        isShutdown = true;
+        _isShutdown = true;
+    }
+
+    function isShutdown() public view returns (bool) {
+        if (_isShutdown) return true;
+        (, , , , , bool isShutdown_) = IBooster(convexBooster).poolInfo(convexPoolId);
+        return isShutdown_;
     }
 
     function setApprovals() public {
@@ -261,7 +267,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
 
     function _checkpoint(address[2] memory _accounts) internal nonReentrant {
         //if shutdown, no longer checkpoint in case there are problems
-        if (isShutdown) return;
+        if (isShutdown()) return;
 
         uint256 supply = _getTotalSupply();
         uint256[2] memory depositedBalance;
@@ -387,7 +393,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
 
     //deposit a curve token
     function deposit(uint256 _amount, address _to) external {
-        require(!isShutdown, "shutdown");
+        require(!isShutdown(), "shutdown");
 
         //dont need to call checkpoint since _mint() will
 
@@ -402,7 +408,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
 
     //stake a convex token
     function stake(uint256 _amount, address _to) external {
-        require(!isShutdown, "shutdown");
+        require(!isShutdown(), "shutdown");
 
         //dont need to call checkpoint since _mint() will
 
@@ -445,7 +451,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     function _beforeTokenTransfer(
         address _from,
         address _to,
-        uint256 _amount
+        uint256
     ) internal override {
         _checkpoint([_from, _to]);
     }
