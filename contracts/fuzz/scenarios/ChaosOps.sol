@@ -274,7 +274,8 @@ contract ChaosOpsScenario {
         uint256 defaultThresholdSeed,
         uint48 delayUntilDefaultSeed,
         bool isColl,
-        bool isStable
+        bool isStable,
+        uint256 revenueHidingSeed
     ) public {
         bytes32 targetName = someTargetName(targetNameID);
         IAssetRegistry reg = main.assetRegistry();
@@ -283,7 +284,14 @@ contract ChaosOpsScenario {
 
         if (isColl) {
             reg.register(
-                createColl(erc20, isStable, defaultThresholdSeed, delayUntilDefaultSeed, targetName)
+                createColl(
+                    erc20,
+                    isStable,
+                    defaultThresholdSeed,
+                    delayUntilDefaultSeed,
+                    targetName,
+                    revenueHidingSeed
+                )
             );
         } else {
             reg.register(createAsset(erc20));
@@ -295,7 +303,8 @@ contract ChaosOpsScenario {
         uint256 defaultThresholdSeed,
         uint48 delayUntilDefaultSeed,
         uint256 switchTypeSeed,
-        uint256 stableOrRandomSeed
+        uint256 stableOrRandomSeed,
+        uint256 revenueHidingSeed
     ) public {
         IERC20 erc20 = main.someToken(tokenID);
         IAssetRegistry reg = main.assetRegistry();
@@ -315,7 +324,8 @@ contract ChaosOpsScenario {
                 createStable,
                 defaultThresholdSeed,
                 delayUntilDefaultSeed,
-                CollateralMock(address(asset)).targetName()
+                CollateralMock(address(asset)).targetName(),
+                revenueHidingSeed
             );
             reg.swapRegistered(newColl);
         } else {
@@ -838,7 +848,8 @@ contract ChaosOpsScenario {
         bool isStable,
         uint256 defaultThresholdSeed,
         uint48 delayUntilDefaultSeed,
-        bytes32 targetName
+        bytes32 targetName,
+        uint256 revenueHidingSeed
     ) public returns (CollateralMock) {
         return
             new CollateralMock({
@@ -853,7 +864,7 @@ contract ChaosOpsScenario {
                 targetPerRefModel_: isStable ? justOne : getNextPriceModel(),
                 uoaPerTargetModel_: isStable ? justOne : getNextPriceModel(),
                 deviationModel_: isStable ? stable : getNextPriceModel(),
-                revenueHiding: 0
+                revenueHiding: uint192(between(0, 1e18 - 1, revenueHidingSeed))
             });
     }
 

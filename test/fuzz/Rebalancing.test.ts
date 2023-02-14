@@ -741,7 +741,7 @@ describe('The Rebalancing scenario', () => {
       await scenario.createToken(2, 'Fnord', 'FFF')
 
       // Register collateral again for target A
-      await scenario.registerAsset(7, 0, exa, 2n ** 47n, true, false)
+      await scenario.registerAsset(7, 0, exa, 2n ** 47n, true, false, 0)
 
       updatedErc20s = await comp.assetRegistry.erc20s()
       expect(updatedErc20s.length).to.equal(26)
@@ -753,7 +753,7 @@ describe('The Rebalancing scenario', () => {
         await comp.assetRegistry.toColl(token.address)
       )
 
-      await scenario.swapRegisteredAsset(4, 0, exa, 2n ** 47n, true, true)
+      await scenario.swapRegisteredAsset(4, 0, exa, 2n ** 47n, true, true, 0)
 
       const newColl = await ConAt('CollateralMock', await comp.assetRegistry.toColl(token.address))
 
@@ -769,7 +769,7 @@ describe('The Rebalancing scenario', () => {
       expect((await comp.assetRegistry.erc20s()).length).to.equal(25)
 
       // Register STABLE collateral for target A
-      await scenario.registerAsset(7, 0, exa, 2n ** 47n, true, true)
+      await scenario.registerAsset(7, 0, exa, 2n ** 47n, true, true, 0)
       expect((await comp.assetRegistry.erc20s()).length).to.equal(26)
 
       // Check collateral values
@@ -797,7 +797,7 @@ describe('The Rebalancing scenario', () => {
       // Register a new RANDOM collateral from a new token
       const tokenID = await main.numTokens()
       await scenario.createToken(0, 'Fnord', 'fr')
-      await scenario.registerAsset(tokenID, 0, exa, 2n ** 47n, true, false)
+      await scenario.registerAsset(tokenID, 0, exa, 2n ** 47n, true, false, 0)
 
       // Check 1 new tokens registered
       updatedErc20s = await comp.assetRegistry.erc20s()
@@ -1341,10 +1341,10 @@ describe('The Rebalancing scenario', () => {
       'Not valid for current state'
     )
     await expect(scenario.unregisterAsset(7)).to.be.revertedWith('Not valid for current state')
-    await expect(scenario.registerAsset(7, 0, exa, 2n ** 47n, true, true)).to.be.revertedWith(
+    await expect(scenario.registerAsset(7, 0, exa, 2n ** 47n, true, true, 0)).to.be.revertedWith(
       'Not valid for current state'
     )
-    await expect(scenario.swapRegisteredAsset(4, 0, exa, 2n ** 47n, true, true)).to.be.revertedWith(
+    await expect(scenario.swapRegisteredAsset(4, 0, exa, 2n ** 47n, true, true, 0)).to.be.revertedWith(
       'Not valid for current state'
     )
 
