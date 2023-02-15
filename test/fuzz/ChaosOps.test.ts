@@ -931,10 +931,9 @@ describe('The Chaos Operations scenario', () => {
       expect(await token8.symbol()).to.equal(expectedSyms[8])
 
       // Check correct weights assigned for new added tokens
-      // 1/1,000,000% revenue hiding
-      expect(amts[6]).to.closeTo(fp('0.1000002'), fp('0.00000001'))
-      expect(amts[7]).to.closeTo(fp('0.1000002'), fp('0.00000001'))
-      expect(amts[8]).to.closeTo(fp('0.1000002'), fp('0.00000001'))
+      expect(amts[6]).to.eq(fp('0.1'))
+      expect(amts[7]).to.eq(fp('0.1'))
+      expect(amts[8]).to.eq(fp('0.1'))
     })
 
     it('can handle freezing/pausing with roles', async () => {
