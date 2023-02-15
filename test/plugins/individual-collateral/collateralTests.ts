@@ -6,7 +6,7 @@ import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
-import { InvalidMockV3Aggregator, MockV3Aggregator, ICollateral } from '../../../typechain'
+import { InvalidMockV3Aggregator, MockV3Aggregator, TestICollateral } from '../../../typechain'
 import {
   advanceTime,
   advanceBlocks,
@@ -94,7 +94,7 @@ export default function fn<X extends CollateralFixtureContext>(
       let wallet: Wallet
       let chainId: number
 
-      let collateral: ICollateral
+      let collateral: TestICollateral
       let chainlinkFeed: MockV3Aggregator
 
       let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -266,6 +266,29 @@ export default function fn<X extends CollateralFixtureContext>(
             }
           */
           expect(true)
+        })
+
+        it('decays lotPrice over priceTimeout period', async () => {
+          // Prices should start out equal
+          await collateral.refresh()
+          const p = await collateral.price()
+          let lotP = await collateral.lotPrice()
+          expect(p.length).to.equal(lotP.length)
+          expect(p[0]).to.equal(lotP[0])
+          expect(p[1]).to.equal(lotP[1])
+
+          // Should be roughly half, after half of priceTimeout
+          const priceTimeout = await collateral.priceTimeout()
+          await advanceTime(priceTimeout / 2)
+          lotP = await collateral.lotPrice()
+          expect(lotP[0]).to.be.closeTo(p[0].div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
+          expect(lotP[1]).to.be.closeTo(p[1].div(2), p[1].div(2).div(10000)) // 1 part in 10 thousand
+
+          // Should be 0 after full priceTimeout
+          await advanceTime(priceTimeout / 2)
+          lotP = await collateral.lotPrice()
+          expect(lotP[0]).to.equal(0)
+          expect(lotP[1]).to.equal(0)
         })
       })
 

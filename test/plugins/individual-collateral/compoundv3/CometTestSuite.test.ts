@@ -21,7 +21,7 @@ import {
   MockV3Aggregator__factory,
   CometMock,
   CometMock__factory,
-  ICollateral,
+  TestICollateral,
 } from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
@@ -31,6 +31,7 @@ import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../
 import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
   COMP,
   CUSDC_V3,
   USDC_USD_PRICE_FEED,
@@ -72,7 +73,7 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   erc20: CUSDC_V3,
   targetName: ethers.utils.formatBytes32String('USD'),
   rewardERC20: COMP,
-  priceTimeout: ORACLE_TIMEOUT,
+  priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: USDC_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
@@ -83,14 +84,16 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   reservesThresholdDisabled: bn('5000'),
 }
 
-export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (
+  opts: CometCollateralOpts = {}
+): Promise<TestICollateral> => {
   opts = { ...defaultCometCollateralOpts, ...opts }
 
   const CTokenV3CollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CTokenV3Collateral'
   )
 
-  const collateral = <ICollateral>await CTokenV3CollateralFactory.deploy(
+  const collateral = <TestICollateral>await CTokenV3CollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
