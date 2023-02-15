@@ -1,4 +1,3 @@
-import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
@@ -54,9 +53,11 @@ import {
   USDCMock,
   NonFiatCollateral,
   FacadeMonitor,
+  ZeroDecimalMock
 } from '../typechain'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 export enum Implementation {
   P0,
@@ -384,9 +385,11 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   rTokenTrader: TestIRevenueTrader
 }
 
-export const defaultFixture: Fixture<DefaultFixture> = async function ([
-  owner,
-]): Promise<DefaultFixture> {
+type Fixture<T> = () => Promise<T>
+
+export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
+  let owner: SignerWithAddress
+  [owner] = await ethers.getSigners()
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken } = await compAaveFixture()
   const { gnosis, easyAuction } = await gnosisFixture()

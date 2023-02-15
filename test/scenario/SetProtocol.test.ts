@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
@@ -27,7 +28,6 @@ import {
   PRICE_TIMEOUT,
 } from '../fixtures'
 
-const createFixtureLoader = waffle.createFixtureLoader
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}`, () => {
@@ -60,12 +60,10 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {

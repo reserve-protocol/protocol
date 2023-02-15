@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus, MAX_UINT256 } from '../common/constants'
 import { expectEvents } from '../common/events'
@@ -44,8 +45,6 @@ import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -95,7 +94,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let main: TestIMain
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   interface IBackingInfo {
@@ -138,7 +136,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {

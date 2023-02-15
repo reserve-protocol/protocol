@@ -1,4 +1,3 @@
-import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
@@ -588,9 +587,9 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   rTokenTrader: TestIRevenueTrader
 }
 
-export const defaultFixture: Fixture<DefaultFixture> = async function ([
-  owner,
-]): Promise<DefaultFixture> {
+type Fixture<T> = () => Promise<T>
+
+export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
   const { gnosis } = await gnosisFixture()

@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import {
   IConfig,
   IGovParams,
@@ -56,8 +57,6 @@ import {
   ORACLE_ERROR,
 } from './fixtures'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -126,12 +125,10 @@ describe('FacadeWrite contract', () => {
   let revShare1: IRevenueShare
   let revShare2: IRevenueShare
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {

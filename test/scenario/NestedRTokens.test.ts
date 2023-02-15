@@ -1,9 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { Fixture } from 'ethereum-waffle'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
 import { bn, divCeil, fp } from '../../common/numbers'
 import { withinQuad } from '../utils/matchers'
@@ -29,17 +29,17 @@ import {
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 interface DualFixture {
   one: DefaultFixture
   two: DefaultFixture
 }
 
-const dualFixture: Fixture<DualFixture> = async function ([owner]): Promise<DualFixture> {
+type Fixture<T> = () => Promise<T>
+
+const dualFixture: Fixture<DualFixture> = async function (): Promise<DualFixture> {
   return {
-    one: await createFixtureLoader([owner])(defaultFixture),
-    two: await createFixtureLoader([owner])(defaultFixture),
+    one: await loadFixture(defaultFixture),
+    two: await loadFixture(defaultFixture),
   }
 }
 
@@ -59,8 +59,6 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
   // Whole system instances
   let one: DefaultFixture
   let two: DefaultFixture
-
-  let loadFixtureDual: ReturnType<typeof createFixtureLoader>
 
   let wallet: Wallet
 
@@ -105,12 +103,11 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixtureDual = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ one, two } = await loadFixtureDual(dualFixture))
+    ;({ one, two } = await loadFixture(dualFixture))
   })
 
   // this is mostly a check on our testing suite

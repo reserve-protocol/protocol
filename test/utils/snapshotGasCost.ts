@@ -1,10 +1,8 @@
 import { TransactionReceipt, TransactionResponse } from '@ethersproject/abstract-provider'
 import { expect, use } from 'chai'
 import { Contract, BigNumber, ContractTransaction } from 'ethers'
-import { solidity } from 'ethereum-waffle'
 import { jestSnapshotPlugin } from 'mocha-chai-jest-snapshot'
 
-use(solidity)
 use(jestSnapshotPlugin())
 
 export default async function snapshotGasCost(

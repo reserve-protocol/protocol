@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, upgrades, waffle } from 'hardhat'
+import { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import { MAX_UINT96, TradeStatus, ZERO_ADDRESS } from '../common/constants'
 import { bn, toBNDecimals } from '../common/numbers'
@@ -18,13 +19,11 @@ import {
   ZeroDecimalMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
+import { Collateral, DefaultFixture, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -55,14 +54,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
   let basket: Collateral[]
   let collateral: Collateral[]
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {
@@ -78,7 +75,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       rsrTrader,
       rTokenTrader,
       collateral,
-    } = await loadFixture(defaultFixture))
+    } = <DefaultFixture>await loadFixture(defaultFixture))
 
     // Get assets
     ;[collateral0, collateral1, ,] = basket

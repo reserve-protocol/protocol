@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { bn, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
 import {
@@ -49,8 +50,6 @@ const MAX_TRADE_VOLUME = fp('1e7') // $10M
 const point5Pct = (value: BigNumber): BigNumber => {
   return value.mul(5).div(1000)
 }
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -106,7 +105,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   const prepareBacking = async (backing: string[]) => {
@@ -160,7 +158,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {

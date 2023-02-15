@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { IConfig, MAX_ORACLE_TIMEOUT, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
 import { FURNACE_DEST, STRSR_DEST, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { bn, fp, shortString, toBNDecimals, divCeil } from '../common/numbers'
@@ -30,8 +31,6 @@ import { advanceTime } from './utils/time'
 import { defaultFixture, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING, SLOW } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { setOraclePrice } from './utils/oracles'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let owner: SignerWithAddress
@@ -63,7 +62,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   let ERC20Mock: ContractFactory
@@ -78,7 +76,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {

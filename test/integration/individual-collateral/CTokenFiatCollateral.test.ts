@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
@@ -39,8 +40,6 @@ import {
   TestIRToken,
 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
 const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
@@ -109,7 +108,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   let initialBal: BigNumber
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   let chainId: number
@@ -120,8 +118,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   before(async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-
+    
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -584,7 +581,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       )
 
       // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenCollateral.price()).to.be.revertedWith('')
+      await expect(nonpriceCtokenCollateral.price()).to.be.reverted
 
       // Refresh should also revert - status is not modified
       await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
@@ -755,12 +752,12 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })

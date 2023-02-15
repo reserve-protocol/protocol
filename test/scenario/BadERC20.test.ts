@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { bn, divCeil, fp } from '../../common/numbers'
 import {
@@ -32,8 +33,6 @@ import {
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -65,7 +64,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rsrTrader: TestIRevenueTrader
   let basketHandler: IBasketHandler
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   // Computes the minBuyAmt for a sellAmt at two prices
@@ -94,7 +92,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {

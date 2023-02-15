@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
 import { defaultFixture } from '../fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
@@ -10,7 +11,6 @@ import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import forkBlockNumber from '../fork-block-numbers'
 import mainnetAddrs from '../../../scripts/addresses/mainnet-test/1-tmp-assets-collateral.json'
-
 import {
   ATokenFiatCollateral,
   ERC20Mock,
@@ -20,8 +20,6 @@ import {
   USDCMock,
 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 // Relevant addresses (Mainnet)
 const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
@@ -69,7 +67,6 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
   let initialBal: BigNumber
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   let chainId: number
@@ -93,7 +90,6 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
     before(async () => {
       await setup(forkBlockNumber['mainnet-deployment'])
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
 
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {

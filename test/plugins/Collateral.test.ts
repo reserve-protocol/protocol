@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { IConfig, MAX_DELAY_UNTIL_DEFAULT } from '../../common/configuration'
 import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
@@ -48,8 +49,6 @@ import {
   REVENUE_HIDING,
 } from '../fixtures'
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
@@ -94,14 +93,12 @@ describe('Collateral contracts', () => {
   let CTokenFiatCollateralFactory: ContractFactory
   let InvalidMockV3AggregatorFactory: ContractFactory
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   const amt = bn('100e18')
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {
@@ -968,12 +965,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidTokenCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidTokenCollateral.refresh()).to.be.reverted
       expect(await invalidTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidTokenCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidTokenCollateral.refresh()).to.be.reverted
       expect(await invalidTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
 
@@ -1001,12 +998,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidATokenCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidATokenCollateral.refresh()).to.be.reverted
       expect(await invalidATokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidATokenCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidATokenCollateral.refresh()).to.be.reverted
       expect(await invalidATokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
 
@@ -1035,12 +1032,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
@@ -1291,12 +1288,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidNonFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidNonFiatCollateral.refresh()).to.be.reverted
       expect(await invalidNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidNonFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidNonFiatCollateral.refresh()).to.be.reverted
       expect(await invalidNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check with the other feed
@@ -1318,12 +1315,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidNonFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidNonFiatCollateral.refresh()).to.be.reverted
       expect(await invalidNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidNonFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidNonFiatCollateral.refresh()).to.be.reverted
       expect(await invalidNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
@@ -1617,12 +1614,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // With the second oracle
@@ -1646,12 +1643,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
@@ -1776,12 +1773,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidSelfRefCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidSelfRefCollateral.refresh()).to.be.reverted
       expect(await invalidSelfRefCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidSelfRefCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidSelfRefCollateral.refresh()).to.be.reverted
       expect(await invalidSelfRefCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
@@ -2005,12 +2002,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidCTokenSelfRefCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenSelfRefCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenSelfRefCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidCTokenSelfRefCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidCTokenSelfRefCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenSelfRefCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
@@ -2227,12 +2224,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidEURFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidEURFiatCollateral.refresh()).to.be.reverted
       expect(await invalidEURFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidEURFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidEURFiatCollateral.refresh()).to.be.reverted
       expect(await invalidEURFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // With the second oracle
@@ -2254,12 +2251,12 @@ describe('Collateral contracts', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidEURFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidEURFiatCollateral.refresh()).to.be.reverted
       expect(await invalidEURFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidEURFiatCollateral.refresh()).to.be.revertedWith('')
+      await expect(invalidEURFiatCollateral.refresh()).to.be.reverted
       expect(await invalidEURFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
