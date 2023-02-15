@@ -85,12 +85,7 @@ contract FacadeRead is IFacadeRead {
         // solhint-disable-next-line no-empty-blocks
         try rToken.main().furnace().melt() {} catch {}
 
-        // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        uint192 amtBaskets = rToken.totalSupply() > 0
-            ? rToken.basketsNeeded().muluDivu(FIX_ONE, rToken.totalSupply(), CEIL)
-            : _safeWrap(rToken.totalSupply());
-
-        (erc20s, deposits) = basketHandler.quote(amtBaskets, CEIL);
+        (erc20s, deposits) = basketHandler.quote(FIX_ONE, CEIL);
 
         // Calculate uoaAmts
         uint192 uoaSum;

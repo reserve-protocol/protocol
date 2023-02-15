@@ -113,6 +113,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction
+    // untestable:
+    //      `else` branch of `exchangeRateIsValidAfter` (ie. revert)
+    //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function issueTo(address recipient, uint256 amount)
         public
         notPausedOrFrozen
@@ -199,6 +202,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //     let tokenAmt = (amount * basketsNeeded / totalSupply) baskets of support for token
     //     let prorataAmt = (amount / totalSupply) * token.balanceOf(backingManager)
     //     do token.transferFrom(backingManager, caller, min(tokenAmt, prorataAmt))
+    // untestable:
+    //      `else` branch of `exchangeRateIsValidAfter` (ie. revert)
+    //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param revertOnPartialRedemption If true, will revert on partial redemption
@@ -290,6 +296,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // effects:
     //   bal'[recipient] = bal[recipient] + amtRToken
     //   totalSupply' = totalSupply + amtRToken
+    //
+    // untestable:
+    //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
+    //   but it is fully covered for `mint` (limitations of coverage plugin)
     function mint(address recipient, uint256 amtRToken)
         external
         notPausedOrFrozen
@@ -305,6 +315,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // effects:
     //   bal'[caller] = bal[caller] - amtRToken
     //   totalSupply' = totalSupply - amtRToken
+    //
+    // untestable:
+    //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
+    //   but it is fully covered for `melt` (limitations of coverage plugin)
     function melt(uint256 amtRToken) external notPausedOrFrozen exchangeRateIsValidAfter {
         _burn(_msgSender(), amtRToken);
         require(totalSupply() >= FIX_ONE, "rToken supply too low to melt");
@@ -315,6 +329,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     // checks: unpaused; unfrozen; caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
+    //
+    // untestable:
+    //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
+    //   but it is fully covered for `setBasketsNeeded` (limitations of coverage plugin)
     function setBasketsNeeded(uint192 basketsNeeded_)
         external
         notPausedOrFrozen

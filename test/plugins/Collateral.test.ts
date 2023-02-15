@@ -6,6 +6,7 @@ import { IConfig, MAX_DELAY_UNTIL_DEFAULT } from '../../common/configuration'
 import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
+  AppreciatingFiatCollateral,
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -612,8 +613,10 @@ describe('Collateral contracts', () => {
       // Set price of token to 0 in Aave
       await setOraclePrice(tokenCollateral.address, bn('0'))
 
-      // Check price of token
+      // Check price of tokens
       await expectPrice(tokenCollateral.address, bn('0'), bn('0'), false)
+      await expectPrice(aTokenCollateral.address, bn('0'), bn('0'), false)
+      await expectPrice(cTokenCollateral.address, bn('0'), bn('0'), false)
 
       // Lot prices should be zero
       const [lotLow, lotHigh] = await tokenCollateral.lotPrice()
@@ -622,7 +625,12 @@ describe('Collateral contracts', () => {
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
+      await aTokenCollateral.refresh()
+      await cTokenCollateral.refresh()
+
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should be unpriced in case of invalid timestamp', async () => {
@@ -630,10 +638,17 @@ describe('Collateral contracts', () => {
 
       // Check price of token
       await expectUnpriced(tokenCollateral.address)
+      await expectUnpriced(aTokenCollateral.address)
+      await expectUnpriced(cTokenCollateral.address)
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
+      await aTokenCollateral.refresh()
+      await cTokenCollateral.refresh()
+
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should be unpriced in case of invalid answered round', async () => {
@@ -641,10 +656,122 @@ describe('Collateral contracts', () => {
 
       // Check price of token
       await expectUnpriced(tokenCollateral.address)
+      await expectUnpriced(aTokenCollateral.address)
+      await expectUnpriced(cTokenCollateral.address)
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
+      await aTokenCollateral.refresh()
+      await cTokenCollateral.refresh()
+
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+    })
+
+    it('Should be able to refresh saved prices', async () => {
+      // Check one Fiat Collateral and one Appreciating Collateral
+      const collsToProcess = [tokenCollateral, aTokenCollateral]
+      const initialBlockTimestamp: number = await getLatestBlockTimestamp()
+
+      for (const coll of collsToProcess) {
+        // Check initial prices
+        await expectPrice(coll.address, fp('1'), ORACLE_ERROR, true)
+        let [lowPrice, highPrice] = await coll.price()
+        expect(await coll.savedLowPrice()).to.equal(lowPrice)
+        expect(await coll.savedHighPrice()).to.equal(highPrice)
+        expect(await coll.lastSave()).to.equal(initialBlockTimestamp)
+
+        // Refresh saved prices
+        await coll.refresh()
+
+        // Check values remain but timestamp was updated
+        await expectPrice(coll.address, fp('1'), ORACLE_ERROR, true)
+        ;[lowPrice, highPrice] = await coll.price()
+        expect(await coll.savedLowPrice()).to.equal(lowPrice)
+        expect(await coll.savedHighPrice()).to.equal(highPrice)
+        let currBlockTimestamp = await getLatestBlockTimestamp()
+        expect(await coll.lastSave()).to.equal(currBlockTimestamp)
+
+        // Update values in Oracles increase by 20%
+        await setOraclePrice(coll.address, bn('1.2e8')) // 20%
+
+        // Before calling refresh we still have the old values
+        await expectPrice(coll.address, fp('1.2'), ORACLE_ERROR, true)
+        ;[lowPrice, highPrice] = await coll.price()
+        expect(await coll.savedLowPrice()).to.be.lt(lowPrice)
+        expect(await coll.savedHighPrice()).to.be.lt(highPrice)
+
+        // Refresh prices - Should save new values
+        await coll.refresh()
+
+        // Check new prices were stored
+        await expectPrice(coll.address, fp('1.2'), ORACLE_ERROR, true)
+        ;[lowPrice, highPrice] = await coll.price()
+        expect(await coll.savedLowPrice()).to.equal(lowPrice)
+        expect(await coll.savedHighPrice()).to.equal(highPrice)
+        currBlockTimestamp = await getLatestBlockTimestamp()
+        expect(await coll.lastSave()).to.equal(currBlockTimestamp)
+
+        // Restore value in Oracle for next collateral
+        await setOraclePrice(coll.address, bn('1e8'))
+      }
+    })
+
+    it('Should not save prices if try/price returns unpriced - Appreciating Collateral', async () => {
+      const UnpricedAppreciatingFactory = await ethers.getContractFactory(
+        'UnpricedAppreciatingFiatCollateralMock'
+      )
+      const unpricedAppFiatCollateral: AppreciatingFiatCollateral = <AppreciatingFiatCollateral>(
+        await UnpricedAppreciatingFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await aTokenCollateral.chainlinkFeed(), // reuse - mock
+            oracleError: ORACLE_ERROR,
+            erc20: aToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          REVENUE_HIDING
+        )
+      )
+
+      // Save prices
+      await unpricedAppFiatCollateral.refresh()
+
+      // Check initial prices
+      let currBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(unpricedAppFiatCollateral.address, fp('1'), ORACLE_ERROR, true)
+      let [lowPrice, highPrice] = await unpricedAppFiatCollateral.price()
+      expect(await unpricedAppFiatCollateral.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedAppFiatCollateral.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedAppFiatCollateral.lastSave()).to.be.equal(currBlockTimestamp)
+
+      // Refresh saved prices
+      await unpricedAppFiatCollateral.refresh()
+
+      // Check values remain but timestamp was updated
+      await expectPrice(unpricedAppFiatCollateral.address, fp('1'), ORACLE_ERROR, true)
+      ;[lowPrice, highPrice] = await unpricedAppFiatCollateral.price()
+      expect(await unpricedAppFiatCollateral.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedAppFiatCollateral.savedHighPrice()).to.equal(highPrice)
+      currBlockTimestamp = await getLatestBlockTimestamp()
+      expect(await unpricedAppFiatCollateral.lastSave()).to.equal(currBlockTimestamp)
+
+      // Set as unpriced so it returns 0,FIX MAX in try/price
+      await unpricedAppFiatCollateral.setUnpriced(true)
+
+      // Check that now is unpriced
+      await expectUnpriced(unpricedAppFiatCollateral.address)
+
+      // Refreshing would not save the new rates
+      await unpricedAppFiatCollateral.refresh()
+      expect(await unpricedAppFiatCollateral.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedAppFiatCollateral.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedAppFiatCollateral.lastSave()).to.equal(currBlockTimestamp)
     })
   })
 
