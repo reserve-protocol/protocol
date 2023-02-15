@@ -257,6 +257,29 @@ export default function fn<X extends CollateralFixtureContext>(
           */
           expect(true)
         })
+
+        it('decays lotPrice over priceTimeout period', async () => {
+          // Prices should start out equal
+          await collateral.refresh()
+          const p = await collateral.price()
+          let lotP = await collateral.lotPrice()
+          expect(p.length).to.equal(lotP.length)
+          expect(p[0]).to.equal(lotP[0])
+          expect(p[1]).to.equal(lotP[1])
+
+          // Should be roughly half, after half of priceTimeout
+          const priceTimeout = await collateral.priceTimeout()
+          await advanceTime(priceTimeout / 2)
+          lotP = await collateral.lotPrice()
+          expect(lotP[0]).to.be.closeTo(p[0].div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
+          expect(lotP[1]).to.be.closeTo(p[1].div(2), p[1].div(2).div(10000)) // 1 part in 10 thousand
+
+          // Should be 0 after full priceTimeout
+          await advanceTime(priceTimeout / 2)
+          lotP = await collateral.lotPrice()
+          expect(lotP[0]).to.equal(0)
+          expect(lotP[1]).to.equal(0)
+        })
       })
 
       describe('status', () => {

@@ -55,6 +55,9 @@ interface TestIAsset is IAsset {
 
     /// @return {s} Seconds that an oracle value is considered valid
     function oracleTimeout() external view returns (uint48);
+
+    /// @return {s} Seconds that the lotPrice should decay over, after stale price
+    function priceTimeout() external view returns (uint48);
 }
 
 /// CollateralStatus must obey a linear ordering. That is:
