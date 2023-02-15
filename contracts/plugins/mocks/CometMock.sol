@@ -49,10 +49,13 @@ contract CometMock {
         return _reserves;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function accrueAccount(address account) public {}
 
+    // solhint-disable-next-line no-complex-fallback
     fallback() external payable {
         address delegate = externalDelegate;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             calldatacopy(0, 0, calldatasize())
             let result := call(gas(), delegate, 0, 0, calldatasize(), 0, 0)

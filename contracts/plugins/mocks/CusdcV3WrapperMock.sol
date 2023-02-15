@@ -34,6 +34,7 @@ contract CusdcV3WrapperMock {
 
     fallback() external payable {
         address target = mockTarget;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             calldatacopy(0, 0, calldatasize())
             let result := delegatecall(gas(), target, 0, calldatasize(), 0, 0)
