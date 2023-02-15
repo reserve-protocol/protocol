@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
+// prettier-ignore
 contract CometMock {
     int256 internal _reserves;
     uint256 internal _targetReserves;
@@ -64,5 +65,9 @@ contract CometMock {
             case 0 { revert(0, returndatasize()) }
             default { return(0, returndatasize()) }
         }
+    }
+
+    receive() external payable {
+        revert("don't send me eth");
     }
 }
