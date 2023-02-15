@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
+// prettier-ignore
 contract CometMock {
     int256 internal _reserves;
     uint256 internal _targetReserves;
@@ -49,10 +50,13 @@ contract CometMock {
         return _reserves;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function accrueAccount(address account) public {}
 
+    // solhint-disable-next-line no-complex-fallback
     fallback() external payable {
         address delegate = externalDelegate;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             calldatacopy(0, 0, calldatasize())
             let result := call(gas(), delegate, 0, 0, calldatasize(), 0, 0)
@@ -61,5 +65,9 @@ contract CometMock {
             case 0 { revert(0, returndatasize()) }
             default { return(0, returndatasize()) }
         }
+    }
+
+    receive() external payable {
+        revert("don't send me eth");
     }
 }

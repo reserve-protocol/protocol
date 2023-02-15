@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: ISC
+// SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
 import "contracts/plugins/assets/compound/CusdcV3Wrapper.sol";
@@ -30,8 +30,10 @@ contract CusdcV3WrapperMock {
         }
     }
 
+    // solhint-disable-next-line no-complex-fallback
     fallback() external payable {
         address target = mockTarget;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             calldatacopy(0, 0, calldatasize())
             let result := delegatecall(gas(), target, 0, calldatasize(), 0, 0)
@@ -44,5 +46,9 @@ contract CusdcV3WrapperMock {
                 return(0, returndatasize())
             }
         }
+    }
+
+    receive() external payable {
+        revert("don't send me eth");
     }
 }
