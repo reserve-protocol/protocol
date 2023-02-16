@@ -1,10 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumberish } from 'ethers'
 import { Fixture } from 'ethereum-waffle'
-import { MockV3Aggregator, ICollateral, IERC20 } from '../../../typechain'
+import { MockV3Aggregator, TestICollateral, IERC20 } from '../../../typechain'
 
 export interface CollateralFixtureContext {
-  collateral: ICollateral
+  collateral: TestICollateral
   chainlinkFeed: MockV3Aggregator
   tok: IERC20
   tokDecimals: number // tldr; IERC20 does not include decimals()
@@ -25,7 +25,7 @@ export interface CollateralOpts {
   delayUntilDefault?: BigNumberish
 }
 
-export type DeployCollateralFunc = (opts: CollateralOpts) => Promise<ICollateral>
+export type DeployCollateralFunc = (opts: CollateralOpts) => Promise<TestICollateral>
 export type MakeCollateralFixtureFunc<T extends CollateralFixtureContext> = (
   alice: SignerWithAddress,
   opts: CollateralOpts

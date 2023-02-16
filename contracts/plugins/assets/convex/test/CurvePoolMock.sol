@@ -8,6 +8,7 @@ contract CurvePoolMock is ICurvePool {
     address[] public coins;
     address[] public underlying_coins;
     address[] public base_coins;
+    uint256 public get_virtual_price;
 
     constructor(uint256[] memory intialBalances, address[] memory _coins) {
         _balances = intialBalances;
@@ -22,8 +23,8 @@ contract CurvePoolMock is ICurvePool {
         return _balances[index];
     }
 
-    function get_virtual_price() external pure returns (uint256) {
-        return 1;
+    function setVirtualPrice(uint256 newPrice) external {
+        get_virtual_price = newPrice;
     }
 
     function token() external pure returns (address) {
