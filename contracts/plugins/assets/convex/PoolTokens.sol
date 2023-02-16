@@ -142,8 +142,8 @@ contract PoolTokens {
         // token0
         bool more = config.feeds[0].length > 0;
         _t0feed0 = more ? config.feeds[0][0] : AggregatorV3Interface(address(0));
-        _t0timeout0 = more ? config.oracleTimeouts[0][0] : 0;
-        _t0error0 = more ? config.oracleErrors[0][0] : 0;
+        _t0timeout0 = more && config.oracleTimeouts[0].length > 0 ? config.oracleTimeouts[0][0] : 0;
+        _t0error0 = more && config.oracleErrors[0].length > 0 ? config.oracleErrors[0][0] : 0;
         if (more) {
             require(address(_t0feed0) != address(0), "t0feed0 empty");
             require(_t0timeout0 > 0, "t0timeout0 zero");
@@ -152,8 +152,8 @@ contract PoolTokens {
 
         more = config.feeds[0].length > 1;
         _t0feed1 = more ? config.feeds[0][1] : AggregatorV3Interface(address(0));
-        _t0timeout1 = more ? config.oracleTimeouts[0][1] : 0;
-        _t0error1 = more ? config.oracleErrors[0][1] : 0;
+        _t0timeout1 = more && config.oracleTimeouts[0].length > 1 ? config.oracleTimeouts[0][1] : 0;
+        _t0error1 = more && config.oracleErrors[0].length > 1 ? config.oracleErrors[0][1] : 0;
         if (more) {
             require(address(_t0feed1) != address(0), "t0feed1 empty");
             require(_t0timeout1 > 0, "t0timeout1 zero");
@@ -163,8 +163,8 @@ contract PoolTokens {
         // token1
         more = config.feeds[1].length > 0;
         _t1feed0 = more ? config.feeds[1][0] : AggregatorV3Interface(address(0));
-        _t1timeout0 = more ? config.oracleTimeouts[1][0] : 0;
-        _t1error0 = more ? config.oracleErrors[1][0] : 0;
+        _t1timeout0 = more && config.oracleTimeouts[1].length > 0 ? config.oracleTimeouts[1][0] : 0;
+        _t1error0 = more && config.oracleErrors[1].length > 0 ? config.oracleErrors[1][0] : 0;
         if (more) {
             require(address(_t1feed0) != address(0), "t1feed0 empty");
             require(_t1timeout0 > 0, "t1timeout0 zero");
@@ -173,8 +173,8 @@ contract PoolTokens {
 
         more = config.feeds[1].length > 1;
         _t1feed1 = more ? config.feeds[1][1] : AggregatorV3Interface(address(0));
-        _t1timeout1 = more ? config.oracleTimeouts[1][1] : 0;
-        _t1error1 = more ? config.oracleErrors[1][1] : 0;
+        _t1timeout1 = more && config.oracleTimeouts[1].length > 1 ? config.oracleTimeouts[1][1] : 0;
+        _t1error1 = more && config.oracleErrors[1].length > 1 ? config.oracleErrors[1][1] : 0;
         if (more) {
             require(address(_t1feed1) != address(0), "t1feed1 empty");
             require(_t1timeout1 > 0, "t1timeout1 zero");
@@ -182,20 +182,20 @@ contract PoolTokens {
         }
 
         // token2
-        more = config.feeds[2].length > 0;
+        more = config.feeds.length > 2 && config.feeds[2].length > 0;
         _t2feed0 = more ? config.feeds[2][0] : AggregatorV3Interface(address(0));
-        _t2timeout0 = more ? config.oracleTimeouts[2][0] : 0;
-        _t2error0 = more ? config.oracleErrors[2][0] : 0;
+        _t2timeout0 = more && config.oracleTimeouts[2].length > 0 ? config.oracleTimeouts[2][0] : 0;
+        _t2error0 = more && config.oracleErrors[2].length > 0 ? config.oracleErrors[2][0] : 0;
         if (more) {
             require(address(_t2feed0) != address(0), "t2feed0 empty");
             require(_t2timeout0 > 0, "t2timeout0 zero");
             require(_t2error0 < FIX_ONE, "t2error0 too large");
         }
 
-        more = config.feeds[2].length > 1;
+        more = config.feeds.length > 2 && config.feeds[2].length > 1;
         _t2feed1 = more ? config.feeds[2][1] : AggregatorV3Interface(address(0));
-        _t2timeout1 = more ? config.oracleTimeouts[2][1] : 0;
-        _t2error1 = more ? config.oracleErrors[2][1] : 0;
+        _t2timeout1 = more && config.oracleTimeouts[2].length > 1 ? config.oracleTimeouts[2][1] : 0;
+        _t2error1 = more && config.oracleErrors[2].length > 1 ? config.oracleErrors[2][1] : 0;
         if (more) {
             require(address(_t2feed1) != address(0), "t2feed1 empty");
             require(_t2timeout1 > 0, "t2timeout1 zero");
@@ -203,20 +203,20 @@ contract PoolTokens {
         }
 
         // token3
-        more = config.feeds[3].length > 0;
+        more = config.feeds.length > 3 && config.feeds[3].length > 0;
         _t3feed0 = more ? config.feeds[3][0] : AggregatorV3Interface(address(0));
-        _t3timeout0 = more ? config.oracleTimeouts[3][0] : 0;
-        _t3error0 = more ? config.oracleErrors[3][0] : 0;
+        _t3timeout0 = more && config.oracleTimeouts[3].length > 0 ? config.oracleTimeouts[3][0] : 0;
+        _t3error0 = more && config.oracleErrors[3].length > 0 ? config.oracleErrors[3][0] : 0;
         if (more) {
             require(address(_t3feed0) != address(0), "t3feed0 empty");
             require(_t3timeout0 > 0, "t3timeout0 zero");
             require(_t3error0 < FIX_ONE, "t3error0 too large");
         }
 
-        more = config.feeds[3].length > 1;
+        more = config.feeds.length > 3 && config.feeds[3].length > 1;
         _t3feed1 = more ? config.feeds[3][1] : AggregatorV3Interface(address(0));
-        _t3timeout1 = more ? config.oracleTimeouts[3][1] : 0;
-        _t3error1 = more ? config.oracleErrors[3][1] : 0;
+        _t3timeout1 = more && config.oracleTimeouts[3].length > 1 ? config.oracleTimeouts[3][1] : 0;
+        _t3error1 = more && config.oracleErrors[3].length > 1 ? config.oracleErrors[3][1] : 0;
         if (more) {
             require(address(_t3feed1) != address(0), "t3feed1 empty");
             require(_t3timeout1 > 0, "t3timeout1 zero");

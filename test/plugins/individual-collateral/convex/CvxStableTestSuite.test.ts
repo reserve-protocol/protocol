@@ -67,12 +67,12 @@ interface CvxStableCollateralOpts extends CollateralOpts {
 */
 
 export const defaultCvxStableCollateralOpts: CvxStableCollateralOpts = {
-  erc20: THREE_POOL_TOKEN,
+  erc20: ZERO_ADDRESS,
   targetName: ethers.utils.formatBytes32String('USD'),
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: ZERO_ADDRESS, // unused
-  oracleTimeout: bn('0'), // unused
-  oracleError: bn('0'), // unused
+  chainlinkFeed: DAI_USD_FEED, // unused but cannot be zero
+  oracleTimeout: bn('1'), // unused but cannot be zero
+  oracleError: bn('1'), // unused but cannot be zero
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -99,9 +99,9 @@ export const deployCollateral = async (
       erc20: opts.erc20,
       targetName: opts.targetName,
       priceTimeout: opts.priceTimeout,
-      chainlinkFeed: opts.feeds ? opts.feeds[0][0] : '', // unused
-      oracleError: bn('0'), // unused
-      oracleTimeout: bn('0'), // unused
+      chainlinkFeed: opts.chainlinkFeed,
+      oracleError: opts.oracleError,
+      oracleTimeout: opts.oracleTimeout,
       maxTradeVolume: opts.maxTradeVolume,
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
@@ -141,6 +141,7 @@ const makeCollateralFixtureContext = (
     const fix = await makeW3Pool()
     // TODO should anything else be replaced with mocks?
 
+    collateralOpts.erc20 = fix.w3Pool.address
     const collateral = await deployCollateral(collateralOpts)
     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX) // use CVX
     const tokDecimals = await fix.w3Pool.decimals()
