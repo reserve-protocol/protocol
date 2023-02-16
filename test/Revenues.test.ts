@@ -440,14 +440,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Depeg one of the underlying tokens - Reducing price 30%
         await setOraclePrice(collateral0.address, bn('7e7'))
         await collateral0.refresh()
-
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), fp('1'))
+        const rtokenPrice = await basketHandler.price()
+        const realRtokenPrice = rtokenPrice.low.add(rtokenPrice.high).div(2)
+        const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), realRtokenPrice)
         await expect(rTokenTrader.manageToken(token0.address))
           .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(anyValue, token0.address, rToken.address, issueAmount, withinQuad(minBuyAmt))
       })
-
+      
       it('Should not launch revenue auction if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
