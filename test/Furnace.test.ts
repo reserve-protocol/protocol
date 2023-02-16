@@ -31,7 +31,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
-const describeExtreme = 
+const describeExtreme =
   IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
 
 describe(`FurnaceP${IMPLEMENTATION} contract`, () => {

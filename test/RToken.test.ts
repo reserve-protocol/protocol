@@ -58,7 +58,7 @@ const BLOCKS_PER_HOUR = bn(300)
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
-const describeExtreme = 
+const describeExtreme =
   IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
 
 const createFixtureLoader = waffle.createFixtureLoader
