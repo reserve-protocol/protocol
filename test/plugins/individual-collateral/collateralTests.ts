@@ -78,12 +78,6 @@ export default function fn<X extends CollateralFixtureContext>(
         )
       })
 
-      it('does not allow missing rewardERC20', async () => {
-        await expect(
-          deployCollateral({ rewardERC20: ethers.constants.AddressZero })
-        ).to.be.revertedWith('rewardERC20 missing')
-      })
-
       describe('collateral-specific tests', collateralSpecificConstructorTests)
     })
 

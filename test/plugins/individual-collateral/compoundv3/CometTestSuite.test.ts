@@ -243,6 +243,12 @@ const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
 */
 
 const collateralSpecificConstructorTests = () => {
+  it('does not allow missing rewardERC20', async () => {
+    await expect(
+      deployCollateral({ rewardERC20: ethers.constants.AddressZero })
+    ).to.be.revertedWith('rewardERC20 missing')
+  })
+
   it('does not allow 0 reservesThresholdIffy', async () => {
     await expect(
       deployCollateral({ erc20: CUSDC_V3, reservesThresholdIffy: 0 })
