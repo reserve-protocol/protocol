@@ -1998,8 +1998,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Issue the "initial" rtoken supply to owner
 
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
-      await rToken.connect(owner).issue(toIssue0)
-      expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
+      if (toIssue0.gt(0)) {
+        await rToken.connect(owner).issue(toIssue0)
+        expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
+      }
 
       // ==== Issue the toIssue supply to addr1
 
