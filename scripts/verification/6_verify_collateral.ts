@@ -68,7 +68,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol()),
+      's' + (await aToken.symbol()),
     ],
     'contracts/plugins/aave/StaticATokenLM.sol:StaticATokenLM'
   )
@@ -127,7 +127,7 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
         oracleError: combinedBTCWBTCError.toString(),
-        cToken: networkConfig[chainId].tokens.cWBTC,
+        erc20: networkConfig[chainId].tokens.cWBTC,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
         targetName: hre.ethers.utils.formatBytes32String('BTC'),
