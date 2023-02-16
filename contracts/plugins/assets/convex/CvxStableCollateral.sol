@@ -18,11 +18,11 @@ interface IConvexStakingWrapper {
 }
 
 /**
- * @title CvxCurveStableCollateral
+ * @title CvxStableCollateral
  *  This plugin contract is fully general to any number of tokens in a stable pool,
  *  with between 1 and 2 oracles per each token. Stable means only like-kind pools.
  */
-contract CvxCurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
+contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 

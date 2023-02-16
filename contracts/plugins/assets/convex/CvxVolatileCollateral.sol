@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: ISC
 pragma solidity 0.8.17;
-import "./CvxCurveStableCollateral.sol";
+import "./CvxStableCollateral.sol";
 
 /**
- * @title CvxCurveVolatileCollateral
+ * @title CvxVolatileCollateral
  *  This plugin contract extends CvxCurveStableCollateral to work for
  *  volatile pools like TriCrypto
  */
-contract CvxCurveVolatileCollateral is CvxCurveStableCollateral {
+contract CvxVolatileCollateral is CvxStableCollateral {
     using FixLib for uint192;
 
     // this isn't saved by our parent classes, but we'll need to track it
@@ -17,7 +17,7 @@ contract CvxCurveVolatileCollateral is CvxCurveStableCollateral {
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig
-    ) CvxCurveStableCollateral(config, revenueHiding, ptConfig) {
+    ) CvxStableCollateral(config, revenueHiding, ptConfig) {
         _defaultThreshold = config.defaultThreshold;
     }
 

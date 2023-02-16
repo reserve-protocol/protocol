@@ -100,7 +100,8 @@ contract PoolTokens {
     }
 
     constructor(PTConfiguration memory config) {
-        require(maxFeedsLength(config.feeds) <= 3, "price feeds limited to 3");
+        require(config.nTokens <= 4, "up to 4 tokens max");
+        require(maxFeedsLength(config.feeds) <= 2, "price feeds limited to 2");
         require(
             config.feeds.length == config.nTokens && minFeedsLength(config.feeds) > 0,
             "each token needs at least 1 price feed"
@@ -158,7 +159,6 @@ contract PoolTokens {
             require(_t0timeout1 > 0, "t0timeout1 zero");
             require(_t0error1 < FIX_ONE, "t0error1 too large");
         }
-        require(config.feeds[0].length < 2, "t0feed len is too long");
 
         // token1
         more = config.feeds[1].length > 0;
@@ -180,7 +180,6 @@ contract PoolTokens {
             require(_t1timeout1 > 0, "t1timeout1 zero");
             require(_t1error1 < FIX_ONE, "t1error1 too large");
         }
-        require(config.feeds[1].length < 2, "t1feed len is too long");
 
         // token2
         more = config.feeds[2].length > 0;
@@ -202,7 +201,6 @@ contract PoolTokens {
             require(_t2timeout1 > 0, "t2timeout1 zero");
             require(_t2error1 < FIX_ONE, "t2error1 too large");
         }
-        require(config.feeds[2].length < 2, "t2feed len is too long");
 
         // token3
         more = config.feeds[3].length > 0;
@@ -224,7 +222,6 @@ contract PoolTokens {
             require(_t3timeout1 > 0, "t3timeout1 zero");
             require(_t3error1 < FIX_ONE, "t3error1 too large");
         }
-        require(config.feeds[3].length < 2, "t3feed len is too long");
     }
 
     // === Public Views ===
