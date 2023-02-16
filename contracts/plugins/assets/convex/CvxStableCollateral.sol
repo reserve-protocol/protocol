@@ -33,6 +33,8 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         uint192 revenueHiding,
         PTConfiguration memory ptConfig
     ) AppreciatingFiatCollateral(config, revenueHiding) PoolTokens(ptConfig) {
+        // parent class requires chainlinkFeed is non-empty; doesn't matter what it is
+        require(address(config.chainlinkFeed) != address(0), "chainlinkFeed zero");
         require(config.defaultThreshold > 0, "defaultThreshold zero");
     }
 

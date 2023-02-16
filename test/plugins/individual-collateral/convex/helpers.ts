@@ -60,8 +60,14 @@ export const makeW3Pool = async (): Promise<Wrapped3PoolFixture> => {
   const crv3Pool = <ERC20Mock>await ethers.getContractAt('ERC20Mock', THREE_POOL_TOKEN)
   const cvx3Pool = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX_3CRV)
 
+  // Deploy external cvxMining lib
+  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
+  const cvxMining = await CvxMiningFactory.deploy()
+
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper')
+  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
+    libraries: { CvxMining: cvxMining.address },
+  })
   const w3Pool = await wrapperFactory.deploy()
   await w3Pool.initialize(CVX_POOL_ID)
 
@@ -74,13 +80,13 @@ export const mintW3Pool = async (
   user: SignerWithAddress,
   recipient: string
 ) => {
-  const initBal = await ctx.crv3Pool.balanceOf(user.address)
-
   await whileImpersonating(THREE_POOL_HOLDER, async (signer) => {
     await ctx.crv3Pool.connect(signer).transfer(user.address, amount)
   })
 
-  await ctx.w3Pool.connect(user).deposit(initBal.sub(amount), recipient)
+  await ctx.crv3Pool.connect(user).approve(ctx.w3Pool.address, amount)
+  await ctx.w3Pool.connect(user).deposit(amount, recipient)
+  console.log('w3Pool', ctx.w3Pool.address)
 }
 
 export const resetFork = getResetFork(FORK_BLOCK)
