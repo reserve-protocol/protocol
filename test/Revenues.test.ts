@@ -1219,6 +1219,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await basketHandler.refreshBasket()
 
         // Set f = 0, avoid dropping tokens
+        
         await expect(
           distributor
             .connect(owner)
@@ -1226,6 +1227,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(1), bn(0))
+          
         await expect(
           distributor
             .connect(owner)
@@ -1244,7 +1246,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
         const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
-
+        
         await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
@@ -1265,6 +1267,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Run auctions
+        
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rTokenTrader,
@@ -1292,7 +1295,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Calculate pending amount
         const sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt)
-        const minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+        const minBuyAmtRemainder: BigNumber = await toMinBuyAmt(sellAmtRemainder, fp('1'), fp('1'))
 
         // Check funds in Market and Trader
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(sellAmt)
@@ -1308,7 +1311,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
-
+        
         // Another call will create a new auction and close existing
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
@@ -1357,6 +1360,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
+        
         // Close auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
