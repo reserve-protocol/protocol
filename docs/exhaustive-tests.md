@@ -44,8 +44,7 @@ Install the relevant packages:
 
 ```bash
 # Sudo and update apt
-sudo su
-apt update
+sudo apt update
 
 # Install nvm
 curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash 
@@ -58,7 +57,7 @@ nvm install 18
 nvm use 18
 
 # Install npm & yarn
-apt install npm
+sudo apt install npm
 npm install --global yarn
 
 # Install google cloud ops agent, for memory utilization plots
