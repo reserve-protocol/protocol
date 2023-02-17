@@ -2,7 +2,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers, upgrades } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { setOraclePrice } from './utils/oracles'
@@ -84,8 +84,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let initialBal: BigNumber
   let stkWithdrawalDelay: number
 
-  let wallet: Wallet
-
   interface IWithdrawal {
     rsrAmount: BigNumber
     availableAt: BigNumber
@@ -134,10 +132,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSRP1.draftQueueLen(era, account)).to.equal(expectedValue)
     } else return
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, addr3, other] = await ethers.getSigners()

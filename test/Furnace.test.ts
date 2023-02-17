@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
@@ -57,8 +57,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
   let initialBal: BigNumber
 
-  let wallet: Wallet
-
   // Implementation-agnostic interface for deploying the Furnace
   const deployNewFurnace = async (): Promise<TestIFurnace> => {
     if (IMPLEMENTATION == Implementation.P0) {
@@ -73,10 +71,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
     }
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

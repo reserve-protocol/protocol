@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { expectEvents } from '../../common/events'
@@ -61,12 +61,6 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
-
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

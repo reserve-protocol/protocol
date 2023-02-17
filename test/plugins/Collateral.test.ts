@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig, MAX_DELAY_UNTIL_DEFAULT } from '../../common/configuration'
 import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constants'
@@ -93,13 +93,7 @@ describe('Collateral contracts', () => {
   let CTokenFiatCollateralFactory: ContractFactory
   let InvalidMockV3AggregatorFactory: ContractFactory
 
-  let wallet: Wallet
-
   const amt = bn('100e18')
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner] = await ethers.getSigners()

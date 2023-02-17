@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
@@ -61,14 +61,8 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
-  let wallet: Wallet
-
   let initialBal: BigNumber
   let ethBal: BigNumber
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

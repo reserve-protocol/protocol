@@ -89,11 +89,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let TradeFactory: ContractFactory
   let StRSRFactory: ContractFactory
 
-  let wallet: Wallet
   let notWallet: Wallet
 
   before('create fixture loader', async () => {
-    ;[wallet, notWallet] = (await ethers.getSigners()) as unknown as Wallet[]
+    ;[, notWallet] = (await ethers.getSigners()) as unknown as Wallet[]
   })
 
   beforeEach(async () => {

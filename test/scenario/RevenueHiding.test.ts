@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp, divCeil } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
@@ -67,8 +67,6 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
-  let wallet: Wallet
-
   let initialBal: BigNumber
 
   // Computes the minBuyAmt for a sellAmt at two prices
@@ -92,10 +90,6 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

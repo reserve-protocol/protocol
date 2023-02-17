@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
 import { defaultFixture } from '../fixtures'
@@ -67,8 +67,6 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
   let initialBal: BigNumber
 
-  let wallet: Wallet
-
   let chainId: number
 
   describe.skip('Static ATokens', () => {
@@ -89,7 +87,6 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
     before(async () => {
       await setup(forkBlockNumber['mainnet-deployment'])
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
 
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {

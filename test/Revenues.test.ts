@@ -112,8 +112,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let distributor: TestIDistributor
   let main: TestIMain
 
-  let wallet: Wallet
-
   let AssetFactory: ContractFactory
 
   // Computes the minBuyAmt for a sellAmt at two prices
@@ -137,10 +135,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
@@ -448,7 +442,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(anyValue, token0.address, rToken.address, issueAmount, withinQuad(minBuyAmt))
       })
-      
+
       it('Should not launch revenue auction if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
@@ -1219,7 +1213,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await basketHandler.refreshBasket()
 
         // Set f = 0, avoid dropping tokens
-        
+
         await expect(
           distributor
             .connect(owner)
@@ -1227,7 +1221,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(1), bn(0))
-          
+
         await expect(
           distributor
             .connect(owner)
@@ -1246,7 +1240,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
         const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
-        
+
         await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
@@ -1267,7 +1261,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Run auctions
-        
+
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rTokenTrader,
@@ -1311,7 +1305,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
-        
+
         // Another call will create a new auction and close existing
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
@@ -1360,7 +1354,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        
         // Close auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {

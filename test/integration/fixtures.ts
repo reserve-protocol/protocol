@@ -4,7 +4,7 @@ import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   AaveLendingPoolMock,
   Asset,
@@ -590,8 +590,8 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
 type Fixture<T> = () => Promise<T>
 
 export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
-  let owner: SignerWithAddress
-  [owner] = await ethers.getSigners()
+  const owner: SignerWithAddress
+  ;[owner] = await ethers.getSigners()
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
   const { gnosis } = await gnosisFixture()

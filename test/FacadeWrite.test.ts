@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ContractFactory, Wallet } from 'ethers'
+import { ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import {
   IConfig,
@@ -124,12 +124,6 @@ describe('FacadeWrite contract', () => {
 
   let revShare1: IRevenueShare
   let revShare2: IRevenueShare
-
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[deployerUser, owner, addr1, addr2, beneficiary1, beneficiary2] = await ethers.getSigners()

@@ -2,7 +2,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
 import { bn, divCeil, fp } from '../../common/numbers'
@@ -60,8 +60,6 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
   let one: DefaultFixture
   let two: DefaultFixture
 
-  let wallet: Wallet
-
   // Computes the sellAmt for a minBuyAmt at two prices
   const toSellAmt = (
     minBuyAmt: BigNumber,
@@ -100,10 +98,6 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()

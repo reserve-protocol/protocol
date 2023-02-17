@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import {
   IConfig,
@@ -129,12 +129,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
 
-  let wallet: Wallet
   let basket: Collateral[]
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()

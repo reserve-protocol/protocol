@@ -2,7 +2,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_ERROR } from '../fixtures'
 import { bn, fp } from '../../common/numbers'
@@ -57,12 +57,6 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
   let token0: ERC20Mock
   let token1: ERC20Mock
   let rTokenAsset: RTokenAsset
-
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

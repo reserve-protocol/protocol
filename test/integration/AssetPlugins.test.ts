@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import {
   Collateral,
@@ -20,7 +20,6 @@ import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { advanceBlocks, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../utils/oracles'
-import forkBlockNumber from './fork-block-numbers'
 import {
   Asset,
   ATokenFiatCollateral,
@@ -165,14 +164,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let basket: Collateral[]
   let erc20s: IERC20[]
 
-  let wallet: Wallet
-
   let chainId: number
 
   describe('Assets/Collateral', () => {
     before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
         throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -967,8 +962,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // ref price approx 1.07
         await expectPrice(tkInf.eurFiatTokenCollateral.address, tkInf.refPrice, ORACLE_ERROR, true)
 
-        await expect(tkInf.eurFiatTokenCollateral.claimRewards())
-          .to.not.emit(tkInf.eurFiatTokenCollateral, 'RewardsClaimed')
+        await expect(tkInf.eurFiatTokenCollateral.claimRewards()).to.not.emit(
+          tkInf.eurFiatTokenCollateral,
+          'RewardsClaimed'
+        )
 
         expect(await tkInf.eurFiatTokenCollateral.maxTradeVolume()).to.equal(
           config.rTokenMaxTradeVolume
@@ -2342,28 +2339,22 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   // - We don't expect them to soon
   // - Rewards can always be collected later through a plugin upgrade
   describe.skip('Claim Rewards - ATokens/CTokens Fiat', () => {
-    const setup = async (blockNumber: number) => {
-      ;[owner] = await ethers.getSigners()
+    // const setup = async (blockNumber: number) => {
+    //   ;[owner] = await ethers.getSigners()
 
-      // Use Mainnet fork
-      await hre.network.provider.request({
-        method: 'hardhat_reset',
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
-              blockNumber: blockNumber,
-            },
-          },
-        ],
-      })
-    }
-
-    before(async () => {
-      await setup(forkBlockNumber['aave-compound-rewards'])
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      
-    })
+    //   // Use Mainnet fork
+    //   await hre.network.provider.request({
+    //     method: 'hardhat_reset',
+    //     params: [
+    //       {
+    //         forking: {
+    //           jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+    //           blockNumber: blockNumber,
+    //         },
+    //       },
+    //     ],
+    //   })
+    // }
 
     beforeEach(async () => {
       ;[owner, addr1] = await ethers.getSigners()

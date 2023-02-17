@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import { MAX_UINT96, TradeStatus, ZERO_ADDRESS } from '../common/constants'
@@ -19,7 +19,13 @@ import {
   ZeroDecimalMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, DefaultFixture, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
+import {
+  Collateral,
+  DefaultFixture,
+  defaultFixture,
+  Implementation,
+  IMPLEMENTATION,
+} from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
@@ -54,13 +60,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
-  let wallet: Wallet
   let basket: Collateral[]
   let collateral: Collateral[]
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, other] = await ethers.getSigners()

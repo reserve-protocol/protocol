@@ -2,7 +2,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus, MAX_UINT256 } from '../common/constants'
@@ -94,8 +94,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let main: TestIMain
 
-  let wallet: Wallet
-
   interface IBackingInfo {
     tokens: string[]
     quantities: BigNumber[]
@@ -133,10 +131,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

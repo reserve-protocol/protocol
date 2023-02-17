@@ -1,7 +1,6 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus } from '../../common/constants'
@@ -58,12 +57,6 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
-
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

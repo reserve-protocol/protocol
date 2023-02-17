@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ContractFactory, Wallet } from 'ethers'
+import { ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { IComponents, IConfig, IImplementations } from '../common/configuration'
 import { ZERO_ADDRESS } from '../common/constants'
@@ -62,12 +62,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let distributor: TestIDistributor
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   // Implementation-agnostic interface for deploying the Deployer
   const deployNewDeployer = async (

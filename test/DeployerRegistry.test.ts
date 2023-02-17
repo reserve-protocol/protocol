@@ -2,7 +2,6 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { Wallet } from 'ethers'
 import { ZERO_ADDRESS } from '../common/constants'
 import { DeployerRegistry, TestIDeployer } from '../typechain'
 import { defaultFixture } from './fixtures'
@@ -18,12 +17,6 @@ describe(`DeployerRegistry contract #fast`, () => {
 
   // Deployer contract
   let deployer: TestIDeployer
-
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, mockDeployer1, mockDeployer2, addr1] = await ethers.getSigners()

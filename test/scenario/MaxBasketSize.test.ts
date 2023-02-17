@@ -2,7 +2,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { bn, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
@@ -69,8 +69,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
-
-  let wallet: Wallet
 
   // Computes the minBuyAmt for a sellAmt at two prices
   // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
@@ -265,11 +263,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await backingManager.grantRTokenAllowance(erc20.address)
     }
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    
-  })
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()

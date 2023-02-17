@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
@@ -108,8 +108,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   let initialBal: BigNumber
 
-  let wallet: Wallet
-
   let chainId: number
 
   let CTokenCollateralFactory: ContractFactory
@@ -117,8 +115,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let mockChainlinkFeed: MockV3Aggregator
 
   before(async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)

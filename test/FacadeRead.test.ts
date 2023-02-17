@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp } from '../common/numbers'
 import { setOraclePrice } from './utils/oracles'
@@ -27,8 +27,6 @@ import {
   defaultFixture,
   ORACLE_ERROR,
 } from './fixtures'
-
-
 
 describe('FacadeRead contract', () => {
   let owner: SignerWithAddress
@@ -63,13 +61,6 @@ describe('FacadeRead contract', () => {
 
   // RSR
   let rsrAsset: Asset
-
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()

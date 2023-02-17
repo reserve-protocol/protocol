@@ -2,7 +2,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { bn, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
@@ -105,8 +105,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
 
-  let wallet: Wallet
-
   const prepareBacking = async (backing: string[]) => {
     for (let i = 0; i < backing.length; i++) {
       const erc20 = await ethers.getContractAt('ERC20Mock', backing[i])
@@ -155,10 +153,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-  })
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
