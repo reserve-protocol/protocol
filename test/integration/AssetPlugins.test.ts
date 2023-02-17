@@ -969,7 +969,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         await expect(tkInf.eurFiatTokenCollateral.claimRewards())
           .to.not.emit(tkInf.eurFiatTokenCollateral, 'RewardsClaimed')
-          .withArgs(compToken.address, 0)
 
         expect(await tkInf.eurFiatTokenCollateral.maxTradeVolume()).to.equal(
           config.rTokenMaxTradeVolume
