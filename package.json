@@ -109,6 +109,9 @@
   },
   "packageManager": "yarn@3.3.1",
   "dependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^2.0.1"
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
+    "@types/isomorphic-fetch": "^0.0.36",
+    "isomorphic-fetch": "^3.0.0"
   }
 }
