@@ -590,8 +590,8 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
 type Fixture<T> = () => Promise<T>
 
 export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
-  const owner: SignerWithAddress
-  ;[owner] = await ethers.getSigners()
+  const signers = await ethers.getSigners()
+  const owner = signers[0]
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
   const { gnosis } = await gnosisFixture()
