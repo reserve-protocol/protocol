@@ -3,6 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
+import { cloneDeep } from 'lodash'
 import {
   IConfig,
   IGovParams,
@@ -157,15 +158,16 @@ describe('FacadeWrite contract', () => {
     revShare2 = { rTokenDist: bn('4'), rsrDist: bn('6') } // 1% for beneficiary2
 
     // Decrease revenue splits for nicer rounding
-    config.dist.rTokenDist = bn('394')
-    config.dist.rsrDist = bn('591')
+    const localConfig = cloneDeep(config)
+    localConfig.dist.rTokenDist = bn('394')
+    localConfig.dist.rsrDist = bn('591')
 
     // Set parameters
     rTokenConfig = {
       name: 'RTKN RToken',
       symbol: 'RTKN',
       mandate: 'mandate',
-      params: config,
+      params: localConfig,
     }
 
     rTokenSetup = {
