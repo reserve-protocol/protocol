@@ -1526,7 +1526,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Close auctions
         // Calculate pending amount
         const sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken)
-        const minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+        const minBuyAmtRemainder: BigNumber = await toMinBuyAmt(sellAmtRemainder, fp('1'), fp('1'))
 
         // Check funds in Market and Traders
         expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
@@ -2972,7 +2972,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
-              withinQuad(minBuyAmtRSRFromCollateral),
+              withinQuad(minBuyAmtRSRFromCollateral.mul(2)),
             ],
             emitted: true,
           },
@@ -2984,7 +2984,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
-              withinQuad(minBuyAmtRTokenFromCollateral),
+              withinQuad(minBuyAmtRTokenFromCollateral.mul(2)),
             ],
             emitted: true,
           },
@@ -3002,6 +3002,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(
           expectedToTraderFromRToken.sub(sellAmtFromRToken)
         )
+
         expect(await rToken.balanceOf(furnace.address)).to.equal(expectedToFurnaceFromRToken)
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(
           expectedToRSRTraderFromCollateral.sub(sellAmtRSRFromCollateral)
