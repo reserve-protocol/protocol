@@ -36,10 +36,27 @@ interface DualFixture {
 
 type Fixture<T> = () => Promise<T>
 
+// hack to clone functions
+Function.prototype.clone = function () {
+  // eslint-disable-next-line @typescript-eslint/no-this-alias
+  const that = this
+  const temp = function temporary() {
+    // eslint-disable-next-line prefer-rest-params
+    return that.apply(this, arguments)
+  }
+  for (const key in this) {
+    // eslint-disable-next-line no-prototype-builtins
+    if (this.hasOwnProperty(key)) {
+      temp[key] = this[key]
+    }
+  }
+  return temp
+}
+
 const dualFixture: Fixture<DualFixture> = async function (): Promise<DualFixture> {
   return {
     one: await loadFixture(defaultFixture),
-    two: await loadFixture(defaultFixture),
+    two: await loadFixture(defaultFixture.clone()),
   }
 }
 

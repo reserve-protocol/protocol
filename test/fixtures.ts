@@ -57,7 +57,6 @@ import {
 } from '../typechain'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 export enum Implementation {
   P0,

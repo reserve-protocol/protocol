@@ -4,7 +4,6 @@ import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   AaveLendingPoolMock,
   Asset,
