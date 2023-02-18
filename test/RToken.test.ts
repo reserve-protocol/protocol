@@ -439,6 +439,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
     })
 
+    it('Should still issue if melting must be skipped', async () => {
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+      await rToken.connect(addr1).issue(config.issuanceThrottle.amtRate)
+      expect(await rToken.totalSupply()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await rToken.basketsNeeded()).to.equal(config.issuanceThrottle.amtRate)
+    })
+
     it('Should issue RTokens with single basket token', async function () {
       const issueAmount: BigNumber = config.issuanceThrottle.amtRate
 
