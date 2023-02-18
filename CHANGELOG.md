@@ -45,10 +45,9 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Bump solidity version to 0.8.17
 - Support multiple beneficiaries via the [`FacadeWrite`](contracts/facade/FacadeWrite.sol)
 - Add `RToken.issueTo(address recipient, uint256 amount, ..)` and `RToken.redeemTo(address recipient, uint256 amount, ..)` to support issuance/redemption to a different address than `msg.sender`
-- Add `RToken.issue*(.., bool revertOnPartialRedemption)` and `RToken.redeem*(.., bool revertOnPartialRedemption)` to enable msg sender to control whether they will accept partial redemptions or not
+- Add `RToken.redeem*(.., uint256 basketNonce)` to enable msg sender to control expectations around partial redemptions
 - Add `RToken.issuanceAvailable()` + `RToken.redemptionAvailable()`
 - Add `FacadeRead.primeBasket()` + `FacadeRead.backupConfig()` views
-- Remove `IBasketHandler.nonce()` from interface, though it remains on `BasketHandler` contracts
 - Many external libs moved to internal
 - Switch from price point estimates to price ranges; all prices now have a `low` and `high`. Impacted interface functions:
   - `IAsset.price()`
@@ -102,3 +101,4 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Payout RSR rewards on `StRSR.setRatio()`
 - Distinguish oracle timeouts when dealing with multiple oracles in one plugin
 - Add safety during asset degregistration to ensure it is always possible to unregister an infinite-looping asset
+-

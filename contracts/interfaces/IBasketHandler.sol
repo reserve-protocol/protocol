@@ -110,4 +110,7 @@ interface IBasketHandler is IComponent {
 
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);
+
+    /// @return The current basket nonce, regardless of status
+    function nonce() external view returns (uint48);
 }

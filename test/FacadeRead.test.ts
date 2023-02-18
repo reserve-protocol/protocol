@@ -152,7 +152,7 @@ describe('FacadeRead contract', () => {
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, true)
+      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
 
       // With 0 baskets needed - Returns correct value
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
@@ -189,7 +189,7 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.be.closeTo(fp('1'), 10)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, true)
+      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
 
       // Check values = 0 (no supply)
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
@@ -247,7 +247,7 @@ describe('FacadeRead contract', () => {
 
     it('Should return basketBreakdown correctly when RToken supply = 0', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, true)
+      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
 
       expect(await rToken.totalSupply()).to.equal(bn(0))
 
