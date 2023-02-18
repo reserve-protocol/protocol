@@ -1,3 +1,4 @@
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
@@ -1080,6 +1081,106 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Try with non-registered address
       expect(await assetRegistry.isRegistered(other.address)).to.equal(false)
+    })
+
+    it('Should revert with gas error if cannot reserve 900k gas', async () => {
+      expect(await assetRegistry.isRegistered(collateral0.address))
+      await expect(
+        assetRegistry.unregister(collateral0.address, { gasLimit: bn('9e5') })
+      ).to.be.revertedWith('not enough gas to unregister safely')
+    })
+
+    it('Should be able to disableBasket during deregistration with basket size of 128', async () => {
+      // Set up backup config
+      await basketHandler.setBackupConfig(await ethers.utils.formatBytes32String('USD'), 1, [
+        token1.address,
+      ])
+
+      // Register 128 coll
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+      const ERC20Factory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
+      const CollFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
+
+      const coll = []
+      for (let i = 0; i < 127; i++) {
+        const newToken: ERC20Mock = <ERC20Mock>(
+          await ERC20Factory.deploy('NewTKN Token' + i, 'NewTKN' + i)
+        )
+        const newColl = await CollFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: newToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await collateral0.oracleTimeout(),
+          targetName: await ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral0.delayUntilDefault(),
+        })
+        await assetRegistry.connect(owner).register(newColl.address)
+        coll.push(newColl)
+      }
+
+      // Register 1 gas-guzzling coll
+      const newToken: ERC20Mock = <ERC20Mock>(
+        await ERC20Factory.deploy('Gas Guzzling Token', 'GasTKN')
+      )
+      const GasGuzzlingFactory: ContractFactory = await ethers.getContractFactory(
+        'GasGuzzlingFiatCollateral'
+      )
+      const gasGuzzlingColl = await GasGuzzlingFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR,
+        erc20: newToken.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: await collateral0.oracleTimeout(),
+        targetName: await ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: await collateral0.delayUntilDefault(),
+      })
+      await assetRegistry.connect(owner).register(gasGuzzlingColl.address)
+      coll.push(gasGuzzlingColl)
+
+      // Put all 128 coll in the basket
+      const erc20s = await Promise.all(coll.map(async (c) => await c.erc20()))
+      const refAmts = erc20s.map(() => fp('1'))
+      expect(erc20s.length).to.equal(128)
+      await basketHandler.setPrimeBasket(erc20s, refAmts)
+      await basketHandler.refreshBasket()
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      const [quoteERC20s, tokAmts] = await basketHandler.quote(fp('1'), 0)
+      expect(quoteERC20s.length).to.equal(128)
+      expect(tokAmts.length).to.equal(128)
+
+      // Ensure can disableBasket
+      const replacementColl = await CollFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR,
+        erc20: await gasGuzzlingColl.erc20(),
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: await collateral0.oracleTimeout(),
+        targetName: await ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: await collateral0.delayUntilDefault(),
+      })
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      await gasGuzzlingColl.setRevertRefPerTok(true)
+      await assetRegistry.swapRegistered(replacementColl.address, { gasLimit: bn('1e6') })
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      await gasGuzzlingColl.setRevertRefPerTok(false)
+      await basketHandler.refreshBasket()
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      await assetRegistry.swapRegistered(gasGuzzlingColl.address, { gasLimit: bn('1e6') })
+      await gasGuzzlingColl.setRevertRefPerTok(true)
+      await assetRegistry.unregister(gasGuzzlingColl.address, { gasLimit: bn('1e6') })
+      expect(await assetRegistry.isRegistered(gasGuzzlingColl.address)).to.equal(false)
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      await basketHandler.refreshBasket()
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     })
 
     it('Should allow to register Asset if OWNER', async () => {
@@ -2215,6 +2316,67 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Add another asset
       await snapshotGasCost(assetRegistry.connect(owner).register(newAsset2.address))
+    })
+
+    it('Asset Registry - Unregister Asset', async () => {
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+
+      // Setup new Assets
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          chainlinkFeed.address,
+          ORACLE_ERROR,
+          erc20s[5].address,
+          config.rTokenMaxTradeVolume,
+          1
+        )
+      )
+      const newAsset2: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          chainlinkFeed.address,
+          ORACLE_ERROR,
+          erc20s[6].address,
+          config.rTokenMaxTradeVolume,
+          1
+        )
+      )
+
+      // Add new asset
+      await assetRegistry.connect(owner).register(newAsset.address)
+
+      // Add another asset
+      await assetRegistry.connect(owner).register(newAsset2.address)
+
+      // Unregister both
+      await snapshotGasCost(assetRegistry.connect(owner).unregister(newAsset.address))
+      await snapshotGasCost(assetRegistry.connect(owner).unregister(newAsset2.address))
+    })
+
+    it('Asset Registry - Swap Registered Asset', async () => {
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+
+      // Swap in replacement asset
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const replacementAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          chainlinkFeed.address,
+          ORACLE_ERROR,
+          erc20s[0].address,
+          config.rTokenMaxTradeVolume,
+          1
+        )
+      )
+
+      // Swap for replacementAsset
+      await snapshotGasCost(assetRegistry.connect(owner).swapRegistered(replacementAsset.address))
     })
   })
 })
