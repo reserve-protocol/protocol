@@ -80,19 +80,19 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
 
     /// Redeem RToken for basket collateral
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param revertOnPartialRedemption If true, will revert on partial redemption
+    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
-    function redeem(uint256 amount, bool revertOnPartialRedemption) external;
+    function redeem(uint256 amount, uint48 basketNonce) external;
 
     /// Redeem RToken for basket collateral to a particular recipient
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param revertOnPartialRedemption If true, will revert on partial redemption
+    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
     function redeemTo(
         address recipient,
         uint256 amount,
-        bool revertOnPartialRedemption
+        uint48 basketNonce
     ) external;
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
