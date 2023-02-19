@@ -116,7 +116,7 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
 contract BackingManagerP1Fuzz is BackingManagerP1 {
     using FixLib for uint192;
 
-    RecollateralizationLibP1.BasketRange public basketRangePrev;
+    BasketRange public basketRangePrev;
 
     IERC20[] public surplusTokens;
     IERC20[] public deficitTokens;
@@ -140,7 +140,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
 
         IERC20[] memory erc20s = components.reg.erc20s();
 
-        RecollateralizationLibP1.BasketRange memory range = getCurrentBasketRange();
+        BasketRange memory range = getCurrentBasketRange();
 
         // Cleanup stored arrays
         delete surplusTokens;
@@ -165,7 +165,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
     }
 
     function isBasketRangeSmaller() external view returns (bool) {
-        RecollateralizationLibP1.BasketRange memory currentRange = getCurrentBasketRange();
+        BasketRange memory currentRange = getCurrentBasketRange();
         return
             currentRange.top <= basketRangePrev.top &&
             currentRange.bottom >= basketRangePrev.bottom;
@@ -190,7 +190,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
     function getCurrentBasketRange()
         public
         view
-        returns (RecollateralizationLibP1.BasketRange memory)
+        returns (BasketRange memory)
     {
         TradingContext memory components = TradingContext({
             basketsHeld: IMainFuzz(address(main)).basketHandler().basketsHeldBy(address(this)),

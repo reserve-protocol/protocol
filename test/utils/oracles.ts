@@ -45,16 +45,21 @@ export const expectRTokenPrice = async (
   const rTokenAsset = await ethers.getContractAt('RTokenAsset', assetAddr)
   const delta = avgPrice.mul(oracleError).div(fp('1'))
 
-  // Apply two more oracleError discounts to account for the opposite basket price estimate
-  // being used to calculate range.top/bottom in RecollateralizationLib.basketRange
+  // Apply two sets of oracleError discounts to account for the opposite basket price estimate
+  // being used to calculate range.bottom
   let expectedLow = avgPrice.sub(delta)
   expectedLow = expectedLow.sub(expectedLow.mul(oracleError).div(fp('1')))
   expectedLow = expectedLow.sub(expectedLow.mul(oracleError).div(fp('1')))
 
+  // Apply four sets of oracleError discounts: 2 on the sell side and 2 on the by side
+  // The reason this is four instead of two is that range.top has contributions from
+  // deficit as well as surplus, whereas range.bottom only has contributions from surpluses
+  // (because balances are evaluated relative to wholeBasketsHeld)
   let expectedHigh = avgPrice.add(delta)
   expectedHigh = expectedHigh.add(expectedHigh.mul(oracleError).div(fp('1')))
-
+  expectedHigh = expectedHigh.add(expectedHigh.mul(oracleError).div(fp('1')))
   if (avgPrice.sub(delta).gt(0)) {
+    expectedHigh = expectedHigh.mul(avgPrice).div(avgPrice.sub(delta)).add(1)
     expectedHigh = expectedHigh.mul(avgPrice).div(avgPrice.sub(delta)).add(1)
   }
 

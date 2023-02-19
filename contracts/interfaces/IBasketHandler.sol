@@ -7,6 +7,11 @@ import "./IAsset.sol";
 import "./IComponent.sol";
 import "./IBasket.sol";
 
+struct BasketRange {
+    uint192 bottom; // {BU}
+    uint192 top; // {BU}
+}
+
 /**
  * @title IBasketHandler
  * @notice The BasketHandler aims to maintain a reference basket of constant target unit amounts.
@@ -95,8 +100,9 @@ interface IBasketHandler is IComponent {
         view
         returns (address[] memory erc20s, uint256[] memory quantities);
 
-    /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
-    function basketsHeldBy(address account) external view returns (uint192 baskets);
+    /// @return top {BU} The number of partial basket units: e.g max(coll.map((c) => c.balAsBUs())
+    ///         bottom {BU} The number of whole basket units held by the account
+    function basketsHeldBy(address account) external view returns (BasketRange memory);
 
     /// Should not revert
     /// @return low {UoA/BU} The lower end of the price estimate
@@ -109,9 +115,9 @@ interface IBasketHandler is IComponent {
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
-    /// @return The basket nonce, a monotonically increasing unique identifier
-    function nonce() external view returns (uint48);
-
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);
+
+    /// @return The current basket nonce, regardless of status
+    function nonce() external view returns (uint48);
 }

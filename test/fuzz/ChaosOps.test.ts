@@ -329,11 +329,11 @@ describe('The Chaos Operations scenario', () => {
       const bal1 = await comp.rToken.balanceOf(aliceAddr)
       expect(bal1.sub(bal0)).to.equal(7n * exa)
 
-      await scenario.connect(alice).redeem(5n * exa, true)
+      await scenario.connect(alice).redeem(5n * exa, await comp.basketHandler.nonce())
       const bal2 = await comp.rToken.balanceOf(aliceAddr)
       expect(bal2.sub(bal1)).to.equal(-5n * exa)
 
-      await scenario.connect(alice).redeem(2n * exa, true)
+      await scenario.connect(alice).redeem(2n * exa, await comp.basketHandler.nonce())
       const bal3 = await comp.rToken.balanceOf(aliceAddr)
       expect(bal3.sub(bal2)).to.equal(-2n * exa)
     })

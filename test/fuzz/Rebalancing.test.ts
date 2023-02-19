@@ -326,11 +326,11 @@ describe('The Rebalancing scenario', () => {
       const bal1 = await comp.rToken.balanceOf(aliceAddr)
       expect(bal1.sub(bal0)).to.equal(7n * exa)
 
-      await scenario.connect(alice).redeem(5n * exa, true)
+      await scenario.connect(alice).redeem(5n * exa, await comp.basketHandler.nonce())
       const bal2 = await comp.rToken.balanceOf(aliceAddr)
       expect(bal2.sub(bal1)).to.equal(-5n * exa)
 
-      await scenario.connect(alice).redeem(2n * exa, true)
+      await scenario.connect(alice).redeem(2n * exa, await comp.basketHandler.nonce())
       const bal3 = await comp.rToken.balanceOf(aliceAddr)
       expect(bal3.sub(bal2)).to.equal(-2n * exa)
     })
@@ -1605,7 +1605,7 @@ describe('The Rebalancing scenario', () => {
     await expect(scenario.connect(alice).justIssueTo(1, 0)).revertedWith("Not valid for current state")
     await expect(scenario.connect(alice).issue(1)).revertedWith("Not valid for current state")
     await expect(scenario.connect(alice).issueTo(1, 0)).revertedWith("Not valid for current state")
-    await expect(scenario.connect(alice).redeem(1, false)).revertedWith("Not valid for current state")
-    await expect(scenario.connect(alice).redeemTo(1, 0, false)).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).redeem(1, await comp.basketHandler.nonce())).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).redeemTo(1, 0, await comp.basketHandler.nonce())).revertedWith("Not valid for current state")
   })
 })

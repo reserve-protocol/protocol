@@ -78,8 +78,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         uint48 basketTimestamp = main.basketHandler().timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
+        BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
+
         if (main.basketHandler().fullyCollateralized()) {
-            handoutExcessAssets(erc20s);
+            handoutExcessAssets(erc20s, basketsHeld.bottom);
         } else {
             /*
              * Recollateralization
@@ -97,8 +99,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              */
 
-            uint192 basketsHeld = main.basketHandler().basketsHeldBy(address(this));
-
             (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareRecollateralizationTrade(
                 this,
                 basketsHeld
@@ -114,13 +114,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 tryTrade(req);
             } else {
                 // Haircut time
-                compromiseBasketsNeeded();
+                compromiseBasketsNeeded(basketsHeld.bottom);
             }
         }
     }
 
     /// Send excess assets to the RSR and RToken traders
-    function handoutExcessAssets(IERC20[] calldata erc20s) private {
+    /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
+    function handoutExcessAssets(IERC20[] calldata erc20s, uint192 wholeBasketsHeld) private {
         assert(main.basketHandler().status() == CollateralStatus.SOUND);
 
         // Special-case RSR to forward to StRSR pool
@@ -134,19 +135,18 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         {
             IRToken rToken = main.rToken();
             needed = rToken.basketsNeeded(); // {BU}
-            uint192 held = main.basketHandler().basketsHeldBy(address(this)); // {BU}
-            if (held.gt(needed)) {
+            if (wholeBasketsHeld.gt(needed)) {
                 int8 decimals = int8(rToken.decimals());
                 uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
 
                 // {BU} = {BU} - {BU}
-                uint192 extraBUs = held.minus(needed);
+                uint192 extraBUs = wholeBasketsHeld.minus(needed);
 
                 // {qRTok: Fix} = {BU} * {qRTok / BU} (if needed == 0, conv rate is 1 qRTok/BU)
                 uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
 
                 rToken.mint(address(this), rTok);
-                rToken.setBasketsNeeded(held);
+                rToken.setBasketsNeeded(wholeBasketsHeld);
             }
         }
 
@@ -180,9 +180,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
-    function compromiseBasketsNeeded() private {
+    /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
+    function compromiseBasketsNeeded(uint192 wholeBasketsHeld) private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
-        main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
+        main.rToken().setBasketsNeeded(wholeBasketsHeld);
         assert(main.basketHandler().fullyCollateralized());
     }
 

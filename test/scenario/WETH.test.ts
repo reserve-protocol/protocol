@@ -11,6 +11,7 @@ import {
   ERC20Mock,
   IAssetRegistry,
   IBasketHandler,
+  IFacadeTest,
   MockV3Aggregator,
   TestIBackingManager,
   TestIStRSR,
@@ -61,6 +62,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let facadeTest: IFacadeTest
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -90,6 +92,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       basketHandler,
       rsrTrader,
       rTokenTrader,
+      facadeTest,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -216,7 +219,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       await setOraclePrice(wethCollateral.address, bn('2e8')) // doubling of price
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, true))
+      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await weth.balanceOf(addr1.address)).to.equal(ethBal)
     })
@@ -228,7 +231,9 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        issueAmt
+      )
     })
 
     it('should be able to deregister', async () => {
@@ -246,7 +251,9 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        issueAmt
+      )
 
       // Should view WETH as surplus
       await expect(backingManager.manageTokens([token0.address, weth.address])).to.not.emit(

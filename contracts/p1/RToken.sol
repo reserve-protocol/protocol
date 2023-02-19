@@ -178,11 +178,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    /// @param revertOnPartialRedemption If true, will revert on partial redemption
-    /// @custom:action
+    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction CEI
-    function redeem(uint256 amount, bool revertOnPartialRedemption) external {
-        redeemTo(_msgSender(), amount, revertOnPartialRedemption);
+    function redeem(uint256 amount, uint48 basketNonce) external {
+        redeemTo(_msgSender(), amount, basketNonce);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
@@ -207,12 +206,12 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param revertOnPartialRedemption If true, will revert on partial redemption
+    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
     function redeemTo(
         address recipient,
         uint256 amount,
-        bool revertOnPartialRedemption
+        uint48 basketNonce
     ) public notFrozen exchangeRateIsValidAfter {
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -239,6 +238,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, supply); // FLOOR
         emit Redemption(redeemer, recipient, amount, basketsRedeemed);
 
+        require(basketHandler.nonce() == basketNonce, "non-current basket nonce");
         (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(
             basketsRedeemed,
             FLOOR
@@ -258,10 +258,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
                 supply
             ); // FLOOR
 
-            if (prorata < amounts[i]) {
-                require(!revertOnPartialRedemption, "partial redemption");
-                amounts[i] = prorata;
-            }
+            if (prorata < amounts[i]) amounts[i] = prorata;
         }
 
         uint192 newBasketsNeeded = basketsNeeded - basketsRedeemed;

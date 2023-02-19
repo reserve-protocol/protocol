@@ -389,9 +389,9 @@ contract DiffTestScenario {
         }
     }
 
-    function redeem(uint256 amount, bool revertOnPartialRedemption) public asSender {
+    function redeem(uint256 amount, uint48 basketNonce) public asSender {
         for (uint256 N = 0; N < 2; N++) {
-            p[N].rToken().redeem(amount, revertOnPartialRedemption);
+            p[N].rToken().redeem(amount, basketNonce);
         }
     }
 
@@ -1156,7 +1156,9 @@ contract DiffTestScenario {
         // basketsHeldBy(user)
         uint256 numAddrs = p[0].numConstAddrs() + p[0].numUsers() + 1;
         for (uint256 i = 0; i < numAddrs; i++) {
-            if (a.basketsHeldBy(p[0].someAddr(i)) != b.basketsHeldBy(p[1].someAddr(i)))
+            BasketRange memory bha = a.basketsHeldBy(p[0].someAddr(i));
+            BasketRange memory bhb = b.basketsHeldBy(p[1].someAddr(i));
+            if (bha.top != bhb.top && bha.bottom != bhb.bottom)
                 return false;
         }
         return true;

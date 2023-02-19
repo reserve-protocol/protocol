@@ -32,18 +32,18 @@ contract FacadeRead is IFacadeRead {
         main.poke();
         // {BU}
 
-        uint192 held = main.basketHandler().basketsHeldBy(account);
+        BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
         uint192 needed = rToken.basketsNeeded();
 
         int8 decimals = int8(rToken.decimals());
 
         // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
-        if (needed.eq(FIX_ZERO)) return held.shiftl_toUint(decimals);
+        if (needed.eq(FIX_ZERO)) return basketsHeld.bottom.shiftl_toUint(decimals);
 
         uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
 
         // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
-        return held.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
+        return basketsHeld.bottom.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
     }
 
     /// @custom:static-call
