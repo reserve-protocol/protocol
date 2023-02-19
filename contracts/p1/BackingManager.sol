@@ -107,16 +107,24 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         assetRegistry.refresh();
 
         if (tradesOpen > 0) return;
+
         // Only trade when all the collateral assets in the basket are SOUND
         require(basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
 
+        // Do not trade within tradeDelay of the last basket change
         uint48 basketTimestamp = basketHandler.timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
+        // {BU}
+        uint192 basketsNeeded = rToken.basketsNeeded();
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
 
+        // {UoA/BU}
+        (uint192 basketPriceLow, uint192 basketPriceHigh) = basketHandler.price();
+        BasketRange memory basketPrice = BasketRange(basketPriceLow, basketPriceHigh);
+
         // if (basketHandler.fullyCollateralized())
-        if (basketsHeld.bottom >= rToken.basketsNeeded()) {
+        if (basketsHeld.bottom >= basketsNeeded) {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s, basketsHeld.bottom);
         } else {
@@ -131,11 +139,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              * until it is 0, at which point collateralization is restored.
              *
              * If we run out of capital and are still undercollateralized, we compromise
-             * rToken.basketsNeeded to the current basket holdings. Haircut time.
+             * rToken.basketsNeeded halfway to the current basket holdings. Haircut time.
              */
 
             (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
-                .prepareRecollateralizationTrade(this, basketsHeld);
+                .prepareRecollateralizationTrade(this, basketsHeld, basketPrice);
 
             if (doTrade) {
                 // Seize RSR if needed
@@ -147,7 +155,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 tryTrade(req);
             } else {
                 // Haircut time
-                compromiseBasketsNeeded(basketsHeld.bottom);
+
+                compromiseBasketsNeeded(basketPriceLow, basketsHeld.bottom, basketsNeeded);
             }
         }
     }
@@ -247,11 +256,27 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)
     }
 
-    /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
+    /// Compromise on how many baskets are needed by 50%
+    /// @param basketPriceLow {UoA/BU} The low price of a BU
     /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
-    function compromiseBasketsNeeded(uint192 basketsHeldBottom) private {
-        assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
-        rToken.setBasketsNeeded(basketsHeldBottom);
+    /// @param basketsNeeded {BU} rToken.basketsNeeded()
+    function compromiseBasketsNeeded(
+        uint192 basketPriceLow,
+        uint192 basketsHeldBottom,
+        uint192 basketsNeeded
+    ) private {
+        // assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
+        assert(tradesOpen == 0 && basketsHeldBottom < basketsNeeded);
+
+        // Compromise 50% rather than all the way
+        // On the macro scale this is a binary search between basketsNeeded and basketsHeldBottom
+        uint192 halfway = (basketsHeldBottom + basketsNeeded) / 2; // {BU}
+
+        // {UoA} = ({BU} - {BU}) * {UoA/BU}
+        uint192 uoaToBottom = (halfway - basketsHeldBottom).mul(basketPriceLow);
+
+        // Bypass halway point if it would leave us with only minTradeVolume of surplus
+        rToken.setBasketsNeeded(uoaToBottom > minTradeVolume ? halfway : basketsHeldBottom);
     }
 
     // === Governance Setters ===

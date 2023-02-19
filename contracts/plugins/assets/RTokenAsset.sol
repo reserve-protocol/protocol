@@ -126,6 +126,9 @@ contract RTokenAsset is IAsset {
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(backingManager));
         uint192 basketsNeeded = IRToken(address(erc20)).basketsNeeded(); // {BU}
 
+        (uint192 basketPriceLow, uint192 basketPriceHigh) = basketHandler.price();
+        BasketRange memory basketPrice = BasketRange(basketPriceLow, basketPriceHigh);
+
         // if (basketHandler.fullyCollateralized())
         if (basketsHeld.bottom >= basketsNeeded) {
             range.bottom = basketsNeeded;
@@ -152,7 +155,7 @@ contract RTokenAsset is IAsset {
             Registry memory reg = assetRegistry.getRegistry();
 
             // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(ctx, reg);
+            range = RecollateralizationLibP1.basketRange(ctx, reg, basketPrice);
         }
     }
 }

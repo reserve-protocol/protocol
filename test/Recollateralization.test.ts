@@ -1215,7 +1215,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
       })
 
-      it('Should recollateralize correctly when switching basket - Taking average Haircut - No RSR', async () => {
+      it('Should recollateralize correctly when switching basket - Taking typical small Haircut - No RSR', async () => {
         // Empty out the staking pool
         await stRSR.connect(addr1).unstake(stakeAmount)
         await advanceTime(config.unstakingDelay.toString())
@@ -1328,6 +1328,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+        // Haircut taken
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
           issueAmount,
@@ -1343,6 +1345,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           issueAmount.mul(520).div(1000000) // 520 parts in 1 million
         )
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+
+        // Haircut should be all of the missing value since it was so small
+        const basketsHeld = await facadeTest.wholeBasketsHeldBy(
+          rToken.address,
+          backingManager.address
+        )
+        expect(await rToken.basketsNeeded()).to.equal(basketsHeld)
       })
 
       it('Should recollateralize correctly when switching basket - Taking maximum Haircut - No RSR', async () => {
@@ -1459,7 +1468,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         const remainingValue = toBNDecimals(minBuyAmt, 6).mul(bn('1e12')).add(remainder)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(remainingValue)
         expect(await token0.balanceOf(backingManager.address)).to.equal(remainder)
@@ -1474,6 +1483,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         const rTokenPrice2 = remainingValue.mul(BN_SCALE_FACTOR).div(issueAmount)
         expect(rTokenPrice2).to.be.gte(fp('0.97')) // less than 3% loss
         await expectRTokenPrice(rTokenAsset.address, rTokenPrice2, ORACLE_ERROR)
+
+        // Confirm haircut was for 50% of the missing baskets
+        const basketsHeld = await facadeTest.wholeBasketsHeldBy(
+          rToken.address,
+          backingManager.address
+        )
+        expect(await rToken.basketsNeeded()).to.equal(issueAmount.add(basketsHeld).div(2))
       })
 
       it('Should recollateralize correctly when switching basket - Necessary RSR overcollateralization', async () => {
@@ -3649,7 +3665,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Check final state - Haircut taken, stable but price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount
             .div(4)
@@ -3676,10 +3692,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // const newPrice = fp('0.82133')
         await expectRTokenPrice(rTokenAsset.address, newPrice, ORACLE_ERROR)
 
-        // Check quotes - reduced by 15.01% as well (less collateral is required to match the new price)
+        // Check quotes - reduced by 50% of 15.01%
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         const finalQuotes = newQuotes.map((q) => {
-          return q.mul(newPrice).div(fp('1'))
+          return q.mul(fp('1').add(newPrice).div(2)).div(fp('1'))
         })
         expect(quotes[0]).to.be.closeTo(finalQuotes[0], finalQuotes[0].div(bn('1e5'))) // 1 part in 100k
         expect(quotes[1]).to.be.closeTo(finalQuotes[1], finalQuotes[1].div(bn('1e5'))) // 1 part in 100k
@@ -3688,6 +3704,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
           minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmt4).add(minBuyAmt5)
         )
+
+        // Confirm haircut was for 50% of the missing baskets
+        const basketsHeld = await facadeTest.wholeBasketsHeldBy(
+          rToken.address,
+          backingManager.address
+        )
+        expect(await rToken.basketsNeeded()).to.equal(issueAmount.add(basketsHeld).div(2))
       })
 
       it('Should recollateralize correctly - Handles surplus selection - Basket switch', async () => {
@@ -4471,7 +4494,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Check final state - Haircut taken, stable but price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(fp('62.5'))
 
         await expectCurrentBacking({
@@ -4505,10 +4528,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
         )
 
-        // Check quotes - reduced by ~38.15% as well (less collateral is required to match the new price)
+        // Check quotes - reduced by 50% of 37.52%
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         const finalQuotes = newQuotes.map((q) => {
-          return divCeil(q.mul(exactRTokenPrice), fp('1'))
+          return divCeil(q.mul(fp('1').add(exactRTokenPrice).div(2)), fp('1'))
         })
         expect(quotes).to.eql(finalQuotes)
 
@@ -4518,6 +4541,39 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(
           sellAmt2.div(2).add(buyAmt4).add(sellAmtRebalance).add(minBuyAmt5).add(sellAmtRebalance2)
+        )
+
+        // Subsequent calls should continue to binary search
+        // 11 iterations
+        for (let i = 0; i < 11; i++) {
+          await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+            {
+              contract: rToken,
+              name: 'BasketsNeededChanged',
+              emitted: true,
+            },
+          ])
+        }
+
+        // Recollateralized! end up within 0.01% of the 37.52% haircut
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rToken,
+            name: 'BasketsNeededChanged',
+            emitted: false,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+        const exactBasketsNeeded = exactRTokenPrice.mul(issueAmount).div(fp('1'))
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
+        expect(await rToken.basketsNeeded()).to.be.closeTo(
+          exactBasketsNeeded,
+          exactBasketsNeeded.div(10000) // within 0.01%
         )
       })
     })

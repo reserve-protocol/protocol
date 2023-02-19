@@ -169,6 +169,7 @@ library TradingLibP0 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
+    /// @param basketsHeld {BU} The high and low (partial and whole) number of baskets held
     function prepareRecollateralizationTrade(IBackingManager bm, BasketRange memory basketsHeld)
         external
         view

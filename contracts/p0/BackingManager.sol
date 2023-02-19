@@ -183,8 +183,17 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
     function compromiseBasketsNeeded(uint192 wholeBasketsHeld) private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
-        main.rToken().setBasketsNeeded(wholeBasketsHeld);
-        assert(main.basketHandler().fullyCollateralized());
+        (uint192 basketPriceLow, ) = main.basketHandler().price(); // {UoA/BU}
+
+        // Compromise 50% rather than all the way
+        // On the macro scale this is a binary search between basketsNeeded and wholeBasketsHeld
+        uint192 halfway = (wholeBasketsHeld + main.rToken().basketsNeeded()) / 2; // {BU}
+
+        // {UoA} = ({BU} - {BU}) * {UoA/BU}
+        uint192 uoaToBottom = (halfway - wholeBasketsHeld).mul(basketPriceLow);
+
+        // Bypass halway point if it would leave us with only minTradeVolume of surplus
+        main.rToken().setBasketsNeeded(uoaToBottom > minTradeVolume ? halfway : wholeBasketsHeld);
     }
 
     // === Setters ===

@@ -53,11 +53,13 @@ library RecollateralizationLibP1 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(...) with a 0 minBuyAmount
-    function prepareRecollateralizationTrade(IBackingManager bm, BasketRange memory basketsHeld)
-        external
-        view
-        returns (bool doTrade, TradeRequest memory req)
-    {
+    /// @param basketsHeld {BU} The high and low (partial and whole) number of baskets held
+    /// @param basketPrice {UoA/BU} The high and low estimates of the basket price
+    function prepareRecollateralizationTrade(
+        IBackingManager bm,
+        BasketRange memory basketsHeld,
+        BasketRange memory basketPrice
+    ) external view returns (bool doTrade, TradeRequest memory req) {
         // === Prepare cached values ===
 
         IMain main = bm.main();
@@ -77,7 +79,7 @@ library RecollateralizationLibP1 {
         // ============================
 
         // Compute a target basket range for trading -  {BU}
-        BasketRange memory range = basketRange(ctx, reg);
+        BasketRange memory range = basketRange(ctx, reg, basketPrice);
 
         // Select a pair to trade next, if one exists
         TradeInfo memory trade = nextTradePair(ctx, reg, range);
@@ -140,13 +142,12 @@ library RecollateralizationLibP1 {
     // - range.bottom = min(rToken.basketsNeeded, basketsHeld.bottom + least baskets purchaseable)
     //   where "least baskets purchaseable" involves trading at unfavorable prices,
     //   incurring maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
-    function basketRange(TradingContext memory ctx, Registry memory reg)
-        internal
-        view
-        returns (BasketRange memory range)
-    {
-        (uint192 basketPriceLow, uint192 basketPriceHigh) = ctx.bh.price(); // {UoA/BU}
-
+    /// @param basketPrice {UoA/BU}
+    function basketRange(
+        TradingContext memory ctx,
+        Registry memory reg,
+        BasketRange memory basketPrice
+    ) internal view returns (BasketRange memory range) {
         // Cap ctx.basketsHeld.top
         if (ctx.basketsHeld.top > ctx.rToken.basketsNeeded()) {
             ctx.basketsHeld.top = ctx.rToken.basketsNeeded();
@@ -198,14 +199,14 @@ library RecollateralizationLibP1 {
                     // deficit: deduct optimistic estimate of baskets missing
 
                     // {BU} = {UoA/tok} * {tok} / {UoA/BU}
-                    deltaTop -= int256(uint256(low.mulDiv(anchor - bal, basketPriceHigh, FLOOR)));
+                    deltaTop -= int256(uint256(low.mulDiv(anchor - bal, basketPrice.top, FLOOR)));
                     // does not need underflow protection: using low price of asset
                 } else {
                     // surplus: add-in optimistic estimate of baskets purchaseable
 
                     // {BU} = {UoA/tok} * {tok} / {UoA/BU}
                     deltaTop += int256(
-                        uint256(ctx.bm.safeMulDivCeil(high, bal - anchor, basketPriceLow))
+                        uint256(ctx.bm.safeMulDivCeil(high, bal - anchor, basketPrice.bottom))
                     );
                     // needs overflow protection: using high price of asset which can be FIX_MAX
                 }
@@ -235,7 +236,7 @@ library RecollateralizationLibP1 {
                 // {BU} = {UoA} * {1} / {UoA/BU}
                 range.bottom += val.mulDiv(
                     FIX_ONE.minus(ctx.maxTradeSlippage),
-                    basketPriceHigh,
+                    basketPrice.top,
                     FLOOR
                 );
             }
