@@ -11,6 +11,7 @@ import {
   EURFiatCollateral,
   IAssetRegistry,
   IBasketHandler,
+  IFacadeTest,
   MockV3Aggregator,
   StaticATokenMock,
   TestIBackingManager,
@@ -64,6 +65,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let facadeTest: IFacadeTest
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -92,6 +94,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       basketHandler,
       rsrTrader,
       rTokenTrader,
+      facadeTest,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -210,7 +213,9 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        issueAmt
+      )
     })
 
     it('should be able to deregister', async () => {

@@ -1616,7 +1616,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
-    it('Should return FIX_ZERO for basketsHeldBy(<any account>) if the basket is empty', async () => {
+    it('Should return (FIX_ZERO, FIX_MAX) for basketsHeldBy(<any account>) if the basket is empty', async () => {
       // run a fresh deployment specifically for this test
       const receipt = await (
         await deployer.deploy(
@@ -1632,7 +1632,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const emptyBasketHandler: IBasketHandler = <IBasketHandler>(
         await ethers.getContractAt('IBasketHandler', await newMain.basketHandler())
       )
-      expect(await emptyBasketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      const busHeld = await emptyBasketHandler.basketsHeldBy(addr1.address)
+      expect(busHeld[0]).to.equal(0)
+      expect(busHeld[1]).to.equal(MAX_UINT192)
     })
 
     it('Should not allow to set backup Config if not OWNER', async () => {
@@ -1971,9 +1973,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
       // Check values
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(
+        initialBal.mul(4)
+      ) // only 0.25 of each required
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.equal(
+        initialBal.mul(4)
+      ) // only 0.25 of each required
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Swap a token for a non-collateral asset
@@ -2007,9 +2013,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
       // Check values - All zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       // Check quantities for non-collateral asset
       expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0])
@@ -2023,9 +2029,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(1, [], [], true)
 
       // Check values - All zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       // Set basket config
       await expect(
@@ -2044,9 +2050,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(2, [], [], false)
 
       // Check values - Should no longer be zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.not.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.not.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.not.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.not.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       // Unregister 2 tokens from the basket
       await expect(assetRegistry.connect(owner).unregister(newAsset.address)).to.not.emit(
@@ -2058,9 +2064,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(2, [], [], true)
 
       // Check values - All zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       expect(await basketHandler.quantity(token3.address)).to.equal(0)
 
@@ -2070,9 +2076,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(3, [], [], false)
 
       // Check values
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(2)) // 0.5 of each
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(2)) // 0.5 of each
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(
+        initialBal.mul(2)
+      ) // 0.5 of each
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.equal(
+        initialBal.mul(2)
+      ) // 0.5 of each
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0].mul(2))
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
@@ -2095,9 +2105,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(3, [], [], true)
 
       // Check values - All zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       expect(await basketHandler.quantity(token0.address)).to.equal(0)
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
@@ -2115,16 +2125,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should return no basketsHeld when collateral is disabled', async () => {
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(
+        initialBal.mul(4)
+      )
 
       // Set Token2 to hard default - Zero rate
       await token2.setExchangeRate(fp('0'))
       await collateral2.refresh()
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
     })
 
     it('Should return no basketsHeld when refPerTok = 0', async () => {
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(
+        initialBal.mul(4)
+      )
 
       // Swap collateral with one that can have refPerTok = 0 without defaulting
       const InvalidRefPerTokFiatCollFactory = await ethers.getContractFactory(
@@ -2154,7 +2168,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Set refPerTok = 0
       await newColl.setRate(bn(0))
 
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
     })
 
     it('Should return FIX_MAX as basket price in case of 1st overflow (for individual collateral)', async () => {
