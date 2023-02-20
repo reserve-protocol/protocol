@@ -133,7 +133,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
-        _payoutRewards();
+        if (!main.frozen()) _payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:
