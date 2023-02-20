@@ -303,13 +303,13 @@ Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 ### Governance Parameters
 
-Governance is 7 days end-to-end.
+Governance is 8 days end-to-end.
 
 **Default values**
 
-- Voting delay: 1 day
-- Voting period: 2 days
-- Execution delay: 4 days
+- Voting delay: 2 day
+- Voting period: 3 days
+- Execution delay: 3 days
 
-Proposal Threshold: 0.05%
+Proposal Threshold: 0.01%
 Quorum: 10% of the StRSR supply (not RSR)
