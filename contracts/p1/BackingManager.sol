@@ -114,9 +114,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
+        uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
 
         // if (basketHandler.fullyCollateralized())
-        if (basketsHeld.bottom >= rToken.basketsNeeded()) {
+        if (basketsHeld.bottom >= basketsNeeded) {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s, basketsHeld.bottom);
         } else {
@@ -147,7 +148,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 tryTrade(req);
             } else {
                 // Haircut time
-                compromiseBasketsNeeded(basketsHeld.bottom);
+                compromiseBasketsNeeded(basketsHeld.bottom, basketsNeeded);
             }
         }
     }
@@ -249,8 +250,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
-    function compromiseBasketsNeeded(uint192 basketsHeldBottom) private {
-        assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
+    /// @param basketsNeeded {BU} RToken.basketsNeeded()
+    function compromiseBasketsNeeded(uint192 basketsHeldBottom, uint192 basketsNeeded) private {
+        // assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
+        assert(tradesOpen == 0 && basketsHeldBottom < basketsNeeded);
         rToken.setBasketsNeeded(basketsHeldBottom);
     }
 
