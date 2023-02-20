@@ -53,7 +53,8 @@ Some units:
 
 Some examples:
 
-- In the USD+ RToken we have designed, the unit of account is USD. Among others, cUSDC is a collateral token with reference unit USDC and target unit USD, and aUSDP is a collateral token with reference token USDP and target unit USD.
+- For a Compound collateral token such as cUSDC, the unit of account is USD, the reference unit USDC and target unit USD.
+- For an Aave collateral token such as aUSDP, the unit of account is USD, the reference token USDP and target unit USD.
 
 - Let's say we're building a pure-stable USD basket, out of USDC, USDP, and DAI. The unit of account would surely be USD. Each collateral token would also be its own reference unit, and its target would be USD.
 
