@@ -129,21 +129,21 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    /// @param revertOnPartialRedemption If true, will revert on partial redemption
+    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
-    function redeem(uint256 amount, bool revertOnPartialRedemption) external {
-        redeemTo(_msgSender(), amount, revertOnPartialRedemption);
+    function redeem(uint256 amount, uint48 basketNonce) external {
+        redeemTo(_msgSender(), amount, basketNonce);
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param revertOnPartialRedemption If true, will revert on partial redemption
-    /// @custom:interactin
+    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
+    /// @custom:interaction
     function redeemTo(
         address recipient,
         uint256 amount,
-        bool revertOnPartialRedemption
+        uint48 basketNonce
     ) public notFrozen exchangeRateIsValidAfter {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
@@ -165,6 +165,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         assert(basketsRedeemed.lte(basketsNeeded));
         emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
 
+        require(main.basketHandler().nonce() == basketNonce, "non-current basket nonce");
         (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
             basketsRedeemed,
             FLOOR
@@ -183,10 +184,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
             // {qTok} = {qTok} * {qRTok} / {qRTok}
             uint256 prorata = mulDiv256(bal, amount, totalSupply()); // FLOOR
-            if (prorata < amounts[i]) {
-                require(!revertOnPartialRedemption, "partial redemption");
-                amounts[i] = prorata;
-            }
+            if (prorata < amounts[i]) amounts[i] = prorata;
 
             // Send withdrawal
             if (amounts[i] > 0) {

@@ -12,6 +12,7 @@ import {
   ERC20Mock,
   IAssetRegistry,
   IBasketHandler,
+  IFacadeTest,
   MockV3Aggregator,
   SelfReferentialCollateral,
   TestIBackingManager,
@@ -69,6 +70,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let facadeTest: IFacadeTest
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -98,6 +100,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       basketHandler,
       rsrTrader,
       rTokenTrader,
+      facadeTest,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -251,7 +254,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await setOraclePrice(wethCollateral.address, bn('2e8')) // doubling of price
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, true))
+      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cETH.balanceOf(addr1.address)).to.equal(initialBal)
     })
@@ -260,7 +263,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await cETH.setExchangeRate(fp('2')) // doubling of price
 
       // Compound Redemption rate should result in fewer tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, true))
+      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cETH.balanceOf(addr1.address)).to.equal(
         initialBal.sub(cTokenAmt.div(1000).div(2))
@@ -289,7 +292,9 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        issueAmt
+      )
     })
 
     it('should be able to deregister', async () => {
@@ -314,7 +319,9 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       // Should not be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        0
+      )
 
       // Should view WETH as surplus
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')

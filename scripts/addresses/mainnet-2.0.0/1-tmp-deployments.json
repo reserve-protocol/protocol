@@ -26,5 +26,6 @@
       "rToken": "0x042D85e9eb1F4372ffA362240E0630229CaA1904",
       "stRSR": "0xe2b652e538543d02f985a5e422645a704633956d"
     }
-  }
+  },
+  "facadeMonitor": "0x0c9c61df98e4a2dc4284c68615543bf8d957a94d"
 }
