@@ -49,6 +49,7 @@ import {
   SLOW,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  VERSION,
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { useEnv } from '#/utils/env'
@@ -164,12 +165,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('Should setup the DomainSeparator for Permit correctly', async () => {
       const chainId = await getChainId(hre)
       const _name = await rToken.name()
-      const version = '1'
       const verifyingContract = rToken.address
       expect(await rToken.DOMAIN_SEPARATOR()).to.equal(
         ethers.utils._TypedDataEncoder.hashDomain({
           name: _name,
-          version,
+          version: VERSION,
           chainId,
           verifyingContract,
         })
@@ -1646,7 +1646,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       const permit = await signERC2612Permit(
         addr1,
-        rToken.address,
+        {
+          name: await rToken.name(),
+          version: VERSION,
+          chainId: await getChainId(hre),
+          verifyingContract: rToken.address,
+        },
         addr1.address,
         addr2.address,
         amount.toString()

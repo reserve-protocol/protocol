@@ -108,7 +108,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
         __Component_init(main_);
-        __EIP712_init(name_, "1");
+        __EIP712_init(name_, VERSION);
         _name = name_;
         _symbol = symbol_;
         payoutLastPaid = block.timestamp;
