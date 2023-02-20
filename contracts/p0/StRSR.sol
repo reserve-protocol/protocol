@@ -129,7 +129,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @param rsrAmount {qRSR}
     /// @dev Staking continues while paused, without reward handouts
     /// @custom:interaction
-    function stake(uint256 rsrAmount) external notFrozen {
+    function stake(uint256 rsrAmount) external {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 

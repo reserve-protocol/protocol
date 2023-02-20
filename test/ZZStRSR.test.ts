@@ -400,7 +400,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
-    it('Should not allow to stake if Main is Frozen', async () => {
+    it('Should still allow to stake if frozen', async () => {
+      // This is crucial for governace to function
+
       // Perform stake
       const amount: BigNumber = bn('1000e18')
 
@@ -409,7 +411,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('frozen')
+      await stRSR.connect(addr1).stake(amount)
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
     it('Should allow to stake/deposit in RSR', async () => {

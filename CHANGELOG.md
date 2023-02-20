@@ -88,7 +88,6 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
   - ++`RToken.IssuanceThrottleSet`
   - ++`RToken.RedemptionThrottleSet`
 - Allow redemption while DISABLED
-- Disallow staking while FROZEN
 - Allow `grantRTokenAllowances()` while paused
 - Add `RToken.monetizeDonations()` escape hatch for accidentally donated tokens
 - Collateral default threshold: 5% -> 1% (+ include oracleError)
