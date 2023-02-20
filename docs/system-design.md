@@ -181,7 +181,7 @@ Mainnet reasonable range: 1e22 to 1e27.
 
 Dimension: `{1}`
 
-The `rewardRatio` is the amount of the current reward amount that should be handed out per span of 12s.
+The `rewardRatio` is the fraction of the current reward amount that should be handed out per span of 12s.
 
 Default value: `1069671574938` = a half life of 90 days at a period of 12s.
 
