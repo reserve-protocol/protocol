@@ -257,6 +257,8 @@ In order to restrict the system to organic patterns of behavior, we maintain two
 
 Note the differing units: the `amtRate` variable is in terms of `{qRTok/hour}` while the `pctRate` variable is in terms of `{1/hour}`, i.e a fraction.
 
+**The redemption throttle must always be configured to be less restrictive than the issunace throttle in order to prevent redemption DOS.**
+
 #### `issuanceThrottle.amtRate`
 
 Dimension: `{qRTok/hour}`
@@ -264,6 +266,8 @@ Dimension: `{qRTok/hour}`
 A quantity of RToken that serves as a lower-bound for how much net issuance to allow per hour.
 
 Must be at least 1 whole RToken, or 1e18. Can be as large as 1e48. Set it to 1e48 if you want to effectively disable the issuance throttle altogether.
+
+Must be less than `redemptionThrottle.amtRate`.
 
 Default value: `1e24` = 1,000,000 RToken
 Mainnet reasonable range: 1e23 to 1e27
@@ -276,6 +280,8 @@ A fraction of the RToken supply that indicates how much net issuance to allow pe
 
 Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 
+Must be less than `redemptionThrottle.pctRate`.
+
 Default value: `5e16` = 5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
@@ -287,7 +293,9 @@ A quantity of RToken that serves as a lower-bound for how much net redemption to
 
 Must be at least 1 whole RToken, or 1e18. Can be as large as 1e48. Set it to 1e48 if you want to effectively disable the redemption throttle altogether.
 
-Default value: `1e24` = 1,000,000 RToken
+Must exceed `issuanceThrottle.amtRate`.
+
+Default value: `2e24` = 2,000,000 RToken
 Mainnet reasonable range: 1e23 to 1e27
 
 #### `redemptionThrottle.pctRate`
@@ -298,7 +306,9 @@ A fraction of the RToken supply that indicates how much net redemption to allow 
 
 Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 
-Default value: `5e16` = 5% per hour
+Must exceed `issuanceThrottle.pctRate`.
+
+Default value: `1e17` = 10% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 ### Governance Parameters

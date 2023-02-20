@@ -206,80 +206,92 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(fp('1'))
     })
 
-    it('Should allow to update issuance throttle if Owner and perform validations', async () => {
-      const issuanceThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') }
+    it('Should allow to update issuance throttles if Owner and perform validations', async () => {
+      const throttleParams = { amtRate: fp('1'), pctRate: fp('0.1') }
       await expect(
-        rToken.connect(addr1).setIssuanceThrottleParams(issuanceThrottleParams)
+        rToken.connect(addr1).setIssuanceThrottleParams(throttleParams)
       ).to.be.revertedWith('governance only')
 
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      await rToken
+        .connect(owner)
+        .setRedemptionThrottleParams({ amtRate: MAX_THROTTLE_AMT_RATE, pctRate: fp('1') })
+      await rToken.connect(owner).setIssuanceThrottleParams(throttleParams)
+      await rToken.connect(owner).setRedemptionThrottleParams(throttleParams)
       let params = await rToken.issuanceThrottleParams()
-      expect(params[0]).to.equal(issuanceThrottleParams.amtRate)
-      expect(params[1]).to.equal(issuanceThrottleParams.pctRate)
+      expect(params[0]).to.equal(throttleParams.amtRate)
+      expect(params[1]).to.equal(throttleParams.pctRate)
 
-      issuanceThrottleParams.amtRate = fp('2')
-      issuanceThrottleParams.pctRate = fp('1')
-      await expect(rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams))
+      throttleParams.amtRate = fp('2')
+      throttleParams.pctRate = fp('1')
+      await expect(rToken.connect(owner).setRedemptionThrottleParams(throttleParams))
+      await expect(rToken.connect(owner).setIssuanceThrottleParams(throttleParams))
       params = await rToken.issuanceThrottleParams()
-      expect(params[0]).to.equal(issuanceThrottleParams.amtRate)
-      expect(params[1]).to.equal(issuanceThrottleParams.pctRate)
+      expect(params[0]).to.equal(throttleParams.amtRate)
+      expect(params[1]).to.equal(throttleParams.pctRate)
 
       // Cannot update with too small amtRate
-      issuanceThrottleParams.amtRate = fp('1').sub(1)
+      throttleParams.amtRate = fp('1').sub(1)
       await expect(
-        rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+        rToken.connect(owner).setIssuanceThrottleParams(throttleParams)
       ).to.be.revertedWith('issuance amtRate too small')
 
       // Cannot update with too big amtRate
-      issuanceThrottleParams.amtRate = bn('1e48').add(1)
+      throttleParams.amtRate = bn('1e48').add(1)
       await expect(
-        rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+        rToken.connect(owner).setIssuanceThrottleParams(throttleParams)
       ).to.be.revertedWith('issuance amtRate too big')
 
       // Cannot update with too big pctRate
-      issuanceThrottleParams.amtRate = fp('1')
-      issuanceThrottleParams.pctRate = fp('1').add(bn('1'))
+      throttleParams.amtRate = fp('1')
+      throttleParams.pctRate = fp('1').add(bn('1'))
       await expect(
-        rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+        rToken.connect(owner).setIssuanceThrottleParams(throttleParams)
       ).to.be.revertedWith('issuance pctRate too big')
-    })
-
-    it('Should allow to update redemption throttle if Owner and perform validations', async () => {
-      const redemptionThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') }
-      await expect(
-        rToken.connect(addr1).setRedemptionThrottleParams(redemptionThrottleParams)
-      ).to.be.revertedWith('governance only')
-
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
-      let params = await rToken.redemptionThrottleParams()
-      expect(params[0]).to.equal(redemptionThrottleParams.amtRate)
-      expect(params[1]).to.equal(redemptionThrottleParams.pctRate)
-
-      redemptionThrottleParams.amtRate = fp('2')
-      redemptionThrottleParams.pctRate = fp('1')
-      await expect(rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams))
-      params = await rToken.redemptionThrottleParams()
-      expect(params[0]).to.equal(redemptionThrottleParams.amtRate)
-      expect(params[1]).to.equal(redemptionThrottleParams.pctRate)
 
       // Cannot update with too small amtRate
-      redemptionThrottleParams.amtRate = fp('1').sub(1)
+      throttleParams.amtRate = fp('1').sub(1)
       await expect(
-        rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+        rToken.connect(owner).setRedemptionThrottleParams(throttleParams)
       ).to.be.revertedWith('redemption amtRate too small')
 
       // Cannot update with too big amtRate
-      redemptionThrottleParams.amtRate = bn('1e48').add(1)
+      throttleParams.amtRate = bn('1e48').add(1)
       await expect(
-        rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+        rToken.connect(owner).setRedemptionThrottleParams(throttleParams)
       ).to.be.revertedWith('redemption amtRate too big')
 
       // Cannot update with too big pctRate
-      redemptionThrottleParams.amtRate = fp('1')
-      redemptionThrottleParams.pctRate = fp('1').add(bn('1'))
+      throttleParams.amtRate = fp('1')
+      throttleParams.pctRate = fp('1').add(bn('1'))
       await expect(
-        rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+        rToken.connect(owner).setRedemptionThrottleParams(throttleParams)
       ).to.be.revertedWith('redemption pctRate too big')
+
+      // Cannot have issuance throttle exceed redemption throttle
+      throttleParams.amtRate = fp('2.0001')
+      throttleParams.pctRate = fp('1')
+      await expect(
+        rToken.connect(owner).setIssuanceThrottleParams(throttleParams)
+      ).to.be.revertedWith('issuance amtRate > redeem')
+      throttleParams.amtRate = fp('2')
+      throttleParams.pctRate = fp('0.9')
+      await rToken.connect(owner).setIssuanceThrottleParams(throttleParams)
+      await rToken.connect(owner).setRedemptionThrottleParams(throttleParams)
+      throttleParams.pctRate = fp('1')
+      await expect(
+        rToken.connect(owner).setIssuanceThrottleParams(throttleParams)
+      ).to.be.revertedWith('issuance pctRate > redeem')
+
+      // Cannot have redemption throttle be less than issuance throttle
+      throttleParams.amtRate = fp('1.9999')
+      await expect(
+        rToken.connect(owner).setRedemptionThrottleParams(throttleParams)
+      ).to.be.revertedWith('redemption amtRate < issuance')
+      throttleParams.amtRate = fp('2')
+      throttleParams.pctRate = fp('0.8')
+      await expect(
+        rToken.connect(owner).setRedemptionThrottleParams(throttleParams)
+      ).to.be.revertedWith('redemption pctRate < issuance')
     })
 
     it('Should return a price of 0 if the assets become unregistered', async () => {
@@ -353,6 +365,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     it('Should not allow overflow issuance -- regression test for C4 truncation bug', async function () {
       // Max out issuance throttle
+      await rToken.connect(owner).setIssuanceThrottleParams({ amtRate: fp('1'), pctRate: 0 })
+      await rToken
+        .connect(owner)
+        .setRedemptionThrottleParams({ amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 })
       await rToken
         .connect(owner)
         .setIssuanceThrottleParams({ amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 })
@@ -767,6 +783,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const issuanceThrottle = JSON.parse(JSON.stringify(config.issuanceThrottle))
       issuanceThrottle.pctRate = 0
       await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottle)
+      await rToken.connect(owner).setRedemptionThrottleParams(issuanceThrottle)
 
       // Provide approvals
       await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
@@ -1097,7 +1114,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             amtRate: fp('2'), // 2 RToken,
             pctRate: fp('0.1'), // 10%
           }
+          await rToken.connect(owner).setIssuanceThrottleParams({ amtRate: fp('1'), pctRate: 0 })
           await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+          await rToken.connect(owner).setIssuanceThrottleParams(redemptionThrottleParams)
           const params = await rToken.redemptionThrottleParams()
           expect(params[0]).to.equal(redemptionThrottleParams.amtRate)
           expect(params[1]).to.equal(redemptionThrottleParams.pctRate)
@@ -1157,8 +1176,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         it('Should support 1e48 amtRate throttles', async function () {
           const throttles = JSON.parse(JSON.stringify(config.redemptionThrottle))
           throttles.amtRate = bn('1e48')
-          await rToken.connect(owner).setIssuanceThrottleParams(throttles)
           await rToken.connect(owner).setRedemptionThrottleParams(throttles)
+          await rToken.connect(owner).setIssuanceThrottleParams(throttles)
 
           // Mint collateral
           await token0.mint(addr1.address, throttles.amtRate)
@@ -1523,6 +1542,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow melt to set BU exchange rate to below 1e-9', async () => {
+      await rToken.setRedemptionThrottleParams({ amtRate: bn('1e28'), pctRate: fp('1') })
       await rToken.setIssuanceThrottleParams({ amtRate: bn('1e28'), pctRate: fp('1') })
       await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
       const largeIssueAmt = bn('1e28')

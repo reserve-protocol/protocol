@@ -79,8 +79,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         furnace = main_.furnace();
 
         mandate = mandate_;
-        setIssuanceThrottleParams(issuanceThrottleParams_);
         setRedemptionThrottleParams(redemptionThrottleParams_);
+        setIssuanceThrottleParams(issuanceThrottleParams_);
 
         issuanceThrottle.lastTimestamp = uint48(block.timestamp);
         redemptionThrottle.lastTimestamp = uint48(block.timestamp);
@@ -380,6 +380,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "issuance amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "issuance amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "issuance pctRate too big");
+
+        require(params.amtRate <= redemptionThrottle.params.amtRate, "issuance amtRate > redeem");
+        require(params.pctRate <= redemptionThrottle.params.pctRate, "issuance pctRate > redeem");
+
         emit IssuanceThrottleSet(issuanceThrottle.params, params);
         issuanceThrottle.params = params;
     }
@@ -389,6 +393,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "redemption amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "redemption amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "redemption pctRate too big");
+
+        require(params.amtRate >= issuanceThrottle.params.amtRate, "redemption amtRate < issuance");
+        require(params.pctRate >= issuanceThrottle.params.pctRate, "redemption pctRate < issuance");
+
         emit RedemptionThrottleSet(redemptionThrottle.params, params);
         redemptionThrottle.params = params;
     }
