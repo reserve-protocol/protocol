@@ -31,7 +31,14 @@ import {
   setNextBlockTimestamp,
 } from './utils/time'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, Implementation, IMPLEMENTATION, SLOW } from './fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  Implementation,
+  IMPLEMENTATION,
+  SLOW,
+  VERSION,
+} from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
@@ -201,12 +208,11 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Should setup the DomainSeparator for Permit correctly', async () => {
       const chainId = await getChainId(hre)
       const _name = await stRSR.name()
-      const version = '1'
       const verifyingContract = stRSR.address
       expect(await stRSR.DOMAIN_SEPARATOR()).to.equal(
         await ethers.utils._TypedDataEncoder.hashDomain({
           name: _name,
-          version,
+          version: VERSION,
           chainId,
           verifyingContract,
         })
@@ -403,7 +409,9 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
-    it('Should not allow to stake if Main is Frozen', async () => {
+    it('Should still allow to stake if frozen', async () => {
+      // This is crucial for governace to function
+
       // Perform stake
       const amount: BigNumber = bn('1000e18')
 
@@ -412,7 +420,8 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('frozen')
+      await stRSR.connect(addr1).stake(amount)
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
     it('Should allow to stake/deposit in RSR', async () => {
@@ -1914,7 +1923,12 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       const permit = await signERC2612Permit(
         addr1,
-        stRSR.address,
+        {
+          name: await stRSR.name(),
+          version: VERSION,
+          chainId: await getChainId(hre),
+          verifyingContract: stRSR.address,
+        },
         addr1.address,
         addr2.address,
         amount.toString()
@@ -1942,7 +1956,12 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Set invalid signature
       const permit = await signERC2612Permit(
         addr1,
-        stRSR.address,
+        {
+          name: await stRSR.name(),
+          version: VERSION,
+          chainId: await getChainId(hre),
+          verifyingContract: stRSR.address,
+        },
         addr1.address,
         addr2.address,
         amount.add(1).toString()
@@ -2189,13 +2208,12 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       const expiry = MAX_UINT256
       const chainId = await getChainId(hre)
       const name = await stRSRVotes.name()
-      const version = '1'
       const verifyingContract = stRSRVotes.address
 
       // Get data
       const buildData = {
         types: { Delegation },
-        domain: { name, version, chainId, verifyingContract },
+        domain: { name, version: VERSION, chainId, verifyingContract },
         message: {
           delegatee: addr1.address,
           nonce,
@@ -2232,13 +2250,12 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       const expiry = MAX_UINT256
       const chainId = await getChainId(hre)
       const name = await stRSRVotes.name()
-      const version = '1'
       const verifyingContract = stRSRVotes.address
 
       // Get data
       const buildData = {
         types: { Delegation },
-        domain: { name, version, chainId, verifyingContract },
+        domain: { name, version: VERSION, chainId, verifyingContract },
         message: {
           delegatee: addr1.address,
           nonce: invalidNonce,
@@ -2291,7 +2308,12 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       const permit = await signERC2612Permit(
         addr1,
-        stRSR.address,
+        {
+          name: await stRSR.name(),
+          version: VERSION,
+          chainId: await getChainId(hre),
+          verifyingContract: stRSR.address,
+        },
         addr1.address,
         addr2.address,
         amount.toString()
@@ -2321,7 +2343,6 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       const chainId = await getChainId(hre)
       const expiry = MAX_UINT256
-      const version = '1'
       const name = await stRSRVotes.name()
       const verifyingContract = stRSRVotes.address
 
@@ -2329,7 +2350,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       const sig1 = ethers.utils.splitSignature(
         await addr1._signTypedData(
-          { name, version, chainId, verifyingContract },
+          { name, version: VERSION, chainId, verifyingContract },
           { Delegation },
           {
             delegatee: addr1.address,
@@ -2350,7 +2371,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       const sig2 = ethers.utils.splitSignature(
         await addr1._signTypedData(
-          { name, version, chainId, verifyingContract },
+          { name, version: VERSION, chainId, verifyingContract },
           { Delegation },
           {
             delegatee: addr1.address,
