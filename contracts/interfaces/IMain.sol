@@ -68,7 +68,7 @@ interface IAuth is IAccessControlUpgradeable {
 
     /**
      * Paused: Disable everything except for OWNER actions and RToken.redeem/cancel
-     * Frozen: Disable everything except for OWNER actions
+     * Frozen: Disable everything except for OWNER actions + StRSR.stake (for governance)
      */
 
     function pausedOrFrozen() external view returns (bool);

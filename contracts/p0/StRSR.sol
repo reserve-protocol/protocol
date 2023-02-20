@@ -108,7 +108,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
         __Component_init(main_);
-        __EIP712_init(name_, "1");
+        __EIP712_init(name_, VERSION);
         _name = name_;
         _symbol = symbol_;
         payoutLastPaid = block.timestamp;
@@ -129,11 +129,11 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @param rsrAmount {qRSR}
     /// @dev Staking continues while paused, without reward handouts
     /// @custom:interaction
-    function stake(uint256 rsrAmount) external notFrozen {
+    function stake(uint256 rsrAmount) external {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
-        _payoutRewards();
+        if (!main.frozen()) _payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:
@@ -233,6 +233,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
+        main.poke();
+
         uint192 initialExchangeRate = exchangeRate();
         uint256 rewards = rsrRewards();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));

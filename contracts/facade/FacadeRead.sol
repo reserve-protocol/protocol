@@ -64,6 +64,51 @@ contract FacadeRead is IFacadeRead {
         (tokens, deposits) = bh.quote(baskets, CEIL);
     }
 
+    /// @return tokens The erc20s returned for the redemption
+    /// @return withdrawals The balances necessary to issue `amount` RToken
+    /// @return isProrata True if the redemption is prorata and not full
+    /// @custom:static-call
+    function redeem(
+        IRToken rToken,
+        uint256 amount,
+        uint48 basketNonce
+    )
+        external
+        returns (
+            address[] memory tokens,
+            uint256[] memory withdrawals,
+            bool isProrata
+        )
+    {
+        IMain main = rToken.main();
+        main.poke();
+        IRToken rTok = rToken;
+        IBasketHandler bh = main.basketHandler();
+        uint256 supply = rTok.totalSupply();
+        require(bh.nonce() == basketNonce, "non-current basket nonce");
+
+        // D18{BU} = D18{BU} * {qRTok} / {qRTok}
+        uint192 basketsRedeemed = rTok.basketsNeeded().muluDivu(amount, supply);
+
+        (tokens, withdrawals) = bh.quote(basketsRedeemed, FLOOR);
+
+        // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
+        address backingManager = address(main.backingManager());
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // {qTok} = {qTok} * {qRTok} / {qRTok}
+            uint256 prorata = mulDiv256(
+                IERC20Upgradeable(tokens[i]).balanceOf(backingManager),
+                amount,
+                supply
+            ); // FLOOR
+
+            if (prorata < withdrawals[i]) {
+                withdrawals[i] = prorata;
+                isProrata = true;
+            }
+        }
+    }
+
     /// @return erc20s The ERC20 addresses in the current basket
     /// @return uoaShares {1} The proportion of the basket associated with each ERC20
     /// @return targets The bytes32 representations of the target unit associated with each ERC20
