@@ -163,7 +163,7 @@ This variable should NOT be interpreted to mean that auction sizes above this va
 
 This parameter can be set to zero.
 
-Default value: `1e21` = $1k
+Default value: `1e22` = $10k
 Mainnet reasonable range: 1e19 to 1e23
 
 #### `rTokenMaxTradeVolume`
@@ -183,7 +183,7 @@ Dimension: `{1}`
 
 The `rewardRatio` is the fraction of the current reward amount that should be handed out per span of 12s.
 
-Default value: `1069671574938` = a half life of 90 days at a period of 12s.
+Default value: `3209014700000` = a half life of 30 days at a period of 12s.
 
 Mainnet reasonable range: 1e11 to 1e13
 
@@ -204,7 +204,7 @@ Dimension: `{seconds}`
 
 The trading delay is how many seconds should pass after the basket has been changed before a trade can be opened. In the long term this can be set to 0 after MEV searchers are firmly integrated, but at the start it may be useful to have a delay before trading in order to avoid worst-case prices.
 
-Default value: `14400` = 4 hours
+Default value: `21600` = 6 hours
 Mainnet reasonable range: 0 to 604800
 
 ### `auctionLength`
@@ -231,7 +231,7 @@ Dimension: `{1}`
 
 The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at. Oracle prices have ranges of their own; the maximum trade slippage permits additional price movement beyond the worst-case oracle price.
 
-Default value: `0.02e18` = 2%
+Default value: `0.01e18` or `0.02e18` = 1/2%
 Mainnet reasonable range: 1e12 to 1e18
 
 ### `shortFreeze`
@@ -299,7 +299,7 @@ A fraction of the RToken supply that indicates how much net redemption to allow 
 
 Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 
-Default value: `5e16` = 5% per hour
+Default value: `2.5e16` = 2.5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 ### Governance Parameters
