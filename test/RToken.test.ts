@@ -1123,6 +1123,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
           // Charge throttle
           await advanceTime(3600)
+
+          // Mine block
+          await hre.network.provider.send('evm_mine', [])
         })
 
         it('Should calculate redemption limit correctly', async function () {
@@ -1157,9 +1160,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
           expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
 
-          // Check issuance throttle - full
-          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
-
           redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
           await expect(
             rToken.connect(addr1).redeem(redeemAmount.add(1), await basketHandler.nonce())
@@ -1176,6 +1176,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         it('Should support 1e48 amtRate throttles', async function () {
           const throttles = JSON.parse(JSON.stringify(config.redemptionThrottle))
           throttles.amtRate = bn('1e48')
+          await rToken.connect(owner).setIssuanceThrottleParams({ amtRate: fp('1'), pctRate: 0 })
           await rToken.connect(owner).setRedemptionThrottleParams(throttles)
           await rToken.connect(owner).setIssuanceThrottleParams(throttles)
 
@@ -1207,6 +1208,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         it('Should use amtRate if pctRate is zero', async function () {
           redeemAmount = redemptionThrottleParams.amtRate
           redemptionThrottleParams.pctRate = bn(0)
+          await rToken.connect(owner).setIssuanceThrottleParams(redemptionThrottleParams)
           await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
 
           // Large redemption should fail

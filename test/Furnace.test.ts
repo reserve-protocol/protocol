@@ -469,8 +469,8 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Set up larger throttles
       const throttle = { amtRate: bal.lt(fp('1')) ? fp('1') : bal, pctRate: 0 }
-      await rToken.connect(owner).setIssuanceThrottleParams(throttle)
       await rToken.connect(owner).setRedemptionThrottleParams(throttle)
+      await rToken.connect(owner).setIssuanceThrottleParams(throttle)
       await advanceTime(3600)
 
       // Issue and send tokens to furnace

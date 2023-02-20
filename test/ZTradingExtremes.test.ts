@@ -335,6 +335,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       // Issue rTokens
       const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+      await rToken.setIssuanceThrottleParams({ amtRate: fp('1'), pctRate: 0 })
       await rToken.setRedemptionThrottleParams(noThrottle)
       await rToken.setIssuanceThrottleParams(noThrottle)
       await rToken.connect(addr1).issue(rTokenSupply)
@@ -472,6 +473,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       // Issue rTokens
       const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+      await rToken.setIssuanceThrottleParams({ amtRate: fp('1'), pctRate: 0 })
       await rToken.setRedemptionThrottleParams(noThrottle)
       await rToken.setIssuanceThrottleParams(noThrottle)
       await rToken.connect(addr1).issue(rTokenSupply)
@@ -645,6 +647,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       // Issue rTokens
       const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
+      await rToken.setIssuanceThrottleParams({ amtRate: fp('1'), pctRate: 0 })
       await rToken.setRedemptionThrottleParams(noThrottle)
       await rToken.setIssuanceThrottleParams(noThrottle)
       await rToken.connect(addr1).issue(rTokenSupply)
