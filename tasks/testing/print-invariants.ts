@@ -28,7 +28,7 @@ task('print-invariants', 'Prints the invariant names for each fuzzing scenario')
         chaosArtifact = <Artifact>JSON.parse(await fs.readFileSync(`${artifactsPath}ChaosOps.sol/ChaosOpsScenario.json`, 'utf-8'))
         rebalancingArtifact = <Artifact>JSON.parse(await fs.readFileSync(`${artifactsPath}Rebalancing.sol/RebalancingScenario.json`, 'utf-8'))
     } catch {
-        throw Error('nope')
+        throw Error('compile first')
     }
 
     function printInvariants(artifact: Artifact) {

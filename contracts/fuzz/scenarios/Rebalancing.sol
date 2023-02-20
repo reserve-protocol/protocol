@@ -532,7 +532,7 @@ contract RebalancingScenario {
         uint192 b,
         uint192 c,
         uint192 d
-    ) public {
+    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
         IERC20 erc20 = main.someToken(seedID);
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20)) return;
