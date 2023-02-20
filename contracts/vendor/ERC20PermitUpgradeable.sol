@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgra
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../libraries/Permit.sol";
+import "../mixins/Versioned.sol";
 
 /**
  * @dev Implementation of the ERC20 Permit extension allowing approvals to be made via signatures, as defined in
@@ -54,12 +55,13 @@ abstract contract ERC20PermitUpgradeable is
     //      This function is only called inside other `init` functions, each of which is wrapped
     //      in an `initializer` modifier, which would fail first.
     /**
-     * @dev Initializes the {EIP712} domain separator using the `name` parameter, and setting `version` to `"1"`.
+     * @dev Initializes the {EIP712} domain separator using the `name` parameter, and setting `version` to
+     *      the system-wide semver release version.
      *
      * It's a good idea to use the same `name` that is defined as the ERC20 token name.
      */
     function __ERC20Permit_init(string memory name) internal onlyInitializing {
-        __EIP712_init_unchained(name, "1");
+        __EIP712_init_unchained(name, VERSION);
     }
 
     // untestable:

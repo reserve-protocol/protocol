@@ -168,7 +168,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
         __Component_init(main_);
-        __EIP712_init(name_, "1");
+        __EIP712_init(name_, VERSION);
         name = name_;
         symbol = symbol_;
 
