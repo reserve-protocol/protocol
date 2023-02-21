@@ -75,12 +75,8 @@ contract FurnaceP1 is ComponentP1, IFurnace {
         uint256 amount = payoutRatio.mulu_toUint(lastPayoutBal);
 
         lastPayout += numPeriods * PERIOD;
-        // solhint-disable-next-line no-empty-blocks
-        if (amount > 0) try rToken.melt(amount) {} catch {}
-
-        // since we already updated lastPayout this function is already reentrant-safe
-        // and RToken is also within our security domain
-        lastPayoutBal = rToken.balanceOf(address(this));
+        lastPayoutBal = rToken.balanceOf(address(this)) - amount;
+        if (amount > 0) rToken.melt(amount);
     }
 
     /// Ratio setting

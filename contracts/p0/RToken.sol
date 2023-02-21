@@ -219,7 +219,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     function melt(uint256 amount) external exchangeRateIsValidAfter {
         require(_msgSender() == address(main.furnace()), "furnace only");
         _burn(_msgSender(), amount);
-        require(totalSupply() >= FIX_ONE, "rToken supply too low to melt");
         emit Melted(amount);
     }
 
