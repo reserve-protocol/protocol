@@ -77,7 +77,6 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     event AllUnstakingReset(uint256 indexed newEra);
 
     event UnstakingDelaySet(uint48 indexed oldVal, uint48 indexed newVal);
-    event RewardPeriodSet(uint48 indexed oldVal, uint48 indexed newVal);
     event RewardRatioSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     // Initialization

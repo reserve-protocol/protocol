@@ -316,9 +316,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // untestable:
     //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
     //   but it is fully covered for `melt` (limitations of coverage plugin)
-    function melt(uint256 amtRToken) external notPausedOrFrozen exchangeRateIsValidAfter {
+    function melt(uint256 amtRToken) external exchangeRateIsValidAfter {
+        require(_msgSender() == address(furnace), "furnace only");
         _burn(_msgSender(), amtRToken);
-        require(totalSupply() >= FIX_ONE, "rToken supply too low to melt");
         emit Melted(amtRToken);
     }
 
