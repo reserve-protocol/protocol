@@ -126,9 +126,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   ): BigNumber => {
     const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
     const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = minBuyAmt.mul(fp('1').add(maxTradeSlippage)).mul(highBuyPrice)
+    const product = divCeil(minBuyAmt.mul(fp('1')).mul(highBuyPrice), fp('1').sub(maxTradeSlippage))
 
-    return divCeil(divCeil(product, lowSellPrice), fp('1'))
+    return divCeil(product, lowSellPrice)
   }
 
   // Computes the minBuyAmt for a sellAmt at two prices
@@ -1497,7 +1497,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       sellAmount: auctionSellAmtRSR,
       buyAmount: buyAmtBidRSR,
     })
-    
+
     // Close auctions - Will sell RSR for the remaining 7 WBTC
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
@@ -1534,7 +1534,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
   })
 
-  it.only('Should recollateralize basket correctly - cETH, multiple auctions', async () => {
+  it('Should recollateralize basket correctly - cETH, multiple auctions', async () => {
     // Set RSR price to 100 usd
     const rsrPrice = fp('100') // 100 usd for less auctions
     await setOraclePrice(rsrAsset.address, toBNDecimals(rsrPrice, 8))
@@ -1803,7 +1803,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await advanceTime(config.auctionLength.add(100).toString())
 
     // Mock auction - Get 8500 WETH tokens
-    const auctionbuyAmtRSR1 = fp('8500')
+    // const auctionbuyAmtRSR1 = fp('8500')
+    const auctionbuyAmtRSR1 = buyAmtBidRSR1
     await weth.connect(addr1).approve(gnosis.address, auctionbuyAmtRSR1)
     await gnosis.placeBid(2, {
       bidder: addr1.address,
@@ -1812,25 +1813,31 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Now we only have 4500 WETH to buy, we would reach the full collateralization
-    const buyAmtRSR2 = fp('4500')
+    const wethBalAfterAuction = (await weth.balanceOf(backingManager.address)).add(
+      auctionbuyAmtRSR1
+    )
+    const wethQuantity = await basketHandler.quantity(weth.address) // {tok/BU}
+    const basketsNeeded = await rToken.basketsNeeded() // {BU}
+    const wethNeeded = wethQuantity.mul(basketsNeeded).div(fp('1')) // {tok} = {tok/BU} * {BU}
+    let buyAmtRSR2 = wethNeeded.sub(wethBalAfterAuction)
     const sellAmtRSR2 = toSellAmt(
       buyAmtRSR2,
       fp('100'),
       fp('1200'),
       ORACLE_ERROR,
       config.maxTradeSlippage
-    )
+    ).add(1)
+    buyAmtRSR2 = buyAmtRSR2.add(1)
 
     // Close auctions - Will sell RSR Buy #2
-    // Needs 4500 WETH, sells about 55600 RSR
-    console.log(4, sellAmtRSR2)
+    // Needs ~4500 WETH, sells about 55600 RSR
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
-      // {
-      //   contract: backingManager,
-      //   name: 'TradeSettled',
-      //   args: [anyValue, rsr.address, weth.address, auctionSellAmtRSR1, auctionbuyAmtRSR1],
-      //   emitted: true,
-      // },
+      {
+        contract: backingManager,
+        name: 'TradeSettled',
+        args: [anyValue, rsr.address, weth.address, auctionSellAmtRSR1, auctionbuyAmtRSR1],
+        emitted: true,
+      },
       {
         contract: backingManager,
         name: 'TradeStarted',
@@ -1888,7 +1895,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Close auctions - No need to trigger new auctions
-    console.log(5)
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
