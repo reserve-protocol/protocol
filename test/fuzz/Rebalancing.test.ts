@@ -1608,4 +1608,18 @@ describe('The Rebalancing scenario', () => {
     await expect(scenario.connect(alice).redeem(1, await comp.basketHandler.nonce())).revertedWith("Not valid for current state")
     await expect(scenario.connect(alice).redeemTo(1, 0, await comp.basketHandler.nonce())).revertedWith("Not valid for current state")
   })
+
+  it('price updates not allowed during rebalance', async () => {
+
+  })
+
+  it('uses the current basket to run the rebalancingProperties invariant', async () => {
+    await scenario.connect(alice).issueTo(1,0)
+    await scenario.connect(alice).unregisterAsset(0)
+    await scenario.connect(alice).pushBackingToManage(bn('150835712417908919285644013065474027887448859297381733494843312354601897167'))
+    await scenario.connect(alice).refreshBasket()
+    await scenario.connect(alice).pushBackingToManage(bn('6277620527355649775567068284304829410240875426814377481773201392576289608'))
+    const check = await scenario.callStatic.echidna_rebalancingProperties()
+    expect(check).to.equal(true)
+  })
 })

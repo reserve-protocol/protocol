@@ -1060,9 +1060,9 @@ contract RebalancingScenario {
 
             // Save Tokens in surplus and deficit (excludes RSR)
             bm.saveSurplusAndDeficitTokens();
-
+            IAssetRegistry ar = main.assetRegistry();
             // Create trade, if able and needed
-            try this.manageBackingTokens() {
+            try main.backingManager().manageTokens(ar.erc20s()) {
                 // Check if new trade was created
                 if (bm.tradesOpen() > tradesBMPrev && broker.tradesLength() > tradesBrokerPrev) {
                     TradeMock trade = TradeMock(address(broker.lastOpenedTrade()));
