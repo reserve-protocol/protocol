@@ -57,7 +57,6 @@ contract FacadeWrite is IFacadeWrite {
         // Get Main
         IMain main = rToken.main();
         IAssetRegistry assetRegistry = main.assetRegistry();
-        IBackingManager backingManager = main.backingManager();
         IBasketHandler basketHandler = main.basketHandler();
 
         // Register assets
