@@ -66,6 +66,11 @@ contract RebalancingScenario {
     // This contract's state-machine state. See RebalancingStatus enum, above
     ScenarioStatus public status;
 
+    // A flag for denoting if a "natural" change to the basket range might have taken place
+    // example: price increase, rewards were claimed (permissionless)
+    // governance actions (basket changes, etc) are not considered "natural"
+    bool public naturalBasketRangeUpdate;
+
     // Once constructed, everything is set up for random echidna runs to happen:
     // - main and its components are up
     // - standard tokens, and their Assets and Collateral, exist
@@ -532,7 +537,7 @@ contract RebalancingScenario {
         uint192 b,
         uint192 c,
         uint192 d
-    ) public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
+    ) public {
         IERC20 erc20 = main.someToken(seedID);
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20)) return;
@@ -548,6 +553,7 @@ contract RebalancingScenario {
         } else {
             AssetMock(address(asset)).update(a);
         }
+        naturalBasketRangeUpdate = true;
     }
 
     // update reward amount
@@ -564,6 +570,7 @@ contract RebalancingScenario {
         if (which == 0) main.rTokenTrader().claimRewards();
         else if (which == 1) main.rsrTrader().claimRewards();
         else if (which == 2) main.backingManager().claimRewards();
+        naturalBasketRangeUpdate = true;
     }
 
     function pushSeedForTrades(uint256 seed) public {
@@ -1039,6 +1046,7 @@ contract RebalancingScenario {
         BackingManagerP1Fuzz bm = BackingManagerP1Fuzz(address(main.backingManager()));
         // Invariant is only valid during Rebalancing, and if no trades are open
         if (
+            !naturalBasketRangeUpdate && 
             status == ScenarioStatus.REBALANCING_ONGOING &&
             bm.tradesOpen() == 0 &&
             !bm.isBasketRangeSmaller()

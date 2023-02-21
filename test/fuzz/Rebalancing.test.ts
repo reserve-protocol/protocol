@@ -1609,10 +1609,6 @@ describe('The Rebalancing scenario', () => {
     await expect(scenario.connect(alice).redeemTo(1, 0, await comp.basketHandler.nonce())).revertedWith("Not valid for current state")
   })
 
-  it('price updates not allowed during rebalance', async () => {
-
-  })
-
   it('uses the current basket to run the rebalancingProperties invariant', async () => {
     await scenario.connect(alice).issueTo(1,0)
     await scenario.connect(alice).unregisterAsset(0)
@@ -1620,6 +1616,29 @@ describe('The Rebalancing scenario', () => {
     await scenario.connect(alice).refreshBasket()
     await scenario.connect(alice).pushBackingToManage(bn('6277620527355649775567068284304829410240875426814377481773201392576289608'))
     const check = await scenario.callStatic.echidna_rebalancingProperties()
+    expect(check).to.equal(true)
+  })
+
+  it('does not check basket range invariant if a natural range change occurs (claim rewards)', async () => {
+    await advanceBlocks(1)
+    await advanceTime(18)
+    await scenario.connect(alice).issue(15)
+    await scenario.connect(alice).updateRewards(bn('5989074762477379593905432766392491628643188479108275170789277813070778'), bn('12263554421802902403200938667897536687116647395531351968278586982578834557'))
+    await scenario.connect(alice).swapRegisteredAsset(0,0,bn('586768731244946216864435810688149951399342547346310326714'),0,false,false,0)
+    await scenario.connect(alice).refreshBasket()
+    await scenario.connect(alice).claimRewards(2)
+    const check = await scenario.echidna_basketRangeSmallerWhenRebalancing()
+    expect(check).to.equal(true)
+  })
+
+  it('does not check basket range invariant if a natural range change occurs (price update)', async () => {
+    await advanceBlocks(1)
+    await advanceTime(1)
+    await scenario.connect(alice).issue(101)
+    await scenario.connect(alice).swapRegisteredAsset(0,0,0,0,false,false,755084)
+    await scenario.connect(alice).refreshBasket()
+    await scenario.connect(alice).updatePrice(bn('4323490466645790929141000681379989217343309331490685561636627260745769225206'),bn('67360096239366422136176627671622570761630213553489626664'),bn('448235445655748428353993347788358432613042269770005933435'),bn('166780645086412136133053140534918526494436220154790922420'),bn('311571270105666158381426195843102477030798339529245571675'))
+    const check = await scenario.echidna_basketRangeSmallerWhenRebalancing()
     expect(check).to.equal(true)
   })
 })
