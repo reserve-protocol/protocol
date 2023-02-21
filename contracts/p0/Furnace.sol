@@ -45,7 +45,7 @@ contract FurnaceP0 is ComponentP0, IFurnace {
         lastPayout += numPeriods * PERIOD;
 
         // solhint-disable-next-line no-empty-blocks
-        if (amount > 0) try rToken.melt(amount) {} catch {}
+        if (amount > 0) rToken.melt(amount);
         lastPayoutBal = rToken.balanceOf(address(this));
     }
 
