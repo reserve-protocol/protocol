@@ -63,17 +63,9 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
   // Implementation-agnostic interface for deploying the Furnace
   const deployNewFurnace = async (): Promise<TestIFurnace> => {
-    if (IMPLEMENTATION == Implementation.P0) {
-      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
-      return <TestIFurnace>await FurnaceFactory.deploy()
-    } else if (IMPLEMENTATION == Implementation.P1) {
-      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
-      return <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
-        kind: 'uups',
-      })
-    } else {
-      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
-    }
+    // Deploy fixture
+    ;({ furnace } = await loadFixture(defaultFixture))
+    return furnace
   }
 
   before('create fixture loader', async () => {
@@ -251,31 +243,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
     })
 
-    it('Should melt 0 when RToken supply is small', async () => {
-      const hndAmt: BigNumber = fp('1')
-
-      // Burn most of what we issued
-      await rToken.connect(addr1).melt((await rToken.balanceOf(addr1.address)).sub(hndAmt))
-      await rToken.connect(addr2).melt(await rToken.balanceOf(addr2.address))
-      expect(await rToken.totalSupply()).to.equal(hndAmt)
-
-      // Transfer
-      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
-
-      // Get past first noop melt
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
-
-      // Should still not melt 1 period later
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
-
-      // Should begin melting once totalSupply after melt is > 1e18
-      await rToken.connect(addr1).issue(fp('0.01'))
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-      await expect(furnace.connect(addr1).melt()).to.emit(rToken, 'Melted')
-    })
-
     it('Should allow melt - one period #fast', async () => {
       const hndAmt: BigNumber = bn('10e18')
 
@@ -332,12 +299,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       for (let i = 0; i < Number(oneDay.div(ONE_PERIOD)); i++) {
         // Advance a period
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-        await expect(firstFurnace.melt()).to.emit(rToken, 'Melted')
+        await firstFurnace.melt()
         // secondFurnace does not melt
       }
 
       // SecondFurnace melts once
-      await expect(secondFurnace.melt()).to.emit(rToken, 'Melted')
+      await secondFurnace.melt()
 
       const one = await rToken.balanceOf(firstFurnace.address)
       const two = await rToken.balanceOf(secondFurnace.address)

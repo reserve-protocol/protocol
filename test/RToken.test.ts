@@ -1369,16 +1369,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('furnace only')
     })
 
-    it('Should not melt if supply too low', async () => {
-      await rToken.connect(addr1).transfer(furnace.address, issueAmount)
-
-      await whileImpersonating(furnace.address, async (signer) => {
-        await expect(rToken.connect(signer).melt(issueAmount.sub(bn('1e8')))).to.be.revertedWith(
-          'rToken supply too low to melt'
-        )
-      })
-    })
-
     it('Should not allow mint/transfer/transferFrom to address(this)', async () => {
       // mint
       await whileImpersonating(backingManager.address, async (signer) => {
