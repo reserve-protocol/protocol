@@ -4,10 +4,10 @@ exports[`MainP1 contract Gas Reporting Asset Registry - Refresh 1`] = `292627`;
 
 exports[`MainP1 contract Gas Reporting Asset Registry - Register Asset 1`] = `192869`;
 
-exports[`MainP1 contract Gas Reporting Asset Registry - Register Asset 2`] = `192869`;
+exports[`MainP1 contract Gas Reporting Asset Registry - Register Asset 2`] = `192857`;
 
 exports[`MainP1 contract Gas Reporting Asset Registry - Swap Registered Asset 1`] = `169192`;
 
 exports[`MainP1 contract Gas Reporting Asset Registry - Unregister Asset 1`] = `83401`;
 
-exports[`MainP1 contract Gas Reporting Asset Registry - Unregister Asset 2`] = `72913`;
+exports[`MainP1 contract Gas Reporting Asset Registry - Unregister Asset 2`] = `72901`;
