@@ -28,6 +28,7 @@ import {
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIFurnace,
   TestIMain,
   TestIRToken,
   USDCMock,
@@ -92,6 +93,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
+  let furnace: TestIFurnace
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -115,6 +117,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       main,
       rToken,
       rTokenAsset,
+      furnace,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -1362,33 +1365,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
     })
 
-    it('Should not melt if paused', async () => {
-      await main.connect(owner).pause()
-      await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
-    })
-
-    it('Should not melt if frozen', async () => {
-      await main.connect(owner).freezeShort()
-      await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
+    it('Should not melt if caller is not furnace', async () => {
+      await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('furnace only')
     })
 
     it('Should not melt if supply too low', async () => {
-      await expect(rToken.connect(addr1).melt(issueAmount.sub(bn('1e8')))).revertedWith(
-        'rToken supply too low to melt'
-      )
-    })
+      await rToken.connect(addr1).transfer(furnace.address, issueAmount)
 
-    it('Should allow to melt tokens if caller', async () => {
-      // Melt tokens
-      const meltAmount: BigNumber = bn('10e18')
-
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await rToken.totalSupply()).to.equal(issueAmount)
-
-      await rToken.connect(addr1).melt(meltAmount)
-
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(meltAmount))
-      expect(await rToken.totalSupply()).to.equal(issueAmount.sub(meltAmount))
+      await whileImpersonating(furnace.address, async (signer) => {
+        await expect(rToken.connect(signer).melt(issueAmount.sub(bn('1e8')))).to.be.revertedWith(
+          'rToken supply too low to melt'
+        )
+      })
     })
 
     it('Should not allow mint/transfer/transferFrom to address(this)', async () => {
@@ -1535,12 +1523,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         tokens.map((t) => t.connect(addr1).approve(rToken.address, largeIssueAmt.sub(issueAmount)))
       )
       await rToken.connect(addr1).issue(largeIssueAmt.sub(issueAmount))
+      await rToken.connect(addr1).transfer(furnace.address, largeIssueAmt)
 
       // melt()
-      await expect(
-        rToken.connect(addr1).melt(largeIssueAmt.sub(largeIssueAmt.div(bn('1e9'))).add(1))
-      ).to.be.revertedWith('BU rate out of range')
-      await rToken.connect(addr1).melt(largeIssueAmt.sub(largeIssueAmt.div(bn('1e9'))))
+      await whileImpersonating(furnace.address, async (signer) => {
+        await expect(
+          rToken.connect(signer).melt(largeIssueAmt.sub(largeIssueAmt.div(bn('1e9'))).add(1))
+        ).to.be.revertedWith('BU rate out of range')
+        await rToken.connect(signer).melt(largeIssueAmt.sub(largeIssueAmt.div(bn('1e9'))))
+      })
     })
   })
 
