@@ -7,7 +7,6 @@ export const withinQuad = (x: BigNumber): ((y: BigNumber) => boolean) => {
     const tolerance = x.div(bn('1e15'))
     const lower = x.sub(tolerance)
     const higher = x.add(tolerance)
-    console.log(x, y, lower, higher)
     return y.gte(lower) && y.lte(higher)
   }
 }

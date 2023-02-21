@@ -5,7 +5,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { bn, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
+import { bn, fp, pow10, toBNDecimals } from '../../common/numbers'
 import {
   Asset,
   ComptrollerMock,
@@ -39,7 +39,7 @@ import {
   REVENUE_HIDING,
 } from '../fixtures'
 import { BN_SCALE_FACTOR, CollateralStatus, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
-import { expectTrade, getTrade } from '../utils/trades'
+import { expectTrade, getTrade, toSellAmt, toMinBuyAmt } from '../utils/trades'
 import { expectPrice, expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
 
@@ -114,44 +114,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       // Grant allowances
       await backingManager.grantRTokenAllowance(erc20.address)
     }
-  }
-
-  // Computes the sellAmt for a minBuyAmt at two prices
-  const toSellAmt = (
-    minBuyAmt: BigNumber,
-    sellPrice: BigNumber,
-    buyPrice: BigNumber,
-    oracleError: BigNumber,
-    maxTradeSlippage: BigNumber
-  ): BigNumber => {
-    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
-    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = divCeil(minBuyAmt.mul(fp('1')).mul(highBuyPrice), fp('1').sub(maxTradeSlippage))
-
-    return divCeil(product, lowSellPrice)
-  }
-
-  // Computes the minBuyAmt for a sellAmt at two prices
-  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
-  const toMinBuyAmt = (
-    sellAmt: BigNumber,
-    sellPrice: BigNumber,
-    buyPrice: BigNumber,
-    oracleError: BigNumber,
-    maxTradeSlippage: BigNumber
-  ): BigNumber => {
-    // do all muls first so we don't round unnecessarily
-    // a = loss due to max trade slippage
-    // b = loss due to selling token at the low price
-    // c = loss due to buying token at the high price
-    // mirrors the math from TradeLib ~L:57
-    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
-    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = sellAmt
-      .mul(fp('1').sub(maxTradeSlippage)) // (a)
-      .mul(lowSellPrice) // (b)
-
-    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
 
   beforeEach(async () => {

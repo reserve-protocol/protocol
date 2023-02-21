@@ -2,11 +2,11 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
-import { bn, divCeil, fp } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { withinQuad } from '../utils/matchers'
+import { toSellAmt, toMinBuyAmt } from '../utils/trades'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { advanceTime } from '../utils/time'
 import { expectEvents } from '../../common/events'
@@ -76,45 +76,6 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
   // Whole system instances
   let one: DefaultFixture
   let two: DefaultFixture
-
-  // Computes the sellAmt for a minBuyAmt at two prices
-  const toSellAmt = (
-    minBuyAmt: BigNumber,
-    sellPrice: BigNumber,
-    buyPrice: BigNumber,
-    oracleError: BigNumber,
-    maxTradeSlippage: BigNumber
-  ): BigNumber => {
-    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
-    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = minBuyAmt.mul(fp('1').add(maxTradeSlippage)).mul(highBuyPrice)
-
-    return divCeil(divCeil(product, lowSellPrice), fp('1'))
-  }
-
-  // Computes the minBuyAmt for a sellAmt at two prices
-  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
-  const toMinBuyAmt = (
-    sellAmt: BigNumber,
-    sellPrice: BigNumber,
-    buyPrice: BigNumber,
-    oracleError: BigNumber,
-    maxTradeSlippage: BigNumber
-  ): BigNumber => {
-    // do all muls first so we don't round unnecessarily
-    // a = loss due to max trade slippage
-    // b = loss due to selling token at the low price
-    // c = loss due to buying token at the high price
-    // mirrors the math from TradeLib ~L:57
-
-    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
-    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = sellAmt
-      .mul(fp('1').sub(maxTradeSlippage)) // (a)
-      .mul(lowSellPrice) // (b)
-
-    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
-  }
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
@@ -260,6 +221,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         ORACLE_ERROR,
         await one.backingManager.maxTradeSlippage()
       )
+      console.log(1, sellAmt)
       await expect(one.backingManager.manageTokens([]))
         .to.emit(one.backingManager, 'TradeStarted')
         .withArgs(
