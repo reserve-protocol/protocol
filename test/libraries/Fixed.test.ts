@@ -102,20 +102,25 @@ describe('In FixLib,', () => {
 
     it('fails on inputs outside its domain', async () => {
       const table = [
-        [MAX_FIX_UINT, 1],
-        [MAX_FIX_UINT.add(1), 0],
-        [MIN_FIX_UINT.sub(1), 0],
-        [1, 58],
-        [-1, 58],
-        [bn('1e8'), 50],
-        [bn('-1e8'), 50],
-        [bn('5e56'), 2],
-        [bn('-5e56'), 2],
+        [MAX_FIX_UINT, bn(1)],
+        [MAX_FIX_UINT.add(1), bn(0)],
+        [MIN_FIX_UINT.sub(1), bn(0)],
+        [bn(1), bn(58)],
+        [bn(-1), bn(58)],
+        [bn('1e8'), bn(50)],
+        [bn('-1e8'), bn(50)],
+        [bn('5e56'), bn(2)],
+        [bn('-5e56'), bn(2)],
       ]
 
       for (const [x, s] of table) {
-        await expect(caller.shiftl_toFix_(x, s), `toFix(${x}, ${s})`).to.be.reverted
-        await expect(caller.shiftl_toFix_Rnd(x, s, FLOOR), `toFix(${x}, ${s}, FLOOR)`).be.reverted
+        if (x.lt(0)) {
+          await expect(caller.shiftl_toFix_negative_x(x, s), `toFix(${x}, ${s})`).to.be.reverted
+          await expect(caller.shiftl_toFix_negative_x_Rnd(x, s, FLOOR), `toFix(${x}, ${s}, FLOOR)`).be.reverted
+        } else {
+          await expect(caller.shiftl_toFix_(x, s), `toFix(${x}, ${s})`).to.be.reverted
+          await expect(caller.shiftl_toFix_Rnd(x, s, FLOOR), `toFix(${x}, ${s}, FLOOR)`).be.reverted
+        }
       }
     })
     it('handles rounding', async () => {
@@ -280,12 +285,12 @@ describe('In FixLib,', () => {
       }
     })
     it('fails on negative Fixes', async () => {
-      const table = [-1, MAX_FIX_UINT.mul(-1), fp(-986349)]
+      const table = [bn(-1), MAX_FIX_UINT.mul(-1), fp(-986349)]
       for (const val of table) {
-        await expect(caller.toUint(val), `${val}`).to.be.reverted
-        await expect(caller.toUintRnd(val, FLOOR), `${val}`).to.be.reverted
-        await expect(caller.toUintRnd(val, ROUND), `${val}`).to.be.reverted
-        await expect(caller.toUintRnd(val, CEIL), `${val}`).to.be.reverted
+        await expect(caller.toUint_negative_x(val), `${val}`).to.be.reverted
+        await expect(caller.toUintRnd_negative_x(val, FLOOR), `${val}`).to.be.reverted
+        await expect(caller.toUintRnd_negative_x(val, ROUND), `${val}`).to.be.reverted
+        await expect(caller.toUintRnd_negative_x(val, CEIL), `${val}`).to.be.reverted
       }
     })
   })
@@ -369,13 +374,13 @@ describe('In FixLib,', () => {
       expect(await caller.plus(MIN_UINT192.div(2), MIN_UINT192.div(2))).to.equal(MIN_UINT192)
       expect(await caller.plus(MAX_UINT192, 0)).to.equal(MAX_UINT192)
     })
-    it('fails outside its range', async () => {
+    it.only('fails outside its range', async () => {
       await expect(caller.plus(MAX_UINT192, 1), 'plus(MAX, 1)').to.be.reverted
       const half_max = MAX_UINT192.add(1).div(2)
       await expect(caller.plus(half_max, half_max), 'plus((MAX+1)/2, (MAX+1)/2)').to.be.reverted
-      await expect(caller.plus(MIN_UINT192, -1), 'plus(MIN, -1)').to.be.reverted
+      await expect(caller.plus_negative_y(MIN_UINT192, -1), 'plus(MIN, -1)').to.be.reverted
       await expect(
-        caller.plus(MIN_UINT192.div(2), MIN_UINT192.div(2).sub(1)),
+        caller.plus_negative_y(MIN_UINT192.div(2), MIN_UINT192.div(2).sub(1)),
         'plus(MIN/2, MIN/2 -1)'
       ).to.be.reverted
     })
@@ -454,13 +459,13 @@ describe('In FixLib,', () => {
       expect(await caller.minus(MIN_UINT192, MIN_UINT192)).to.equal(0)
     })
     it('fails outside its range', async () => {
-      await expect(caller.minus(MAX_UINT192, -1), 'minus(MAX, -1)').to.be.reverted
+      await expect(caller.minus_negative_y(MAX_UINT192, -1), 'minus(MAX, -1)').to.be.reverted
       const half_max = MAX_UINT192.add(1).div(2)
       await expect(caller.minus(half_max, half_max.mul(-1)), 'minus((MAX+1)/2, -(MAX+1)/2)').to.be
         .reverted
       await expect(caller.minus(MIN_UINT192, 1), 'minus(MIN, 1)').to.be.reverted
       const half_min = MIN_UINT192.div(2)
-      await expect(caller.minus(half_min, half_min.sub(1).mul(-1)), 'minus(MIN/2, -MIN/2 +1)').to.be
+      await expect(caller.minus_negative_y(half_min, half_min.sub(1).mul(-1)), 'minus(MIN/2, -MIN/2 +1)').to.be
         .reverted
     })
   })

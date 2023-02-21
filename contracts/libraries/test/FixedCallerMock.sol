@@ -12,8 +12,17 @@ contract FixedCallerMock {
     function shiftl_toFix_(uint256 x, int8 d) public pure returns (uint192 ) {
         return shiftl_toFix(x, d);
     }
+
+    function shiftl_toFix_negative_x(int256 x, int8 d) public pure returns (uint192 ) {
+        return shiftl_toFix(uint256(x), d);
+    }
+
     function shiftl_toFix_Rnd(uint256 x, int8 d, RoundingMode rnd) public pure returns (uint192 ) {
         return shiftl_toFix(x, d, rnd);
+    }
+
+    function shiftl_toFix_negative_x_Rnd(int256 x, int8 d, RoundingMode rnd) public pure returns (uint192 ) {
+        return shiftl_toFix(uint256(x), d, rnd);
     }
 
     function divFix_(uint256 x, uint192  y) public pure returns (uint192 ) {
@@ -38,8 +47,14 @@ contract FixedCallerMock {
     function toUint(uint192  x) public pure returns (uint256 ) {
         return FixLib.toUint(x);
     }
+    function toUint_negative_x(int192  x) public pure returns (uint256 ) {
+        return FixLib.toUint(uint192(x));
+    }
     function toUintRnd(uint192  x, RoundingMode rnd) public pure returns (uint256 ) {
         return FixLib.toUint(x, rnd);
+    }
+    function toUintRnd_negative_x(int192  x, RoundingMode rnd) public pure returns (uint256 ) {
+        return FixLib.toUint(uint192(x), rnd);
     }
     function shiftl(uint192  x, int8 decimals) public pure returns (uint192 ) {
         return FixLib.shiftl(x, decimals);
@@ -50,11 +65,17 @@ contract FixedCallerMock {
     function plus(uint192  x, uint192  y) public pure returns (uint192 ) {
         return FixLib.plus(x, y);
     }
+    function plus_negative_y(uint192  x, int192  y) public pure returns (uint192 ) {
+        return FixLib.plus(x, uint192(y));
+    }
     function plusu(uint192  x, uint256 y) public pure returns (uint192 ) {
         return FixLib.plusu(x, y);
     }
     function minus(uint192  x, uint192  y) public pure returns (uint192 ) {
         return FixLib.minus(x, y);
+    }
+    function minus_negative_y(uint192  x, int192  y) public pure returns (uint192 ) {
+        return FixLib.minus(x, uint192(y));
     }
     function minusu(uint192  x, uint256 y) public pure returns (uint192 ) {
         return FixLib.minusu(x, y);
