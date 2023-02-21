@@ -559,9 +559,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Should launch auction for token1
-      console.log('1')
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
-      console.log('2')
 
       const auctionTimestamp: number = await getLatestBlockTimestamp()
       const auctionId = await getAuctionId(backingManager, token0.address)
