@@ -731,10 +731,11 @@ describe('FacadeWrite contract', () => {
         it('Should deploy Governor correctly', async () => {
           expect(await governor.votingDelay()).to.equal(govParams.votingDelay)
           expect(await governor.votingPeriod()).to.equal(govParams.votingPeriod)
-          expect(await governor.proposalThreshold()).to.equal(
-            govParams.proposalThresholdAsMicroPercent
-          )
+
+          // At 0 supply it should be 0
+          expect(await governor.proposalThreshold()).to.equal(0)
           expect(await governor.name()).to.equal('Governor Alexios')
+
           // Quorum
           expect(await governor['quorumNumerator()']()).to.equal(govParams.quorumPercent)
           expect(await governor.timelock()).to.equal(timelock.address)
