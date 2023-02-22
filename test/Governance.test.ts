@@ -422,6 +422,39 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.state(proposalId)).to.equal(ProposalState.Defeated)
     })
 
+    it('Should pass the proposal if quorum is reached', async () => {
+      // Stake RSR with addr3 - And delegate
+      await rsr.connect(addr3).approve(stRSRVotes.address, stkAmt2)
+      await stRSRVotes.connect(addr3).stake(stkAmt2)
+      await stRSRVotes.connect(addr3).delegate(addr3.address)
+
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      let voteWay = 1 // for
+      await governor.connect(addr3).castVote(proposalId, voteWay)
+
+      voteWay = 2 // abstain
+      await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I abstain')
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // quorum not reached
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
+    })
+
     it('Should complete full cycle', async () => {
       // Check current value
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
