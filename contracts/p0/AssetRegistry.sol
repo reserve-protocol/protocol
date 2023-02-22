@@ -12,6 +12,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     using FixLib for uint192;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    uint256 public constant GAS_TO_RESERVE = 900000; // just enough to disable basket on n=128
+
     // Registered ERC20s
     EnumerableSet.AddressSet private _erc20s;
 
@@ -50,7 +52,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         assert(assets[asset.erc20()] != IAsset(address(0)));
 
         IBasketHandler basketHandler = main.basketHandler();
-        try basketHandler.quantity(asset.erc20()) returns (uint192 quantity) {
+        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
             if (quantity.gt(0)) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();
@@ -66,7 +68,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         require(assets[asset.erc20()] == asset, "asset not found");
 
         IBasketHandler basketHandler = main.basketHandler();
-        try basketHandler.quantity(asset.erc20()) returns (uint192 quantity) {
+        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
             if (quantity.gt(0)) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();
@@ -148,5 +150,11 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
             main.backingManager().grantRTokenAllowance(asset.erc20());
         }
         emit AssetRegistered(asset.erc20(), asset);
+    }
+
+    function _reserveGas() private view returns (uint256) {
+        uint256 gas = gasleft();
+        require(gas > GAS_TO_RESERVE, "not enough gas to unregister safely");
+        return gas - GAS_TO_RESERVE;
     }
 }

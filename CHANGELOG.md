@@ -45,10 +45,9 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Bump solidity version to 0.8.17
 - Support multiple beneficiaries via the [`FacadeWrite`](contracts/facade/FacadeWrite.sol)
 - Add `RToken.issueTo(address recipient, uint256 amount, ..)` and `RToken.redeemTo(address recipient, uint256 amount, ..)` to support issuance/redemption to a different address than `msg.sender`
-- Add `RToken.issue*(.., bool revertOnPartialRedemption)` and `RToken.redeem*(.., bool revertOnPartialRedemption)` to enable msg sender to control whether they will accept partial redemptions or not
+- Add `RToken.redeem*(.., uint256 basketNonce)` to enable msg sender to control expectations around partial redemptions
 - Add `RToken.issuanceAvailable()` + `RToken.redemptionAvailable()`
 - Add `FacadeRead.primeBasket()` + `FacadeRead.backupConfig()` views
-- Remove `IBasketHandler.nonce()` from interface, though it remains on `BasketHandler` contracts
 - Many external libs moved to internal
 - Switch from price point estimates to price ranges; all prices now have a `low` and `high`. Impacted interface functions:
   - `IAsset.price()`
@@ -65,7 +64,7 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Add `.div(1 - maxTradeSlippage)` to calculation of `shortfallSlippage` in [RecollateralizationLib.sol:L188](contracts/p1/mixins/RecollateralizationLib.sol).
 - FacadeRead:
   - remove `.pendingIssuances()` + `.endIdForVest()`
-  - refactor calculations in `basketBreakdown()` 
+  - refactor calculations in `basketBreakdown()`
 - Bugfix: Fix claim rewards from traders in `FacadeAct`
 - Bugfix: Do not handout RSR rewards when no one is staked
 - Bugfix: Support small redemptions even when the RToken supply is massive
@@ -89,7 +88,6 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
   - ++`RToken.IssuanceThrottleSet`
   - ++`RToken.RedemptionThrottleSet`
 - Allow redemption while DISABLED
-- Disallow staking while FROZEN
 - Allow `grantRTokenAllowances()` while paused
 - Add `RToken.monetizeDonations()` escape hatch for accidentally donated tokens
 - Collateral default threshold: 5% -> 1% (+ include oracleError)
@@ -101,3 +99,7 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Accumulate melting on `Furnace.setRatio()`
 - Payout RSR rewards on `StRSR.setRatio()`
 - Distinguish oracle timeouts when dealing with multiple oracles in one plugin
+- Add safety during asset degregistration to ensure it is always possible to unregister an infinite-looping asset
+- Fix `StRSR`/`RToken` EIP712 typehash to use release version instead of "1"
+- Add `FacadeRead.redeem(IRToken rToken, uint256 amount, uint48 basketNonce)` to return the expected redemption quantities on the basketNonce, or revert
+- Integrate with OZ 4.7.3 Governance (changes to `quorum()`/t`proposalThreshold()`)

@@ -26,6 +26,22 @@ interface IFacadeRead {
         external
         returns (address[] memory tokens, uint256[] memory deposits);
 
+    /// @return tokens The erc20s returned for the redemption
+    /// @return withdrawals The balances necessary to issue `amount` RToken
+    /// @return isProrata True if the redemption is prorata and not full
+    /// @custom:static-call
+    function redeem(
+        IRToken rToken,
+        uint256 amount,
+        uint48 basketNonce
+    )
+        external
+        returns (
+            address[] memory tokens,
+            uint256[] memory withdrawals,
+            bool isProrata
+        );
+
     /// @return erc20s The ERC20 addresses in the current basket
     /// @return uoaShares The proportion of the basket associated with each ERC20
     /// @return targets The bytes32 representations of the target unit associated with each ERC20

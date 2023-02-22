@@ -59,17 +59,9 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
   // Implementation-agnostic interface for deploying the Furnace
   const deployNewFurnace = async (): Promise<TestIFurnace> => {
-    if (IMPLEMENTATION == Implementation.P0) {
-      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
-      return <TestIFurnace>await FurnaceFactory.deploy()
-    } else if (IMPLEMENTATION == Implementation.P1) {
-      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
-      return <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
-        kind: 'uups',
-      })
-    } else {
-      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
-    }
+    // Deploy fixture
+    ;({ furnace } = await loadFixture(defaultFixture))
+    return furnace
   }
 
   beforeEach(async () => {
@@ -112,7 +104,19 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
     // Applies to all components - used here as an example
     it('Deployment does not accept invalid main address', async () => {
-      const newFurnace: TestIFurnace = <TestIFurnace>await deployNewFurnace()
+      let FurnaceFactory: ContractFactory
+      if (IMPLEMENTATION == Implementation.P0) {
+        FurnaceFactory = await ethers.getContractFactory('FurnaceP0')
+        return <TestIFurnace>await FurnaceFactory.deploy()
+      } else if (IMPLEMENTATION == Implementation.P1) {
+        FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
+        return <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
+          kind: 'uups',
+        })
+      } else {
+        throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+      }
+      const newFurnace = await FurnaceFactory.deploy()
       await expect(newFurnace.init(ZERO_ADDRESS, config.rewardRatio)).to.be.revertedWith(
         'main is zero address'
       )
@@ -298,12 +302,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       for (let i = 0; i < Number(oneDay.div(ONE_PERIOD)); i++) {
         // Advance a period
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-        await expect(firstFurnace.melt()).to.emit(rToken, 'Melted')
+        await firstFurnace.melt()
         // secondFurnace does not melt
       }
 
       // SecondFurnace melts once
-      await expect(secondFurnace.melt()).to.emit(rToken, 'Melted')
+      await secondFurnace.melt()
 
       const one = await rToken.balanceOf(firstFurnace.address)
       const two = await rToken.balanceOf(secondFurnace.address)

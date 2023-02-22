@@ -484,7 +484,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(expectedTkn7).to.equal(quotes[7])
 
     // Redeem
-    await rToken.connect(addr1).redeem(issueAmt, true)
+    await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
     expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     expect(await rToken.totalSupply()).to.equal(0)
 

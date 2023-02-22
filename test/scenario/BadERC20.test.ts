@@ -200,11 +200,13 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should revert during redemption', async () => {
-      await expect(rToken.connect(addr1).redeem(issueAmt, true)).to.be.revertedWith('No Decimals')
+      await expect(
+        rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+      ).to.be.revertedWith('No Decimals')
 
       // Should work now
       await token0.setRevertDecimals(false)
-      await rToken.connect(addr1).redeem(issueAmt, true)
+      await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
     })
 
     it('should revert during trading', async () => {
@@ -291,12 +293,14 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should revert during redemption', async () => {
-      await expect(rToken.connect(addr1).redeem(issueAmt, true)).to.be.revertedWith('censored')
+      await expect(
+        rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+      ).to.be.revertedWith('censored')
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
       await token0.setCensored(rToken.address, false)
-      await rToken.connect(addr1).redeem(issueAmt, true)
+      await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
     })
 
     it('should revert during trading', async () => {

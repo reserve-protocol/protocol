@@ -231,7 +231,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     await expectPrice(basketHandler.address, price.div(2), ORACLE_ERROR, true)
 
     // Redeem
-    await rToken.connect(addr1).redeem(issueAmt, true)
+    await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
     expect(await token0.balanceOf(backingManager.address)).to.equal(0)
     expect(await token1.balanceOf(backingManager.address)).to.equal(0)
     expect(await token2.balanceOf(backingManager.address)).to.equal(0)
