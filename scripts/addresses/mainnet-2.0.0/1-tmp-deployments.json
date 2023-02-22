@@ -8,7 +8,7 @@
   "facadeRead": "0x80b24e984e4fc92a4846b044286DcCcd66564DB9",
   "facadeAct": "0xb80cb6068f743868D38b7abc2c55a720c06c44d0",
   "facadeWriteLib": "0x2117cb9b173077a5efd0e4ce0a21c6b3add65a26",
-  "facadeWrite": "0xb80cb6068f743868d38b7abc2c55a720c06c44d0",
+  "facadeWrite": "0x24D0AAAC80a457Be7843C59d45a1B90fbb02ED8e",
   "deployer": "0xFd6CC4F251eaE6d02f9F7B41D1e80464D3d2F377",
   "rsrAsset": "0x2c312da96f98a5b7822270f69afd2d7ae8e748dc",
   "implementations": {
