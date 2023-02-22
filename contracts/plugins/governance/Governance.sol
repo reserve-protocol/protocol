@@ -17,7 +17,7 @@ import "../../interfaces/IStRSRVotes.sol";
  *   very differently than the typical approach. It is in terms of micro %,
  *   as is _getVotes().
  *
- * 1 * {micro %} = 1e8
+ * 1 {micro %} = 1e8
  */
 contract Governance is
     Governor,
@@ -27,6 +27,9 @@ contract Governance is
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
 {
+    // 100%
+    uint256 public constant ONE_HUDRED_PERCENT = 1e8; // {micro %}
+
     // solhint-disable no-empty-blocks
     constructor(
         IStRSRVotes token_,
@@ -53,24 +56,29 @@ contract Governance is
         return super.votingPeriod();
     }
 
-    /// @return The proposal threshold in units of micro %, e.g 1e6 for 1% of the supply
+    /// @return The number of votes required in order for a voter to become a proposer
     function proposalThreshold()
         public
         view
         override(Governor, GovernorSettings)
         returns (uint256)
     {
-        return super.proposalThreshold();
+        uint256 asMicroPercent = super.proposalThreshold(); // {micro %}
+        uint256 pastSupply = token.getPastTotalSupply(block.number - 1); // {qStRSR}
+        // max StRSR supply is 1e38
+
+        // CEIL to make sure thresholds near 0% don't get rounded down to 0 tokens
+        return (asMicroPercent * pastSupply + (ONE_HUDRED_PERCENT - 1)) / ONE_HUDRED_PERCENT;
     }
 
-    /// @return Returns the quorum required, in units of micro %, e.g 4e6 for 4%
-    function quorum(uint256)
+    function quorum(uint256 blockNumber)
         public
         view
+        virtual
         override(IGovernor, GovernorVotesQuorumFraction)
         returns (uint256)
     {
-        return quorumNumerator() * 1e6;
+        return super.quorum(blockNumber);
     }
 
     function state(uint256 proposalId)
@@ -141,19 +149,13 @@ contract Governance is
         return super._executor();
     }
 
-    /// @return {micro %} The portion of the StRSR supply the account had at a previous blocknumber
+    /// @return {qStRSR} The voting weight the account had at a previous block number
     function _getVotes(
         address account,
         uint256 blockNumber,
         bytes memory /*params*/
     ) internal view override(Governor, GovernorVotes) returns (uint256) {
-        uint256 bal = token.getPastVotes(account, blockNumber); // {qStRSR}
-        uint256 totalSupply = token.getPastTotalSupply(blockNumber); // {qStRSR}
-
-        if (totalSupply == 0) return 0;
-
-        // {micro %} = {qStRSR} * {micro %} / {qStRSR}
-        return (bal * 1e8) / totalSupply;
+        return token.getPastVotes(account, blockNumber); // {qStRSR}
     }
 
     function supportsInterface(bytes4 interfaceId)
