@@ -28,7 +28,7 @@ contract Governance is
     GovernorTimelockControl
 {
     // 100%
-    uint256 public constant ONE_HUDRED_PERCENT = 1e8; // {micro %}
+    uint256 public constant ONE_HUNDRED_PERCENT = 1e8; // {micro %}
 
     // solhint-disable no-empty-blocks
     constructor(
@@ -68,7 +68,7 @@ contract Governance is
         // max StRSR supply is 1e38
 
         // CEIL to make sure thresholds near 0% don't get rounded down to 0 tokens
-        return (asMicroPercent * pastSupply + (ONE_HUDRED_PERCENT - 1)) / ONE_HUDRED_PERCENT;
+        return (asMicroPercent * pastSupply + (ONE_HUNDRED_PERCENT - 1)) / ONE_HUNDRED_PERCENT;
     }
 
     function quorum(uint256 blockNumber)
