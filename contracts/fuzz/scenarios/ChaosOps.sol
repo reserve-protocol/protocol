@@ -881,9 +881,9 @@ contract ChaosOpsScenario {
 
     function rTokenRate() public view returns (uint192) {
         return
-            main.rToken().basketsNeeded() == 0
+            main.rToken().totalSupply() == 0
                 ? FIX_ONE
-                : uint192((FIX_ONE * main.rToken().totalSupply()) / main.rToken().basketsNeeded());
+                : uint192((FIX_ONE * main.rToken().basketsNeeded()) / main.rToken().totalSupply());
     }
 
     // pseudo-mutator for saving old rates...
