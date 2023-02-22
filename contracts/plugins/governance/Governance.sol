@@ -56,7 +56,7 @@ contract Governance is
         return super.votingPeriod();
     }
 
-    /// @return The number of votes required in order for a voter to become a proposer
+    /// @return {qStRSR} The number of votes required in order for a voter to become a proposer
     function proposalThreshold()
         public
         view
