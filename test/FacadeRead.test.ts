@@ -152,12 +152,60 @@ describe('FacadeRead contract', () => {
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, true)
+      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
 
       // With 0 baskets needed - Returns correct value
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
         bn('40000000000e18')
       )
+    })
+
+    it('Should return issuable quantities correctly', async () => {
+      const [toks, quantities] = await facade.callStatic.issue(rToken.address, issueAmount)
+      expect(toks.length).to.equal(4)
+      expect(toks[0]).to.equal(token.address)
+      expect(toks[1]).to.equal(usdc.address)
+      expect(toks[2]).to.equal(aToken.address)
+      expect(toks[3]).to.equal(cToken.address)
+      expect(quantities[0]).to.equal(issueAmount.div(4))
+      expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
+      expect(quantities[2]).to.equal(issueAmount.div(4))
+      expect(quantities[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
+    })
+
+    it('Should return redeemable quantities correctly', async () => {
+      const nonce = await basketHandler.nonce()
+      const [toks, quantities, isProrata] = await facade.callStatic.redeem(
+        rToken.address,
+        issueAmount,
+        nonce
+      )
+      expect(toks.length).to.equal(4)
+      expect(toks[0]).to.equal(token.address)
+      expect(toks[1]).to.equal(usdc.address)
+      expect(toks[2]).to.equal(aToken.address)
+      expect(toks[3]).to.equal(cToken.address)
+      expect(quantities[0]).to.equal(issueAmount.div(4))
+      expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
+      expect(quantities[2]).to.equal(issueAmount.div(4))
+      expect(quantities[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
+      expect(isProrata).to.equal(false)
+
+      // Prorata case -- burn half
+      await token.burn(await main.backingManager(), issueAmount.div(8))
+      const [newToks, newQuantities, newIsProrata] = await facade.callStatic.redeem(
+        rToken.address,
+        issueAmount,
+        nonce
+      )
+      expect(newToks[0]).to.equal(token.address)
+      expect(newQuantities[0]).to.equal(issueAmount.div(8))
+      expect(newIsProrata).to.equal(true)
+
+      // Wrong nonce
+      await expect(
+        facade.callStatic.redeem(rToken.address, issueAmount, nonce - 1)
+      ).to.be.revertedWith('non-current basket nonce')
     })
 
     it('Should return backingOverview correctly', async () => {
@@ -189,7 +237,7 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.be.closeTo(fp('1'), 10)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, true)
+      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
 
       // Check values = 0 (no supply)
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
@@ -247,7 +295,7 @@ describe('FacadeRead contract', () => {
 
     it('Should return basketBreakdown correctly when RToken supply = 0', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, true)
+      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
 
       expect(await rToken.totalSupply()).to.equal(bn(0))
 

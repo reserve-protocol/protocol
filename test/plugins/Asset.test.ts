@@ -21,6 +21,7 @@ import {
   ERC20Mock,
   FiatCollateral,
   IAssetRegistry,
+  IBasketHandler,
   InvalidFiatCollateral,
   InvalidMockV3Aggregator,
   RTokenAsset,
@@ -75,6 +76,7 @@ describe('Assets contracts #fast', () => {
   let wallet: Wallet
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
 
   // Factory
   let AssetFactory: ContractFactory
@@ -102,6 +104,7 @@ describe('Assets contracts #fast', () => {
       config,
       rToken,
       rTokenAsset,
+      basketHandler,
     } = await loadFixture(defaultFixture))
 
     // Get collateral tokens
@@ -293,7 +296,7 @@ describe('Assets contracts #fast', () => {
     it('Should not revert RToken price if supply is zero', async () => {
       // Redeem RToken to make price function revert
       // Note: To get RToken price to 0, a full basket refresh needs to occur (covered in RToken tests)
-      await rToken.connect(wallet).redeem(amt, true)
+      await rToken.connect(wallet).redeem(amt, await basketHandler.nonce())
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),

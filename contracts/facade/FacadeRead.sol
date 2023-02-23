@@ -32,18 +32,18 @@ contract FacadeRead is IFacadeRead {
         main.poke();
         // {BU}
 
-        uint192 held = main.basketHandler().basketsHeldBy(account);
+        BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
         uint192 needed = rToken.basketsNeeded();
 
         int8 decimals = int8(rToken.decimals());
 
         // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
-        if (needed.eq(FIX_ZERO)) return held.shiftl_toUint(decimals);
+        if (needed.eq(FIX_ZERO)) return basketsHeld.bottom.shiftl_toUint(decimals);
 
         uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
 
         // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
-        return held.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
+        return basketsHeld.bottom.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
     }
 
     /// @custom:static-call
@@ -62,6 +62,51 @@ contract FacadeRead is IFacadeRead {
             : shiftl_toFix(amount, -int8(rTok.decimals())); // {qRTok / qRTok}
 
         (tokens, deposits) = bh.quote(baskets, CEIL);
+    }
+
+    /// @return tokens The erc20s returned for the redemption
+    /// @return withdrawals The balances necessary to issue `amount` RToken
+    /// @return isProrata True if the redemption is prorata and not full
+    /// @custom:static-call
+    function redeem(
+        IRToken rToken,
+        uint256 amount,
+        uint48 basketNonce
+    )
+        external
+        returns (
+            address[] memory tokens,
+            uint256[] memory withdrawals,
+            bool isProrata
+        )
+    {
+        IMain main = rToken.main();
+        main.poke();
+        IRToken rTok = rToken;
+        IBasketHandler bh = main.basketHandler();
+        uint256 supply = rTok.totalSupply();
+        require(bh.nonce() == basketNonce, "non-current basket nonce");
+
+        // D18{BU} = D18{BU} * {qRTok} / {qRTok}
+        uint192 basketsRedeemed = rTok.basketsNeeded().muluDivu(amount, supply);
+
+        (tokens, withdrawals) = bh.quote(basketsRedeemed, FLOOR);
+
+        // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
+        address backingManager = address(main.backingManager());
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // {qTok} = {qTok} * {qRTok} / {qRTok}
+            uint256 prorata = mulDiv256(
+                IERC20Upgradeable(tokens[i]).balanceOf(backingManager),
+                amount,
+                supply
+            ); // FLOOR
+
+            if (prorata < withdrawals[i]) {
+                withdrawals[i] = prorata;
+                isProrata = true;
+            }
+        }
     }
 
     /// @return erc20s The ERC20 addresses in the current basket

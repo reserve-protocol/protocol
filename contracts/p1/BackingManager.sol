@@ -113,12 +113,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         uint48 basketTimestamp = basketHandler.timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        uint192 basketsHeld = basketHandler.basketsHeldBy(address(this));
+        BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
+        uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
 
         // if (basketHandler.fullyCollateralized())
-        if (basketsHeld >= rToken.basketsNeeded()) {
+        if (basketsHeld.bottom >= basketsNeeded) {
             // == Interaction (then return) ==
-            handoutExcessAssets(erc20s);
+            handoutExcessAssets(erc20s, basketsHeld.bottom);
         } else {
             /*
              * Recollateralization
@@ -147,14 +148,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 tryTrade(req);
             } else {
                 // Haircut time
-                compromiseBasketsNeeded();
+                compromiseBasketsNeeded(basketsHeld.bottom, basketsNeeded);
             }
         }
     }
 
     /// Send excess assets to the RSR and RToken traders
+    /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
     /// @custom:interaction CEI
-    function handoutExcessAssets(IERC20[] calldata erc20s) private {
+    function handoutExcessAssets(IERC20[] calldata erc20s, uint192 basketsHeldBottom) private {
         /**
          * Assumptions:
          *   - Fully collateralized. All collateral meet balance requirements.
@@ -186,26 +188,25 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         //   where rate(R) == R.basketsNeeded / R.totalSupply,
         //   rate(rToken') >== rate(rToken)
         //   (>== is "no less than, and nearly equal to")
-        //    and rToken'.basketsNeeded <= basketHandler.basketsHeldBy(this)
+        //    and rToken'.basketsNeeded <= basketsHeldBottom
         // and rToken'.totalSupply is maximal satisfying this.
         uint192 needed; // {BU}
         {
             needed = rToken.basketsNeeded(); // {BU}
-            uint192 held = basketHandler.basketsHeldBy(address(this)); // {BU}
-            if (held.gt(needed)) {
+            if (basketsHeldBottom.gt(needed)) {
                 // gas-optimization: RToken is known to have 18 decimals, the same as FixLib
                 uint192 totalSupply = _safeWrap(rToken.totalSupply()); // {rTok}
 
                 // {BU} = {BU} - {BU}
-                uint192 extraBUs = held.minus(needed);
+                uint192 extraBUs = basketsHeldBottom.minus(needed);
 
                 // {rTok} = {BU} * {rTok / BU} (if needed == 0, conv rate is 1 rTok/BU)
                 uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
 
                 // gas-optimization: RToken is known to have 18 decimals, same as FixLib
                 rToken.mint(address(this), uint256(rTok));
-                rToken.setBasketsNeeded(held);
-                needed = held;
+                rToken.setBasketsNeeded(basketsHeldBottom);
+                needed = basketsHeldBottom;
             }
         }
 
@@ -248,9 +249,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
-    function compromiseBasketsNeeded() private {
-        assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
-        rToken.setBasketsNeeded(basketHandler.basketsHeldBy(address(this)));
+    /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
+    /// @param basketsNeeded {BU} RToken.basketsNeeded()
+    function compromiseBasketsNeeded(uint192 basketsHeldBottom, uint192 basketsNeeded) private {
+        // assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
+        assert(tradesOpen == 0 && basketsHeldBottom < basketsNeeded);
+        rToken.setBasketsNeeded(basketsHeldBottom);
     }
 
     // === Governance Setters ===

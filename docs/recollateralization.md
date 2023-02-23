@@ -34,11 +34,15 @@ As trades complete, the distance between the top and bottom of the BU price band
 
 #### `basketRange.top`
 
-In the optimistic case we assume we have `basketsHeldBy(backingManager)` basket units that all balances above this convert from their high price to the low price of a basket unit.
+In the optimistic case we assume we start with `basketsHeldBy(backingManager).top` basket units and deduct from this the balance deficit for each backing collateral in terms of basket units (converted optimistically). For deficits we assume the low sell price and high basket unit price. We assume no impact from maxTradeSlippage or minTradeVolume dust loss. Finally we add-in contributions from all surplus balances, this time assuming the high sell price and low basket unit price.
+
+Alltogether, this is how many BUs we would end up with after recapitalization if everything went as well as possible.
 
 #### `basketRange.bottom`
 
-In the optimistic case, we assume we have with `basketsHeldBy(backingManager)` basket units, and trade all balances above this at the low sell price for the high price of a basket unit, as well as account for maxTradeSlippage and potentially up to a minTradeVolume dust loss.
+In the pessimistic case, we assume we have with `basketsHeldBy(backingManager).bottom` basket units, and trade all surplus balances above this at the low sell price for the high price of a basket unit, as well as account for maxTradeSlippage and potentially up to a minTradeVolume dust loss.
+
+There are no deficits to speak of in this case by definition.
 
 ### Selecting the Trade - `nextTradePair()`
 

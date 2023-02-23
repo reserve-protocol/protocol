@@ -168,7 +168,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
         __Component_init(main_);
-        __EIP712_init(name_, "1");
+        __EIP712_init(name_, VERSION);
         name = name_;
         symbol = symbol_;
 
@@ -208,10 +208,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // actions:
     //   rsr.transferFrom(account, this, rsrAmount)
-    function stake(uint256 rsrAmount) external notFrozen {
+    function stake(uint256 rsrAmount) external {
         require(rsrAmount > 0, "Cannot stake zero");
 
-        _payoutRewards();
+        if (!main.frozen()) _payoutRewards();
 
         // Compute stake amount
         // This is not an overflow risk according to our expected ranges:
@@ -373,12 +373,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
         require(_msgSender() == address(backingManager), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
-        uint192 initRate = exchangeRate();
 
         uint256 rsrBalance = rsr.balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
+        _payoutRewards();
+
         uint256 seizedRSR;
+        uint192 initRate = exchangeRate();
         uint256 rewards = rsrRewards();
 
         // Remove RSR from stakeRSR

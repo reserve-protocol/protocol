@@ -53,7 +53,8 @@ Some units:
 
 Some examples:
 
-- In the USD+ RToken we have designed, the unit of account is USD. Among others, cUSDC is a collateral token with reference unit USDC and target unit USD, and aUSDP is a collateral token with reference token USDP and target unit USD.
+- For a Compound collateral token such as cUSDC, the unit of account is USD, the reference unit USDC and target unit USD.
+- For an Aave collateral token such as aUSDP, the unit of account is USD, the reference token USDP and target unit USD.
 
 - Let's say we're building a pure-stable USD basket, out of USDC, USDP, and DAI. The unit of account would surely be USD. Each collateral token would also be its own reference unit, and its target would be USD.
 
@@ -109,8 +110,8 @@ On the other hand, while a redemption is pending in the mempool, the quantities 
 
 ## System States
 
-- `paused`: all interactions disabled EXCEPT ERC20 functions + RToken.redeem + StRSR.stake
-- `frozen`: all interactions disabled EXCEPT ERC20 functions
+- `paused`: all interactions disabled EXCEPT ERC20 functions + RToken.redeem + StRSR.stake + StRSR.payoutRewards
+- `frozen`: all interactions disabled EXCEPT ERC20 functions + StRSR.stake
 
 Freezing can occur over two timescales: short freezing + long freezing.
 
@@ -162,7 +163,7 @@ This variable should NOT be interpreted to mean that auction sizes above this va
 
 This parameter can be set to zero.
 
-Default value: `1e21` = $1k
+Default value: `1e22` = $10k
 Mainnet reasonable range: 1e19 to 1e23
 
 #### `rTokenMaxTradeVolume`
@@ -180,9 +181,9 @@ Mainnet reasonable range: 1e22 to 1e27.
 
 Dimension: `{1}`
 
-The `rewardRatio` is the amount of the current reward amount that should be handed out per span of 12s.
+The `rewardRatio` is the fraction of the current reward amount that should be handed out per span of 12s.
 
-Default value: `1069671574938` = a half life of 90 days at a period of 12s.
+Default value: `3209014700000` = a half life of 30 days at a period of 12s.
 
 Mainnet reasonable range: 1e11 to 1e13
 
@@ -203,7 +204,7 @@ Dimension: `{seconds}`
 
 The trading delay is how many seconds should pass after the basket has been changed before a trade can be opened. In the long term this can be set to 0 after MEV searchers are firmly integrated, but at the start it may be useful to have a delay before trading in order to avoid worst-case prices.
 
-Default value: `14400` = 4 hours
+Default value: `21600` = 6 hours
 Mainnet reasonable range: 0 to 604800
 
 ### `auctionLength`
@@ -230,7 +231,7 @@ Dimension: `{1}`
 
 The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at. Oracle prices have ranges of their own; the maximum trade slippage permits additional price movement beyond the worst-case oracle price.
 
-Default value: `0.02e18` = 2%
+Default value: `0.01e18` or `0.02e18` = 1/2%
 Mainnet reasonable range: 1e12 to 1e18
 
 ### `shortFreeze`
@@ -298,18 +299,18 @@ A fraction of the RToken supply that indicates how much net redemption to allow 
 
 Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 
-Default value: `5e16` = 5% per hour
+Default value: `2.5e16` = 2.5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 ### Governance Parameters
 
-Governance is 7 days end-to-end.
+Governance is 8 days end-to-end.
 
 **Default values**
 
-- Voting delay: 1 day
-- Voting period: 2 days
-- Execution delay: 4 days
+- Voting delay: 2 day
+- Voting period: 3 days
+- Execution delay: 3 days
 
-Proposal Threshold: 0.05%
+Proposal Threshold: 0.01%
 Quorum: 10% of the StRSR supply (not RSR)
