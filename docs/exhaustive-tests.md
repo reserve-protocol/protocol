@@ -20,7 +20,7 @@ gcloud config set compute/zone us-central1-a
 Create the VM:
 
 ```bash
-gcloud compute instances create test-exhaustive --machine-type=n2d-highmem-8 --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
+gcloud compute instances create exhaustive --machine-type=n2d-highmem-8 --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
 ```
 
 Pull the ssh-config from gcp:
@@ -30,7 +30,7 @@ gcloud compute config-ssh
 
 Jump onto the instance:
 ```
-ssh test-exhaustive.us-central1-a.rtoken-fuzz
+ssh exhaustive.us-central1-a.rtoken-fuzz
 ```
 
 Add Matt's special seasoning, for tmux and emacs QoL improvements (NOTE: This sets the tmux `ctrl-b` to `ctrl-z`):
@@ -66,9 +66,9 @@ sudo bash add-google-cloud-ops-agent-repo.sh --also-install
 ```
 
 ### Option B: Create a VM from existing Machine Image
-We currently (__???????__) have a pre-cooked machine image that can be used for exhaustive testing.  It comes will all the above setup pre-installed.  Use the following command to launch a VM using this image.
+We currently (2/23/23) have a pre-cooked machine image that can be used for exhaustive testing.  It comes will all the above setup pre-installed.  Use the following command to launch a VM using this image.
 ```bash
-gcloud compute instances create test-exhaustive --source-machine-image=exhaustivebox --zone=us-west1-a
+gcloud compute instances create exhaustive --source-machine-image=exhaustive-box --zone=us-central1-a
 ```
 
 ## 2) SSH onto the box
@@ -78,7 +78,7 @@ gcloud compute config-ssh
 ```
 Jump onto the instance:
 ```
-ssh test-exhaustive.us-central1-a.rtoken-fuzz
+ssh exhaustive.us-central1-a.rtoken-fuzz
 ```
 
 ## 3) Run the tests
@@ -96,10 +96,10 @@ yarn compile
 Tmux and run the tests:
 ```
 tmux
-bash ./scripts/run-exhaustive-tests.sh |& tee tests.log
+bash ./scripts/run-exhaustive-tests.sh
 ```
 
-When the test are complete, you'll find the console output in `tests.log`.
+When the test are complete, you'll find the console output in `tmux-1.log` and `tmux-2.log`.
 
 Detach from the tmux session:
 ```
