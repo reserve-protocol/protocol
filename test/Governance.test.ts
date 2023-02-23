@@ -413,7 +413,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
 
-      let voteWay = 1 // for
+      const voteWay = 1 // for
 
       await governor.connect(addr3).castVote(proposalId, voteWay)
       await advanceBlocks(VOTING_PERIOD + 1)
