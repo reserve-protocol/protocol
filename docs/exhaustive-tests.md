@@ -20,7 +20,7 @@ gcloud config set compute/zone us-central1-a
 Create the VM:
 
 ```bash
-gcloud compute instances create test-exhaustive --machine-type=n2d-highmem-4 --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
+gcloud compute instances create test-exhaustive --machine-type=n2d-highmem-8 --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
 ```
 
 Pull the ssh-config from gcp:
