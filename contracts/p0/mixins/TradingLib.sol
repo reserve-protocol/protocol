@@ -136,7 +136,10 @@ library TradingLibP0 {
     ///   3. Cache information such as component addresses to save on gas
 
     struct TradingContext {
-        uint192 basketsHeld; // {BU}
+        BasketRange basketsHeld; // {BU}
+        // basketsHeld.top is the number of partial baskets units held
+        // basketsHeld.bottom is the number of full basket units held
+
         // Components
         IBackingManager bm;
         IBasketHandler bh;
@@ -166,7 +169,7 @@ library TradingLibP0 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
-    function prepareRecollateralizationTrade(IBackingManager bm, uint192 basketsHeld)
+    function prepareRecollateralizationTrade(IBackingManager bm, BasketRange memory basketsHeld)
         external
         view
         returns (bool doTrade, TradeRequest memory req)
@@ -189,7 +192,7 @@ library TradingLibP0 {
 
         // ============================
 
-        // Compute basket range -  {BU}
+        // Compute a target basket range for trading -  {BU}
         BasketRange memory range = basketRange(ctx, erc20s);
 
         // Select a pair to trade next, if one exists
@@ -220,13 +223,7 @@ library TradingLibP0 {
         return (doTrade, req);
     }
 
-    // Used to avoid stack-too-deep errors in basketRange
-    struct BasketRange {
-        uint192 top; // {BU}
-        uint192 bottom; // {BU}
-    }
-
-    // Compute the basket range
+    // Compute the target basket range
     // Algorithm intuition: Trade conservatively. Quantify uncertainty based on the proportion of
     // token balances requiring trading vs not requiring trading. Decrease uncertainty the largest
     // amount possible with each trade.
@@ -234,20 +231,19 @@ library TradingLibP0 {
     // How do we know this algorithm converges?
     // Assumption: constant prices
     // Any volume traded narrows the BU band. Why:
-    //   - We might increase `basketsHeld` from run-to-run, but will never decrease it
-    //   - We might decrease the UoA amount of excess balances beyond `basketsHeld` from
+    //   - We might increase `basketsHeld.bottom` from run-to-run, but will never decrease it
+    //   - We might decrease the UoA amount of excess balances beyond `basketsHeld.bottom` from
     //       run-to-run, but will never increase it
-    //   - Balances within `basketsHeld` contribute to `range.top` and `range.bottom` equally
-    //   - Balances beyond `basketsHeld` float `range.top` and depress `range.bottom`
+    //   - We might decrease the UoA amount of missing balances up-to `basketsHeld.top` from
+    //       run-to-run, but will never increase it
     //
     // Preconditions:
-    // - ctx is correctly populated with current basketsHeld
+    // - ctx is correctly populated with current basketsHeld.bottom + basketsHeld.top
     // - reg contains erc20 + asset arrays in same order and without duplicates
     // Trading Strategy:
     // - We will not aim to hold more than rToken.basketsNeeded() BUs
     // - No double trades: if we buy B in one trade, we won't sell B in another trade
     //       Caveat: Unless the asset we're selling is IFFY/DISABLED
-    // - No trading token balances corresponding to ctx.basketsHeld
     // - The best price we might get for a trade is at the high sell price and low buy price
     // - The worst price we might get for a trade is at the low sell price and
     //     the high buy price, multiplied by ( 1 - maxTradeSlippage )
@@ -255,8 +251,9 @@ library TradingLibP0 {
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
     // More concretely:
-    // - range.top = min(rToken.basketsNeeded, basketsHeld + most baskets purchaseable)
-    // - range.bottom = min(rToken.basketsNeeded, basketsHeld + least baskets purchaseable)
+    // - range.top = min(rToken.basketsNeeded, basketsHeld.top - least baskets missing
+    //                                                                   + most baskets surplus)
+    // - range.bottom = min(rToken.basketsNeeded, basketsHeld.bottom + least baskets purchaseable)
     //   where "least baskets purchaseable" involves trading at unfavorable prices,
     //   incurring maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
     function basketRange(TradingContext memory ctx, IERC20[] memory erc20s)
@@ -266,14 +263,21 @@ library TradingLibP0 {
     {
         (uint192 basketPriceLow, uint192 basketPriceHigh) = ctx.bh.price(); // {UoA/BU}
 
-        // === (1/2) Contribution from held baskets ===
+        // Cap ctx.basketsHeld.top
+        if (ctx.basketsHeld.top > ctx.rToken.basketsNeeded()) {
+            ctx.basketsHeld.top = ctx.rToken.basketsNeeded();
+        }
 
-        range.top = ctx.basketsHeld;
-        range.bottom = ctx.basketsHeld;
+        // === (1/3) Calculate contributions from surplus/deficits ===
 
-        // === (2/2) Contribution from baskets-to-be-bought ===
+        // for range.top, anchor to min(ctx.basketsHeld.top, basketsNeeded)
+        // for range.bottom, anchor to min(ctx.basketsHeld.bottom, basketsNeeded)
 
-        for (uint256 i = 0; i < erc20s.length; i++) {
+        // a signed delta to be applied to range.top
+        int256 deltaTop; // D18{BU} even though this is int256, it is D18
+        // not required for range.bottom
+
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             // Exclude RToken balances to avoid double counting value
             if (erc20s[i] == IERC20(address(ctx.rToken))) continue;
 
@@ -286,8 +290,8 @@ library TradingLibP0 {
                 bal = bal.plus(asset.bal(address(ctx.stRSR)));
             }
 
-            // Skip over dust-balance assets not in the basket
             {
+                // Skip over dust-balance assets not in the basket
                 (uint192 lotLow, ) = asset.lotPrice(); // {UoA/tok}
 
                 // Intentionally include value of IFFY/DISABLED collateral
@@ -296,44 +300,43 @@ library TradingLibP0 {
                     !isEnoughToSell(asset, bal, lotLow, ctx.minTradeVolume)
                 ) continue;
             }
-
             (uint192 low, uint192 high) = asset.price(); // {UoA/tok}
 
-            // collateral in the basket must be priced
-            assert(high != FIX_MAX || ctx.bh.quantity(erc20s[i]) == 0);
+            // throughout these sections +/- is same as Fix.plus/Fix.minus and </> is Fix.gt/.lt
 
-            // throughout this section +/- is same as Fix.plus/Fix.minus
-
-            // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            // {tok} = {tok/BU} * {BU}
-            uint192 inBasket = ctx.bh.quantity(erc20s[i]).mul(ctx.basketsHeld, FLOOR);
-            assert(bal >= inBasket); // should not be possible to reach
-
-            // range.top: contribution from balance beyond basketsHeld
+            // deltaTop: optimistic case
+            // if in deficit relative to ctx.basketsHeld.top: deduct missing baskets
+            // if in surplus relative to ctx.basketsHeld.top: add-in surplus baskets
             {
-                // Suppose the best-case series of events:
-                // 1. Sell tokens at high price
-                // 2. Buy BUs at their low price
-                // Assume no dust balances and 0 slippage
+                // {tok} = {tok/BU} * {BU}
+                uint192 anchor = ctx.bh.quantity(erc20s[i]).mul(ctx.basketsHeld.top, CEIL);
 
-                // needs overflow protection: unpriced asset with price [0, FIX_MAX] can overflow
-                // {BU} = {UoA/tok} * {tok} / {UoA/BU}
-                uint192 b = ctx.bm.safeMulDivCeil(high, bal - inBasket, basketPriceLow);
-                if (uint256(range.top) + b >= FIX_MAX) range.top = FIX_MAX;
-                else range.top += b;
+                if (anchor > bal) {
+                    // deficit: deduct optimistic estimate of baskets missing
+
+                    // {BU} = {UoA/tok} * {tok} / {UoA/BU}
+                    deltaTop -= int256(uint256(low.mulDiv(anchor - bal, basketPriceHigh, FLOOR)));
+                    // does not need underflow protection: using low price of asset
+                } else {
+                    // surplus: add-in optimistic estimate of baskets purchaseable
+
+                    // {BU} = {UoA/tok} * {tok} / {UoA/BU}
+                    deltaTop += int256(
+                        uint256(ctx.bm.safeMulDivCeil(high, bal - anchor, basketPriceLow))
+                    );
+                    // needs overflow protection: using high price of asset which can be FIX_MAX
+                }
             }
 
-            // range.bottom: contribution from balance beyond basketsHeld
+            // range.bottom: pessimistic case
+            // add-in surplus baskets relative to ctx.basketsHeld.bottom
             {
-                // Suppose the worst-case series of events:
-                // 1. Sell tokens at low price
-                // 2. Lose minTradeVolume to dust (why: auctions can return tokens)
-                // 3. Buy BUs at their high price with the remaining value
-                // 4. Assume maximum slippage in trade
+                // {tok} = {tok/BU} * {BU}
+                uint192 anchor = ctx.bh.quantity(erc20s[i]).mul(ctx.basketsHeld.bottom, FLOOR);
 
                 // (1) Sell tokens at low price
                 // {UoA} = {UoA/tok} * {tok}
-                uint192 val = low.mul(bal - inBasket, FLOOR);
+                uint192 val = low.mul(bal - anchor, FLOOR);
 
                 // (2) Lose minTradeVolume to dust (why: auctions can return tokens)
                 // Q: Why is this precisely where we should take out minTradeVolume?
@@ -355,10 +358,25 @@ library TradingLibP0 {
             }
         }
 
-        // ==== Cap range ====
+        // ==== (2/3) Add-in ctx.*BasketsHeld safely ====
 
-        uint192 basketsNeeded = ctx.rToken.basketsNeeded();
-        if (range.top > basketsNeeded) range.top = basketsNeeded;
+        // range.top
+        if (deltaTop < 0) {
+            range.top = ctx.basketsHeld.top - _safeWrap(uint256(-deltaTop));
+            // reverting on underflow is appropriate here
+        } else {
+            // guard against overflow; > is same as Fix.gt
+            if (uint256(deltaTop) + ctx.basketsHeld.top > FIX_MAX) range.top = FIX_MAX;
+            else range.top = ctx.basketsHeld.top + _safeWrap(uint256(deltaTop));
+        }
+
+        // range.bottom
+        range.bottom += ctx.basketsHeld.bottom;
+        // reverting on overflow is appropriate here
+
+        // ==== (3/3) Enforce (range.bottom <= range.top <= basketsNeeded) ====
+
+        if (range.top > ctx.rToken.basketsNeeded()) range.top = ctx.rToken.basketsNeeded();
         if (range.bottom > range.top) range.bottom = range.top;
     }
 

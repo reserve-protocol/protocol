@@ -139,15 +139,17 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
     it('Should deploy Governor correctly', async () => {
       expect(await governor.votingDelay()).to.equal(VOTING_DELAY)
       expect(await governor.votingPeriod()).to.equal(VOTING_PERIOD)
-      expect(await governor.proposalThreshold()).to.equal(PROPOSAL_THRESHOLD)
       expect(await governor.name()).to.equal('Governor Alexios')
+
       // Quorum
       expect(await governor['quorumNumerator()']()).to.equal(QUORUM_PERCENTAGE)
       expect(await governor.quorumDenominator()).to.equal(100)
-      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(
-        QUORUM_PERCENTAGE * 1e6
-      ) // 4e6 = 4%
 
+      // At first with no StRSR supply, these should be 0
+      expect(await governor.proposalThreshold()).to.equal(0)
+      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(0)
+
+      // Other contract addresses
       expect(await governor.timelock()).to.equal(timelock.address)
       expect(await governor.token()).to.equal(stRSRVotes.address)
     })
@@ -176,15 +178,32 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Stake some RSR with addr1 - And delegate
       await rsr.connect(addr1).approve(stRSRVotes.address, stkAmt1)
       await stRSRVotes.connect(addr1).stake(stkAmt1)
+
+      // Before delegate, should remain 0
+      currBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(0)
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(0)
+      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(0)
+      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(0)
+      expect(await governor.proposalThreshold()).to.equal(0)
+      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(0)
+
+      // Now delegate
       await stRSRVotes.connect(addr1).delegate(addr1.address)
+      expect(await governor.proposalThreshold()).to.equal(
+        stkAmt1.mul(PROPOSAL_THRESHOLD).div(bn('1e8'))
+      )
+      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(
+        stkAmt1.mul(QUORUM_PERCENTAGE).div(100)
+      )
 
       // Advance a few blocks
       await advanceBlocks(2)
 
-      // Check new values - Owner has 100% of vote
+      // Check new values - Owner has their stkAmt1 vote
       currBlockNumber = (await getLatestBlockNumber()) - 1
       expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(stkAmt1)
-      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(1e8) // 100%
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(stkAmt1)
       expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(0)
       expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(0)
 
@@ -196,14 +215,14 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance a few blocks
       await advanceBlocks(2)
 
-      // Check new values - Addr1 and addr2 have 50% of vote each
+      // Check new values - Addr1 and addr2 both have stkAmt1
       currBlockNumber = (await getLatestBlockNumber()) - 1
       expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(stkAmt1.mul(2))
-      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(5e7) // 50%
-      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(5e7) // 50%
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(stkAmt1)
       expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(0)
 
-      // Stake a smaller portion of RSR with addr3 (20% of total)
+      // Stake a smaller portion of RSR with addr3
       await rsr.connect(addr3).approve(stRSRVotes.address, stkAmt2)
       await stRSRVotes.connect(addr3).stake(stkAmt2)
       await stRSRVotes.connect(addr3).delegate(addr3.address)
@@ -211,15 +230,15 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance a few blocks
       await advanceBlocks(2)
 
-      // Check new values - Addr1 and addr2 have 40% of vote each
       currBlockNumber = (await getLatestBlockNumber()) - 1
       expect(await stRSRVotes.getPastTotalSupply(currBlockNumber)).to.equal(
         stkAmt1.mul(2).add(stkAmt2)
       )
 
-      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(4e7) // 40%
-      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(4e7) // 40%
-      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(2e7) // 20%
+      // Everyone has stkAmt1
+      expect(await governor.getVotes(addr1.address, currBlockNumber)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(stkAmt2)
     })
 
     it('Should not allow vote manipulation', async () => {
@@ -372,6 +391,70 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
     })
 
+    it('Should defeat the proposal if quorum is not reached', async () => {
+      // Stake RSR with addr3 - And delegate
+      await rsr.connect(addr3).approve(stRSRVotes.address, stkAmt2)
+      await stRSRVotes.connect(addr3).stake(stkAmt2)
+      await stRSRVotes.connect(addr3).delegate(addr3.address)
+
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      const voteWay = 1 // for
+
+      await governor.connect(addr3).castVote(proposalId, voteWay)
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // quorum not reached
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Defeated)
+    })
+
+    it('Should pass the proposal if quorum is reached', async () => {
+      // Stake RSR with addr3 - And delegate
+      await rsr.connect(addr3).approve(stRSRVotes.address, stkAmt2)
+      await stRSRVotes.connect(addr3).stake(stkAmt2)
+      await stRSRVotes.connect(addr3).delegate(addr3.address)
+
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      let voteWay = 1 // for
+      await governor.connect(addr3).castVote(proposalId, voteWay)
+
+      voteWay = 2 // abstain
+      await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I abstain')
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // quorum not reached
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
+    })
+
     it('Should complete full cycle', async () => {
       // Check current value
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
@@ -393,14 +476,22 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
 
-      const voteWay = 1 // for
+      let voteWay = 1 // for
 
       // vote
       await governor.connect(addr1).castVote(proposalId, voteWay)
       await advanceBlocks(1)
 
-      await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I vote for')
+      // Quorum should be equal to cast votes
+      const expectedQuorum = stkAmt1.mul(2).mul(QUORUM_PERCENTAGE).div(100)
+      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(expectedQuorum)
+
+      voteWay = 2 // abstain
+      await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I abstain')
       await advanceBlocks(1)
+
+      // Quorum should be equal to sum of abstain + for votes
+      expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(expectedQuorum)
 
       // Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
@@ -695,7 +786,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
       expect(await governor.state(proposalId2)).to.equal(ProposalState.Pending)
 
-      // Perform new stake (will have double weight)
+      // Perform new stake addr3 should double up on voting weight due to new StRSR exchange rate
       // Stake RSR with addr3 - And delegate
       await rsr.connect(addr3).approve(stRSRVotes.address, stkAmt1)
       await stRSRVotes.connect(addr3).stake(stkAmt1)
@@ -712,14 +803,14 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // Check votes being used for each proposal
       // Proposal 1
-      expect(await governor.getVotes(addr1.address, snapshotBlock1)).to.equal(5e7) // 50%
-      expect(await governor.getVotes(addr2.address, snapshotBlock1)).to.equal(5e7) // 50%
-      expect(await governor.getVotes(addr3.address, snapshotBlock1)).to.equal(0) // 0%
+      expect(await governor.getVotes(addr1.address, snapshotBlock1)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr2.address, snapshotBlock1)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr3.address, snapshotBlock1)).to.equal(0)
 
       // Proposal 2
-      expect(await governor.getVotes(addr1.address, snapshotBlock2)).to.equal(2.5e7) // 25%
-      expect(await governor.getVotes(addr2.address, snapshotBlock2)).to.equal(2.5e7) // 25%
-      expect(await governor.getVotes(addr3.address, snapshotBlock2)).to.equal(5e7) // 50%
+      expect(await governor.getVotes(addr1.address, snapshotBlock2)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr2.address, snapshotBlock2)).to.equal(stkAmt1)
+      expect(await governor.getVotes(addr3.address, snapshotBlock2)).to.equal(stkAmt1.mul(2))
 
       // Votes Proposal #1
       const voteFor = 1 // for

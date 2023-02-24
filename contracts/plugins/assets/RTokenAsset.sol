@@ -52,7 +52,7 @@ contract RTokenAsset is IAsset {
 
         // The RToken's price is not symmetric like other assets!
         // range.bottom is lower because of the slippage from the shortfall
-        RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
+        BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = range.bottom.mulDiv(lowBUPrice, supply);
@@ -93,7 +93,7 @@ contract RTokenAsset is IAsset {
 
         if (supply == 0) return (buLow, buHigh);
 
-        RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
+        BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         lotLow = range.bottom.mulDiv(buLow, supply);
@@ -122,18 +122,14 @@ contract RTokenAsset is IAsset {
 
     // ==== Private ====
 
-    function basketRange()
-        private
-        view
-        returns (RecollateralizationLibP1.BasketRange memory range)
-    {
-        uint192 basketsHeld = basketHandler.basketsHeldBy(address(backingManager)); // {BU}
+    function basketRange() private view returns (BasketRange memory range) {
+        BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(backingManager));
         uint192 basketsNeeded = IRToken(address(erc20)).basketsNeeded(); // {BU}
 
         // if (basketHandler.fullyCollateralized())
-        if (basketsHeld >= basketsNeeded) {
+        if (basketsHeld.bottom >= basketsNeeded) {
             range.bottom = basketsNeeded;
-            range.top = range.bottom;
+            range.top = basketsNeeded;
         } else {
             // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
             // there is _some_ asset to represent the RToken itself when it is deployed, in

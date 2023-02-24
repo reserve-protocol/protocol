@@ -89,4 +89,11 @@ contract FacadeTest is IFacadeTest {
             total = total.plus(asset.bal(backingManager).mul(midPrice));
         }
     }
+
+    /// @param account The account to count baskets for
+    /// @return {BU} The number of whole basket units held
+    function wholeBasketsHeldBy(IRToken rToken, address account) external view returns (uint192) {
+        BasketRange memory range = rToken.main().basketHandler().basketsHeldBy(account);
+        return range.bottom;
+    }
 }

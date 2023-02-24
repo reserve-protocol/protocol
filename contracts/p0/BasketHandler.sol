@@ -119,7 +119,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // basket is the current basket.
     Basket private basket;
 
-    uint48 public nonce; // A unique identifier for this basket instance
+    uint48 public override nonce; // A unique identifier for this basket instance
     uint48 public override timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
@@ -258,7 +258,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// @return Whether this contract owns enough collateral to cover rToken.basketsNeeded() BUs
     /// ie, whether the protocol is currently fully collateralized
     function fullyCollateralized() external view returns (bool) {
-        return basketsHeldBy(address(main.backingManager())) >= main.rToken().basketsNeeded();
+        BasketRange memory held = basketsHeldBy(address(main.backingManager()));
+        return held.bottom >= main.rToken().basketsNeeded();
     }
 
     /// @return status_ The status of the basket
@@ -415,29 +416,34 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
-    /// @return baskets {BU} The balance of basket units held by `account`
-    /// @dev Returns FIX_ZERO for an empty basket
+    /// @return baskets {BU}
+    ///          .top The number of partial basket units: e.g max(coll.map((c) => c.balAsBUs())
+    ///          .bottom The number of whole basket units held by the account
+    /// @dev Returns (FIX_ZERO, FIX_MAX) for an empty or DISABLED basket
     // Returns:
-    //    0, if (basket.erc20s is empty) or (disabled is true) or (status() is DISABLED)
+    //    (0, 0), if (basket.erc20s is empty) or (disabled is true) or (status() is DISABLED)
     //    min(e.balanceOf(account) / quantity(e) for e in basket.erc20s if quantity(e) > 0),
-    function basketsHeldBy(address account) public view returns (uint192 baskets) {
-        uint256 length = basket.erc20s.length;
-        if (length == 0 || disabled) return FIX_ZERO;
-        baskets = FIX_MAX;
+    function basketsHeldBy(address account) public view returns (BasketRange memory baskets) {
+        if (basket.erc20s.length == 0 || disabled) return BasketRange(FIX_ZERO, FIX_MAX);
+        baskets.bottom = FIX_MAX;
 
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < basket.erc20s.length; ++i) {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
-            if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
+            if (coll.status() == CollateralStatus.DISABLED) return BasketRange(FIX_ZERO, FIX_MAX);
 
             uint192 refPerTok = coll.refPerTok();
-            if (refPerTok == 0) return FIX_ZERO;
-            uint192 bal = coll.bal(account); // {tok}
+            // If refPerTok is 0, then we have zero of coll's reference unit.
+            // We know that basket.refAmts[basket.erc20s[i]] > 0, so we have no baskets.
+            if (refPerTok == 0) return BasketRange(FIX_ZERO, FIX_MAX);
 
-            // {tok/BU} = {ref/BU} / {ref/tok}
+            // {tok/BU} = {ref/BU} / {ref/tok}.  0-division averted by condition above.
             uint192 q = basket.refAmts[basket.erc20s[i]].div(refPerTok, CEIL);
+            // q > 0 because q = (n).div(_, CEIL) and n > 0
 
-            // {BU} = either {BU} or {tok} / {tok/BU}; q > 0 because q = (n).div(_, CEIL) and n > 0
-            baskets = fixMin(baskets, bal.div(q));
+            // {BU} = {tok} / {tok/BU}
+            uint192 inBUs = coll.bal(account).div(q);
+            baskets.bottom = fixMin(baskets.bottom, inBUs);
+            baskets.top = fixMax(baskets.top, inBUs);
         }
     }
 

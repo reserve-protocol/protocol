@@ -12,6 +12,8 @@ import "./mixins/Component.sol";
 contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    uint256 public constant GAS_TO_RESERVE = 900000; // just enough to disable basket on n=128
+
     // Peer-component addresses
     IBasketHandler private basketHandler;
     IBackingManager private backingManager;
@@ -75,7 +77,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
 
-        try basketHandler.quantity(asset.erc20()) returns (uint192 quantity) {
+        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
             if (quantity > 0) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();
@@ -92,7 +94,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
 
-        try basketHandler.quantity(asset.erc20()) returns (uint192 quantity) {
+        try basketHandler.quantity{ gas: _reserveGas() }(asset.erc20()) returns (uint192 quantity) {
             if (quantity > 0) basketHandler.disableBasket(); // not an interaction
         } catch {
             basketHandler.disableBasket();
@@ -186,6 +188,12 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
 
         return true;
+    }
+
+    function _reserveGas() private view returns (uint256) {
+        uint256 gas = gasleft();
+        require(gas > GAS_TO_RESERVE, "not enough gas to unregister safely");
+        return gas - GAS_TO_RESERVE;
     }
 
     /**
