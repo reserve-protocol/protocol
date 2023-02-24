@@ -407,28 +407,6 @@ contract RebalancingScenario {
         priceModels.push(_priceModel);
     }
 
-    // do issuance without doing allowances first
-    function justIssue(uint256 amount)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-        asSender
-    {
-        _saveRTokenRate();
-        main.rToken().issue(amount);
-    }
-
-    // do issuance without doing allowances first
-    function justIssueTo(uint256 amount, uint8 recipientID)
-        public
-        onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
-        asSender
-    {
-        _saveRTokenRate();
-        address recipient = main.someAddr(recipientID);
-
-        main.rToken().issueTo(recipient, amount);
-    }
-
     // do allowances as needed, and *then* do issuance
     function issue(uint256 amount)
         public
@@ -500,9 +478,6 @@ contract RebalancingScenario {
     }
 
     // ==== user functions: strsr ====
-    function justStake(uint256 amount) public asSender {
-        main.stRSR().stake(amount);
-    }
 
     function stake(uint256 amount) public asSender {
         main.rsr().approve(address(main.stRSR()), amount);
