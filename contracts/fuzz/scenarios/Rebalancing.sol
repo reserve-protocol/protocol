@@ -437,7 +437,9 @@ contract RebalancingScenario {
     {
         _saveRTokenRate();
         uint256 preSupply = main.rToken().totalSupply();
-        require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // use % instead of require
+        amount = amount % (1e48 - preSupply);
 
         address[] memory tokens;
         uint256[] memory tokenAmounts;
@@ -457,7 +459,9 @@ contract RebalancingScenario {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         uint256 preSupply = main.rToken().totalSupply();
-        require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // use % instead of require
+        amount = amount % (1e48 - preSupply);
 
         address[] memory tokens;
         uint256[] memory tokenAmounts;
@@ -609,11 +613,7 @@ contract RebalancingScenario {
         IERC20 token = main.someToken(tokenID);
         main.rTokenTrader().manageToken(token);
     }
-
-    function grantAllowances(uint256 tokenID) public {
-        main.backingManager().grantRTokenAllowance(main.someToken(tokenID));
-    }
-
+    
     // do revenue distribution without doing allowances first
     function justDistributeRevenue(
         uint256 tokenID,
@@ -654,7 +654,7 @@ contract RebalancingScenario {
 
     function payRTokenProfits() public {
         main.furnace().melt();
-        assertFurnacePayouts();
+        FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
     // Basket handler - this action is required to start Rebalancing
@@ -883,7 +883,7 @@ contract RebalancingScenario {
         uint8 targetNameID,
         string memory namePrefix,
         string memory symbolPrefix
-    ) public returns (ERC20Fuzz) {
+    ) internal returns (ERC20Fuzz) {
         string memory targetNameStr = bytes32ToString(someTargetName(targetNameID));
         string memory id = Strings.toString(main.numTokens());
         ERC20Fuzz token = new ERC20Fuzz(
@@ -945,7 +945,7 @@ contract RebalancingScenario {
     // Basket Range
     // BasketRange prevBasketRange;
 
-    function rTokenRate() public view returns (uint192) {
+    function rTokenRate() internal view returns (uint192) {
         return
             main.rToken().totalSupply() == 0
                 ? FIX_ONE
@@ -966,10 +966,6 @@ contract RebalancingScenario {
         BackingManagerP1Fuzz bm = BackingManagerP1Fuzz(address(main.backingManager()));
         // Only store basket range if no trades are open
         if (bm.tradesOpen() == 0) bm.saveBasketRange();
-    }
-
-    function assertFurnacePayouts() public view {
-        FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
     // Calling basketHandler.refereshBasket() yields an identical basket, if not rebalancing

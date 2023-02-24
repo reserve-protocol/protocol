@@ -565,13 +565,7 @@ contract DiffTestScenario {
             p[N].rTokenTrader().manageToken(p[N].someToken(tokenID));
         }
     }
-
-    function grantAllowances(uint256 tokenID) public {
-        for (uint256 N = 0; N < 2; N++) {
-            p[N].backingManager().grantRTokenAllowance(p[N].someToken(tokenID));
-        }
-    }
-
+    
     function justDistributeRevenue(
         uint256 tokenID,
         uint256 amount

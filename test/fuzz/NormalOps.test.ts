@@ -529,26 +529,6 @@ describe('The Normal Operations scenario', () => {
       }
     })
 
-    it('can grant allownaces to RToken', async () => {
-      // With token C0,
-      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
-      const tokenID = tokenIDs.get('C0') as number
-      await token.mint(comp.backingManager.address, exa)
-
-      // 1. mimic BM; set RToken's allowance to 0
-      await whileImpersonating(comp.backingManager.address, async (asBM) => {
-        await token.connect(asBM).approve(comp.rToken.address, 0)
-      })
-      const allowance0 = await token.allowance(comp.backingManager.address, comp.rToken.address)
-
-      expect(allowance0).to.equal(0)
-
-      // 2. grantAllowances on C0
-      await scenario.grantAllowances(tokenID)
-      const allowance1 = await token.allowance(comp.backingManager.address, comp.rToken.address)
-      expect(allowance1).to.equal(2n ** 256n - 1n)
-    })
-
     it('can distribute revenue', async () => {
       // ==== Setup: 100% distribution to RSR;
       const furanceID = addrIDs.get(addr(1)) as number
@@ -791,19 +771,5 @@ describe('The Normal Operations scenario', () => {
 
       expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
     })
-  })
-
-  it('sends rtoken donations to the backing manager', async () => {
-    const tokenAddr = await main.someToken(0)
-    const token = await ConAt('ERC20Fuzz', tokenAddr)
-    const amt = fp('10')
-    const bmBalBefore = await token.balanceOf(comp.backingManager.address)
-    const rTokBalBefore = await token.balanceOf(comp.rToken.address)
-    await token.connect(alice).transfer(comp.rToken.address, amt)
-    await scenario.monetizeDonations(0)
-    const bmBalAFter = await token.balanceOf(comp.backingManager.address)
-    const rTokBalAfter = await token.balanceOf(comp.rToken.address)
-    expect(rTokBalAfter).to.equal(0)
-    expect(bmBalAFter).to.equal(bmBalBefore.add(rTokBalBefore).add(amt))
   })
 })

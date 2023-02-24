@@ -383,7 +383,9 @@ contract ChaosOpsScenario {
     function issue(uint256 amount) public asSender {
         _saveRTokenRate();
         uint256 preSupply = main.rToken().totalSupply();
-        require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // use % instead of require
+        amount = amount % (1e48 - preSupply);
 
         address[] memory tokens;
         uint256[] memory tokenAmounts;
@@ -399,7 +401,9 @@ contract ChaosOpsScenario {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         uint256 preSupply = main.rToken().totalSupply();
-        require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // use % instead of require
+        amount = amount % (1e48 - preSupply);
 
         address[] memory tokens;
         uint256[] memory tokenAmounts;
@@ -553,11 +557,7 @@ contract ChaosOpsScenario {
         IERC20 token = main.someToken(tokenID);
         main.rTokenTrader().manageToken(token);
     }
-
-    function grantAllowances(uint256 tokenID) public {
-        main.backingManager().grantRTokenAllowance(main.someToken(tokenID));
-    }
-
+    
     // do revenue distribution without doing allowances first
     function justDistributeRevenue(
         uint256 tokenID,
@@ -599,7 +599,7 @@ contract ChaosOpsScenario {
 
     function payRTokenProfits() public {
         main.furnace().melt();
-        assertFurnacePayouts();
+        FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
     // Basket handler
@@ -809,7 +809,7 @@ contract ChaosOpsScenario {
 
     // ================ Internal functions / Helpers ================
 
-    function someTargetName(uint256 seed) public view returns (bytes32) {
+    function someTargetName(uint256 seed) internal view returns (bytes32) {
         uint256 id = seed % 3;
         return targetNames[id];
     }
@@ -819,7 +819,7 @@ contract ChaosOpsScenario {
         uint8 targetNameID,
         string memory namePrefix,
         string memory symbolPrefix
-    ) public returns (ERC20Fuzz) {
+    ) internal returns (ERC20Fuzz) {
         string memory targetStr = bytes32ToString(someTargetName(targetNameID));
         string memory idStr = Strings.toString(main.numTokens());
 
@@ -832,7 +832,7 @@ contract ChaosOpsScenario {
         return token;
     }
 
-    function createAsset(IERC20 erc20) public returns (AssetMock) {
+    function createAsset(IERC20 erc20) internal returns (AssetMock) {
         return
             new AssetMock({
                 erc20_: IERC20Metadata(address(erc20)),
@@ -850,7 +850,7 @@ contract ChaosOpsScenario {
         uint48 delayUntilDefaultSeed,
         bytes32 targetName,
         uint256 revenueHidingSeed
-    ) public returns (CollateralMock) {
+    ) internal returns (CollateralMock) {
         return
             new CollateralMock({
                 erc20_: IERC20Metadata(address(erc20)),
@@ -879,7 +879,7 @@ contract ChaosOpsScenario {
     uint192 public prevRSRRate; // {StRSR/RSR}
     uint192 public prevRTokenRate; // {RTok/BU}
 
-    function rTokenRate() public view returns (uint192) {
+    function rTokenRate() internal view returns (uint192) {
         return
             main.rToken().totalSupply() == 0
                 ? FIX_ONE
@@ -894,10 +894,6 @@ contract ChaosOpsScenario {
 
     function _saveRTokenRate() internal {
         prevRTokenRate = rTokenRate();
-    }
-
-    function assertFurnacePayouts() public view {
-        FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
     function echidna_ratesNeverFall() external view returns (bool) {

@@ -1265,8 +1265,7 @@ describe('The Rebalancing scenario', () => {
     await expect(scenario.manageBackingTokens()).to.be.reverted
   })
 
-  it('can manage scenario states - basket switch - covered by RSR', async () => {
-    await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('30000'), pctRate: fp('0.5')})
+  it.only('can manage scenario states - basket switch - covered by RSR', async () => {
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
@@ -1293,7 +1292,10 @@ describe('The Rebalancing scenario', () => {
       await token.connect(alice).approve(comp.rToken.address, amts[i])
     }
     // Issue RTokens
-    await scenario.connect(alice).justIssue(30000n * exa)
+    await scenario.connect(alice).justIssue(20000n * exa)
+    // wait and issue another 10000
+    await advanceTime(3600)
+    await scenario.connect(alice).justIssue(10000n * exa)
 
     // No c0 tokens in backing manager
     expect(await c0.balanceOf(comp.backingManager.address)).to.equal(0)

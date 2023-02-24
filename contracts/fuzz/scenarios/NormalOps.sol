@@ -228,7 +228,9 @@ contract NormalOpsScenario {
     function issue(uint256 amount) public asSender {
         _saveRTokenRate();
         uint256 preSupply = main.rToken().totalSupply();
-        require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // use % instead of require
+        amount = amount % (1e48 - preSupply);
 
         address[] memory tokens;
         uint256[] memory tokenAmounts;
@@ -252,7 +254,9 @@ contract NormalOpsScenario {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         uint256 preSupply = main.rToken().totalSupply();
-        require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+        // use % instead of require
+        amount = amount % (1e48 - preSupply);
 
         address[] memory tokens;
         uint256[] memory tokenAmounts;
@@ -276,11 +280,6 @@ contract NormalOpsScenario {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         main.rToken().redeemTo(recipient, amount, basketNonce);
-    }
-
-    function monetizeDonations(uint8 tokenID) public {
-        IERC20 erc20 = main.someToken(tokenID);
-        TestIRToken(address(main.rToken())).monetizeDonations(erc20);
     }
 
     // ==== user functions: strsr ====
@@ -381,10 +380,6 @@ contract NormalOpsScenario {
         main.rTokenTrader().manageToken(token);
     }
 
-    function grantAllowances(uint256 tokenID) public {
-        main.backingManager().grantRTokenAllowance(main.someToken(tokenID));
-    }
-
     // do revenue distribution without doing allowances first
     function justDistributeRevenue(
         uint256 tokenID,
@@ -428,30 +423,6 @@ contract NormalOpsScenario {
     }
 
     // ==== governance changes ====
-    function setIssuanceThrottleParams(uint256 amtRateSeed, uint256 pctRateSeed) public {
-        RTokenP1Fuzz rToken = RTokenP1Fuzz(address(main.rToken()));
-        uint256 amtRate = between(
-            rToken.MIN_THROTTLE_RATE_AMT(),
-            rToken.MAX_THROTTLE_RATE_AMT(),
-            amtRateSeed
-        );
-        uint256 pctRate = between(0, rToken.MAX_THROTTLE_PCT_AMT(), pctRateSeed);
-        ThrottleLib.Params memory tParams = ThrottleLib.Params(amtRate, _safeWrap(pctRate));
-        RTokenP1Fuzz(address(main.rToken())).setIssuanceThrottleParams(tParams);
-    }
-
-    function setRedemptionThrottleParams(uint256 amtRateSeed, uint256 pctRateSeed) public {
-        RTokenP1Fuzz rToken = RTokenP1Fuzz(address(main.rToken()));
-        uint256 amtRate = between(
-            rToken.MIN_THROTTLE_RATE_AMT(),
-            rToken.MAX_THROTTLE_RATE_AMT(),
-            amtRateSeed
-        );
-        uint256 pctRate = between(0, rToken.MAX_THROTTLE_PCT_AMT(), pctRateSeed);
-        ThrottleLib.Params memory tParams = ThrottleLib.Params(amtRate, _safeWrap(pctRate));
-        RTokenP1Fuzz(address(main.rToken())).setRedemptionThrottleParams(tParams);
-    }
-
     function setDistribution(
         uint256 seedID,
         uint16 rTokenDist,
@@ -548,7 +519,7 @@ contract NormalOpsScenario {
     uint192 public prevRSRRate; // {RSR/stRSR}
     uint192 public prevRTokenRate; // {BU/RTok}
 
-    function rTokenRate() public view returns (uint192) {
+    function rTokenRate() internal view returns (uint192) {
         return
             main.rToken().totalSupply() == 0
                 ? FIX_ONE
