@@ -54,6 +54,11 @@ interface IFacadeRead {
             bytes32[] memory targets
         );
 
+    /// @return revenue {UoA} The revenue amount sitting in a trader
+    /// @dev Returns 0 if there is a net shortfall
+    /// @custom:static-call
+    function revenueInTrader(IRToken rToken, ITrading trader) external returns (uint192 revenue);
+
     // === Views ===
 
     struct Pending {

@@ -154,6 +154,46 @@ contract FacadeRead is IFacadeRead {
         }
     }
 
+    /// @return revenue {UoA} The revenue amount sitting in a trader
+    /// @dev Returns 0 if there is a net shortfall
+    /// @custom:static-call
+    function revenueInTrader(IRToken rToken, ITrading trader) external returns (uint192 revenue) {
+        uint192 shortfall; // {UoA}
+
+        rToken.main().assetRegistry().refresh();
+
+        uint192 basketsNeeded = rToken.main().backingManager() == trader
+            ? rToken.basketsNeeded()
+            : 0; // {BU}
+
+        Registry memory reg = rToken.main().assetRegistry().getRegistry();
+        IBasketHandler bh = rToken.main().basketHandler();
+
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            // {tok} = {tok/BU} * {BU}
+            uint192 balExpected = bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]).mul(
+                basketsNeeded,
+                CEIL
+            );
+
+            // {tok}
+            uint192 bal = reg.assets[i].bal(address(trader));
+
+            (uint192 lowP, uint192 highP) = reg.assets[i].price(); // {UoA/tok}
+            uint192 midP = highP != FIX_MAX ? (lowP + highP) / 2 : lowP; // {UoA/tok}
+
+            if (bal >= balExpected) {
+                // {UoA} = ({tok} - {tok}) * {UoA/tok}
+                revenue += (bal - balExpected).mul(midP);
+            } else {
+                // {UoA} = ({tok} - {tok}) * {UoA/tok}
+                shortfall += (bal - balExpected).mul(midP);
+            }
+        }
+
+        return revenue > shortfall ? revenue - shortfall : 0;
+    }
+
     // === Views ===
 
     /// @param account The account for the query

@@ -14,6 +14,7 @@ import {
   StaticATokenMock,
   StRSRP1,
   IBasketHandler,
+  TestIBackingManager,
   TestIMain,
   TestIStRSR,
   TestIRToken,
@@ -59,6 +60,7 @@ describe('FacadeRead contract', () => {
   let main: TestIMain
   let stRSR: TestIStRSR
   let basketHandler: IBasketHandler
+  let backingManager: TestIBackingManager
 
   // RSR
   let rsrAsset: Asset
@@ -75,8 +77,18 @@ describe('FacadeRead contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, rsrAsset, basket, facade, facadeTest, rToken, main, basketHandler } =
-      await loadFixture(defaultFixture))
+    ;({
+      stRSR,
+      rsr,
+      rsrAsset,
+      basket,
+      facade,
+      facadeTest,
+      rToken,
+      main,
+      basketHandler,
+      backingManager,
+    } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -325,6 +337,46 @@ describe('FacadeRead contract', () => {
       expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
+    })
+
+    it('Should return revenue in traders', async () => {
+      expect(
+        await facade.callStatic.revenueInTrader(rToken.address, backingManager.address)
+      ).to.equal(0)
+      expect(
+        await facade.callStatic.revenueInTrader(rToken.address, await main.rsrTrader())
+      ).to.equal(0)
+      expect(
+        await facade.callStatic.revenueInTrader(rToken.address, await main.rTokenTrader())
+      ).to.equal(0)
+
+      // Appreciate just the aToken
+      await aToken.setExchangeRate(fp('1.01'))
+      const expectedRevenue = issueAmount.div(4).div(100)
+      expect(
+        await facade.callStatic.revenueInTrader(rToken.address, backingManager.address)
+      ).to.be.closeTo(expectedRevenue, expectedRevenue.div(bn('1e9'))) // 1 part in 1 billion
+      expect(
+        await facade.callStatic.revenueInTrader(rToken.address, await main.rsrTrader())
+      ).to.equal(0)
+      expect(
+        await facade.callStatic.revenueInTrader(rToken.address, await main.rTokenTrader())
+      ).to.equal(0)
+
+      // Send to revenue traders
+      await backingManager.connect(owner).setBackingBuffer(fp('0'))
+      await backingManager.manageTokens([aToken.address])
+      expect(
+        await facade.callStatic.revenueInTrader(rToken.address, backingManager.address)
+      ).to.equal(0)
+      const rsrTraderExpected = expectedRevenue.mul(3).div(5)
+      expect(
+        await facade.callStatic.revenueInTrader(rToken.address, await main.rsrTrader())
+      ).to.be.closeTo(rsrTraderExpected, rsrTraderExpected.div(bn('1e9'))) // 1 part in 1 billion
+      const rTokenTraderExpected = expectedRevenue.mul(2).div(5)
+      expect(
+        await facade.callStatic.revenueInTrader(rToken.address, await main.rTokenTrader())
+      ).to.be.closeTo(rTokenTraderExpected, rTokenTraderExpected.div(bn('1e9'))) // 1 part in 1 billion
     })
 
     it('Should return totalAssetValue correctly - FacadeTest', async () => {
