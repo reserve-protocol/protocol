@@ -60,7 +60,7 @@ const holderUSDT = '0xf977814e90da44bfa03b6295a0616a897441acec'
 
 // Complex Basket holders
 const holderWBTC = '0xbf72da2bd84c5170618fbe5914b0eca9638d5eb5'
-const holdercWBTC = '0x7132ad0a72b5ba50bdaa005fad19caae029ae699'
+const holdercWBTC = '0xe84A061897afc2e7fF5FB7e3686717C528617487'
 const holderWETH = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e'
 const holdercETH = '0x10d88638be3c26f3a47d861b8b5641508501035d'
 const holderEURT = '0x5754284f345afc66a98fbb0a0afe71e0f007b949'
@@ -755,7 +755,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         targetName: string
       }
 
-      // Compound - cUSDC and cUSDT
+      // Compound - cWBTC
       const cTokenInfos: CTokenInfo[] = [
         {
           token: wbtc,
@@ -765,7 +765,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           cTokenCollateral: cWBTCCollateral,
           targetPrice: fp('31311.5'), // approx price June 6, 2022
           refPrice: fp('1.00062735'), // approx price wbtc-btc
-          refPerTok: fp('0.020204487859796421'), // for wbtc on June 2022
+          refPerTok: fp('0.020065932066404677'), // for wbtc on June 2022
           targetName: 'BTC',
         },
       ]
@@ -783,7 +783,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
           ethers.utils.formatBytes32String(ctkInf.targetName)
         )
-
         expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
           ctkInf.refPerTok,
           fp('0.001')
@@ -2039,7 +2038,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // cWBTC
         const cWBTCPrice = btcTargetPrice
           .mul(wbtcRefPrice)
-          .mul(fp('0.020204487859796421'))
+          .mul(fp('0.020065932066404677'))
           .div(BN_SCALE_FACTOR.pow(2))
         await expectPrice(cWBTCCollateral.address, cWBTCPrice, ORACLE_ERROR, true, bn('1e8')) // close to $633 usd
 
@@ -2111,7 +2110,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         // Check Balances after
         expect(await wbtc.balanceOf(backingManager.address)).to.equal(toBNDecimals(issueAmount, 8)) //1 full units
-        const requiredCWBTC: BigNumber = toBNDecimals(fp('49.5'), 8) // approx 49.5 cWBTC needed (~1 wbtc / 0.02020)
+        const requiredCWBTC: BigNumber = toBNDecimals(fp('49.85'), 8) // approx 49.5 cWBTC needed (~1 wbtc / 0.02006)
         expect(await cWBTC.balanceOf(backingManager.address)).to.be.closeTo(
           requiredCWBTC,
           point1Pct(requiredCWBTC)
