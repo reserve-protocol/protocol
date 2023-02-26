@@ -297,8 +297,6 @@ describeFork('Wrapped CUSDCv3', () => {
         await wcusdcV3.baseTrackingAccrued(bob.address)
       )
 
-      // Balances are computed from principals so we are indirectly testing the accuracy
-      // of Bob's and Don's stored principals here.
       const donsBalance = (await wcusdcV3.underlyingBalanceOf(don.address)).toBigInt()
       const bobsBalance = (await wcusdcV3.underlyingBalanceOf(bob.address)).toBigInt()
       expect(donsBalance).to.be.gt(bobsBalance)
