@@ -49,10 +49,6 @@ interface ICusdcV3Wrapper is IWrappedERC20 {
 
     function underlyingBalanceOf(address account) external view returns (uint256);
 
-    function balanceOf(address account) external view returns (uint256);
-
-    function totalSupply() external view returns (uint256);
-
     function getRewardOwed(address account) external view returns (uint256);
 
     function exchangeRate() external view returns (uint256);
@@ -66,6 +62,4 @@ interface ICusdcV3Wrapper is IWrappedERC20 {
     function baseTrackingIndex(address account) external view returns (uint64);
 
     function underlyingComet() external view returns (CometInterface);
-
-    function decimals() external view returns (uint8);
 }

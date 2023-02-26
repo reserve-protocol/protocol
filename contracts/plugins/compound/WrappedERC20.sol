@@ -38,7 +38,10 @@ abstract contract WrappedERC20 is IWrappedERC20 {
     error ZeroAddress();
     error ExceedsBalance(uint256 amount);
 
+    mapping(address => uint256) private _balances;
     mapping(address => mapping(address => bool)) public isAllowed;
+
+    uint256 private _totalSupply;
 
     string private _name;
     string private _symbol;
@@ -70,6 +73,20 @@ abstract contract WrappedERC20 is IWrappedERC20 {
      */
     function symbol() public view virtual returns (string memory) {
         return _symbol;
+    }
+
+    /**
+     * @dev See {IERC20-totalSupply}.
+     */
+    function totalSupply() public view virtual override returns (uint256) {
+        return _totalSupply;
+    }
+
+    /**
+     * @dev See {IERC20-balanceOf}.
+     */
+    function balanceOf(address account) public view virtual override returns (uint256) {
+        return _balances[account];
     }
 
     /**
@@ -169,7 +186,55 @@ abstract contract WrappedERC20 is IWrappedERC20 {
 
         _beforeTokenTransfer(from, to, amount);
 
+        uint256 fromBalance = _balances[from];
+        if (amount > fromBalance) revert ExceedsBalance(amount);
+        unchecked {
+            _balances[from] = fromBalance - amount;
+        }
+        _balances[to] += amount;
+
         emit Transfer(from, to, amount);
+    }
+
+    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
+     * the total supply.
+     *
+     * Emits a {Transfer} event with `from` set to the zero address.
+     *
+     * Requirements:
+     *
+     * - `account` cannot be the zero address.
+     */
+    function _mint(address account, uint256 amount) internal virtual {
+        if (account == address(0)) revert ZeroAddress();
+
+        _totalSupply += amount;
+        _balances[account] += amount;
+        emit Transfer(address(0), account, amount);
+    }
+
+    /**
+     * @dev Destroys `amount` tokens from `account`, reducing the
+     * total supply.
+     *
+     * Emits a {Transfer} event with `to` set to the zero address.
+     *
+     * Requirements:
+     *
+     * - `account` cannot be the zero address.
+     * - `account` must have at least `amount` tokens.
+     */
+    function _burn(address account, uint256 amount) internal virtual {
+        if (account == address(0)) revert ZeroAddress();
+
+        uint256 accountBalance = _balances[account];
+        if (amount > accountBalance) revert ExceedsBalance(amount);
+        unchecked {
+            _balances[account] = accountBalance - amount;
+        }
+        _totalSupply -= amount;
+
+        emit Transfer(account, address(0), amount);
     }
 
     /**
