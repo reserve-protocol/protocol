@@ -132,6 +132,15 @@ describeFork('Wrapped CUSDCv3', () => {
         1
       )
     })
+
+    it('updates the totalSupply', async () => {
+      const totalSupplyBefore = await wcusdcV3.totalSupply()
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(
+        await cusdcV3.balanceOf(bob.address)
+      )
+      await wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256)
+      expect(await wcusdcV3.totalSupply()).to.equal(totalSupplyBefore.add(expectedAmount))
+    })
   })
 
   describe('withdraw', () => {
@@ -236,6 +245,15 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(charlesWithdrawn, 100)
       expect(await cusdcV3.balanceOf(don.address)).to.closeTo(donWithdrawn, 100)
     })
+
+    it('updates the totalSupply', async () => {
+      const totalSupplyBefore = await wcusdcV3.totalSupply()
+      const withdrawAmt = bn('15000e6')
+      const expectedDiff = await wcusdcV3.convertDynamicToStatic(withdrawAmt)
+      await wcusdcV3.connect(bob).withdraw(withdrawAmt)
+      // conservative rounding
+      expect(await wcusdcV3.totalSupply()).to.be.closeTo(totalSupplyBefore.sub(expectedDiff), 10)
+    })
   })
 
   describe('transfer', () => {
@@ -249,7 +267,7 @@ describeFork('Wrapped CUSDCv3', () => {
       ).to.be.revertedWith('Unauthorized')
     })
 
-    it('updates accruals and principals in sender and receiver', async () => {
+    it('updates balances and rewards in sender and receiver', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await enableRewardsAccrual(cusdcV3)
@@ -288,6 +306,12 @@ describeFork('Wrapped CUSDCv3', () => {
 
       // Rounding in favor of the Wrapped Token is happening here. Amount is negligible
       expect(totalBalances).to.be.closeTo(await cusdcV3.balanceOf(wcusdcV3.address), 1)
+    })
+
+    it('does not update the total supply', async () => {
+      const totalSupplyBefore = await wcusdcV3.totalSupply()
+      await wcusdcV3.connect(bob).transfer(don.address, bn('10000e6'))
+      expect(totalSupplyBefore).to.equal(await wcusdcV3.totalSupply())
     })
   })
 
