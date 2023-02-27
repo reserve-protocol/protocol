@@ -85,7 +85,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         // {Comet}
         uint256 srcBal = underlyingComet.balanceOf(src);
         if (amount > srcBal) amount = srcBal;
-        if (amount == 0) return;
+        if (amount == 0) revert BadAmount();
 
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(src);
@@ -142,7 +142,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         // {Comet}
         uint256 srcBalUnderlying = underlyingBalanceOf(src);
         if (srcBalUnderlying < amount) amount = srcBalUnderlying;
-        if (amount == 0) return;
+        if (amount == 0) revert BadAmount();
 
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(src);

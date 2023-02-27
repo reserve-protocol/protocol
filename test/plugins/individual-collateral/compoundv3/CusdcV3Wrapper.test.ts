@@ -141,6 +141,16 @@ describeFork('Wrapped CUSDCv3', () => {
       await wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256)
       expect(await wcusdcV3.totalSupply()).to.equal(totalSupplyBefore.add(expectedAmount))
     })
+
+    it('deposit 0 reverts', async () => {
+      await expect(wcusdcV3.connect(bob).deposit(0)).to.be.revertedWith('BadAmount')
+    })
+
+    it('depositing 0 balance reverts', async () => {
+      await cusdcV3.connect(bob).transfer(charles.address, ethers.constants.MaxUint256)
+      await expect(wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256))
+        .to.be.revertedWith('BadAmount')
+    })
   })
 
   describe('withdraw', () => {
@@ -197,10 +207,14 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.underlyingBalanceOf(bob.address)).to.closeTo(bn('0'), 10)
     })
 
-    it('withdraws 0', async () => {
+    it('withdrawing 0 reverts', async () => {
       const initialBalance = await wcusdcV3.balanceOf(bob.address)
-      await wcusdcV3.connect(bob).withdraw(0)
+      await expect(wcusdcV3.connect(bob).withdraw(0)).to.be.revertedWith('BadAmount')
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(initialBalance)
+    })
+
+    it('withdrawing 0 balance reverts', async () => {
+      await expect(wcusdcV3.connect(don).withdraw(ethers.constants.MaxUint256)).to.be.revertedWith('BadAmount')
     })
 
     it('handles complex withdrawal sequence', async () => {
