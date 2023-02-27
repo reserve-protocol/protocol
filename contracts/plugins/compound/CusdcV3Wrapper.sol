@@ -81,15 +81,15 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         address dst,
         uint256 amount
     ) internal {
-        if (amount == 0) return;
         if (!hasPermission(src, operator)) revert Unauthorized();
+        // {Comet}
+        uint256 srcBal = underlyingComet.balanceOf(src);
+        if (amount > srcBal) amount = srcBal;
+        if (amount == 0) return;
 
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(src);
 
-        // {Comet}
-        uint256 srcBal = underlyingComet.balanceOf(src);
-        if (amount > srcBal) amount = srcBal;
 
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         int104 wrapperPrePrinc = wrappedBasic.principal;
@@ -98,7 +98,6 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
         wrappedBasic = underlyingComet.userBasic(address(this));
         int104 wrapperPostPrinc = wrappedBasic.principal;
-
         accrueAccountRewards(dst);
         // safe to cast because amount is positive
         _mint(dst, uint104(wrapperPostPrinc - wrapperPrePrinc));
@@ -139,15 +138,15 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         address dst,
         uint256 amount
     ) internal {
-        if (amount == 0) return;
         if (!hasPermission(src, operator)) revert Unauthorized();
+        // {Comet}
+        uint256 srcBalUnderlying = underlyingBalanceOf(src);
+        if (srcBalUnderlying < amount) amount = srcBalUnderlying;
+        if (amount == 0) return;
 
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(src);
 
-        // {Comet}
-        uint256 srcBalUnderlying = underlyingBalanceOf(src);
-        if (srcBalUnderlying < amount) amount = srcBalUnderlying;
 
         uint256 srcBalPre = balanceOf(src);
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
@@ -164,7 +163,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         // occasionally comet will withdraw 1-10 wei more than we asked for.
         // this is ok because 9 times out of 10 we are rounding in favor of the wrapper.
         // safe because we have already capped the comet withdraw amount to src underlying bal.
-        if (srcBalPre < burnAmt) burnAmt = srcBalPre;
+        if (srcBalPre <= burnAmt) burnAmt = srcBalPre;
 
         accrueAccountRewards(src);
         _burn(src, burnAmt);
