@@ -166,7 +166,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         if (srcBalPre <= burnAmt) burnAmt = srcBalPre;
 
         accrueAccountRewards(src);
-        _burn(src, burnAmt);
+        _burn(src, safe104(burnAmt));
     }
 
     /// Internally called to run transfer logic.
