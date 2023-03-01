@@ -4,12 +4,13 @@ import hre, { ethers, network, waffle } from 'hardhat'
 import { useEnv } from '#/utils/env'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
-import { COMP } from './constants'
-import { ERC20Mock, CometInterface, ICusdcV3Wrapper } from '../../../../typechain'
+import { COMP, REWARDS } from './constants'
+import { ERC20Mock, CometInterface, ICusdcV3Wrapper, CusdcV3Wrapper__factory } from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { ZERO_ADDRESS } from '../../../../common/constants';
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -42,6 +43,14 @@ describeFork('Wrapped CUSDCv3', () => {
   beforeEach(async () => {
     ;[, bob, charles, don] = await ethers.getSigners()
     ;({ usdc, wcusdcV3, cusdcV3 } = await loadFixture(makewCSUDC))
+  })
+
+  it('reverts if deployed with a 0 address', async () => {
+    const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
+      await ethers.getContractFactory('CusdcV3Wrapper')
+    )
+    await expect(CusdcV3WrapperFactory.deploy(ZERO_ADDRESS, REWARDS, COMP))
+      .revertedWith('ZeroAddress')
   })
 
   describe('deposit', () => {
