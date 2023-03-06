@@ -23,4 +23,6 @@ interface IReth is IERC20 {
     function mint(uint256 _ethAmount, address _to) external;
 
     function burn(uint256 _rethAmount) external;
+
+    function decimals() external view returns (uint8);
 }
