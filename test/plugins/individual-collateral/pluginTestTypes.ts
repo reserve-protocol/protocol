@@ -48,6 +48,7 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
   resetFork: () => void
   collateralName: string
+  chainlinkDefaultAnswer: BigNumberish
 }
 
 export enum CollateralStatus {

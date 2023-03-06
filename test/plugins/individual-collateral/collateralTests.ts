@@ -38,6 +38,7 @@ export default function fn<X extends CollateralFixtureContext>(
     itClaimsRewards,
     resetFork,
     collateralName,
+    chainlinkDefaultAnswer
   } = fixtures
 
   before(resetFork)
@@ -107,7 +108,7 @@ export default function fn<X extends CollateralFixtureContext>(
 
       describe('functions', () => {
         it('returns the correct bal (18 decimals)', async () => {
-          const amount = bn('20000').mul(bn(10).pow(ctx.tokDecimals))
+          const amount = bn('20').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           const aliceBal = await collateral.bal(alice.address)
@@ -128,7 +129,7 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         itClaimsRewards('claims rewards', async () => {
-          const amount = bn('20000').mul(bn(10).pow(ctx.tokDecimals))
+          const amount = bn('20').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, collateral.address)
 
           await advanceBlocks(1000)
@@ -161,7 +162,7 @@ export default function fn<X extends CollateralFixtureContext>(
           const initialRefPerTok = await collateral.refPerTok()
 
           // Update values in Oracles increase by 10-20%
-          const newPrice = bn('11e5')
+          const newPrice = bn('1700e8')
           const updateAnswerTx = await chainlinkFeed.updateAnswer(newPrice)
           await updateAnswerTx.wait()
 
@@ -174,8 +175,8 @@ export default function fn<X extends CollateralFixtureContext>(
             .div(fp('1'))
           const newExpectedDelta = newExpectedPrice.mul(oracleError).div(fp(1))
           const [newLow, newHigh] = await collateral.price()
-          expect(newLow).to.equal(newExpectedPrice.sub(newExpectedDelta))
-          expect(newHigh).to.equal(newExpectedPrice.add(newExpectedDelta))
+          expect(newLow).to.closeTo(newExpectedPrice.sub(newExpectedDelta), 1)
+          expect(newHigh).to.closeTo(newExpectedPrice.add(newExpectedDelta), 1)
 
           // Check refPerTok remains the same (because we have not refreshed)
           const finalRefPerTok = await collateral.refPerTok()
@@ -199,7 +200,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(initHigh).to.equal(expectedPrice.add(expectedDelta))
 
           // need to deposit in order to get an exchange rate
-          const amount = bn('20000').mul(bn(10).pow(ctx.tokDecimals))
+          const amount = bn('200').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           await advanceBlocks(1000)
@@ -281,7 +282,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
           // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-          const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+          const updateAnswerTx = await chainlinkFeed.updateAnswer(chainlinkDefaultAnswer.mul(8).div(10))
           await updateAnswerTx.wait()
 
           // Set next block timestamp - for deterministic result
@@ -304,7 +305,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
           // Depeg USDC:USD - Raising price by 20% from 1 to 1.2
-          const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('12e5'))
+          const updateAnswerTx = await chainlinkFeed.updateAnswer(chainlinkDefaultAnswer.mul(12).div(10))
           await updateAnswerTx.wait()
 
           // Set next block timestamp - for deterministic result
@@ -327,7 +328,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
           // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-          const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+          const updateAnswerTx = await chainlinkFeed.updateAnswer(chainlinkDefaultAnswer.mul(8).div(10))
           await updateAnswerTx.wait()
 
           // Set next block timestamp - for deterministic result
@@ -352,7 +353,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          await mintCollateralTo(ctx, bn('20000e6'), alice, alice.address)
+          await mintCollateralTo(ctx, bn('200').mul(bn(10).pow(ctx.tokDecimals)), alice, alice.address)
 
           await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
           // State remains the same

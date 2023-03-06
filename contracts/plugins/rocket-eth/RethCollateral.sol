@@ -27,7 +27,9 @@ contract RethCollateral is AppreciatingFiatCollateral {
             config,
             revenueHiding
         )
-    {}
+    {
+        exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
+    }
 
     /// Can revert, used by other contract functions in order to catch errors
     /// @param low {UoA/tok} The low price estimate

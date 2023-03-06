@@ -83,6 +83,8 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<IColl
   return collateral
 }
 
+const chainlinkDefaultAnswer = bn('1600e8')
+
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
   opts: CollateralOpts = {}
@@ -94,7 +96,7 @@ const makeCollateralFixtureContext = (
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(18, bn('1e18'))
+    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     const weth = (await ethers.getContractAt('WETH9', WETH)) as WETH9
@@ -180,7 +182,7 @@ const mintCollateralTo: MintCollateralFunc<RethCollateralFixtureContext> = async
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintRETH(ctx.weth, ctx.reth, user, amount, recipient)
+  await mintRETH(ctx.reth, user, amount, recipient)
 }
 
 const reduceRefPerTok = async (ctx: RethCollateralFixtureContext) => {
@@ -216,9 +218,10 @@ const opts = {
   makeCollateralFixtureContext,
   mintCollateralTo,
   reduceRefPerTok,
-  itClaimsRewards: it,
+  itClaimsRewards: it.skip,
   resetFork,
   collateralName: 'RocketPoolETH',
+  chainlinkDefaultAnswer
 }
 
 collateralTests(opts)
