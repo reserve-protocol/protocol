@@ -366,6 +366,7 @@ const opts = {
   itClaimsRewards: it,
   resetFork,
   collateralName: 'CompoundV3USDC',
+  chainlinkDefaultAnswer: bn('1e6')
 }
 
 collateralTests(opts)

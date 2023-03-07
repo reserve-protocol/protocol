@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { BigNumber } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
@@ -282,7 +283,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
           // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-          const updateAnswerTx = await chainlinkFeed.updateAnswer(chainlinkDefaultAnswer.mul(8).div(10))
+          const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(8).div(10))
           await updateAnswerTx.wait()
 
           // Set next block timestamp - for deterministic result
@@ -305,7 +306,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
           // Depeg USDC:USD - Raising price by 20% from 1 to 1.2
-          const updateAnswerTx = await chainlinkFeed.updateAnswer(chainlinkDefaultAnswer.mul(12).div(10))
+          const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(12).div(10))
           await updateAnswerTx.wait()
 
           // Set next block timestamp - for deterministic result
@@ -328,7 +329,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
           // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-          const updateAnswerTx = await chainlinkFeed.updateAnswer(chainlinkDefaultAnswer.mul(8).div(10))
+          const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(8).div(10))
           await updateAnswerTx.wait()
 
           // Set next block timestamp - for deterministic result
