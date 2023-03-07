@@ -35,6 +35,7 @@ export default function fn<X extends CollateralFixtureContext>(
     makeCollateralFixtureContext,
     mintCollateralTo,
     reduceRefPerTok,
+    increaseRefPerTok,
     itClaimsRewards,
     resetFork,
     collateralName,
@@ -203,8 +204,7 @@ export default function fn<X extends CollateralFixtureContext>(
           const amount = bn('200').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
-          await advanceBlocks(1000)
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+          await increaseRefPerTok(ctx, 5)
 
           await collateral.refresh()
           expect(await collateral.refPerTok()).to.be.gt(initRefPerTok)
@@ -360,7 +360,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          await reduceRefPerTok(ctx)
+          await reduceRefPerTok(ctx, 5)
 
           // Collateral defaults due to refPerTok() going down
           await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')

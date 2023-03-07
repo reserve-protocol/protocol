@@ -27,8 +27,13 @@ import {
   DELAY_UNTIL_DEFAULT,
   WETH,
   RETH,
-  ETH_USD_PRICE_FEED
+  ETH_USD_PRICE_FEED,
+  RETH_NETWORK_BALANCES,
+  RETH_TRUSTED_NODE,
+  RETH_STORAGE
 } from './constants'
+import { whileImpersonating } from '../../../utils/impersonation';
+import { getLatestBlockNumber } from '../../../utils/time';
 
 /*
   Define interfaces
@@ -185,8 +190,26 @@ const mintCollateralTo: MintCollateralFunc<RethCollateralFixtureContext> = async
   await mintRETH(ctx.reth, user, amount, recipient)
 }
 
-const reduceRefPerTok = async (ctx: RethCollateralFixtureContext) => {
-    
+const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
+
+const reduceRefPerTok = async (ctx: RethCollateralFixtureContext, pctDecrease: BigNumberish | undefined) => {
+  const rethNetworkBalances = await ethers.getContractAt('IRocketNetworkBalances', RETH_NETWORK_BALANCES)
+  const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
+  const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease!).div(100))
+  const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
+  await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
+    await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
+  })
+}
+
+const increaseRefPerTok = async (ctx: RethCollateralFixtureContext, pctIncrease: BigNumberish | undefined) => {
+  const rethNetworkBalances = await ethers.getContractAt('IRocketNetworkBalances', RETH_NETWORK_BALANCES)
+  const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
+  const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease!).div(100))
+  const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
+  await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
+    await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
+  })
 }
 
 
@@ -218,6 +241,7 @@ const opts = {
   makeCollateralFixtureContext,
   mintCollateralTo,
   reduceRefPerTok,
+  increaseRefPerTok,
   itClaimsRewards: it.skip,
   resetFork,
   collateralName: 'RocketPoolETH',

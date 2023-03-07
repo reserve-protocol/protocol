@@ -26,7 +26,7 @@ import { bn } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../../../utils/time'
+import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp, advanceBlocks } from '../../../utils/time'
 import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -242,9 +242,14 @@ const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = asyn
   await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.wcusdcV3, user, amount, recipient)
 }
 
-const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
+const reduceRefPerTok = async (ctx: CometCollateralFixtureContext, pctDecrease: BigNumberish | undefined) => {
   const currentExchangeRate = await ctx.wcusdcV3.exchangeRate()
   await ctx.wcusdcV3Mock.setMockExchangeRate(true, currentExchangeRate.sub(100))
+}
+
+const increaseRefPerTok = async (ctx: CometCollateralFixtureContext, pctIncrease: BigNumberish | undefined) => {
+  await advanceBlocks(1000)
+  await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 }
 
 /*
@@ -357,6 +362,7 @@ const opts = {
   makeCollateralFixtureContext,
   mintCollateralTo,
   reduceRefPerTok,
+  increaseRefPerTok,
   itClaimsRewards: it,
   resetFork,
   collateralName: 'CompoundV3USDC',
