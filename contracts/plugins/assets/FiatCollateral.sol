@@ -98,7 +98,7 @@ contract FiatCollateral is ICollateral, Asset {
         external
         view
         virtual
-        override
+        override(Asset, IAsset)
         returns (
             uint192 low,
             uint192 high,

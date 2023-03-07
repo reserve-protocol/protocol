@@ -243,6 +243,7 @@ const opts = {
   reduceRefPerTok,
   increaseRefPerTok,
   itClaimsRewards: it.skip,
+  itChecksTargetPerRefDefault: it.skip,
   resetFork,
   collateralName: 'RocketPoolETH',
   chainlinkDefaultAnswer

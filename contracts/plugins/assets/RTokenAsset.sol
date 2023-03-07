@@ -41,14 +41,14 @@ contract RTokenAsset is IAsset {
     /// Can revert, used by other contract functions in order to catch errors
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
-    function tryPrice() external view virtual returns (uint192 low, uint192 high) {
+    function tryPrice() external view virtual override returns (uint192 low, uint192 high, uint192 peg) {
         (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
         // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
         uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
 
-        if (supply == 0) return (lowBUPrice, highBUPrice);
+        if (supply == 0) return (lowBUPrice, highBUPrice, 0);
 
         // The RToken's price is not symmetric like other assets!
         // range.bottom is lower because of the slippage from the shortfall
@@ -70,7 +70,7 @@ contract RTokenAsset is IAsset {
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
-        try this.tryPrice() returns (uint192 low, uint192 high) {
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
             assert(low <= high);
             return (low, high);
         } catch (bytes memory errData) {

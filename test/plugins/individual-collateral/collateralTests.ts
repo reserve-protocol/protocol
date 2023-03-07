@@ -38,6 +38,7 @@ export default function fn<X extends CollateralFixtureContext>(
     reduceRefPerTok,
     increaseRefPerTok,
     itClaimsRewards,
+    itChecksTargetPerRefDefault,
     resetFork,
     collateralName,
     chainlinkDefaultAnswer
@@ -275,13 +276,12 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         })
 
-        it('enters IFFY state when reference unit depegs below low threshold', async () => {
+        itChecksTargetPerRefDefault('enters IFFY state when target-per-ref depegs below low threshold', async () => {
           const delayUntilDefault = await collateral.delayUntilDefault()
 
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-
           // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
           const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(8).div(10))
           await updateAnswerTx.wait()
@@ -290,7 +290,6 @@ export default function fn<X extends CollateralFixtureContext>(
           const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
           await setNextBlockTimestamp(nextBlockTimestamp)
           const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
-
           await expect(collateral.refresh())
             .to.emit(collateral, 'CollateralStatusChanged')
             .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
@@ -298,7 +297,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
         })
 
-        it('enters IFFY state when reference unit depegs above high threshold', async () => {
+        itChecksTargetPerRefDefault('enters IFFY state when target-per-ref depegs above high threshold', async () => {
           const delayUntilDefault = await collateral.delayUntilDefault()
 
           // Check initial state
@@ -321,7 +320,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
         })
 
-        it('enters DISABLED state when reference unit depegs for too long', async () => {
+        itChecksTargetPerRefDefault('enters DISABLED state when target-per-ref depegs for too long', async () => {
           const delayUntilDefault = await collateral.delayUntilDefault()
 
           // Check initial state

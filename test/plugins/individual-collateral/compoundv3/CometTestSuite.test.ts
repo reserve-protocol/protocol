@@ -364,6 +364,7 @@ const opts = {
   reduceRefPerTok,
   increaseRefPerTok,
   itClaimsRewards: it,
+  itChecksTargetPerRefDefault: it,
   resetFork,
   collateralName: 'CompoundV3USDC',
   chainlinkDefaultAnswer: bn('1e6')
