@@ -70,6 +70,7 @@ contract Asset is IAsset {
         external
         view
         virtual
+        override
         returns (
             uint192 low,
             uint192 high,
