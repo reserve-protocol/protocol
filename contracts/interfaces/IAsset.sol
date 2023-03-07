@@ -56,7 +56,10 @@ interface TestIAsset is IAsset {
     /// @return {s} Seconds that an oracle value is considered valid
     function oracleTimeout() external view returns (uint48);
 
-    function tryPrice() external view returns (uint192 low, uint192 high, uint192 peg);
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
+    /// @return pegPrice {target/ref} The actual price observed in the peg
+    function tryPrice() external view returns (uint192 low, uint192 high, uint192 pegPrice);
 }
 
 /// CollateralStatus must obey a linear ordering. That is:

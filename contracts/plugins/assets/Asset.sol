@@ -64,8 +64,8 @@ contract Asset is IAsset {
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
     /// @dev The third (unused) variable is only here for compatibility with Collateral
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
     function tryPrice()
         external
         view
