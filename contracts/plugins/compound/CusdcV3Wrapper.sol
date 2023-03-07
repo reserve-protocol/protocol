@@ -90,7 +90,6 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(src);
 
-
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         int104 wrapperPrePrinc = wrappedBasic.principal;
 
@@ -146,7 +145,6 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(src);
-
 
         uint256 srcBalPre = balanceOf(src);
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
