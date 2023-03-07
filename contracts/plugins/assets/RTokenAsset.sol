@@ -41,7 +41,17 @@ contract RTokenAsset is IAsset {
     /// Can revert, used by other contract functions in order to catch errors
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
-    function tryPrice() external view virtual override returns (uint192 low, uint192 high, uint192 peg) {
+    function tryPrice()
+        external
+        view
+        virtual
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 peg
+        )
+    {
         (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
 
         // Here we take advantage of the fact that we know RToken has 18 decimals

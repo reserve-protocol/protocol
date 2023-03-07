@@ -19,14 +19,8 @@ contract RethCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    constructor(
-        CollateralConfig memory config,
-        uint192 revenueHiding
-    )
-        AppreciatingFiatCollateral(
-            config,
-            revenueHiding
-        )
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
     {
         exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
@@ -59,7 +53,7 @@ contract RethCollateral is AppreciatingFiatCollateral {
         pegPrice = targetPerRef();
     }
 
-        /// Should not revert
+    /// Should not revert
     /// Refresh exchange rates and update default status.
     /// @dev Should not need to override: can handle collateral with variable refPerTok()
     function refresh() public virtual override {

@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// External Interface for RETH
-// See: https://github.com/rocket-pool/rocketpool/blob/master/contracts/interface/token/RocketTokenRETHInterface.sol
 interface IReth is IERC20 {
     function getEthValue(uint256 _rethAmount) external view returns (uint256);
 
