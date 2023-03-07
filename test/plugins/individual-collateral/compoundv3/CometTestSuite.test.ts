@@ -67,6 +67,8 @@ interface CometCollateralOpts extends CollateralOpts {
   Define deployment functions
 */
 
+const chainlinkDefaultAnswer = bn('1e8')
+
 export const defaultCometCollateralOpts: CometCollateralOpts = {
   erc20: CUSDC_V3,
   targetName: ethers.utils.formatBytes32String('USD'),
@@ -133,7 +135,7 @@ const makeCollateralFixtureContext = (
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
+    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     const fix = await makewCSUDC()
@@ -180,7 +182,7 @@ const deployCollateralCometMockContext = async (
   const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
     await ethers.getContractFactory('MockV3Aggregator')
   )
-  const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
+  const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   collateralOpts.chainlinkFeed = chainlinkFeed.address
 
   const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
@@ -367,7 +369,7 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   resetFork,
   collateralName: 'CompoundV3USDC',
-  chainlinkDefaultAnswer: bn('1e6')
+  chainlinkDefaultAnswer
 }
 
 collateralTests(opts)

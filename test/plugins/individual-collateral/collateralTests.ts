@@ -165,7 +165,7 @@ export default function fn<X extends CollateralFixtureContext>(
           const initialRefPerTok = await collateral.refPerTok()
 
           // Update values in Oracles increase by 10-20%
-          const newPrice = bn('1700e8')
+          const newPrice = BigNumber.from(chainlinkDefaultAnswer).mul(11).div(10)
           const updateAnswerTx = await chainlinkFeed.updateAnswer(newPrice)
           await updateAnswerTx.wait()
 
@@ -282,7 +282,7 @@ export default function fn<X extends CollateralFixtureContext>(
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-          // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
+          // Depeg - Reducing price by 20%
           const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(8).div(10))
           await updateAnswerTx.wait()
 
@@ -304,7 +304,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg USDC:USD - Raising price by 20% from 1 to 1.2
+          // Depeg - Raising price by 20%
           const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(12).div(10))
           await updateAnswerTx.wait()
 
@@ -327,7 +327,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
+          // Depeg - Reducing price by 20%
           const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(8).div(10))
           await updateAnswerTx.wait()
 
@@ -380,7 +380,7 @@ export default function fn<X extends CollateralFixtureContext>(
             'InvalidMockV3Aggregator'
           )
           const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
-            await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
+            await InvalidMockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
           )
 
           const invalidCollateral = await deployCollateral({
