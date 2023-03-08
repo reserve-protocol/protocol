@@ -102,3 +102,4 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Add safety during asset degregistration to ensure it is always possible to unregister an infinite-looping asset
 - Fix `StRSR`/`RToken` EIP712 typehash to use release version instead of "1"
 - Add `FacadeRead.redeem(IRToken rToken, uint256 amount, uint48 basketNonce)` to return the expected redemption quantities on the basketNonce, or revert
+- Integrate with OZ 4.7.3 Governance (changes to `quorum()`/t`proposalThreshold()`)

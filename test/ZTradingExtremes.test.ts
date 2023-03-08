@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers } from 'hardhat'
 import { IConfig, MAX_ORACLE_TIMEOUT, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
 import { FURNACE_DEST, STRSR_DEST, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { bn, fp, shortString, toBNDecimals, divCeil } from '../common/numbers'
@@ -40,8 +41,6 @@ import { cartesianProduct } from './utils/cases'
 import { setOraclePrice } from './utils/oracles'
 import { useEnv } from '#/utils/env'
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 const describeExtreme =
   IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
 
@@ -75,9 +74,6 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   let ERC20Mock: ContractFactory
   let ATokenMockFactory: ContractFactory
   let CTokenMockFactory: ContractFactory
@@ -87,11 +83,6 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
   const DEFAULT_THRESHOLD = fp('0.01') // 1%
   const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
   const MAX_UOA = fp('1e29')
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

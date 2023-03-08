@@ -17,7 +17,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     /**
      * System-wide states (does not impact ERC20 functions)
      *  - Frozen: only allow OWNER actions and staking
-     *  - Paused: only allow OWNER actions, redemption, issuance cancellation, and staking
+     *  - Paused: only allow OWNER actions, redemption, staking, and rewards payout
      *
      * Typically freezing thaws on its own in a predetemined number of blocks.
      *   However, OWNER can also freeze forever.

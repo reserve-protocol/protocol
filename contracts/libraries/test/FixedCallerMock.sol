@@ -15,14 +15,12 @@ contract FixedCallerMock {
     function shiftl_toFix_Rnd(uint256 x, int8 d, RoundingMode rnd) public pure returns (uint192 ) {
         return shiftl_toFix(x, d, rnd);
     }
-
     function divFix_(uint256 x, uint192  y) public pure returns (uint192 ) {
         return divFix(x, y);
     }
     function divuu_(uint256 x, uint256 y) public pure returns (uint256) {
         return divuu(x, y);
     }
-
     function fixMin_(uint192  x, uint192  y) public pure returns (uint192 ) {
         return fixMin(x, y);
     }

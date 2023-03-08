@@ -1,4 +1,3 @@
-import { Fixture } from 'ethereum-waffle'
 import { ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
@@ -31,6 +30,8 @@ import {
 } from '../../../typechain'
 
 export const ORACLE_TIMEOUT = bn('500000000') // 5700d - large for tests only
+
+type Fixture<T> = () => Promise<T>
 
 interface RSRFixture {
   rsr: ERC20Mock
@@ -66,9 +67,7 @@ interface DefaultFixture extends RSRAndModuleFixture {
   govParams: IGovParams
 }
 
-export const defaultFixture: Fixture<DefaultFixture> = async function ([
-  ,
-]): Promise<DefaultFixture> {
+export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
   const { rsr } = await rsrFixture()
   const { gnosis } = await gnosisFixture()
   const chainId = await getChainId(hre)
