@@ -1,8 +1,12 @@
 # Exhaustive Testing
-The exhuastive tests include `ZTradingExteremes.test.ts` and `ZZStRSR.test.ts`, and are meant to test the protocol when given permutations of input values on the extreme ends of the spectrum of possiblities.
+
+The exhaustive tests include `Furnace.test.ts`, `RToken.test.ts`, `ZTradingExteremes.test.ts` and `ZZStRSR.test.ts`, and are meant to test the protocol when given permutations of input values on the extreme ends of the spectrum of possiblities.
+
+The env vars related to exhaustive testing are `EXTREME` and `SLOW`.
 
 ## 1) Get a box
-The exhuastive tests can take up to 24hr to complete, and use up a significant amount of memory (reports of up to 27gb).  Therefore, we want to run these on a vm in gcp.
+
+The exhaustive tests can take up to 24hr to complete, and use up a significant amount of memory (reports of up to 27gb). Therefore, we want to run these on a vm in gcp.
 
 I'm assuming you've already got `gcloud` installed on your dev machine. If not, https://cloud.google.com/sdk/docs/install .
 
@@ -17,6 +21,9 @@ gcloud config set compute/zone us-central1-a
 ```
 
 ### Option A: Create a new VM
+
+(Skip this and go to Option B, ideally)
+
 Create the VM:
 
 ```bash
@@ -24,11 +31,13 @@ gcloud compute instances create exhaustive --machine-type=n2d-highmem-8 --image-
 ```
 
 Pull the ssh-config from gcp:
+
 ```
 gcloud compute config-ssh
 ```
 
 Jump onto the instance:
+
 ```
 ssh exhaustive.us-central1-a.rtoken-fuzz
 ```
@@ -47,7 +56,7 @@ Install the relevant packages:
 sudo apt update
 
 # Install nvm
-curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash 
+curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
@@ -66,22 +75,29 @@ sudo bash add-google-cloud-ops-agent-repo.sh --also-install
 ```
 
 ### Option B: Create a VM from existing Machine Image
-We currently (2/23/23) have a pre-cooked machine image that can be used for exhaustive testing.  It comes will all the above setup pre-installed.  Use the following command to launch a VM using this image.
+
+We currently (2/23/23) have a pre-cooked machine image that can be used for exhaustive testing. It comes will all the above setup pre-installed. Use the following command to launch a VM using this image.
+
 ```bash
 gcloud compute instances create exhaustive --source-machine-image=exhaustive-box --zone=us-central1-a
 ```
 
 ## 2) SSH onto the box
+
 If you need to pull the ssh-config from gcp:
+
 ```
 gcloud compute config-ssh
 ```
+
 Jump onto the instance:
+
 ```
 ssh exhaustive.us-central1-a.rtoken-fuzz
 ```
 
 ## 3) Run the tests
+
 Pull the repo, checkout latest `master` branch (or whichever branch you want to test), install packages, and compile:
 
 ```
@@ -94,6 +110,7 @@ yarn compile
 ```
 
 Tmux and run the tests:
+
 ```
 tmux
 bash ./scripts/run-exhaustive-tests.sh
@@ -102,6 +119,7 @@ bash ./scripts/run-exhaustive-tests.sh
 When the test are complete, you'll find the console output in `tmux-1.log` and `tmux-2.log`.
 
 Detach from the tmux session:
+
 ```
 ctrl-z
 d
