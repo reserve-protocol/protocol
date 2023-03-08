@@ -28,11 +28,23 @@ import {
   StaticATokenMock,
 } from '../typechain'
 import { advanceTime } from './utils/time'
-import { defaultFixture, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING, SLOW } from './fixtures'
+import {
+  defaultFixture,
+  ORACLE_ERROR,
+  PRICE_TIMEOUT,
+  REVENUE_HIDING,
+  SLOW,
+  IMPLEMENTATION,
+  Implementation,
+} from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { setOraclePrice } from './utils/oracles'
+import { useEnv } from '#/utils/env'
 
-describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
+const describeExtreme =
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
+
+describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress

@@ -17,6 +17,7 @@ type IEnvVars =
   | 'MAINNET_BLOCK'
   | 'ONLY_FAST'
   | 'JOBS'
+  | 'EXTREME'
 
 export function useEnv(key: IEnvVars | IEnvVars[], _default = ''): string {
   if (typeof key === 'string') {

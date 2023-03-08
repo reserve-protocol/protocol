@@ -15,6 +15,7 @@
     "deploy:run": "hardhat run scripts/deploy.ts",
     "deploy:confirm": "hardhat run scripts/confirm.ts",
     "deploy:verify_etherscan": "hardhat run scripts/verify_etherscan.ts",
+    "test:extreme": "EXTREME=1 SLOW= PROTO_IMPL=1 npx hardhat test",
     "test:unit": "yarn test:plugins && yarn test:p0 && yarn test:p1",
     "test:fast": "bash tools/fast-test.sh",
     "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
