@@ -1,12 +1,12 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { Fixture } from 'ethereum-waffle'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
-import { bn, divCeil, fp } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { withinQuad } from '../utils/matchers'
+import { toSellAmt, toMinBuyAmt } from '../utils/trades'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { advanceTime } from '../utils/time'
 import { expectEvents } from '../../common/events'
@@ -29,17 +29,34 @@ import {
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 interface DualFixture {
   one: DefaultFixture
   two: DefaultFixture
 }
 
-const dualFixture: Fixture<DualFixture> = async function ([owner]): Promise<DualFixture> {
+type Fixture<T> = () => Promise<T>
+
+// hack to clone functions
+Function.prototype.clone = function () {
+  // eslint-disable-next-line @typescript-eslint/no-this-alias
+  const that = this
+  const temp = function temporary() {
+    // eslint-disable-next-line prefer-rest-params
+    return that.apply(this, arguments)
+  }
+  for (const key in this) {
+    // eslint-disable-next-line no-prototype-builtins
+    if (this.hasOwnProperty(key)) {
+      temp[key] = this[key]
+    }
+  }
+  return temp
+}
+
+const dualFixture: Fixture<DualFixture> = async function (): Promise<DualFixture> {
   return {
-    one: await createFixtureLoader([owner])(defaultFixture),
-    two: await createFixtureLoader([owner])(defaultFixture),
+    one: await loadFixture(defaultFixture),
+    two: await loadFixture(defaultFixture.clone()),
   }
 }
 
@@ -60,57 +77,9 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
   let one: DefaultFixture
   let two: DefaultFixture
 
-  let loadFixtureDual: ReturnType<typeof createFixtureLoader>
-
-  let wallet: Wallet
-
-  // Computes the sellAmt for a minBuyAmt at two prices
-  const toSellAmt = (
-    minBuyAmt: BigNumber,
-    sellPrice: BigNumber,
-    buyPrice: BigNumber,
-    oracleError: BigNumber,
-    maxTradeSlippage: BigNumber
-  ): BigNumber => {
-    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
-    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = minBuyAmt.mul(fp('1').add(maxTradeSlippage)).mul(highBuyPrice)
-
-    return divCeil(divCeil(product, lowSellPrice), fp('1'))
-  }
-
-  // Computes the minBuyAmt for a sellAmt at two prices
-  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
-  const toMinBuyAmt = (
-    sellAmt: BigNumber,
-    sellPrice: BigNumber,
-    buyPrice: BigNumber,
-    oracleError: BigNumber,
-    maxTradeSlippage: BigNumber
-  ): BigNumber => {
-    // do all muls first so we don't round unnecessarily
-    // a = loss due to max trade slippage
-    // b = loss due to selling token at the low price
-    // c = loss due to buying token at the high price
-    // mirrors the math from TradeLib ~L:57
-
-    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
-    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = sellAmt
-      .mul(fp('1').sub(maxTradeSlippage)) // (a)
-      .mul(lowSellPrice) // (b)
-
-    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
-  }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixtureDual = createFixtureLoader([wallet])
-  })
-
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ one, two } = await loadFixtureDual(dualFixture))
+    ;({ one, two } = await loadFixture(dualFixture))
   })
 
   // this is mostly a check on our testing suite
@@ -252,6 +221,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         ORACLE_ERROR,
         await one.backingManager.maxTradeSlippage()
       )
+      console.log(1, sellAmt)
       await expect(one.backingManager.manageTokens([]))
         .to.emit(one.backingManager, 'TradeStarted')
         .withArgs(

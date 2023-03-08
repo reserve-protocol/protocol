@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import hre, { ethers } from 'hardhat'
 import {
   Collateral,
   IMPLEMENTATION,
@@ -19,7 +20,6 @@ import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { advanceBlocks, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../utils/oracles'
-import forkBlockNumber from './fork-block-numbers'
 import {
   Asset,
   ATokenFiatCollateral,
@@ -48,8 +48,6 @@ import {
   WETH9,
 } from '../../typechain'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 // Relevant addresses (Mainnet)
 // DAI, cDAI, and aDAI Holders
@@ -166,16 +164,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let basket: Collateral[]
   let erc20s: IERC20[]
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   let chainId: number
 
   describe('Assets/Collateral', () => {
     before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
         throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -969,9 +961,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // ref price approx 1.07
         await expectPrice(tkInf.eurFiatTokenCollateral.address, tkInf.refPrice, ORACLE_ERROR, true)
 
-        await expect(tkInf.eurFiatTokenCollateral.claimRewards())
-          .to.not.emit(tkInf.eurFiatTokenCollateral, 'RewardsClaimed')
-          .withArgs(compToken.address, 0)
+        await expect(tkInf.eurFiatTokenCollateral.claimRewards()).to.not.emit(
+          tkInf.eurFiatTokenCollateral,
+          'RewardsClaimed'
+        )
 
         expect(await tkInf.eurFiatTokenCollateral.maxTradeVolume()).to.equal(
           config.rTokenMaxTradeVolume
@@ -1000,7 +993,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
       )
       // Assets with invalid feed - revert
-      await expect(nonpriceAsset.price()).to.be.revertedWith('')
+      await expect(nonpriceAsset.price()).to.be.reverted
 
       // With a feed with zero price
       const zeroPriceAsset: Asset = <Asset>(
@@ -1066,7 +1059,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       })
 
       // Collateral with no price should revert
-      await expect(nonPriceCollateral.price()).to.be.revertedWith('')
+      await expect(nonPriceCollateral.price()).to.be.reverted
 
       // Refresh should also revert - status is not modified
       await expect(nonPriceCollateral.refresh()).to.be.reverted
@@ -1141,7 +1134,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         compoundMock.address
       )
       // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenCollateral.price()).to.be.revertedWith('')
+      await expect(nonpriceCtokenCollateral.price()).to.be.reverted
 
       // Refresh should also revert - status is not modified
       await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
@@ -1219,7 +1212,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // ATokens - Collateral with no price info should revert
-      await expect(nonpriceAtokenCollateral.price()).to.be.revertedWith('')
+      await expect(nonpriceAtokenCollateral.price()).to.be.reverted
 
       // Refresh should also revert - status is not modified
       await expect(nonpriceAtokenCollateral.refresh()).to.be.reverted
@@ -1287,7 +1280,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Non-fiat Collateral with no price should revert
-      await expect(nonpriceNonFiatCollateral.price()).to.be.revertedWith('')
+      await expect(nonpriceNonFiatCollateral.price()).to.be.reverted
 
       // Refresh should also revert - status is not modified
       await expect(nonpriceNonFiatCollateral.refresh()).to.be.reverted
@@ -1364,7 +1357,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenNonFiatCollateral.price()).to.be.revertedWith('')
+      await expect(nonpriceCtokenNonFiatCollateral.price()).to.be.reverted
 
       // Refresh should also revert - status is not modified
       await expect(nonpriceCtokenNonFiatCollateral.refresh()).to.be.reverted
@@ -1435,7 +1428,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       })
 
       // Non-fiat Collateral with no price should revert
-      await expect(nonpriceSelfReferentialCollateral.price()).to.be.revertedWith('')
+      await expect(nonpriceSelfReferentialCollateral.price()).to.be.reverted
 
       // Refresh should also revert - status is not modified
       await expect(nonpriceSelfReferentialCollateral.refresh()).to.be.reverted
@@ -1504,7 +1497,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenSelfReferentialCollateral.price()).to.be.revertedWith('')
+      await expect(nonpriceCtokenSelfReferentialCollateral.price()).to.be.reverted
 
       // Refresh should also revert - status is not modified
       await expect(nonpriceCtokenSelfReferentialCollateral.refresh()).to.be.reverted
@@ -1580,7 +1573,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Collateral with no price should revert
-      await expect(nonPriceEURCollateral.price()).to.be.revertedWith('')
+      await expect(nonPriceEURCollateral.price()).to.be.reverted
 
       // Refresh should also revert - status is not modified
       await expect(nonPriceEURCollateral.refresh()).to.be.reverted
@@ -2355,28 +2348,22 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   // - We don't expect them to soon
   // - Rewards can always be collected later through a plugin upgrade
   describe.skip('Claim Rewards - ATokens/CTokens Fiat', () => {
-    const setup = async (blockNumber: number) => {
-      ;[owner] = await ethers.getSigners()
+    // const setup = async (blockNumber: number) => {
+    //   ;[owner] = await ethers.getSigners()
 
-      // Use Mainnet fork
-      await hre.network.provider.request({
-        method: 'hardhat_reset',
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
-              blockNumber: blockNumber,
-            },
-          },
-        ],
-      })
-    }
-
-    before(async () => {
-      await setup(forkBlockNumber['aave-compound-rewards'])
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-    })
+    //   // Use Mainnet fork
+    //   await hre.network.provider.request({
+    //     method: 'hardhat_reset',
+    //     params: [
+    //       {
+    //         forking: {
+    //           jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+    //           blockNumber: blockNumber,
+    //         },
+    //       },
+    //     ],
+    //   })
+    // }
 
     beforeEach(async () => {
       ;[owner, addr1] = await ethers.getSigners()

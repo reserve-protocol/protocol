@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ContractFactory, Wallet } from 'ethers'
-import { ethers, upgrades, waffle } from 'hardhat'
+import { ethers, upgrades } from 'hardhat'
 import { IComponents, IConfig } from '../common/configuration'
 import { OWNER, SHORT_FREEZER, LONG_FREEZER, PAUSER } from '../common/constants'
 import { bn } from '../common/numbers'
@@ -44,8 +45,6 @@ import {
   RecollateralizationLibP1,
 } from '../typechain'
 import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
@@ -90,13 +89,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let TradeFactory: ContractFactory
   let StRSRFactory: ContractFactory
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
   let notWallet: Wallet
 
   before('create fixture loader', async () => {
-    ;[wallet, notWallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
+    ;[, notWallet] = (await ethers.getSigners()) as unknown as Wallet[]
   })
 
   beforeEach(async () => {

@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { ContractFactory } from 'ethers'
+import hre, { ethers } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
@@ -11,8 +12,6 @@ import { expectInIndirectReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import { FacadeWrite, FiatCollateral, TestIDeployer, TestIMain } from '../../typechain'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
@@ -34,16 +33,10 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
   let rTokenConfig: IRTokenConfig
   let rTokenSetup: IRTokenSetup
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   let chainId: number
 
   describe('Deployment', () => {
     before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
         throw new Error(`Missing network configuration for ${hre.network.name}`)

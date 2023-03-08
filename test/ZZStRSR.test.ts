@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, upgrades, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import hre, { ethers, upgrades } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { setOraclePrice } from './utils/oracles'
 import { bn, fp, near, shortString } from '../common/numbers'
@@ -43,8 +44,6 @@ import { makeDecayFn, calcErr } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
@@ -91,9 +90,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   // Quantities
   let initialBal: BigNumber
   let stkWithdrawalDelay: number
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
 
   interface IWithdrawal {
     rsrAmount: BigNumber
@@ -143,11 +139,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSRP1.draftQueueLen(era, account)).to.equal(expectedValue)
     } else return
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, addr3, other] = await ethers.getSigners()

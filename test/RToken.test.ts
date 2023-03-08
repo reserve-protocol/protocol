@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import hre, { ethers } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { IConfig, ThrottleParams, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
 import {
@@ -60,8 +61,6 @@ const BLOCKS_PER_HOUR = bn(300)
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -94,14 +93,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let furnace: TestIFurnace
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()

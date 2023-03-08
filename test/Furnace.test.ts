@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, upgrades, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import hre, { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
 import {
@@ -25,8 +26,6 @@ import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
 import { ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -58,20 +57,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
   let initialBal: BigNumber
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   // Implementation-agnostic interface for deploying the Furnace
   const deployNewFurnace = async (): Promise<TestIFurnace> => {
     // Deploy fixture
     ;({ furnace } = await loadFixture(defaultFixture))
     return furnace
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
