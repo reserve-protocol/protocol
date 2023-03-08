@@ -2,7 +2,6 @@ import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { Wallet } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
@@ -15,7 +14,7 @@ import {
   setNextBlockTimestamp,
 } from '../../utils/time'
 import { MAX_UINT48, MAX_UINT192 } from '../../../common/constants'
-import { CollateralFixtureContext, CollateralTestSuiteFixtures, CollateralStatus } from './types'
+import { CollateralFixtureContext, CollateralTestSuiteFixtures, CollateralStatus } from './pluginTestTypes'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 

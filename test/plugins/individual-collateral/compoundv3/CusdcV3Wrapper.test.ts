@@ -1,6 +1,6 @@
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
-import hre, { ethers, network, waffle } from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import hre, { ethers, network } from 'hardhat'
 import { useEnv } from '#/utils/env'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
@@ -12,8 +12,6 @@ import { networkConfig } from '../../../../common/configuration'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ZERO_ADDRESS } from '../../../../common/constants';
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
 describeFork('Wrapped CUSDCv3', () => {
@@ -24,15 +22,10 @@ describeFork('Wrapped CUSDCv3', () => {
   let wcusdcV3: ICusdcV3Wrapper
   let cusdcV3: CometInterface
 
-  let wallet: Wallet
   let chainId: number
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
 
   before(async () => {
     await resetFork()
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
 
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {

@@ -4,7 +4,7 @@ import {
   CollateralOpts,
   MintCollateralFunc,
   CollateralStatus,
-} from '../types'
+} from '../pluginTestTypes'
 import { mintWcUSDC, makewCSUDC, resetFork, enableRewardsAccrual } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'

@@ -1,7 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumberish } from 'ethers'
-import { Fixture } from 'ethereum-waffle'
 import { MockV3Aggregator, ICollateral, IERC20 } from '../../../typechain'
+
+type Fixture<T> = () => Promise<T>
 
 export interface CollateralFixtureContext {
   collateral: ICollateral
