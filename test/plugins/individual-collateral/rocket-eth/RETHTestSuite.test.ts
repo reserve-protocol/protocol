@@ -6,7 +6,6 @@ import {
 } from '../types'
 import { resetFork, mintRETH } from './helpers'
 import { ethers } from 'hardhat'
-import { Fixture } from 'ethereum-waffle'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
   ERC20Mock,
@@ -89,6 +88,8 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<IColl
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
+
+type Fixture<T> = () => Promise<T>
 
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
