@@ -1,15 +1,8 @@
-import hre, { ethers } from 'hardhat'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import {
-  IReth
-} from '../../../../typechain'
+import { IReth } from '../../../../typechain'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { BigNumberish } from 'ethers'
-import {
-  WETH,
-  FORK_BLOCK,
-  RETH_WHALE
-} from './constants'
+import { FORK_BLOCK, RETH_WHALE } from './constants'
 import { getResetFork } from '../helpers'
 
 export const mintRETH = async (

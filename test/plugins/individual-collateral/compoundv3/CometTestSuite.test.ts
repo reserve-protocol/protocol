@@ -26,7 +26,12 @@ import { bn } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp, advanceBlocks } from '../../../utils/time'
+import {
+  advanceTime,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+  advanceBlocks,
+} from '../../../utils/time'
 import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -135,7 +140,9 @@ const makeCollateralFixtureContext = (
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
+    const chainlinkFeed = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
+    )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     const fix = await makewCSUDC()
@@ -244,12 +251,12 @@ const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = asyn
   await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.wcusdcV3, user, amount, recipient)
 }
 
-const reduceRefPerTok = async (ctx: CometCollateralFixtureContext, pctDecrease: BigNumberish | undefined) => {
+const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
   const currentExchangeRate = await ctx.wcusdcV3.exchangeRate()
   await ctx.wcusdcV3Mock.setMockExchangeRate(true, currentExchangeRate.sub(100))
 }
 
-const increaseRefPerTok = async (ctx: CometCollateralFixtureContext, pctIncrease: BigNumberish | undefined) => {
+const increaseRefPerTok = async () => {
   await advanceBlocks(1000)
   await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 }
@@ -369,7 +376,7 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   resetFork,
   collateralName: 'CompoundV3USDC',
-  chainlinkDefaultAnswer
+  chainlinkDefaultAnswer,
 }
 
 collateralTests(opts)

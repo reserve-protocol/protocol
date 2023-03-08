@@ -1,9 +1,5 @@
 import collateralTests from '../collateralTests'
-import {
-  CollateralFixtureContext,
-  CollateralOpts,
-  MintCollateralFunc,
-} from '../types'
+import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../types'
 import { resetFork, mintRETH } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
@@ -13,7 +9,7 @@ import {
   MockV3Aggregator__factory,
   ICollateral,
   IReth,
-  WETH9
+  WETH9,
 } from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
@@ -28,19 +24,17 @@ import {
   RETH,
   ETH_USD_PRICE_FEED,
   RETH_NETWORK_BALANCES,
-  RETH_TRUSTED_NODE,
-  RETH_STORAGE
+  RETH_STORAGE,
 } from './constants'
-import { whileImpersonating } from '../../../utils/impersonation';
-import { getLatestBlockNumber } from '../../../utils/time';
+import { whileImpersonating } from '../../../utils/impersonation'
 
 /*
   Define interfaces
 */
 
 interface RethCollateralFixtureContext extends CollateralFixtureContext {
-    weth: WETH9
-    reth: IReth
+  weth: WETH9
+  reth: IReth
 }
 
 /*
@@ -57,16 +51,14 @@ export const defaultRethCollateralOpts: CollateralOpts = {
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
-  delayUntilDefault: DELAY_UNTIL_DEFAULT
+  delayUntilDefault: DELAY_UNTIL_DEFAULT,
 }
 
 export const deployCollateral = async (opts: CollateralOpts = {}): Promise<ICollateral> => {
   opts = { ...defaultRethCollateralOpts, ...opts }
 
-  const RethCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'RethCollateral'
-  )
-  
+  const RethCollateralFactory: ContractFactory = await ethers.getContractFactory('RethCollateral')
+
   const collateral = <ICollateral>await RethCollateralFactory.deploy(
     {
       erc20: opts.erc20,
@@ -102,7 +94,9 @@ const makeCollateralFixtureContext = (
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
+    const chainlinkFeed = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
+    )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     const weth = (await ethers.getContractAt('WETH9', WETH)) as WETH9
@@ -193,8 +187,15 @@ const mintCollateralTo: MintCollateralFunc<RethCollateralFixtureContext> = async
 
 const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
 
-const reduceRefPerTok = async (ctx: RethCollateralFixtureContext, pctDecrease: BigNumberish | undefined) => {
-  const rethNetworkBalances = await ethers.getContractAt('IRocketNetworkBalances', RETH_NETWORK_BALANCES)
+// prettier-ignore
+const reduceRefPerTok = async (
+  ctx: RethCollateralFixtureContext,
+  pctDecrease: BigNumberish | undefined
+) => {
+  const rethNetworkBalances = await ethers.getContractAt(
+    'IRocketNetworkBalances',
+    RETH_NETWORK_BALANCES
+  )
   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
   const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease!).div(100))
   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
@@ -203,8 +204,15 @@ const reduceRefPerTok = async (ctx: RethCollateralFixtureContext, pctDecrease: B
   })
 }
 
-const increaseRefPerTok = async (ctx: RethCollateralFixtureContext, pctIncrease: BigNumberish | undefined) => {
-  const rethNetworkBalances = await ethers.getContractAt('IRocketNetworkBalances', RETH_NETWORK_BALANCES)
+// prettier-ignore
+const increaseRefPerTok = async (
+  ctx: RethCollateralFixtureContext,
+  pctIncrease: BigNumberish | undefined
+) => {
+  const rethNetworkBalances = await ethers.getContractAt(
+    'IRocketNetworkBalances',
+    RETH_NETWORK_BALANCES
+  )
   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
   const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease!).div(100))
   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
@@ -213,22 +221,18 @@ const increaseRefPerTok = async (ctx: RethCollateralFixtureContext, pctIncrease:
   })
 }
 
-
 /*
   Define collateral-specific tests
 */
 
-const collateralSpecificConstructorTests = () => {
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const collateralSpecificConstructorTests = () => {}
 
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const collateralSpecificStatusTests = () => {}
 
-const collateralSpecificStatusTests = () => {
-
-}
-
-const beforeEachRewardsTest = async (ctx: RethCollateralFixtureContext) => {
-  
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const beforeEachRewardsTest = async () => {}
 
 /*
   Run the test suite
@@ -247,7 +251,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   resetFork,
   collateralName: 'RocketPoolETH',
-  chainlinkDefaultAnswer
+  chainlinkDefaultAnswer,
 }
 
 collateralTests(opts)

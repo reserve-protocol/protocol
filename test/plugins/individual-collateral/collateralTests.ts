@@ -41,7 +41,7 @@ export default function fn<X extends CollateralFixtureContext>(
     itChecksTargetPerRefDefault,
     resetFork,
     collateralName,
-    chainlinkDefaultAnswer
+    chainlinkDefaultAnswer,
   } = fixtures
 
   before(resetFork)
@@ -276,84 +276,104 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
         })
 
-        itChecksTargetPerRefDefault('enters IFFY state when target-per-ref depegs below low threshold', async () => {
-          const delayUntilDefault = await collateral.delayUntilDefault()
+        itChecksTargetPerRefDefault(
+          'enters IFFY state when target-per-ref depegs below low threshold',
+          async () => {
+            const delayUntilDefault = await collateral.delayUntilDefault()
 
-          // Check initial state
-          expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-          expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-          // Depeg - Reducing price by 20%
-          const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(8).div(10))
-          await updateAnswerTx.wait()
+            // Check initial state
+            expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+            // Depeg - Reducing price by 20%
+            const updateAnswerTx = await chainlinkFeed.updateAnswer(
+              BigNumber.from(chainlinkDefaultAnswer).mul(8).div(10)
+            )
+            await updateAnswerTx.wait()
 
-          // Set next block timestamp - for deterministic result
-          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          await setNextBlockTimestamp(nextBlockTimestamp)
-          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
-          await expect(collateral.refresh())
-            .to.emit(collateral, 'CollateralStatusChanged')
-            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-          expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-        })
+            // Set next block timestamp - for deterministic result
+            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+            await setNextBlockTimestamp(nextBlockTimestamp)
+            const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+            await expect(collateral.refresh())
+              .to.emit(collateral, 'CollateralStatusChanged')
+              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+            expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+            expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+          }
+        )
 
-        itChecksTargetPerRefDefault('enters IFFY state when target-per-ref depegs above high threshold', async () => {
-          const delayUntilDefault = await collateral.delayUntilDefault()
+        itChecksTargetPerRefDefault(
+          'enters IFFY state when target-per-ref depegs above high threshold',
+          async () => {
+            const delayUntilDefault = await collateral.delayUntilDefault()
 
-          // Check initial state
-          expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-          expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+            // Check initial state
+            expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg - Raising price by 20%
-          const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(12).div(10))
-          await updateAnswerTx.wait()
+            // Depeg - Raising price by 20%
+            const updateAnswerTx = await chainlinkFeed.updateAnswer(
+              BigNumber.from(chainlinkDefaultAnswer).mul(12).div(10)
+            )
+            await updateAnswerTx.wait()
 
-          // Set next block timestamp - for deterministic result
-          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          await setNextBlockTimestamp(nextBlockTimestamp)
-          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+            // Set next block timestamp - for deterministic result
+            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+            await setNextBlockTimestamp(nextBlockTimestamp)
+            const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
-          await expect(collateral.refresh())
-            .to.emit(collateral, 'CollateralStatusChanged')
-            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-          expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-        })
+            await expect(collateral.refresh())
+              .to.emit(collateral, 'CollateralStatusChanged')
+              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+            expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+            expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+          }
+        )
 
-        itChecksTargetPerRefDefault('enters DISABLED state when target-per-ref depegs for too long', async () => {
-          const delayUntilDefault = await collateral.delayUntilDefault()
+        itChecksTargetPerRefDefault(
+          'enters DISABLED state when target-per-ref depegs for too long',
+          async () => {
+            const delayUntilDefault = await collateral.delayUntilDefault()
 
-          // Check initial state
-          expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-          expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+            // Check initial state
+            expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          // Depeg - Reducing price by 20%
-          const updateAnswerTx = await chainlinkFeed.updateAnswer(BigNumber.from(chainlinkDefaultAnswer).mul(8).div(10))
-          await updateAnswerTx.wait()
+            // Depeg - Reducing price by 20%
+            const updateAnswerTx = await chainlinkFeed.updateAnswer(
+              BigNumber.from(chainlinkDefaultAnswer).mul(8).div(10)
+            )
+            await updateAnswerTx.wait()
 
-          // Set next block timestamp - for deterministic result
-          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-          await setNextBlockTimestamp(nextBlockTimestamp)
-          await collateral.refresh()
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+            // Set next block timestamp - for deterministic result
+            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+            await setNextBlockTimestamp(nextBlockTimestamp)
+            await collateral.refresh()
+            expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
 
-          // Move time forward past delayUntilDefault
-          await advanceTime(delayUntilDefault)
-          expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+            // Move time forward past delayUntilDefault
+            await advanceTime(delayUntilDefault)
+            expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
 
-          // Nothing changes if attempt to refresh after default
-          const prevWhenDefault: bigint = (await collateral.whenDefault()).toBigInt()
-          await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-          expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-          expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
-        })
+            // Nothing changes if attempt to refresh after default
+            const prevWhenDefault: bigint = (await collateral.whenDefault()).toBigInt()
+            await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+            expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+            expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
+          }
+        )
 
         it('enters DISABLED state when refPerTok() decreases', async () => {
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-          await mintCollateralTo(ctx, bn('200').mul(bn(10).pow(ctx.tokDecimals)), alice, alice.address)
+          await mintCollateralTo(
+            ctx,
+            bn('200').mul(bn(10).pow(ctx.tokDecimals)),
+            alice,
+            alice.address
+          )
 
           await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
           // State remains the same
