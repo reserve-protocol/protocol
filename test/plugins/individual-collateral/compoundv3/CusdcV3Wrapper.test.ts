@@ -5,12 +5,17 @@ import { useEnv } from '#/utils/env'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
 import { COMP, REWARDS } from './constants'
-import { ERC20Mock, CometInterface, ICusdcV3Wrapper, CusdcV3Wrapper__factory } from '../../../../typechain'
+import {
+  ERC20Mock,
+  CometInterface,
+  ICusdcV3Wrapper,
+  CusdcV3Wrapper__factory,
+} from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { ZERO_ADDRESS } from '../../../../common/constants';
+import { ZERO_ADDRESS } from '../../../../common/constants'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
@@ -42,8 +47,9 @@ describeFork('Wrapped CUSDCv3', () => {
     const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
       await ethers.getContractFactory('CusdcV3Wrapper')
     )
-    await expect(CusdcV3WrapperFactory.deploy(ZERO_ADDRESS, REWARDS, COMP))
-      .revertedWith('ZeroAddress')
+    await expect(CusdcV3WrapperFactory.deploy(ZERO_ADDRESS, REWARDS, COMP)).revertedWith(
+      'ZeroAddress'
+    )
   })
 
   describe('deposit', () => {
@@ -150,8 +156,9 @@ describeFork('Wrapped CUSDCv3', () => {
 
     it('depositing 0 balance reverts', async () => {
       await cusdcV3.connect(bob).transfer(charles.address, ethers.constants.MaxUint256)
-      await expect(wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256))
-        .to.be.revertedWith('BadAmount')
+      await expect(wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256)).to.be.revertedWith(
+        'BadAmount'
+      )
     })
   })
 
@@ -216,7 +223,9 @@ describeFork('Wrapped CUSDCv3', () => {
     })
 
     it('withdrawing 0 balance reverts', async () => {
-      await expect(wcusdcV3.connect(don).withdraw(ethers.constants.MaxUint256)).to.be.revertedWith('BadAmount')
+      await expect(wcusdcV3.connect(don).withdraw(ethers.constants.MaxUint256)).to.be.revertedWith(
+        'BadAmount'
+      )
     })
 
     it('handles complex withdrawal sequence', async () => {

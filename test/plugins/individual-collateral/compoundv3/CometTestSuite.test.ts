@@ -246,7 +246,7 @@ const collateralSpecificConstructorTests = () => {
       deployCollateral({ rewardERC20: ethers.constants.AddressZero })
     ).to.be.revertedWith('rewardERC20 missing')
   })
-  
+
   it('does not allow 0 reservesThresholdIffy', async () => {
     await expect(
       deployCollateral({ erc20: CUSDC_V3, reservesThresholdIffy: 0 })

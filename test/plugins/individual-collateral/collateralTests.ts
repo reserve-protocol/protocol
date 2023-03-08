@@ -14,7 +14,11 @@ import {
   setNextBlockTimestamp,
 } from '../../utils/time'
 import { MAX_UINT48, MAX_UINT192 } from '../../../common/constants'
-import { CollateralFixtureContext, CollateralTestSuiteFixtures, CollateralStatus } from './pluginTestTypes'
+import {
+  CollateralFixtureContext,
+  CollateralTestSuiteFixtures,
+  CollateralStatus,
+} from './pluginTestTypes'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
