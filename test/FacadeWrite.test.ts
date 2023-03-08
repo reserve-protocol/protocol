@@ -1,7 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ContractFactory } from 'ethers'
+import { ethers } from 'hardhat'
+import { cloneDeep } from 'lodash'
 import {
   IConfig,
   IGovParams,
@@ -56,8 +58,6 @@ import {
   ORACLE_ERROR,
 } from './fixtures'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -126,14 +126,6 @@ describe('FacadeWrite contract', () => {
   let revShare1: IRevenueShare
   let revShare2: IRevenueShare
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
-
   beforeEach(async () => {
     ;[deployerUser, owner, addr1, addr2, beneficiary1, beneficiary2] = await ethers.getSigners()
 
@@ -166,15 +158,16 @@ describe('FacadeWrite contract', () => {
     revShare2 = { rTokenDist: bn('4'), rsrDist: bn('6') } // 1% for beneficiary2
 
     // Decrease revenue splits for nicer rounding
-    config.dist.rTokenDist = bn('394')
-    config.dist.rsrDist = bn('591')
+    const localConfig = cloneDeep(config)
+    localConfig.dist.rTokenDist = bn('394')
+    localConfig.dist.rsrDist = bn('591')
 
     // Set parameters
     rTokenConfig = {
       name: 'RTKN RToken',
       symbol: 'RTKN',
       mandate: 'mandate',
-      params: config,
+      params: localConfig,
     }
 
     rTokenSetup = {

@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import {
   ProposalState,
@@ -25,8 +26,6 @@ import {
 import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import { whileImpersonating } from './utils/impersonation'
 import { advanceBlocks, advanceTime, getLatestBlockNumber } from './utils/time'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
@@ -57,9 +56,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
   let GovernorFactory: ContractFactory
   let TimelockFactory: ContractFactory
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   let initialBal: BigNumber
 
   const MIN_DELAY = 7 * 60 * 60 * 24 // 7 days
@@ -67,11 +63,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
   const VOTING_PERIOD = 100 // 100 blocks
   const PROPOSAL_THRESHOLD = 1e6 // 1%
   const QUORUM_PERCENTAGE = 4 // 4%
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, addr3, other, guardian] = await ethers.getSigners()

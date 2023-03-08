@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
 import { bn, fp, divCeil } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus } from '../../common/constants'
@@ -31,8 +32,6 @@ import {
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 const REVENUE_HIDING = fp('1e-6') // 1 part in a million
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const toHiddenAmt = (x: BigNumber) => {
   return x.mul(fp('1').sub(REVENUE_HIDING)).div(fp('1'))
@@ -68,9 +67,6 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   let initialBal: BigNumber
 
   // Computes the minBuyAmt for a sellAmt at two prices
@@ -94,11 +90,6 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

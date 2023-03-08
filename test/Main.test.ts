@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, upgrades, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers, upgrades } from 'hardhat'
 import {
   IConfig,
   MAX_TRADING_DELAY,
@@ -70,8 +71,6 @@ import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
@@ -130,14 +129,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
   let basket: Collateral[]
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
@@ -1582,7 +1574,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with invalid target amounts', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
-      ).to.be.revertedWith('invalid target amount')
+      ).to.be.revertedWith('invalid target amount; too large')
     })
 
     it('Should not allow to set prime Basket with an empty basket', async () => {
