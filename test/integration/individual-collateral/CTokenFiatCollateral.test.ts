@@ -5,6 +5,7 @@ import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
+import forkBlockNumber from '../fork-block-numbers'
 import { getChainId } from '../../../common/blockchain-utils'
 import {
   IConfig,
@@ -40,6 +41,22 @@ import {
   TestIRToken,
 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
+
+// Setup test environment
+const setup = async (blockNumber: number) => {
+  // Use Mainnet fork
+  await hre.network.provider.request({
+    method: 'hardhat_reset',
+    params: [
+      {
+        forking: {
+          jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+          blockNumber: blockNumber,
+        },
+      },
+    ],
+  })
+}
 
 // Holder address in Mainnet
 const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
@@ -115,6 +132,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let mockChainlinkFeed: MockV3Aggregator
 
   before(async () => {
+    await setup(forkBlockNumber['default'])
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
