@@ -110,7 +110,7 @@ interface ICollateral is IAsset {
     function targetPerRef() external view returns (uint192);
 }
 
-interface TestICollateral is ICollateral {
+interface TestICollateral is ICollateral, TestIAsset {
     /// @return The epoch timestamp when the collateral will default from IFFY to DISABLED
     function whenDefault() external view returns (uint256);
 

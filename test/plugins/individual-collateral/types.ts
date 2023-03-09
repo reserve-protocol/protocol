@@ -4,7 +4,7 @@ import { Fixture } from 'ethereum-waffle'
 import { MockV3Aggregator, TestICollateral, IERC20 } from '../../../typechain'
 
 export interface CollateralFixtureContext {
-  collateral: TestICollateral
+  // collateral: TestICollateral
   chainlinkFeed: MockV3Aggregator
   tok: IERC20
   tokDecimals: number // tldr; IERC20 does not include decimals()

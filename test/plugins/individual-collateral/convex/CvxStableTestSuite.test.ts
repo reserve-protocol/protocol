@@ -86,13 +86,29 @@ export const defaultCvxStableCollateralOpts: CvxStableCollateralOpts = {
 }
 
 export const deployCollateral = async (
-  opts: CvxStableCollateralOpts = {}
+  opts: CvxStableCollateralOpts = {},
+  allowOverride = false
 ): Promise<TestICollateral> => {
   opts = { ...defaultCvxStableCollateralOpts, ...opts }
 
   const CvxStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CvxStableCollateral'
   )
+
+  if (allowOverride && opts.erc20 === ZERO_ADDRESS) {
+    const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
+      await ethers.getContractFactory('MockV3Aggregator')
+    )
+
+    // Substitute all 3 feeds: DAI, USDC, USDT
+    const daiFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    const usdcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    const usdtFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    const fix = await makeW3Pool()
+
+    opts.feeds = [[daiFeed.address], [usdcFeed.address], [usdtFeed.address]]
+    opts.erc20 = fix.w3Pool.address
+  }
 
   const collateral = <TestICollateral>await CvxStableCollateralFactory.deploy(
     {
