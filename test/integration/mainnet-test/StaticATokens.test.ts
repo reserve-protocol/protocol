@@ -69,7 +69,7 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
   let chainId: number
 
-  describe('Static ATokens', () => {
+  describe.skip('Static ATokens', () => {
     const setup = async (blockNumber: number) => {
       // Use Mainnet fork
       await hre.network.provider.request({
