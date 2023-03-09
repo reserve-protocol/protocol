@@ -5,7 +5,7 @@ import { MockV3Aggregator, TestICollateral, IERC20 } from '../../../typechain'
 type Fixture<T> = () => Promise<T>
 
 export interface CollateralFixtureContext {
-  collateral: TestICollateral
+  // collateral: TestICollateral
   chainlinkFeed: MockV3Aggregator
   tok: IERC20
   tokDecimals: number // tldr; IERC20 does not include decimals()

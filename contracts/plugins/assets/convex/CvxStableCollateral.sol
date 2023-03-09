@@ -59,7 +59,8 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         // Should include revenue hiding discount in the low discount but not high
 
         // {tok}
-        uint192 supply = shiftl_toFix(erc20.totalSupply(), -int8(erc20Decimals));
+        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
+        // We can always assume that the total supply is non-zero
 
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
@@ -165,7 +166,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         for (uint8 i = 0; i < nTokens; i++) {
             try this.tokenPrice(i) returns (uint192 low, uint192 high) {
                 // {UoA/tok} = {UoA/tok} + {UoA/tok}
-                uint192 mid = low + high / 2;
+                uint192 mid = (low + high) / 2;
 
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus

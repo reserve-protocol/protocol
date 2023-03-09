@@ -40,3 +40,9 @@ export const MAX_TRADE_VOL = bn('1000000')
 export const USDC_DECIMALS = bn('6')
 
 export const FORK_BLOCK = 15850930
+
+export enum CurvePoolType {
+  Plain,
+  Lending,
+  Metapool,
+}

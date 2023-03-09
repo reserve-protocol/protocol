@@ -50,6 +50,7 @@ contract PoolTokens {
     // === State (Immutable) ===
 
     ICurvePool public immutable curvePool;
+    IERC20Metadata public immutable lpToken;
     uint8 internal immutable nTokens;
 
     IERC20Metadata internal immutable token0;
@@ -93,6 +94,7 @@ contract PoolTokens {
     struct PTConfiguration {
         uint8 nTokens;
         ICurvePool curvePool;
+        IERC20Metadata lpToken;
         CurvePoolType poolType;
         AggregatorV3Interface[][] feeds; // row should multiply to give {UoA/ref}; max columns is 2
         uint48[][] oracleTimeouts; // {s} same order as feeds
@@ -110,6 +112,7 @@ contract PoolTokens {
 
         curvePool = config.curvePool;
         nTokens = config.nTokens;
+        lpToken = config.lpToken;
 
         // Solidity does not support immutable arrays. This is a hack to get the equivalent of
         // an immutable array so we do not have store the token feeds in the blockchain. This is
@@ -128,6 +131,7 @@ contract PoolTokens {
                 tokens[i] = IERC20Metadata(curvePool.base_coins(i));
             }
         }
+
         token0 = tokens[0];
         token1 = tokens[1];
         token2 = (nTokens > 2) ? tokens[2] : IERC20Metadata(address(0));
