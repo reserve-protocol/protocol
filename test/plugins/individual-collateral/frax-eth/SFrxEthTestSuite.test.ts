@@ -1,18 +1,16 @@
 import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
-import { resetFork, mintsfrxETH } from './helpers'
-import { ethers } from 'hardhat'
+import { resetFork, mintSfrxETH, mintFrxETH } from './helpers'
+import hre, { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
   MockV3Aggregator,
   MockV3Aggregator__factory,
   ICollateral,
-  IReth,
-  WETH9,
   ERC20Mock,
   IsfrxEth
 } from '../../../../typechain'
-import { bn, fp } from '../../../../common/numbers'
+import { bn } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -24,10 +22,8 @@ import {
   WETH,
   FRX_ETH,
   SFRX_ETH,
-  ETH_USD_PRICE_FEED,
-  FRX_ETH_MINTER
+  ETH_USD_PRICE_FEED
 } from './constants'
-import { whileImpersonating } from '../../../utils/impersonation'
 import { advanceTime, setNextBlockTimestamp, getLatestBlockTimestamp, advanceBlocks } from '../../../utils/time';
 
 /*
@@ -184,7 +180,7 @@ const mintCollateralTo: MintCollateralFunc<SFrxEthCollateralFixtureContext> = as
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintsfrxETH(user, amount, recipient)
+  await mintSfrxETH(ctx.sfrxEth, user, amount, recipient, ctx.chainlinkFeed)
 }
 
 const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
@@ -194,11 +190,7 @@ const reduceRefPerTok = async (
   ctx: SFrxEthCollateralFixtureContext,
   pctDecrease: BigNumberish | undefined
 ) => {
-  const currentBal = await ctx.frxEth.balanceOf(ctx.sfrxEth.address)
-  const subBal = currentBal.sub(currentBal.mul(pctDecrease!).div(100))
-  await whileImpersonating(SFRX_ETH, async (sfrxEth) => {
-    await ctx.frxEth.connect(sfrxEth).transfer(ZERO_ADDRESS, subBal)
-  })
+  await hre.network.provider.send('evm_mine', [])
 }
 
 // prettier-ignore
@@ -207,15 +199,20 @@ const increaseRefPerTok = async (
   pctIncrease: BigNumberish | undefined
 ) => {
   const currentBal = await ctx.frxEth.balanceOf(ctx.sfrxEth.address)
-  const addBal = currentBal.add(currentBal.mul(pctIncrease!).div(100))
-  await whileImpersonating(FRX_ETH_MINTER, async (frxEthMinter) => {
-    await ctx.frxEth.connect(frxEthMinter).mint(ctx.sfrxEth.address, addBal)
-  })
+  const addBal = currentBal.mul(pctIncrease!).div(100)
+  await mintFrxETH(ctx.frxEth, ctx.alice!, addBal, ctx.sfrxEth.address)
+  const rewardCycleEnd = await ctx.sfrxEth.rewardsCycleEnd()
+  const nextTimestamp = await getLatestBlockTimestamp()
+  if (nextTimestamp < rewardCycleEnd) {
+    await setNextBlockTimestamp(rewardCycleEnd + 1)
+    await hre.network.provider.send('evm_mine', [])
+  }
   await ctx.sfrxEth.syncRewards()
-  const rewardCycleLength = await ctx.sfrxEth.rewardsCycleLength()
-  const currentTimestamp = await getLatestBlockTimestamp()
-  await advanceBlocks(rewardCycleLength / 12)
-  await setNextBlockTimestamp(currentTimestamp + rewardCycleLength)
+  await advanceBlocks(1200 / 12)
+  await advanceTime(1200)
+  // push chainlink oracle forward so that tryPrice() still works
+  const lastAnswer = await ctx.chainlinkFeed.latestAnswer()
+  await ctx.chainlinkFeed.updateAnswer(lastAnswer)
 }
 
 /*
@@ -246,6 +243,7 @@ const opts = {
   increaseRefPerTok,
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
+  itChecksRefPerTokDefault: it.skip,
   resetFork,
   collateralName: 'RocketPoolETH',
   chainlinkDefaultAnswer,
