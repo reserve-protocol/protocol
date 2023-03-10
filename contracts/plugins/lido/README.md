@@ -6,7 +6,7 @@ This plugin allows `wstETH` holders use their tokens as collateral in the Revers
 
 As described in the [Lido Site](https://docs.lido.fi/guides/steth-integration-guide#wsteth) , `wstETH` is a LSD (Liquid staking derivatives) which enables users to sell or transfer stacked ETH even before withdrawal being enabled.
 
-`wstETH` will accrue revenue from **staking rewards** into itself by **increasing** the exchange rate of the `wstETH` per `stETH`.
+`wstETH` will accrue revenue from **staking rewards** into itself by **increasing** the exchange rate of `stETH` per `wstETH`.
 
 You can get exchange rate from [`wstETH.stEthPerToken()`](https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#readContract#F10) method of wstETH contract.
 
@@ -30,6 +30,4 @@ As described on `stETH Intro`, `stETH` is a rebasing token which means token bal
 
 #### refPerTok {ref/tok}
 
-This function returns rate of `ETH/wstETH`, getting from [stEthPerToken()](https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#readContract#F10) function in wstETH contract.
-
-`stEthPerToken` function returns `stETH/wstETH` rate, and by knowing 1:1 ratio between `stETH` and `ETH`, we can get `ETH/wstETH`.
+This function returns rate of `stETH/wstETH`, getting from [stEthPerToken()](https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#readContract#F10) function in wstETH contract.
