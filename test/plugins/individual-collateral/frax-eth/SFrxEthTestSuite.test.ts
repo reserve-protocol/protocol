@@ -8,7 +8,7 @@ import {
   MockV3Aggregator__factory,
   ICollateral,
   ERC20Mock,
-  IsfrxEth
+  IsfrxEth,
 } from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
@@ -22,9 +22,14 @@ import {
   WETH,
   FRX_ETH,
   SFRX_ETH,
-  ETH_USD_PRICE_FEED
+  ETH_USD_PRICE_FEED,
 } from './constants'
-import { advanceTime, setNextBlockTimestamp, getLatestBlockTimestamp, advanceBlocks } from '../../../utils/time';
+import {
+  advanceTime,
+  setNextBlockTimestamp,
+  getLatestBlockTimestamp,
+  advanceBlocks,
+} from '../../../utils/time'
 
 /*
   Define interfaces
@@ -55,7 +60,9 @@ export const defaultRethCollateralOpts: CollateralOpts = {
 export const deployCollateral = async (opts: CollateralOpts = {}): Promise<ICollateral> => {
   opts = { ...defaultRethCollateralOpts, ...opts }
 
-  const SFraxEthCollateralFactory: ContractFactory = await ethers.getContractFactory('SFraxEthCollateral')
+  const SFraxEthCollateralFactory: ContractFactory = await ethers.getContractFactory(
+    'SFraxEthCollateral'
+  )
 
   const collateral = <ICollateral>await SFraxEthCollateralFactory.deploy(
     {
@@ -183,13 +190,8 @@ const mintCollateralTo: MintCollateralFunc<SFrxEthCollateralFixtureContext> = as
   await mintSfrxETH(ctx.sfrxEth, user, amount, recipient, ctx.chainlinkFeed)
 }
 
-const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
-
 // prettier-ignore
-const reduceRefPerTok = async (
-  ctx: SFrxEthCollateralFixtureContext,
-  pctDecrease: BigNumberish | undefined
-) => {
+const reduceRefPerTok = async () => {
   await hre.network.provider.send('evm_mine', [])
 }
 

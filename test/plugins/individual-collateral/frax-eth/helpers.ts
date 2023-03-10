@@ -4,7 +4,7 @@ import { IsfrxEth, IfrxEthMinter, ERC20Mock, MockV3Aggregator } from '../../../.
 import { BigNumberish } from 'ethers'
 import { FORK_BLOCK, FRX_ETH_MINTER } from './constants'
 import { getResetFork } from '../helpers'
-import { setNextBlockTimestamp, getLatestBlockTimestamp } from '../../../utils/time';
+import { setNextBlockTimestamp, getLatestBlockTimestamp } from '../../../utils/time'
 
 export const mintSfrxETH = async (
   sfrxEth: IsfrxEth,
@@ -13,7 +13,9 @@ export const mintSfrxETH = async (
   recipient: string,
   chainlinkFeed: MockV3Aggregator
 ) => {
-  const frxEthMinter: IfrxEthMinter = <IfrxEthMinter>(await ethers.getContractAt('IfrxEthMinter', FRX_ETH_MINTER))
+  const frxEthMinter: IfrxEthMinter = <IfrxEthMinter>(
+    await ethers.getContractAt('IfrxEthMinter', FRX_ETH_MINTER)
+  )
   const rewardCycleEnd = await sfrxEth.rewardsCycleEnd()
   const nextTimestamp = await getLatestBlockTimestamp()
   if (nextTimestamp < rewardCycleEnd) {
@@ -23,8 +25,8 @@ export const mintSfrxETH = async (
   // sfrx eth calculates the exchange rate via stored variables that update once per period
   // we need the reward cycle to end so that we are not subject to the linear reward unlock when minting
   const depositAmount = await sfrxEth.convertToAssets(amount)
-  await frxEthMinter.connect(account).submitAndDeposit(recipient, {value: depositAmount})
-  
+  await frxEthMinter.connect(account).submitAndDeposit(recipient, { value: depositAmount })
+
   // push chainlink oracle forward so that tryPrice() still works
   const lastAnswer = await chainlinkFeed.latestAnswer()
   await chainlinkFeed.updateAnswer(lastAnswer)
@@ -36,8 +38,10 @@ export const mintFrxETH = async (
   amount: BigNumberish,
   recipient: string
 ) => {
-  const frxEthMinter: IfrxEthMinter = <IfrxEthMinter>(await ethers.getContractAt('IfrxEthMinter', FRX_ETH_MINTER))
-  await frxEthMinter.connect(account).submit({value: amount})
+  const frxEthMinter: IfrxEthMinter = <IfrxEthMinter>(
+    await ethers.getContractAt('IfrxEthMinter', FRX_ETH_MINTER)
+  )
+  await frxEthMinter.connect(account).submit({ value: amount })
   await frxEth.connect(account).transfer(recipient, amount)
 }
 
