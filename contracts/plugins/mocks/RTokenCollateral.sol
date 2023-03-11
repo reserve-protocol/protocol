@@ -27,7 +27,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
+    uint48 public immutable delayUntilDefault; // {s} e.g 86400
 
     bool public priceable;
 
@@ -39,7 +39,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         IRToken erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_,
-        uint256 delayUntilDefault_
+        uint48 delayUntilDefault_
     ) RTokenAsset(erc20_, maxTradeVolume_) {
         require(targetName_ != bytes32(0), "targetName missing");
         targetName = targetName_;
