@@ -20,7 +20,7 @@ import {
   MockV3Aggregator__factory,
   CometMock,
   CometMock__factory,
-  ICollateral,
+  TestICollateral,
 } from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
@@ -82,14 +82,16 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   reservesThresholdDisabled: bn('5000'),
 }
 
-export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (
+  opts: CometCollateralOpts = {}
+): Promise<TestICollateral> => {
   opts = { ...defaultCometCollateralOpts, ...opts }
 
   const CTokenV3CollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CTokenV3Collateral'
   )
 
-  const collateral = <ICollateral>await CTokenV3CollateralFactory.deploy(
+  const collateral = <TestICollateral>await CTokenV3CollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -110,6 +112,7 @@ export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+  await collateral.refresh()
 
   return collateral
 }
