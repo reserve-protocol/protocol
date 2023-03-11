@@ -186,8 +186,13 @@ const deployCollateralCometMockContext = async (
   const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
     await ethers.getContractFactory('CusdcV3Wrapper')
   )
+
   const wcusdcV3 = <ICusdcV3Wrapper>(
-    await CusdcV3WrapperFactory.deploy(cusdcV3.address, REWARDS, COMP)
+    ((await CusdcV3WrapperFactory.deploy(
+      cusdcV3.address,
+      REWARDS,
+      COMP
+    )) as unknown as ICusdcV3Wrapper)
   )
   const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
     await ethers.getContractFactory('CusdcV3WrapperMock')
