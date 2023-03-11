@@ -38,7 +38,6 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         reservesThresholdIffy = cometConfig.reservesThresholdIffy;
         reservesThresholdDisabled = cometConfig.reservesThresholdDisabled;
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
-        exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
 
     function bal(address account) external view override(Asset, IAsset) returns (uint192) {
