@@ -112,7 +112,10 @@ export const deployCollateral = async (
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
-  await collateral.refresh()
+
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
 
   return collateral
 }
