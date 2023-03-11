@@ -49,7 +49,7 @@ contract FiatCollateral is ICollateral, Asset {
     uint48 private constant NEVER = type(uint48).max;
     uint48 private _whenDefault = NEVER;
 
-    uint48 public immutable override delayUntilDefault; // {s} e.g 86400
+    uint48 public immutable delayUntilDefault; // {s} e.g 86400
 
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;

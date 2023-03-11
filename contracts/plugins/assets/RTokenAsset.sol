@@ -155,14 +155,4 @@ contract RTokenAsset is IAsset {
             range = RecollateralizationLibP1.basketRange(ctx, reg);
         }
     }
-
-    // To make the inheritance chain play nice
-    function oracleError() external pure returns (uint192) {
-        return 0;
-    }
-
-    // To make the inheritance chain play nice
-    function oracleTimeout() external pure returns (uint48) {
-        return type(uint48).max;
-    }
 }
