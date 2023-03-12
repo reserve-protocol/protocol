@@ -48,6 +48,7 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   increaseRefPerTok: (ctx: T, pctIncrease: BigNumberish | undefined) => void
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
+  itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction
   itCheckPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
   resetFork: () => void
   collateralName: string

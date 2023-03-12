@@ -374,6 +374,7 @@ const opts = {
   increaseRefPerTok,
   itClaimsRewards: it,
   itChecksTargetPerRefDefault: it,
+  itChecksRefPerTokDefault: it,
   itCheckPriceChanges: it,
   resetFork,
   collateralName: 'CompoundV3USDC',

@@ -39,6 +39,7 @@ export default function fn<X extends CollateralFixtureContext>(
     increaseRefPerTok,
     itClaimsRewards,
     itChecksTargetPerRefDefault,
+    itChecksRefPerTokDefault,
     itCheckPriceChanges,
     resetFork,
     collateralName,
@@ -206,12 +207,10 @@ export default function fn<X extends CollateralFixtureContext>(
           // need to deposit in order to get an exchange rate
           const amount = bn('200').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
-
           await increaseRefPerTok(ctx, 5)
 
           await collateral.refresh()
           expect(await collateral.refPerTok()).to.be.gt(initRefPerTok)
-
           const [newLow, newHigh] = await collateral.price()
           expect(newLow).to.be.gt(initLow)
           expect(newHigh).to.be.gt(initHigh)
@@ -364,7 +363,7 @@ export default function fn<X extends CollateralFixtureContext>(
           }
         )
 
-        it('enters DISABLED state when refPerTok() decreases', async () => {
+        itChecksRefPerTokDefault('enters DISABLED state when refPerTok() decreases', async () => {
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
