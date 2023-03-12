@@ -39,6 +39,7 @@ export default function fn<X extends CollateralFixtureContext>(
     increaseRefPerTok,
     itClaimsRewards,
     itChecksTargetPerRefDefault,
+    itCheckPriceChanges,
     resetFork,
     collateralName,
     chainlinkDefaultAnswer,
@@ -146,7 +147,7 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('prices', () => {
-        it('prices change as USDC feed price changes', async () => {
+        itCheckPriceChanges('prices change as USDC feed price changes', async () => {
           const clData = await chainlinkFeed.latestRoundData()
           const decimals = await chainlinkFeed.decimals()
           const oracleError = await collateral.oracleError()
@@ -186,7 +187,7 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(finalRefPerTok).to.equal(initialRefPerTok)
         })
 
-        it('prices change as refPerTok changes', async () => {
+        itCheckPriceChanges('prices change as refPerTok changes', async () => {
           const initRefPerTok = await collateral.refPerTok()
 
           const decimals = await chainlinkFeed.decimals()
