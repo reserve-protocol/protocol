@@ -27,15 +27,12 @@ contract RethCollateral is AppreciatingFiatCollateral {
         uint192 revenueHiding,
         AggregatorV3Interface _refPerTokChainlinkFeed,
         uint48 _refPerTokChainlinkTimeout
-    )
-        AppreciatingFiatCollateral(config, revenueHiding)
-    {
+    ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(address(_refPerTokChainlinkFeed) != address(0), "Chainlink feed cannot be 0x0");
         require(_refPerTokChainlinkTimeout != 0, "Chainlink feed cannot be 0x0");
         refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
         refPerTokChainlinkTimeout = _refPerTokChainlinkTimeout;
         exposedReferencePrice = getMarketRefPerTok().mul(revenueShowing);
-
     }
 
     /// Can revert, used by other contract functions in order to catch errors

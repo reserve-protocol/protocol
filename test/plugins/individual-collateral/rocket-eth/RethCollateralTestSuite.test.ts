@@ -23,11 +23,8 @@ import {
   WETH,
   RETH,
   ETH_USD_PRICE_FEED,
-  RETH_NETWORK_BALANCES,
-  RETH_STORAGE,
-  RETH_ETH_PRICE_FEED
+  RETH_ETH_PRICE_FEED,
 } from './constants'
-import { whileImpersonating } from '../../../utils/impersonation'
 
 /*
   Define interfaces
@@ -60,7 +57,7 @@ export const defaultRethCollateralOpts: RethCollateralOpts = {
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   refPerTokChainlinkFeed: RETH_ETH_PRICE_FEED,
-  refPerTokChainlinkTimeout: ORACLE_TIMEOUT
+  refPerTokChainlinkTimeout: ORACLE_TIMEOUT,
 }
 
 export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<ICollateral> => {
@@ -203,7 +200,7 @@ const mintCollateralTo: MintCollateralFunc<RethCollateralFixtureContext> = async
   await mintRETH(ctx.reth, user, amount, recipient)
 }
 
-const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
+// const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
 
 // prettier-ignore
 // const reduceRefPerTok = async (
@@ -227,7 +224,7 @@ const reduceRefPerTok = async (
 ) => {
   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
-  ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
 // prettier-ignore
@@ -252,7 +249,7 @@ const increaseRefPerTok = async (
 ) => {
   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
-  ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
 /*

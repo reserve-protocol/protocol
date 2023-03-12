@@ -419,7 +419,6 @@ export default function fn<X extends CollateralFixtureContext>(
           await collateral.refresh()
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
-
       })
 
       describe('collatral-specific tests', collateralSpecificStatusTests)
