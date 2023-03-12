@@ -375,6 +375,7 @@ const opts = {
   itClaimsRewards: it,
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
+  itCheckPriceChanges: it,
   resetFork,
   collateralName: 'CompoundV3USDC',
   chainlinkDefaultAnswer,

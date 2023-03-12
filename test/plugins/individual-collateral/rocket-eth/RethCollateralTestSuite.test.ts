@@ -284,6 +284,7 @@ const opts = {
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
+  itCheckPriceChanges: it,
   resetFork,
   collateralName: 'RocketPoolETH',
   chainlinkDefaultAnswer,
