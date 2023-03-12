@@ -6,7 +6,6 @@ import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import "contracts/plugins/rocket-eth/IReth.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
-import "hardhat/console.sol";
 
 /**
  * @title RethCollateral
@@ -77,7 +76,6 @@ contract RethCollateral is AppreciatingFiatCollateral {
     }
 
     function getMarketRefPerTok() public view returns (uint192) {
-        uint192 rate = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
-        return rate;
+        return refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
     }
 }

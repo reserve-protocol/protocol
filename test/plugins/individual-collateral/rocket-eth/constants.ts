@@ -18,4 +18,4 @@ export const DEFAULT_THRESHOLD = bn(5).mul(bn(10).pow(16)) // 0.05
 export const DELAY_UNTIL_DEFAULT = bn(86400)
 export const MAX_TRADE_VOL = bn(1000)
 
-export const FORK_BLOCK = 16773193
+export const FORK_BLOCK = 16804407

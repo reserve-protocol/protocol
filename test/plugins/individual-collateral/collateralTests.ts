@@ -388,13 +388,6 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
         })
 
-        it('enters IFFY state when price becomes stale', async () => {
-          const oracleTimeout = await collateral.oracleTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-          await collateral.refresh()
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-        })
-
         it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
           const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
             'InvalidMockV3Aggregator'
@@ -419,8 +412,17 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
         })
 
-        describe('collatral-specific tests', collateralSpecificStatusTests)
+        it('enters IFFY state when price becomes stale', async () => {
+          const oracleTimeout = await collateral.oracleTimeout()
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+          await advanceBlocks(oracleTimeout / 12)
+          await collateral.refresh()
+          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+        })
+
       })
+
+      describe('collatral-specific tests', collateralSpecificStatusTests)
     })
   })
 }
