@@ -1,5 +1,5 @@
 import collateralTests from '../collateralTests'
-import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../types'
+import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintRETH } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
@@ -25,6 +25,7 @@ import {
   ETH_USD_PRICE_FEED,
   RETH_NETWORK_BALANCES,
   RETH_STORAGE,
+  RETH_ETH_PRICE_FEED
 } from './constants'
 import { whileImpersonating } from '../../../utils/impersonation'
 
@@ -35,13 +36,19 @@ import { whileImpersonating } from '../../../utils/impersonation'
 interface RethCollateralFixtureContext extends CollateralFixtureContext {
   weth: WETH9
   reth: IReth
+  refPerTokChainlinkFeed: MockV3Aggregator
+}
+
+interface RethCollateralOpts extends CollateralOpts {
+  refPerTokChainlinkFeed?: string
+  refPerTokChainlinkTimeout?: BigNumberish
 }
 
 /*
   Define deployment functions
 */
 
-export const defaultRethCollateralOpts: CollateralOpts = {
+export const defaultRethCollateralOpts: RethCollateralOpts = {
   erc20: RETH,
   targetName: ethers.utils.formatBytes32String('USD'),
   rewardERC20: WETH,
@@ -52,9 +59,11 @@ export const defaultRethCollateralOpts: CollateralOpts = {
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
+  refPerTokChainlinkFeed: RETH_ETH_PRICE_FEED,
+  refPerTokChainlinkTimeout: ORACLE_TIMEOUT
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<ICollateral> => {
   opts = { ...defaultRethCollateralOpts, ...opts }
 
   const RethCollateralFactory: ContractFactory = await ethers.getContractFactory('RethCollateral')
@@ -72,6 +81,8 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<IColl
       delayUntilDefault: opts.delayUntilDefault,
     },
     0,
+    opts.refPerTokChainlinkFeed,
+    opts.refPerTokChainlinkTimeout,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -80,12 +91,13 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<IColl
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
+const refPerTokChainlinkDefaultAnswer = bn('1e8')
 
 type Fixture<T> = () => Promise<T>
 
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
-  opts: CollateralOpts = {}
+  opts: RethCollateralOpts = {}
 ): Fixture<RethCollateralFixtureContext> => {
   const collateralOpts = { ...defaultRethCollateralOpts, ...opts }
 
@@ -97,7 +109,12 @@ const makeCollateralFixtureContext = (
     const chainlinkFeed = <MockV3Aggregator>(
       await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
     )
+
+    const refPerTokChainlinkFeed = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(8, refPerTokChainlinkDefaultAnswer)
+    )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
+    collateralOpts.refPerTokChainlinkFeed = refPerTokChainlinkFeed.address
 
     const weth = (await ethers.getContractAt('WETH9', WETH)) as WETH9
     const reth = (await ethers.getContractAt('IReth', RETH)) as IReth
@@ -111,6 +128,7 @@ const makeCollateralFixtureContext = (
       chainlinkFeed,
       weth,
       reth,
+      refPerTokChainlinkFeed,
       tok: reth,
       rewardToken,
       tokDecimals,
@@ -188,37 +206,53 @@ const mintCollateralTo: MintCollateralFunc<RethCollateralFixtureContext> = async
 const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
 
 // prettier-ignore
+// const reduceRefPerTok = async (
+//   ctx: RethCollateralFixtureContext,
+//   pctDecrease: BigNumberish | undefined
+// ) => {
+//   const rethNetworkBalances = await ethers.getContractAt(
+//     'IRocketNetworkBalances',
+//     RETH_NETWORK_BALANCES
+//   )
+//   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
+//   const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease!).div(100))
+//   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
+//   await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
+//     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
+//   })
+// }
 const reduceRefPerTok = async (
   ctx: RethCollateralFixtureContext,
   pctDecrease: BigNumberish | undefined
 ) => {
-  const rethNetworkBalances = await ethers.getContractAt(
-    'IRocketNetworkBalances',
-    RETH_NETWORK_BALANCES
-  )
-  const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
-  const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease!).div(100))
-  const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
-  await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
-    await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
-  })
+  const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+  ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
 // prettier-ignore
+// const increaseRefPerTok = async (
+//   ctx: RethCollateralFixtureContext,
+//   pctIncrease: BigNumberish | undefined
+// ) => {
+//   const rethNetworkBalances = await ethers.getContractAt(
+//     'IRocketNetworkBalances',
+//     RETH_NETWORK_BALANCES
+//   )
+//   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
+//   const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease!).div(100))
+//   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
+//   await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
+//     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
+//   })
+// }
 const increaseRefPerTok = async (
   ctx: RethCollateralFixtureContext,
   pctIncrease: BigNumberish | undefined
 ) => {
-  const rethNetworkBalances = await ethers.getContractAt(
-    'IRocketNetworkBalances',
-    RETH_NETWORK_BALANCES
-  )
-  const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
-  const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease!).div(100))
-  const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
-  await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
-    await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
-  })
+  const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+  ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
 /*
