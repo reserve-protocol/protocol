@@ -51,6 +51,23 @@ jobs:
       - run: yarn compile
       - run: yarn test:plugins
 
+  collateral-tests:
+    name: 'Collateral Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn compile
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/rocket-eth/*.test.ts
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/lido/*.test.ts
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/frax-eth/*.test.ts
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/compoundv3/*.test.ts
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/compoundv2/*.test.ts
+
   p0-tests:
     name: 'P0 tests'
     runs-on: ubuntu-latest
