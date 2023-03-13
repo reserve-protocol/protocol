@@ -1,6 +1,6 @@
 ## Collateral Plugin Addresses
 
-These are the addresses and configuration parameters of the collateral plugins deployed to mainnet.
+Following are the addresses and configuration parameters of collateral plugins deployed to mainnet.
 
 | Plugin                                                                           | Threshold | Delay (hrs) | Feed                                                                                                                  | Underlying                                                                                                            |
 | -------------------------------------------------------------------------------- | --------- | ----------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |

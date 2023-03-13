@@ -7,7 +7,7 @@ import {
   IAssetCollDeployments,
 } from './deployment/common'
 
-// This prints a table of all the collateral plugin parameters
+// This prints an MD table of all the collateral plugin parameters
 // Usage: npx hardhat run --network mainnet scripts/collateral-params.ts
 async function main() {
   const header = ['Plugin', 'Threshold', 'Delay (hrs)', 'Feed', 'Underlying']
