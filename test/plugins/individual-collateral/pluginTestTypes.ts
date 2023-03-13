@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { BigNumberish } from 'ethers'
+import { BigNumberish, BigNumber } from 'ethers'
 import { MockV3Aggregator, ICollateral, IERC20 } from '../../../typechain'
 
 type Fixture<T> = () => Promise<T>
@@ -44,8 +44,11 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   beforeEachRewardsTest: (ctx: T) => void
   makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
   mintCollateralTo: MintCollateralFunc<T>
+  reduceTargetPerRef: (ctx: T, pctDecrease: BigNumberish | undefined) => void
+  increaseTargetPerRef: (ctx: T, pctIncrease: BigNumberish | undefined) => void
   reduceRefPerTok: (ctx: T, pctDecrease: BigNumberish | undefined) => void
   increaseRefPerTok: (ctx: T, pctIncrease: BigNumberish | undefined) => void
+  getExpectedPrice: (ctx: T) => Promise<BigNumber>
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction

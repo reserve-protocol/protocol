@@ -19,19 +19,19 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
-    uint48 public immutable targetUnitOracleTimeout; // {s}
+    AggregatorV3Interface public immutable targetPerRefChainlinkFeed; // {ref/tok}
+    uint48 public immutable targetPerRefChainlinkTimeout; // {s}
 
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        AggregatorV3Interface targetUnitChainlinkFeed_,
-        uint48 targetUnitOracleTimeout_
+        AggregatorV3Interface _targetPerRefChainlinkFeed,
+        uint48 _targetPerRefChainlinkTimeout
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(targetUnitChainlinkFeed_) != address(0), "missing targetUnit feed");
-        require(targetUnitOracleTimeout_ > 0, "targetUnitOracleTimeout zero");
-        targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
-        targetUnitOracleTimeout = targetUnitOracleTimeout_;
+        require(address(_targetPerRefChainlinkFeed) != address(0), "missing targetPerRef feed");
+        require(_targetPerRefChainlinkTimeout > 0, "targetPerRefChainlinkTimeout zero");
+        targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
+        targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
         exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
 
@@ -49,11 +49,11 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // Get current market peg {eth/steth}, but the intended {target/ref} will be returned
-        pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
-
         // {UoA/target}
-        uint192 pricePerTarget = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
+        uint192 pricePerTarget = chainlinkFeed.price(oracleTimeout);
+        
+        // Get current market peg {eth/steth}, but the intended {target/ref} will be returned
+        pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout); // {target/ref}
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         uint192 pLow = pricePerTarget.mul(pegPrice).mul(refPerTok());
@@ -61,8 +61,6 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
 
         low = pLow - pLow.mul(oracleError);
         high = pHigh + pHigh.mul(oracleError);
-
-        pegPrice = targetPerRef();
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

@@ -1,6 +1,6 @@
 import collateralTests from '../collateralTests'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
-import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../types'
+import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintWSTETH } from './helpers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
@@ -36,7 +36,7 @@ import { expectPrice } from '../../../utils/oracles'
 */
 interface WSTETHCollateralFixtureContext extends CollateralFixtureContext {
   wsteth: IWSTETH
-  targetUnitChainlinkFeed: MockV3Aggregator
+  targetPerRefChainlinkFeed: MockV3Aggregator
 }
 
 /*
@@ -44,8 +44,8 @@ interface WSTETHCollateralFixtureContext extends CollateralFixtureContext {
 */
 
 interface WSTETHCollateralOpts extends CollateralOpts {
-  targetUnitChainlinkFeed: string
-  targetUnitOracleTimeout: BigNumberish
+  targetPerRefChainlinkFeed?: string
+  targetPerRefChainlinkTimeout?: BigNumberish
 }
 
 export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
@@ -53,17 +53,17 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: ORACLE_TIMEOUT,
-  chainlinkFeed: STETH_ETH_PRICE_FEED,
+  chainlinkFeed: ETH_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
-  targetUnitChainlinkFeed: ETH_USD_PRICE_FEED,
-  targetUnitOracleTimeout: ORACLE_TIMEOUT,
+  targetPerRefChainlinkFeed: STETH_ETH_PRICE_FEED,
+  targetPerRefChainlinkTimeout: ORACLE_TIMEOUT,
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (opts: WSTETHCollateralOpts = {}): Promise<ICollateral> => {
   opts = { ...defaultWSTETHCollateralOpts, ...opts }
 
   const WStEthCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -84,16 +84,16 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<IColl
       delayUntilDefault: opts.delayUntilDefault,
     },
     0,
-    opts.targetUnitChainlinkFeed,
-    opts.targetUnitOracleTimeout,
+    opts.targetPerRefChainlinkFeed,
+    opts.targetPerRefChainlinkTimeout,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
   return collateral
 }
 
-const chainlinkDefaultAnswer = bn('0.97e8')
-const chainlinkTargetUnitDefaultAnswer = bn('1800e8')
+const chainlinkDefaultAnswer = bn('1800e8')
+const chainlinkTargetUnitDefaultAnswer = bn('1e8')
 
 type Fixture<T> = () => Promise<T>
 
@@ -112,12 +112,12 @@ const makeCollateralFixtureContext = (
       await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
     )
 
-    const targetUnitChainlinkFeed = <MockV3Aggregator>(
+    const targetPerRefChainlinkFeed = <MockV3Aggregator>(
       await MockV3AggregatorFactory.deploy(8, chainlinkTargetUnitDefaultAnswer)
     )
 
     collateralOpts.chainlinkFeed = chainlinkFeed.address
-    collateralOpts.targetUnitChainlinkFeed = targetUnitChainlinkFeed.address
+    collateralOpts.targetPerRefChainlinkFeed = targetPerRefChainlinkFeed.address
 
     const wsteth = (await ethers.getContractAt('IWSTETH', WSTETH)) as IWSTETH
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
@@ -132,7 +132,7 @@ const makeCollateralFixtureContext = (
       tok: wsteth,
       rewardToken,
       tokDecimals,
-      targetUnitChainlinkFeed,
+      targetPerRefChainlinkFeed,
     }
   }
 
@@ -152,39 +152,74 @@ const mintCollateralTo: MintCollateralFunc<WSTETHCollateralFixtureContext> = asy
   await mintWSTETH(ctx.wsteth, user, amount, recipient)
 }
 
-// prettier-ignore
+const reduceTargetPerRef = async (
+  ctx: WSTETHCollateralFixtureContext,
+  pctDecrease: BigNumberish | undefined
+) => {
+  const lastRound = await ctx.targetPerRefChainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+  await ctx.targetPerRefChainlinkFeed.updateAnswer(nextAnswer)
+}
+
+const increaseTargetPerRef = async (
+  ctx: WSTETHCollateralFixtureContext,
+  pctIncrease: BigNumberish | undefined
+) => {
+  const lastRound = await ctx.targetPerRefChainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+  await ctx.targetPerRefChainlinkFeed.updateAnswer(nextAnswer)
+}
+
 const reduceRefPerTok = async (
   ctx: WSTETHCollateralFixtureContext,
   pctDecrease: BigNumberish | undefined
 ) => {
+  const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
+  
+  // Decrease wsteth to eth exchange rate so refPerTok decreases
+  const [, beaconValidators, beaconBalance] = await steth.getBeaconStat()
+  const beaconBalanceLower: BigNumberish =  beaconBalance.sub(beaconBalance.mul(pctDecrease!).div(100))
 
-    const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
-    
-     // Decrease wsteth to eth exchange rate so refPerTok decreases
-     const [, beaconValidators, beaconBalance] = await steth.getBeaconStat()
-     const beaconBalanceLower: BigNumberish =  beaconBalance.sub(beaconBalance.mul(pctDecrease!).div(100))
-
-     // Impersonate Lido Oracle
-     await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
-       await steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceLower)
-     })
+  // Impersonate Lido Oracle
+  await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
+    await steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceLower)
+  })
 }
 
-// prettier-ignore
 const increaseRefPerTok = async (
   ctx: WSTETHCollateralFixtureContext,
   pctIncrease: BigNumberish | undefined
 ) => {
-    const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
+  const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
+
+  // Increase wsteth to steth exchange rate so refPerTok increases
+  const [, beaconValidators, beaconBalance] = await steth.getBeaconStat()
+  const beaconBalanceHigher: BigNumberish = beaconBalance.add(beaconBalance.mul(pctIncrease!).div(100))
   
-    // Increase wsteth to steth exchange rate so refPerTok increases
-    const [, beaconValidators, beaconBalance] = await steth.getBeaconStat()
-    const beaconBalanceHigher: BigNumberish = beaconBalance.add(beaconBalance.mul(pctIncrease!).div(100))
-   
-    // Impersonate Lido Oracle
-    await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
-      await steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceHigher)
-    })
+  // Impersonate Lido Oracle
+  await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
+    await steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceHigher)
+  })
+}
+
+const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext):Promise<BigNumber> => {
+  // Peg Feed
+  const clData = await ctx.chainlinkFeed.latestRoundData()
+  const clDecimals = await ctx.chainlinkFeed.decimals()
+
+  // Target Unit Feed
+  const tgtClData = await ctx.targetPerRefChainlinkFeed.latestRoundData()
+  const tgtClDecimals = await ctx.targetPerRefChainlinkFeed.decimals()
+
+  const refPerTok = await ctx.collateral.refPerTok()
+
+  const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
+  const expectedTgtPrice = tgtClData.answer.mul(bn(10).pow(18 - tgtClDecimals))
+  return expectedPegPrice
+    .mul(expectedTgtPrice)
+    .mul(refPerTok)
+    .div(fp('1'))
+    .div(fp('1'))
 }
 
 /*
@@ -193,15 +228,15 @@ const increaseRefPerTok = async (
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificConstructorTests = () => {
-  it('does not allow missing target unit chainlink feed', async () => {
+  it('does not allow missing targetPerRef chainlink feed', async () => {
     await expect(
-      deployCollateral({ targetUnitChainlinkFeed: ethers.constants.AddressZero })
-    ).to.be.revertedWith('missing targetUnit feed')
+      deployCollateral({ targetPerRefChainlinkFeed: ethers.constants.AddressZero })
+    ).to.be.revertedWith('missing targetPerRef feed')
   })
 
-  it('does not allow oracle timeout at 0', async () => {
-    await expect(deployCollateral({ targetUnitOracleTimeout: 0 })).to.be.revertedWith(
-      'targetUnitOracleTimeout zero'
+  it('does not allow targetPerRef oracle timeout at 0', async () => {
+    await expect(deployCollateral({ targetPerRefChainlinkTimeout: 0 })).to.be.revertedWith(
+      'targetPerRefChainlinkTimeout zero'
     )
   })
 }
@@ -210,13 +245,13 @@ const collateralSpecificConstructorTests = () => {
 const collateralSpecificStatusTests = () => {
   let ctx: WSTETHCollateralFixtureContext
   let chainlinkFeed: MockV3Aggregator
-  let targetUnitChainlinkFeed: MockV3Aggregator
+  let targetPerRefChainlinkFeed: MockV3Aggregator
   let collateral: ICollateral
 
   beforeEach(async () => {
     const [, alice] = await ethers.getSigners()
     ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
-    ;({ collateral, chainlinkFeed, targetUnitChainlinkFeed } = ctx)
+    ;({ collateral, chainlinkFeed, targetPerRefChainlinkFeed } = ctx)
   })
 
   it('prices change as feeds prices change', async () => {
@@ -225,8 +260,8 @@ const collateralSpecificStatusTests = () => {
     const clDecimals = await chainlinkFeed.decimals()
 
     // Target Unit Feed
-    const tgtClData = await targetUnitChainlinkFeed.latestRoundData()
-    const tgtClDecimals = await targetUnitChainlinkFeed.decimals()
+    const tgtClData = await targetPerRefChainlinkFeed.latestRoundData()
+    const tgtClDecimals = await targetPerRefChainlinkFeed.decimals()
 
     const oracleError = await collateral.oracleError()
     const refPerTok = await collateral.refPerTok()
@@ -272,11 +307,11 @@ const collateralSpecificStatusTests = () => {
     // Update the other oracle (Target unit ETH/USD)
     // Increase by 10-20%
     const newTgtPrice = BigNumber.from(chainlinkTargetUnitDefaultAnswer).mul(11).div(10)
-    const updateTgtAnswerTx = await targetUnitChainlinkFeed.updateAnswer(newTgtPrice)
+    const updateTgtAnswerTx = await targetPerRefChainlinkFeed.updateAnswer(newTgtPrice)
     await updateTgtAnswerTx.wait()
 
     // Check prices were updated
-    const newtgtClData = await targetUnitChainlinkFeed.latestRoundData()
+    const newtgtClData = await targetPerRefChainlinkFeed.latestRoundData()
     const newExpectedTgtPrice = newtgtClData.answer.mul(bn(10).pow(18 - tgtClDecimals))
     const finalExpectedPrice = newExpectedPegPrice
       .mul(newExpectedTgtPrice)
@@ -300,8 +335,8 @@ const collateralSpecificStatusTests = () => {
     const clDecimals = await chainlinkFeed.decimals()
 
     // Target Unit Feed
-    const tgtClData = await targetUnitChainlinkFeed.latestRoundData()
-    const tgtClDecimals = await targetUnitChainlinkFeed.decimals()
+    const tgtClData = await targetPerRefChainlinkFeed.latestRoundData()
+    const tgtClDecimals = await targetPerRefChainlinkFeed.decimals()
 
     const oracleError = await collateral.oracleError()
 
@@ -353,13 +388,15 @@ const opts = {
   beforeEachRewardsTest,
   makeCollateralFixtureContext,
   mintCollateralTo,
+  reduceTargetPerRef,
+  increaseTargetPerRef,
   reduceRefPerTok,
   increaseRefPerTok,
+  getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
-  itCheckPriceChanges: it.skip,
-  itChecksRefPerTokDefault: it,
+  itCheckPriceChanges: it,
   resetFork,
   collateralName: 'LidoStakedETH',
   chainlinkDefaultAnswer,

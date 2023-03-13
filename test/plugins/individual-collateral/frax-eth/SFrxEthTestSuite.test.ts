@@ -2,7 +2,7 @@ import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintSfrxETH, mintFrxETH } from './helpers'
 import hre, { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish } from 'ethers'
+import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   MockV3Aggregator,
   MockV3Aggregator__factory,
@@ -10,7 +10,7 @@ import {
   ERC20Mock,
   IsfrxEth,
 } from '../../../../typechain'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -190,6 +190,12 @@ const mintCollateralTo: MintCollateralFunc<SFrxEthCollateralFixtureContext> = as
   await mintSfrxETH(ctx.sfrxEth, user, amount, recipient, ctx.chainlinkFeed)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const reduceTargetPerRef = async () => {}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const increaseTargetPerRef = async () => {}
+
 // prettier-ignore
 const reduceRefPerTok = async () => {
   await hre.network.provider.send('evm_mine', [])
@@ -217,6 +223,26 @@ const increaseRefPerTok = async (
   await ctx.chainlinkFeed.updateAnswer(lastAnswer)
 }
 
+const getExpectedPrice = async (ctx: SFrxEthCollateralFixtureContext):Promise<BigNumber> => {
+  // Peg Feed
+  const clData = await ctx.chainlinkFeed.latestRoundData()
+  const clDecimals = await ctx.chainlinkFeed.decimals()
+
+  // Target Unit Feed
+  // const tgtClData = await ctx.targetPerRefChainlinkFeed.latestRoundData()
+  // const tgtClDecimals = await ctx.targetPerRefChainlinkFeed.decimals()
+
+  const refPerTok = await ctx.collateral.refPerTok()
+
+  const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
+  // const expectedTgtPrice = tgtClData.answer.mul(bn(10).pow(18 - tgtClDecimals))
+  return expectedPegPrice
+    // .mul(expectedTgtPrice)
+    .mul(refPerTok)
+    // .div(fp('1'))
+    .div(fp('1'))
+}
+
 /*
   Define collateral-specific tests
 */
@@ -241,8 +267,11 @@ const opts = {
   beforeEachRewardsTest,
   makeCollateralFixtureContext,
   mintCollateralTo,
+  reduceTargetPerRef,
+  increaseTargetPerRef,
   reduceRefPerTok,
   increaseRefPerTok,
+  getExpectedPrice,
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it.skip,

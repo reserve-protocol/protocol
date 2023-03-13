@@ -2,7 +2,7 @@ import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintRETH } from './helpers'
 import { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish } from 'ethers'
+import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -11,7 +11,7 @@ import {
   IReth,
   WETH9,
 } from '../../../../typechain'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -200,6 +200,12 @@ const mintCollateralTo: MintCollateralFunc<RethCollateralFixtureContext> = async
   await mintRETH(ctx.reth, user, amount, recipient)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const reduceTargetPerRef = async () => {}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const increaseTargetPerRef = async () => {}
+
 // const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
 
 // prettier-ignore
@@ -252,6 +258,18 @@ const increaseRefPerTok = async (
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
+const getExpectedPrice = async (ctx: RethCollateralFixtureContext):Promise<BigNumber> => {
+  const clData = await ctx.chainlinkFeed.latestRoundData()
+  const clDecimals = await ctx.chainlinkFeed.decimals()
+
+  const refPerTok = await ctx.collateral.refPerTok()
+
+  return clData.answer
+    .mul(bn(10).pow(18 - clDecimals))
+    .mul(refPerTok)
+    .div(fp('1'))
+}
+
 /*
   Define collateral-specific tests
 */
@@ -278,6 +296,7 @@ const opts = {
   mintCollateralTo,
   reduceRefPerTok,
   increaseRefPerTok,
+  getExpectedPrice,
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,

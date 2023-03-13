@@ -7,7 +7,7 @@ import {
 } from '../pluginTestTypes'
 import { mintWcUSDC, makewCSUDC, resetFork, enableRewardsAccrual } from './helpers'
 import { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish } from 'ethers'
+import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -22,7 +22,7 @@ import {
   CometMock__factory,
   ICollateral,
 } from '../../../../typechain'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -249,6 +249,24 @@ const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = asyn
   await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.wcusdcV3, user, amount, recipient)
 }
 
+const reduceTargetPerRef = async (
+  ctx: CometCollateralFixtureContext,
+  pctDecrease: BigNumberish | undefined
+) => {
+  const lastRound = await ctx.chainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+}
+
+const increaseTargetPerRef = async (
+  ctx: CometCollateralFixtureContext,
+  pctIncrease: BigNumberish | undefined
+) => {
+  const lastRound = await ctx.chainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+}
+
 const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
   const currentExchangeRate = await ctx.wcusdcV3.exchangeRate()
   await ctx.wcusdcV3Mock.setMockExchangeRate(true, currentExchangeRate.sub(100))
@@ -257,6 +275,18 @@ const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
 const increaseRefPerTok = async () => {
   await advanceBlocks(1000)
   await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+}
+
+const getExpectedPrice = async (ctx: CometCollateralFixtureContext):Promise<BigNumber> => {
+  const initRefPerTok = await ctx.collateral.refPerTok()
+
+  const decimals = await ctx.chainlinkFeed.decimals()
+
+  const initData = await ctx.chainlinkFeed.latestRoundData()
+  return initData.answer
+    .mul(bn(10).pow(18 - decimals))
+    .mul(initRefPerTok)
+    .div(fp('1'))
 }
 
 /*
@@ -368,8 +398,11 @@ const opts = {
   beforeEachRewardsTest,
   makeCollateralFixtureContext,
   mintCollateralTo,
+  reduceTargetPerRef,
+  increaseTargetPerRef,
   reduceRefPerTok,
   increaseRefPerTok,
+  getExpectedPrice,
   itClaimsRewards: it,
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
