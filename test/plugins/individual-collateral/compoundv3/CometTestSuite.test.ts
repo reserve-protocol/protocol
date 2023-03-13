@@ -89,9 +89,7 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   reservesThresholdDisabled: bn('5000'),
 }
 
-export const deployCollateral = async (
-  opts: CometCollateralOpts = {}
-): Promise<ICollateral> => {
+export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<ICollateral> => {
   opts = { ...defaultCometCollateralOpts, ...opts }
 
   const CTokenV3CollateralFactory: ContractFactory = await ethers.getContractFactory(
