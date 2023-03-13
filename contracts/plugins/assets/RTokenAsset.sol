@@ -45,6 +45,7 @@ contract RTokenAsset is IAsset {
         external
         view
         virtual
+        override
         returns (
             uint192 low,
             uint192 high,
@@ -163,5 +164,20 @@ contract RTokenAsset is IAsset {
             // will exclude UoA value from RToken balances at BackingManager
             range = RecollateralizationLibP1.basketRange(ctx, reg);
         }
+    }
+
+        /// @return The address of the chainlink feed
+    function chainlinkFeed() external view override returns (AggregatorV3Interface) {
+        return AggregatorV3Interface(address(0));
+    }
+
+    /// {1} The max % deviation allowed by the oracle
+    function oracleError() external view override returns (uint192) {
+        return type(uint192).max;
+    }
+
+    /// @return {s} Seconds that an oracle value is considered valid
+    function oracleTimeout() external view override returns (uint48) {
+        return type(uint48).max;
     }
 }

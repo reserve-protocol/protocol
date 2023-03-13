@@ -45,9 +45,8 @@ interface IAsset is IRewardable {
 
     /// @param {UoA} The max trade volume, in UoA
     function maxTradeVolume() external view returns (uint192);
-}
 
-interface TestIAsset is IAsset {
+    /// @return The address of the chainlink feed
     function chainlinkFeed() external view returns (AggregatorV3Interface);
 
     /// {1} The max % deviation allowed by the oracle
