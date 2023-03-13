@@ -14,6 +14,11 @@ import "./IsfrxEth.sol";
  * ref = frxETH
  * tar = ETH
  * UoA = USD
+
+ TODO: a price oracle is needed for ETH/frxETH. there are 2 options:
+ 1) wait for a chainlink oracle.  the FRAX team is working on getting one, but there is currently
+ no ETA
+ 2) implement a TWAP based on curve
  */
 contract SFraxEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
