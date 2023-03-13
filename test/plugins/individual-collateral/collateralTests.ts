@@ -421,7 +421,7 @@ export default function fn<X extends CollateralFixtureContext>(
         })
       })
 
-      describe('collatral-specific tests', collateralSpecificStatusTests)
+      describe('collateral-specific tests', collateralSpecificStatusTests)
     })
   })
 }
