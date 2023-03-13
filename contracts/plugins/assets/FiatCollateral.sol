@@ -49,7 +49,7 @@ contract FiatCollateral is ICollateral, Asset {
     uint48 private constant NEVER = type(uint48).max;
     uint48 private _whenDefault = NEVER;
 
-    uint48 public immutable delayUntilDefault; // {s} e.g 86400
+    uint48 public immutable override delayUntilDefault; // {s} e.g 86400
 
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
@@ -193,7 +193,7 @@ contract FiatCollateral is ICollateral, Asset {
         return _whenDefault <= block.timestamp;
     }
 
-    function whenDefault() external view returns (uint256) {
+    function whenDefault() external view override returns (uint256) {
         return _whenDefault;
     }
 

@@ -7,7 +7,7 @@ import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
-import { InvalidMockV3Aggregator, MockV3Aggregator, TestICollateral } from '../../../typechain'
+import { InvalidMockV3Aggregator, MockV3Aggregator, ICollateral } from '../../../typechain'
 import {
   advanceTime,
   advanceBlocks,
@@ -95,7 +95,7 @@ export default function fn<X extends CollateralFixtureContext>(
 
       let chainId: number
 
-      let collateral: TestICollateral
+      let collateral: ICollateral
       let chainlinkFeed: MockV3Aggregator
 
       before(async () => {

@@ -20,7 +20,7 @@ import {
   MockV3Aggregator__factory,
   CometMock,
   CometMock__factory,
-  TestICollateral,
+  ICollateral,
 } from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
@@ -91,14 +91,14 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
 
 export const deployCollateral = async (
   opts: CometCollateralOpts = {}
-): Promise<TestICollateral> => {
+): Promise<ICollateral> => {
   opts = { ...defaultCometCollateralOpts, ...opts }
 
   const CTokenV3CollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CTokenV3Collateral'
   )
 
-  const collateral = <TestICollateral>await CTokenV3CollateralFactory.deploy(
+  const collateral = <ICollateral>await CTokenV3CollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,

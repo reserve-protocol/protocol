@@ -358,6 +358,7 @@ const opts = {
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
   itCheckPriceChanges: it.skip,
+  itChecksRefPerTokDefault: it,
   resetFork,
   collateralName: 'LidoStakedETH',
   chainlinkDefaultAnswer,
