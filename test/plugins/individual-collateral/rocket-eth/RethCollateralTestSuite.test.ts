@@ -24,7 +24,10 @@ import {
   RETH,
   ETH_USD_PRICE_FEED,
   RETH_ETH_PRICE_FEED,
+  RETH_NETWORK_BALANCES,
+  RETH_STORAGE,
 } from './constants'
+import { whileImpersonating } from '#/test/utils/impersonation'
 
 /*
   Define interfaces
@@ -206,67 +209,76 @@ const reduceTargetPerRef = async () => {}
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const increaseTargetPerRef = async () => {}
 
-// const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
+const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
 
 // prettier-ignore
-// const reduceRefPerTok = async (
-//   ctx: RethCollateralFixtureContext,
-//   pctDecrease: BigNumberish | undefined
-// ) => {
-//   const rethNetworkBalances = await ethers.getContractAt(
-//     'IRocketNetworkBalances',
-//     RETH_NETWORK_BALANCES
-//   )
-//   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
-//   const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease!).div(100))
-//   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
-//   await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
-//     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
-//   })
-// }
 const reduceRefPerTok = async (
   ctx: RethCollateralFixtureContext,
   pctDecrease: BigNumberish | undefined
 ) => {
+  const rethNetworkBalances = await ethers.getContractAt(
+    'IRocketNetworkBalances',
+    RETH_NETWORK_BALANCES
+  )
+  const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
+  const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease!).div(100))
+  const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
+  await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
+    await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
+  })
+
   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
+// const reduceRefPerTok = async (
+//   ctx: RethCollateralFixtureContext,
+//   pctDecrease: BigNumberish | undefined
+// ) => {
+//   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+//   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+//   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+// }
 
 // prettier-ignore
-// const increaseRefPerTok = async (
-//   ctx: RethCollateralFixtureContext,
-//   pctIncrease: BigNumberish | undefined
-// ) => {
-//   const rethNetworkBalances = await ethers.getContractAt(
-//     'IRocketNetworkBalances',
-//     RETH_NETWORK_BALANCES
-//   )
-//   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
-//   const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease!).div(100))
-//   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
-//   await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
-//     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
-//   })
-// }
 const increaseRefPerTok = async (
   ctx: RethCollateralFixtureContext,
   pctIncrease: BigNumberish | undefined
 ) => {
+  const rethNetworkBalances = await ethers.getContractAt(
+    'IRocketNetworkBalances',
+    RETH_NETWORK_BALANCES
+  )
+  const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
+  const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease!).div(100))
+  const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
+  await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
+    await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
+  })
+
   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
+// const increaseRefPerTok = async (
+//   ctx: RethCollateralFixtureContext,
+//   pctIncrease: BigNumberish | undefined
+// ) => {
+//   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+//   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+//   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+// }
 
 const getExpectedPrice = async (ctx: RethCollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
+  const clRptData = await ctx.refPerTokChainlinkFeed.latestRoundData()
+  const clRptDecimals = await ctx.refPerTokChainlinkFeed.decimals()
 
   return clData.answer
     .mul(bn(10).pow(18 - clDecimals))
-    .mul(refPerTok)
+    .mul(clRptData.answer.mul(bn(10).pow(18 - clRptDecimals)))
     .div(fp('1'))
 }
 

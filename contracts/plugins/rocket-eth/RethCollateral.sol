@@ -32,7 +32,7 @@ contract RethCollateral is AppreciatingFiatCollateral {
         require(_refPerTokChainlinkTimeout != 0, "Chainlink feed cannot be 0x0");
         refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
         refPerTokChainlinkTimeout = _refPerTokChainlinkTimeout;
-        exposedReferencePrice = getMarketRefPerTok().mul(revenueShowing);
+        exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -51,29 +51,21 @@ contract RethCollateral is AppreciatingFiatCollateral {
     {
         uint192 p = chainlinkFeed.price(oracleTimeout); // target==ref :: {UoA/target} == {UoA/ref}
 
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pLow = p.mul(refPerTok());
+        // use market price for {ref/tok}
+        pegPrice = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pHigh = p.mul(_underlyingRefPerTok());
+        uint192 pLow = p.mul(pegPrice.mul(revenueShowing));
+
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        uint192 pHigh = p.mul(pegPrice);
 
         low = pLow - pLow.mul(oracleError);
         high = pHigh + pHigh.mul(oracleError);
-
-        pegPrice = targetPerRef();
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        try this.getMarketRefPerTok() returns (uint192 _price) {
-            return _price;
-        } catch (bytes memory errData) {
-            // fall back to exchange rate if there is an oracle issue
-            return _safeWrap(IReth(address(erc20)).getExchangeRate());
-        }
-    }
-
-    function getMarketRefPerTok() public view returns (uint192) {
-        return refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
+        return _safeWrap(IReth(address(erc20)).getExchangeRate());
     }
 }
