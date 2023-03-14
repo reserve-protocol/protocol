@@ -61,6 +61,8 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
 
         low = pLow - pLow.mul(oracleError);
         high = pHigh + pHigh.mul(oracleError);
+
+        pegPrice = targetPerRef();
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

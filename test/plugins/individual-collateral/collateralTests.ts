@@ -174,6 +174,26 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(finalRefPerTok).to.equal(initialRefPerTok)
         })
 
+        itCheckPriceChanges('prices change as targetPerRef changes', async () => {
+          const oracleError = await collateral.oracleError()
+          const expectedPrice = await getExpectedPrice(ctx)
+          await expectPrice(collateral.address, expectedPrice, oracleError, true)
+
+          // Get refPerTok initial values
+          const initialRefPerTok = await collateral.refPerTok()
+
+          // Update values in Oracles increase by 10-20%
+          await increaseTargetPerRef(ctx, 20)
+
+          // Check new prices
+          const newExpectedPrice = await getExpectedPrice(ctx)
+          await expectPrice(collateral.address, newExpectedPrice, oracleError, true)
+
+          // Check refPerTok remains the same (because we have not refreshed)
+          const finalRefPerTok = await collateral.refPerTok()
+          expect(finalRefPerTok).to.equal(initialRefPerTok)
+        })
+
         itCheckPriceChanges('prices change as refPerTok changes', async () => {
           const initRefPerTok = await collateral.refPerTok()
 
