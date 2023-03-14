@@ -45,20 +45,22 @@ async function main() {
       'LidoStakedEthCollateral'
     )
 
-    const collateral = <LidoStakedEthCollateral>await LidoStakedEthCollateralFactory.connect(deployer).deploy({
-      priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-      oracleError: fp('0.005').toString(), // 0.5%,
-      erc20: networkConfig[chainId].tokens.wstETH,
-      maxTradeVolume: fp('1e3').toString(), // 1k $ETH,
-      oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
-      targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.15').toString(), // 15%
-      delayUntilDefault: bn('86400').toString(), // 24h
-      revenueHiding: bn('1e14'), // 0.01%
-      targetPerRefChainlinkFeed: networkConfig[chainId].chainlinkFeeds.stETH,
-      targetPerRefChainlinkTimeout: oracleTimeout(chainId, '3600').toString()
-    })
+    const collateral = <LidoStakedEthCollateral>await LidoStakedEthCollateralFactory.connect(deployer).deploy(
+      {
+        priceTimeout: priceTimeout.toString(),
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
+        oracleError: fp('0.005').toString(), // 0.5%,
+        erc20: networkConfig[chainId].tokens.wstETH,
+        maxTradeVolume: fp('1e3').toString(), // 1k $ETH,
+        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
+        targetName: hre.ethers.utils.formatBytes32String('ETH'),
+        defaultThreshold: fp('0.15').toString(), // 15%
+        delayUntilDefault: bn('86400').toString() // 24h
+      },
+      bn('1e14'), // revenueHiding = 0.01%
+      networkConfig[chainId].chainlinkFeeds.stETH, // targetPerRefChainlinkFeed
+      oracleTimeout(chainId, '3600').toString() // targetPerRefChainlinkTimeout
+    )
     await collateral.deployed()
     await collateral.refresh()
 
