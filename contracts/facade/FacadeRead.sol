@@ -46,22 +46,42 @@ contract FacadeRead is IFacadeRead {
         return basketsHeld.bottom.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
     }
 
+    /// @return tokens The erc20 needed for the issuance
+    /// @return deposits {qTok} The deposits necessary to issue `amount` RToken
+    /// @return depositsUoA {UoA} The UoA value of the deposits necessary to issue `amount` RToken
     /// @custom:static-call
     function issue(IRToken rToken, uint256 amount)
         external
-        returns (address[] memory tokens, uint256[] memory deposits)
+        returns (
+            address[] memory tokens,
+            uint256[] memory deposits,
+            uint192[] memory depositsUoA
+        )
     {
         IMain main = rToken.main();
         main.poke();
         IRToken rTok = rToken;
         IBasketHandler bh = main.basketHandler();
+        IAssetRegistry reg = main.assetRegistry();
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (rTok.totalSupply() > 0) // {BU}
             ? rTok.basketsNeeded().muluDivu(amount, rTok.totalSupply()) // {BU * qRTok / qRTok}
-            : shiftl_toFix(amount, -int8(rTok.decimals())); // {qRTok / qRTok}
+            : _safeWrap(amount); // take advantage of RToken having 18 decimals
 
         (tokens, deposits) = bh.quote(baskets, CEIL);
+        depositsUoA = new uint192[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IAsset asset = reg.toAsset(IERC20(tokens[i]));
+            (uint192 low, uint192 high) = asset.price();
+            if (low == 0) continue;
+
+            uint192 mid = (low + high) / 2;
+
+            // {UoA} = {tok} * {UoA/Tok}
+            depositsUoA[i] = shiftl_toFix(deposits[i], -int8(asset.erc20Decimals())).mul(mid);
+        }
     }
 
     /// @return tokens The erc20s returned for the redemption
