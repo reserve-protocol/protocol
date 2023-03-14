@@ -1,5 +1,7 @@
 # Staked-Frax-ETH Collateral Plugin
 
+**NOTE: The SFraxEthCollateral plugin SHOULD NOT be deployed and used until a `frxETH/ETH` chainlink oracle can be integrated with the plugin.  As of 3/14/23, there is no chainlink oracle, but the FRAX team is working on getting one.**
+
 ## Summary
 
 This plugin allows `sfrxETH` ((Staked-Frax-ETH)[https://docs.frax.finance/frax-ether/overview]) holders use their tokens as collateral in the Reserve Protocol.

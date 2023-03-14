@@ -1,5 +1,7 @@
 # Ankr ETH Collateral Plugin
 
+**NOTE: The AnkrStakedEthCollateral plugin SHOULD NOT be deployed and used until a `ankrETH/ETH` chainlink oracle can be integrated with the plugin.  As of 3/14/23, there is no chainlink oracle, but the ANKR team is working on getting one.**
+
 ## Summary
 
 This plugin allows the usage of [ankrETH](https://www.ankr.com/about-staking/) as a collateral for the Reserve Protocol.
