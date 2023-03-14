@@ -114,6 +114,18 @@ interface IFacadeRead {
         view
         returns (uint192 backing, uint192 overCollateralization);
 
+    /// @return erc20s The registered ERC20s
+    /// @return balances {qTok} The held balances of each ERC20 at the trader
+    /// @return balancesNeeded {qTok} The needed balance of each ERC20 at the trader
+    function traderBalances(IRToken rToken, ITrading trader)
+        external
+        view
+        returns (
+            IERC20[] memory erc20s,
+            uint256[] memory balances,
+            uint256[] memory balancesNeeded
+        );
+
     /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
     /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset
     function price(IRToken rToken) external view returns (uint192 low, uint192 high);
