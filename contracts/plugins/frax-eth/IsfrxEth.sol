@@ -64,6 +64,8 @@ interface IsfrxEth {
 
     function previewWithdraw(uint256 assets) external view returns (uint256);
 
+    function pricePerShare() external view returns (uint256);
+
     function redeem(
         uint256 shares,
         address receiver,

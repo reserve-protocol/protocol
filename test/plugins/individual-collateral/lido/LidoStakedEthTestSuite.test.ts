@@ -262,7 +262,7 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itCheckPriceChanges: it,
   resetFork,

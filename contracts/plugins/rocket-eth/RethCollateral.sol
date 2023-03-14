@@ -68,6 +68,7 @@ contract RethCollateral is AppreciatingFiatCollateral {
         try this.getMarketRefPerTok() returns (uint192 _price) {
             return _price;
         } catch (bytes memory errData) {
+            // fall back to exchange rate if there is an oracle issue
             return _safeWrap(IReth(address(erc20)).getExchangeRate());
         }
     }
