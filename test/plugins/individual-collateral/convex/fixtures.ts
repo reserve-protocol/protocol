@@ -14,9 +14,7 @@ import {
   DAI_USD_FEED,
   THREE_POOL_TOKEN,
 } from './constants'
-import {
-  exp
-} from './helpers'
+import { exp } from './helpers'
 import {
   GnosisMock,
   EasyAuction,

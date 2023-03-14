@@ -4,11 +4,10 @@ import {
   CollateralOpts,
   CollateralStatus,
   MintCollateralFunc,
-} from '../types'
+} from '../pluginTestTypes'
 import { mintW3Pool, makeW3Pool, Wrapped3PoolFixture, resetFork } from './helpers'
-import hre, { ethers, waffle } from 'hardhat'
-import { Fixture } from 'ethereum-waffle'
-import { ContractFactory, BigNumberish, Wallet } from 'ethers'
+import hre, { ethers } from 'hardhat'
+import { ContractFactory, BigNumberish } from 'ethers'
 import {
   ConvexStakingWrapper,
   CvxStableCollateral,
@@ -16,12 +15,12 @@ import {
   InvalidMockV3Aggregator,
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  TestICollateral,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT192, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import {
   PRICE_TIMEOUT,
   THREE_POOL,
@@ -40,7 +39,6 @@ import {
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   CurvePoolType,
-  THREE_POOL_HOLDER,
 } from './constants'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '#/common/blockchain-utils'
@@ -52,6 +50,8 @@ import {
   setNextBlockTimestamp,
 } from '#/test/utils/time'
 import { whileImpersonating } from '#/test/utils/impersonation'
+
+type Fixture<T> = () => Promise<T>
 
 /*
   Define interfaces
@@ -470,7 +470,6 @@ const collateralSpecificStatusTests = () => {
 */
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
-const createFixtureLoader = waffle.createFixtureLoader
 
 before(resetFork)
 
@@ -528,11 +527,8 @@ describeFork(`Collateral: Convex`, () => {
 
     let w3Pool: ConvexStakingWrapper
 
-    let loadFixture: ReturnType<typeof createFixtureLoader>
-
     before(async () => {
       ;[wallet] = (await ethers.getSigners()) as unknown as SignerWithAddress[]
-      loadFixture = createFixtureLoader([wallet as unknown as Wallet])
 
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
