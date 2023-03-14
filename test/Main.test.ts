@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, upgrades, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers, upgrades } from 'hardhat'
 import {
   IConfig,
   MAX_TRADING_DELAY,
@@ -70,8 +71,6 @@ import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
@@ -130,14 +129,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
   let basket: Collateral[]
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
@@ -1082,6 +1074,106 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.isRegistered(other.address)).to.equal(false)
     })
 
+    it('Should revert with gas error if cannot reserve 900k gas', async () => {
+      expect(await assetRegistry.isRegistered(collateral0.address))
+      await expect(
+        assetRegistry.unregister(collateral0.address, { gasLimit: bn('9e5') })
+      ).to.be.revertedWith('not enough gas to unregister safely')
+    })
+
+    it('Should be able to disableBasket during deregistration with basket size of 128', async () => {
+      // Set up backup config
+      await basketHandler.setBackupConfig(await ethers.utils.formatBytes32String('USD'), 1, [
+        token1.address,
+      ])
+
+      // Register 128 coll
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+      const ERC20Factory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
+      const CollFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
+
+      const coll = []
+      for (let i = 0; i < 127; i++) {
+        const newToken: ERC20Mock = <ERC20Mock>(
+          await ERC20Factory.deploy('NewTKN Token' + i, 'NewTKN' + i)
+        )
+        const newColl = await CollFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: newToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await collateral0.oracleTimeout(),
+          targetName: await ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral0.delayUntilDefault(),
+        })
+        await assetRegistry.connect(owner).register(newColl.address)
+        coll.push(newColl)
+      }
+
+      // Register 1 gas-guzzling coll
+      const newToken: ERC20Mock = <ERC20Mock>(
+        await ERC20Factory.deploy('Gas Guzzling Token', 'GasTKN')
+      )
+      const GasGuzzlingFactory: ContractFactory = await ethers.getContractFactory(
+        'GasGuzzlingFiatCollateral'
+      )
+      const gasGuzzlingColl = await GasGuzzlingFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR,
+        erc20: newToken.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: await collateral0.oracleTimeout(),
+        targetName: await ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: await collateral0.delayUntilDefault(),
+      })
+      await assetRegistry.connect(owner).register(gasGuzzlingColl.address)
+      coll.push(gasGuzzlingColl)
+
+      // Put all 128 coll in the basket
+      const erc20s = await Promise.all(coll.map(async (c) => await c.erc20()))
+      const refAmts = erc20s.map(() => fp('1'))
+      expect(erc20s.length).to.equal(128)
+      await basketHandler.setPrimeBasket(erc20s, refAmts)
+      await basketHandler.refreshBasket()
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      const [quoteERC20s, tokAmts] = await basketHandler.quote(fp('1'), 0)
+      expect(quoteERC20s.length).to.equal(128)
+      expect(tokAmts.length).to.equal(128)
+
+      // Ensure can disableBasket
+      const replacementColl = await CollFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR,
+        erc20: await gasGuzzlingColl.erc20(),
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: await collateral0.oracleTimeout(),
+        targetName: await ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: await collateral0.delayUntilDefault(),
+      })
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      await gasGuzzlingColl.setRevertRefPerTok(true)
+      await assetRegistry.swapRegistered(replacementColl.address, { gasLimit: bn('1e6') })
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      await gasGuzzlingColl.setRevertRefPerTok(false)
+      await basketHandler.refreshBasket()
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      await assetRegistry.swapRegistered(gasGuzzlingColl.address, { gasLimit: bn('1e6') })
+      await gasGuzzlingColl.setRevertRefPerTok(true)
+      await assetRegistry.unregister(gasGuzzlingColl.address, { gasLimit: bn('1e6') })
+      expect(await assetRegistry.isRegistered(gasGuzzlingColl.address)).to.equal(false)
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      await basketHandler.refreshBasket()
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+    })
+
     it('Should allow to register Asset if OWNER', async () => {
       // Setup new Asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
@@ -1482,7 +1574,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with invalid target amounts', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
-      ).to.be.revertedWith('invalid target amount')
+      ).to.be.revertedWith('invalid target amount; too large')
     })
 
     it('Should not allow to set prime Basket with an empty basket', async () => {
@@ -1516,7 +1608,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
-    it('Should return FIX_ZERO for basketsHeldBy(<any account>) if the basket is empty', async () => {
+    it('Should return (FIX_ZERO, FIX_MAX) for basketsHeldBy(<any account>) if the basket is empty', async () => {
       // run a fresh deployment specifically for this test
       const receipt = await (
         await deployer.deploy(
@@ -1532,7 +1624,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const emptyBasketHandler: IBasketHandler = <IBasketHandler>(
         await ethers.getContractAt('IBasketHandler', await newMain.basketHandler())
       )
-      expect(await emptyBasketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      const busHeld = await emptyBasketHandler.basketsHeldBy(addr1.address)
+      expect(busHeld[0]).to.equal(0)
+      expect(busHeld[1]).to.equal(MAX_UINT192)
     })
 
     it('Should not allow to set backup Config if not OWNER', async () => {
@@ -1871,9 +1965,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
       // Check values
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(
+        initialBal.mul(4)
+      ) // only 0.25 of each required
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.equal(
+        initialBal.mul(4)
+      ) // only 0.25 of each required
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Swap a token for a non-collateral asset
@@ -1907,9 +2005,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
       // Check values - All zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       // Check quantities for non-collateral asset
       expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0])
@@ -1923,9 +2021,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(1, [], [], true)
 
       // Check values - All zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       // Set basket config
       await expect(
@@ -1944,9 +2042,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(2, [], [], false)
 
       // Check values - Should no longer be zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.not.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.not.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.not.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.not.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       // Unregister 2 tokens from the basket
       await expect(assetRegistry.connect(owner).unregister(newAsset.address)).to.not.emit(
@@ -1958,9 +2056,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(2, [], [], true)
 
       // Check values - All zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       expect(await basketHandler.quantity(token3.address)).to.equal(0)
 
@@ -1970,9 +2068,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(3, [], [], false)
 
       // Check values
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(2)) // 0.5 of each
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(2)) // 0.5 of each
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(
+        initialBal.mul(2)
+      ) // 0.5 of each
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.equal(
+        initialBal.mul(2)
+      ) // 0.5 of each
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0].mul(2))
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
@@ -1995,9 +2097,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(3, [], [], true)
 
       // Check values - All zero
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(0)
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr2.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, other.address)).to.equal(0)
 
       expect(await basketHandler.quantity(token0.address)).to.equal(0)
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
@@ -2015,16 +2117,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should return no basketsHeld when collateral is disabled', async () => {
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(
+        initialBal.mul(4)
+      )
 
       // Set Token2 to hard default - Zero rate
       await token2.setExchangeRate(fp('0'))
       await collateral2.refresh()
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
     })
 
     it('Should return no basketsHeld when refPerTok = 0', async () => {
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(
+        initialBal.mul(4)
+      )
 
       // Swap collateral with one that can have refPerTok = 0 without defaulting
       const InvalidRefPerTokFiatCollFactory = await ethers.getContractFactory(
@@ -2054,7 +2160,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Set refPerTok = 0
       await newColl.setRate(bn(0))
 
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, addr1.address)).to.equal(0)
     })
 
     it('Should return FIX_MAX as basket price in case of 1st overflow (for individual collateral)', async () => {
@@ -2215,6 +2321,67 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Add another asset
       await snapshotGasCost(assetRegistry.connect(owner).register(newAsset2.address))
+    })
+
+    it('Asset Registry - Unregister Asset', async () => {
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+
+      // Setup new Assets
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          chainlinkFeed.address,
+          ORACLE_ERROR,
+          erc20s[5].address,
+          config.rTokenMaxTradeVolume,
+          1
+        )
+      )
+      const newAsset2: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          chainlinkFeed.address,
+          ORACLE_ERROR,
+          erc20s[6].address,
+          config.rTokenMaxTradeVolume,
+          1
+        )
+      )
+
+      // Add new asset
+      await assetRegistry.connect(owner).register(newAsset.address)
+
+      // Add another asset
+      await assetRegistry.connect(owner).register(newAsset2.address)
+
+      // Unregister both
+      await snapshotGasCost(assetRegistry.connect(owner).unregister(newAsset.address))
+      await snapshotGasCost(assetRegistry.connect(owner).unregister(newAsset2.address))
+    })
+
+    it('Asset Registry - Swap Registered Asset', async () => {
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+
+      // Swap in replacement asset
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const replacementAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          PRICE_TIMEOUT,
+          chainlinkFeed.address,
+          ORACLE_ERROR,
+          erc20s[0].address,
+          config.rTokenMaxTradeVolume,
+          1
+        )
+      )
+
+      // Swap for replacementAsset
+      await snapshotGasCost(assetRegistry.connect(owner).swapRegistered(replacementAsset.address))
     })
   })
 })

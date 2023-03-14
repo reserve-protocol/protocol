@@ -43,7 +43,8 @@ ssh ${NODENAME}.us-central1-a.rtoken-fuzz
 
 ## Initial setup
 
-I drop in my personal setup, for tmux and emacs QoL improvements
+I drop in my personal setup, for tmux and emacs QoL improvements.
+(NOTE: This sets the tmux `ctrl-b` to `ctrl-z`)
 
 ```bash
 git clone https://github.com/fiddlemath/dotfiles.git

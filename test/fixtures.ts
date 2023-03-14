@@ -1,4 +1,3 @@
-import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
@@ -54,6 +53,7 @@ import {
   USDCMock,
   NonFiatCollateral,
   FacadeMonitor,
+  ZeroDecimalMock,
 } from '../typechain'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
@@ -75,6 +75,9 @@ export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max /
 export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 
 export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
+
+// This will have to be updated on each release
+export const VERSION = '2.0.0'
 
 export type Collateral =
   | FiatCollateral
@@ -384,9 +387,11 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   rTokenTrader: TestIRevenueTrader
 }
 
-export const defaultFixture: Fixture<DefaultFixture> = async function ([
-  owner,
-]): Promise<DefaultFixture> {
+type Fixture<T> = () => Promise<T>
+
+export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
+  const signers = await ethers.getSigners()
+  const owner = signers[0]
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken } = await compAaveFixture()
   const { gnosis, easyAuction } = await gnosisFixture()

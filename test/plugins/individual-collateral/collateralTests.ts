@@ -1,7 +1,7 @@
 import { expect } from 'chai'
-import hre, { ethers, waffle } from 'hardhat'
+import hre, { ethers } from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { Wallet } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
@@ -14,11 +14,13 @@ import {
   setNextBlockTimestamp,
 } from '../../utils/time'
 import { MAX_UINT48, MAX_UINT192 } from '../../../common/constants'
-import { CollateralFixtureContext, CollateralTestSuiteFixtures, CollateralStatus } from './types'
+import {
+  CollateralFixtureContext,
+  CollateralTestSuiteFixtures,
+  CollateralStatus,
+} from './pluginTestTypes'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 // TODO: these tests to do not account for anything but revenueHiding=0
 
@@ -85,18 +87,12 @@ export default function fn<X extends CollateralFixtureContext>(
       let ctx: X
       let alice: SignerWithAddress
 
-      let wallet: Wallet
       let chainId: number
 
       let collateral: TestICollateral
       let chainlinkFeed: MockV3Aggregator
 
-      let loadFixture: ReturnType<typeof createFixtureLoader>
-
       before(async () => {
-        ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-        loadFixture = createFixtureLoader([wallet])
-
         chainId = await getChainId(hre)
         if (!networkConfig[chainId]) {
           throw new Error(`Missing network configuration for ${hre.network.name}`)

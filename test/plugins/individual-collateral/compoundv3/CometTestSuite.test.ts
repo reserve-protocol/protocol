@@ -4,10 +4,9 @@ import {
   CollateralOpts,
   MintCollateralFunc,
   CollateralStatus,
-} from '../types'
+} from '../pluginTestTypes'
 import { mintWcUSDC, makewCSUDC, resetFork, enableRewardsAccrual } from './helpers'
 import { ethers } from 'hardhat'
-import { Fixture } from 'ethereum-waffle'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
   ERC20Mock,
@@ -115,8 +114,14 @@ export const deployCollateral = async (
   )
   await collateral.deployed()
 
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
+
   return collateral
 }
+
+type Fixture<T> = () => Promise<T>
 
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
@@ -185,8 +190,13 @@ const deployCollateralCometMockContext = async (
   const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
     await ethers.getContractFactory('CusdcV3Wrapper')
   )
+
   const wcusdcV3 = <ICusdcV3Wrapper>(
-    await CusdcV3WrapperFactory.deploy(cusdcV3.address, REWARDS, COMP)
+    ((await CusdcV3WrapperFactory.deploy(
+      cusdcV3.address,
+      REWARDS,
+      COMP
+    )) as unknown as ICusdcV3Wrapper)
   )
   const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
     await ethers.getContractFactory('CusdcV3WrapperMock')

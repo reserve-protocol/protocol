@@ -1,7 +1,7 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
@@ -28,8 +28,6 @@ import {
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => {
   const pegs = ['1e-9', '0.5', '2', '1e9']
@@ -59,14 +57,6 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -165,7 +155,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
       })
 
       it('should respect differing scales during redemption', async () => {
-        await rToken.connect(addr1).redeem(issueAmt, true)
+        await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
       })

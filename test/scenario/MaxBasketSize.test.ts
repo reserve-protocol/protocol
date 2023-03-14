@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { bn, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
 import {
@@ -43,8 +44,6 @@ const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 const REPORT_GAS = process.env.REPORT_GAS
 const describeGas = REPORT_GAS ? describe.only : describe
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -70,9 +69,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
 
   // Computes the minBuyAmt for a sellAmt at two prices
   // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
@@ -268,11 +264,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     }
   }
 
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
-
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
 
@@ -333,9 +324,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Redemption
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, true))
+        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
       } else {
-        await rToken.connect(addr1).redeem(issueAmt, true)
+        await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     })
@@ -467,9 +458,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Redemption
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, true))
+        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
       } else {
-        await rToken.connect(addr1).redeem(issueAmt, true)
+        await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     })

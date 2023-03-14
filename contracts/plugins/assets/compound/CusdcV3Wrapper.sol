@@ -26,8 +26,9 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     ICometRewards public immutable rewardsAddr;
     IERC20 public immutable rewardERC20;
 
-    /// Mapping of addresses to local account details (simplified version of Comet.UserBasic)
-    mapping(address => UserBasic) public userBasic;
+    mapping(address => uint64) public baseTrackingIndex;
+    mapping(address => uint64) public baseTrackingAccrued;
+    mapping(address => uint256) public rewardsClaimed;
 
     constructor(
         address cusdcv3,
@@ -42,7 +43,7 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
     }
 
     /// @return number of decimals
-    function decimals() public pure returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return 6;
     }
 
@@ -81,38 +82,24 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         uint256 amount
     ) internal {
         if (!hasPermission(src, operator)) revert Unauthorized();
+        // {Comet}
+        uint256 srcBal = underlyingComet.balanceOf(src);
+        if (amount > srcBal) amount = srcBal;
+        if (amount == 0) revert BadAmount();
 
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(src);
 
-        // {Comet}
-        uint256 srcBal = underlyingComet.balanceOf(src);
-        if (amount > srcBal) amount = srcBal;
-
-        if (amount == 0) return;
-
-        UserBasic memory dstBasic = userBasic[dst];
-        // {wComet}
-        uint104 userPrePrincipal = dstBasic.principal;
-
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
-        if (dstBasic.principal == 0) {
-            // update reward tracking index only if user does not yet have a balance
-            dstBasic.baseTrackingIndex = wrappedBasic.baseTrackingIndex;
-        }
-
         int104 wrapperPrePrinc = wrappedBasic.principal;
 
         IERC20(address(underlyingComet)).safeTransferFrom(src, address(this), amount);
 
         wrappedBasic = underlyingComet.userBasic(address(this));
         int104 wrapperPostPrinc = wrappedBasic.principal;
-
-        // // safe to cast because amount is positive
-        userBasic[dst] = updatedAccountIndices(
-            dstBasic,
-            userPrePrincipal + uint104(wrapperPostPrinc - wrapperPrePrinc)
-        );
+        accrueAccountRewards(dst);
+        // safe to cast because amount is positive
+        _mint(dst, uint104(wrapperPostPrinc - wrapperPrePrinc));
     }
 
     /// @param amount {Comet} The amount of cUSDCv3 to withdraw
@@ -150,19 +137,16 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         address dst,
         uint256 amount
     ) internal {
-        if (amount == 0) return;
         if (!hasPermission(src, operator)) revert Unauthorized();
+        // {Comet}
+        uint256 srcBalUnderlying = underlyingBalanceOf(src);
+        if (srcBalUnderlying < amount) amount = srcBalUnderlying;
+        if (amount == 0) revert BadAmount();
 
         underlyingComet.accrueAccount(address(this));
         underlyingComet.accrueAccount(src);
 
-        uint256 currentPresetBal = underlyingBalanceOf(src);
-        if (currentPresetBal < amount) {
-            amount = currentPresetBal;
-        }
-
-        UserBasic memory srcBasic = userBasic[src];
-        uint104 srcPrePrinc = srcBasic.principal;
+        uint256 srcBalPre = balanceOf(src);
         CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
         int104 wrapperPrePrinc = wrappedBasic.principal;
 
@@ -172,14 +156,15 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         wrappedBasic = underlyingComet.userBasic(address(this));
         int104 wrapperPostPrinc = wrappedBasic.principal;
 
-        uint104 srcPrincipalNew = 0;
-        // occasionally comet will withdraw 1-10 more than we asked for.
+        // safe to cast because principal can't go negative, wrapper is not borrowing
+        uint256 burnAmt = uint256(uint104(wrapperPrePrinc - wrapperPostPrinc));
+        // occasionally comet will withdraw 1-10 wei more than we asked for.
         // this is ok because 9 times out of 10 we are rounding in favor of the wrapper.
-        if (srcPrePrinc > uint104(wrapperPrePrinc - wrapperPostPrinc)) {
-            // safe to cast because principal can't go negative, wrapper is not borrowing
-            srcPrincipalNew = srcPrePrinc - uint104(wrapperPrePrinc - wrapperPostPrinc);
-        }
-        userBasic[src] = updatedAccountIndices(srcBasic, srcPrincipalNew);
+        // safe because we have already capped the comet withdraw amount to src underlying bal.
+        if (srcBalPre <= burnAmt) burnAmt = srcBalPre;
+
+        accrueAccountRewards(src);
+        _burn(src, safe104(burnAmt));
     }
 
     /// Internally called to run transfer logic.
@@ -193,11 +178,39 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
 
         super._beforeTokenTransfer(src, dst, amount);
 
-        UserBasic memory srcBasic = userBasic[src];
-        userBasic[src] = updatedAccountIndices(srcBasic, srcBasic.principal - safe104(amount));
+        accrueAccountRewards(src);
+        accrueAccountRewards(dst);
+    }
 
-        UserBasic memory dstBasic = userBasic[dst];
-        userBasic[dst] = updatedAccountIndices(dstBasic, dstBasic.principal + safe104(amount));
+    /// @param src The account to claim from
+    /// @param dst The address to send claimed rewards to
+    function claimTo(address src, address dst) public {
+        address sender = msg.sender;
+        if (!hasPermission(src, sender)) revert Unauthorized();
+
+        accrueAccount(src);
+        uint256 claimed = rewardsClaimed[src];
+        uint256 accrued = baseTrackingAccrued[src] * RESCALE_FACTOR;
+
+        if (accrued > claimed) {
+            uint256 owed = accrued - claimed;
+            rewardsClaimed[src] = accrued;
+
+            rewardsAddr.claimTo(address(underlyingComet), address(this), address(this), true);
+            IERC20(rewardERC20).safeTransfer(dst, owed);
+            emit RewardClaimed(src, dst, address(rewardERC20), owed);
+        }
+    }
+
+    /// Accure the cUSDCv3 account of the wrapper
+    function accrue() public {
+        underlyingComet.accrueAccount(address(this));
+    }
+
+    /// @param account The address to accrue, first in cUSDCv3, then locally
+    function accrueAccount(address account) public {
+        underlyingComet.accrueAccount(address(this));
+        accrueAccountRewards(account);
     }
 
     /// Get the balance of cUSDCv3 that is represented by the `accounts` wrapper value.
@@ -209,25 +222,6 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
             return 0;
         }
         return convertStaticToDynamic(safe104(balance));
-    }
-
-    /// Standard ERC20 balanceOf functionality
-    /// @param account The address to get the wrapper balance of
-    /// @return {wComet} The wrapper balance that `account` holds
-    function balanceOf(address account)
-        public
-        view
-        override(ICusdcV3Wrapper, IERC20)
-        returns (uint256)
-    {
-        return userBasic[account].principal;
-    }
-
-    /// Standard ERC20 totalSupply functionality
-    /// @return {wComet} The total supply of the wrapper token
-    function totalSupply() public view virtual override(ICusdcV3Wrapper, IERC20) returns (uint256) {
-        CometInterface.UserBasic memory wrappedBasic = underlyingComet.userBasic(address(this));
-        return unsigned256(int256(wrappedBasic.principal));
     }
 
     /// @return The exchange rate {comet/wComet}
@@ -250,60 +244,20 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         return principalValueSupply(baseSupplyIndex, amount);
     }
 
-    /// Accure the cUSDCv3 account of the wrapper
-    function accrue() public {
-        underlyingComet.accrueAccount(address(this));
-    }
-
-    /// @param src The account to claim from
-    /// @param dst The address to send claimed rewards to
-    function claimTo(address src, address dst) public {
-        address sender = msg.sender;
-        if (!hasPermission(src, sender)) revert Unauthorized();
-
-        accrueAccount(src);
-        uint256 claimed = userBasic[src].rewardsClaimed;
-        uint256 accrued = userBasic[src].baseTrackingAccrued * RESCALE_FACTOR;
-
-        if (accrued > claimed) {
-            uint256 owed = accrued - claimed;
-            userBasic[src].rewardsClaimed = accrued;
-
-            rewardsAddr.claimTo(address(underlyingComet), address(this), address(this), true);
-            IERC20(rewardERC20).safeTransfer(dst, owed);
-            emit RewardClaimed(src, dst, address(rewardERC20), owed);
-        }
-    }
-
     /// @param account The address to view the owed rewards of
     /// @return {reward} The amount of reward tokens owed to `account`
     function getRewardOwed(address account) external view returns (uint256) {
-        UserBasic storage basic = userBasic[account];
-
         (, uint64 trackingSupplyIndex) = getUpdatedSupplyIndicies();
 
-        uint256 indexDelta = uint256(trackingSupplyIndex - basic.baseTrackingIndex);
-        uint256 newBaseTrackingAccrued = basic.baseTrackingAccrued +
-            safe64((safe104(basic.principal) * indexDelta) / TRACKING_INDEX_SCALE);
+        uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
+        uint256 newBaseTrackingAccrued = baseTrackingAccrued[account] +
+            safe64((safe104(balanceOf(account)) * indexDelta) / TRACKING_INDEX_SCALE);
 
-        uint256 claimed = basic.rewardsClaimed;
+        uint256 claimed = rewardsClaimed[account];
         uint256 accrued = newBaseTrackingAccrued * RESCALE_FACTOR;
         uint256 owed = accrued > claimed ? accrued - claimed : 0;
 
         return owed;
-    }
-
-    /// @param account The address to get the current baseTrackingAccrued value of
-    /// @return {reward} The total amount (including claimed) of reward token that has accrued to
-    /// `account`
-    function baseTrackingAccrued(address account) external view returns (uint64) {
-        return userBasic[account].baseTrackingAccrued;
-    }
-
-    /// @param account The address to get the current baseTrackingIndex value of
-    /// @return {1} The current baseTrackingIndex value of `account`
-    function baseTrackingIndex(address account) external view returns (uint64) {
-        return userBasic[account].baseTrackingIndex;
     }
 
     /// Internally called to get saved indicies
@@ -319,33 +273,17 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         trackingSupplyIndex_ = totals.trackingSupplyIndex;
     }
 
-    /// @param account The address to accrue, first in cUSDCv3, then locally
-    function accrueAccount(address account) public {
-        UserBasic memory basic = userBasic[account];
-        underlyingComet.accrueAccount(address(this));
-        userBasic[account] = updatedAccountIndices(basic, basic.principal);
-    }
-
     /// Internally called to update the account indicies and accrued rewards for a given address
-    /// @param basic The UserBasic struct for a target address
-    /// @param newPrincipal The updated principal value to set on the target account
-    function updatedAccountIndices(UserBasic memory basic, uint104 newPrincipal)
-        internal
-        view
-        returns (UserBasic memory)
-    {
-        uint104 principal = basic.principal;
-        basic.principal = newPrincipal;
-
+    /// @param account The UserBasic struct for a target address
+    function accrueAccountRewards(address account) internal {
+        uint256 accountBal = balanceOf(account);
         (, uint64 trackingSupplyIndex) = getSupplyIndices();
+        uint256 indexDelta = uint256(trackingSupplyIndex - baseTrackingIndex[account]);
 
-        uint256 indexDelta = uint256(trackingSupplyIndex - basic.baseTrackingIndex);
-        basic.baseTrackingAccrued += safe64(
-            (safe104(principal) * indexDelta) / TRACKING_INDEX_SCALE
+        baseTrackingAccrued[account] += safe64(
+            (safe104(accountBal) * indexDelta) / TRACKING_INDEX_SCALE
         );
-        basic.baseTrackingIndex = trackingSupplyIndex;
-
-        return basic;
+        baseTrackingIndex[account] = trackingSupplyIndex;
     }
 
     /// Internally called to get the updated supply indicies

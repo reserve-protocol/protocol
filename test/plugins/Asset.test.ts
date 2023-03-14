@@ -1,6 +1,7 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
@@ -21,6 +22,7 @@ import {
   ERC20Mock,
   FiatCollateral,
   IAssetRegistry,
+  IBasketHandler,
   InvalidFiatCollateral,
   InvalidMockV3Aggregator,
   RTokenAsset,
@@ -37,8 +39,6 @@ import {
   ORACLE_ERROR,
   PRICE_TIMEOUT,
 } from '../fixtures'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -71,10 +71,10 @@ describe('Assets contracts #fast', () => {
   let config: IConfig
 
   // Main
-  let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
 
   // Factory
   let AssetFactory: ContractFactory
@@ -84,7 +84,6 @@ describe('Assets contracts #fast', () => {
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {
@@ -102,6 +101,7 @@ describe('Assets contracts #fast', () => {
       config,
       rToken,
       rTokenAsset,
+      basketHandler,
     } = await loadFixture(defaultFixture))
 
     // Get collateral tokens
@@ -293,7 +293,7 @@ describe('Assets contracts #fast', () => {
     it('Should not revert RToken price if supply is zero', async () => {
       // Redeem RToken to make price function revert
       // Note: To get RToken price to 0, a full basket refresh needs to occur (covered in RToken tests)
-      await rToken.connect(wallet).redeem(amt, true)
+      await rToken.connect(wallet).redeem(amt, await basketHandler.nonce())
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),
@@ -388,10 +388,10 @@ describe('Assets contracts #fast', () => {
 
       //  Runnning out of gas
       await invalidFiatCollateral.setSimplyRevert(false)
-      await expect(invalidFiatCollateral.price()).to.be.revertedWith('')
+      await expect(invalidFiatCollateral.price()).to.be.reverted
 
       //  Check RToken price reverrts
-      await expect(rTokenAsset.price()).to.be.revertedWith('')
+      await expect(rTokenAsset.price()).to.be.reverted
     })
 
     it('Should be able to refresh saved prices', async () => {
@@ -537,15 +537,15 @@ describe('Assets contracts #fast', () => {
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidRSRAsset.price()).to.be.revertedWith('')
-      await expect(invalidRSRAsset.lotPrice()).to.be.revertedWith('')
-      await expect(invalidRSRAsset.refresh()).to.be.revertedWith('')
+      await expect(invalidRSRAsset.price()).to.be.reverted
+      await expect(invalidRSRAsset.lotPrice()).to.be.reverted
+      await expect(invalidRSRAsset.refresh()).to.be.reverted
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidRSRAsset.price()).to.be.revertedWith('')
-      await expect(invalidRSRAsset.lotPrice()).to.be.revertedWith('')
-      await expect(invalidRSRAsset.refresh()).to.be.revertedWith('')
+      await expect(invalidRSRAsset.price()).to.be.reverted
+      await expect(invalidRSRAsset.lotPrice()).to.be.reverted
+      await expect(invalidRSRAsset.refresh()).to.be.reverted
     })
 
     it('Should handle lot price correctly', async () => {

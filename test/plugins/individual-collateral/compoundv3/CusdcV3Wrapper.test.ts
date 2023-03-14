@@ -1,17 +1,21 @@
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
-import hre, { ethers, network, waffle } from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import hre, { ethers, network } from 'hardhat'
 import { useEnv } from '#/utils/env'
 import { advanceTime, advanceBlocks } from '../../../utils/time'
 import { allocateUSDC, enableRewardsAccrual, mintWcUSDC, makewCSUDC, resetFork } from './helpers'
-import { COMP } from './constants'
-import { ERC20Mock, CometInterface, ICusdcV3Wrapper } from '../../../../typechain'
+import { COMP, REWARDS } from './constants'
+import {
+  ERC20Mock,
+  CometInterface,
+  ICusdcV3Wrapper,
+  CusdcV3Wrapper__factory,
+} from '../../../../typechain'
 import { bn } from '../../../../common/numbers'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-
-const createFixtureLoader = waffle.createFixtureLoader
+import { ZERO_ADDRESS } from '../../../../common/constants'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
@@ -23,15 +27,10 @@ describeFork('Wrapped CUSDCv3', () => {
   let wcusdcV3: ICusdcV3Wrapper
   let cusdcV3: CometInterface
 
-  let wallet: Wallet
   let chainId: number
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
 
   before(async () => {
     await resetFork()
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
 
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
@@ -42,6 +41,15 @@ describeFork('Wrapped CUSDCv3', () => {
   beforeEach(async () => {
     ;[, bob, charles, don] = await ethers.getSigners()
     ;({ usdc, wcusdcV3, cusdcV3 } = await loadFixture(makewCSUDC))
+  })
+
+  it('reverts if deployed with a 0 address', async () => {
+    const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
+      await ethers.getContractFactory('CusdcV3Wrapper')
+    )
+
+    // TODO there is a chai limitation that cannot catch custom errors during deployment
+    await expect(CusdcV3WrapperFactory.deploy(ZERO_ADDRESS, REWARDS, COMP)).to.be.reverted
   })
 
   describe('deposit', () => {
@@ -87,7 +95,7 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.balanceOf(charles.address)).to.eq(0)
       await expect(
         wcusdcV3.connect(don).depositFrom(bob.address, charles.address, ethers.constants.MaxUint256)
-      ).revertedWith('Unauthorized()')
+      ).revertedWithCustomError(wcusdcV3, 'Unauthorized')
       await wcusdcV3.connect(bob).connect(bob).allow(don.address, true)
       const expectedAmount = await wcusdcV3.convertDynamicToStatic(
         await cusdcV3.balanceOf(bob.address)
@@ -132,6 +140,29 @@ describeFork('Wrapped CUSDCv3', () => {
         1
       )
     })
+
+    it('updates the totalSupply', async () => {
+      const totalSupplyBefore = await wcusdcV3.totalSupply()
+      const expectedAmount = await wcusdcV3.convertDynamicToStatic(
+        await cusdcV3.balanceOf(bob.address)
+      )
+      await wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256)
+      expect(await wcusdcV3.totalSupply()).to.equal(totalSupplyBefore.add(expectedAmount))
+    })
+
+    it('deposit 0 reverts', async () => {
+      await expect(wcusdcV3.connect(bob).deposit(0)).to.be.revertedWithCustomError(
+        wcusdcV3,
+        'BadAmount'
+      )
+    })
+
+    it('depositing 0 balance reverts', async () => {
+      await cusdcV3.connect(bob).transfer(charles.address, ethers.constants.MaxUint256)
+      await expect(
+        wcusdcV3.connect(bob).deposit(ethers.constants.MaxUint256)
+      ).to.be.revertedWithCustomError(wcusdcV3, 'BadAmount')
+    })
   })
 
   describe('withdraw', () => {
@@ -162,7 +193,7 @@ describeFork('Wrapped CUSDCv3', () => {
       const withdrawAmount = await wcusdcV3.underlyingBalanceOf(bob.address)
       await expect(
         wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, withdrawAmount)
-      ).to.be.revertedWith('Unauthorized')
+      ).to.be.revertedWithCustomError(wcusdcV3, 'Unauthorized')
 
       await wcusdcV3.connect(bob).allow(charles.address, true)
       await wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, withdrawAmount)
@@ -188,10 +219,19 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.underlyingBalanceOf(bob.address)).to.closeTo(bn('0'), 10)
     })
 
-    it('withdraws 0', async () => {
+    it('withdrawing 0 reverts', async () => {
       const initialBalance = await wcusdcV3.balanceOf(bob.address)
-      await wcusdcV3.connect(bob).withdraw(0)
+      await expect(wcusdcV3.connect(bob).withdraw(0)).to.be.revertedWithCustomError(
+        wcusdcV3,
+        'BadAmount'
+      )
       expect(await wcusdcV3.balanceOf(bob.address)).to.equal(initialBalance)
+    })
+
+    it('withdrawing 0 balance reverts', async () => {
+      await expect(
+        wcusdcV3.connect(don).withdraw(ethers.constants.MaxUint256)
+      ).to.be.revertedWithCustomError(wcusdcV3, 'BadAmount')
     })
 
     it('handles complex withdrawal sequence', async () => {
@@ -236,6 +276,15 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(charlesWithdrawn, 100)
       expect(await cusdcV3.balanceOf(don.address)).to.closeTo(donWithdrawn, 100)
     })
+
+    it('updates the totalSupply', async () => {
+      const totalSupplyBefore = await wcusdcV3.totalSupply()
+      const withdrawAmt = bn('15000e6')
+      const expectedDiff = await wcusdcV3.convertDynamicToStatic(withdrawAmt)
+      await wcusdcV3.connect(bob).withdraw(withdrawAmt)
+      // conservative rounding
+      expect(await wcusdcV3.totalSupply()).to.be.closeTo(totalSupplyBefore.sub(expectedDiff), 10)
+    })
   })
 
   describe('transfer', () => {
@@ -246,10 +295,10 @@ describeFork('Wrapped CUSDCv3', () => {
     it('does not transfer without approval', async () => {
       await expect(
         wcusdcV3.connect(bob).transferFrom(don.address, bob.address, bn('10000e6'))
-      ).to.be.revertedWith('Unauthorized')
+      ).to.be.revertedWithCustomError(wcusdcV3, 'Unauthorized')
     })
 
-    it('updates accruals and principals in sender and receiver', async () => {
+    it('updates balances and rewards in sender and receiver', async () => {
       await mintWcUSDC(usdc, cusdcV3, wcusdcV3, don, bn('20000e6'), don.address)
 
       await enableRewardsAccrual(cusdcV3)
@@ -279,8 +328,6 @@ describeFork('Wrapped CUSDCv3', () => {
         await wcusdcV3.baseTrackingAccrued(bob.address)
       )
 
-      // Balances are computed from principals so we are indirectly testing the accuracy
-      // of Bob's and Don's stored principals here.
       const donsBalance = (await wcusdcV3.underlyingBalanceOf(don.address)).toBigInt()
       const bobsBalance = (await wcusdcV3.underlyingBalanceOf(bob.address)).toBigInt()
       expect(donsBalance).to.be.gt(bobsBalance)
@@ -288,6 +335,12 @@ describeFork('Wrapped CUSDCv3', () => {
 
       // Rounding in favor of the Wrapped Token is happening here. Amount is negligible
       expect(totalBalances).to.be.closeTo(await cusdcV3.balanceOf(wcusdcV3.address), 1)
+    })
+
+    it('does not update the total supply', async () => {
+      const totalSupplyBefore = await wcusdcV3.totalSupply()
+      await wcusdcV3.connect(bob).transfer(don.address, bn('10000e6'))
+      expect(totalSupplyBefore).to.equal(await wcusdcV3.totalSupply())
     })
   })
 
@@ -433,9 +486,9 @@ describeFork('Wrapped CUSDCv3', () => {
     it('does not claim rewards when user has no permission', async () => {
       await advanceTime(1000)
       await enableRewardsAccrual(cusdcV3)
-      await expect(wcusdcV3.connect(don).claimTo(bob.address, bob.address)).to.be.revertedWith(
-        'Unauthorized'
-      )
+      await expect(
+        wcusdcV3.connect(don).claimTo(bob.address, bob.address)
+      ).to.be.revertedWithCustomError(wcusdcV3, 'Unauthorized')
 
       await wcusdcV3.connect(bob).allow(don.address, true)
       expect(await wcusdcV3.isAllowed(bob.address, don.address)).to.eq(true)

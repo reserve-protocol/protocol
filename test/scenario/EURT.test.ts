@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
 import { IConfig } from '../../common/configuration'
@@ -11,6 +12,7 @@ import {
   EURFiatCollateral,
   IAssetRegistry,
   IBasketHandler,
+  IFacadeTest,
   MockV3Aggregator,
   StaticATokenMock,
   TestIBackingManager,
@@ -31,8 +33,6 @@ import { expectPrice } from '../utils/oracles'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -64,16 +64,9 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
+  let facadeTest: IFacadeTest
 
   let initialBal: BigNumber
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -92,6 +85,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       basketHandler,
       rsrTrader,
       rTokenTrader,
+      facadeTest,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -196,7 +190,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       await targetUnitOracle.updateAnswer(bn('1e8'))
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, true))
+      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await eurt.balanceOf(addr1.address)).to.equal(initialBal)
     })
@@ -210,7 +204,9 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        issueAmt
+      )
     })
 
     it('should be able to deregister', async () => {

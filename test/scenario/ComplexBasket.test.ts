@@ -1,10 +1,11 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import hre, { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { bn, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
+import { bn, fp, pow10, toBNDecimals } from '../../common/numbers'
 import {
   Asset,
   ComptrollerMock,
@@ -38,7 +39,7 @@ import {
   REVENUE_HIDING,
 } from '../fixtures'
 import { BN_SCALE_FACTOR, CollateralStatus, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
-import { expectTrade, getTrade } from '../utils/trades'
+import { expectTrade, getTrade, toSellAmt, toMinBuyAmt } from '../utils/trades'
 import { expectPrice, expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
 
@@ -49,8 +50,6 @@ const MAX_TRADE_VOLUME = fp('1e7') // $10M
 const point5Pct = (value: BigNumber): BigNumber => {
   return value.mul(5).div(1000)
 }
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -106,9 +105,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   const prepareBacking = async (backing: string[]) => {
     for (let i = 0; i < backing.length; i++) {
       const erc20 = await ethers.getContractAt('ERC20Mock', backing[i])
@@ -119,49 +115,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       await backingManager.grantRTokenAllowance(erc20.address)
     }
   }
-
-  // Computes the sellAmt for a minBuyAmt at two prices
-  const toSellAmt = (
-    minBuyAmt: BigNumber,
-    sellPrice: BigNumber,
-    buyPrice: BigNumber,
-    oracleError: BigNumber,
-    maxTradeSlippage: BigNumber
-  ): BigNumber => {
-    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
-    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = minBuyAmt.mul(fp('1').add(maxTradeSlippage)).mul(highBuyPrice)
-
-    return divCeil(divCeil(product, lowSellPrice), fp('1'))
-  }
-
-  // Computes the minBuyAmt for a sellAmt at two prices
-  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
-  const toMinBuyAmt = (
-    sellAmt: BigNumber,
-    sellPrice: BigNumber,
-    buyPrice: BigNumber,
-    oracleError: BigNumber,
-    maxTradeSlippage: BigNumber
-  ): BigNumber => {
-    // do all muls first so we don't round unnecessarily
-    // a = loss due to max trade slippage
-    // b = loss due to selling token at the low price
-    // c = loss due to buying token at the high price
-    // mirrors the math from TradeLib ~L:57
-    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
-    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
-    const product = sellAmt
-      .mul(fp('1').sub(maxTradeSlippage)) // (a)
-      .mul(lowSellPrice) // (b)
-
-    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
-  }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
@@ -531,7 +484,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(expectedTkn7).to.equal(quotes[7])
 
     // Redeem
-    await rToken.connect(addr1).redeem(issueAmt, true)
+    await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
     expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     expect(await rToken.totalSupply()).to.equal(0)
 
@@ -1610,16 +1563,18 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Will sell about 841K of cETH, expect to receive 8167 wETH (minimum)
     // We would still have about 438K to sell of cETH
     let [, lotHigh] = await cETHCollateral.lotPrice()
-    const sellAmt = toBNDecimals(MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(lotHigh), 8)
+    const sellAmtUnscaled = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(lotHigh)
+    const sellAmt = toBNDecimals(sellAmtUnscaled, 8)
     const sellAmtRemainder = (await cETH.balanceOf(backingManager.address)).sub(sellAmt)
     // Price for cETH = 1200 / 50 = $24 at rate 50% = $12
     const minBuyAmt = toMinBuyAmt(
-      sellAmt.mul(pow10(10)),
+      sellAmtUnscaled,
       fp('12'),
       fp('1200'),
       ORACLE_ERROR,
       config.maxTradeSlippage
     )
+
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
@@ -1810,7 +1765,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await advanceTime(config.auctionLength.add(100).toString())
 
     // Mock auction - Get 8500 WETH tokens
-    const auctionbuyAmtRSR1 = fp('8500')
+    // const auctionbuyAmtRSR1 = fp('8500')
+    const auctionbuyAmtRSR1 = buyAmtBidRSR1
     await weth.connect(addr1).approve(gnosis.address, auctionbuyAmtRSR1)
     await gnosis.placeBid(2, {
       bidder: addr1.address,
@@ -1819,17 +1775,24 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Now we only have 4500 WETH to buy, we would reach the full collateralization
-    const buyAmtRSR2 = fp('4500')
+    const wethBalAfterAuction = (await weth.balanceOf(backingManager.address)).add(
+      auctionbuyAmtRSR1
+    )
+    const wethQuantity = await basketHandler.quantity(weth.address) // {tok/BU}
+    const basketsNeeded = await rToken.basketsNeeded() // {BU}
+    const wethNeeded = wethQuantity.mul(basketsNeeded).div(fp('1')) // {tok} = {tok/BU} * {BU}
+    let buyAmtRSR2 = wethNeeded.sub(wethBalAfterAuction)
     const sellAmtRSR2 = toSellAmt(
       buyAmtRSR2,
       fp('100'),
       fp('1200'),
       ORACLE_ERROR,
       config.maxTradeSlippage
-    )
+    ).add(1)
+    buyAmtRSR2 = buyAmtRSR2.add(1)
 
     // Close auctions - Will sell RSR Buy #2
-    // Needs 4500 WETH, sells about 55600 RSR
+    // Needs ~4500 WETH, sells about 55600 RSR
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,

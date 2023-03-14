@@ -44,7 +44,7 @@ async function main() {
         oracleError: fp('0.0025').toString(), // 0.25%
         erc20: networkConfig[chainId].tokens.DAI,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h
+        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
         targetName: hre.ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
@@ -68,7 +68,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol()),
+      's' + (await aToken.symbol()),
     ],
     'contracts/plugins/aave/StaticATokenLM.sol:StaticATokenLM'
   )
@@ -83,7 +83,7 @@ async function main() {
         oracleError: fp('0.0025').toString(), // 0.25%
         erc20: await aTokenCollateral.erc20(),
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(),
+        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
         targetName: hre.ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
@@ -127,9 +127,9 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
         oracleError: combinedBTCWBTCError.toString(),
-        cToken: networkConfig[chainId].tokens.cWBTC,
+        erc20: networkConfig[chainId].tokens.cWBTC,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(),
+        oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
         targetName: hre.ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
         delayUntilDefault: bn('86400').toString(), // 24h

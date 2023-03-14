@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { expectEvents } from '../../common/events'
 import { CollateralStatus } from '../../common/constants'
@@ -33,8 +34,6 @@ import {
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -62,14 +61,6 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -168,7 +159,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
     it('should keep a constant redemption basket as collateral loses value', async () => {
       // Redemption should be restrained to be prorata
       expect(await token0.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(addr1).redeem(initialBal.div(2), false)
+      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
       await expectRTokenPrice(
@@ -182,7 +173,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
     it('should increase the issuance basket as collateral loses value', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2), false)
+      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
@@ -220,7 +211,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
     it('should not change the redemption basket', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2), true)
+      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
@@ -247,14 +238,14 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
 
       // RToken redemption should ignore depegging
-      await rToken.connect(addr1).redeem(initialBal.div(4), true)
+      await rToken.connect(addr1).redeem(initialBal.div(4), await basketHandler.nonce())
       expect(await rToken.totalSupply()).to.equal(initialBal.div(4))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.mul(3).div(4))
     })
 
     it('should not change the issuance basket', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2), true)
+      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 

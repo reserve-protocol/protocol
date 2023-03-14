@@ -1,8 +1,7 @@
 import collateralTests from '../collateralTests'
-import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../types'
+import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { mintW3Pool, makeW3Pool, Wrapped3PoolFixture, resetFork } from './helpers'
 import { ethers } from 'hardhat'
-import { Fixture } from 'ethereum-waffle'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
   ERC20Mock,
@@ -32,6 +31,8 @@ import {
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
 } from './constants'
+
+type Fixture<T> = () => Promise<T>
 
 /*
   Define interfaces

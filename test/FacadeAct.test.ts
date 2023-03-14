@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
 import {
   CollateralStatus,
   FURNACE_DEST,
@@ -48,8 +49,6 @@ import snapshotGasCost from './utils/snapshotGasCost'
 import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -100,9 +99,6 @@ describe('FacadeAct contract', () => {
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   // Computes the minBuyAmt for a sellAmt at two prices
   // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
   const toMinBuyAmt = async (
@@ -124,11 +120,6 @@ describe('FacadeAct contract', () => {
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -262,7 +253,7 @@ describe('FacadeAct contract', () => {
 
     it('Basket - Should handle no valid basket after refresh', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, true)
+      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
 
       // Set simple basket with only one collateral
       await basketHandler.connect(owner).setPrimeBasket([aToken.address], [fp('1')])
@@ -532,7 +523,7 @@ describe('FacadeAct contract', () => {
 
     it('Revenues - Should handle assets with invalid claim logic', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, true)
+      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
 
       // Setup a new aToken with invalid claim data
       const ATokenCollateralFactory = await ethers.getContractFactory(

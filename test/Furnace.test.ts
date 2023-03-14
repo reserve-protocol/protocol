@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, upgrades, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import hre, { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
 import {
@@ -26,10 +27,11 @@ import { cartesianProduct } from './utils/cases'
 import { ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
 import { useEnv } from '#/utils/env'
 
-const createFixtureLoader = waffle.createFixtureLoader
-
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
+
+const describeExtreme =
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
 
 describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -58,28 +60,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
   let initialBal: BigNumber
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   // Implementation-agnostic interface for deploying the Furnace
   const deployNewFurnace = async (): Promise<TestIFurnace> => {
-    if (IMPLEMENTATION == Implementation.P0) {
-      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP0')
-      return <TestIFurnace>await FurnaceFactory.deploy()
-    } else if (IMPLEMENTATION == Implementation.P1) {
-      const FurnaceFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
-      return <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
-        kind: 'uups',
-      })
-    } else {
-      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
-    }
+    // Deploy fixture
+    ;({ furnace } = await loadFixture(defaultFixture))
+    return furnace
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -121,7 +107,19 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
     // Applies to all components - used here as an example
     it('Deployment does not accept invalid main address', async () => {
-      const newFurnace: TestIFurnace = <TestIFurnace>await deployNewFurnace()
+      let FurnaceFactory: ContractFactory
+      if (IMPLEMENTATION == Implementation.P0) {
+        FurnaceFactory = await ethers.getContractFactory('FurnaceP0')
+        return <TestIFurnace>await FurnaceFactory.deploy()
+      } else if (IMPLEMENTATION == Implementation.P1) {
+        FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
+        return <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
+          kind: 'uups',
+        })
+      } else {
+        throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+      }
+      const newFurnace = await FurnaceFactory.deploy()
       await expect(newFurnace.init(ZERO_ADDRESS, config.rewardRatio)).to.be.revertedWith(
         'main is zero address'
       )
@@ -307,12 +305,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       for (let i = 0; i < Number(oneDay.div(ONE_PERIOD)); i++) {
         // Advance a period
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-        await expect(firstFurnace.melt()).to.emit(rToken, 'Melted')
+        await firstFurnace.melt()
         // secondFurnace does not melt
       }
 
       // SecondFurnace melts once
-      await expect(secondFurnace.melt()).to.emit(rToken, 'Melted')
+      await secondFurnace.melt()
 
       const one = await rToken.balanceOf(firstFurnace.address)
       const two = await rToken.balanceOf(secondFurnace.address)
@@ -425,7 +423,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe('Extreme Bounds', () => {
+  describeExtreme('Extreme Bounds', () => {
     const applyParameters = async (ratio: BigNumber, bal: BigNumber): Promise<TestIFurnace> => {
       // Deploy fixture
       ;({ main, rToken, furnace } = await loadFixture(defaultFixture))

@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
 import { IConfig } from '../../common/configuration'
@@ -13,6 +14,7 @@ import {
   ERC20Mock,
   IAssetRegistry,
   IBasketHandler,
+  IFacadeTest,
   MockV3Aggregator,
   SelfReferentialCollateral,
   TestIBackingManager,
@@ -34,8 +36,6 @@ import { expectPrice } from '../utils/oracles'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -73,16 +73,9 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
+  let facadeTest: IFacadeTest
 
   let initialBal: BigNumber
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -102,6 +95,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       basketHandler,
       rsrTrader,
       rTokenTrader,
+      facadeTest,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -279,7 +273,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('10000e8'))
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, true))
+      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cWBTC.balanceOf(addr1.address)).to.equal(initialBal)
     })
@@ -288,7 +282,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await cWBTC.setExchangeRate(fp('2')) // doubling of price
 
       // Compound Redemption rate should result in fewer tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, true))
+      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cWBTC.balanceOf(addr1.address)).to.equal(
         initialBal.sub(cTokenAmt.div(1000).div(2))
@@ -318,7 +312,9 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        issueAmt
+      )
     })
 
     it('should be able to deregister', async () => {
@@ -343,7 +339,9 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       // Should not be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(0)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        0
+      )
 
       // Should view cWBTC as surplus
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')

@@ -9,6 +9,7 @@ interface ICusdcV3WrapperMock is ICusdcV3Wrapper {
 }
 
 contract CusdcV3WrapperMock {
+    uint256[20] private __gap;
     address internal mockTarget;
     mapping(bytes4 => bool) internal isMocking;
     uint256 internal mockExchangeRate_;

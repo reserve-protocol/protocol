@@ -14,8 +14,6 @@ abstract contract CometInterface is CometMainInterface, CometExtInterface {
         int104 principal;
         uint64 baseTrackingIndex;
         uint64 baseTrackingAccrued;
-        uint16 assetsIn;
-        uint8 _reserved;
     }
 
     function userBasic(address account) external view virtual returns (UserBasic memory);

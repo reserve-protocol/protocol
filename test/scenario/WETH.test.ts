@@ -1,7 +1,8 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus } from '../../common/constants'
@@ -11,6 +12,7 @@ import {
   ERC20Mock,
   IAssetRegistry,
   IBasketHandler,
+  IFacadeTest,
   MockV3Aggregator,
   TestIBackingManager,
   TestIStRSR,
@@ -28,8 +30,6 @@ import {
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
@@ -61,17 +61,10 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
+  let facadeTest: IFacadeTest
 
   let initialBal: BigNumber
   let ethBal: BigNumber
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -90,6 +83,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       basketHandler,
       rsrTrader,
       rTokenTrader,
+      facadeTest,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -216,7 +210,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       await setOraclePrice(wethCollateral.address, bn('2e8')) // doubling of price
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, true))
+      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await weth.balanceOf(addr1.address)).to.equal(ethBal)
     })
@@ -228,7 +222,9 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        issueAmt
+      )
     })
 
     it('should be able to deregister', async () => {
@@ -246,7 +242,9 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       // Should be fully collateralized
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
+        issueAmt
+      )
 
       // Should view WETH as surplus
       await expect(backingManager.manageTokens([token0.address, weth.address])).to.not.emit(

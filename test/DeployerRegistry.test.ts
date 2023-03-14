@@ -1,11 +1,10 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { ZERO_ADDRESS } from '../common/constants'
 import { DeployerRegistry, TestIDeployer } from '../typechain'
 import { defaultFixture } from './fixtures'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 describe(`DeployerRegistry contract #fast`, () => {
   let owner: SignerWithAddress
@@ -18,14 +17,6 @@ describe(`DeployerRegistry contract #fast`, () => {
 
   // Deployer contract
   let deployer: TestIDeployer
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, mockDeployer1, mockDeployer2, addr1] = await ethers.getSigners()
