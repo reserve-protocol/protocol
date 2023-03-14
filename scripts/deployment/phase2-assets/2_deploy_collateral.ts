@@ -12,6 +12,7 @@ import {
 } from '../common'
 import { combinedError, priceTimeout, oracleTimeout, revenueHiding } from '../utils'
 import { Asset, ATokenMock, StaticATokenLM } from '../../../typechain'
+import { LidoStakedEthCollateral } from '../../../typechain/LidoStakedEthCollateral.d';
 
 async function main() {
   // ==== Read Configuration ====

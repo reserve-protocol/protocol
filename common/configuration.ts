@@ -32,6 +32,9 @@ export interface ITokens {
   WBTC?: string
   EURT?: string
   RSR?: string
+  wstETH?: string
+  stETH?: string
+  rETH?: string
 }
 
 interface INetworkConfig {
@@ -81,6 +84,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
+      wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
+      rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393'
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -97,6 +102,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
+      stETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
+      rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0' // rETH/ETH
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
