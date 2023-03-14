@@ -4,10 +4,9 @@ import {
   CollateralOpts,
   CollateralStatus,
   MintCollateralFunc,
-} from '../types'
+} from '../pluginTestTypes'
 import { mintW3Pool, makeW3Pool, Wrapped3PoolFixture, resetFork } from './helpers'
-import hre, { ethers, waffle } from 'hardhat'
-import { Fixture } from 'ethereum-waffle'
+import hre, { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish, Wallet } from 'ethers'
 import {
   ConvexStakingWrapper,
@@ -52,6 +51,9 @@ import {
   setNextBlockTimestamp,
 } from '#/test/utils/time'
 import { whileImpersonating } from '#/test/utils/impersonation'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+
+type Fixture<T> = () => Promise<T>
 
 /*
   Define interfaces
@@ -470,7 +472,6 @@ const collateralSpecificStatusTests = () => {
 */
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
-const createFixtureLoader = waffle.createFixtureLoader
 
 before(resetFork)
 
@@ -528,11 +529,8 @@ describeFork(`Collateral: Convex`, () => {
 
     let w3Pool: ConvexStakingWrapper
 
-    let loadFixture: ReturnType<typeof createFixtureLoader>
-
     before(async () => {
       ;[wallet] = (await ethers.getSigners()) as unknown as SignerWithAddress[]
-      loadFixture = createFixtureLoader([wallet as unknown as Wallet])
 
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {

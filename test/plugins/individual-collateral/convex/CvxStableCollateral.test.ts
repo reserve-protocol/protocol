@@ -1,24 +1,20 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-network-helpers'
-import { MockV3Aggregator, MockV3Aggregator__factory } from '../typechain-types'
+import { MockV3Aggregator, MockV3Aggregator__factory } from '../../../../typechain'
 import { deployCollateral, makeReserveProtocol } from './fixtures'
 import {
   DAI_USD_FEED,
   THREE_POOL,
   USDC,
   USDC_USD_FEED,
-  exp,
-  whileImpersonating,
   DAI_HOLDER,
   DAI,
   USDT_USD_FEED,
-  CollateralStatus,
   USDT,
   THREE_POOL_HOLDER,
   THREE_POOL_TOKEN,
   FIX_ONE,
-  resetFork,
   COMP,
   MAX_TRADE_VOL,
   RSR,
@@ -29,7 +25,13 @@ import {
   CRV,
   BBTC_POOL,
   AAVE_POOL,
+} from './constants'
+import {
+  resetFork,
+  exp
 } from './helpers'
+import { CollateralStatus } from '../pluginTestTypes'
+import { whileImpersonating } from '#/test/utils/impersonation'
 
 const ERC20 = '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20'
 

@@ -91,11 +91,11 @@ export const mintW3Pool = async (
 
 export const resetFork = getResetFork(FORK_BLOCK)
 
-// export type Numeric = number | bigint
+export type Numeric = number | bigint
 
-// export const exp = (i: Numeric, d: Numeric = 0): bigint => {
-//   return BigInt(i) * 10n ** BigInt(d)
-// }
+export const exp = (i: Numeric, d: Numeric = 0): bigint => {
+  return BigInt(i) * 10n ** BigInt(d)
+}
 
 // export const resetFork = async () => {
 //   // Need to reset state since running the whole test suites to all

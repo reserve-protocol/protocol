@@ -6,7 +6,6 @@ import {
   MAX_TRADE_VOL,
   ORACLE_TIMEOUT,
   FIX_ONE,
-  exp,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   THREE_POOL,
@@ -14,6 +13,9 @@ import {
   USDC_USD_FEED,
   DAI_USD_FEED,
   THREE_POOL_TOKEN,
+} from './constants'
+import {
+  exp
 } from './helpers'
 import {
   GnosisMock,
@@ -46,7 +48,7 @@ import {
   Asset,
   CvxCurveStableLPCollateral,
   CvxCurveStableLPCollateral__factory,
-} from '../typechain-types'
+} from '../../../../typechain'
 
 const RSR_PRICE_FEED = '0x759bBC1be8F90eE6457C44abc7d443842a976d02'
 const COMP_PRICE_FEED = '0xdbd020CAeF83eFd542f4De03e3cF0C28A4428bd5'
