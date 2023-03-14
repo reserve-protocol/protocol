@@ -1,5 +1,4 @@
 import collateralTests from '../collateralTests'
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintWSTETH } from './helpers'
 import { expect } from 'chai'
@@ -29,7 +28,6 @@ import {
   LIDO_ORACLE,
 } from './constants'
 import { whileImpersonating } from '../../../utils/impersonation'
-import { expectPrice } from '../../../utils/oracles'
 
 /*
   Define interfaces
@@ -175,10 +173,12 @@ const reduceRefPerTok = async (
   pctDecrease: BigNumberish | undefined
 ) => {
   const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
-  
+
   // Decrease wsteth to eth exchange rate so refPerTok decreases
   const [, beaconValidators, beaconBalance] = await steth.getBeaconStat()
-  const beaconBalanceLower: BigNumberish =  beaconBalance.sub(beaconBalance.mul(pctDecrease!).div(100))
+  const beaconBalanceLower: BigNumberish = beaconBalance.sub(
+    beaconBalance.mul(pctDecrease!).div(100)
+  )
 
   // Impersonate Lido Oracle
   await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
@@ -194,15 +194,17 @@ const increaseRefPerTok = async (
 
   // Increase wsteth to steth exchange rate so refPerTok increases
   const [, beaconValidators, beaconBalance] = await steth.getBeaconStat()
-  const beaconBalanceHigher: BigNumberish = beaconBalance.add(beaconBalance.mul(pctIncrease!).div(100))
-  
+  const beaconBalanceHigher: BigNumberish = beaconBalance.add(
+    beaconBalance.mul(pctIncrease!).div(100)
+  )
+
   // Impersonate Lido Oracle
   await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
     await steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceHigher)
   })
 }
 
-const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext):Promise<BigNumber> => {
+const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext): Promise<BigNumber> => {
   // Peg Feed
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
@@ -215,11 +217,7 @@ const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext):Promise<Big
 
   const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
   const expectedTgtPrice = tgtClData.answer.mul(bn(10).pow(18 - tgtClDecimals))
-  return expectedPegPrice
-    .mul(expectedTgtPrice)
-    .mul(refPerTok)
-    .div(fp('1'))
-    .div(fp('1'))
+  return expectedPegPrice.mul(expectedTgtPrice).mul(refPerTok).div(fp('1')).div(fp('1'))
 }
 
 /*

@@ -166,7 +166,7 @@ contract RTokenAsset is IAsset {
         }
     }
 
-        /// @return The address of the chainlink feed
+    /// @return The address of the chainlink feed
     function chainlinkFeed() external view override returns (AggregatorV3Interface) {
         return AggregatorV3Interface(address(0));
     }

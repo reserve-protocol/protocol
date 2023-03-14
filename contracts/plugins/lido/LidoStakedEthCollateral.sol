@@ -51,7 +51,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     {
         // {UoA/target}
         uint192 pricePerTarget = chainlinkFeed.price(oracleTimeout);
-        
+
         // Get current market peg {eth/steth}, but the intended {target/ref} will be returned
         pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout); // {target/ref}
 

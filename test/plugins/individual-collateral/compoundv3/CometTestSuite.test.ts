@@ -277,7 +277,7 @@ const increaseRefPerTok = async () => {
   await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 }
 
-const getExpectedPrice = async (ctx: CometCollateralFixtureContext):Promise<BigNumber> => {
+const getExpectedPrice = async (ctx: CometCollateralFixtureContext): Promise<BigNumber> => {
   const initRefPerTok = await ctx.collateral.refPerTok()
 
   const decimals = await ctx.chainlinkFeed.decimals()

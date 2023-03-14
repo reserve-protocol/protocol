@@ -258,7 +258,7 @@ const increaseRefPerTok = async (
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
-const getExpectedPrice = async (ctx: RethCollateralFixtureContext):Promise<BigNumber> => {
+const getExpectedPrice = async (ctx: RethCollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 

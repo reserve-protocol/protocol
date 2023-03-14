@@ -6,7 +6,7 @@ import { BigNumber } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { bn, fp } from '../../../common/numbers'
+import { bn } from '../../../common/numbers'
 import { InvalidMockV3Aggregator, MockV3Aggregator, ICollateral } from '../../../typechain'
 import {
   advanceTime,
@@ -198,7 +198,7 @@ export default function fn<X extends CollateralFixtureContext>(
           const initRefPerTok = await collateral.refPerTok()
 
           const oracleError = await collateral.oracleError()
-          
+
           const [initLow, initHigh] = await collateral.price()
           const expectedPrice = await getExpectedPrice(ctx)
 

@@ -10,7 +10,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
-
 /**
  * @title CTokenV3Collateral
  * @notice Collateral plugin for Compound V3,
