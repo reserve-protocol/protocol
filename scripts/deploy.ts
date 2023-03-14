@@ -8,6 +8,10 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
 
+  if (hre.network.name == 'hardhat') {
+    throw new Error("Don't use network 'hardhat'.  If you are testing locally, make sure to run 'yarn devchain' in a separate terminal, and then deploy to 'localhost'.")
+  }
+
   // Check if chain is supported
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
