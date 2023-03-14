@@ -60,7 +60,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        uint256 rate = IsfrxEth(address(erc20)).convertToAssets(1e18);
+        uint256 rate = IsfrxEth(address(erc20)).pricePerShare();
         return _safeWrap(rate);
     }
 }
