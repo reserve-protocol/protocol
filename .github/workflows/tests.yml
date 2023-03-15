@@ -51,45 +51,45 @@ jobs:
       - run: yarn compile
       - run: yarn test:plugins
 
-  # collateral-tests:
-  #   name: 'Collateral Tests'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 16.x
-  #         cache: 'yarn'
-  #     - name: 'Cache hardhat network fork'
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: cache/hardhat-network-fork
-  #         key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
-  #         restore-keys: |
-  #           hardhat-network-fork-${{ runner.os }}-
-  #           hardhat-network-fork-
-  #     - run: yarn install --immutable
-  #     - run: yarn compile
-  #     - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/rocket-eth/*.test.ts
-  #       env:
-  #         TS_NODE_SKIP_IGNORE: true
-  #         MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-  #     - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/lido/*.test.ts
-  #       env:
-  #         TS_NODE_SKIP_IGNORE: true
-  #         MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-  #     - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/frax-eth/*.test.ts
-  #       env:
-  #         TS_NODE_SKIP_IGNORE: true
-  #         MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-  #     - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/compoundv3/*.test.ts
-  #       env:
-  #         TS_NODE_SKIP_IGNORE: true
-  #         MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-  #     - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/compoundv2/*.test.ts
-  #       env:
-  #         TS_NODE_SKIP_IGNORE: true
-  #         MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+  collateral-tests:
+    name: 'Collateral Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: yarn install --immutable
+      - run: yarn compile
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/rocket-eth/*.test.ts
+        env:
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/lido/*.test.ts
+        env:
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/frax-eth/*.test.ts
+        env:
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/compoundv3/*.test.ts
+        env:
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+      - run: PROTO_IMPL=1 FORK=1 npx hardhat test test/plugins/individual-collateral/compoundv2/*.test.ts
+        env:
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
 
   p0-tests:
     name: 'P0 tests'
