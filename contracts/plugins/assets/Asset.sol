@@ -18,9 +18,9 @@ contract Asset is IAsset {
 
     uint192 public immutable override maxTradeVolume; // {UoA}
 
-    uint48 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
+    uint48 public immutable oracleTimeout; // {s}
 
-    uint192 public immutable oracleError; // {1} The max % deviation allowed by the oracle
+    uint192 public immutable oracleError; // {1}
 
     // === Lot price ===
 
@@ -148,7 +148,7 @@ contract Asset is IAsset {
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
-    function bal(address account) external view returns (uint192) {
+    function bal(address account) external view virtual returns (uint192) {
         return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
     }
 
