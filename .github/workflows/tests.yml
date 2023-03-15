@@ -101,14 +101,14 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
-      - name: 'Cache hardhat network fork'
-        uses: actions/cache@v3
-        with:
-          path: cache/hardhat-network-fork
-          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
-          restore-keys: |
-            hardhat-network-fork-${{ runner.os }}-
-            hardhat-network-fork-
+      # - name: 'Cache hardhat network fork'
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: cache/hardhat-network-fork
+      #     key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+      #     restore-keys: |
+      #       hardhat-network-fork-${{ runner.os }}-
+      #       hardhat-network-fork-
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:integration
