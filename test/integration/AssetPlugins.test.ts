@@ -17,7 +17,7 @@ import { IConfig, MAX_ORACLE_TIMEOUT, networkConfig } from '../../common/configu
 import { CollateralStatus, BN_SCALE_FACTOR } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
-import { advanceBlocks, advanceTime } from '../utils/time'
+import { advanceBlocks, getLatestBlockNumber, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../utils/oracles'
 import {
@@ -788,7 +788,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // close to $633 usd
         await expectPrice(
           ctkInf.cTokenCollateral.address,
-          ctkInf.targetPrice.mul(ctkInf.refPrice).mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR.pow(2)),
+          ctkInf.targetPrice
+            .mul(ctkInf.refPrice)
+            .mul(await ctkInf.cTokenCollateral.refPerTok())
+            .div(BN_SCALE_FACTOR.pow(2)),
           ORACLE_ERROR,
           true
         )
