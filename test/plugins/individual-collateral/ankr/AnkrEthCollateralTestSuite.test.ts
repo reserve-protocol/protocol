@@ -130,6 +130,12 @@ const mintCollateralTo: MintCollateralFunc<AnkrETHCollateralFixtureContext> = as
   await mintAnkrETH(ctx.ankreth, user, amount, recipient)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const reduceTargetPerRef = async () => {}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const increaseTargetPerRef = async () => {}
+
 const reduceRefPerTok = async (
   ctx: AnkrETHCollateralFixtureContext,
   pctDecrease: BigNumberish | undefined
