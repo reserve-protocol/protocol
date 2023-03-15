@@ -17,7 +17,7 @@ import { IConfig, MAX_ORACLE_TIMEOUT, networkConfig } from '../../common/configu
 import { CollateralStatus, BN_SCALE_FACTOR } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
-import { advanceBlocks, getLatestBlockNumber, advanceTime } from '../utils/time'
+import { advanceBlocks, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../utils/oracles'
 import {
