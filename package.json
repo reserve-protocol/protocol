@@ -28,6 +28,7 @@
     "test:gas:integration": "FORK=1 REPORT_GAS=1 PROTO_IMPL=1 hardhat test test/integration/**/*.test.ts",
     "test:coverage": "PROTO_IMPL=1 hardhat coverage --testfiles 'test/{libraries,plugins,scenario}/*.test.ts test/*.test.ts'",
     "test:unit:coverage": "PROTO_IMPL=1 SLOW= hardhat coverage --testfiles 'test/*.test.ts test/libraries/*.test.ts test/plugins/*.test.ts'",
+    "eslint": "eslint test/",
     "lint": "bash tools/lint && eslint test/",
     "prettier": "prettier --ignore-path .gitignore --loglevel warn --write \"./**/*.{js,ts,sol,json,md}\"",
     "size": "hardhat size-contracts",
@@ -53,8 +54,8 @@
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
     "@nomiclabs/hardhat-ethers": "^2.0.3",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
-    "@openzeppelin/contracts": "^4.7.3",
-    "@openzeppelin/contracts-upgradeable": "^4.7.3",
+    "@openzeppelin/contracts": "~4.7.3",
+    "@openzeppelin/contracts-upgradeable": "~4.7.3",
     "@openzeppelin/hardhat-upgrades": "^1.21.0",
     "@typechain/ethers-v5": "^7.2.0",
     "@typechain/hardhat": "^2.3.1",
@@ -103,5 +104,8 @@
   "resolutions": {
     "@solidity-parser/parser": "^0.13.2"
   },
-  "packageManager": "yarn@3.3.1"
+  "packageManager": "yarn@3.3.1",
+  "dependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1"
+  }
 }

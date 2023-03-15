@@ -44,8 +44,8 @@ export const getDeploymentFilename = (chainId: number): string => {
   return `${pathToFolder}${chainId}${tempFileSuffix}`
 }
 
-export const getAssetCollDeploymentFilename = (chainId: number): string => {
-  return `${pathToFolder}${chainId}${tempAssetCollFileSuffix}`
+export const getAssetCollDeploymentFilename = (chainId: number, version?: string): string => {
+  return `${pathToFolder}${version ? `/${version}/` : null}${chainId}${tempAssetCollFileSuffix}`
 }
 
 export const getRTokenDeploymentFilename = (chainId: number, name: string): string => {
