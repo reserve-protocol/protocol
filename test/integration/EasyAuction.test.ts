@@ -4,11 +4,26 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_ERROR } from '../fixtures'
-import { bn, fp } from '../../common/numbers'
+import {
+  Collateral,
+  IMPLEMENTATION,
+  Implementation,
+  SLOW,
+  ORACLE_ERROR,
+  defaultFixture, // intentional
+} from '../fixtures'
+import { bn, fp, shortString, divCeil } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
 import { IConfig, networkConfig } from '../../common/configuration'
-import { CollateralStatus, QUEUE_START, MAX_UINT256 } from '../../common/constants'
+import {
+  BN_SCALE_FACTOR,
+  CollateralStatus,
+  QUEUE_START,
+  MAX_UINT48,
+  MAX_UINT192,
+  MAX_UINT256,
+  ONE_ADDRESS,
+} from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
@@ -16,6 +31,7 @@ import { getChainId } from '../../common/blockchain-utils'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectRTokenPrice } from '../utils/oracles'
 import { withinQuad } from '../utils/matchers'
+import { cartesianProduct } from '../utils/cases'
 import {
   EasyAuction,
   ERC20Mock,
@@ -31,13 +47,17 @@ import {
 } from '../../typechain'
 import { useEnv } from '#/utils/env'
 
-let owner: SignerWithAddress
-let addr1: SignerWithAddress
-let addr2: SignerWithAddress
-
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
+const describeExtreme =
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') && useEnv('FORK')
+    ? describe.only
+    : describe.skip
+
 describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () {
+  let owner: SignerWithAddress
+  let addr1: SignerWithAddress
+  let addr2: SignerWithAddress
   let config: IConfig
 
   let rsr: ERC20Mock
@@ -701,6 +721,166 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       ])
 
       expect(await token0.balanceOf(easyAuctionOwner)).to.be.closeTo(feeAmt, 1) // account for rounding
+    })
+  })
+
+  describeExtreme(`Extreme Values ${SLOW ? 'slow mode' : 'fast mode'}`, () => {
+    if (!(Implementation.P1 && useEnv('EXTREME') && useEnv('FORK'))) return // prevents bunch of skipped tests
+
+    async function runScenario([
+      sellTokDecimals,
+      buyTokDecimals,
+      auctionSellAmt,
+      price,
+      fill,
+    ]: BigNumber[]) {
+      const auctionBuyAmt = divCeil(auctionSellAmt.mul(price), BN_SCALE_FACTOR)
+      const bidSellAmt = auctionSellAmt.mul(fill).div(BN_SCALE_FACTOR)
+      const bidBuyAmt = divCeil(bidSellAmt.mul(price), BN_SCALE_FACTOR).add(1)
+
+      // Factories
+      const ERC20Factory = await ethers.getContractFactory('ERC20MockDecimals')
+      const CollFactory = await ethers.getContractFactory('FiatCollateral')
+      const MainFactory = await ethers.getContractFactory('MainP0')
+      const BrokerFactory = await ethers.getContractFactory('BrokerP0')
+
+      // Deployments
+      const main = await MainFactory.deploy()
+      const broker = await BrokerFactory.deploy()
+      await main.init(
+        {
+          rToken: ONE_ADDRESS,
+          stRSR: ONE_ADDRESS,
+          assetRegistry: ONE_ADDRESS,
+          basketHandler: ONE_ADDRESS,
+          backingManager: addr1.address, // use addr1 to impersonate backingManager
+          distributor: ONE_ADDRESS,
+          furnace: ONE_ADDRESS,
+          broker: broker.address,
+          rsrTrader: ONE_ADDRESS,
+          rTokenTrader: ONE_ADDRESS,
+        },
+        rsr.address,
+        1,
+        1
+      )
+      await main.connect(owner).unpause()
+      await broker.init(main.address, easyAuction.address, ONE_ADDRESS, config.auctionLength)
+      const sellTok = await ERC20Factory.deploy('Sell Token', 'SELL', sellTokDecimals)
+      const buyTok = await ERC20Factory.deploy('Buy Token', 'BUY', buyTokDecimals)
+      const sellColl = <FiatCollateral>await CollFactory.deploy({
+        priceTimeout: MAX_UINT48,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR, // shouldn't matter
+        erc20: sellTok.address,
+        maxTradeVolume: MAX_UINT192,
+        oracleTimeout: MAX_UINT48,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.01'), // shouldn't matter
+        delayUntilDefault: bn('604800'), // shouldn't matter
+      })
+      await sellColl.refresh()
+      const buyColl = <FiatCollateral>await CollFactory.deploy({
+        priceTimeout: MAX_UINT48,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR, // shouldn't matter
+        erc20: buyTok.address,
+        maxTradeVolume: MAX_UINT192,
+        oracleTimeout: MAX_UINT48,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.01'), // shouldn't matter
+        delayUntilDefault: bn('604800'), // shouldn't matter
+      })
+      await buyColl.refresh()
+
+      // Issue tokens to addr1
+      const MAX_ERC20_SUPPLY = bn('1e48') // from docs/solidity-style.md
+      await sellTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
+      await buyTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
+
+      // First simulate opening the trade to get where it will be deployed
+      await sellTok.connect(addr1).approve(broker.address, auctionSellAmt)
+      const tradeAddr = await broker.connect(addr1).callStatic.openTrade({
+        sell: sellColl.address,
+        buy: buyColl.address,
+        sellAmount: auctionSellAmt,
+        minBuyAmount: auctionBuyAmt,
+      })
+
+      // Start auction!
+      await broker.connect(addr1).openTrade({
+        sell: sellColl.address,
+        buy: buyColl.address,
+        sellAmount: auctionSellAmt,
+        minBuyAmount: auctionBuyAmt,
+      })
+
+      // Get auctionId
+      const trade = await ethers.getContractAt('GnosisTrade', tradeAddr)
+      const auctionId = await trade.auctionId()
+
+      // Bid if above minBuyAmtPerOrder
+      const DEFAULT_MIN_BID = await trade.DEFAULT_MIN_BID()
+      const minBuyAmount = auctionBuyAmt.gt(0) ? auctionBuyAmt : bn('1')
+      let minBuyAmtPerOrder = DEFAULT_MIN_BID.mul(bn(10).pow(await buyTok.decimals())).div(
+        BN_SCALE_FACTOR
+      )
+      const minBuyAmtFloor = minBuyAmount.div(await trade.MAX_ORDERS())
+      if (minBuyAmtFloor.gt(minBuyAmtPerOrder)) minBuyAmtPerOrder = minBuyAmtFloor
+      if (minBuyAmtPerOrder.eq(bn('0'))) minBuyAmtPerOrder = bn('1')
+
+      if (bidSellAmt.gt(0) && bidBuyAmt.gte(minBuyAmtPerOrder)) {
+        await buyTok.connect(addr1).approve(easyAuction.address, bidBuyAmt)
+        await easyAuction
+          .connect(addr1)
+          .placeSellOrders(
+            auctionId,
+            [bidSellAmt],
+            [bidBuyAmt],
+            [QUEUE_START],
+            ethers.constants.HashZero
+          )
+      }
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // End Auction
+      await expect(trade.connect(addr1).settle()).to.not.emit(broker, 'DisabledSet')
+      expect(await broker.disabled()).to.equal(false)
+    }
+
+    // ==== Generate the tests ====
+
+    // applied to both buy and sell tokens
+    const decimals = [bn('1'), bn('6'), bn('8'), bn('18')]
+
+    // auction sell amount
+    const auctionSellAmts = [bn('1'), bn('1595439874635'), bn('987321984732198435645846513')]
+
+    // price ratios: use disgustingly precise values here to test weird roundings
+    const priceRatios = [fp('0.793549493549843521'), fp('2.298432198935249846')]
+
+    // auction fill %: use disgustingly precise values here to test weird roundings
+    const fill = [fp('0'), fp('0.321698432589749813'), fp('0.798138321987329646'), fp('1')]
+
+    // total cases is 4 * 4 * 3 * 2 * 4 = 384
+
+    if (SLOW) {
+      auctionSellAmts.push(bn('374514321987325169863'))
+      priceRatios.push(...[fp('0.016056468356548968'), fp('7.341987325198354694')])
+      fill.push(...[fp('0.176334768961354966'), fp('0.523449931646439834')])
+
+      // total cases is 4 * 4 * 4 * 4 * 6 = 1536
+    }
+
+    const paramList = cartesianProduct(decimals, decimals, auctionSellAmts, priceRatios, fill)
+
+    const numCases = paramList.length.toString()
+    paramList.forEach((params, index) => {
+      it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        await runScenario(params)
+      })
     })
   })
 })
