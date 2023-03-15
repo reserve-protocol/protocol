@@ -195,7 +195,7 @@ contract GnosisTrade is ITrade {
         if (sellBal < initBal) {
             soldAmt = initBal - sellBal;
 
-            // Gnosis rounds defensively, so it's possible to get 1 fewer attoTokens returned
+            // Gnosis rounds defensively in the buy token; we should not consider it a violation
             uint256 adjustedSoldAmt = Math.max(soldAmt, 1);
             uint256 adjustedBuyAmt = boughtAmt + 1;
 
