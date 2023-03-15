@@ -204,6 +204,8 @@ const opts = {
   beforeEachRewardsTest,
   makeCollateralFixtureContext,
   mintCollateralTo,
+  reduceTargetPerRef,
+  increaseTargetPerRef,
   reduceRefPerTok,
   increaseRefPerTok,
   getExpectedPrice,
