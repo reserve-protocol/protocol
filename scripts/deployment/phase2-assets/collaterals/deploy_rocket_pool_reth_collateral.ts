@@ -21,9 +21,6 @@ async function main() {
 
     const chainId = await getChainId(hre)
 
-    const number = await getLatestBlockNumber()
-    console.log('block', number)
-
     console.log(`Deploying Collateral to network ${hre.network.name} (${chainId})
     with burner account: ${deployer.address}`)
 
