@@ -153,5 +153,6 @@ jobs:
       - run: yarn compile
       - run: yarn test:integration
         env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
