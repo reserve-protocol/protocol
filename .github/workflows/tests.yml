@@ -101,50 +101,18 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
-      # - name: 'Cache hardhat network fork'
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: cache/hardhat-network-fork
-      #     key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
-      #     restore-keys: |
-      #       hardhat-network-fork-${{ runner.os }}-
-      #       hardhat-network-fork-
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:integration
-      #- run: npx hardhat test test/integration/AssetPlugins.test.ts && MAINNET_BLOCK=12521999 npx hardhat test test/integration/StaticATokenLM.test.ts
         env:
-          FORK: 1
-          PROTO_IMPL: 1
           NODE_OPTIONS: "--max-old-space-size=4096"
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-
-  # staticatoken-tests:
-  #   name: 'Static Atoken Tests'
-  #   runs-on: macos-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: 1
-  #     - uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 16.x
-  #         cache: 'yarn'
-  #     # - name: 'Cache hardhat network fork'
-  #     #   uses: actions/cache@v3
-  #     #   with:
-  #     #     path: cache/hardhat-network-fork
-  #     #     key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
-  #     #     restore-keys: |
-  #     #       hardhat-network-fork-${{ runner.os }}-
-  #     #       hardhat-network-fork-
-  #     - run: yarn install --immutable
-  #     - run: yarn compile
-  #     - run: npx hardhat test test/integration/StaticATokenLM.test.ts
-  #       env:
-  #         FORK: 1
-  #         PROTO_IMPL: 1
-  #         MAINNET_BLOCK: 12521999 
-  #         TS_NODE_SKIP_IGNORE: true
-  #         MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
