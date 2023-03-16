@@ -377,10 +377,8 @@ describe('FacadeRead contract', () => {
       it('Should return prime basket after a default', async () => {
         // Set a backup config
         await basketHandler
-        .connect(owner)
-        .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [
-          token.address
-        ])
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [token.address])
 
         // Set up DISABLED collateral (USDC)
         await setOraclePrice(usdcAsset.address, bn('0.5'))
@@ -394,7 +392,7 @@ describe('FacadeRead contract', () => {
         // switch basket, removing USDC
         await basketHandler.refreshBasket()
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-  
+
         // prime basket should still be all 4 tokens
         const [erc20s, targetNames, targetAmts] = await facade.primeBasket(rToken.address)
         expect(erc20s.length).to.equal(4)
