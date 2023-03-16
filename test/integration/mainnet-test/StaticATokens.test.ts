@@ -69,22 +69,23 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
   let chainId: number
 
-  describe('Static ATokens', () => {
-    const setup = async (blockNumber: number) => {
-      // Use Mainnet fork
-      await hre.network.provider.request({
-        method: 'hardhat_reset',
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
-              blockNumber: blockNumber,
-            },
+  // Setup test environment
+  const setup = async (blockNumber: number) => {
+    // Use Mainnet fork
+    await hre.network.provider.request({
+      method: 'hardhat_reset',
+      params: [
+        {
+          forking: {
+            jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+            blockNumber: blockNumber,
           },
-        ],
-      })
-    }
+        },
+      ],
+    })
+  }
 
+  describe('Static ATokens', () => {
     before(async () => {
       await setup(forkBlockNumber['mainnet-deployment'])
 
@@ -95,8 +96,8 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
     })
 
     beforeEach(async () => {
-      ;[, , , addr1] = await ethers.getSigners()
       await loadFixture(defaultFixture)
+      ;[, , , addr1] = await ethers.getSigners()
 
       // Get tokens
       dai = <ERC20Mock>(
