@@ -129,7 +129,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       .mul(fp('1').sub(await backingManager.maxTradeSlippage())) // (a)
       .mul(lowSellPrice) // (b)
 
-    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+    return divCeil(divCeil(product, highBuyPrice), BN_SCALE_FACTOR) // (c)
   }
 
   beforeEach(async () => {
@@ -3528,7 +3528,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         const t = await getTrade(backingManager, token1.address)
         const sellAmt4 = await t.initBal() // 6 decimals token
         const minBuyAmt4 = await toMinBuyAmt(
-          sellAmt4.mul(bn('1e12')), // because of decimals difference
+          sellAmt4.add(1).mul(bn('1e12')), // because of decimals difference
           fp('1'),
           fp('1')
         )

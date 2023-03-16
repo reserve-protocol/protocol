@@ -1,10 +1,8 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
-import { defaultFixture } from '../fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
@@ -69,22 +67,23 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
   let chainId: number
 
-  describe.skip('Static ATokens', () => {
-    const setup = async (blockNumber: number) => {
-      // Use Mainnet fork
-      await hre.network.provider.request({
-        method: 'hardhat_reset',
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
-              blockNumber: blockNumber,
-            },
+  // Setup test environment
+  const setup = async (blockNumber: number) => {
+    // Use Mainnet fork
+    await hre.network.provider.request({
+      method: 'hardhat_reset',
+      params: [
+        {
+          forking: {
+            jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+            blockNumber: blockNumber,
           },
-        ],
-      })
-    }
+        },
+      ],
+    })
+  }
 
+  describe('Static ATokens', () => {
     before(async () => {
       await setup(forkBlockNumber['mainnet-deployment'])
 
@@ -96,7 +95,6 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
     beforeEach(async () => {
       ;[, , , addr1] = await ethers.getSigners()
-      await loadFixture(defaultFixture)
 
       // Get tokens
       dai = <ERC20Mock>(

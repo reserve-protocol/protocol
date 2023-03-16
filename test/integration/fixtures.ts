@@ -20,6 +20,7 @@ import {
   DeployerP0,
   DeployerP1,
   DistributorP1,
+  EasyAuction,
   ERC20Mock,
   EURFiatCollateral,
   FacadeRead,
@@ -31,7 +32,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   IERC20Metadata,
-  IGnosis,
   MainP1,
   NonFiatCollateral,
   RevenueTraderP1,
@@ -51,7 +51,6 @@ import {
   TestIStRSR,
   RecollateralizationLibP1,
 } from '../../typechain'
-
 import {
   Collateral,
   Implementation,
@@ -125,13 +124,15 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 }
 
 interface ModuleFixture {
-  gnosis: IGnosis
+  easyAuction: EasyAuction
 }
 
 async function gnosisFixture(): Promise<ModuleFixture> {
-  const EasyAuctionFactory: ContractFactory = await ethers.getContractFactory('EasyAuction')
-  const gnosis: IGnosis = <IGnosis>await EasyAuctionFactory.deploy()
-  return { gnosis: gnosis }
+  const chainId = await getChainId(hre)
+  const easyAuction: EasyAuction = <EasyAuction>(
+    await ethers.getContractAt('EasyAuction', networkConfig[chainId].GNOSIS_EASY_AUCTION || '')
+  )
+  return { easyAuction: easyAuction }
 }
 
 interface CollateralFixture {
@@ -593,7 +594,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   const owner = signers[0]
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
-  const { gnosis } = await gnosisFixture()
+  const { easyAuction } = await gnosisFixture()
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR
@@ -666,7 +667,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
-    await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address)
+    await DeployerFactory.deploy(rsr.address, easyAuction.address, rsrAsset.address)
   )
 
   if (IMPLEMENTATION == Implementation.P1) {
@@ -733,7 +734,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
     deployer = <DeployerP1>(
-      await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address, implementations)
+      await DeployerFactory.deploy(
+        rsr.address,
+        easyAuction.address,
+        rsrAsset.address,
+        implementations
+      )
     )
   }
 
@@ -864,7 +870,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     furnace,
     stRSR,
     broker,
-    gnosis,
+    easyAuction,
     facade,
     facadeAct,
     facadeTest,
