@@ -137,7 +137,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let mockChainlinkFeed: MockV3Aggregator
 
   before(async () => {
-    await setup(forkBlockNumber['default'])
+    await setup(forkBlockNumber['asset-plugins'])
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
