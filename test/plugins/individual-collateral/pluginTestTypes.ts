@@ -9,7 +9,7 @@ export interface CollateralFixtureContext {
   chainlinkFeed: MockV3Aggregator
   tok: IERC20
   tokDecimals: number // tldr; IERC20 does not include decimals()
-  rewardToken: IERC20
+  rewardToken?: IERC20
   alice?: SignerWithAddress
 }
 
@@ -44,6 +44,8 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   beforeEachRewardsTest: (ctx: T) => void
   makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
   mintCollateralTo: MintCollateralFunc<T>
+  appreciateRefPerTok: (ctx: T) => void
+  canReduceRefPerTok: () => boolean
   reduceRefPerTok: (ctx: T) => void
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
   resetFork: () => void
