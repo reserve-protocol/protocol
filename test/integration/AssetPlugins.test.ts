@@ -47,6 +47,7 @@ import {
   USDCMock,
   WETH9,
 } from '../../typechain'
+import forkBlockNumber from './fork-block-numbers'
 import { useEnv } from '#/utils/env'
 
 // Relevant addresses (Mainnet)
@@ -168,6 +169,19 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
   describe('Assets/Collateral', () => {
     before(async () => {
+      // Use Mainnet fork
+      await hre.network.provider.request({
+        method: 'hardhat_reset',
+        params: [
+          {
+            forking: {
+              jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+              blockNumber: forkBlockNumber['asset-plugins'],
+            },
+          },
+        ],
+      })
+
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
         throw new Error(`Missing network configuration for ${hre.network.name}`)
