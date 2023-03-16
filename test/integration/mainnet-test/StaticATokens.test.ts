@@ -1,10 +1,8 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
-import { defaultFixture } from '../fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
@@ -96,7 +94,6 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
     })
 
     beforeEach(async () => {
-      await loadFixture(defaultFixture)
       ;[, , , addr1] = await ethers.getSigners()
 
       // Get tokens
