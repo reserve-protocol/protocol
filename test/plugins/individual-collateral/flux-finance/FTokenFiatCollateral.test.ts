@@ -15,7 +15,7 @@ import {
   TestICollateral,
 } from '../../../../typechain'
 import { networkConfig } from '../../../../common/configuration'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -53,6 +53,7 @@ interface FTokenEnumeration {
 
 interface FTokenCollateralOpts extends CollateralOpts {
   comptroller?: string
+  revenueHiding?: BigNumberish
 }
 
 // ====
@@ -107,6 +108,7 @@ all.forEach((curr: FTokenEnumeration) => {
     defaultThreshold: DEFAULT_THRESHOLD,
     delayUntilDefault: DELAY_UNTIL_DEFAULT,
     comptroller: config.FLUX_FINANCE_COMPTROLLER,
+    revenueHiding: 0,
   }
 
   const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
@@ -128,7 +130,7 @@ all.forEach((curr: FTokenEnumeration) => {
         defaultThreshold: opts.defaultThreshold,
         delayUntilDefault: opts.delayUntilDefault,
       },
-      0, // no revenue hiding
+      opts.revenueHiding,
       opts.comptroller,
       { gasLimit: 2000000000 }
     )
@@ -245,60 +247,31 @@ all.forEach((curr: FTokenEnumeration) => {
       expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
     })
 
-    // it('enters IFFY state when compound reserves are below target reserves iffy threshold', async () => {
-    //   const mockOpts = { reservesThresholdIffy: 5000n, reservesThresholdDisabled: 1000n }
-    //   const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
-    //   const delayUntilDefault = await collateral.delayUntilDefault()
-    //   // Check initial state
-    //   await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-    //   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-    //   expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-    //   // cUSDC/Comet's reserves gone down below reservesThresholdIffy
-    //   await cusdcV3.setReserves(4000n)
-    //   const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-    //   await setNextBlockTimestamp(nextBlockTimestamp)
-    //   const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
-    //   await expect(collateral.refresh())
-    //     .to.emit(collateral, 'CollateralStatusChanged')
-    //     .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-    //   expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-    //   expect(await collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-    //   // Move time forward past delayUntilDefault
-    //   await advanceTime(delayUntilDefault)
-    //   expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-    //   // Nothing changes if attempt to refresh after default for CTokenV3
-    //   const prevWhenDefault: bigint = (await collateral.whenDefault()).toBigInt()
-    //   await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-    //   expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-    //   expect(await collateral.whenDefault()).to.equal(prevWhenDefault)
-    // })
-    // it('enters DISABLED state when reserves threshold is at disabled levels', async () => {
-    //   const mockOpts = { reservesThresholdDisabled: 1000n }
-    //   const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
-    //   // Check initial state
-    //   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-    //   expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-    //   // cUSDC/Comet's reserves gone down to 19% of target reserves
-    //   await cusdcV3.setReserves(900n)
-    //   await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
-    //   // State remains the same
-    //   expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-    //   expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-    // })
-    // it('enters DISABLED state if reserves go negative', async () => {
-    //   const mockOpts = { reservesThresholdDisabled: 1000n }
-    //   const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
-    //   // Check initial state
-    //   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-    //   expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-    //   // cUSDC/Comet's reserves gone down to -1
-    //   await cusdcV3.setReserves(-1)
-    //   await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
-    //   // State remains the same
-    //   expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-    //   expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-    // })
-    return
+    it('does revenue hiding correctly', async () => {
+      const { collateral, tok } = await deployCollateralMockContext({ revenueHiding: fp('0.01') })
+
+      const rate = fp('2')
+      const rateAsRefPerTok = rate.div(50)
+      await (tok as CTokenMock).setExchangeRate(rate) // above current
+      await collateral.refresh()
+      const before = await collateral.refPerTok()
+      expect(before).to.equal(rateAsRefPerTok.mul(fp('0.99')).div(fp('1')))
+      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Should be SOUND if drops just under 1%
+      await (tok as CTokenMock).setExchangeRate(rate.mul(fp('0.99001')).div(fp('1')))
+      await collateral.refresh()
+      let after = await collateral.refPerTok()
+      expect(before).to.eq(after)
+      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Should be DISABLED if drops just over 1%
+      await (tok as CTokenMock).setExchangeRate(before.mul(fp('0.98999')).div(fp('1')))
+      await collateral.refresh()
+      after = await collateral.refPerTok()
+      expect(before).to.be.gt(after)
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    })
   }
 
   const beforeEachRewardsTest = async () => {
