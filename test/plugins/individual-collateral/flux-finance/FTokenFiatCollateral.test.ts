@@ -1,27 +1,34 @@
 import collateralTests from '../collateralTests'
-import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
+import {
+  CollateralFixtureContext,
+  CollateralStatus,
+  CollateralOpts,
+  MintCollateralFunc,
+} from '../pluginTestTypes'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
-  MockV3Aggregator,
+  CTokenMock,
   ICToken,
+  MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
 } from '../../../../typechain'
 import { networkConfig } from '../../../../common/configuration'
 import { bn } from '../../../../common/numbers'
+import { ZERO_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { advanceBlocks } from '../../../utils/time'
 import {
   USDC_HOLDER,
   USDT_HOLDER,
-  FRAX_HOLDER,
+  // FRAX_HOLDER,
   DAI_HOLDER,
   USDC_ORACLE_ERROR,
   USDT_ORACLE_ERROR,
   DAI_ORACLE_ERROR,
-  FRAX_ORACLE_ERROR,
+  // FRAX_ORACLE_ERROR,
   ORACLE_TIMEOUT,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
@@ -42,6 +49,10 @@ interface FTokenEnumeration {
   fToken: string
   oracleError: BigNumberish
   chainlinkFeed: string
+}
+
+interface FTokenCollateralOpts extends CollateralOpts {
+  comptroller?: string
 }
 
 // ====
@@ -66,6 +77,7 @@ const all = [
     oracleError: USDT_ORACLE_ERROR,
     chainlinkFeed: config.chainlinkFeeds.USDT as string,
   },
+  // // as of 3/15/2023 there is only $11 of FRAX in Flux Finance
   // {
   //   testName: 'fFRAX Collateral',
   //   underlying: config.tokens.FRAX as string,
@@ -84,7 +96,7 @@ const all = [
   },
 ]
 all.forEach((curr: FTokenEnumeration) => {
-  const defaultCollateralOpts: CollateralOpts = {
+  const defaultCollateralOpts: FTokenCollateralOpts = {
     erc20: curr.fToken,
     targetName: ethers.utils.formatBytes32String('USD'),
     priceTimeout: ORACLE_TIMEOUT,
@@ -94,9 +106,10 @@ all.forEach((curr: FTokenEnumeration) => {
     maxTradeVolume: MAX_TRADE_VOL,
     defaultThreshold: DEFAULT_THRESHOLD,
     delayUntilDefault: DELAY_UNTIL_DEFAULT,
+    comptroller: config.FLUX_FINANCE_COMPTROLLER,
   }
 
-  const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
+  const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
     opts = { ...defaultCollateralOpts, ...opts }
 
     const FTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -116,7 +129,7 @@ all.forEach((curr: FTokenEnumeration) => {
         delayUntilDefault: opts.delayUntilDefault,
       },
       0, // no revenue hiding
-      config.FLUX_FINANCE_COMPTROLLER,
+      opts.comptroller,
       { gasLimit: 2000000000 }
     )
     await collateral.deployed()
@@ -132,7 +145,7 @@ all.forEach((curr: FTokenEnumeration) => {
 
   const makeCollateralFixtureContext = (
     alice: SignerWithAddress,
-    opts: CollateralOpts = {}
+    opts: FTokenCollateralOpts = {}
   ): Fixture<CollateralFixtureContext> => {
     const collateralOpts = { ...defaultCollateralOpts, ...opts }
 
@@ -160,62 +173,32 @@ all.forEach((curr: FTokenEnumeration) => {
     return makeCollateralFixtureContext
   }
 
-  //   const deployCollateralCometMockContext = async (
-  //     opts: CollateralOpts = {}
-  //   ): Promise<fTokenCollateralFixtureContextMockComet> => {
-  //     const collateralOpts = { ...defaultCollateralOpts, ...opts }
+  const deployCollateralMockContext = async (
+    opts: FTokenCollateralOpts = {}
+  ): Promise<CollateralFixtureContext> => {
+    const collateralOpts = { ...defaultCollateralOpts, ...opts }
 
-  //     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
-  //       await ethers.getContractFactory('MockV3Aggregator')
-  //     )
-  //     const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
-  //     collateralOpts.chainlinkFeed = chainlinkFeed.address
+    const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
+      await ethers.getContractFactory('MockV3Aggregator')
+    )
 
-  //     const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
-  //     const cusdcV3 = <CometMock>await CometFactory.deploy(bn('5e15'), bn('1e15'), CUSDC_V3)
+    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
+    collateralOpts.chainlinkFeed = chainlinkFeed.address
 
-  //     const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
-  //       await ethers.getContractFactory('CusdcV3Wrapper')
-  //     )
+    const FTokenMockFactory = await ethers.getContractFactory('CTokenMock')
+    const erc20 = await FTokenMockFactory.deploy('Mock FToken', 'Mock Ftk', curr.underlying)
+    collateralOpts.erc20 = erc20.address
 
-  //     const wcusdcV3 = <ICusdcV3Wrapper>(
-  //       ((await CusdcV3WrapperFactory.deploy(
-  //         cusdcV3.address,
-  //         REWARDS,
-  //         COMP
-  //       )) as unknown as ICusdcV3Wrapper)
-  //     )
-  //     const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
-  //       await ethers.getContractFactory('CusdcV3WrapperMock')
-  //     )
-  //     const wcusdcV3Mock = await (<ICusdcV3WrapperMock>(
-  //       await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)
-  //     ))
+    const collateral = await deployCollateral(collateralOpts)
+    const tokDecimals = await erc20.decimals()
 
-  //     const realMock = (await ethers.getContractAt(
-  //       'ICusdcV3WrapperMock',
-  //       wcusdcV3Mock.address
-  //     )) as ICusdcV3WrapperMock
-  //     collateralOpts.erc20 = wcusdcV3.address
-  //     collateralOpts.erc20 = realMock.address
-  //     const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
-  //     const collateral = await deployCollateral(collateralOpts)
-
-  //     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-  //     const tokDecimals = await wcusdcV3.decimals()
-
-  //     return {
-  //       collateral,
-  //       chainlinkFeed,
-  //       cusdcV3,
-  //       wcusdcV3: <ICusdcV3WrapperMock>wcusdcV3Mock,
-  //       wcusdcV3Mock,
-  //       usdc,
-  //       tok: wcusdcV3,
-  //       rewardToken,
-  //       tokDecimals,
-  //     }
-  //   }
+    return {
+      collateral,
+      chainlinkFeed,
+      tok: erc20,
+      tokDecimals,
+    }
+  }
 
   /*
   Define helper functions
@@ -242,10 +225,26 @@ all.forEach((curr: FTokenEnumeration) => {
   }
 
   const collateralSpecificConstructorTests = () => {
-    return
+    it('Should validate comptroller arg', async () => {
+      await expect(deployCollateral({ comptroller: ZERO_ADDRESS })).to.be.revertedWith(
+        'comptroller missing'
+      )
+    })
   }
 
   const collateralSpecificStatusTests = () => {
+    it('enters DISABLED state if refPerTok falls', async () => {
+      const { collateral, tok } = await deployCollateralMockContext()
+      const before = await collateral.refPerTok()
+      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(before).to.be.gt(0)
+      await (tok as CTokenMock).setExchangeRate(before.sub(1))
+      await collateral.refresh()
+      const after = await collateral.refPerTok()
+      expect(before).to.be.gt(after)
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
     // it('enters IFFY state when compound reserves are below target reserves iffy threshold', async () => {
     //   const mockOpts = { reservesThresholdIffy: 5000n, reservesThresholdDisabled: 1000n }
     //   const { collateral, cusdcV3 } = await deployCollateralCometMockContext(mockOpts)
