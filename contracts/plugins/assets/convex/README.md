@@ -1,5 +1,7 @@
 # Convex Curve StableSwap Collateral Plugin
 
+_Note: This plugin was originally developed during the Reserve Protocol Hackathon and was later heavily modified by the Reserve team._
+
 This repo contains a [Reserve Protocol](https://reserve.org/en/) collateral plugin for [Curve](https://curve.fi/#/ethereum/swap) StableSwap tokens staked in [Convex](https://www.convexfinance.com/).
 
 This plugin enables the use of any Curve StableSwap Liquidity Token staked in Convex as collateral within the Reserve Protocol. There are 3 different types of Liquidity Pools in Curve:

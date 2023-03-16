@@ -94,7 +94,7 @@ contract CvxVolatileCollateral is CvxStableCollateral {
         for (uint8 i = 0; i < nTokens; i++) {
             try this.tokenPrice(i) returns (uint192 low, uint192 high) {
                 // {UoA/tok} = {UoA/tok} + {UoA/tok}
-                uint192 mid = low + high / 2;
+                uint192 mid = (low + high) / 2;
 
                 // {UoA} = {tok} * {UoA/tok}
                 vals[i] = balances[i].mul(mid);
