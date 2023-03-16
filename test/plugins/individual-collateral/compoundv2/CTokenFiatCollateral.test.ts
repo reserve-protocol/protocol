@@ -6,6 +6,7 @@ import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 import { getChainId } from '../../../../common/blockchain-utils'
+import forkBlockNumber from '../../../integration/fork-block-numbers'
 import {
   IConfig,
   IGovParams,
