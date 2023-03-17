@@ -2,21 +2,25 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
-import "contracts/plugins/ankr/IAnkrETH.sol";
-import "contracts/plugins/assets/OracleLib.sol";
-import "contracts/libraries/Fixed.sol";
+import "../../../libraries/Fixed.sol";
+import "../AppreciatingFiatCollateral.sol";
+import "../OracleLib.sol";
+import "./IsfrxEth.sol";
 
 /**
- * @title Ankr Staked Eth Collateral
- * @notice Collateral plugin for Ankr ankrETH,
- * tok = ankrETH
- * ref = ETH
+ * @title SFraxEthCollateral
+ * @notice Collateral plugin for Frax-ETH,
+ * tok = sfrxETH
+ * ref = frxETH
  * tar = ETH
  * UoA = USD
+
+ TODO: a price oracle is needed for ETH/frxETH. there are 2 options:
+ 1) wait for a chainlink oracle.  the FRAX team is working on getting one, but there is currently
+ no ETA
+ 2) implement a TWAP based on curve
  */
-// TODO: a price oracle is needed for ankrETH
-contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
+contract SFraxEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -56,7 +60,7 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        uint256 rate = IAnkrETH(address(erc20)).ratio();
-        return FIX_ONE.div(_safeWrap(rate), FLOOR);
+        uint256 rate = IsfrxEth(address(erc20)).pricePerShare();
+        return _safeWrap(rate);
     }
 }

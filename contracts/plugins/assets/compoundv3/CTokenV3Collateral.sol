@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
-import "./ICusdcV3Wrapper.sol";
-import "./vendor/IComet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "contracts/plugins/assets/OracleLib.sol";
-import "contracts/libraries/Fixed.sol";
+import "../../../libraries/Fixed.sol";
+import "../AppreciatingFiatCollateral.sol";
+import "../OracleLib.sol";
+import "./ICusdcV3Wrapper.sol";
+import "./vendor/IComet.sol";
 
 /**
  * @title CTokenV3Collateral

@@ -2,10 +2,10 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
-import "contracts/plugins/lido/IWSTETH.sol";
-import "contracts/plugins/assets/OracleLib.sol";
-import "contracts/libraries/Fixed.sol";
+import "../../../libraries/Fixed.sol";
+import "../AppreciatingFiatCollateral.sol";
+import "../OracleLib.sol";
+import "./IWSTETH.sol";
 
 /**
  * @title Lido Staked Eth Collateral
