@@ -51,16 +51,6 @@ jobs:
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:plugins
-
-  collateral-tests:
-    name: 'Collateral Tests'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16.x
-          cache: 'yarn'
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
         with:
@@ -69,11 +59,8 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:plugins:integration
         env:
-          NODE_OPTIONS: '--max-old-space-size=4096'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
 
@@ -128,6 +115,18 @@ jobs:
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:extreme
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: yarn test:extreme:integration
+        env:
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
 
   integration-tests:
     name: 'Integration Tests'
@@ -153,9 +152,5 @@ jobs:
       - run: yarn test:integration
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
-          TS_NODE_SKIP_IGNORE: true
-          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-      - run: yarn test:extreme:integration
-        env:
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
