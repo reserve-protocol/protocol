@@ -788,7 +788,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // close to $633 usd
         await expectPrice(
           ctkInf.cTokenCollateral.address,
-          ctkInf.targetPrice.mul(ctkInf.refPrice).mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR.pow(2)),
+          ctkInf.targetPrice
+            .mul(ctkInf.refPrice)
+            .mul(await ctkInf.cTokenCollateral.refPerTok())
+            .div(BN_SCALE_FACTOR.pow(2)),
           ORACLE_ERROR,
           true
         )

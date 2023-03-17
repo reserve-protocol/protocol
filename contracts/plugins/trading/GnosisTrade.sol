@@ -195,11 +195,12 @@ contract GnosisTrade is ITrade {
         if (sellBal < initBal) {
             soldAmt = initBal - sellBal;
 
-            // Gnosis rounds defensively, so it's possible to get 1 fewer attoTokens returned
-            uint256 adjustedSoldAmt = Math.max(soldAmt - 1, 1);
+            // Gnosis rounds defensively in the buy token; we should not consider it a violation
+            uint256 adjustedSoldAmt = Math.max(soldAmt, 1);
+            uint256 adjustedBuyAmt = boughtAmt + 1;
 
             // {buyTok/sellTok}
-            uint192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
+            uint192 clearingPrice = shiftl_toFix(adjustedBuyAmt, -int8(buy.decimals())).div(
                 shiftl_toFix(adjustedSoldAmt, -int8(sell.decimals()))
             );
 

@@ -221,7 +221,6 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         ORACLE_ERROR,
         await one.backingManager.maxTradeSlippage()
       )
-      console.log(1, sellAmt)
       await expect(one.backingManager.manageTokens([]))
         .to.emit(one.backingManager, 'TradeStarted')
         .withArgs(

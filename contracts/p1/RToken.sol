@@ -214,7 +214,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint48 basketNonce
     ) public notFrozen exchangeRateIsValidAfter {
         // == Refresh ==
-        main.assetRegistry().refresh();
+        assetRegistry.refresh();
 
         // == Checks and Effects ==
         address redeemer = _msgSender();
