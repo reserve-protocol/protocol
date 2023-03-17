@@ -232,18 +232,8 @@ all.forEach((curr: FTokenEnumeration) => {
   }
 
   const collateralSpecificStatusTests = () => {
-    it('enters DISABLED state if refPerTok falls', async () => {
-      const { collateral, tok } = await deployCollateralMockContext()
-      const before = await collateral.refPerTok()
-      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(before).to.be.gt(0)
-      await (tok as CTokenMock).setExchangeRate(before.sub(1))
-      await collateral.refresh()
-      const after = await collateral.refPerTok()
-      expect(before).to.be.gt(after)
-      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-    })
-
+    // TODO would be nice to move this into the generic suite
+    // it's hard though...requires setting refPerTok precisely so would add a bunch more to the suite interface
     it('does revenue hiding correctly', async () => {
       const { collateral, tok } = await deployCollateralMockContext({ revenueHiding: fp('0.01') })
 
