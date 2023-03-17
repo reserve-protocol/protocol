@@ -853,25 +853,33 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     // ==== Generate the tests ====
 
     // applied to both buy and sell tokens
-    const decimals = [bn('1'), bn('6'), bn('8'), bn('18')]
+    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
 
     // auction sell amount
     const auctionSellAmts = [bn('1'), bn('1595439874635'), bn('987321984732198435645846513')]
 
     // price ratios: use disgustingly precise values here to test weird roundings
-    const priceRatios = [fp('0.793549493549843521'), fp('2.298432198935249846')]
+    const priceRatios = [
+      fp('0.793549493549843521'),
+      fp('1.372369387462958574'),
+      fp('2.298432198935249846'),
+    ]
 
     // auction fill %: use disgustingly precise values here to test weird roundings
     const fill = [fp('0'), fp('0.321698432589749813'), fp('0.798138321987329646'), fp('1')]
 
-    // total cases is 4 * 4 * 3 * 2 * 4 = 384
+    // total cases is 5 * 5 * 3 * 3 * 4 = 900
 
     if (SLOW) {
       auctionSellAmts.push(bn('374514321987325169863'))
-      priceRatios.push(...[fp('0.016056468356548968'), fp('7.341987325198354694')])
-      fill.push(...[fp('0.176334768961354966'), fp('0.523449931646439834')])
+      priceRatios.push(
+        fp('0.016056468356548968'),
+        fp('4.479236579234762935'),
+        fp('7.341987325198354694')
+      )
+      fill.push(fp('0.176334768961354965'), fp('0.523449931646439834'))
 
-      // total cases is 4 * 4 * 4 * 4 * 6 = 1536
+      // total cases is 5 * 5 * 4 * 6 * 6 = 3600
     }
 
     const paramList = cartesianProduct(decimals, decimals, auctionSellAmts, priceRatios, fill)

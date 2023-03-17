@@ -1,11 +1,11 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { BigNumberish } from 'ethers'
-import { MockV3Aggregator, TestICollateral, IERC20 } from '../../../typechain'
+import { BigNumberish, BigNumber } from 'ethers'
+import { MockV3Aggregator, ICollateral, IERC20 } from '../../../typechain'
 
 type Fixture<T> = () => Promise<T>
 
 export interface CollateralFixtureContext {
-  collateral: TestICollateral
+  collateral: ICollateral
   chainlinkFeed: MockV3Aggregator
   tok: IERC20
   tokDecimals: number // tldr; IERC20 does not include decimals()
@@ -26,7 +26,7 @@ export interface CollateralOpts {
   delayUntilDefault?: BigNumberish
 }
 
-export type DeployCollateralFunc = (opts: CollateralOpts) => Promise<TestICollateral>
+export type DeployCollateralFunc = (opts: CollateralOpts) => Promise<ICollateral>
 export type MakeCollateralFixtureFunc<T extends CollateralFixtureContext> = (
   alice: SignerWithAddress,
   opts: CollateralOpts
@@ -44,12 +44,18 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   beforeEachRewardsTest: (ctx: T) => void
   makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
   mintCollateralTo: MintCollateralFunc<T>
-  appreciateRefPerTok: (ctx: T) => void
-  canReduceRefPerTok: () => boolean
-  reduceRefPerTok: (ctx: T) => void
+  reduceTargetPerRef: (ctx: T, pctDecrease: BigNumberish | undefined) => void
+  increaseTargetPerRef: (ctx: T, pctIncrease: BigNumberish | undefined) => void
+  reduceRefPerTok: (ctx: T, pctDecrease: BigNumberish | undefined) => void
+  increaseRefPerTok: (ctx: T, pctIncrease: BigNumberish | undefined) => void
+  getExpectedPrice: (ctx: T) => Promise<BigNumber>
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
+  itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
+  itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction
+  itCheckPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
   resetFork: () => void
   collateralName: string
+  chainlinkDefaultAnswer: BigNumberish
 }
 
 export enum CollateralStatus {

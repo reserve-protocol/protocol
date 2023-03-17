@@ -7,7 +7,7 @@ import {
 } from '../pluginTestTypes'
 import { mintWcUSDC, makewCSUDC, resetFork, enableRewardsAccrual } from './helpers'
 import { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish } from 'ethers'
+import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -20,9 +20,9 @@ import {
   MockV3Aggregator__factory,
   CometMock,
   CometMock__factory,
-  TestICollateral,
+  ICollateral,
 } from '../../../../typechain'
-import { bn } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -72,6 +72,8 @@ interface CometCollateralOpts extends CollateralOpts {
   Define deployment functions
 */
 
+const chainlinkDefaultAnswer = bn('1e8')
+
 export const defaultCometCollateralOpts: CometCollateralOpts = {
   erc20: CUSDC_V3,
   targetName: ethers.utils.formatBytes32String('USD'),
@@ -87,16 +89,14 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   reservesThresholdDisabled: bn('5000'),
 }
 
-export const deployCollateral = async (
-  opts: CometCollateralOpts = {}
-): Promise<TestICollateral> => {
+export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<ICollateral> => {
   opts = { ...defaultCometCollateralOpts, ...opts }
 
   const CTokenV3CollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CTokenV3Collateral'
   )
 
-  const collateral = <TestICollateral>await CTokenV3CollateralFactory.deploy(
+  const collateral = <ICollateral>await CTokenV3CollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -138,7 +138,9 @@ const makeCollateralFixtureContext = (
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
+    const chainlinkFeed = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
+    )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     const fix = await makewCSUDC()
@@ -185,7 +187,7 @@ const deployCollateralCometMockContext = async (
   const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
     await ethers.getContractFactory('MockV3Aggregator')
   )
-  const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
+  const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   collateralOpts.chainlinkFeed = chainlinkFeed.address
 
   const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
@@ -247,14 +249,50 @@ const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = asyn
   await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.wcusdcV3, user, amount, recipient)
 }
 
+<<<<<<< HEAD
 const appreciateRefPerTok = async () => {
   await advanceBlocks(1000)
   await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+=======
+const reduceTargetPerRef = async (
+  ctx: CometCollateralFixtureContext,
+  pctDecrease: BigNumberish | undefined
+) => {
+  const lastRound = await ctx.chainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+}
+
+const increaseTargetPerRef = async (
+  ctx: CometCollateralFixtureContext,
+  pctIncrease: BigNumberish | undefined
+) => {
+  const lastRound = await ctx.chainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+>>>>>>> feature/plugin-reth
 }
 
 const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
   const currentExchangeRate = await ctx.wcusdcV3.exchangeRate()
   await ctx.wcusdcV3Mock.setMockExchangeRate(true, currentExchangeRate.sub(100))
+}
+
+const increaseRefPerTok = async () => {
+  await advanceBlocks(1000)
+  await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+}
+
+const getExpectedPrice = async (ctx: CometCollateralFixtureContext): Promise<BigNumber> => {
+  const initRefPerTok = await ctx.collateral.refPerTok()
+
+  const decimals = await ctx.chainlinkFeed.decimals()
+
+  const initData = await ctx.chainlinkFeed.latestRoundData()
+  return initData.answer
+    .mul(bn(10).pow(18 - decimals))
+    .mul(initRefPerTok)
+    .div(fp('1'))
 }
 
 /*
@@ -366,12 +404,23 @@ const opts = {
   beforeEachRewardsTest,
   makeCollateralFixtureContext,
   mintCollateralTo,
+<<<<<<< HEAD
   appreciateRefPerTok,
   canReduceRefPerTok: () => true,
+=======
+  reduceTargetPerRef,
+  increaseTargetPerRef,
+>>>>>>> feature/plugin-reth
   reduceRefPerTok,
+  increaseRefPerTok,
+  getExpectedPrice,
   itClaimsRewards: it,
+  itChecksTargetPerRefDefault: it,
+  itChecksRefPerTokDefault: it,
+  itCheckPriceChanges: it,
   resetFork,
   collateralName: 'CompoundV3USDC',
+  chainlinkDefaultAnswer,
 }
 
 collateralTests(opts)

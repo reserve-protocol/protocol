@@ -25,9 +25,9 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
     //                In this case, the asset may recover, reachiving whenDefault == NEVER.
     // whenDefault <= block.timestamp: default has already happened (permanently)
     uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
+    uint256 public override whenDefault = NEVER;
 
-    uint48 public immutable delayUntilDefault; // {s} e.g 86400
+    uint48 public immutable override delayUntilDefault; // {s} e.g 86400
 
     bool public priceable;
 
