@@ -65,7 +65,7 @@ async function main() {
 
   console.log(`Deployed Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
-  assetCollDeployments.collateral.wstETH = collateral.address
+  assetCollDeployments.collateral.rETH = collateral.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
