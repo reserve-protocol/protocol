@@ -212,7 +212,7 @@ const opts = {
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
-  itCheckPriceChanges: it,
+  itChecksPriceChanges: it,
   resetFork,
   collateralName: 'AnkrStakedETH',
   chainlinkDefaultAnswer,

@@ -277,7 +277,7 @@ const opts = {
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it.skip,
-  itCheckPriceChanges: it,
+  itChecksPriceChanges: it,
   resetFork,
   collateralName: 'SFraxEthCollateral',
   chainlinkDefaultAnswer,

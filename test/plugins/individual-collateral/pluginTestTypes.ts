@@ -52,7 +52,7 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction
-  itCheckPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
+  itChecksPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
   resetFork: () => void
   collateralName: string
   chainlinkDefaultAnswer: BigNumberish

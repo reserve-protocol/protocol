@@ -7,7 +7,7 @@ import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { bn } from '../../../common/numbers'
-import { InvalidMockV3Aggregator, MockV3Aggregator, ICollateral } from '../../../typechain'
+import { IERC20, InvalidMockV3Aggregator, MockV3Aggregator, ICollateral } from '../../../typechain'
 import {
   advanceTime,
   advanceBlocks,
@@ -44,7 +44,7 @@ export default function fn<X extends CollateralFixtureContext>(
     itClaimsRewards,
     itChecksTargetPerRefDefault,
     itChecksRefPerTokDefault,
-    itCheckPriceChanges,
+    itChecksPriceChanges,
     resetFork,
     collateralName,
     chainlinkDefaultAnswer,
@@ -144,43 +144,19 @@ export default function fn<X extends CollateralFixtureContext>(
           await advanceBlocks(1000)
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 
-          if (ctx.rewardToken) {
-            const balBefore = await ctx.rewardToken.balanceOf(collateral.address)
-            await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
-            const balAfter = await ctx.rewardToken.balanceOf(collateral.address)
-            expect(balAfter).gt(balBefore)
-          } else {
-            await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
-          }
+          const balBefore = await (ctx.rewardToken as IERC20).balanceOf(collateral.address)
+          await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
+          const balAfter = await (ctx.rewardToken as IERC20).balanceOf(collateral.address)
+          expect(balAfter).gt(balBefore)
         })
       })
 
       describe('prices', () => {
-<<<<<<< HEAD
-        it('prices change as underlying feed price changes', async () => {
-          const clData = await chainlinkFeed.latestRoundData()
-          const decimals = await chainlinkFeed.decimals()
-          const oracleError = await collateral.oracleError()
-          const refPerTok = await collateral.refPerTok()
-          const expectedPrice = clData.answer
-            .mul(bn(10).pow(18 - decimals))
-            .mul(refPerTok)
-            .div(fp('1'))
-          const expectedDelta = expectedPrice.mul(oracleError).div(fp(1))
-
-          // Check initial prices
-          const [initLow, initHigh] = await collateral.price()
-          let expectedLow = expectedPrice.sub(expectedDelta)
-          let expectedHigh = expectedPrice.add(expectedDelta)
-          expect(initLow).to.be.closeTo(expectedLow, 1)
-          expect(initHigh).to.be.closeTo(expectedHigh, 1)
-=======
-        itCheckPriceChanges('prices change as USD feed price changes', async () => {
+        itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)
           await expectPrice(collateral.address, expectedPrice, oracleError, true)
 
->>>>>>> feature/plugin-reth
           // Get refPerTok initial values
           const initialRefPerTok = await collateral.refPerTok()
 
@@ -190,30 +166,15 @@ export default function fn<X extends CollateralFixtureContext>(
           await updateAnswerTx.wait()
 
           // Check new prices
-<<<<<<< HEAD
-          const newclData = await chainlinkFeed.latestRoundData()
-          const newRefPerTok = await collateral.refPerTok()
-          const newExpectedPrice = newclData.answer
-            .mul(bn(10).pow(18 - decimals))
-            .mul(newRefPerTok)
-            .div(fp('1'))
-          const newExpectedDelta = newExpectedPrice.mul(oracleError).div(fp(1))
-          const [newLow, newHigh] = await collateral.price()
-          expectedLow = newExpectedPrice.sub(newExpectedDelta)
-          expect(newLow).to.be.closeTo(expectedLow, 1)
-          expectedHigh = newExpectedPrice.add(newExpectedDelta)
-          expect(newHigh).to.be.closeTo(expectedHigh, 2)
-=======
           const newExpectedPrice = await getExpectedPrice(ctx)
           await expectPrice(collateral.address, newExpectedPrice, oracleError, true)
->>>>>>> feature/plugin-reth
 
           // Check refPerTok remains the same (because we have not refreshed)
           const finalRefPerTok = await collateral.refPerTok()
           expect(finalRefPerTok).to.equal(initialRefPerTok)
         })
 
-        itCheckPriceChanges('prices change as targetPerRef changes', async () => {
+        itChecksPriceChanges('prices change as targetPerRef changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)
           await expectPrice(collateral.address, expectedPrice, oracleError, true)
@@ -233,32 +194,20 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(finalRefPerTok).to.equal(initialRefPerTok)
         })
 
-        itCheckPriceChanges('prices change as refPerTok changes', async () => {
+        itChecksPriceChanges('prices change as refPerTok changes', async () => {
           const initRefPerTok = await collateral.refPerTok()
 
           const oracleError = await collateral.oracleError()
 
           const [initLow, initHigh] = await collateral.price()
-<<<<<<< HEAD
-          const expectedLow = expectedPrice.sub(expectedDelta)
-          const expectedHigh = expectedPrice.add(expectedDelta)
-          expect(initLow).to.be.closeTo(expectedLow, 1)
-          expect(initHigh).to.be.closeTo(expectedHigh, 1)
-=======
           const expectedPrice = await getExpectedPrice(ctx)
 
           await expectPrice(collateral.address, expectedPrice, oracleError, true)
->>>>>>> feature/plugin-reth
 
           // need to deposit in order to get an exchange rate
           const amount = bn('200').mul(bn(10).pow(ctx.tokDecimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
-<<<<<<< HEAD
-
-          await appreciateRefPerTok(ctx)
-=======
           await increaseRefPerTok(ctx, 5)
->>>>>>> feature/plugin-reth
 
           await collateral.refresh()
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -311,6 +260,38 @@ export default function fn<X extends CollateralFixtureContext>(
             }
           */
           expect(true)
+        })
+
+        it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+          const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+            'InvalidMockV3Aggregator'
+          )
+          const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
+            await InvalidMockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
+          )
+
+          const invalidCollateral = await deployCollateral({
+            erc20: ctx.tok.address,
+            chainlinkFeed: invalidChainlinkFeed.address,
+          })
+
+          // Reverting with no reason
+          await invalidChainlinkFeed.setSimplyRevert(true)
+          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+          // Runnning out of gas (same error)
+          await invalidChainlinkFeed.setSimplyRevert(false)
+          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+        })
+
+        it('enters IFFY state when price becomes stale', async () => {
+          const oracleTimeout = await collateral.oracleTimeout()
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+          await advanceBlocks(oracleTimeout / 12)
+          await collateral.refresh()
+          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
       })
 
@@ -406,15 +387,6 @@ export default function fn<X extends CollateralFixtureContext>(
           }
         )
 
-<<<<<<< HEAD
-        if (canReduceRefPerTok()) {
-          it('enters DISABLED state when refPerTok() decreases', async () => {
-            // Check initial state
-            expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
-
-            await mintCollateralTo(ctx, bn('20000e6'), alice, alice.address)
-=======
         itChecksRefPerTokDefault('enters DISABLED state when refPerTok() decreases', async () => {
           // Check initial state
           expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -426,60 +398,22 @@ export default function fn<X extends CollateralFixtureContext>(
             alice,
             alice.address
           )
->>>>>>> feature/plugin-reth
 
-            await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
-            // State remains the same
-            expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-            expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+          await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+          // State remains the same
+          expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-<<<<<<< HEAD
-            await reduceRefPerTok(ctx)
-=======
           await reduceRefPerTok(ctx, 5)
->>>>>>> feature/plugin-reth
 
-            // Collateral defaults due to refPerTok() going down
-            await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
-            expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-            expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-          })
-        }
-
-        it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
-          const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-            'InvalidMockV3Aggregator'
-          )
-          const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
-            await InvalidMockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
-          )
-
-          const invalidCollateral = await deployCollateral({
-            erc20: ctx.tok.address,
-            chainlinkFeed: invalidChainlinkFeed.address,
-          })
-
-          // Reverting with no reason
-          await invalidChainlinkFeed.setSimplyRevert(true)
-          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-          // Runnning out of gas (same error)
-          await invalidChainlinkFeed.setSimplyRevert(false)
-          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-        })
-
-        it('enters IFFY state when price becomes stale', async () => {
-          const oracleTimeout = await collateral.oracleTimeout()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-          await advanceBlocks(oracleTimeout / 12)
-          await collateral.refresh()
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+          // Collateral defaults due to refPerTok() going down
+          await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
+          expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+          expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
         })
       })
-
-      describe('collateral-specific tests', collateralSpecificStatusTests)
     })
+
+    describe('collateral-specific tests', collateralSpecificStatusTests)
   })
 }

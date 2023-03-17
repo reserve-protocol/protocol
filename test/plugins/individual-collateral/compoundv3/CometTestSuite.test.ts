@@ -249,11 +249,6 @@ const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = asyn
   await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.wcusdcV3, user, amount, recipient)
 }
 
-<<<<<<< HEAD
-const appreciateRefPerTok = async () => {
-  await advanceBlocks(1000)
-  await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
-=======
 const reduceTargetPerRef = async (
   ctx: CometCollateralFixtureContext,
   pctDecrease: BigNumberish | undefined
@@ -270,7 +265,6 @@ const increaseTargetPerRef = async (
   const lastRound = await ctx.chainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
   await ctx.chainlinkFeed.updateAnswer(nextAnswer)
->>>>>>> feature/plugin-reth
 }
 
 const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
@@ -404,20 +398,15 @@ const opts = {
   beforeEachRewardsTest,
   makeCollateralFixtureContext,
   mintCollateralTo,
-<<<<<<< HEAD
-  appreciateRefPerTok,
-  canReduceRefPerTok: () => true,
-=======
   reduceTargetPerRef,
   increaseTargetPerRef,
->>>>>>> feature/plugin-reth
   reduceRefPerTok,
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it,
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
-  itCheckPriceChanges: it,
+  itChecksPriceChanges: it,
   resetFork,
   collateralName: 'CompoundV3USDC',
   chainlinkDefaultAnswer,

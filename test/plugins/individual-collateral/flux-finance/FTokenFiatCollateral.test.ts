@@ -12,7 +12,7 @@ import {
   ICToken,
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  TestICollateral,
+  ICollateral,
 } from '../../../../typechain'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
@@ -79,6 +79,7 @@ const all = [
     chainlinkFeed: config.chainlinkFeeds.USDT as string,
   },
   // // as of 3/15/2023 there is only $11 of FRAX in Flux Finance
+  // // there is apparently not enough borrow to cause refPerTok() to increase
   // {
   //   testName: 'fFRAX Collateral',
   //   underlying: config.tokens.FRAX as string,
@@ -111,14 +112,14 @@ all.forEach((curr: FTokenEnumeration) => {
     revenueHiding: 0,
   }
 
-  const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
+  const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<ICollateral> => {
     opts = { ...defaultCollateralOpts, ...opts }
 
     const FTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     ) // fTokens are the same as cTokens modulo some extra stuff we don't care about
 
-    const collateral = <TestICollateral>await FTokenCollateralFactory.deploy(
+    const collateral = <ICollateral>await FTokenCollateralFactory.deploy(
       {
         erc20: opts.erc20,
         targetName: opts.targetName,
@@ -217,13 +218,9 @@ all.forEach((curr: FTokenEnumeration) => {
     await mintFToken(underlying, curr.holderUnderlying, tok, amount, recipient)
   }
 
-  const appreciateRefPerTok = async (ctx: CollateralFixtureContext) => {
+  const increaseRefPerTok = async (ctx: CollateralFixtureContext) => {
     await advanceBlocks(1)
     await (ctx.tok as ICToken).exchangeRateCurrent()
-  }
-
-  const reduceRefPerTok = async () => {
-    return
   }
 
   const collateralSpecificConstructorTests = () => {
@@ -274,27 +271,45 @@ all.forEach((curr: FTokenEnumeration) => {
     })
   }
 
-  const beforeEachRewardsTest = async () => {
-    return
+  const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
+    const initRefPerTok = await ctx.collateral.refPerTok()
+
+    const decimals = await ctx.chainlinkFeed.decimals()
+
+    const initData = await ctx.chainlinkFeed.latestRoundData()
+    return initData.answer
+      .mul(bn(10).pow(18 - decimals))
+      .mul(initRefPerTok)
+      .div(fp('1'))
   }
 
   /*
-  Run the test suite
-*/
+    Run the test suite
+  */
+
+  const emptyFn = () => {
+    return
+  }
 
   const opts = {
     deployCollateral,
     collateralSpecificConstructorTests,
     collateralSpecificStatusTests,
-    beforeEachRewardsTest,
+    beforeEachRewardsTest: emptyFn,
     makeCollateralFixtureContext,
     mintCollateralTo,
-    appreciateRefPerTok,
-    canReduceRefPerTok: () => false,
-    reduceRefPerTok,
-    itClaimsRewards: it,
+    reduceTargetPerRef: emptyFn,
+    increaseTargetPerRef: emptyFn,
+    reduceRefPerTok: emptyFn,
+    increaseRefPerTok,
+    getExpectedPrice,
+    itClaimsRewards: it.skip,
+    itChecksTargetPerRefDefault: it.skip,
+    itChecksRefPerTokDefault: it.skip,
+    itChecksPriceChanges: it,
     resetFork,
     collateralName: curr.testName,
+    chainlinkDefaultAnswer: bn('1e8'),
   }
 
   collateralTests(opts)
