@@ -2,12 +2,13 @@ import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintRETH } from './helpers'
 import { ethers } from 'hardhat'
+import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  ICollateral,
+  TestICollateral,
   IReth,
   WETH9,
 } from '../../../../typechain'
@@ -63,12 +64,12 @@ export const defaultRethCollateralOpts: RethCollateralOpts = {
   refPerTokChainlinkTimeout: ORACLE_TIMEOUT,
 }
 
-export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<TestICollateral> => {
   opts = { ...defaultRethCollateralOpts, ...opts }
 
   const RethCollateralFactory: ContractFactory = await ethers.getContractFactory('RethCollateral')
 
-  const collateral = <ICollateral>await RethCollateralFactory.deploy(
+  const collateral = <TestICollateral>await RethCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -86,6 +87,9 @@ export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<I
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
 
   return collateral
 }
@@ -214,7 +218,7 @@ const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('networ
 // prettier-ignore
 const reduceRefPerTok = async (
   ctx: RethCollateralFixtureContext,
-  pctDecrease: BigNumberish | undefined
+  pctDecrease: BigNumberish 
 ) => {
   const rethNetworkBalances = await ethers.getContractAt(
     'IRocketNetworkBalances',
@@ -233,7 +237,7 @@ const reduceRefPerTok = async (
 }
 // const reduceRefPerTok = async (
 //   ctx: RethCollateralFixtureContext,
-//   pctDecrease: BigNumberish | undefined
+//   pctDecrease: BigNumberish
 // ) => {
 //   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
 //   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
@@ -243,7 +247,7 @@ const reduceRefPerTok = async (
 // prettier-ignore
 const increaseRefPerTok = async (
   ctx: RethCollateralFixtureContext,
-  pctIncrease: BigNumberish | undefined
+  pctIncrease: BigNumberish 
 ) => {
   const rethNetworkBalances = await ethers.getContractAt(
     'IRocketNetworkBalances',
@@ -262,7 +266,7 @@ const increaseRefPerTok = async (
 }
 // const increaseRefPerTok = async (
 //   ctx: RethCollateralFixtureContext,
-//   pctIncrease: BigNumberish | undefined
+//   pctIncrease: BigNumberish
 // ) => {
 //   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
 //   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))

@@ -2,11 +2,12 @@ import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintSfrxETH, mintFrxETH } from './helpers'
 import hre, { ethers } from 'hardhat'
+import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  ICollateral,
+  TestICollateral,
   ERC20Mock,
   IsfrxEth,
 } from '../../../../typechain'
@@ -57,14 +58,14 @@ export const defaultRethCollateralOpts: CollateralOpts = {
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
   opts = { ...defaultRethCollateralOpts, ...opts }
 
   const SFraxEthCollateralFactory: ContractFactory = await ethers.getContractFactory(
     'SFraxEthCollateral'
   )
 
-  const collateral = <ICollateral>await SFraxEthCollateralFactory.deploy(
+  const collateral = <TestICollateral>await SFraxEthCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -80,6 +81,9 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<IColl
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
 
   return collateral
 }
@@ -204,7 +208,7 @@ const reduceRefPerTok = async () => {
 // prettier-ignore
 const increaseRefPerTok = async (
   ctx: SFrxEthCollateralFixtureContext,
-  pctIncrease: BigNumberish | undefined
+  pctIncrease: BigNumberish 
 ) => {
   const currentBal = await ctx.frxEth.balanceOf(ctx.sfrxEth.address)
   const addBal = currentBal.mul(pctIncrease!).div(100)

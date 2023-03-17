@@ -20,7 +20,7 @@ import {
   MockV3Aggregator__factory,
   CometMock,
   CometMock__factory,
-  ICollateral,
+  TestICollateral,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
@@ -89,14 +89,16 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   reservesThresholdDisabled: bn('5000'),
 }
 
-export const deployCollateral = async (opts: CometCollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (
+  opts: CometCollateralOpts = {}
+): Promise<TestICollateral> => {
   opts = { ...defaultCometCollateralOpts, ...opts }
 
   const CTokenV3CollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CTokenV3Collateral'
   )
 
-  const collateral = <ICollateral>await CTokenV3CollateralFactory.deploy(
+  const collateral = <TestICollateral>await CTokenV3CollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -251,7 +253,7 @@ const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = asyn
 
 const reduceTargetPerRef = async (
   ctx: CometCollateralFixtureContext,
-  pctDecrease: BigNumberish | undefined
+  pctDecrease: BigNumberish
 ) => {
   const lastRound = await ctx.chainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
@@ -260,7 +262,7 @@ const reduceTargetPerRef = async (
 
 const increaseTargetPerRef = async (
   ctx: CometCollateralFixtureContext,
-  pctIncrease: BigNumberish | undefined
+  pctIncrease: BigNumberish
 ) => {
   const lastRound = await ctx.chainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))

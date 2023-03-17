@@ -32,7 +32,6 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
         require(_targetPerRefChainlinkTimeout > 0, "targetPerRefChainlinkTimeout zero");
         targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
         targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
-        exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
 
     /// Can revert, used by other contract functions in order to catch errors

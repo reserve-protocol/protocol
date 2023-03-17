@@ -8,7 +8,7 @@ import {
   ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  ICollateral,
+  TestICollateral,
   ISTETH,
   IWSTETH,
 } from '../../../../typechain'
@@ -61,14 +61,16 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   targetPerRefChainlinkTimeout: ORACLE_TIMEOUT,
 }
 
-export const deployCollateral = async (opts: WSTETHCollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (
+  opts: WSTETHCollateralOpts = {}
+): Promise<TestICollateral> => {
   opts = { ...defaultWSTETHCollateralOpts, ...opts }
 
   const WStEthCollateralFactory: ContractFactory = await ethers.getContractFactory(
     'LidoStakedEthCollateral'
   )
 
-  const collateral = <ICollateral>await WStEthCollateralFactory.deploy(
+  const collateral = <TestICollateral>await WStEthCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -87,6 +89,10 @@ export const deployCollateral = async (opts: WSTETHCollateralOpts = {}): Promise
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
+
   return collateral
 }
 
@@ -152,7 +158,7 @@ const mintCollateralTo: MintCollateralFunc<WSTETHCollateralFixtureContext> = asy
 
 const reduceTargetPerRef = async (
   ctx: WSTETHCollateralFixtureContext,
-  pctDecrease: BigNumberish | undefined
+  pctDecrease: BigNumberish
 ) => {
   const lastRound = await ctx.targetPerRefChainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
@@ -161,17 +167,14 @@ const reduceTargetPerRef = async (
 
 const increaseTargetPerRef = async (
   ctx: WSTETHCollateralFixtureContext,
-  pctIncrease: BigNumberish | undefined
+  pctIncrease: BigNumberish
 ) => {
   const lastRound = await ctx.targetPerRefChainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
   await ctx.targetPerRefChainlinkFeed.updateAnswer(nextAnswer)
 }
 
-const reduceRefPerTok = async (
-  ctx: WSTETHCollateralFixtureContext,
-  pctDecrease: BigNumberish | undefined
-) => {
+const reduceRefPerTok = async (ctx: WSTETHCollateralFixtureContext, pctDecrease: BigNumberish) => {
   const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
 
   // Decrease wsteth to eth exchange rate so refPerTok decreases
@@ -188,7 +191,7 @@ const reduceRefPerTok = async (
 
 const increaseRefPerTok = async (
   ctx: WSTETHCollateralFixtureContext,
-  pctIncrease: BigNumberish | undefined
+  pctIncrease: BigNumberish
 ) => {
   const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
 

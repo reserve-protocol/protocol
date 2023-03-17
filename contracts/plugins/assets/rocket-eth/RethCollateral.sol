@@ -32,7 +32,6 @@ contract RethCollateral is AppreciatingFiatCollateral {
         require(_refPerTokChainlinkTimeout != 0, "Chainlink feed cannot be 0x0");
         refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
         refPerTokChainlinkTimeout = _refPerTokChainlinkTimeout;
-        exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
 
     /// Can revert, used by other contract functions in order to catch errors

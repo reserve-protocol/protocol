@@ -1,6 +1,6 @@
 # Ankr ETH Collateral Plugin
 
-**NOTE: The AnkrStakedEthCollateral plugin SHOULD NOT be deployed and used until a `ankrETH/ETH` chainlink oracle can be integrated with the plugin.  As of 3/14/23, there is no chainlink oracle, but the ANKR team is working on getting one.**
+**NOTE: The AnkrStakedEthCollateral plugin SHOULD NOT be deployed and used until a `ankrETH/ETH` chainlink oracle can be integrated with the plugin. As of 3/14/23, there is no chainlink oracle, but the ANKR team is working on getting one.**
 
 ## Summary
 
@@ -26,4 +26,4 @@ The exchange rate between ETH and ankrETH can be fetched using the ankrETH contr
 
 This new ratio, increases over time, which means that the amount of ETH redeemable for each ankrETH token always increases.
 
-`ratio()` returns the exchange rate in 10\*\*18.
+`ratio()` returns the exchange rate in 18 decimals.

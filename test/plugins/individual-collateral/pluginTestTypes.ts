@@ -1,11 +1,11 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumberish, BigNumber } from 'ethers'
-import { MockV3Aggregator, ICollateral, IERC20 } from '../../../typechain'
+import { MockV3Aggregator, TestICollateral, IERC20 } from '../../../typechain'
 
 type Fixture<T> = () => Promise<T>
 
 export interface CollateralFixtureContext {
-  collateral: ICollateral
+  collateral: TestICollateral
   chainlinkFeed: MockV3Aggregator
   tok: IERC20
   tokDecimals: number // tldr; IERC20 does not include decimals()
@@ -26,7 +26,7 @@ export interface CollateralOpts {
   delayUntilDefault?: BigNumberish
 }
 
-export type DeployCollateralFunc = (opts: CollateralOpts) => Promise<ICollateral>
+export type DeployCollateralFunc = (opts: CollateralOpts) => Promise<TestICollateral>
 export type MakeCollateralFixtureFunc<T extends CollateralFixtureContext> = (
   alice: SignerWithAddress,
   opts: CollateralOpts
@@ -44,10 +44,10 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   beforeEachRewardsTest: (ctx: T) => void
   makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
   mintCollateralTo: MintCollateralFunc<T>
-  reduceTargetPerRef: (ctx: T, pctDecrease: BigNumberish | undefined) => void
-  increaseTargetPerRef: (ctx: T, pctIncrease: BigNumberish | undefined) => void
-  reduceRefPerTok: (ctx: T, pctDecrease: BigNumberish | undefined) => void
-  increaseRefPerTok: (ctx: T, pctIncrease: BigNumberish | undefined) => void
+  reduceTargetPerRef: (ctx: T, pctDecrease: BigNumberish) => void
+  increaseTargetPerRef: (ctx: T, pctIncrease: BigNumberish) => void
+  reduceRefPerTok: (ctx: T, pctDecrease: BigNumberish) => void
+  increaseRefPerTok: (ctx: T, pctIncrease: BigNumberish) => void
   getExpectedPrice: (ctx: T) => Promise<BigNumber>
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
