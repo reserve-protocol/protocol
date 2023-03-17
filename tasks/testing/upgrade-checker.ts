@@ -1,27 +1,20 @@
 import { task, types } from 'hardhat/config'
 import { networkConfig } from '../../common/configuration'
 import { getChainId } from '../../common/blockchain-utils'
-import {
-  getDeploymentFile,
-  getAssetCollDeploymentFilename,
-  IAssetCollDeployments,
-} from '../../scripts/deployment/common'
-import {
-    RTokenP1
-} from '../../typechain'
-import { ethers } from 'hardhat'
-import { advanceBlocks, advanceTime } from '#/test/utils/time'
-import { whileImpersonating } from '../../test/utils/impersonation';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { advanceBlocks, advanceTime } from '#/utils/time'
+import { whileImpersonating } from '#/utils/impersonation';
 import { ProposalState } from '#/common/constants'
-import { BigNumber, BigNumberish } from 'ethers'
-import { Proposal, getProposalDetails } from '../../utils/query'
+import { BigNumber } from 'ethers'
+import { Proposal, getProposalDetails, getDelegates, Delegate } from '../../utils/subgraph'
+import { useEnv } from '#/utils/env';
+import { resetFork } from '#/utils/chain';
 
-task('mint-tokens', 'Mints all the tokens to an address')
+task('upgrade-checker', 'Mints all the tokens to an address')
     .addParam('rtoken', 'the address of the RToken being upgraded')
     .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
     .addParam('proposal', 'the ID of the governance proposal')
     .setAction(async (params, hre) => {
+        await resetFork(hre, Number(useEnv('MAINNET_BLOCK')))
         const [deployer] = await hre.ethers.getSigners()
 
         const chainId = await getChainId(hre)
@@ -35,28 +28,30 @@ task('mint-tokens', 'Mints all the tokens to an address')
             throw new Error('Only run this on a local fork')
         }
 
-        const rtoken: RTokenP1 = <RTokenP1>(await ethers.getContractAt('RTokenP1', params.rtoken))
+        const rtoken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
 
         // 1. Approve and execute the govnerance proposal
-        const governor = await ethers.getContractAt('Governance', params.governor)
+        const governor = await hre.ethers.getContractAt('Governance', params.governor)
         const proposalId = params.proposal
 
         // Check proposal state
-        if (await governor.state(proposalId) != ProposalState.Pending) {
-            throw new Error("Proposal should be pending")
+        let propState = await governor.state(proposalId)
+        if (propState != ProposalState.Pending) {
+            throw new Error(`Proposal should be pending but was ${propState}`)
         }
 
         // Advance time to start voting
         const votingDelay = await governor.votingDelay()
-        await advanceBlocks(votingDelay.add(1))
+        await advanceBlocks(hre, votingDelay.add(1))
 
         // Check proposal state
-        if (await governor.state(proposalId) != ProposalState.Active) {
-            throw new Error("Proposal should be active")
+        propState = await governor.state(proposalId)
+        if (propState != ProposalState.Active) {
+            throw new Error(`Proposal should be active but was ${propState}`)
         }
 
         // gather enough whale voters
-        let whales: Array<Whale> = await getWhales(params.governor)
+        let whales: Array<Delegate> = await getDelegates(hre, params.rtoken.toLowerCase())
         const startBlock = await governor.proposalSnapshot(proposalId)
         const quorum = await governor.quorum(startBlock)
 
@@ -65,7 +60,7 @@ task('mint-tokens', 'Mints all the tokens to an address')
         let i = 0
         while (quorumNotReached) {
             const whale = whales[i]
-            currentVoteAmount = currentVoteAmount.add(whale.amount)
+            currentVoteAmount = currentVoteAmount.add(BigNumber.from(whale.delegatedVotesRaw))
             i += 1
             if (currentVoteAmount.gt(quorum)) {
                 quorumNotReached = false
@@ -76,28 +71,28 @@ task('mint-tokens', 'Mints all the tokens to an address')
 
         // cast enough votes to pass the proposal
         for (const whale of whales) {
-            whileImpersonating(whale.address, async (signer) => {
+            await whileImpersonating(hre, whale.address, async (signer) => {
                 await governor.connect(signer).castVote(proposalId, 1)
             })
         }
         
         // Advance time till voting is complete
         const votingPeriod = await governor.votingPeriod()
-        await advanceBlocks(votingPeriod.add(1))
+        await advanceBlocks(hre, votingPeriod.add(1))
 
         // Finished voting - Check proposal state
         if (await governor.state(proposalId) != ProposalState.Succeeded) {
             throw new Error("Proposal should have succeeded")
         }
 
-        const proposal: Proposal = await getProposalDetails(params.proposal)
-
+        const proposal: Proposal = await getProposalDetails(hre, `${params.governor.toLowerCase()}-${params.proposal}`)
+        const descriptionHash = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes(proposal.description))
         // Queue propoal
         await governor.queue(
             proposal.targets,
             proposal.values,
             proposal.calldatas,
-            proposal.descriptionHash
+            descriptionHash
         )
 
         // Check proposal state
@@ -105,19 +100,19 @@ task('mint-tokens', 'Mints all the tokens to an address')
             throw new Error("Proposal should be queued")
         }
 
-        const timelock = await ethers.getContractAt('TimelockController', await governor.timelock())
+        const timelock = await hre.ethers.getContractAt('TimelockController', await governor.timelock())
         const minDelay = await timelock.getMinDelay()
 
         // Advance time required by timelock
-        await advanceTime(minDelay.add(1).toString())
-        await advanceBlocks(1)
+        await advanceTime(hre, minDelay.add(1).toString())
+        await advanceBlocks(hre, 1)
 
         // Execute
         await governor.execute(
             proposal.targets,
             proposal.values,
             proposal.calldatas,
-            proposal.descriptionHash
+            descriptionHash
         )
 
         // Check proposal state
