@@ -39,8 +39,8 @@ contract RTokenAsset is IAsset {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
     function tryPrice()
         external
         view
@@ -167,17 +167,17 @@ contract RTokenAsset is IAsset {
     }
 
     /// @return The address of the chainlink feed
-    function chainlinkFeed() external view override returns (AggregatorV3Interface) {
+    function chainlinkFeed() external pure override returns (AggregatorV3Interface) {
         return AggregatorV3Interface(address(0));
     }
 
     /// {1} The max % deviation allowed by the oracle
-    function oracleError() external view override returns (uint192) {
+    function oracleError() external pure override returns (uint192) {
         return type(uint192).max;
     }
 
     /// @return {s} Seconds that an oracle value is considered valid
-    function oracleTimeout() external view override returns (uint48) {
+    function oracleTimeout() external pure override returns (uint48) {
         return type(uint48).max;
     }
 }

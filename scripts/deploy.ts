@@ -9,7 +9,9 @@ async function main() {
   const chainId = await getChainId(hre)
 
   if (hre.network.name == 'hardhat') {
-    throw new Error("Don't use network 'hardhat'.  If you are testing locally, make sure to run 'yarn devchain' in a separate terminal, and then deploy to 'localhost'.")
+    throw new Error(
+      "Don't use network 'hardhat'.  If you are testing locally, make sure to run 'yarn devchain' in a separate terminal, and then deploy to 'localhost'."
+    )
   }
 
   // Check if chain is supported
