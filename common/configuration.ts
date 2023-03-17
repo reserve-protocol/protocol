@@ -34,6 +34,10 @@ export interface ITokens {
   RSR?: string
 }
 
+export interface IPlugins {
+  Convex3Pool?: string
+}
+
 interface INetworkConfig {
   name: string
   tokens: ITokens
