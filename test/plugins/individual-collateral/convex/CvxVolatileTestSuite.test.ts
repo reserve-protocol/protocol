@@ -64,6 +64,7 @@ interface CvxVolatileCollateralFixtureContext
   collateral: CvxVolatileCollateral
   wethFeed: MockV3Aggregator
   wbtcFeed: MockV3Aggregator
+  btcFeed: MockV3Aggregator
   usdtFeed: MockV3Aggregator
   cvx: ERC20Mock
   crv: ERC20Mock
@@ -119,22 +120,39 @@ export const defaultCvxVolatileCollateralOpts: CvxVolatileCollateralOpts = {
   ],
 }
 
+const makeFeeds = async () => {
+  const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
+    await ethers.getContractFactory('MockV3Aggregator')
+  )
+
+  // Substitute all 3 feeds: DAI, USDC, USDT
+  const wethFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+  const wbtcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+  const btcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+  const usdtFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+
+  const wethFeedOrg = MockV3AggregatorFactory.attach(WETH_USD_FEED)
+  const wbtcFeedOrg = MockV3AggregatorFactory.attach(WBTC_BTC_FEED)
+  const btcFeedOrg = MockV3AggregatorFactory.attach(BTC_USD_FEED)
+  const usdtFeedOrg = MockV3AggregatorFactory.attach(USDT_USD_FEED)
+
+  await wethFeed.updateAnswer(await wethFeedOrg.latestAnswer())
+  await wbtcFeed.updateAnswer(await wbtcFeedOrg.latestAnswer())
+  await btcFeed.updateAnswer(await btcFeedOrg.latestAnswer())
+  await usdtFeed.updateAnswer(await usdtFeedOrg.latestAnswer())
+
+  return { wethFeed, wbtcFeed, btcFeed, usdtFeed }
+}
+
 export const deployCollateral = async (
   opts: CvxVolatileCollateralOpts = {}
 ): Promise<CvxVolatileCollateral> => {
   if (!opts.erc20 && !opts.feeds) {
-    const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
-      await ethers.getContractFactory('MockV3Aggregator')
-    )
-
-    // Substitute all 3 feeds: DAI, USDC, USDT
-    const wethFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const wbtcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const usdtFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    const { wethFeed, wbtcFeed, btcFeed, usdtFeed } = await makeFeeds()
 
     const fix = await makeW3PoolVolatile()
 
-    opts.feeds = [[wethFeed.address], [wbtcFeed.address], [usdtFeed.address]]
+    opts.feeds = [[wethFeed.address], [wbtcFeed.address, btcFeed.address], [usdtFeed.address]]
     opts.erc20 = fix.w3Pool.address
   }
 
@@ -179,15 +197,13 @@ const makeCollateralFixtureContext = (
   const collateralOpts = { ...defaultCvxVolatileCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
-    const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
-      await ethers.getContractFactory('MockV3Aggregator')
-    )
+    const { wethFeed, wbtcFeed, btcFeed, usdtFeed } = await makeFeeds()
 
-    // Substitute all 3 feeds: DAI, USDC, USDT
-    const usdtFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const wbtcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const wethFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    collateralOpts.feeds = [[usdtFeed.address], [wbtcFeed.address], [wethFeed.address]]
+    collateralOpts.feeds = [
+      [usdtFeed.address],
+      [wbtcFeed.address, btcFeed.address],
+      [wethFeed.address],
+    ]
 
     const fix = await makeW3PoolVolatile()
 
@@ -214,6 +230,7 @@ const makeCollateralFixtureContext = (
       rewardToken,
       tokDecimals,
       wbtcFeed,
+      btcFeed,
       wethFeed,
       usdtFeed,
       cvx,
@@ -414,6 +431,7 @@ describeFork(`Collateral: Convex - Volatile`, () => {
     let collateral: CvxVolatileCollateral
     let chainlinkFeed: MockV3Aggregator
     let wbtcFeed: MockV3Aggregator
+    let btcFeed: MockV3Aggregator
     let wethFeed: MockV3Aggregator
     let usdtFeed: MockV3Aggregator
 
@@ -432,7 +450,7 @@ describeFork(`Collateral: Convex - Volatile`, () => {
     beforeEach(async () => {
       ;[, alice] = await ethers.getSigners()
       ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
-      ;({ chainlinkFeed, collateral, wbtcFeed, wethFeed, usdtFeed, crv, cvx } = ctx)
+      ;({ chainlinkFeed, collateral, wbtcFeed, btcFeed, wethFeed, usdtFeed, crv, cvx } = ctx)
 
       await mintCollateralTo(ctx, bn('100e18'), wallet, wallet.address)
     })
@@ -476,18 +494,19 @@ describeFork(`Collateral: Convex - Volatile`, () => {
       it('prices change as feed price changes', async () => {
         await collateral.refresh()
 
-        const feedData = await wbtcFeed.latestRoundData()
         const initialRefPerTok = await collateral.refPerTok()
-
         const [low, high] = await collateral.price()
 
-        // Update values in Oracles increase by 10%
-        const newPrice = feedData.answer.mul(110).div(100)
-
         await Promise.all([
-          wbtcFeed.updateAnswer(newPrice).then((e) => e.wait()),
-          wethFeed.updateAnswer(newPrice).then((e) => e.wait()),
-          usdtFeed.updateAnswer(newPrice).then((e) => e.wait()),
+          btcFeed
+            .updateAnswer(await btcFeed.latestRoundData().then((e) => e.answer.mul(110).div(100)))
+            .then((e) => e.wait()),
+          wethFeed
+            .updateAnswer(await wethFeed.latestRoundData().then((e) => e.answer.mul(110).div(100)))
+            .then((e) => e.wait()),
+          usdtFeed
+            .updateAnswer(await usdtFeed.latestRoundData().then((e) => e.answer.mul(110).div(100)))
+            .then((e) => e.wait()),
         ])
 
         const [newLow, newHigh] = await collateral.price()
