@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../../libraries/Fixed.sol";
+import "../../../libraries/Fixed.sol";
+import "../OracleLib.sol";
 import "./CTokenFiatCollateral.sol";
 import "./ICToken.sol";
-import "./OracleLib.sol";
 
 /**
  * @title CTokenNonFiatCollateral
