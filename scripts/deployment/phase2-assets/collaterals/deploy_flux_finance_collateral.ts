@@ -1,17 +1,17 @@
 import fs from 'fs'
 import hre, { ethers } from 'hardhat'
-import { getChainId } from '../../../common/blockchain-utils'
-import { networkConfig } from '../../../common/configuration'
-import { bn, fp } from '../../../common/numbers'
+import { getChainId } from '../../../../common/blockchain-utils'
+import { networkConfig } from '../../../../common/configuration'
+import { bn, fp } from '../../../../common/numbers'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
   getDeploymentFilename,
   fileExists,
-} from '../common'
-import { priceTimeout, oracleTimeout, revenueHiding } from '../utils'
-import { Asset } from '../../../typechain'
+} from '../../common'
+import { priceTimeout, oracleTimeout, revenueHiding } from '../../utils'
+import { Asset } from '../../../../typechain'
 
 async function main() {
   // ==== Read Configuration ====
@@ -105,7 +105,8 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   //   /********  Deploy FToken Fiat Collateral - fFRAX  **************************/
-  //   // NOT LIQUID ENOUGH YET
+  //   // Uncomment this once our tests are able to pass. Currently there is only $11 of FRAX in
+  //   // Flux Finance and this causes refPerTok() to not increase.
 
   //   const { collateral: fFRAXCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
   //     priceTimeout: priceTimeout.toString(),
