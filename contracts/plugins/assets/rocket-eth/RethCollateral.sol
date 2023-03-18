@@ -54,10 +54,10 @@ contract RethCollateral is AppreciatingFiatCollateral {
         pegPrice = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pLow = p.mul(pegPrice.mul(revenueShowing));
-
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 pHigh = p.mul(pegPrice);
+
+        // {UoA/tok} = {UoA/tok} * {1}
+        uint192 pLow = pHigh.mul(revenueShowing);
 
         low = pLow - pLow.mul(oracleError);
         high = pHigh + pHigh.mul(oracleError);

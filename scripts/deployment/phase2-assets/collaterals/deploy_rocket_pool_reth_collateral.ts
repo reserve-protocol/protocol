@@ -56,7 +56,7 @@ async function main() {
       defaultThreshold: fp('0.15').toString(), // 15%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    bn('1e-4'), // revenueHiding = 0.01%
+    fp('1e-4'), // revenueHiding = 0.01%
     networkConfig[chainId].chainlinkFeeds.rETH, // refPerTokChainlinkFeed
     oracleTimeout(chainId, '86400').toString() // refPerTokChainlinkTimeout
   )
