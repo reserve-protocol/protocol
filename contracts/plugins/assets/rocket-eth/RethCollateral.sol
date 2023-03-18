@@ -19,8 +19,8 @@ contract RethCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    AggregatorV3Interface public refPerTokChainlinkFeed;
-    uint48 public refPerTokChainlinkTimeout;
+    AggregatorV3Interface public immutable refPerTokChainlinkFeed;
+    uint48 public immutable refPerTokChainlinkTimeout;
 
     constructor(
         CollateralConfig memory config,

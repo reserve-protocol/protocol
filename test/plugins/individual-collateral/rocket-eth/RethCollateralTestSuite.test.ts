@@ -225,14 +225,14 @@ const reduceRefPerTok = async (
     RETH_NETWORK_BALANCES
   )
   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
-  const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease!).div(100))
+  const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease).div(100))
   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
   await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
   })
 
   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 // const reduceRefPerTok = async (
@@ -240,7 +240,7 @@ const reduceRefPerTok = async (
 //   pctDecrease: BigNumberish
 // ) => {
 //   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-//   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+//   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
 //   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 // }
 
@@ -254,14 +254,14 @@ const increaseRefPerTok = async (
     RETH_NETWORK_BALANCES
   )
   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
-  const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease!).div(100))
+  const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease).div(100))
   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
   await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
   })
 
   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 // const increaseRefPerTok = async (
@@ -269,7 +269,7 @@ const increaseRefPerTok = async (
 //   pctIncrease: BigNumberish
 // ) => {
 //   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-//   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+//   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
 //   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 // }
 
