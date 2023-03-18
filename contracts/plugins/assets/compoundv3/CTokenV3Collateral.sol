@@ -30,22 +30,16 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
 
     IERC20 public immutable rewardERC20;
     IComet public immutable comet;
-    uint256 public immutable reservesThresholdIffy;
-    uint256 public immutable reservesThresholdDisabled;
+    uint256 public immutable reservesThresholdIffy; // {qUSDC}
 
     constructor(
         CollateralConfig memory config,
-        CometCollateralConfig memory cometConfig,
-        uint192 revenueHiding
+        uint192 revenueHiding,
+        uint256 reservesThresholdIffy_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(cometConfig.rewardERC20) != address(0), "rewardERC20 missing");
-        require(cometConfig.reservesThresholdIffy > 0, "reservesThresholdIffy zero");
-        require(cometConfig.reservesThresholdDisabled > 0, "reservesThresholdDisabled zero");
-
-        rewardERC20 = cometConfig.rewardERC20;
-        reservesThresholdIffy = cometConfig.reservesThresholdIffy;
-        reservesThresholdDisabled = cometConfig.reservesThresholdDisabled;
+        rewardERC20 = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
+        reservesThresholdIffy = reservesThresholdIffy_;
     }
 
     function bal(address account) external view override(Asset, IAsset) returns (uint192) {
@@ -53,10 +47,9 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     }
 
     function claimRewards() external override(Asset, IRewardable) {
-        IERC20 comp = rewardERC20;
-        uint256 oldBal = comp.balanceOf(address(this));
+        uint256 oldBal = rewardERC20.balanceOf(address(this));
         ICusdcV3Wrapper(address(erc20)).claimTo(address(this), address(this));
-        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
+        emit RewardsClaimed(rewardERC20, rewardERC20.balanceOf(address(this)) - oldBal);
     }
 
     function _underlyingRefPerTok() internal view virtual override returns (uint192) {
@@ -94,7 +87,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         }
 
         int256 cometReserves = comet.getReserves();
-        if (cometReserves < 0 || uint256(cometReserves) < reservesThresholdDisabled) {
+        if (cometReserves < 0) {
             markStatus(CollateralStatus.DISABLED);
         } else if (uint256(cometReserves) < reservesThresholdIffy) {
             markStatus(CollateralStatus.IFFY);

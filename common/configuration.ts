@@ -38,7 +38,7 @@ export interface ITokens {
   stETH?: string
   wstETH?: string
   rETH?: string
-  cV3USDC?: string
+  cUSDCv3?: string
 }
 
 export interface IFeeds {
@@ -99,7 +99,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
-      cV3USDC: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -169,7 +169,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
-      cV3USDC: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',

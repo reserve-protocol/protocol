@@ -4,7 +4,7 @@ import { networkConfig } from '../../../../common/configuration'
 // Mainnet Addresses
 export const RSR = networkConfig['31337'].tokens.RSR as string
 export const USDC_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.USDC as string
-export const CUSDC_V3 = networkConfig['31337'].tokens.cV3USDC as string
+export const CUSDC_V3 = networkConfig['31337'].tokens.cUSDCv3 as string
 export const COMP = networkConfig['31337'].tokens.COMP as string
 export const REWARDS = '0x1B0e765F6224C21223AeA2af16c1C46E38885a40'
 export const USDC = networkConfig['31337'].tokens.USDC as string

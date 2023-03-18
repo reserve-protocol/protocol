@@ -26,5 +26,9 @@ interface ICusdcV3Wrapper is IWrappedERC20 {
 
     function convertStaticToDynamic(uint104 amount) external view returns (uint256);
 
+    function convertDynamicToStatic(uint256 amount) external view returns (uint104);
+
     function underlyingComet() external view returns (CometInterface);
+
+    function rewardERC20() external view returns (IERC20);
 }
