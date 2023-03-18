@@ -6,10 +6,10 @@ import { ethers } from 'hardhat'
 import { ContractFactory, BigNumber, BigNumberish } from 'ethers'
 import {
   ERC20Mock,
+  ISTETH,
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
-  ISTETH,
   IWSTETH,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
@@ -23,7 +23,7 @@ import {
   DELAY_UNTIL_DEFAULT,
   STETH,
   WSTETH,
-  ETH_USD_PRICE_FEED,
+  STETH_USD_PRICE_FEED,
   STETH_ETH_PRICE_FEED,
   LIDO_ORACLE,
 } from './constants'
@@ -33,6 +33,7 @@ import { whileImpersonating } from '../../../utils/impersonation'
   Define interfaces
 */
 interface WSTETHCollateralFixtureContext extends CollateralFixtureContext {
+  steth: ISTETH
   wsteth: IWSTETH
   targetPerRefChainlinkFeed: MockV3Aggregator
 }
@@ -51,7 +52,7 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: ZERO_ADDRESS,
   priceTimeout: ORACLE_TIMEOUT,
-  chainlinkFeed: ETH_USD_PRICE_FEED,
+  chainlinkFeed: STETH_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
@@ -123,6 +124,7 @@ const makeCollateralFixtureContext = (
     collateralOpts.chainlinkFeed = chainlinkFeed.address
     collateralOpts.targetPerRefChainlinkFeed = targetPerRefChainlinkFeed.address
 
+    const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
     const wsteth = (await ethers.getContractAt('IWSTETH', WSTETH)) as IWSTETH
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
@@ -132,6 +134,7 @@ const makeCollateralFixtureContext = (
       alice,
       collateral,
       chainlinkFeed,
+      steth,
       wsteth,
       tok: wsteth,
       rewardToken,
@@ -161,7 +164,7 @@ const reduceTargetPerRef = async (
   pctDecrease: BigNumberish
 ) => {
   const lastRound = await ctx.targetPerRefChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
   await ctx.targetPerRefChainlinkFeed.updateAnswer(nextAnswer)
 }
 
@@ -170,22 +173,20 @@ const increaseTargetPerRef = async (
   pctIncrease: BigNumberish
 ) => {
   const lastRound = await ctx.targetPerRefChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
   await ctx.targetPerRefChainlinkFeed.updateAnswer(nextAnswer)
 }
 
 const reduceRefPerTok = async (ctx: WSTETHCollateralFixtureContext, pctDecrease: BigNumberish) => {
-  const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
-
   // Decrease wsteth to eth exchange rate so refPerTok decreases
-  const [, beaconValidators, beaconBalance] = await steth.getBeaconStat()
+  const [, beaconValidators, beaconBalance] = await ctx.steth.getBeaconStat()
   const beaconBalanceLower: BigNumberish = beaconBalance.sub(
-    beaconBalance.mul(pctDecrease!).div(100)
+    beaconBalance.mul(pctDecrease).div(100)
   )
 
   // Impersonate Lido Oracle
   await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
-    await steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceLower)
+    await ctx.steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceLower)
   })
 }
 
@@ -193,34 +194,26 @@ const increaseRefPerTok = async (
   ctx: WSTETHCollateralFixtureContext,
   pctIncrease: BigNumberish
 ) => {
-  const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
-
   // Increase wsteth to steth exchange rate so refPerTok increases
-  const [, beaconValidators, beaconBalance] = await steth.getBeaconStat()
+  const [, beaconValidators, beaconBalance] = await ctx.steth.getBeaconStat()
   const beaconBalanceHigher: BigNumberish = beaconBalance.add(
-    beaconBalance.mul(pctIncrease!).div(100)
+    beaconBalance.mul(pctIncrease).div(100)
   )
 
   // Impersonate Lido Oracle
   await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
-    await steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceHigher)
+    await ctx.steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceHigher)
   })
 }
 
 const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext): Promise<BigNumber> => {
-  // Peg Feed
+  // UoA/tok feed
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  // Target Unit Feed
-  const tgtClData = await ctx.targetPerRefChainlinkFeed.latestRoundData()
-  const tgtClDecimals = await ctx.targetPerRefChainlinkFeed.decimals()
-
   const refPerTok = await ctx.collateral.refPerTok()
-
   const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
-  const expectedTgtPrice = tgtClData.answer.mul(bn(10).pow(18 - tgtClDecimals))
-  return expectedPegPrice.mul(expectedTgtPrice).mul(refPerTok).div(fp('1')).div(fp('1'))
+  return expectedPegPrice.mul(refPerTok).div(fp('1'))
 }
 
 /*

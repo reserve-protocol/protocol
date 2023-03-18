@@ -32,16 +32,21 @@ export interface ITokens {
   WBTC?: string
   EURT?: string
   RSR?: string
-  wstETH?: string
   stETH?: string
+  wstETH?: string
   rETH?: string
   cV3USDC?: string
+}
+
+export interface IFeeds {
+  stETHETH?: string
+  stETHUSD?: string
 }
 
 interface INetworkConfig {
   name: string
   tokens: ITokens
-  chainlinkFeeds: ITokens & ICurrencies
+  chainlinkFeeds: ITokens & ICurrencies & IFeed
   AAVE_LENDING_POOL?: string
   AAVE_INCENTIVES?: string
   AAVE_EMISSIONS_MGR?: string
@@ -85,6 +90,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
+      stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cV3USDC: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
@@ -104,7 +110,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
-      stETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
+      stETHETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
+      stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
@@ -150,6 +157,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
+      stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cV3USDC: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
@@ -169,7 +177,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
-      stETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
+      stETHETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
+      stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',

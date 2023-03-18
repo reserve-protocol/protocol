@@ -19,9 +19,14 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    AggregatorV3Interface public immutable targetPerRefChainlinkFeed; // {ref/tok}
+    // In order to provide tighter price estimates this contract uses {UoA/tok} and {ref/target}
+    // price feeds. Here we include them directly and ignore the parent class' chainlinkFeed.
+
+    AggregatorV3Interface public immutable targetPerRefChainlinkFeed; // {target/ref}
     uint48 public immutable targetPerRefChainlinkTimeout; // {s}
 
+    /// @param config.chainlinkFeed {UoA/tok} Override parent class type
+    /// @param config.oracleError {1} Should be the oracle error _only_ for the {UoA/tok} feed
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
@@ -48,15 +53,15 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/target}
-        uint192 pricePerTarget = chainlinkFeed.price(oracleTimeout);
+        // {UoA/tok}
+        uint192 pricePerTok = chainlinkFeed.price(oracleTimeout);
 
-        // Get current market peg {eth/steth}, but the intended {target/ref} will be returned
-        pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout); // {target/ref}
+        // {target/ref} Get current market peg ({eth/steth})
+        pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout);
 
-        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        uint192 pLow = pricePerTarget.mul(pegPrice).mul(refPerTok());
-        uint192 pHigh = pricePerTarget.mul(pegPrice).mul(_underlyingRefPerTok());
+        // {UoA/tok} = {UoA/tok} * {ref/tok}
+        uint192 pLow = pricePerTok.mul(refPerTok());
+        uint192 pHigh = pricePerTok.mul(_underlyingRefPerTok());
 
         low = pLow - pLow.mul(oracleError);
         high = pHigh + pHigh.mul(oracleError);
