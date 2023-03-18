@@ -106,7 +106,6 @@ const makeCollateralFixtureContext = (
     const ankreth = (await ethers.getContractAt('IAnkrETH', ANKRETH)) as IAnkrETH
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
-    const tokDecimals = await ankreth.decimals()
 
     return {
       alice,
@@ -115,7 +114,6 @@ const makeCollateralFixtureContext = (
       ankreth,
       tok: ankreth,
       rewardToken,
-      tokDecimals,
     }
   }
 
@@ -214,7 +212,7 @@ const opts = {
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
-  itCheckPriceChanges: it,
+  itChecksPriceChanges: it,
   resetFork,
   collateralName: 'AnkrStakedETH',
   chainlinkDefaultAnswer,

@@ -3,9 +3,9 @@ import { networkConfig } from '../../../../common/configuration'
 
 // Mainnet Addresses
 export const RSR = networkConfig['31337'].tokens.RSR as string
-export const ETH_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.ETH as string
-export const STETH_ETH_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.stETH as string
-export const STETH = '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84'
+export const STETH_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.stETHUSD as string
+export const STETH_ETH_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.stETHETH as string
+export const STETH = networkConfig['31337'].tokens.stETH as string
 export const WSTETH = networkConfig['31337'].tokens.wstETH as string
 export const WETH = networkConfig['31337'].tokens.WETH as string
 export const WSTETH_WHALE = '0x10CD5fbe1b404B7E19Ef964B63939907bdaf42E2'

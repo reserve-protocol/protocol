@@ -128,7 +128,6 @@ const makeCollateralFixtureContext = (
     const wsteth = (await ethers.getContractAt('IWSTETH', WSTETH)) as IWSTETH
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
-    const tokDecimals = await wsteth.decimals()
 
     return {
       alice,
@@ -138,7 +137,6 @@ const makeCollateralFixtureContext = (
       wsteth,
       tok: wsteth,
       rewardToken,
-      tokDecimals,
       targetPerRefChainlinkFeed,
     }
   }
@@ -260,7 +258,7 @@ const opts = {
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
-  itCheckPriceChanges: it,
+  itChecksPriceChanges: it,
   resetFork,
   collateralName: 'LidoStakedETH',
   chainlinkDefaultAnswer,

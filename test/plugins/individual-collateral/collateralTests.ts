@@ -44,15 +44,16 @@ export default function fn<X extends CollateralFixtureContext>(
     itClaimsRewards,
     itChecksTargetPerRefDefault,
     itChecksRefPerTokDefault,
-    itCheckPriceChanges,
+    itChecksPriceChanges,
+    itIsPricedByPeg,
     resetFork,
     collateralName,
     chainlinkDefaultAnswer,
   } = fixtures
 
-  before(resetFork)
-
   describeFork(`Collateral: ${collateralName}`, () => {
+    before(resetFork)
+
     describe('constructor validation', () => {
       it('validates targetName', async () => {
         await expect(
@@ -117,13 +118,13 @@ export default function fn<X extends CollateralFixtureContext>(
 
       describe('functions', () => {
         it('returns the correct bal (18 decimals)', async () => {
-          const amount = bn('20').mul(bn(10).pow(ctx.tokDecimals))
+          const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           const aliceBal = await collateral.bal(alice.address)
           expect(aliceBal).to.closeTo(
-            amount.mul(bn(10).pow(18 - ctx.tokDecimals)),
-            bn('100').mul(bn(10).pow(18 - ctx.tokDecimals))
+            amount.mul(bn(10).pow(18 - (await ctx.tok.decimals()))),
+            bn('100').mul(bn(10).pow(18 - (await ctx.tok.decimals())))
           )
         })
       })
@@ -138,7 +139,7 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         itClaimsRewards('claims rewards', async () => {
-          const amount = bn('20').mul(bn(10).pow(ctx.tokDecimals))
+          const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
           await mintCollateralTo(ctx, amount, alice, collateral.address)
 
           await advanceBlocks(1000)
@@ -152,7 +153,7 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('prices', () => {
-        itCheckPriceChanges('prices change as USD feed price changes', async () => {
+        itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)
           await expectPrice(collateral.address, expectedPrice, oracleError, true)
@@ -175,30 +176,42 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         // all our collateral that have targetPerRef feeds use them only for soft default checks
-        itCheckPriceChanges('prices do not change as targetPerRef changes', async () => {
-          const oracleError = await collateral.oracleError()
-          const expectedPrice = await getExpectedPrice(ctx)
-          await expectPrice(collateral.address, expectedPrice, oracleError, true)
+        itChecksPriceChanges(
+          `prices ${itIsPricedByPeg ? '' : 'do not '}change as targetPerRef changes`,
+          async () => {
+            const oracleError = await collateral.oracleError()
+            const expectedPrice = await getExpectedPrice(ctx)
+            await expectPrice(collateral.address, expectedPrice, oracleError, true)
 
-          // Get refPerTok initial values
-          const initialRefPerTok = await collateral.refPerTok()
-          const [low, high] = await collateral.price()
+            // Get refPerTok initial values
+            const initialRefPerTok = await collateral.refPerTok()
+            const [oldLow, oldHigh] = await collateral.price()
 
-          // Update values in Oracles increase by 10-20%
-          await increaseTargetPerRef(ctx, 20)
+            // Update values in Oracles increase by 10-20%
+            await increaseTargetPerRef(ctx, 20)
 
-          // Check new prices -- no increase expected
-          await expectPrice(collateral.address, expectedPrice, oracleError, true)
-          const [newLow, newHigh] = await collateral.price()
-          expect(low).to.equal(newLow)
-          expect(high).to.equal(newHigh)
+            if (itIsPricedByPeg) {
+              // Check new prices -- increase expected
+              const newPrice = await getExpectedPrice(ctx)
+              await expectPrice(collateral.address, newPrice, oracleError, true)
+              const [newLow, newHigh] = await collateral.price()
+              expect(oldLow).to.not.equal(newLow)
+              expect(oldHigh).to.not.equal(newHigh)
+            } else {
+              // Check new prices -- no increase expected
+              await expectPrice(collateral.address, expectedPrice, oracleError, true)
+              const [newLow, newHigh] = await collateral.price()
+              expect(oldLow).to.equal(newLow)
+              expect(oldHigh).to.equal(newHigh)
+            }
 
-          // Check refPerTok remains the same (because we have not refreshed)
-          const finalRefPerTok = await collateral.refPerTok()
-          expect(finalRefPerTok).to.equal(initialRefPerTok)
-        })
+            // Check refPerTok remains the same (because we have not refreshed)
+            const finalRefPerTok = await collateral.refPerTok()
+            expect(finalRefPerTok).to.equal(initialRefPerTok)
+          }
+        )
 
-        itCheckPriceChanges('prices change as refPerTok changes', async () => {
+        itChecksPriceChanges('prices change as refPerTok changes', async () => {
           const initRefPerTok = await collateral.refPerTok()
 
           const oracleError = await collateral.oracleError()
@@ -209,7 +222,7 @@ export default function fn<X extends CollateralFixtureContext>(
           await expectPrice(collateral.address, expectedPrice, oracleError, true)
 
           // need to deposit in order to get an exchange rate
-          const amount = bn('200').mul(bn(10).pow(ctx.tokDecimals))
+          const amount = bn('200').mul(bn(10).pow(await ctx.tok.decimals()))
           await mintCollateralTo(ctx, amount, alice, alice.address)
           await increaseRefPerTok(ctx, 5)
 
@@ -365,7 +378,7 @@ export default function fn<X extends CollateralFixtureContext>(
 
           await mintCollateralTo(
             ctx,
-            bn('200').mul(bn(10).pow(ctx.tokDecimals)),
+            bn('200').mul(bn(10).pow(await ctx.tok.decimals())),
             alice,
             alice.address
           )

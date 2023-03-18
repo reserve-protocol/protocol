@@ -14,11 +14,17 @@ interface ICusdcV3Wrapper is IWrappedERC20 {
         uint256 amount
     );
 
+    function deposit(uint256 amount) external;
+
+    function depositTo(address account, uint256 amount) external;
+
     function claimTo(address src, address to) external;
 
     function accrue() external;
 
     function exchangeRate() external view returns (uint256);
+
+    function convertStaticToDynamic(uint104 amount) external view returns (uint256);
 
     function underlyingComet() external view returns (CometInterface);
 }

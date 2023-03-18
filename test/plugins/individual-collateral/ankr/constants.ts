@@ -2,8 +2,8 @@ import { bn, fp } from '../../../../common/numbers'
 import { networkConfig } from '../../../../common/configuration'
 
 // Mainnet Addresses
-export const ETH_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.ETH as string
-export const ANKRETH = '0xE95A203B1a91a908F9B9CE46459d101078c2c3cb'
+export const ETH_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.ETHH
+export const ANKRETH = networkConfig['31337'].tokens.ankrETH as string
 export const ANKRETH_WHALE = '0xc8b6eacbd4a4772d77622ca8f3348877cf0beb46'
 export const ANKRETH_OWNER = '0x2ffc59d32a524611bb891cab759112a51f9e33c0'
 

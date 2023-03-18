@@ -124,7 +124,6 @@ const makeCollateralFixtureContext = (
     const reth = (await ethers.getContractAt('IReth', RETH)) as IReth
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
-    const tokDecimals = await reth.decimals()
 
     return {
       alice,
@@ -135,7 +134,6 @@ const makeCollateralFixtureContext = (
       refPerTokChainlinkFeed,
       tok: reth,
       rewardToken,
-      tokDecimals,
     }
   }
 
@@ -179,7 +177,6 @@ const makeCollateralFixtureContext = (
 //   const collateral = await deployCollateral(collateralOpts)
 
 //   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-//   const tokDecimals = await wcusdcV3.decimals()
 
 //   return {
 //     collateral,
@@ -190,7 +187,6 @@ const makeCollateralFixtureContext = (
 //     usdc,
 //     tok: wcusdcV3,
 //     rewardToken,
-//     tokDecimals,
 //   }
 // }
 
@@ -318,7 +314,7 @@ const opts = {
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
-  itCheckPriceChanges: it,
+  itChecksPriceChanges: it,
   resetFork,
   collateralName: 'RocketPoolETH',
   chainlinkDefaultAnswer,

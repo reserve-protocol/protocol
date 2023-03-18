@@ -223,7 +223,6 @@ const deployCollateralCometMockContext = async (
   const collateral = await deployCollateral(collateralOpts)
 
   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-  const tokDecimals = await wcusdcV3.decimals()
 
   return {
     collateral,
@@ -234,7 +233,6 @@ const deployCollateralCometMockContext = async (
     usdc,
     tok: wcusdcV3,
     rewardToken,
-    tokDecimals,
   }
 }
 
@@ -256,7 +254,7 @@ const reduceTargetPerRef = async (
   pctDecrease: BigNumberish
 ) => {
   const lastRound = await ctx.chainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
   await ctx.chainlinkFeed.updateAnswer(nextAnswer)
 }
 
@@ -265,7 +263,7 @@ const increaseTargetPerRef = async (
   pctIncrease: BigNumberish
 ) => {
   const lastRound = await ctx.chainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
   await ctx.chainlinkFeed.updateAnswer(nextAnswer)
 }
 
@@ -408,7 +406,8 @@ const opts = {
   itClaimsRewards: it,
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
-  itCheckPriceChanges: it,
+  itChecksPriceChanges: it,
+  itIsPricedByPeg: true,
   resetFork,
   collateralName: 'CompoundV3USDC',
   chainlinkDefaultAnswer,

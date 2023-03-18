@@ -1,15 +1,14 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumberish, BigNumber } from 'ethers'
-import { MockV3Aggregator, TestICollateral, IERC20 } from '../../../typechain'
+import { MockV3Aggregator, TestICollateral, IERC20Metadata } from '../../../typechain'
 
 type Fixture<T> = () => Promise<T>
 
 export interface CollateralFixtureContext {
   collateral: TestICollateral
   chainlinkFeed: MockV3Aggregator
-  tok: IERC20
-  tokDecimals: number // tldr; IERC20 does not include decimals()
-  rewardToken: IERC20
+  tok: IERC20Metadata
+  rewardToken: IERC20Metadata
   alice?: SignerWithAddress
 }
 
@@ -52,7 +51,8 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction
-  itCheckPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
+  itChecksPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
+  itIsPricedByPeg?: boolean // does the peg price matter for the results of tryPrice()?
   resetFork: () => void
   collateralName: string
   chainlinkDefaultAnswer: BigNumberish
