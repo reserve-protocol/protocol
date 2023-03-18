@@ -211,7 +211,7 @@ const increaseRefPerTok = async (
   pctIncrease: BigNumberish 
 ) => {
   const currentBal = await ctx.frxEth.balanceOf(ctx.sfrxEth.address)
-  const addBal = currentBal.mul(pctIncrease!).div(100)
+  const addBal = currentBal.mul(pctIncrease).div(100)
   await mintFrxETH(ctx.frxEth, ctx.alice!, addBal, ctx.sfrxEth.address)
   const rewardCycleEnd = await ctx.sfrxEth.rewardsCycleEnd()
   const nextTimestamp = await getLatestBlockTimestamp()
