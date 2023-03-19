@@ -23,6 +23,7 @@ export interface CollateralOpts {
   maxTradeVolume?: BigNumberish
   defaultThreshold?: BigNumberish
   delayUntilDefault?: BigNumberish
+  revenueHiding?: BigNumberish
 }
 
 export type DeployCollateralFunc = (opts: CollateralOpts) => Promise<TestICollateral>
@@ -52,6 +53,7 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction
   itChecksPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
+  itHasRevenueHiding: Mocha.TestFunction | Mocha.PendingTestFunction
   itIsPricedByPeg?: boolean // does the peg price matter for the results of tryPrice()?
   resetFork: () => void
   collateralName: string

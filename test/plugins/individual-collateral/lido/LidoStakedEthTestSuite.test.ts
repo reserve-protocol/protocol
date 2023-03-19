@@ -60,6 +60,7 @@ export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   targetPerRefChainlinkFeed: STETH_ETH_PRICE_FEED,
   targetPerRefChainlinkTimeout: ORACLE_TIMEOUT,
+  revenueHiding: fp('0'),
 }
 
 export const deployCollateral = async (
@@ -84,7 +85,7 @@ export const deployCollateral = async (
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
-    0,
+    opts.revenueHiding,
     opts.targetPerRefChainlinkFeed,
     opts.targetPerRefChainlinkTimeout,
     { gasLimit: 2000000000 }
@@ -259,6 +260,7 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itHasRevenueHiding: it,
   resetFork,
   collateralName: 'LidoStakedETH',
   chainlinkDefaultAnswer,

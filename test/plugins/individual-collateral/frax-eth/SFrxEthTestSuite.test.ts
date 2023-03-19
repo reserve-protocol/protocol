@@ -56,6 +56,7 @@ export const defaultRethCollateralOpts: CollateralOpts = {
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
+  revenueHiding: fp('0'),
 }
 
 export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
@@ -77,7 +78,7 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
-    0,
+    opts.revenueHiding,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -253,7 +254,9 @@ const getExpectedPrice = async (ctx: SFrxEthCollateralFixtureContext): Promise<B
 const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => {}
+const collateralSpecificStatusTests = () => {
+  // TODO revenue hiding
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const beforeEachRewardsTest = async () => {}
@@ -278,6 +281,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
+  itHasRevenueHiding: it.skip,
   resetFork,
   collateralName: 'SFraxEthCollateral',
   chainlinkDefaultAnswer,

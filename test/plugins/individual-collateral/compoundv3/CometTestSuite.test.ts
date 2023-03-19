@@ -23,7 +23,7 @@ import {
   TestICollateral,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
-import { MAX_UINT48 } from '../../../../common/constants'
+import { MAX_UINT48, ONE_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -85,6 +85,7 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
+  revenueHiding: fp('0'),
   reservesThresholdIffy: reservesThresholdIffyDefault,
 }
 
@@ -109,7 +110,7 @@ export const deployCollateral = async (
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
-    0,
+    opts.revenueHiding,
     opts.reservesThresholdIffy,
     { gasLimit: 2000000000 }
   )
@@ -257,9 +258,12 @@ const increaseTargetPerRef = async (
   await ctx.chainlinkFeed.updateAnswer(nextAnswer)
 }
 
-const reduceRefPerTok = async (ctx: CometCollateralFixtureContext) => {
+const reduceRefPerTok = async (ctx: CometCollateralFixtureContext, pctDecrease: BigNumberish) => {
   const currentExchangeRate = await ctx.wcusdcV3.exchangeRate()
-  await ctx.wcusdcV3Mock.setMockExchangeRate(true, currentExchangeRate.sub(100))
+  await ctx.wcusdcV3Mock.setMockExchangeRate(
+    true,
+    currentExchangeRate.sub(currentExchangeRate.mul(pctDecrease).div(100))
+  )
 }
 
 const increaseRefPerTok = async () => {
@@ -336,6 +340,30 @@ const collateralSpecificStatusTests = () => {
     expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
     expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
   })
+
+  it('does revenue hiding correctly', async () => {
+    const { collateral, wcusdcV3Mock } = await deployCollateralCometMockContext({
+      revenueHiding: fp('0.01'),
+    })
+
+    // Should remain SOUND after a 1% decrease
+    let currentExchangeRate = await wcusdcV3Mock.exchangeRate()
+    await wcusdcV3Mock.setMockExchangeRate(
+      true,
+      currentExchangeRate.sub(currentExchangeRate.mul(1).div(100))
+    )
+    await collateral.refresh()
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+    // Should become DISABLED if drops more than that
+    currentExchangeRate = await wcusdcV3Mock.exchangeRate()
+    await wcusdcV3Mock.setMockExchangeRate(
+      true,
+      currentExchangeRate.sub(currentExchangeRate.mul(1).div(100))
+    )
+    await collateral.refresh()
+    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+  })
 }
 
 const beforeEachRewardsTest = async (ctx: CometCollateralFixtureContext) => {
@@ -362,6 +390,7 @@ const opts = {
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itHasRevenueHiding: it.skip, // implemented in this file
   itIsPricedByPeg: true,
   resetFork,
   collateralName: 'CompoundV3USDC',

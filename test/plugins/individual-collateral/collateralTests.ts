@@ -6,7 +6,7 @@ import { BigNumber } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { bn } from '../../../common/numbers'
+import { bn, fp } from '../../../common/numbers'
 import { InvalidMockV3Aggregator, MockV3Aggregator, TestICollateral } from '../../../typechain'
 import {
   advanceTime,
@@ -45,6 +45,7 @@ export default function fn<X extends CollateralFixtureContext>(
     itChecksTargetPerRefDefault,
     itChecksRefPerTokDefault,
     itChecksPriceChanges,
+    itHasRevenueHiding,
     itIsPricedByPeg,
     resetFork,
     collateralName,
@@ -276,6 +277,19 @@ export default function fn<X extends CollateralFixtureContext>(
             }
           */
           expect(true)
+        })
+        itHasRevenueHiding('does revenue hiding correctly', async () => {
+          ctx.collateral = await deployCollateral({ revenueHiding: fp('0.01') })
+
+          // Should remain SOUND after a 1% decrease
+          await reduceRefPerTok(ctx, 1) // 1% decrease
+          await ctx.collateral.refresh()
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+
+          // Should become DISABLED if drops more than that
+          await reduceRefPerTok(ctx, 1) // another 1% decrease
+          await ctx.collateral.refresh()
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
         })
       })
 

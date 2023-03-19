@@ -62,6 +62,7 @@ export const defaultRethCollateralOpts: RethCollateralOpts = {
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   refPerTokChainlinkFeed: RETH_ETH_PRICE_FEED,
   refPerTokChainlinkTimeout: ORACLE_TIMEOUT,
+  revenueHiding: fp('0'),
 }
 
 export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<TestICollateral> => {
@@ -81,7 +82,7 @@ export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<T
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
-    0,
+    opts.revenueHiding,
     opts.refPerTokChainlinkFeed,
     opts.refPerTokChainlinkTimeout,
     { gasLimit: 2000000000 }
@@ -231,14 +232,6 @@ const reduceRefPerTok = async (
   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
-// const reduceRefPerTok = async (
-//   ctx: RethCollateralFixtureContext,
-//   pctDecrease: BigNumberish
-// ) => {
-//   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-//   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
-//   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
-// }
 
 // prettier-ignore
 const increaseRefPerTok = async (
@@ -260,14 +253,6 @@ const increaseRefPerTok = async (
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
-// const increaseRefPerTok = async (
-//   ctx: RethCollateralFixtureContext,
-//   pctIncrease: BigNumberish
-// ) => {
-//   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-//   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
-//   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
-// }
 
 const getExpectedPrice = async (ctx: RethCollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
@@ -315,6 +300,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itHasRevenueHiding: it,
   resetFork,
   collateralName: 'RocketPoolETH',
   chainlinkDefaultAnswer,

@@ -49,6 +49,7 @@ export const defaultAnkrEthCollateralOpts: CollateralOpts = {
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
+  revenueHiding: fp('0'),
 }
 
 export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
@@ -70,7 +71,7 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
-    0,
+    opts.revenueHiding,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -213,6 +214,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itHasRevenueHiding: it,
   resetFork,
   collateralName: 'AnkrStakedETH',
   chainlinkDefaultAnswer,
