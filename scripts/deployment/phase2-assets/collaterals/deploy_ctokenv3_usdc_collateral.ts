@@ -65,14 +65,14 @@ async function main() {
       defaultThreshold: fp('0.0125').toString(), // 1% + 0.25%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    revenueHiding,
-    bn('10000e6') // $10k
+    revenueHiding.toString(),
+    bn('10000e6').toString() // $10k
   )
   await collateral.deployed()
   await collateral.refresh()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(`Deployed CompoundV3 USDC to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
   assetCollDeployments.collateral.cUSDCv3 = collateral.address
   deployedCollateral.push(collateral.address.toString())

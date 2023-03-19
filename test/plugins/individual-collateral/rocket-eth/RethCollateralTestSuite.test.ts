@@ -51,7 +51,7 @@ interface RethCollateralOpts extends CollateralOpts {
 
 export const defaultRethCollateralOpts: RethCollateralOpts = {
   erc20: RETH,
-  targetName: ethers.utils.formatBytes32String('USD'),
+  targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: WETH,
   priceTimeout: ORACLE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED,
@@ -96,7 +96,7 @@ export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<T
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
-const refPerTokChainlinkDefaultAnswer = bn('1e8')
+const refPerTokChainlinkDefaultAnswer = fp('1')
 
 type Fixture<T> = () => Promise<T>
 
@@ -116,7 +116,7 @@ const makeCollateralFixtureContext = (
     )
 
     const refPerTokChainlinkFeed = <MockV3Aggregator>(
-      await MockV3AggregatorFactory.deploy(8, refPerTokChainlinkDefaultAnswer)
+      await MockV3AggregatorFactory.deploy(18, refPerTokChainlinkDefaultAnswer)
     )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
     collateralOpts.refPerTokChainlinkFeed = refPerTokChainlinkFeed.address

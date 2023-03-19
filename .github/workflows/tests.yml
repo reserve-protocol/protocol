@@ -22,7 +22,6 @@ jobs:
       - run: yarn compile
       - run: yarn devchain &
         env:
-          MAINNET_BLOCK: 16804407
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
       - run: yarn deploy:run --network localhost
 
