@@ -154,16 +154,22 @@ describe('FacadeRead contract', () => {
     })
 
     it('Should return issuable quantities correctly', async () => {
-      const [toks, quantities] = await facade.callStatic.issue(rToken.address, issueAmount)
+      const [toks, quantities, uoas] = await facade.callStatic.issue(rToken.address, issueAmount)
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
       expect(toks[1]).to.equal(usdc.address)
       expect(toks[2]).to.equal(aToken.address)
       expect(toks[3]).to.equal(cToken.address)
+      expect(quantities.length).to.equal(4)
       expect(quantities[0]).to.equal(issueAmount.div(4))
       expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
       expect(quantities[2]).to.equal(issueAmount.div(4))
       expect(quantities[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
+      expect(uoas.length).to.equal(4)
+      expect(uoas[0]).to.equal(issueAmount.div(4))
+      expect(uoas[1]).to.equal(issueAmount.div(4))
+      expect(uoas[2]).to.equal(issueAmount.div(4))
+      expect(uoas[3]).to.equal(issueAmount.div(4))
     })
 
     it('Should return redeemable quantities correctly', async () => {
@@ -279,6 +285,54 @@ describe('FacadeRead contract', () => {
       // Check values - Fully collateralized and no over-collateralization
       expect(backing2).to.be.closeTo(fp('1'), 10)
       expect(overCollateralization2).to.equal(0)
+    })
+
+    it('Should return traderBalances correctly', async () => {
+      // BackingManager
+      let [erc20s, balances, balancesNeeded] = await facade.traderBalances(
+        rToken.address,
+        await main.backingManager()
+      )
+      expect(erc20s.length).to.equal(8)
+      expect(balances.length).to.equal(8)
+      expect(balancesNeeded.length).to.equal(8)
+
+      for (let i = 0; i < 8; i++) {
+        let bal = bn('0')
+        if (erc20s[i] == token.address) bal = issueAmount.div(4)
+        if (erc20s[i] == usdc.address) bal = issueAmount.div(4).div(bn('1e12'))
+        if (erc20s[i] == aToken.address) bal = issueAmount.div(4)
+        if (erc20s[i] == cToken.address) bal = issueAmount.div(4).mul(50).div(bn('1e10'))
+
+        expect(balances[i]).to.equal(bal)
+        expect(balancesNeeded[i]).to.equal(bal)
+      }
+
+      // RTokenTrader
+      ;[erc20s, balances, balancesNeeded] = await facade.traderBalances(
+        rToken.address,
+        await main.rTokenTrader()
+      )
+      expect(erc20s.length).to.equal(8)
+      expect(balances.length).to.equal(8)
+      expect(balancesNeeded.length).to.equal(8)
+      for (let i = 0; i < 8; i++) {
+        expect(balances[i]).to.equal(0)
+        expect(balancesNeeded[i]).to.equal(0)
+      }
+
+      // RSRTrader
+      ;[erc20s, balances, balancesNeeded] = await facade.traderBalances(
+        rToken.address,
+        await main.rsrTrader()
+      )
+      expect(erc20s.length).to.equal(8)
+      expect(balances.length).to.equal(8)
+      expect(balancesNeeded.length).to.equal(8)
+      for (let i = 0; i < 8; i++) {
+        expect(balances[i]).to.equal(0)
+        expect(balancesNeeded[i]).to.equal(0)
+      }
     })
 
     it('Should return basketBreakdown correctly for paused token', async () => {

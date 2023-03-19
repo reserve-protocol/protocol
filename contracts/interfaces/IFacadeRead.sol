@@ -20,11 +20,16 @@ interface IFacadeRead {
     function maxIssuable(IRToken rToken, address account) external returns (uint256);
 
     /// @return tokens The erc20 needed for the issuance
-    /// @return deposits The deposits necessary to issue `amount` RToken
+    /// @return deposits {qTok} The deposits necessary to issue `amount` RToken
+    /// @return depositsUoA {UoA} The UoA value of the deposits necessary to issue `amount` RToken
     /// @custom:static-call
     function issue(IRToken rToken, uint256 amount)
         external
-        returns (address[] memory tokens, uint256[] memory deposits);
+        returns (
+            address[] memory tokens,
+            uint256[] memory deposits,
+            uint192[] memory depositsUoA
+        );
 
     /// @return tokens The erc20s returned for the redemption
     /// @return withdrawals The balances necessary to issue `amount` RToken
@@ -108,6 +113,18 @@ interface IFacadeRead {
         external
         view
         returns (uint192 backing, uint192 overCollateralization);
+
+    /// @return erc20s The registered ERC20s
+    /// @return balances {qTok} The held balances of each ERC20 at the trader
+    /// @return balancesNeeded {qTok} The needed balance of each ERC20 at the trader
+    function traderBalances(IRToken rToken, ITrading trader)
+        external
+        view
+        returns (
+            IERC20[] memory erc20s,
+            uint256[] memory balances,
+            uint256[] memory balancesNeeded
+        );
 
     /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
     /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset
