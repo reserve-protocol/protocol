@@ -27,6 +27,8 @@ import {
   defaultFixture,
   ORACLE_ERROR,
 } from './fixtures'
+import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
+import { CollateralStatus } from '#/common/constants'
 
 describe('FacadeRead contract', () => {
   let owner: SignerWithAddress
@@ -360,6 +362,38 @@ describe('FacadeRead contract', () => {
       })
 
       it('Should return prime basket', async () => {
+        const [erc20s, targetNames, targetAmts] = await facade.primeBasket(rToken.address)
+        expect(erc20s.length).to.equal(4)
+        expect(targetNames.length).to.equal(4)
+        expect(targetAmts.length).to.equal(4)
+        const expectedERC20s = [token.address, usdc.address, aToken.address, cToken.address]
+        for (let i = 0; i < 4; i++) {
+          expect(erc20s[i]).to.equal(expectedERC20s[i])
+          expect(targetNames[i]).to.equal(ethers.utils.formatBytes32String('USD'))
+          expect(targetAmts[i]).to.equal(fp('0.25'))
+        }
+      })
+
+      it('Should return prime basket after a default', async () => {
+        // Set a backup config
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [token.address])
+
+        // Set up DISABLED collateral (USDC)
+        await setOraclePrice(usdcAsset.address, bn('0.5'))
+        const delayUntiDefault = await usdcAsset.delayUntilDefault()
+        const currentTimestamp = await getLatestBlockTimestamp()
+        await usdcAsset.refresh()
+        await setNextBlockTimestamp(currentTimestamp + delayUntiDefault + 1)
+        await usdcAsset.refresh()
+        expect(await usdcAsset.status()).to.equal(CollateralStatus.DISABLED)
+
+        // switch basket, removing USDC
+        await basketHandler.refreshBasket()
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+        // prime basket should still be all 4 tokens
         const [erc20s, targetNames, targetAmts] = await facade.primeBasket(rToken.address)
         expect(erc20s.length).to.equal(4)
         expect(targetNames.length).to.equal(4)
