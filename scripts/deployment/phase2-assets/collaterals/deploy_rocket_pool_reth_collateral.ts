@@ -3,6 +3,8 @@ import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
+import { expect } from 'chai'
+import { CollateralStatus } from '../../../../common/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -62,6 +64,7 @@ async function main() {
   )
   await collateral.deployed()
   await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`)
 

@@ -3,6 +3,8 @@ import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
+import { expect } from 'chai'
+import { CollateralStatus } from '../../../../common/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -10,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout, combinedError } from '../../utils'
+import { priceTimeout, oracleTimeout } from '../../utils'
 import { LidoStakedEthCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -64,6 +66,7 @@ async function main() {
   )
   await collateral.deployed()
   await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
