@@ -2,11 +2,12 @@ import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintSfrxETH, mintFrxETH } from './helpers'
 import hre, { ethers } from 'hardhat'
+import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  ICollateral,
+  TestICollateral,
   ERC20Mock,
   IsfrxEth,
 } from '../../../../typechain'
@@ -55,16 +56,17 @@ export const defaultRethCollateralOpts: CollateralOpts = {
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
+  revenueHiding: fp('0'),
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
   opts = { ...defaultRethCollateralOpts, ...opts }
 
   const SFraxEthCollateralFactory: ContractFactory = await ethers.getContractFactory(
     'SFraxEthCollateral'
   )
 
-  const collateral = <ICollateral>await SFraxEthCollateralFactory.deploy(
+  const collateral = <TestICollateral>await SFraxEthCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -76,10 +78,13 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<IColl
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
-    0,
+    opts.revenueHiding,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
 
   return collateral
 }
@@ -108,7 +113,6 @@ const makeCollateralFixtureContext = (
     const sfrxEth = (await ethers.getContractAt('IsfrxEth', SFRX_ETH)) as IsfrxEth
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
-    const tokDecimals = await sfrxEth.decimals()
 
     return {
       alice,
@@ -118,7 +122,6 @@ const makeCollateralFixtureContext = (
       sfrxEth,
       tok: sfrxEth,
       rewardToken,
-      tokDecimals,
     }
   }
 
@@ -162,7 +165,6 @@ const makeCollateralFixtureContext = (
 //   const collateral = await deployCollateral(collateralOpts)
 
 //   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-//   const tokDecimals = await wcusdcV3.decimals()
 
 //   return {
 //     collateral,
@@ -173,7 +175,6 @@ const makeCollateralFixtureContext = (
 //     usdc,
 //     tok: wcusdcV3,
 //     rewardToken,
-//     tokDecimals,
 //   }
 // }
 
@@ -204,10 +205,10 @@ const reduceRefPerTok = async () => {
 // prettier-ignore
 const increaseRefPerTok = async (
   ctx: SFrxEthCollateralFixtureContext,
-  pctIncrease: BigNumberish | undefined
+  pctIncrease: BigNumberish 
 ) => {
   const currentBal = await ctx.frxEth.balanceOf(ctx.sfrxEth.address)
-  const addBal = currentBal.mul(pctIncrease!).div(100)
+  const addBal = currentBal.mul(pctIncrease).div(100)
   await mintFrxETH(ctx.frxEth, ctx.alice!, addBal, ctx.sfrxEth.address)
   const rewardCycleEnd = await ctx.sfrxEth.rewardsCycleEnd()
   const nextTimestamp = await getLatestBlockTimestamp()
@@ -253,7 +254,9 @@ const getExpectedPrice = async (ctx: SFrxEthCollateralFixtureContext): Promise<B
 const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => {}
+const collateralSpecificStatusTests = () => {
+  // TODO revenue hiding
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const beforeEachRewardsTest = async () => {}
@@ -278,6 +281,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
+  itHasRevenueHiding: it.skip,
   resetFork,
   collateralName: 'SFraxEthCollateral',
   chainlinkDefaultAnswer,

@@ -2,12 +2,13 @@ import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintAnkrETH } from './helpers'
 import { ethers } from 'hardhat'
+import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  ICollateral,
+  TestICollateral,
   IAnkrETH,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
@@ -48,16 +49,17 @@ export const defaultAnkrEthCollateralOpts: CollateralOpts = {
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
+  revenueHiding: fp('0'),
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
   opts = { ...defaultAnkrEthCollateralOpts, ...opts }
 
   const AnkrETHCollateralFactory: ContractFactory = await ethers.getContractFactory(
     'AnkrStakedEthCollateral'
   )
 
-  const collateral = <ICollateral>await AnkrETHCollateralFactory.deploy(
+  const collateral = <TestICollateral>await AnkrETHCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -69,10 +71,14 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<IColl
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
-    0,
+    opts.revenueHiding,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
 
   return collateral
 }
@@ -101,7 +107,6 @@ const makeCollateralFixtureContext = (
     const ankreth = (await ethers.getContractAt('IAnkrETH', ANKRETH)) as IAnkrETH
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
-    const tokDecimals = await ankreth.decimals()
 
     return {
       alice,
@@ -110,7 +115,6 @@ const makeCollateralFixtureContext = (
       ankreth,
       tok: ankreth,
       rewardToken,
-      tokDecimals,
     }
   }
 
@@ -136,10 +140,7 @@ const reduceTargetPerRef = async () => {}
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const increaseTargetPerRef = async () => {}
 
-const reduceRefPerTok = async (
-  ctx: AnkrETHCollateralFixtureContext,
-  pctDecrease: BigNumberish | undefined
-) => {
+const reduceRefPerTok = async (ctx: AnkrETHCollateralFixtureContext, pctDecrease: BigNumberish) => {
   const ankrETH = (await ethers.getContractAt('IAnkrETH', ANKRETH)) as IAnkrETH
 
   // Increase ratio so refPerTok decreases
@@ -154,7 +155,7 @@ const reduceRefPerTok = async (
 
 const increaseRefPerTok = async (
   ctx: AnkrETHCollateralFixtureContext,
-  pctIncrease: BigNumberish | undefined
+  pctIncrease: BigNumberish
 ) => {
   const ankrETH = (await ethers.getContractAt('IAnkrETH', ANKRETH)) as IAnkrETH
 
@@ -213,6 +214,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itHasRevenueHiding: it,
   resetFork,
   collateralName: 'AnkrStakedETH',
   chainlinkDefaultAnswer,

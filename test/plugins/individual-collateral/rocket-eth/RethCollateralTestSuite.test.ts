@@ -2,12 +2,13 @@ import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintRETH } from './helpers'
 import { ethers } from 'hardhat'
+import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  ICollateral,
+  TestICollateral,
   IReth,
   WETH9,
 } from '../../../../typechain'
@@ -61,14 +62,15 @@ export const defaultRethCollateralOpts: RethCollateralOpts = {
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   refPerTokChainlinkFeed: RETH_ETH_PRICE_FEED,
   refPerTokChainlinkTimeout: ORACLE_TIMEOUT,
+  revenueHiding: fp('0'),
 }
 
-export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<ICollateral> => {
+export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<TestICollateral> => {
   opts = { ...defaultRethCollateralOpts, ...opts }
 
   const RethCollateralFactory: ContractFactory = await ethers.getContractFactory('RethCollateral')
 
-  const collateral = <ICollateral>await RethCollateralFactory.deploy(
+  const collateral = <TestICollateral>await RethCollateralFactory.deploy(
     {
       erc20: opts.erc20,
       targetName: opts.targetName,
@@ -80,12 +82,15 @@ export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<I
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
-    0,
+    opts.revenueHiding,
     opts.refPerTokChainlinkFeed,
     opts.refPerTokChainlinkTimeout,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
 
   return collateral
 }
@@ -120,7 +125,6 @@ const makeCollateralFixtureContext = (
     const reth = (await ethers.getContractAt('IReth', RETH)) as IReth
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
-    const tokDecimals = await reth.decimals()
 
     return {
       alice,
@@ -131,7 +135,6 @@ const makeCollateralFixtureContext = (
       refPerTokChainlinkFeed,
       tok: reth,
       rewardToken,
-      tokDecimals,
     }
   }
 
@@ -175,7 +178,6 @@ const makeCollateralFixtureContext = (
 //   const collateral = await deployCollateral(collateralOpts)
 
 //   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-//   const tokDecimals = await wcusdcV3.decimals()
 
 //   return {
 //     collateral,
@@ -186,7 +188,6 @@ const makeCollateralFixtureContext = (
 //     usdc,
 //     tok: wcusdcV3,
 //     rewardToken,
-//     tokDecimals,
 //   }
 // }
 
@@ -214,60 +215,44 @@ const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('networ
 // prettier-ignore
 const reduceRefPerTok = async (
   ctx: RethCollateralFixtureContext,
-  pctDecrease: BigNumberish | undefined
+  pctDecrease: BigNumberish 
 ) => {
   const rethNetworkBalances = await ethers.getContractAt(
     'IRocketNetworkBalances',
     RETH_NETWORK_BALANCES
   )
   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
-  const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease!).div(100))
+  const lowerBal = currentTotalEth.sub(currentTotalEth.mul(pctDecrease).div(100))
   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
   await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
   })
 
   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
+  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
-// const reduceRefPerTok = async (
-//   ctx: RethCollateralFixtureContext,
-//   pctDecrease: BigNumberish | undefined
-// ) => {
-//   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-//   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease!).div(100))
-//   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
-// }
 
 // prettier-ignore
 const increaseRefPerTok = async (
   ctx: RethCollateralFixtureContext,
-  pctIncrease: BigNumberish | undefined
+  pctIncrease: BigNumberish 
 ) => {
   const rethNetworkBalances = await ethers.getContractAt(
     'IRocketNetworkBalances',
     RETH_NETWORK_BALANCES
   )
   const currentTotalEth = await rethNetworkBalances.getTotalETHBalance()
-  const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease!).div(100))
+  const lowerBal = currentTotalEth.add(currentTotalEth.mul(pctIncrease).div(100))
   const rocketStorage = await ethers.getContractAt('IRocketStorage', RETH_STORAGE)
   await whileImpersonating(RETH_NETWORK_BALANCES, async (rethSigner) => {
     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
   })
 
   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
+  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
-// const increaseRefPerTok = async (
-//   ctx: RethCollateralFixtureContext,
-//   pctIncrease: BigNumberish | undefined
-// ) => {
-//   const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-//   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease!).div(100))
-//   await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
-// }
 
 const getExpectedPrice = async (ctx: RethCollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
@@ -315,6 +300,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
+  itHasRevenueHiding: it,
   resetFork,
   collateralName: 'RocketPoolETH',
   chainlinkDefaultAnswer,

@@ -19,8 +19,8 @@ contract RethCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    AggregatorV3Interface public refPerTokChainlinkFeed;
-    uint48 public refPerTokChainlinkTimeout;
+    AggregatorV3Interface public immutable refPerTokChainlinkFeed;
+    uint48 public immutable refPerTokChainlinkTimeout;
 
     constructor(
         CollateralConfig memory config,
@@ -32,7 +32,6 @@ contract RethCollateral is AppreciatingFiatCollateral {
         require(_refPerTokChainlinkTimeout != 0, "Chainlink feed cannot be 0x0");
         refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
         refPerTokChainlinkTimeout = _refPerTokChainlinkTimeout;
-        exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -49,16 +48,19 @@ contract RethCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
+        pegPrice = targetPerRef(); // {target/ref} ETH/ETH is always 1
+
+        // {UoA/ref}
         uint192 p = chainlinkFeed.price(oracleTimeout); // target==ref :: {UoA/target} == {UoA/ref}
 
-        // use market price for {ref/tok}
-        pegPrice = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
+        // {ref/tok}
+        uint192 refPerTok = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pLow = p.mul(pegPrice.mul(revenueShowing));
+        uint192 pHigh = p.mul(refPerTok);
 
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pHigh = p.mul(pegPrice);
+        // {UoA/tok} = {UoA/tok} * {1}
+        uint192 pLow = pHigh.mul(revenueShowing);
 
         low = pLow - pLow.mul(oracleError);
         high = pHigh + pHigh.mul(oracleError);

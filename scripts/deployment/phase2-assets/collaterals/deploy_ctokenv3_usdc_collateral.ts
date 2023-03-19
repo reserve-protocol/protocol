@@ -12,8 +12,8 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout } from '../../utils'
-import { LidoStakedEthCollateral } from '../../../../typechain'
+import { priceTimeout, oracleTimeout, revenueHiding } from '../../utils'
+import { CTokenV3Collateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
 async function main() {
@@ -40,29 +40,33 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy Lido Staked ETH Collateral - wstETH  **************************/
+  /********  Deploy CompoundV3 USDC - cUSDCv3  **************************/
 
-  const LidoStakedEthCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'LidoStakedEthCollateral'
+  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('CusdcV3Wrapper')
+
+  const erc20 = await WrapperFactory.deploy(
+    networkConfig[chainId].tokens.cUSDCv3,
+    '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
+    networkConfig[chainId].tokens.COMP
   )
+  await erc20.deployed()
 
-  const collateral = <LidoStakedEthCollateral>await LidoStakedEthCollateralFactory.connect(
-    deployer
-  ).deploy(
+  const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
+
+  const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.stETHUSD,
-      oracleError: fp('0.01').toString(), // 1%: only for stETHUSD feed
-      erc20: networkConfig[chainId].tokens.wstETH,
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
+      oracleError: fp('0.0025').toString(), // 0.25%,
+      erc20: erc20.address,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
-      targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.15').toString(), // 15%
+      oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h hr,
+      targetName: hre.ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: fp('0.0125').toString(), // 1% + 0.25%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    fp('1e-4'), // revenueHiding = 0.01%
-    networkConfig[chainId].chainlinkFeeds.stETHETH, // targetPerRefChainlinkFeed
-    oracleTimeout(chainId, '86400').toString() // targetPerRefChainlinkTimeout
+    revenueHiding,
+    bn('10000e6') // $10k
   )
   await collateral.deployed()
   await collateral.refresh()
@@ -70,7 +74,7 @@ async function main() {
 
   console.log(`Deployed Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
-  assetCollDeployments.collateral.wstETH = collateral.address
+  assetCollDeployments.collateral.cUSDCv3 = collateral.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
