@@ -20,6 +20,7 @@ import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { advanceBlocks, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../utils/oracles'
+import forkBlockNumber from '../fork-block-numbers'
 import {
   Asset,
   ATokenFiatCollateral,
@@ -166,8 +167,26 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
   let chainId: number
 
+  // Setup test environment
+  const setup = async (blockNumber: number) => {
+    // Use Mainnet fork
+    await hre.network.provider.request({
+      method: 'hardhat_reset',
+      params: [
+        {
+          forking: {
+            jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+            blockNumber: blockNumber,
+          },
+        },
+      ],
+    })
+  }
+
   describe('Assets/Collateral', () => {
     before(async () => {
+      await setup(forkBlockNumber['asset-plugins'])
+
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
         throw new Error(`Missing network configuration for ${hre.network.name}`)

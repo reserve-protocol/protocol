@@ -60,7 +60,7 @@ async function main() {
       defaultThreshold: fp('0.15').toString(), // 15%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    fp('1e-4'), // revenueHiding = 0.01%
+    fp('1e-4').toString(), // revenueHiding = 0.01%
     networkConfig[chainId].chainlinkFeeds.stETHETH, // targetPerRefChainlinkFeed
     oracleTimeout(chainId, '86400').toString() // targetPerRefChainlinkTimeout
   )
@@ -68,7 +68,7 @@ async function main() {
   await collateral.refresh()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(`Deployed Lido wStETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
   assetCollDeployments.collateral.wstETH = collateral.address
   deployedCollateral.push(collateral.address.toString())

@@ -47,7 +47,7 @@ interface SFrxEthCollateralFixtureContext extends CollateralFixtureContext {
 
 export const defaultRethCollateralOpts: CollateralOpts = {
   erc20: SFRX_ETH,
-  targetName: ethers.utils.formatBytes32String('USD'),
+  targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: WETH,
   priceTimeout: ORACLE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED,

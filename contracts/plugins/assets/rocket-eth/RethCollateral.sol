@@ -28,8 +28,8 @@ contract RethCollateral is AppreciatingFiatCollateral {
         AggregatorV3Interface _refPerTokChainlinkFeed,
         uint48 _refPerTokChainlinkTimeout
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(_refPerTokChainlinkFeed) != address(0), "Chainlink feed cannot be 0x0");
-        require(_refPerTokChainlinkTimeout != 0, "Chainlink feed cannot be 0x0");
+        require(address(_refPerTokChainlinkFeed) != address(0), "missing refPerTok feed");
+        require(_refPerTokChainlinkTimeout != 0, "refPerTokChainlinkTimeout zero");
         refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
         refPerTokChainlinkTimeout = _refPerTokChainlinkTimeout;
     }
