@@ -1,8 +1,10 @@
 import fs from 'fs'
 import hre, { ethers } from 'hardhat'
+import { expect } from 'chai'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
+import { CollateralStatus } from '../../../../common/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -11,7 +13,7 @@ import {
   fileExists,
 } from '../../common'
 import { priceTimeout, oracleTimeout, revenueHiding } from '../../utils'
-import { Asset } from '../../../../typechain'
+import { ICollateral } from '../../../../typechain'
 
 async function main() {
   // ==== Read Configuration ====
@@ -53,7 +55,9 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
   })
-  await (<Asset>await ethers.getContractAt('Asset', fUsdcCollateral)).refresh()
+  let collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdcCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDC = fUsdcCollateral
   deployedCollateral.push(fUsdcCollateral.toString())
@@ -75,7 +79,9 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
   })
-  await (<Asset>await ethers.getContractAt('Asset', fUsdtCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdtCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDT = fUsdtCollateral
   deployedCollateral.push(fUsdtCollateral.toString())
@@ -97,7 +103,9 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
   })
-  await (<Asset>await ethers.getContractAt('Asset', fDaiCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', fDaiCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fDAI = fDaiCollateral
   deployedCollateral.push(fDaiCollateral.toString())
@@ -121,7 +129,9 @@ async function main() {
   //     revenueHiding: revenueHiding.toString(),
   //     comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
   //   })
-  //   await (<Asset>await ethers.getContractAt('Asset', fFRAXCollateral)).refresh()
+  // collateral = <ICollateral>await ethers.getContractAt('ICollateral', fFRAXCollateral)
+  // await collateral.refresh()
+  // expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   //   assetCollDeployments.collateral.fFRAX = fFRAXCollateral
   //   deployedCollateral.push(fFRAXCollateral.toString())
