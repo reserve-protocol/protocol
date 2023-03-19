@@ -8,7 +8,7 @@ export interface CollateralFixtureContext {
   collateral: TestICollateral
   chainlinkFeed: MockV3Aggregator
   tok: IERC20Metadata
-  rewardToken: IERC20Metadata
+  rewardToken?: IERC20Metadata
   alice?: SignerWithAddress
 }
 

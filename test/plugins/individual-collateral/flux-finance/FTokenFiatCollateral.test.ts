@@ -12,7 +12,7 @@ import {
   ICToken,
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  ICollateral,
+  TestICollateral,
 } from '../../../../typechain'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
@@ -112,14 +112,14 @@ all.forEach((curr: FTokenEnumeration) => {
     revenueHiding: 0,
   }
 
-  const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<ICollateral> => {
+  const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
     opts = { ...defaultCollateralOpts, ...opts }
 
     const FTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     ) // fTokens are the same as cTokens modulo some extra stuff we don't care about
 
-    const collateral = <ICollateral>await FTokenCollateralFactory.deploy(
+    const collateral = <TestICollateral>await FTokenCollateralFactory.deploy(
       {
         erc20: opts.erc20,
         targetName: opts.targetName,
@@ -193,13 +193,11 @@ all.forEach((curr: FTokenEnumeration) => {
     collateralOpts.erc20 = erc20.address
 
     const collateral = await deployCollateral(collateralOpts)
-    const tokDecimals = await erc20.decimals()
 
     return {
       collateral,
       chainlinkFeed,
       tok: erc20,
-      tokDecimals,
     }
   }
 
@@ -232,8 +230,6 @@ all.forEach((curr: FTokenEnumeration) => {
   }
 
   const collateralSpecificStatusTests = () => {
-    // TODO would be nice to move this into the generic suite
-    // it's hard though...requires setting refPerTok precisely so would add a bunch more to the suite interface
     it('does revenue hiding correctly', async () => {
       const { collateral, tok } = await deployCollateralMockContext({ revenueHiding: fp('0.01') })
 
@@ -297,6 +293,7 @@ all.forEach((curr: FTokenEnumeration) => {
     itChecksTargetPerRefDefault: it.skip,
     itChecksRefPerTokDefault: it.skip,
     itChecksPriceChanges: it,
+    itHasRevenueHiding: it.skip, // in this file
     resetFork,
     collateralName: curr.testName,
     chainlinkDefaultAnswer: bn('1e8'),

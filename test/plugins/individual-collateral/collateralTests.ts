@@ -7,7 +7,12 @@ import { useEnv } from '#/utils/env'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
-import { InvalidMockV3Aggregator, MockV3Aggregator, TestICollateral } from '../../../typechain'
+import {
+  IERC20Metadata,
+  InvalidMockV3Aggregator,
+  MockV3Aggregator,
+  TestICollateral,
+} from '../../../typechain'
 import {
   advanceTime,
   advanceBlocks,
@@ -23,8 +28,6 @@ import {
 import { expectPrice } from '../../utils/oracles'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
-
-// TODO: these tests to do not account for anything but revenueHiding=0
 
 export default function fn<X extends CollateralFixtureContext>(
   fixtures: CollateralTestSuiteFixtures<X>
@@ -146,9 +149,9 @@ export default function fn<X extends CollateralFixtureContext>(
           await advanceBlocks(1000)
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 
-          const balBefore = await (ctx.rewardToken as IERC20).balanceOf(collateral.address)
+          const balBefore = await (ctx.rewardToken as IERC20Metadata).balanceOf(collateral.address)
           await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
-          const balAfter = await (ctx.rewardToken as IERC20).balanceOf(collateral.address)
+          const balAfter = await (ctx.rewardToken as IERC20Metadata).balanceOf(collateral.address)
           expect(balAfter).gt(balBefore)
         })
       })
