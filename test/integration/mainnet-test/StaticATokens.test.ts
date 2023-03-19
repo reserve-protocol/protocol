@@ -103,10 +103,7 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
       // Get plain aTokens
       aDai = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aDAI || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
       )
 
       //  Get collaterals
@@ -162,30 +159,18 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
       // Get plain aTokens
       aDai = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aDAI || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
       )
       aUsdc = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aUSDC || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDC || '')
       )
 
       aUsdt = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aUSDT || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDT || '')
       )
 
       aBusd = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aBUSD || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aBUSD || '')
       )
 
       // Set balance amount

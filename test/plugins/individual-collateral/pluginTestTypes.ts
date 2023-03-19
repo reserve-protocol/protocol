@@ -1,15 +1,14 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { BigNumberish } from 'ethers'
-import { MockV3Aggregator, TestICollateral, IERC20 } from '../../../typechain'
+import { BigNumberish, BigNumber } from 'ethers'
+import { MockV3Aggregator, TestICollateral, IERC20Metadata } from '../../../typechain'
 
 type Fixture<T> = () => Promise<T>
 
 export interface CollateralFixtureContext {
   collateral: TestICollateral
   chainlinkFeed: MockV3Aggregator
-  tok: IERC20
-  tokDecimals: number // tldr; IERC20 does not include decimals()
-  rewardToken: IERC20
+  tok: IERC20Metadata
+  rewardToken: IERC20Metadata
   alice?: SignerWithAddress
 }
 
@@ -24,6 +23,7 @@ export interface CollateralOpts {
   maxTradeVolume?: BigNumberish
   defaultThreshold?: BigNumberish
   delayUntilDefault?: BigNumberish
+  revenueHiding?: BigNumberish
 }
 
 export type DeployCollateralFunc = (opts: CollateralOpts) => Promise<TestICollateral>
@@ -44,10 +44,20 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   beforeEachRewardsTest: (ctx: T) => void
   makeCollateralFixtureContext: MakeCollateralFixtureFunc<T>
   mintCollateralTo: MintCollateralFunc<T>
-  reduceRefPerTok: (ctx: T) => void
+  reduceTargetPerRef: (ctx: T, pctDecrease: BigNumberish) => void
+  increaseTargetPerRef: (ctx: T, pctIncrease: BigNumberish) => void
+  reduceRefPerTok: (ctx: T, pctDecrease: BigNumberish) => void
+  increaseRefPerTok: (ctx: T, pctIncrease: BigNumberish) => void
+  getExpectedPrice: (ctx: T) => Promise<BigNumber>
   itClaimsRewards: Mocha.TestFunction | Mocha.PendingTestFunction
+  itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
+  itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction
+  itChecksPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
+  itHasRevenueHiding: Mocha.TestFunction | Mocha.PendingTestFunction
+  itIsPricedByPeg?: boolean // does the peg price matter for the results of tryPrice()?
   resetFork: () => void
   collateralName: string
+  chainlinkDefaultAnswer: BigNumberish
 }
 
 export enum CollateralStatus {

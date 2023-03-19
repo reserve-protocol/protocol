@@ -1,12 +1,13 @@
 import { bn, fp } from '../../../../common/numbers'
+import { networkConfig } from '../../../../common/configuration'
 
 // Mainnet Addresses
-export const RSR = '0x320623b8e4ff03373931769a31fc52a4e78b5d70'
-export const USDC_USD_PRICE_FEED = '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6'
-export const CUSDC_V3 = '0xc3d688B66703497DAA19211EEdff47f25384cdc3'
-export const COMP = '0xc00e94Cb662C3520282E6f5717214004A7f26888'
+export const RSR = networkConfig['31337'].tokens.RSR as string
+export const USDC_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.USDC as string
+export const CUSDC_V3 = networkConfig['31337'].tokens.cUSDCv3 as string
+export const COMP = networkConfig['31337'].tokens.COMP as string
 export const REWARDS = '0x1B0e765F6224C21223AeA2af16c1C46E38885a40'
-export const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+export const USDC = networkConfig['31337'].tokens.USDC as string
 export const USDC_HOLDER = '0x0a59649758aa4d66e25f08dd01271e891fe52199'
 export const COMET_CONFIGURATOR = '0x316f9708bB98af7dA9c68C1C3b5e79039cD336E3'
 export const COMET_PROXY_ADMIN = '0x1EC63B5883C3481134FD50D5DAebc83Ecd2E8779'

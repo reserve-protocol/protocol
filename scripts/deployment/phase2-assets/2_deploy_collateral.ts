@@ -1,8 +1,10 @@
 import fs from 'fs'
 import hre, { ethers } from 'hardhat'
+import { expect } from 'chai'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
+import { CollateralStatus } from '../../../common/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -11,7 +13,7 @@ import {
   fileExists,
 } from '../common'
 import { combinedError, priceTimeout, oracleTimeout, revenueHiding } from '../utils'
-import { Asset, ATokenMock, StaticATokenLM } from '../../../typechain'
+import { ICollateral, ATokenMock, StaticATokenLM } from '../../../typechain'
 
 async function main() {
   // ==== Read Configuration ====
@@ -50,7 +52,9 @@ async function main() {
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
-  await (<Asset>await ethers.getContractAt('Asset', daiCollateral)).refresh()
+  let collateral = <ICollateral>await ethers.getContractAt('ICollateral', daiCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -69,7 +73,9 @@ async function main() {
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
-  await (<Asset>await ethers.getContractAt('Asset', usdcCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdcCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -88,7 +94,9 @@ async function main() {
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
-  await (<Asset>await ethers.getContractAt('Asset', usdtCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdtCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -107,7 +115,9 @@ async function main() {
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
-  await (<Asset>await ethers.getContractAt('Asset', usdpCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdpCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -126,7 +136,9 @@ async function main() {
     defaultThreshold: fp('0.013').toString(), // 1.3%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
-  await (<Asset>await ethers.getContractAt('Asset', tusdCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', tusdCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.TUSD = tusdCollateral
   deployedCollateral.push(tusdCollateral.toString())
@@ -143,7 +155,9 @@ async function main() {
     defaultThreshold: fp('0.015').toString(), // 1.5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
-  await (<Asset>await ethers.getContractAt('Asset', busdCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', busdCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -184,7 +198,9 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     revenueHiding: revenueHiding.toString(),
   })
-  await (<Asset>await ethers.getContractAt('Asset', aDaiCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', aDaiCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -225,7 +241,9 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     revenueHiding: revenueHiding.toString(),
   })
-  await (<Asset>await ethers.getContractAt('Asset', aUsdcCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', aUsdcCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.aUSDC = aUsdcCollateral
   deployedCollateral.push(aUsdcCollateral.toString())
@@ -266,7 +284,9 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     revenueHiding: revenueHiding.toString(),
   })
-  await (<Asset>await ethers.getContractAt('Asset', aUsdtCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', aUsdtCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.aUSDT = aUsdtCollateral
   deployedCollateral.push(aUsdtCollateral.toString())
@@ -306,7 +326,9 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     revenueHiding: revenueHiding.toString(),
   })
-  await (<Asset>await ethers.getContractAt('Asset', aBusdCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', aBusdCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.aBUSD = aBusdCollateral
   deployedCollateral.push(aBusdCollateral.toString())
@@ -347,7 +369,9 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     revenueHiding: revenueHiding.toString(),
   })
-  await (<Asset>await ethers.getContractAt('Asset', aUsdpCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', aUsdpCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.aUSDP = aUsdpCollateral
   deployedCollateral.push(aUsdpCollateral.toString())
@@ -369,7 +393,9 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
-  await (<Asset>await ethers.getContractAt('Asset', cDaiCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', cDaiCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cDAI = cDaiCollateral
   deployedCollateral.push(cDaiCollateral.toString())
@@ -391,7 +417,9 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
-  await (<Asset>await ethers.getContractAt('Asset', cUsdcCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdcCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cUSDC = cUsdcCollateral
   deployedCollateral.push(cUsdcCollateral.toString())
@@ -413,7 +441,9 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
-  await (<Asset>await ethers.getContractAt('Asset', cUsdtCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdtCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cUSDT = cUsdtCollateral
   deployedCollateral.push(cUsdtCollateral.toString())
@@ -435,7 +465,9 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
-  await (<Asset>await ethers.getContractAt('Asset', cUsdpCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdpCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cUSDP = cUsdpCollateral
   deployedCollateral.push(cUsdpCollateral.toString())
@@ -463,7 +495,9 @@ async function main() {
     revenueHiding: revenueHiding.toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
-  await (<Asset>await ethers.getContractAt('Asset', cWBTCCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', cWBTCCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cWBTC = cWBTCCollateral
   deployedCollateral.push(cWBTCCollateral.toString())
@@ -484,7 +518,9 @@ async function main() {
     comptroller: networkConfig[chainId].COMPTROLLER,
     referenceERC20Decimals: '18',
   })
-  await (<Asset>await ethers.getContractAt('Asset', cETHCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', cETHCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cETH = cETHCollateral
   deployedCollateral.push(cETHCollateral.toString())
@@ -505,7 +541,9 @@ async function main() {
     defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
-  await (<Asset>await ethers.getContractAt('Asset', wBTCCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', wBTCCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.WBTC = wBTCCollateral
   deployedCollateral.push(wBTCCollateral.toString())
@@ -523,7 +561,9 @@ async function main() {
     oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
   })
-  await (<Asset>await ethers.getContractAt('Asset', wETHCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', wETHCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.WETH = wETHCollateral
   deployedCollateral.push(wETHCollateral.toString())
@@ -546,7 +586,9 @@ async function main() {
     defaultThreshold: fp('0.03').toString(), // 3%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
-  await (<Asset>await ethers.getContractAt('Asset', eurtCollateral)).refresh()
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', eurtCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.EURT = eurtCollateral
   deployedCollateral.push(eurtCollateral.toString())
