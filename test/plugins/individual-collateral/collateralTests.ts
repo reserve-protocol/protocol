@@ -283,6 +283,20 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(true)
         })
 
+        itHasRevenueHiding('does revenue hiding correctly', async () => {
+          ctx.collateral = await deployCollateral({ revenueHiding: fp('0.01') })
+
+          // Should remain SOUND after a 1% decrease
+          await reduceRefPerTok(ctx, 1) // 1% decrease
+          await ctx.collateral.refresh()
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+
+          // Should become DISABLED if drops more than that
+          await reduceRefPerTok(ctx, 1) // another 1% decrease
+          await ctx.collateral.refresh()
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+        })
+
         it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
           const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
             'InvalidMockV3Aggregator'
@@ -313,20 +327,6 @@ export default function fn<X extends CollateralFixtureContext>(
           await advanceBlocks(oracleTimeout / 12)
           await collateral.refresh()
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-        })
-
-        itHasRevenueHiding('does revenue hiding correctly', async () => {
-          ctx.collateral = await deployCollateral({ revenueHiding: fp('0.01') })
-
-          // Should remain SOUND after a 1% decrease
-          await reduceRefPerTok(ctx, 1) // 1% decrease
-          await ctx.collateral.refresh()
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-
-          // Should become DISABLED if drops more than that
-          await reduceRefPerTok(ctx, 1) // another 1% decrease
-          await ctx.collateral.refresh()
-          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
         })
       })
 
@@ -447,8 +447,8 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
         })
       })
-    })
 
-    describe('collateral-specific tests', collateralSpecificStatusTests)
+      describe('collateral-specific tests', collateralSpecificStatusTests)
+    })
   })
 }
