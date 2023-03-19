@@ -23,7 +23,7 @@ import {
   TestICollateral,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
-import { MAX_UINT48, ONE_ADDRESS } from '../../../../common/constants'
+import { MAX_UINT48 } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
