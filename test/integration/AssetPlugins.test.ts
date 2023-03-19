@@ -20,7 +20,7 @@ import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { advanceBlocks, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../utils/oracles'
-import forkBlockNumber from '../fork-block-numbers'
+import forkBlockNumber from './fork-block-numbers'
 import {
   Asset,
   ATokenFiatCollateral,
