@@ -1,4 +1,4 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import { loadFixture, setCode } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
@@ -889,6 +889,54 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
         await runScenario(params)
       })
+    })
+  })
+
+  describe('Regression Tests', () => {
+    it('Passes Test: 12/03/2023 - Broker Disabled on Trade Settlement with one less token', async () => {
+      // TX: 0xb5fc3d61d46e41b79bd333583448e6d4c186ca49206f8a0e7dde05f2700e0965
+      // This set the broker to false since it was one token short.
+      // This test is to make sure that the broker is not disabled in this case.
+
+      const resetFork = async () => {
+        await hre.network.provider.request({
+          method: 'hardhat_reset',
+          params: [
+            {
+              forking: {
+                jsonRpcUrl: process.env.MAINNET_RPC_URL,
+                blockNumber: 16813289,
+              },
+            },
+          ],
+        })
+      }
+
+      await resetFork()
+
+      const backingManager = await ethers.getContractAt(
+        'BackingManagerP1',
+        '0xf014fef41ccb703975827c8569a3f0940cfd80a4'
+      )
+
+      await backingManager.settleTrade('0x39AA39c021dfbaE8faC545936693aC917d5E7563')
+      expect(await broker.attach('0x90EB22A31b69C29C34162E0E9278cc0617aA2B50').disabled()).to.equal(
+        true
+      )
+
+      await resetFork()
+
+      const gnosisTradeImpl = await ethers.getContractAt(
+        'GnosisTrade',
+        '0xAc543Ee89A2238945f7D7Ad4d9Cf958721f9757c'
+      )
+      const gnosisTradeArtifact = await hre.artifacts.readArtifact('GnosisTrade')
+      await setCode(gnosisTradeImpl.address, gnosisTradeArtifact.deployedBytecode)
+
+      await backingManager.settleTrade('0x39AA39c021dfbaE8faC545936693aC917d5E7563')
+      expect(await broker.attach('0x90EB22A31b69C29C34162E0E9278cc0617aA2B50').disabled()).to.equal(
+        false
+      )
     })
   })
 })
