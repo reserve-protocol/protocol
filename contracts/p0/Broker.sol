@@ -24,6 +24,9 @@ contract BrokerP0 is ComponentP0, IBroker {
     uint192 public constant MIN_BID_SHARE_OF_TOTAL_SUPPLY = 1e9; // (1} = 1e-7%
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
 
+    // Added for interface compatibility with P1
+    ITrade public tradeImplementation;
+
     IGnosis public gnosis;
 
     mapping(address => bool) private trades;
@@ -38,13 +41,9 @@ contract BrokerP0 is ComponentP0, IBroker {
         ITrade tradeImplementation_, // Added for Interface compatibility with P1
         uint48 auctionLength_
     ) public initializer {
-        require(address(gnosis_) != address(0), "invalid Gnosis address");
-        require(
-            address(tradeImplementation_) != address(0),
-            "invalid Trade Implementation address"
-        );
         __Component_init(main_);
-        gnosis = gnosis_;
+        setGnosis(gnosis_);
+        setTradeImplementation(tradeImplementation_);
         setAuctionLength(auctionLength_);
     }
 
@@ -105,6 +104,25 @@ contract BrokerP0 is ComponentP0, IBroker {
     }
 
     // === Setters ===
+
+    /// @custom:governance
+    function setGnosis(IGnosis newGnosis) public governance {
+        require(address(newGnosis) != address(0), "invalid Gnosis address");
+
+        emit GnosisSet(gnosis, newGnosis);
+        gnosis = newGnosis;
+    }
+
+    /// @custom:governance
+    function setTradeImplementation(ITrade newTradeImplementation) public governance {
+        require(
+            address(newTradeImplementation) != address(0),
+            "invalid Trade Implementation address"
+        );
+
+        emit TradeImplementationSet(tradeImplementation, newTradeImplementation);
+        tradeImplementation = newTradeImplementation;
+    }
 
     /// @custom:governance
     function setAuctionLength(uint48 newAuctionLength) public governance {
