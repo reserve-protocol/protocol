@@ -25,6 +25,8 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
+  // Don't need to verify wrapper token because it's canonical
+
   /********  Verify Lido Wrapped-Staked-ETH - wstETH  **************************/
   await verifyContract(
     chainId,
