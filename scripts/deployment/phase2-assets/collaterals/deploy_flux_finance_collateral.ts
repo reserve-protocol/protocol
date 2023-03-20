@@ -112,31 +112,31 @@ async function main() {
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
-  //   /********  Deploy FToken Fiat Collateral - fFRAX  **************************/
-  //   // Uncomment this once our tests are able to pass. Currently there is only $11 of FRAX in
-  //   // Flux Finance and this causes refPerTok() to not increase.
+  /********  Deploy FToken Fiat Collateral - fFRAX  **************************/
+  // Uncomment this once our tests are able to pass. Currently there is only $11 of FRAX in
+  // Flux Finance and this causes refPerTok() to not increase.
 
-  //   const { collateral: fFRAXCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-  //     priceTimeout: priceTimeout.toString(),
-  //     priceFeed: networkConfig[chainId].chainlinkFeeds.FRAX,
-  //     oracleError: fp('0.01').toString(), // 1%
-  //     cToken: networkConfig[chainId].tokens.fFRAX,
-  //     maxTradeVolume: fp('1e6').toString(), // $1m,
-  //     oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
-  //     targetName: hre.ethers.utils.formatBytes32String('USD'),
-  //     defaultThreshold: fp('0.02').toString(), // 2%
-  //     delayUntilDefault: bn('86400').toString(), // 24h
-  //     revenueHiding: revenueHiding.toString(),
-  //     comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
-  //   })
-  // collateral = <ICollateral>await ethers.getContractAt('ICollateral', fFRAXCollateral)
-  // await collateral.refresh()
-  // expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+  const { collateral: fFRAXCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
+    priceTimeout: priceTimeout.toString(),
+    priceFeed: networkConfig[chainId].chainlinkFeeds.FRAX,
+    oracleError: fp('0.01').toString(), // 1%
+    cToken: networkConfig[chainId].tokens.fFRAX,
+    maxTradeVolume: fp('1e6').toString(), // $1m,
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
+    targetName: hre.ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.02').toString(), // 2%
+    delayUntilDefault: bn('86400').toString(), // 24h
+    revenueHiding: revenueHiding.toString(),
+    comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
+  })
+  collateral = <ICollateral>await ethers.getContractAt('ICollateral', fFRAXCollateral)
+  await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  //   assetCollDeployments.collateral.fFRAX = fFRAXCollateral
-  //   deployedCollateral.push(fFRAXCollateral.toString())
+  assetCollDeployments.collateral.fFRAX = fFRAXCollateral
+  deployedCollateral.push(fFRAXCollateral.toString())
 
-  //   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   console.log(`Deployed collateral to ${hre.network.name} (${chainId})
     New deployments: ${deployedCollateral}

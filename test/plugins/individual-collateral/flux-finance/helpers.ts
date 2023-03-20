@@ -4,7 +4,6 @@ import { BigNumberish } from 'ethers'
 import { getResetFork } from '../helpers'
 import forkBlockNumber from '../../../integration/fork-block-numbers'
 
-// Will only work on REAL FToken, not intended for Mock FToken
 export const mintFToken = async (
   underlying: IERC20Metadata,
   holderUnderlying: string,

@@ -157,6 +157,8 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('prices', () => {
+        before(resetFork)
+
         itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)

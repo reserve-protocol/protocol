@@ -23,12 +23,12 @@ import { advanceBlocks } from '../../../utils/time'
 import {
   USDC_HOLDER,
   USDT_HOLDER,
-  // FRAX_HOLDER,
+  FRAX_HOLDER,
   DAI_HOLDER,
   USDC_ORACLE_ERROR,
   USDT_ORACLE_ERROR,
   DAI_ORACLE_ERROR,
-  // FRAX_ORACLE_ERROR,
+  FRAX_ORACLE_ERROR,
   ORACLE_TIMEOUT,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
@@ -78,16 +78,14 @@ const all = [
     oracleError: USDT_ORACLE_ERROR,
     chainlinkFeed: config.chainlinkFeeds.USDT as string,
   },
-  // // as of 3/15/2023 there is only $11 of FRAX in Flux Finance
-  // // there is apparently not enough borrow to cause refPerTok() to increase
-  // {
-  //   testName: 'fFRAX Collateral',
-  //   underlying: config.tokens.FRAX as string,
-  //   holderUnderlying: FRAX_HOLDER,
-  //   fToken: config.tokens.fFRAX as string,
-  //   oracleError: FRAX_ORACLE_ERROR,
-  //   chainlinkFeed: config.chainlinkFeeds.FRAX as string,
-  // },
+  {
+    testName: 'fFRAX Collateral',
+    underlying: config.tokens.FRAX as string,
+    holderUnderlying: FRAX_HOLDER,
+    fToken: config.tokens.fFRAX as string,
+    oracleError: FRAX_ORACLE_ERROR,
+    chainlinkFeed: config.chainlinkFeeds.FRAX as string,
+  },
   {
     testName: 'fDAI Collateral',
     underlying: config.tokens.DAI as string,
@@ -162,14 +160,12 @@ all.forEach((curr: FTokenEnumeration) => {
 
       const collateral = await deployCollateral(collateralOpts)
       const erc20 = await ethers.getContractAt('ICToken', collateralOpts.erc20 as string) // the fToken
-      const tokDecimals = await erc20.decimals()
 
       return {
         alice,
         collateral,
         chainlinkFeed,
         tok: erc20,
-        tokDecimals,
       }
     }
 
