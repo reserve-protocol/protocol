@@ -5,14 +5,15 @@ import hre, { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
+  ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
+  SfraxEthMock,
   TestICollateral,
-  ERC20Mock,
   IsfrxEth,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
-import { ZERO_ADDRESS } from '../../../../common/constants'
+import { CollateralStatus } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   ORACLE_ERROR,
@@ -111,7 +112,6 @@ const makeCollateralFixtureContext = (
 
     const frxEth = (await ethers.getContractAt('ERC20Mock', FRX_ETH)) as ERC20Mock
     const sfrxEth = (await ethers.getContractAt('IsfrxEth', SFRX_ETH)) as IsfrxEth
-    const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
 
     return {
@@ -121,62 +121,11 @@ const makeCollateralFixtureContext = (
       frxEth,
       sfrxEth,
       tok: sfrxEth,
-      rewardToken,
     }
   }
 
   return makeCollateralFixtureContext
 }
-
-// const deployCollateralCometMockContext = async (
-//   opts: CometCollateralOpts = {}
-// ): Promise<SFrxEthCollateralFixtureContextMockComet> => {
-//   const collateralOpts = { ...defaultCometCollateralOpts, ...opts }
-
-//   const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
-//     await ethers.getContractFactory('MockV3Aggregator')
-//   )
-//   const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
-//   collateralOpts.chainlinkFeed = chainlinkFeed.address
-
-//   const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
-//   const cusdcV3 = <CometMock>await CometFactory.deploy(bn('5e15'), bn('1e15'), CUSDC_V3)
-
-//   const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
-//     await ethers.getContractFactory('CusdcV3Wrapper')
-//   )
-//   const wcusdcV3 = <ICusdcV3Wrapper>(
-//     await CusdcV3WrapperFactory.deploy(cusdcV3.address, REWARDS, COMP)
-//   )
-//   const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
-//     await ethers.getContractFactory('CusdcV3WrapperMock')
-//   )
-//   const wcusdcV3Mock = await (<ICusdcV3WrapperMock>(
-//     await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)
-//   ))
-
-//   const realMock = (await ethers.getContractAt(
-//     'ICusdcV3WrapperMock',
-//     wcusdcV3Mock.address
-//   )) as ICusdcV3WrapperMock
-//   collateralOpts.erc20 = wcusdcV3.address
-//   collateralOpts.erc20 = realMock.address
-//   const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
-//   const collateral = await deployCollateral(collateralOpts)
-
-//   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-
-//   return {
-//     collateral,
-//     chainlinkFeed,
-//     cusdcV3,
-//     wcusdcV3: <ICusdcV3WrapperMock>wcusdcV3Mock,
-//     wcusdcV3Mock,
-//     usdc,
-//     tok: wcusdcV3,
-//     rewardToken,
-//   }
-// }
 
 /*
   Define helper functions
@@ -199,7 +148,7 @@ const increaseTargetPerRef = async () => {}
 
 // prettier-ignore
 const reduceRefPerTok = async () => {
-  await hre.network.provider.send('evm_mine', [])
+    await hre.network.provider.send('evm_mine', [])
 }
 
 // prettier-ignore
@@ -229,21 +178,9 @@ const getExpectedPrice = async (ctx: SFrxEthCollateralFixtureContext): Promise<B
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  // Target Unit Feed
-  // const tgtClData = await ctx.targetPerRefChainlinkFeed.latestRoundData()
-  // const tgtClDecimals = await ctx.targetPerRefChainlinkFeed.decimals()
-
   const refPerTok = await ctx.collateral.refPerTok()
-
   const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
-  // const expectedTgtPrice = tgtClData.answer.mul(bn(10).pow(18 - tgtClDecimals))
-  return (
-    expectedPegPrice
-      // .mul(expectedTgtPrice)
-      .mul(refPerTok)
-      // .div(fp('1'))
-      .div(fp('1'))
-  )
+  return expectedPegPrice.mul(refPerTok).div(fp('1'))
 }
 
 /*
@@ -255,7 +192,32 @@ const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {
-  // TODO revenue hiding
+  it('does revenue hiding', async () => {
+    const MockFactory = await ethers.getContractFactory('SfraxEthMock')
+    const erc20 = (await MockFactory.deploy()) as SfraxEthMock
+    let currentPPS = await (await ethers.getContractAt('IsfrxEth', SFRX_ETH)).pricePerShare()
+    currentPPS = currentPPS.sub(currentPPS.div(1000)) // backoff slightly
+    await erc20.setPricePerShare(currentPPS)
+
+    const chainlinkFeed = <MockV3Aggregator>(
+      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, chainlinkDefaultAnswer)
+    )
+    const collateral = await deployCollateral({
+      erc20: erc20.address,
+      revenueHiding: fp('0.01'),
+      chainlinkFeed: chainlinkFeed.address,
+    })
+
+    // Should remain SOUND after a 1% decrease
+    await erc20.setPricePerShare(currentPPS.sub(currentPPS.div(100)))
+    await collateral.refresh()
+    expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+    // Should become DISABLED if drops more than that
+    await erc20.setPricePerShare(currentPPS.sub(currentPPS.div(99)))
+    await collateral.refresh()
+    expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+  })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -281,7 +243,7 @@ const opts = {
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
-  itHasRevenueHiding: it.skip,
+  itHasRevenueHiding: it.skip, // implemnted in this file
   resetFork,
   collateralName: 'SFraxEthCollateral',
   chainlinkDefaultAnswer,

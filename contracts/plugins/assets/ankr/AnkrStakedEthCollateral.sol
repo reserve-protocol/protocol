@@ -15,7 +15,6 @@ import "./IAnkrETH.sol";
  * tar = ETH
  * UoA = USD
  */
-// TODO: a price oracle is needed for ankrETH
 contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
@@ -30,7 +29,7 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    /// @return pegPrice {target/ref}
+    /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
         external
         view

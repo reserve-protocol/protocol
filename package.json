@@ -22,7 +22,7 @@
     "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
     "test:p1": "PROTO_IMPL=1 hardhat test test/*.test.ts --parallel",
     "test:plugins": "hardhat test test/{libraries,plugins}/*.test.ts --parallel",
-    "test:plugins:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/plugins/individual-collateral/**/*.test.ts --parallel",
+    "test:plugins:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/plugins/individual-collateral/**/*.test.ts",
     "test:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/**/*.test.ts --parallel",
     "test:scenario": "PROTO_IMPL=1 hardhat test test/scenario/*.test.ts --parallel",
     "test:gas": "yarn test:gas:protocol && yarn test:gas:integration",

@@ -367,6 +367,25 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
             oracleError: ORACLE_ERROR,
+            erc20: ZERO_ADDRESS,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
+          REVENUE_HIDING,
+          ZERO_ADDRESS
+        )
+      ).to.be.revertedWith('missing erc20')
+
+      // Comptroller
+      await expect(
+        CTokenCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
+            oracleError: ORACLE_ERROR,
             erc20: cDai.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
