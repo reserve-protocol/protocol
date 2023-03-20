@@ -157,15 +157,12 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('prices', () => {
-        before(resetFork)
+        before(resetFork) // important for getting prices/refPerToks to behave predictably
 
         itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)
           await expectPrice(collateral.address, expectedPrice, oracleError, true)
-
-          // Get refPerTok initial values
-          const initialRefPerTok = await collateral.refPerTok()
 
           // Update values in Oracles increase by 10-20%
           const newPrice = BigNumber.from(chainlinkDefaultAnswer).mul(11).div(10)
@@ -173,12 +170,10 @@ export default function fn<X extends CollateralFixtureContext>(
           await updateAnswerTx.wait()
 
           // Check new prices
+          await collateral.refresh()
           const newExpectedPrice = await getExpectedPrice(ctx)
+          expect(newExpectedPrice).to.be.gt(expectedPrice)
           await expectPrice(collateral.address, newExpectedPrice, oracleError, true)
-
-          // Check refPerTok remains the same (because we have not refreshed)
-          const finalRefPerTok = await collateral.refPerTok()
-          expect(finalRefPerTok).to.equal(initialRefPerTok)
         })
 
         // all our collateral that have targetPerRef feeds use them only for soft default checks

@@ -113,8 +113,6 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy FToken Fiat Collateral - fFRAX  **************************/
-  // Uncomment this once our tests are able to pass. Currently there is only $11 of FRAX in
-  // Flux Finance and this causes refPerTok() to not increase.
 
   const { collateral: fFRAXCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),

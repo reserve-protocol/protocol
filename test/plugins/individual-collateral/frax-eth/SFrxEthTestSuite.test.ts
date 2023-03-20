@@ -178,21 +178,9 @@ const getExpectedPrice = async (ctx: SFrxEthCollateralFixtureContext): Promise<B
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  // Target Unit Feed
-  // const tgtClData = await ctx.targetPerRefChainlinkFeed.latestRoundData()
-  // const tgtClDecimals = await ctx.targetPerRefChainlinkFeed.decimals()
-
   const refPerTok = await ctx.collateral.refPerTok()
-
   const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
-  // const expectedTgtPrice = tgtClData.answer.mul(bn(10).pow(18 - tgtClDecimals))
-  return (
-    expectedPegPrice
-      // .mul(expectedTgtPrice)
-      .mul(refPerTok)
-      // .div(fp('1'))
-      .div(fp('1'))
-  )
+  return expectedPegPrice.mul(refPerTok).div(fp('1'))
 }
 
 /*
