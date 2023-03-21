@@ -6,12 +6,18 @@ export const advanceTime = async (hre: HardhatRuntimeEnvironment, seconds: numbe
   await hre.ethers.provider.send('evm_mine', [])
 }
 
-export const advanceToTimestamp = async (hre: HardhatRuntimeEnvironment, timestamp: number | string) => {
+export const advanceToTimestamp = async (
+  hre: HardhatRuntimeEnvironment,
+  timestamp: number | string
+) => {
   await hre.ethers.provider.send('evm_setNextBlockTimestamp', [parseInt(timestamp.toString())])
   await hre.ethers.provider.send('evm_mine', [])
 }
 
-export const setNextBlockTimestamp = async (hre: HardhatRuntimeEnvironment, timestamp: number | string) => {
+export const setNextBlockTimestamp = async (
+  hre: HardhatRuntimeEnvironment,
+  timestamp: number | string
+) => {
   await hre.network.provider.send('evm_setNextBlockTimestamp', [timestamp])
 }
 

@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
 
 type ImpersonationFunction<T> = (signer: SignerWithAddress) => Promise<T>
 
@@ -21,7 +21,11 @@ type ImpersonationFunction<T> = (signer: SignerWithAddress) => Promise<T>
    - Calls rToken.setBasketsNeeded _as_ the basketHandler contract,
    - Checks that that call emits the event 'BasketNeededChanged'
 */
-export const whileImpersonating = async (hre: HardhatRuntimeEnvironment, address: string, f: ImpersonationFunction<void>) => {
+export const whileImpersonating = async (
+  hre: HardhatRuntimeEnvironment,
+  address: string,
+  f: ImpersonationFunction<void>
+) => {
   // Set maximum ether balance at address
   await hre.network.provider.request({
     method: 'hardhat_setBalance',
