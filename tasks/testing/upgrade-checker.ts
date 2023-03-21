@@ -4,7 +4,7 @@ import { getChainId } from '../../common/blockchain-utils'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '#/utils/time'
 import { whileImpersonating } from '#/utils/impersonation';
 import { ProposalState, QUEUE_START } from '#/common/constants'
-import { BigNumber, ContractFactory, utils } from 'ethers'
+import { BigNumber, BigNumberish, ContractFactory, utils } from 'ethers'
 import { Proposal, getProposalDetails, getDelegates, Delegate } from '../../utils/subgraph'
 import { useEnv } from '#/utils/env';
 import { resetFork } from '#/utils/chain';
@@ -14,6 +14,7 @@ import { formatEther, parseEther, formatUnits, parseUnits } from 'ethers/lib/uti
 import { FacadeTest } from '@typechain/FacadeTest';
 import { getTrade } from '#/utils/trades'
 import { IRewardable } from '@typechain/IRewardable';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 // run script for eUSD
 // current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
@@ -27,8 +28,6 @@ import { IRewardable } from '@typechain/IRewardable';
             - generic way to fill the `tester` account with the tokens necessary to mint the RToken
                 - can probably leverage the `mintX` functions from plugin test suites
             - could also leverage ZAPs for this
-        - generic redemption (3 pts)
-            - dynamically check the expected amounts of tokens received from redemption
         - generic reward claiming (5 pts)
             - check for where revenue should be allocated
             - dynamically run and complete necessary auctions to realize revenue
@@ -148,17 +147,12 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         if (postIssueBal != issueAmount) {
             throw new Error(`Did not issue the correct amount of RTokens. wanted: ${formatUnits(issueAmount, 'mwei')}    balance: ${formatUnits(postIssueBal, 'mwei')}`)
         }
+        */
 
         // redeem
         const redeemAmount = fp('5e4')
+        await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
 
-        await rToken.connect(tester).redeem(redeemAmount, await basketHandler.nonce())
-
-        const postRedeemBal = await rToken.balanceOf(tester.address)
-        if (postRedeemBal != fp('5e4')) {
-            throw new Error("Did not redeem the correct amount of RTokens")
-        }
-        */
 
         // claim rewards
         await claimRsrRewards(hre, params.rtoken)
@@ -171,6 +165,50 @@ task('upgrade-checker', 'Mints all the tokens to an address')
             )
         })
     })
+
+type Balances = { [key: string]: BigNumber }
+
+const getBalances = async (hre: HardhatRuntimeEnvironment, account: string, erc20s: Array<string>): Promise<Balances> => {
+    const balances: Balances = {}
+    for (const erc20 of erc20s) {
+        const token = await hre.ethers.getContractAt('ERC20Mock', erc20)
+        const bal = await token.balanceOf(account)
+        balances[erc20] = bal
+    }
+    return balances
+}
+
+const redeemRTokens = async (hre: HardhatRuntimeEnvironment, user: SignerWithAddress, rTokenAddress: string, redeemAmount: BigNumber) => {
+    const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
+    const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+    const basketHandler = await hre.ethers.getContractAt('BasketHandlerP1', await main.basketHandler())
+    const backingManager = await hre.ethers.getContractAt('BackingManagerP1', await main.backingManager())
+
+    const redeemQuote = await basketHandler.quote(redeemAmount, 0)
+    const expectedTokens = redeemQuote.erc20s
+    
+    const preRedeemRTokenBal = await rToken.balanceOf(user.address)
+    const preRedeemErc20Bals = await getBalances(hre, user.address, expectedTokens)
+
+    await rToken.connect(user).redeem(redeemAmount, await basketHandler.nonce())
+
+    const postRedeemRTokenBal = await rToken.balanceOf(user.address)
+    const postRedeemErc20Bals = await getBalances(hre, user.address, expectedTokens)
+
+    const expectedBalances: Balances = {}
+
+    for (const erc20 in expectedTokens) {
+        const receivedBalance = postRedeemErc20Bals[erc20].sub(preRedeemErc20Bals[erc20])
+        if (receivedBalance != expectedBalances[erc20]) {
+            throw new Error(`Did not receive the correct amount of token from redemption \n token: ${erc20} \n received: ${receivedBalance} \n expected: ${expectedBalances[erc20]}`)
+        }
+    }
+
+    if (postRedeemRTokenBal.sub(preRedeemRTokenBal) != redeemAmount) {
+        throw new Error(`Did not redeem the correct amount of RTokens \n expected: ${redeemAmount} \n redeemed: ${postRedeemRTokenBal.sub(preRedeemRTokenBal)}`)
+    }
+}
+
 
 const claimRewards = async (
     claimer: IRewardable
