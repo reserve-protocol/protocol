@@ -1,16 +1,16 @@
-import { task, types } from 'hardhat/config'
+import { task } from 'hardhat/config'
 import { networkConfig } from '../../common/configuration'
 import { getChainId } from '../../common/blockchain-utils'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '#/utils/time'
 import { whileImpersonating } from '#/utils/impersonation'
 import { ProposalState, QUEUE_START } from '#/common/constants'
-import { BigNumber, BigNumberish, ContractFactory, utils } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import { Proposal, getProposalDetails, getDelegates, Delegate } from '../../utils/subgraph'
 import { useEnv } from '#/utils/env'
 import { resetFork } from '#/utils/chain'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { bn, fp, toBNDecimals } from '#/common/numbers'
-import { formatEther, parseEther, formatUnits, parseUnits } from 'ethers/lib/utils'
+import { bn, fp } from '#/common/numbers'
+import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { FacadeTest } from '@typechain/FacadeTest'
 import { getTrade } from '#/utils/trades'
 import { IRewardable } from '@typechain/IRewardable'
@@ -81,11 +81,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     )
     const FacadeTestFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeTest')
     const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
-    const rsrTrader = await hre.ethers.getContractAt('RevenueTraderP1', await main.rsrTrader())
-    const rTokenTrader = await hre.ethers.getContractAt(
-      'RevenueTraderP1',
-      await main.rTokenTrader()
-    )
     const rsr = await hre.ethers.getContractAt('ERC20Mock', await main.rsr())
     const assetRegistry = await hre.ethers.getContractAt(
       'AssetRegistryP1',
@@ -345,7 +340,7 @@ const passAndExecuteProposal = async (
   }
 
   // gather enough whale voters
-  let whales: Array<Delegate> = await getDelegates(hre, rtokenAddress.toLowerCase())
+  let whales: Array<Delegate> = await getDelegates(rtokenAddress.toLowerCase())
   const startBlock = await governor.proposalSnapshot(proposalId)
   const quorum = await governor.quorum(startBlock)
 
@@ -380,7 +375,6 @@ const passAndExecuteProposal = async (
   }
 
   const proposal: Proposal = await getProposalDetails(
-    hre,
     `${governorAddress.toLowerCase()}-${proposalId}`
   )
   const descriptionHash = hre.ethers.utils.keccak256(

@@ -1,6 +1,5 @@
 import { BigNumber, BigNumberish } from 'ethers'
 import { gql, GraphQLClient } from 'graphql-request'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { useEnv } from './env'
 
 export interface Delegate {
@@ -8,13 +7,8 @@ export interface Delegate {
   address: string
 }
 
-export const getDelegates = async (
-  hre: HardhatRuntimeEnvironment,
-  governance: string
-): Promise<Array<Delegate>> => {
+export const getDelegates = async (governance: string): Promise<Array<Delegate>> => {
   const client = new GraphQLClient(useEnv('SUBGRAPH_URL'))
-  // const governor = await hre.ethers.getContractAt('Governance', governance)
-  // const stRSR = await governor.token()
   const query = gql`
     query getDelegates($governance: String!) {
       delegates(
@@ -40,10 +34,7 @@ export interface Proposal {
   description: string
 }
 
-export const getProposalDetails = async (
-  hre: HardhatRuntimeEnvironment,
-  proposalId: string
-): Promise<Proposal> => {
+export const getProposalDetails = async (proposalId: string): Promise<Proposal> => {
   if (!useEnv('SUBGRAPH_URL')) {
     throw new Error('Please add a valid SUBGRAPH_URL to your .env')
   }

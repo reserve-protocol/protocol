@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 
-export const resetFork = async (hre: HardhatRuntimeEnvironment, forkBlock: Number) => {
+export const resetFork = async (hre: HardhatRuntimeEnvironment, forkBlock: number) => {
   await hre.network.provider.request({
     method: 'hardhat_reset',
     params: [
