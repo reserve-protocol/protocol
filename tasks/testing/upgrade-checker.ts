@@ -19,7 +19,7 @@ import { TestITrading } from '@typechain/TestITrading';
 
 // run script for eUSD
 // current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
-// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 51110366224941500632568067966420116363657831627221850780259437481890922983943 --network localhost
+// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 25816366707034079050811482613682060088827919577695117773877308143394113022827 --network localhost
 
 /*
     This script is currently useful for the upcoming eUSD upgrade.
@@ -34,6 +34,7 @@ import { TestITrading } from '@typechain/TestITrading';
             - dynamically run and complete necessary auctions to realize revenue
         - generic basket switching (8 pts)
             - not sure if possible if there is no backup basket
+        - update oracles whenever time progresses to make sure collaterals stay sound
 
     21-34 more points of work to make this more generic
 */
@@ -77,17 +78,16 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         const rsr = await hre.ethers.getContractAt('ERC20Mock', await main.rsr())
         const assetRegistry = await hre.ethers.getContractAt('AssetRegistryP1', await main.assetRegistry())
         
-        
         // recollateralize
         // here we will make any trades needed to recollateralize the RToken
         // this is specific to eUSD so that we don't have to wait for the market to do this
         // we can make this generic, but will leave it specific for now for testing the upcoming eUSD changes
 
-        await facadeTest.runAuctionsForAllTraders(rToken.address)
-        await runTrade(hre, backingManager, rsr.address, false)
-        await facadeTest.runAuctionsForAllTraders(rToken.address)
+        // await facadeTest.runAuctionsForAllTraders(rToken.address)
+        // await runTrade(hre, backingManager, rsr.address, false)
+        // await facadeTest.runAuctionsForAllTraders(rToken.address)
 
-        console.log('successfully settled trade')
+        // console.log('successfully settled trade')
 
         // mint
         // this is another area that needs to be made general
@@ -373,4 +373,6 @@ const passAndExecuteProposal = async (
     if (await governor.state(proposalId) != ProposalState.Executed) {
         throw new Error("Proposal should be executed")
     }
+
+    console.log(`Proposal ${proposalId} passed and executed!`)
 }
