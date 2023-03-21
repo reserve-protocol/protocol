@@ -3,6 +3,8 @@ import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { bn } from '../../../../common/numbers'
+import { expect } from 'chai'
+import { CollateralStatus } from '../../../../common/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -11,6 +13,7 @@ import {
   fileExists,
 } from '../../common'
 import { CvxStableCollateral } from '../../../../typechain'
+import { revenueHiding } from '../../utils'
 import {
   CurvePoolType,
   DAI_ORACLE_ERROR,
@@ -81,7 +84,7 @@ async function main() {
       defaultThreshold: DEFAULT_THRESHOLD,
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
     },
-    bn('1e14'), // revenueHiding = 0.01%
+    revenueHiding.toString(),
     {
       nTokens: 3,
       curvePool: THREE_POOL,
@@ -94,6 +97,7 @@ async function main() {
   )
   await collateral.deployed()
   await collateral.refresh()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
     `Deployed Convex Stable Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
