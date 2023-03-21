@@ -184,7 +184,6 @@ const makeCollateralFixtureContext = (
     collateralOpts.curvePool = fix.curvePool.address
     const collateral = await deployCollateral(collateralOpts)
     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX) // use CVX
-    const tokDecimals = await fix.w3Pool.decimals()
 
     const cvx = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX)
     const crv = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CRV)
@@ -201,7 +200,6 @@ const makeCollateralFixtureContext = (
       usdt: fix.usdt,
       tok: fix.w3Pool,
       rewardToken,
-      tokDecimals,
       usdcFeed,
       daiFeed,
       usdtFeed,
@@ -424,13 +422,13 @@ describeFork(`Collateral: Convex - Stable`, () => {
 
     describe('functions', () => {
       it('returns the correct bal (18 decimals)', async () => {
-        const amount = bn('20000').mul(bn(10).pow(ctx.tokDecimals))
+        const amount = bn('20000').mul(bn(10).pow(await ctx.tok.decimals()))
         await mintCollateralTo(ctx, amount, alice, alice.address)
 
         const aliceBal = await collateral.bal(alice.address)
         expect(aliceBal).to.closeTo(
-          amount.mul(bn(10).pow(18 - ctx.tokDecimals)),
-          bn('100').mul(bn(10).pow(18 - ctx.tokDecimals))
+          amount.mul(bn(10).pow(18 - (await ctx.tok.decimals()))),
+          bn('100').mul(bn(10).pow(18 - (await ctx.tok.decimals())))
         )
       })
     })
@@ -441,7 +439,7 @@ describeFork(`Collateral: Convex - Stable`, () => {
       })
 
       it('claims rewards', async () => {
-        const amount = bn('20000').mul(bn(10).pow(ctx.tokDecimals))
+        const amount = bn('20000').mul(bn(10).pow(await ctx.tok.decimals()))
         await mintCollateralTo(ctx, amount, alice, collateral.address)
 
         await advanceBlocks(1000)
