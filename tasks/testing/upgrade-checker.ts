@@ -24,17 +24,15 @@ import { TestITrading } from '@typechain/TestITrading';
 /*
     This script is currently useful for the upcoming eUSD upgrade.
     In order to make this useful for future upgrades and for other rTokens, we will need the following:
-        - generic minting (8 pts)
+        - generic minting (5 pts)
             - dynamically gather and approve the necessary basket tokens needed to mint
-            - generic way to fill the `tester` account with the tokens necessary to mint the RToken
-                - can probably leverage the `mintX` functions from plugin test suites
-            - could also leverage ZAPs for this
+            - use ZAPs
         - generic reward claiming (5 pts)
             - check for where revenue should be allocated
             - dynamically run and complete necessary auctions to realize revenue
         - generic basket switching (8 pts)
             - not sure if possible if there is no backup basket
-        - update oracles whenever time progresses to make sure collaterals stay sound
+        - update oracles whenever time progresses to make sure collaterals stay sound (5 pts)
 
     21-34 more points of work to make this more generic
 */
@@ -56,6 +54,10 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
         if (hre.network.name != 'localhost' && hre.network.name != 'hardhat') {
             throw new Error('Only run this on a local fork')
+        }
+
+        if (!useEnv('SUBGRAPH_URL')) {
+            throw new Error('SUBGRAPH_URL required for subgraph queries')
         }
 
         // 1. Approve and execute the govnerance proposal
