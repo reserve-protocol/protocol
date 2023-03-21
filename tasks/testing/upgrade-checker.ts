@@ -13,8 +13,11 @@ import { bn, fp, toBNDecimals } from '#/common/numbers';
 import { formatEther, parseEther, formatUnits, parseUnits } from 'ethers/lib/utils';
 import { FacadeTest } from '@typechain/FacadeTest';
 import { getTrade } from '#/utils/trades'
+import { IRewardable } from '@typechain/IRewardable';
 
-//npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 51110366224941500632568067966420116363657831627221850780259437481890922983943 --network localhost
+// run script for eUSD
+// current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
+// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 51110366224941500632568067966420116363657831627221850780259437481890922983943 --network localhost
 
 task('upgrade-checker', 'Mints all the tokens to an address')
     .addParam('rtoken', 'the address of the RToken being upgraded')
@@ -42,6 +45,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'
         const cUsdtAddress = '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9'
         const usdtAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+        const usdcAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
         const holderUSDT = '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503'
         const rsrWhale = '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
 
@@ -56,33 +60,44 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         const rsr = await hre.ethers.getContractAt('ERC20Mock', await main.rsr())
         
         
-        // settle trade
-        /*
+        // recollateralize
+        // here we will make any trades needed to recollateralize the RToken
+        // this is specific to eUSD so that we don't have to wait for the market to do this
+        // we can make this generic, but will leave it specific for now for testing the upcoming eUSD changes
 
         await facadeTest.runAuctionsForAllTraders(rToken.address)
         const trade = await getTrade(hre, backingManager, rsr.address)
         const endTime = await trade.endTime()
+        const worstPrice = await trade.worstCasePrice()
         const auctionId = await trade.auctionId()
-        const sellAmtRSR = await trade.initBal()
-        const buyAmt = sellAmtRSR.div(bn(0.004e6))
+        const buyAmount = await trade.initBal()
+        const sellAmount = buyAmount.mul(worstPrice).div(fp('1')).add(fp('1'))
+    
         const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
-        await rsr.connect(rsrWhale).approve(gnosis.address, toBNDecimals(sellAmtRSR, 6))
-        await gnosis.placeSellOrders(
-            auctionId,
-            [sellAmtRSR],
-            [buyAmt],
-            [''],
-            ''
-        )
+        await whileImpersonating(hre, rsrWhale, async (whale) => {
+            await rsr.connect(whale).approve(gnosis.address, sellAmount)
+            await gnosis.connect(whale).placeSellOrders(
+                auctionId,
+                [buyAmount],
+                [sellAmount],
+                [QUEUE_START],
+                hre.ethers.constants.HashZero
+            )
+        })
+    
         const lastTimestamp = await getLatestBlockTimestamp(hre)
         await advanceTime(hre, BigNumber.from(endTime).sub(lastTimestamp).toString())
+    
+        await rsrTrader.settleTrade(rsr.address)
         await facadeTest.runAuctionsForAllTraders(rToken.address)
 
-        console.log('success!')
+        console.log('successfully settled trade')
 
-        */
 
         // mint
+        // this is another area that needs to be made general
+        // for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
+
         /*
         const initialBal = bn('2e11')
         const issueAmount = fp('1e5')
@@ -127,54 +142,92 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         */
 
         // claim rewards
-        const strsr = await hre.ethers.getContractAt('StRSRP1', await main.stRSR())
-        const rsrRatePre = await strsr.exchangeRate()
+        await claimRsrRewards(hre, params.rtoken)
 
-        await backingManager.claimRewards()
-        const comp = '0xc00e94Cb662C3520282E6f5717214004A7f26888'
-        await backingManager.manageTokens([comp])
-        const compContract = await hre.ethers.getContractAt('ERC20Mock', comp)
-
-        // fake enough rewards to trade
-        await whileImpersonating(hre, '0x2775b1c75658Be0F640272CCb8c72ac986009e38', async (compWhale) => {
-            await compContract.connect(compWhale).transfer(rsrTrader.address, fp('1e5'))
-        })
-        await rsrTrader.manageToken(comp)
-        const trade = await getTrade(hre, rsrTrader, comp)
-        const worstPrice = await trade.worstCasePrice()
-        const endTime = await trade.endTime()
-        const auctionId = await trade.auctionId()
-        const buyAmount = await trade.initBal()
-        const sellAmount = buyAmount.mul(worstPrice).div(fp('1')).add(fp('1'))
-        const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
-        await whileImpersonating(hre, rsrWhale, async (whale) => {
-            await rsr.connect(whale).approve(gnosis.address, sellAmount)
-            await gnosis.connect(whale).placeSellOrders(
-                auctionId,
-                [buyAmount],
-                [sellAmount],
-                [QUEUE_START],
-                hre.ethers.constants.HashZero
+        // switch basket
+        await whileImpersonating(hre, params.governor, async (gov) => {
+            await basketHandler.connect(gov).setPrimeBasket(
+                [saUsdtAddress, cUsdtAddress, usdcAddress],
+                [25, 25, 50]
             )
         })
-
-        const lastTimestamp = await getLatestBlockTimestamp(hre)
-        await advanceTime(hre, BigNumber.from(endTime).sub(lastTimestamp).toString())
-
-        await rsrTrader.settleTrade(comp)
-        await rsrTrader.manageToken(rsr.address)
-        await strsr.payoutRewards()
-        await advanceBlocks(hre, 100)
-        await advanceTime(hre, 1200)
-        await strsr.payoutRewards()
-
-        const rsrRatePost = await strsr.exchangeRate()
-        if (!rsrRatePost.gt(rsrRatePre)) {
-            throw new Error(`stRSR rate should have increased. pre: ${formatEther(rsrRatePre)}   post ${formatEther(rsrRatePost)}`)
-        }
-        
-        // switch basket
     })
+
+const claimRewards = async (
+    claimer: IRewardable
+) => {
+    const resp = await claimer.claimRewards()
+    const r = await resp.wait()
+    const rewards = []
+    for (const event of r.events!) {
+        if (event.event == 'RewardsClaimed' && event.args!.amount.gt(0)) {
+            rewards.push(event.args!.erc20)
+        }
+    }
+    return rewards
+}
+
+const claimRsrRewards = async (
+    hre: HardhatRuntimeEnvironment,
+    rtokenAddress: string
+) => {
+    const rsrWhale = '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
+    const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
+    const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+    const backingManager = await hre.ethers.getContractAt('BackingManagerP1', await main.backingManager())
+    const rsrTrader = await hre.ethers.getContractAt('RevenueTraderP1', await main.rsrTrader())
+    const rsr = await hre.ethers.getContractAt('ERC20Mock', await main.rsr())
+    const strsr = await hre.ethers.getContractAt('StRSRP1', await main.stRSR())
+    const rsrRatePre = await strsr.exchangeRate()
+
+    const rewards = await claimRewards(backingManager)
+    await backingManager.manageTokens(rewards)
+    // for (const reward of rewards) {
+
+    // }
+    const comp = '0xc00e94Cb662C3520282E6f5717214004A7f26888'
+    const compContract = await hre.ethers.getContractAt('ERC20Mock', comp)
+
+    // fake enough rewards to trade
+    await whileImpersonating(hre, '0x2775b1c75658Be0F640272CCb8c72ac986009e38', async (compWhale) => {
+        await compContract.connect(compWhale).transfer(rsrTrader.address, fp('1e5'))
+    })
+
+    await rsrTrader.manageToken(comp)
+    const trade = await getTrade(hre, rsrTrader, comp)
+    const endTime = await trade.endTime()
+    const worstPrice = await trade.worstCasePrice()
+    const auctionId = await trade.auctionId()
+    const buyAmount = await trade.initBal()
+    const sellAmount = buyAmount.mul(worstPrice).div(fp('1')).add(fp('1'))
+
+    const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
+    await whileImpersonating(hre, rsrWhale, async (whale) => {
+        await rsr.connect(whale).approve(gnosis.address, sellAmount)
+        await gnosis.connect(whale).placeSellOrders(
+            auctionId,
+            [buyAmount],
+            [sellAmount],
+            [QUEUE_START],
+            hre.ethers.constants.HashZero
+        )
+    })
+
+    const lastTimestamp = await getLatestBlockTimestamp(hre)
+    await advanceTime(hre, BigNumber.from(endTime).sub(lastTimestamp).toString())
+
+    await rsrTrader.settleTrade(comp)
+    await rsrTrader.manageToken(rsr.address)
+    await strsr.payoutRewards()
+    await advanceBlocks(hre, 100)
+    await advanceTime(hre, 1200)
+    await strsr.payoutRewards()
+
+    const rsrRatePost = await strsr.exchangeRate()
+    if (!rsrRatePost.gt(rsrRatePre)) {
+        throw new Error(`stRSR rate should have increased. pre: ${formatEther(rsrRatePre)}   post ${formatEther(rsrRatePost)}`)
+    }
+}
 
 const passAndExecuteProposal = async (
     hre: HardhatRuntimeEnvironment,
