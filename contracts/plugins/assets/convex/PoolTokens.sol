@@ -230,6 +230,7 @@ contract PoolTokens {
 
     // === Public Views ===
 
+    /// @param index The index of the token: 0, 1, 2, or 3
     /// @return low {UoA/ref_index}
     /// @return high {UoA/ref_index}
     function tokenPrice(uint8 index) public view returns (uint192 low, uint192 high) {
@@ -328,10 +329,10 @@ contract PoolTokens {
         return maxLength;
     }
 
-    // x and y can be any two fixes that can be multiplied
+    /// x and y can be any two fixes that can be multiplied
     /// @param xErr {1} error associated with x
     /// @param yErr {1} error associated with y
-    // returns low and high extremes of x * y, given errors
+    /// returns low and high extremes of x * y, given errors
     function toRange(
         uint192 x,
         uint192 y,
