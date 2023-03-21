@@ -69,6 +69,7 @@
     "@typescript-eslint/eslint-plugin": "^5.17.0",
     "@typescript-eslint/parser": "^5.17.0",
     "axios": "^0.24.0",
+    "bignumber.js": "^9.1.1",
     "caip": "^1.1.0",
     "chai": "^4.3.4",
     "decimal.js": "^10.4.3",
