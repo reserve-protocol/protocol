@@ -69,8 +69,8 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         pegPrice = ((aumLow + aumHigh) / 2).div(supply); // use avg of aumLow + aumHigh
 
         // discount aumLow by the amount of revenue being hidden
-        // {UoA} = {UoA} * {ref/tok} / {ref/tok}
-        aumLow = aumLow.mulDiv(exposedReferencePrice, _underlyingRefPerTok());
+        // {UoA} = {UoA} * {1}
+        aumLow = aumLow.mul(revenueShowing);
 
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply);
