@@ -380,9 +380,9 @@ const collateralSpecificConstructorTests = () => {
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
-before(resetFork)
-
 describeFork(`Collateral: Convex - Volatile`, () => {
+  before(resetFork)
+
   describe('constructor validation', () => {
     it('validates targetName', async () => {
       await expect(deployCollateral({ targetName: ethers.constants.HashZero })).to.be.revertedWith(
