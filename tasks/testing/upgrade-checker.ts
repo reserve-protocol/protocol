@@ -19,6 +19,25 @@ import { IRewardable } from '@typechain/IRewardable';
 // current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 51110366224941500632568067966420116363657831627221850780259437481890922983943 --network localhost
 
+/*
+    This script is currently useful for the upcoming eUSD upgrade.
+    In order to make this useful for future upgrades and for other rTokens, we will need the following:
+        - generic minting (8 pts)
+            - dynamically gather and approve the necessary basket tokens needed to mint
+            - generic way to fill the `tester` account with the tokens necessary to mint the RToken
+                - can probably leverage the `mintX` functions from plugin test suites
+            - could also leverage ZAPs for this
+        - generic redemption (3 pts)
+            - dynamically check the expected amounts of tokens received from redemption
+        - generic reward claiming (5 pts)
+            - check for where revenue should be allocated
+            - dynamically run and complete necessary auctions to realize revenue
+        - generic basket switching (8 pts)
+            - not sure if possible if there is no backup basket
+
+    21-34 more points of work to make this more generic
+*/
+
 task('upgrade-checker', 'Mints all the tokens to an address')
     .addParam('rtoken', 'the address of the RToken being upgraded')
     .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
