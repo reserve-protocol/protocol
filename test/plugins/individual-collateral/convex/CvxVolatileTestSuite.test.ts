@@ -510,9 +510,15 @@ describeFork(`Collateral: Convex - Volatile`, () => {
         ])
 
         const [newLow, newHigh] = await collateral.price()
+        const expectedNewLow = low.mul(110).div(100)
+        const expectedNewHigh = high.mul(110).div(100)
 
-        expect(newLow.sub(1)).to.equal(low.mul(110).div(100))
-        expect(newHigh.sub(1)).to.equal(high.mul(110).div(100))
+        // Expect price to be correct within 1 part in 100 million
+        // The rounding comes from the oracle .mul(110).div(100) calculations truncating
+        expect(newLow).to.be.closeTo(expectedNewLow, expectedNewLow.div(bn('1e8')))
+        expect(newHigh).to.be.closeTo(expectedNewHigh, expectedNewHigh.div(bn('1e8')))
+        expect(newLow).to.be.lt(expectedNewLow)
+        expect(newHigh).to.be.lt(expectedNewHigh)
 
         // Check refPerTok remains the same (because we have not refreshed)
         const finalRefPerTok = await collateral.refPerTok()
