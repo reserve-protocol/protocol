@@ -15,6 +15,7 @@ import { FacadeTest } from '@typechain/FacadeTest';
 import { getTrade } from '#/utils/trades'
 import { IRewardable } from '@typechain/IRewardable';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { TestITrading } from '@typechain/TestITrading';
 
 // run script for eUSD
 // current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
@@ -64,8 +65,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         const cUsdtAddress = '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9'
         const usdtAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
         const usdcAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
-        const holderUSDT = '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503'
-        const rsrWhale = '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
 
         const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
         const main = await hre.ethers.getContractAt('IMain', await rToken.main())
@@ -76,6 +75,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         const rsrTrader = await hre.ethers.getContractAt('RevenueTraderP1', await main.rsrTrader())
         const rTokenTrader = await hre.ethers.getContractAt('RevenueTraderP1', await main.rTokenTrader())
         const rsr = await hre.ethers.getContractAt('ERC20Mock', await main.rsr())
+        const assetRegistry = await hre.ethers.getContractAt('AssetRegistryP1', await main.assetRegistry())
         
         
         // recollateralize
@@ -84,52 +84,28 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         // we can make this generic, but will leave it specific for now for testing the upcoming eUSD changes
 
         await facadeTest.runAuctionsForAllTraders(rToken.address)
-        const trade = await getTrade(hre, backingManager, rsr.address)
-        const endTime = await trade.endTime()
-        const worstPrice = await trade.worstCasePrice()
-        const auctionId = await trade.auctionId()
-        const buyAmount = await trade.initBal()
-        const sellAmount = buyAmount.mul(worstPrice).div(fp('1')).add(fp('1'))
-    
-        const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
-        await whileImpersonating(hre, rsrWhale, async (whale) => {
-            await rsr.connect(whale).approve(gnosis.address, sellAmount)
-            await gnosis.connect(whale).placeSellOrders(
-                auctionId,
-                [buyAmount],
-                [sellAmount],
-                [QUEUE_START],
-                hre.ethers.constants.HashZero
-            )
-        })
-    
-        const lastTimestamp = await getLatestBlockTimestamp(hre)
-        await advanceTime(hre, BigNumber.from(endTime).sub(lastTimestamp).toString())
-    
-        await rsrTrader.settleTrade(rsr.address)
+        await runTrade(hre, backingManager, rsr.address, false)
         await facadeTest.runAuctionsForAllTraders(rToken.address)
 
         console.log('successfully settled trade')
-
 
         // mint
         // this is another area that needs to be made general
         // for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
 
-        /*
         const initialBal = bn('2e11')
         const issueAmount = fp('1e5')
         const usdt = await hre.ethers.getContractAt('ERC20Mock', usdtAddress)
         const saUsdt = await hre.ethers.getContractAt('StaticATokenLM', saUsdtAddress)
         const cUsdt = await hre.ethers.getContractAt('ICToken', cUsdtAddress)
 
-        await whileImpersonating(hre, holderUSDT, async (usdtSigner) => {
+        await whileImpersonating(hre, whales['usdt'], async (usdtSigner) => {
             await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal) 
             await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
         })
         await saUsdt.connect(tester).approve(rToken.address, initialBal)
 
-        await whileImpersonating(hre, holderUSDT, async (usdtSigner) => {
+        await whileImpersonating(hre, whales['usdt'], async (usdtSigner) => {
             await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal) 
             await cUsdt.connect(usdtSigner).mint(initialBal)
             const bal = await cUsdt.balanceOf(usdtSigner.address)
@@ -137,7 +113,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         })
         await cUsdt.connect(tester).approve(rToken.address, initialBal)
 
-        await whileImpersonating(hre, holderUSDT, async (usdtSigner) => {
+        await whileImpersonating(hre, whales['usdt'], async (usdtSigner) => {
             await usdt.connect(usdtSigner).transfer(tester.address, initialBal)
         })
         await usdt.connect(tester).approve(rToken.address, initialBal)
@@ -147,12 +123,10 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         if (postIssueBal != issueAmount) {
             throw new Error(`Did not issue the correct amount of RTokens. wanted: ${formatUnits(issueAmount, 'mwei')}    balance: ${formatUnits(postIssueBal, 'mwei')}`)
         }
-        */
 
         // redeem
         const redeemAmount = fp('5e4')
         await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
-
 
         // claim rewards
         await claimRsrRewards(hre, params.rtoken)
@@ -164,11 +138,52 @@ task('upgrade-checker', 'Mints all the tokens to an address')
                 [25, 25, 50]
             )
         })
+        await basketHandler.refreshBasket()
+        const registeredERC20s = await assetRegistry.erc20s()
+        await backingManager.manageTokens(registeredERC20s)
+        await runTrade(hre, backingManager, usdtAddress, true)
     })
+
+const whales: { [key: string]: string } = {
+    usdt: '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503',
+    rsr: '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
+}
+
+const runTrade = async (
+    hre: HardhatRuntimeEnvironment,
+    trader: TestITrading,
+    tradeToken: string,
+    bidExact: boolean
+) => {
+    const trade = await getTrade(hre, trader, tradeToken)
+    const sellTokenAddress = await trade.buy()
+    const endTime = await trade.endTime()
+    const worstPrice = await trade.worstCasePrice()
+    const auctionId = await trade.auctionId()
+    const buyAmount = await trade.initBal()
+    const sellAmount = bidExact ? buyAmount : buyAmount.mul(worstPrice).div(fp('1')).add(fp('1'))
+
+    const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
+    await whileImpersonating(hre, whales[sellTokenAddress], async (whale) => {
+        const sellToken = await hre.ethers.getContractAt('ERC20Mock', sellTokenAddress)
+        await sellToken.connect(whale).approve(gnosis.address, sellAmount)
+        await gnosis.connect(whale).placeSellOrders(
+            auctionId,
+            [buyAmount],
+            [sellAmount],
+            [QUEUE_START],
+            hre.ethers.constants.HashZero
+        )
+    })
+
+    const lastTimestamp = await getLatestBlockTimestamp(hre)
+    await advanceTime(hre, BigNumber.from(endTime).sub(lastTimestamp).toString())
+    await trader.settleTrade(tradeToken)
+}
 
 type Balances = { [key: string]: BigNumber }
 
-const getBalances = async (hre: HardhatRuntimeEnvironment, account: string, erc20s: Array<string>): Promise<Balances> => {
+const getAccountBalances = async (hre: HardhatRuntimeEnvironment, account: string, erc20s: Array<string>): Promise<Balances> => {
     const balances: Balances = {}
     for (const erc20 of erc20s) {
         const token = await hre.ethers.getContractAt('ERC20Mock', erc20)
@@ -182,18 +197,15 @@ const redeemRTokens = async (hre: HardhatRuntimeEnvironment, user: SignerWithAdd
     const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     const basketHandler = await hre.ethers.getContractAt('BasketHandlerP1', await main.basketHandler())
-    const backingManager = await hre.ethers.getContractAt('BackingManagerP1', await main.backingManager())
 
     const redeemQuote = await basketHandler.quote(redeemAmount, 0)
     const expectedTokens = redeemQuote.erc20s
     
     const preRedeemRTokenBal = await rToken.balanceOf(user.address)
-    const preRedeemErc20Bals = await getBalances(hre, user.address, expectedTokens)
-
+    const preRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
     await rToken.connect(user).redeem(redeemAmount, await basketHandler.nonce())
-
     const postRedeemRTokenBal = await rToken.balanceOf(user.address)
-    const postRedeemErc20Bals = await getBalances(hre, user.address, expectedTokens)
+    const postRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
 
     const expectedBalances: Balances = {}
 
@@ -208,7 +220,6 @@ const redeemRTokens = async (hre: HardhatRuntimeEnvironment, user: SignerWithAdd
         throw new Error(`Did not redeem the correct amount of RTokens \n expected: ${redeemAmount} \n redeemed: ${postRedeemRTokenBal.sub(preRedeemRTokenBal)}`)
     }
 }
-
 
 const claimRewards = async (
     claimer: IRewardable
@@ -228,7 +239,6 @@ const claimRsrRewards = async (
     hre: HardhatRuntimeEnvironment,
     rtokenAddress: string
 ) => {
-    const rsrWhale = '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
     const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     const backingManager = await hre.ethers.getContractAt('BackingManagerP1', await main.backingManager())
@@ -250,30 +260,9 @@ const claimRsrRewards = async (
         await compContract.connect(compWhale).transfer(rsrTrader.address, fp('1e5'))
     })
 
+    
     await rsrTrader.manageToken(comp)
-    const trade = await getTrade(hre, rsrTrader, comp)
-    const endTime = await trade.endTime()
-    const worstPrice = await trade.worstCasePrice()
-    const auctionId = await trade.auctionId()
-    const buyAmount = await trade.initBal()
-    const sellAmount = buyAmount.mul(worstPrice).div(fp('1')).add(fp('1'))
-
-    const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
-    await whileImpersonating(hre, rsrWhale, async (whale) => {
-        await rsr.connect(whale).approve(gnosis.address, sellAmount)
-        await gnosis.connect(whale).placeSellOrders(
-            auctionId,
-            [buyAmount],
-            [sellAmount],
-            [QUEUE_START],
-            hre.ethers.constants.HashZero
-        )
-    })
-
-    const lastTimestamp = await getLatestBlockTimestamp(hre)
-    await advanceTime(hre, BigNumber.from(endTime).sub(lastTimestamp).toString())
-
-    await rsrTrader.settleTrade(comp)
+    await runTrade(hre, rsrTrader, comp, false)
     await rsrTrader.manageToken(rsr.address)
     await strsr.payoutRewards()
     await advanceBlocks(hre, 100)
