@@ -124,6 +124,8 @@ task('upgrade-checker', 'Mints all the tokens to an address')
             throw new Error(`Did not issue the correct amount of RTokens. wanted: ${formatUnits(issueAmount, 'mwei')}    balance: ${formatUnits(postIssueBal, 'mwei')}`)
         }
 
+        console.log('successfully minted RTokens')
+
         // redeem
         const redeemAmount = fp('5e4')
         await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
@@ -219,6 +221,8 @@ const redeemRTokens = async (hre: HardhatRuntimeEnvironment, user: SignerWithAdd
     if (postRedeemRTokenBal.sub(preRedeemRTokenBal) != redeemAmount) {
         throw new Error(`Did not redeem the correct amount of RTokens \n expected: ${redeemAmount} \n redeemed: ${postRedeemRTokenBal.sub(preRedeemRTokenBal)}`)
     }
+
+    console.log('successfully redeemed RTokens')
 }
 
 const claimRewards = async (
@@ -260,7 +264,6 @@ const claimRsrRewards = async (
         await compContract.connect(compWhale).transfer(rsrTrader.address, fp('1e5'))
     })
 
-    
     await rsrTrader.manageToken(comp)
     await runTrade(hre, rsrTrader, comp, false)
     await rsrTrader.manageToken(rsr.address)
@@ -273,6 +276,8 @@ const claimRsrRewards = async (
     if (!rsrRatePost.gt(rsrRatePre)) {
         throw new Error(`stRSR rate should have increased. pre: ${formatEther(rsrRatePre)}   post ${formatEther(rsrRatePost)}`)
     }
+
+    console.log("Successfully claimed and distributed RSR rewards")
 }
 
 const passAndExecuteProposal = async (
