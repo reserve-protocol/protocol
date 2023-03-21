@@ -729,7 +729,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint192[] memory targetAmts
         )
     {
-        erc20s = new IERC20[](basket.erc20s.length);
+        erc20s = new IERC20[](config.erc20s.length);
         targetNames = new bytes32[](erc20s.length);
         targetAmts = new uint192[](erc20s.length);
 

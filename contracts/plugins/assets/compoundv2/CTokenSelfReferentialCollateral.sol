@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
+import "../AppreciatingFiatCollateral.sol";
 import "./ICToken.sol";
-import "./AppreciatingFiatCollateral.sol";
 
 /**
  * @title CTokenSelfReferentialCollateral
@@ -36,9 +36,9 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
-    /// @param pegPrice {target/ref}
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
+    /// @return pegPrice {target/ref}
     function tryPrice()
         external
         view

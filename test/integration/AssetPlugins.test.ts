@@ -20,6 +20,7 @@ import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { advanceBlocks, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../utils/oracles'
+import forkBlockNumber from './fork-block-numbers'
 import {
   Asset,
   ATokenFiatCollateral,
@@ -166,8 +167,26 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
   let chainId: number
 
+  // Setup test environment
+  const setup = async (blockNumber: number) => {
+    // Use Mainnet fork
+    await hre.network.provider.request({
+      method: 'hardhat_reset',
+      params: [
+        {
+          forking: {
+            jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+            blockNumber: blockNumber,
+          },
+        },
+      ],
+    })
+  }
+
   describe('Assets/Collateral', () => {
     before(async () => {
+      await setup(forkBlockNumber['asset-plugins'])
+
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
         throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -222,36 +241,21 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aTokens
       aDai = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aDAI || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
       )
 
       aUsdc = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aUSDC || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDC || '')
       )
       aUsdt = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aUSDT || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDT || '')
       )
       aBusd = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aBUSD || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aBUSD || '')
       )
 
       aUsdp = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aUSDP || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDP || '')
       )
       // Get collaterals
       daiCollateral = <FiatCollateral>collateral[0] // DAI
@@ -288,10 +292,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aToken
       aDai = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aDAI || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
       )
 
       // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
@@ -2401,10 +2402,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aToken
       aDai = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aDAI || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
       )
 
       // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)

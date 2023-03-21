@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "contracts/plugins/assets/compound/CusdcV3Wrapper.sol";
-import "contracts/plugins/assets/compound/ICusdcV3Wrapper.sol";
+import "../assets/compoundv3/CusdcV3Wrapper.sol";
+import "../assets/compoundv3/ICusdcV3Wrapper.sol";
 
 interface ICusdcV3WrapperMock is ICusdcV3Wrapper {
     function setMockExchangeRate(bool setMock, uint256 mockValue) external;

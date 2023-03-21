@@ -20,9 +20,9 @@ contract SelfReferentialCollateral is FiatCollateral {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
-    /// @param pegPrice {target/ref}
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
+    /// @return pegPrice {target/ref}
     function tryPrice()
         external
         view

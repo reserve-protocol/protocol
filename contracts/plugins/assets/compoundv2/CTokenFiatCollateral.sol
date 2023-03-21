@@ -2,14 +2,15 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "./AppreciatingFiatCollateral.sol";
+import "../../../libraries/Fixed.sol";
+import "../AppreciatingFiatCollateral.sol";
 import "./ICToken.sol";
-import "../../libraries/Fixed.sol";
 
 /**
  * @title CTokenFiatCollateral
  * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
+ * Also used for FluxFinance
  */
 contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -28,6 +29,7 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
         uint192 revenueHiding,
         IComptroller comptroller_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
+        require(address(config.erc20) != address(0), "missing erc20");
         require(address(comptroller_) != address(0), "comptroller missing");
         ICToken erc20 = ICToken(address(config.erc20));
         referenceERC20Decimals = IERC20Metadata(erc20.underlying()).decimals();

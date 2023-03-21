@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "contracts/plugins/assets/ICToken.sol";
+import "../assets/compoundv2/ICToken.sol";
 import "./ERC20Mock.sol";
 
 contract ComptrollerMock is IComptroller {

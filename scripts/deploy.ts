@@ -8,6 +8,12 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
 
+  if (hre.network.name == 'hardhat') {
+    throw new Error(
+      "Don't use network 'hardhat'.  If you are testing locally, make sure to run 'yarn devchain' in a separate terminal, and then deploy to 'localhost'."
+    )
+  }
+
   // Check if chain is supported
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -33,6 +39,10 @@ async function main() {
     'phase2-assets/0_setup_deployments.ts',
     'phase2-assets/1_deploy_assets.ts',
     'phase2-assets/2_deploy_collateral.ts',
+    'phase2-assets/collaterals/deploy_lido_wsteth_collateral.ts',
+    'phase2-assets/collaterals/deploy_rocket_pool_reth_collateral.ts',
+    'phase2-assets/collaterals/deploy_flux_finance_collateral.ts',
+    'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
     'phase2-assets/collaterals/deploy_convex_stable_plugin.ts',
     // ===============================================
     // These phase3 scripts will not deploy functional RTokens or Governance. They deploy bricked

@@ -27,6 +27,8 @@ import {
   defaultFixture,
   ORACLE_ERROR,
 } from './fixtures'
+import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
+import { CollateralStatus } from '#/common/constants'
 
 describe('FacadeRead contract', () => {
   let owner: SignerWithAddress
@@ -152,16 +154,22 @@ describe('FacadeRead contract', () => {
     })
 
     it('Should return issuable quantities correctly', async () => {
-      const [toks, quantities] = await facade.callStatic.issue(rToken.address, issueAmount)
+      const [toks, quantities, uoas] = await facade.callStatic.issue(rToken.address, issueAmount)
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
       expect(toks[1]).to.equal(usdc.address)
       expect(toks[2]).to.equal(aToken.address)
       expect(toks[3]).to.equal(cToken.address)
+      expect(quantities.length).to.equal(4)
       expect(quantities[0]).to.equal(issueAmount.div(4))
       expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
       expect(quantities[2]).to.equal(issueAmount.div(4))
       expect(quantities[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
+      expect(uoas.length).to.equal(4)
+      expect(uoas[0]).to.equal(issueAmount.div(4))
+      expect(uoas[1]).to.equal(issueAmount.div(4))
+      expect(uoas[2]).to.equal(issueAmount.div(4))
+      expect(uoas[3]).to.equal(issueAmount.div(4))
     })
 
     it('Should return redeemable quantities correctly', async () => {
@@ -279,6 +287,54 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization2).to.equal(0)
     })
 
+    it('Should return traderBalances correctly', async () => {
+      // BackingManager
+      let [erc20s, balances, balancesNeeded] = await facade.traderBalances(
+        rToken.address,
+        await main.backingManager()
+      )
+      expect(erc20s.length).to.equal(8)
+      expect(balances.length).to.equal(8)
+      expect(balancesNeeded.length).to.equal(8)
+
+      for (let i = 0; i < 8; i++) {
+        let bal = bn('0')
+        if (erc20s[i] == token.address) bal = issueAmount.div(4)
+        if (erc20s[i] == usdc.address) bal = issueAmount.div(4).div(bn('1e12'))
+        if (erc20s[i] == aToken.address) bal = issueAmount.div(4)
+        if (erc20s[i] == cToken.address) bal = issueAmount.div(4).mul(50).div(bn('1e10'))
+
+        expect(balances[i]).to.equal(bal)
+        expect(balancesNeeded[i]).to.equal(bal)
+      }
+
+      // RTokenTrader
+      ;[erc20s, balances, balancesNeeded] = await facade.traderBalances(
+        rToken.address,
+        await main.rTokenTrader()
+      )
+      expect(erc20s.length).to.equal(8)
+      expect(balances.length).to.equal(8)
+      expect(balancesNeeded.length).to.equal(8)
+      for (let i = 0; i < 8; i++) {
+        expect(balances[i]).to.equal(0)
+        expect(balancesNeeded[i]).to.equal(0)
+      }
+
+      // RSRTrader
+      ;[erc20s, balances, balancesNeeded] = await facade.traderBalances(
+        rToken.address,
+        await main.rsrTrader()
+      )
+      expect(erc20s.length).to.equal(8)
+      expect(balances.length).to.equal(8)
+      expect(balancesNeeded.length).to.equal(8)
+      for (let i = 0; i < 8; i++) {
+        expect(balances[i]).to.equal(0)
+        expect(balancesNeeded[i]).to.equal(0)
+      }
+    })
+
     it('Should return basketBreakdown correctly for paused token', async () => {
       await main.connect(owner).pause()
       await expectValidBasketBreakdown(rToken)
@@ -360,6 +416,38 @@ describe('FacadeRead contract', () => {
       })
 
       it('Should return prime basket', async () => {
+        const [erc20s, targetNames, targetAmts] = await facade.primeBasket(rToken.address)
+        expect(erc20s.length).to.equal(4)
+        expect(targetNames.length).to.equal(4)
+        expect(targetAmts.length).to.equal(4)
+        const expectedERC20s = [token.address, usdc.address, aToken.address, cToken.address]
+        for (let i = 0; i < 4; i++) {
+          expect(erc20s[i]).to.equal(expectedERC20s[i])
+          expect(targetNames[i]).to.equal(ethers.utils.formatBytes32String('USD'))
+          expect(targetAmts[i]).to.equal(fp('0.25'))
+        }
+      })
+
+      it('Should return prime basket after a default', async () => {
+        // Set a backup config
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [token.address])
+
+        // Set up DISABLED collateral (USDC)
+        await setOraclePrice(usdcAsset.address, bn('0.5'))
+        const delayUntiDefault = await usdcAsset.delayUntilDefault()
+        const currentTimestamp = await getLatestBlockTimestamp()
+        await usdcAsset.refresh()
+        await setNextBlockTimestamp(currentTimestamp + delayUntiDefault + 1)
+        await usdcAsset.refresh()
+        expect(await usdcAsset.status()).to.equal(CollateralStatus.DISABLED)
+
+        // switch basket, removing USDC
+        await basketHandler.refreshBasket()
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+        // prime basket should still be all 4 tokens
         const [erc20s, targetNames, targetAmts] = await facade.primeBasket(rToken.address)
         expect(erc20s.length).to.equal(4)
         expect(targetNames.length).to.equal(4)

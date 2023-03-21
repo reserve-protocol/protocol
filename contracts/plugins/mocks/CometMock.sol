@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 // prettier-ignore
 contract CometMock {
     int256 internal _reserves;
-    uint256 internal _targetReserves;
     address public externalDelegate;
 
     struct TotalsBasic {
@@ -28,22 +27,13 @@ contract CometMock {
         uint8 _reserved;
     }
 
-    constructor(uint256 targetReserves_, int256 reserves_, address delegate) {
-        _targetReserves = targetReserves_;
+    constructor(int256 reserves_, address delegate) {
         _reserves = reserves_;
         externalDelegate = delegate;
     }
 
     function setReserves(int256 amount) external {
         _reserves = amount;
-    }
-
-    function setTargetReserves(uint256 amount) external {
-        _targetReserves = amount;
-    }
-
-    function targetReserves() external view returns (uint256) {
-        return _targetReserves;
     }
 
     function getReserves() public view returns (int256) {
