@@ -13,6 +13,7 @@ import {
   InvalidMockV3Aggregator,
   MockV3Aggregator,
   MockV3Aggregator__factory,
+  TestICollateral,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT192, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
@@ -61,7 +62,6 @@ type Fixture<T> = () => Promise<T>
 interface CvxVolatileCollateralFixtureContext
   extends CollateralFixtureContext,
     Wrapped3PoolFixtureVolatile {
-  collateral: CvxVolatileCollateral
   wethFeed: MockV3Aggregator
   wbtcFeed: MockV3Aggregator
   btcFeed: MockV3Aggregator
@@ -209,7 +209,7 @@ const makeCollateralFixtureContext = (
 
     collateralOpts.erc20 = fix.w3Pool.address
     collateralOpts.curvePool = fix.curvePool.address
-    const collateral = await deployCollateral(collateralOpts)
+    const collateral = <TestICollateral>((await deployCollateral(collateralOpts)) as unknown)
     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX) // use CVX
 
     const cvx = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX)
@@ -426,7 +426,7 @@ describeFork(`Collateral: Convex - Volatile`, () => {
     let wallet: SignerWithAddress
     let chainId: number
 
-    let collateral: CvxVolatileCollateral
+    let collateral: TestICollateral
     let chainlinkFeed: MockV3Aggregator
     let wbtcFeed: MockV3Aggregator
     let btcFeed: MockV3Aggregator
