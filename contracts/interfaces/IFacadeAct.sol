@@ -21,6 +21,11 @@ interface IFacadeAct {
     function claimRewards(RTokenP1 rToken) external;
 
     /// To use this, call via callStatic.
+    /// @return canStart true iff a recollateralization auction can be started
+    /// @custom:static-call
+    function canRunRecollateralizationAuctions(IBackingManager bm) external returns (bool canStart);
+
+    /// To use this, call via callStatic.
     /// @return toStart The ERC20s that have auctions that can be started
     /// @custom:static-call
     function getRevenueAuctionERC20s(IRevenueTrader revenueTrader)
@@ -28,7 +33,7 @@ interface IFacadeAct {
         returns (IERC20[] memory toStart);
 
     /// To use this, first call:
-    ///   - IFacadeAct.auctionsSettleable(revenueTrader)
+    ///   - FacadeRead.auctionsSettleable(revenueTrader)
     ///   - getRevenueAuctionERC20s(revenueTrader)
     /// If either arrays returned are non-empty, then can call this function.
     /// Logic:

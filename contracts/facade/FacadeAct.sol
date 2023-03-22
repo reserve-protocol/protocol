@@ -353,6 +353,32 @@ contract FacadeAct is IFacadeAct {
     }
 
     /// To use this, call via callStatic.
+    /// If canStart is true, proceed to runRecollateralizationAuctions
+    /// @return canStart true iff a recollateralization auction can be started
+    /// @custom:static-call
+    function canRunRecollateralizationAuctions(IBackingManager bm)
+        external
+        returns (bool canStart)
+    {
+        IERC20[] memory erc20s = bm.main().assetRegistry().erc20s();
+
+        // Settle all backingManager auctions
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            ITrade trade = bm.trades(erc20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                bm.settleTrade(erc20s[i]);
+            }
+        }
+
+        uint256 tradesOpen = bm.tradesOpen();
+        if (tradesOpen != 0) return false;
+
+        // Try to launch auctions
+        bm.manageTokensSortedOrder(new IERC20[](0));
+        return bm.tradesOpen() - tradesOpen > 0;
+    }
+
+    /// To use this, call via callStatic.
     /// @return toStart The ERC20s that have auctions that can be started
     /// @custom:static-call
     function getRevenueAuctionERC20s(IRevenueTrader revenueTrader)
