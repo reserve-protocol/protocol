@@ -351,4 +351,72 @@ contract FacadeAct is IFacadeAct {
         uint192 size = price == 0 ? FIX_MAX : minTradeVolume.div(price, ROUND);
         return size > 0 ? size : 1;
     }
+
+    /// To use this, call via callStatic.
+    /// @return toStart The ERC20s that have auctions that can be started
+    /// @custom:static-call
+    function getRevenueAuctionERC20s(IRevenueTrader revenueTrader)
+        external
+        returns (IERC20[] memory toStart)
+    {
+        Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
+
+        // Forward ALL revenue
+        revenueTrader.main().backingManager().manageTokens(reg.erc20s);
+
+        // Calculate which erc20s can have auctions started
+        uint256 num;
+        IERC20[] memory unfiltered = new IERC20[](reg.erc20s.length); // will filter down later
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            // Settle first if possible. Required so we can assess full available balance
+            ITrade trade = revenueTrader.trades(reg.erc20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                revenueTrader.settleTrade(reg.erc20s[i]);
+            }
+
+            uint256 tradesOpen = revenueTrader.tradesOpen();
+
+            try revenueTrader.manageToken(reg.erc20s[i]) {
+                if (revenueTrader.tradesOpen() - tradesOpen > 0) {
+                    unfiltered[num] = reg.erc20s[i];
+                    ++num;
+                }
+            } catch {}
+        }
+
+        // Filter down
+        toStart = new IERC20[](num);
+        for (uint256 i = 0; i < num; ++i) {
+            toStart[i] = unfiltered[i];
+        }
+    }
+
+    /// To use this, first call:
+    ///   - FacadeRead.auctionsSettleable(revenueTrader)
+    ///   - getRevenueAuctionERC20s(revenueTrader)
+    /// If either arrays returned are non-empty, then can call this function.
+    /// Logic:
+    ///   For each ERC20 in `toSettle`:
+    ///     - Settle any open ERC20 trades
+    ///   For each ERC20 in `toStart`:
+    ///     - Transfer any revenue for that ERC20 from the backingManager to revenueTrader
+    ///     - Call `revenueTrader.manageToken(ERC20)` to start an auction
+    function runRevenueAuctions(
+        IRevenueTrader revenueTrader,
+        IERC20[] memory toSettle,
+        IERC20[] memory toStart
+    ) external {
+        // Settle auctions
+        for (uint256 i = 0; i < toSettle.length; ++i) {
+            revenueTrader.settleTrade(toSettle[i]);
+        }
+
+        // Transfer revenue backingManager -> revenueTrader
+        revenueTrader.main().backingManager().manageTokens(toStart);
+
+        // Start auctions
+        for (uint256 i = 0; i < toStart.length; ++i) {
+            revenueTrader.manageToken(toStart[i]);
+        }
+    }
 }

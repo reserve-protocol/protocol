@@ -19,4 +19,27 @@ interface IFacadeAct {
 
     /// Claims rewards from all places they can accrue.
     function claimRewards(RTokenP1 rToken) external;
+
+    /// To use this, call via callStatic.
+    /// @return toStart The ERC20s that have auctions that can be started
+    /// @custom:static-call
+    function getRevenueAuctionERC20s(IRevenueTrader revenueTrader)
+        external
+        returns (IERC20[] memory toStart);
+
+    /// To use this, first call:
+    ///   - IFacadeAct.auctionsSettleable(revenueTrader)
+    ///   - getRevenueAuctionERC20s(revenueTrader)
+    /// If either arrays returned are non-empty, then can call this function.
+    /// Logic:
+    ///   For each ERC20 in `toSettle`:
+    ///     - Settle any open ERC20 trades
+    ///   For each ERC20 in `toStart`:
+    ///     - Transfer any revenue for that ERC20 from the backingManager to revenueTrader
+    ///     - Call `revenueTrader.manageToken(ERC20)` to start an auction, if possible
+    function runRevenueAuctions(
+        IRevenueTrader revenueTrader,
+        IERC20[] memory toSettle,
+        IERC20[] memory toStart
+    ) external;
 }
