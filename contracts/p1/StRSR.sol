@@ -465,6 +465,21 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         return draftQueues[era_][account].length;
     }
 
+    /// @return {qDrafts} The amount of RSR currently being withdrawn
+    function getDraftRSR() external view returns (uint256) {
+        return draftRSR;
+    }
+
+    /// @return {qRSR} The amount of RSR currently being staked and earning rewards
+    function getStakeRSR() external view returns (uint256) {
+        return stakeRSR;
+    }
+
+    /// @return {qDrafts} The amount of StRSR currently being withdrawn
+    function getTotalDrafts() external view returns (uint256) {
+        return totalDrafts;
+    }
+
     // ==== Internal Functions ====
 
     /// Assign reward payouts to the staker pool
