@@ -177,7 +177,7 @@ contract FacadeRead is IFacadeRead {
     // === Views ===
 
     /// @param account The account for the query
-    /// @return unstakings All the pending RToken issuances for an account
+    /// @return unstakings All the pending StRSR unstakings for an account
     /// @custom:view
     function pendingUnstakings(RTokenP1 rToken, address account)
         external
