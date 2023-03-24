@@ -54,12 +54,9 @@ It is different from the MPL / xMPL tokens.
 
 The calculation is straightforward and [well documented][maple-docs-exchange-rate]:
 
-$$
-\large
-\begin{align}
-\nonumber exchangeRate = \frac{totalAssets}{totalSupply}
-\end{align}
-$$
+$$\begin{align}
+exchangeRate = \frac{totalAssets}{totalSupply}
+\end{align}$$
 
 Where the `exchangeRate` is actually `refPerTok`.
 It is implemented by the pool contract [`convertToAssets][maple-code-pool-contract-converttoassets].
@@ -137,7 +134,9 @@ The amount of USDC redeemable for each `gspToken` is queried with the pool `shar
 | xMPL  | [`0x4937a209d4cdbd3ecd48857277cfd4da4d82914c`](https://etherscan.io/address/0x4937a209d4cdbd3ecd48857277cfd4da4d82914c) |
 
 
-### Notes
+## Tests
+
+### Context
 
 - The unit tests in `GoldfinchCollateral.test.ts` are predicated on `MAINNET_BLOCK = 16122421` as the interface of their staking rewards contract has been recently upgraded.
 
@@ -170,30 +169,25 @@ Still, at the time of writing, the pool delegates are now splitting the liquidit
 
 To improve the readability of the formulas, the following notations will be used:
 
-- `A` for the total supply of assets in the pool
-- `S` for the total number of shares (LP tokens) on the pool assets
-- $$\Delta$$ for the differences in these values between two blocks
-- $$\alpha$$ for the exchange rate, IE `refPerToken`
-- all the variables will be indexed by the block number `i`
+- $A$ for the total supply of assets in the pool
+- $S$ for the total number of shares (LP tokens) on the pool assets
+- $\Delta$ for the differences in these values between two blocks
+- $\alpha$ for the exchange rate, IE `refPerToken`
+- all the variables will be indexed by the block number $i$
 
 ### Difference Between Withdraw and Deposit
 
 The exchange rate is enforced on both the `deposit` and `withdraw` functions and equal to the ratio in the pool:
 
-$$
-\alpha = \alpha_i = \frac{A_i}{S_i}
-$$
+$$\alpha = \alpha_i = \frac{A_i}{S_i}$$
 
 The rate differs for deposit and withdraw: the latter takes into account the temporary losses (called "unrealized losses" in the docs).
 
-$$
-\large
-\begin{align}
-\nonumber exchangeRate = \frac{totalAssets-unrealizedLosses}{totalSupply}
-\end{align}
-$$
+$$\begin{align}
+exchangeRate = \frac{totalAssets-unrealizedLosses}{totalSupply}
+\end{align}$$
 
-It is implemented by the pool contract [`convertToExitAssets][maple-code-pool-contract-converttoexitassets].
+It is implemented by the pool contract [`convertToExitAssets`][maple-code-pool-contract-converttoexitassets].
 
 These losses lower the exchange rate and should be refunded by cover mechanisms over time.
 In the end the two rates will be the same, the difference counters opportunities to withdraw / deposit at key times.
@@ -205,39 +199,39 @@ The collateral uses the version `convertToAssets`.
 #### Fluctuations On Withdrawal / Redeeming
 
 First, there's a rumor saying the shares aren't burnt upon withdrawal:
-it's blatently false as can be seen [in the code][maple-code-pool-contract-withdraw].
+In Maple core-v2, it is false as can be seen [in the code][maple-code-pool-contract-withdraw].
 
 So, for a withdrawal, the number of assets to remove from the pool are computed from the shares:
 
-$$
-\DeltaA_i = \alpha_i * \DeltaS_i \\
-\DeltaA_i < 0 \\
-\DeltaS_i < 0
-$$
+$$\begin{align}
+\Delta A_i = \alpha_i * \Delta S_i \\
+\Delta A_i < 0 \\
+\Delta S_i < 0
+\end{align}$$
 
-To be precise, $$\DeltaA_i < 0$$ means there's a transfer of assets and $$\DeltaS_i < 0$$ means that the corresponding shares are burnt.
+To be precise, $\Delta A_i < 0$ means there's a transfer of assets and $\Delta S_i < 0$ means that the corresponding shares are burnt.
 
 With this, we can prove that a withdrawal actually keeps the overall exchange rate constant:
 
-$$
+$$\begin{align}
 \alpha_{i+1} &= \frac{A_{i+1}}{S_{i+1}} \\
-             &= \frac{A_i + \DeltaA_i}{S_i + \DeltaS_i} \\
-             &= \frac{A_i + \DeltaA_i}{S_i + \frac{\DeltaA_i}{\alpha_i}} \\
-             &= \alpha_i * \frac{A_i + \DeltaA_i}{\alpha_i * S_i + \DeltaA_i} \\
+             &= \frac{A_i + \Delta A_i}{S_i + \Delta S_i} \\
+             &= \frac{A_i + \Delta A_i}{S_i + \frac{\Delta A_i}{\alpha_i}} \\
+             &= \alpha_i * \frac{A_i + \Delta A_i}{\alpha_i * S_i + \Delta A_i} \\
              &= \alpha_i
-$$
+\end{align}$$
 
-Where both $$\DeltaA_i$$ and $$\DeltaS_i$$ are negative.
+Where both $\Delta A_i$ and $\Delta S_i$ are negative.
 
 #### Fluctuations On Deposit
 
 For a deposit, the shares are calculated from the number of assets entering the pool:
 
-$$
-\DeltaS_i = \frac{\DeltaA_i}{\alpha_i} \\
-\DeltaA_i > 0 \\
-\DeltaS_i > 0
-$$
+$$\begin{align}
+\Delta S_i = \frac{\Delta A_i}{\alpha_i} \\
+\Delta A_i > 0 \\
+\Delta S_i > 0
+\end{align}$$
 
 Similarly to the withdrawal, a deposit keeps the overall exchange rate constant.
 The equations are identical to the ones from the previous paragraph, only the signs of the deltas changed.
