@@ -66,10 +66,10 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposal)
 
     // 2. Run various checks
-    const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'
-    const cUsdtAddress = '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9'
-    const usdtAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
-    const usdcAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+    const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
+    const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
+    const usdtAddress = networkConfig['1'].tokens.USDT!
+    const usdcAddress = networkConfig['1'].tokens.USDC!
 
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
@@ -110,14 +110,14 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const saUsdt = await hre.ethers.getContractAt('StaticATokenLM', saUsdtAddress)
     const cUsdt = await hre.ethers.getContractAt('ICToken', cUsdtAddress)
 
-    await whileImpersonating(hre, whales['usdt'], async (usdtSigner) => {
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!], async (usdtSigner) => {
       await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal)
       await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
     })
     const saUsdtBal = await saUsdt.balanceOf(tester.address)
     await saUsdt.connect(tester).approve(rToken.address, saUsdtBal)
 
-    await whileImpersonating(hre, whales['usdt'], async (usdtSigner) => {
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!], async (usdtSigner) => {
       await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
       await cUsdt.connect(usdtSigner).mint(initialBal)
       const bal = await cUsdt.balanceOf(usdtSigner.address)
@@ -126,7 +126,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const cUsdtBal = await cUsdt.balanceOf(tester.address)
     await cUsdt.connect(tester).approve(rToken.address, cUsdtBal)
 
-    await whileImpersonating(hre, whales['usdt'], async (usdtSigner) => {
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!], async (usdtSigner) => {
       await usdt.connect(usdtSigner).transfer(tester.address, initialBal)
     })
     await usdt.connect(tester).approve(rToken.address, initialBal)
@@ -191,8 +191,8 @@ const pushOraclesForward = async (hre: HardhatRuntimeEnvironment, rTokenAddress:
 }
 
 const whales: { [key: string]: string } = {
-  usdt: '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503',
-  rsr: '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1',
+  [networkConfig['1'].tokens.USDT!]: '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503',
+  [networkConfig['1'].tokens.RSR!]: '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1',
 }
 
 const runTrade = async (
@@ -210,7 +210,7 @@ const runTrade = async (
   const sellAmount = bidExact ? buyAmount : buyAmount.mul(worstPrice).div(fp('1')).add(fp('1'))
 
   const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
-  await whileImpersonating(hre, whales[sellTokenAddress], async (whale) => {
+  await whileImpersonating(hre, whales[sellTokenAddress.toLowerCase()], async (whale) => {
     const sellToken = await hre.ethers.getContractAt('ERC20Mock', sellTokenAddress)
     await sellToken.connect(whale).approve(gnosis.address, sellAmount)
     await gnosis
