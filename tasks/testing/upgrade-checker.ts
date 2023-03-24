@@ -18,6 +18,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { TestITrading } from '@typechain/TestITrading'
 import { setCode } from '@nomicfoundation/hardhat-network-helpers'
 import { MockV3Aggregator } from '../../typechain/MockV3Aggregator.d';
+import { EACAggregatorProxyMock } from '@typechain/EACAggregatorProxyMock'
 
 // run script for eUSD
 // current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
@@ -104,6 +105,10 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // this is another area that needs to be made general
     // for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
 
+    await claimRsrRewards(hre, params.rtoken)
+
+    await pushOraclesForward(hre, params.rtoken)
+
     const initialBal = bn('2e11')
     const issueAmount = fp('1e5')
     const usdt = await hre.ethers.getContractAt('ERC20Mock', usdtAddress)
@@ -165,15 +170,20 @@ task('upgrade-checker', 'Mints all the tokens to an address')
   })
 
 
-const overrideOracle = async (hre: HardhatRuntimeEnvironment, oracleAddress: string): Promise<MockV3Aggregator> => {
-  // const oracle = await hre.ethers.getContractAt('AggregatorV3Interface', oracleAddress)
-  const mockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
-  // const mockOracle = await mockOracleFactory.deploy(await oracle.decimals(), (await oracle.latestRoundData()).answer)
-  await setCode(oracleAddress, mockOracleFactory.bytecode)
-  return hre.ethers.getContractAt('MockV3Aggregator', oracleAddress)
+const overrideOracle = async (hre: HardhatRuntimeEnvironment, oracleAddress: string): Promise<EACAggregatorProxyMock> => {
+  const oracle = await hre.ethers.getContractAt('EACAggregatorProxy', oracleAddress)
+  const aggregator = await oracle.aggregator()
+  const accessController = await oracle.accessController()
+  const initPrice = await oracle.latestRoundData()
+  const mockOracleFactory = await hre.ethers.getContractFactory('EACAggregatorProxyMock')
+  const mockOracle = await mockOracleFactory.deploy(aggregator, accessController, initPrice.answer)
+  const bytecode = await hre.network.provider.send("eth_getCode", [mockOracle.address])
+  await setCode(oracleAddress, bytecode)
+  return hre.ethers.getContractAt('EACAggregatorProxyMock', oracleAddress)
 }
 
 const pushOraclesForward = async (hre: HardhatRuntimeEnvironment, rTokenAddress: string) => {
+  console.log(`Pushing oracles forward for RToken ${rTokenAddress}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const assetRegistry = await hre.ethers.getContractAt(
@@ -181,11 +191,19 @@ const pushOraclesForward = async (hre: HardhatRuntimeEnvironment, rTokenAddress:
     await main.assetRegistry()
   )
   const registry = await assetRegistry.getRegistry()
-  for (const asset in registry.assets) {
+  for (const asset of registry.assets) {
     const assetContract = await hre.ethers.getContractAt("TestIAsset", asset)
+    let chainlinkFeed = ''
+    try {
+      chainlinkFeed = await assetContract.chainlinkFeed()
+    } catch {
+      console.log(`no chainlink oracle found. skipping RTokenAsset ${asset}...`)
+      continue
+    }
     const realChainlinkFeed = await hre.ethers.getContractAt('AggregatorV3Interface', await assetContract.chainlinkFeed())
     const initPrice = await realChainlinkFeed.latestRoundData()
     const oracle = await overrideOracle(hre, realChainlinkFeed.address)
+    await oracle.wtf()
     await oracle.updateAnswer(initPrice.answer)
   }
 }
