@@ -269,7 +269,7 @@ const redeemRTokens = async (
   let log = ''
   for (const erc20 in expectedTokens) {
     expectedBalances[expectedTokens[erc20]] = redeemQuote.quantities[erc20]
-    log += `\n${expectedTokens[erc20]}: ${redeemQuote.quantities[erc20]}`
+    log += `\n\t${expectedTokens[erc20]}: ${redeemQuote.quantities[erc20]}`
   }
   console.log(`Expecting to receive: ${log}`)
 
@@ -278,7 +278,6 @@ const redeemRTokens = async (
   await rToken.connect(user).redeem(redeemAmount, await basketHandler.nonce())
   const postRedeemRTokenBal = await rToken.balanceOf(user.address)
   const postRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
-
 
   for (const erc20 of expectedTokens) {
     const receivedBalance = postRedeemErc20Bals[erc20].sub(preRedeemErc20Bals[erc20])
@@ -297,7 +296,7 @@ const redeemRTokens = async (
     )
   }
 
-  console.log('successfully redeemed RTokens')
+  console.log(`successfully redeemed ${formatEther(redeemAmount)} RTokens`)
 }
 
 const claimRewards = async (claimer: IRewardable) => {
