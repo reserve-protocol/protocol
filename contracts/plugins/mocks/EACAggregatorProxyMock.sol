@@ -837,8 +837,6 @@ contract EACAggregatorProxy is AggregatorProxy {
   }
 }
 
-import "hardhat/console.sol";
-
 contract EACAggregatorProxyMock is EACAggregatorProxy {
   uint256 public constant override version = 0;
 
@@ -864,7 +862,6 @@ contract EACAggregatorProxyMock is EACAggregatorProxy {
   }
 
   function updateAnswer(int256 _answer) public {
-    console.log("in the func");
     __latestAnswer = _answer;
     __latestTimestamp = block.timestamp;
     __latestRound++;
@@ -887,12 +884,6 @@ contract EACAggregatorProxyMock is EACAggregatorProxy {
     __getTimestamp[__latestRound] = _timestamp;
     __getStartedAt[__latestRound] = _startedAt;
     __latestAnsweredRound = _roundId;
-  }
-
-  function wtf() external {
-    console.log("before", counter);
-    counter += 1;
-    console.log("after", counter);
   }
 
   function getRoundData(uint80 _roundId)
