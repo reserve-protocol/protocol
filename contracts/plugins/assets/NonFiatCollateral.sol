@@ -14,21 +14,14 @@ contract NonFiatCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
-    uint48 public immutable targetUnitOracleTimeout; // {s}
-
     /// @param config.chainlinkFeed Feed units: {target/ref}
-    /// @param targetUnitChainlinkFeed_ Feed units: {UoA/target}
-    /// @param targetUnitOracleTimeout_ {s} oracle timeout to use for targetUnitChainlinkFeed
+    /// @param config.chainlinkFeedAlt1 Feed units: {UoA/target}
+    /// @param config.chainlinkFeedAlt1Timeout {s} oracle timeout to use for chainlinkFeedAlt1
     constructor(
-        CollateralConfig memory config,
-        AggregatorV3Interface targetUnitChainlinkFeed_,
-        uint48 targetUnitOracleTimeout_
+        CollateralConfig memory config
     ) FiatCollateral(config) {
-        require(address(targetUnitChainlinkFeed_) != address(0), "missing targetUnit feed");
-        require(targetUnitOracleTimeout_ > 0, "targetUnitOracleTimeout zero");
-        targetUnitChainlinkFeed = targetUnitChainlinkFeed_;
-        targetUnitOracleTimeout = targetUnitOracleTimeout_;
+        require(address(config.chainlinkFeedAlt1) != address(0), "missing targetUnit feed");
+        require(config.chainlinkFeedAlt1Timeout > 0, "chainlinkFeedAlt1Timeout zero");
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -48,7 +41,7 @@ contract NonFiatCollateral is FiatCollateral {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
         // {UoA/target}
-        uint192 pricePerTarget = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
+        uint192 pricePerTarget = chainlinkFeedAlt1.price(chainlinkFeedAlt1Timeout);
 
         // Assumption: {ref/tok} = 1; inherit from `AppreciatingFiatCollateral` if need appreciation
         // {UoA/tok} = {UoA/target} * {ref/tok} * {target/ref} (1)

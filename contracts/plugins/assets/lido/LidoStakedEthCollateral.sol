@@ -22,21 +22,14 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     // In order to provide tighter price estimates this contract uses {UoA/tok} and {ref/target}
     // price feeds. Here we include them directly and ignore the parent class' chainlinkFeed.
 
-    AggregatorV3Interface public immutable targetPerRefChainlinkFeed; // {target/ref}
-    uint48 public immutable targetPerRefChainlinkTimeout; // {s}
-
-    /// @param config.chainlinkFeed {UoA/tok} Override parent class type
-    /// @param config.oracleError {1} Should be the oracle error _only_ for the {UoA/tok} feed
+    /// @param config.chainlinkFeed {UoA/ref} Override parent class type
+    /// @param config.oracleError {1} Should be the oracle error _only_ for the {UoA/ref} feed
     constructor(
         CollateralConfig memory config,
-        uint192 revenueHiding,
-        AggregatorV3Interface _targetPerRefChainlinkFeed,
-        uint48 _targetPerRefChainlinkTimeout
+        uint192 revenueHiding
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(_targetPerRefChainlinkFeed) != address(0), "missing targetPerRef feed");
-        require(_targetPerRefChainlinkTimeout > 0, "targetPerRefChainlinkTimeout zero");
-        targetPerRefChainlinkFeed = _targetPerRefChainlinkFeed;
-        targetPerRefChainlinkTimeout = _targetPerRefChainlinkTimeout;
+        require(address(config.chainlinkFeedAlt1) != address(0), "missing targetPerRef feed");
+        require(config.chainlinkFeedAlt1Timeout > 0, "chainlinkFeedAlt1Timeout zero");
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -53,15 +46,17 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/tok}
-        uint192 pricePerTok = chainlinkFeed.price(oracleTimeout);
-
+        // for the purposes of pricing the peg, we use market price
         // {target/ref} Get current market peg ({eth/steth})
-        pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout);
+        pegPrice = chainlinkFeedAlt1.price(chainlinkFeedAlt1Timeout);
 
-        // {UoA/tok} = {UoA/tok} * {ref/tok}
-        uint192 pLow = pricePerTok.mul(refPerTok());
-        uint192 pHigh = pricePerTok.mul(_underlyingRefPerTok());
+        // for the purpose of calculating {UoA/tok}, we consider {target} == {ref}
+        // {UoA/target} == {UoA/ref}
+        uint192 pricePerRef = chainlinkFeed.price(oracleTimeout);
+
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        uint192 pLow = pricePerRef.mul(refPerTok());
+        uint192 pHigh = pricePerRef.mul(_underlyingRefPerTok());
 
         low = pLow - pLow.mul(oracleError);
         high = pHigh + pHigh.mul(oracleError);

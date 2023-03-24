@@ -19,19 +19,12 @@ contract RethCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    AggregatorV3Interface public immutable refPerTokChainlinkFeed;
-    uint48 public immutable refPerTokChainlinkTimeout;
-
     constructor(
         CollateralConfig memory config,
-        uint192 revenueHiding,
-        AggregatorV3Interface _refPerTokChainlinkFeed,
-        uint48 _refPerTokChainlinkTimeout
+        uint192 revenueHiding
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(_refPerTokChainlinkFeed) != address(0), "missing refPerTok feed");
-        require(_refPerTokChainlinkTimeout != 0, "refPerTokChainlinkTimeout zero");
-        refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
-        refPerTokChainlinkTimeout = _refPerTokChainlinkTimeout;
+        require(address(config.chainlinkFeedAlt1) != address(0), "missing refPerTok feed");
+        require(config.chainlinkFeedAlt1Timeout != 0, "chainlinkFeedAlt1Timeout zero");
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -54,7 +47,7 @@ contract RethCollateral is AppreciatingFiatCollateral {
         uint192 p = chainlinkFeed.price(oracleTimeout); // target==ref :: {UoA/target} == {UoA/ref}
 
         // {ref/tok}
-        uint192 refPerTok = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
+        uint192 refPerTok = chainlinkFeedAlt1.price(chainlinkFeedAlt1Timeout);
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 pHigh = p.mul(refPerTok);

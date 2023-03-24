@@ -20,6 +20,10 @@ struct CollateralConfig {
     uint192 defaultThreshold; // {1} A value like 0.05 that represents a deviation tolerance
     // set defaultThreshold to zero to create SelfReferentialCollateral
     uint48 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
+    AggregatorV3Interface chainlinkFeedAlt1; // additional chainlink feed (could be 0x0)
+    uint48 chainlinkFeedAlt1Timeout; // {s}
+    AggregatorV3Interface chainlinkFeedAlt2; // additional chainlink feed (could be 0x0)
+    uint48 chainlinkFeedAlt2Timeout; // {s}
 }
 
 /**
@@ -58,6 +62,14 @@ contract FiatCollateral is ICollateral, Asset {
 
     uint192 public immutable pegTop; // {target/ref} The top of the peg
 
+    AggregatorV3Interface public immutable chainlinkFeedAlt1; // 1st additional chainlink feed
+
+    uint48 public immutable chainlinkFeedAlt1Timeout; // {s}
+
+    AggregatorV3Interface public immutable chainlinkFeedAlt2; // 2nd additional chainlink feed
+
+    uint48 public immutable chainlinkFeedAlt2Timeout; // {s}
+
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config)
         Asset(
@@ -77,6 +89,11 @@ contract FiatCollateral is ICollateral, Asset {
 
         targetName = config.targetName;
         delayUntilDefault = config.delayUntilDefault;
+
+        chainlinkFeedAlt1 = config.chainlinkFeedAlt1;
+        chainlinkFeedAlt1Timeout = config.chainlinkFeedAlt1Timeout;
+        chainlinkFeedAlt2 = config.chainlinkFeedAlt2;
+        chainlinkFeedAlt2Timeout = config.chainlinkFeedAlt2Timeout;
 
         // Cache constants
         uint192 peg = targetPerRef(); // {target/ref}
