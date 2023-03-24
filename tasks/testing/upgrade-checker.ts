@@ -16,25 +16,27 @@ import { getTrade } from '#/utils/trades'
 import { IRewardable } from '@typechain/IRewardable'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { TestITrading } from '@typechain/TestITrading'
+import { setCode } from '@nomicfoundation/hardhat-network-helpers'
+import { MockV3Aggregator } from '../../typechain/MockV3Aggregator.d';
 
 // run script for eUSD
 // current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 25816366707034079050811482613682060088827919577695117773877308143394113022827 --network localhost
 
 /*
-    This script is currently useful for the upcoming eUSD upgrade.
-    In order to make this useful for future upgrades and for other rTokens, we will need the following:
-        - generic minting (5 pts)
-            - dynamically gather and approve the necessary basket tokens needed to mint
-            - use ZAPs
-        - generic reward claiming (5 pts)
-            - check for where revenue should be allocated
-            - dynamically run and complete necessary auctions to realize revenue
-        - generic basket switching (8 pts)
-            - not sure if possible if there is no backup basket
-        - update oracles whenever time progresses to make sure collaterals stay sound (5 pts)
+  This script is currently useful for the upcoming eUSD upgrade.
+  In order to make this useful for future upgrades and for other rTokens, we will need the following:
+    - generic minting (5 pts)
+      - dynamically gather and approve the necessary basket tokens needed to mint
+      - use ZAPs
+    - generic reward claiming (5 pts)
+      - check for where revenue should be allocated
+      - dynamically run and complete necessary auctions to realize revenue
+    - generic basket switching (8 pts)
+      - not sure if possible if there is no backup basket
+    - update oracles whenever time progresses to make sure collaterals stay sound (5 pts)
 
-    21-34 more points of work to make this more generic
+  21-34 more points of work to make this more generic
 */
 
 task('upgrade-checker', 'Mints all the tokens to an address')
@@ -92,11 +94,11 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // this is specific to eUSD so that we don't have to wait for the market to do this
     // we can make this generic, but will leave it specific for now for testing the upcoming eUSD changes
 
-    await facadeTest.runAuctionsForAllTraders(rToken.address)
-    await runTrade(hre, backingManager, rsr.address, false)
-    await facadeTest.runAuctionsForAllTraders(rToken.address)
+    // await facadeTest.runAuctionsForAllTraders(rToken.address)
+    // await runTrade(hre, backingManager, rsr.address, false)
+    // await facadeTest.runAuctionsForAllTraders(rToken.address)
 
-    console.log('successfully settled trade')
+    // console.log('successfully settled trade')
 
     // mint
     // this is another area that needs to be made general
@@ -112,7 +114,8 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal)
       await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
     })
-    await saUsdt.connect(tester).approve(rToken.address, initialBal)
+    const saUsdtBal = await saUsdt.balanceOf(tester.address)
+    await saUsdt.connect(tester).approve(rToken.address, saUsdtBal)
 
     await whileImpersonating(hre, whales['usdt'], async (usdtSigner) => {
       await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
@@ -120,16 +123,18 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       const bal = await cUsdt.balanceOf(usdtSigner.address)
       await cUsdt.connect(usdtSigner).transfer(tester.address, bal)
     })
-    await cUsdt.connect(tester).approve(rToken.address, initialBal)
+    const cUsdtBal = await cUsdt.balanceOf(tester.address)
+    await cUsdt.connect(tester).approve(rToken.address, cUsdtBal)
 
     await whileImpersonating(hre, whales['usdt'], async (usdtSigner) => {
       await usdt.connect(usdtSigner).transfer(tester.address, initialBal)
     })
     await usdt.connect(tester).approve(rToken.address, initialBal)
 
+    console.log(`issuing  ${formatEther(issueAmount)} RTokens...`)
     await rToken.connect(tester).issue(issueAmount)
     const postIssueBal = await rToken.balanceOf(tester.address)
-    if (postIssueBal != issueAmount) {
+    if (!postIssueBal.eq(issueAmount)) {
       throw new Error(
         `Did not issue the correct amount of RTokens. wanted: ${formatUnits(
           issueAmount,
@@ -148,16 +153,42 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await claimRsrRewards(hre, params.rtoken)
 
     // switch basket
-    await whileImpersonating(hre, params.governor, async (gov) => {
-      await basketHandler
-        .connect(gov)
-        .setPrimeBasket([saUsdtAddress, cUsdtAddress, usdcAddress], [25, 25, 50])
-    })
-    await basketHandler.refreshBasket()
-    const registeredERC20s = await assetRegistry.erc20s()
-    await backingManager.manageTokens(registeredERC20s)
-    await runTrade(hre, backingManager, usdtAddress, true)
+    // await whileImpersonating(hre, params.governor, async (gov) => {
+    //   await basketHandler
+    //     .connect(gov)
+    //     .setPrimeBasket([saUsdtAddress, cUsdtAddress, usdcAddress], [25, 25, 50])
+    // })
+    // await basketHandler.refreshBasket()
+    // const registeredERC20s = await assetRegistry.erc20s()
+    // await backingManager.manageTokens(registeredERC20s)
+    // await runTrade(hre, backingManager, usdtAddress, true)
   })
+
+
+const overrideOracle = async (hre: HardhatRuntimeEnvironment, oracleAddress: string): Promise<MockV3Aggregator> => {
+  // const oracle = await hre.ethers.getContractAt('AggregatorV3Interface', oracleAddress)
+  const mockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
+  // const mockOracle = await mockOracleFactory.deploy(await oracle.decimals(), (await oracle.latestRoundData()).answer)
+  await setCode(oracleAddress, mockOracleFactory.bytecode)
+  return hre.ethers.getContractAt('MockV3Aggregator', oracleAddress)
+}
+
+const pushOraclesForward = async (hre: HardhatRuntimeEnvironment, rTokenAddress: string) => {
+  const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
+  const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+  const assetRegistry = await hre.ethers.getContractAt(
+    'AssetRegistryP1',
+    await main.assetRegistry()
+  )
+  const registry = await assetRegistry.getRegistry()
+  for (const asset in registry.assets) {
+    const assetContract = await hre.ethers.getContractAt("TestIAsset", asset)
+    const realChainlinkFeed = await hre.ethers.getContractAt('AggregatorV3Interface', await assetContract.chainlinkFeed())
+    const initPrice = await realChainlinkFeed.latestRoundData()
+    const oracle = await overrideOracle(hre, realChainlinkFeed.address)
+    await oracle.updateAnswer(initPrice.answer)
+  }
+}
 
 const whales: { [key: string]: string } = {
   usdt: '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503',
