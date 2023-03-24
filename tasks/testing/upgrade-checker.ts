@@ -245,12 +245,17 @@ const getAccountBalances = async (
   return balances
 }
 
+const closeTo = (x: BigNumber, y: BigNumber, eBps: BigNumber): boolean => {
+  return x.sub(y).abs().lte(x.add(y).div(2).mul(eBps).div(10000))
+}
+
 const redeemRTokens = async (
   hre: HardhatRuntimeEnvironment,
   user: SignerWithAddress,
   rTokenAddress: string,
   redeemAmount: BigNumber
 ) => {
+  console.log(`Redeeming ${formatEther(redeemAmount)}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const basketHandler = await hre.ethers.getContractAt(
@@ -260,6 +265,13 @@ const redeemRTokens = async (
 
   const redeemQuote = await basketHandler.quote(redeemAmount, 0)
   const expectedTokens = redeemQuote.erc20s
+  const expectedBalances: Balances = {}
+  let log = ''
+  for (const erc20 in expectedTokens) {
+    expectedBalances[expectedTokens[erc20]] = redeemQuote.quantities[erc20]
+    log += `\n${expectedTokens[erc20]}: ${redeemQuote.quantities[erc20]}`
+  }
+  console.log(`Expecting to receive: ${log}`)
 
   const preRedeemRTokenBal = await rToken.balanceOf(user.address)
   const preRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
@@ -267,18 +279,17 @@ const redeemRTokens = async (
   const postRedeemRTokenBal = await rToken.balanceOf(user.address)
   const postRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
 
-  const expectedBalances: Balances = {}
 
-  for (const erc20 in expectedTokens) {
+  for (const erc20 of expectedTokens) {
     const receivedBalance = postRedeemErc20Bals[erc20].sub(preRedeemErc20Bals[erc20])
-    if (receivedBalance != expectedBalances[erc20]) {
+    if (!closeTo(receivedBalance, expectedBalances[erc20], bn(1))) {
       throw new Error(
         `Did not receive the correct amount of token from redemption \n token: ${erc20} \n received: ${receivedBalance} \n expected: ${expectedBalances[erc20]}`
       )
     }
   }
 
-  if (postRedeemRTokenBal.sub(preRedeemRTokenBal) != redeemAmount) {
+  if (!preRedeemRTokenBal.sub(postRedeemRTokenBal).eq(redeemAmount)) {
     throw new Error(
       `Did not redeem the correct amount of RTokens \n expected: ${redeemAmount} \n redeemed: ${postRedeemRTokenBal.sub(
         preRedeemRTokenBal
