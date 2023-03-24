@@ -1029,6 +1029,26 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Exchange rate remains steady
         expect(await stRSR.exchangeRate()).to.equal(fp('1'))
       })
+
+      describeP1('Should be able to view staking/withdrawal quantities', () => {
+        let stRSRP1: StRSRP1Votes
+
+        beforeEach(async () => {
+          stRSRP1 = await ethers.getContractAt('StRSRP1Votes', stRSR.address)
+        })
+
+        it('Should read draftRSR', async () => {
+          expect(await stRSRP1.getDraftRSR()).to.equal(amount1)
+        })
+
+        it('Should read stakeRSR', async () => {
+          expect(await stRSRP1.getStakeRSR()).to.equal(amount2.add(amount3))
+        })
+
+        it('Should read totalDrafts', async () => {
+          expect(await stRSRP1.getTotalDrafts()).to.equal(amount1)
+        })
+      })
     })
   })
 
