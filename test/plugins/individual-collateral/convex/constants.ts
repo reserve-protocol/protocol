@@ -4,42 +4,49 @@ import { networkConfig } from '../../../../common/configuration'
 // Mainnet Addresses
 
 // DAI
-export const DAI_USD_FEED = networkConfig['1'].chainlinkFeeds.DAI
+export const DAI_USD_FEED = networkConfig['1'].chainlinkFeeds.DAI as string
 export const DAI_ORACLE_TIMEOUT = bn('86400')
 export const DAI_ORACLE_ERROR = fp('0.0025')
 
 // USDC
-export const USDC_USD_FEED = networkConfig['1'].chainlinkFeeds.USDC
+export const USDC_USD_FEED = networkConfig['1'].chainlinkFeeds.USDC as string
 export const USDC_ORACLE_TIMEOUT = bn('86400')
 export const USDC_ORACLE_ERROR = fp('0.0025')
 
 // USDT
-export const USDT_USD_FEED = networkConfig['1'].chainlinkFeeds.USDT
+export const USDT_USD_FEED = networkConfig['1'].chainlinkFeeds.USDT as string
 export const USDT_ORACLE_TIMEOUT = bn('86400')
 export const USDT_ORACLE_ERROR = fp('0.0025')
 
+// FRAX
+export const FRAX_USD_FEED = networkConfig['1'].chainlinkFeeds.FRAX as string
+export const FRAX_ORACLE_TIMEOUT = bn('3600')
+export const FRAX_ORACLE_ERROR = fp('0.01')
+
 // WBTC
-export const WBTC_BTC_FEED = networkConfig['1'].chainlinkFeeds.WBTC
-export const BTC_USD_FEED = networkConfig['1'].chainlinkFeeds.BTC
+export const WBTC_BTC_FEED = networkConfig['1'].chainlinkFeeds.WBTC as string
+export const BTC_USD_FEED = networkConfig['1'].chainlinkFeeds.BTC as string
 export const WBTC_ORACLE_TIMEOUT = bn('86400')
 export const WBTC_BTC_ORACLE_ERROR = fp('0.02')
 export const BTC_USD_ORACLE_ERROR = fp('0.005')
 
 // WETH
-export const WETH_USD_FEED = networkConfig['1'].chainlinkFeeds.ETH
+export const WETH_USD_FEED = networkConfig['1'].chainlinkFeeds.ETH as string
 export const WETH_ORACLE_TIMEOUT = bn('86400')
 export const WETH_ORACLE_ERROR = fp('0.005')
 
 // Tokens
-export const DAI = networkConfig['1'].tokens.DAI
-export const USDC = networkConfig['1'].tokens.USDC
-export const USDT = networkConfig['1'].tokens.USDT
-export const WETH = networkConfig['1'].tokens.WETH
-export const WBTC = networkConfig['1'].tokens.WBTC
+export const DAI = networkConfig['1'].tokens.DAI as string
+export const USDC = networkConfig['1'].tokens.USDC as string
+export const USDT = networkConfig['1'].tokens.USDT as string
+export const FRAX = networkConfig['1'].tokens.FRAX as string
+export const eUSD = networkConfig['1'].tokens.eUSD as string
+export const WETH = networkConfig['1'].tokens.WETH as string
+export const WBTC = networkConfig['1'].tokens.WBTC as string
 
-export const RSR = networkConfig['1'].tokens.RSR
-export const CRV = networkConfig['1'].tokens.CRV
-export const CVX = networkConfig['1'].tokens.CVX
+export const RSR = networkConfig['1'].tokens.RSR as string
+export const CRV = networkConfig['1'].tokens.CRV as string
+export const CVX = networkConfig['1'].tokens.CVX as string
 
 // 3pool - USDC, USDT, DAI
 export const THREE_POOL = '0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7'
@@ -57,19 +64,19 @@ export const TRI_CRYPTO_HOLDER = '0xDeFd8FdD20e0f34115C7018CCfb655796F6B2168'
 export const FRAX_BP = '0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2'
 export const FRAX_BP_TOKEN = '0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC'
 
-// alUSD + fraxBP -- these metapools combine lpToken + curvePool
-export const alUSD_FRAX_BP = '0xB30dA2376F63De30b42dC055C93fa474F31330A5'
-
 // eUSD + fraxBP -- these metapools combine lpToken + curvePool
+export const RTOKEN_ORACLE = '0xA70e7F86c56bf63befEe3Ef76cA0d392acab8EF2'
 export const eUSD_FRAX_BP = '0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F'
+export const eUSD_FRAX_BP_POOL_ID = 156
 
 export const FIX_ONE = 1n * 10n ** 18n
 export const PRICE_TIMEOUT = bn('604800') // 1 week
-export const DEFAULT_THRESHOLD = fp('5e-2') // 0.05
+export const DEFAULT_THRESHOLD = fp('0.02') // 2%
 export const DELAY_UNTIL_DEFAULT = bn('86400')
-export const MAX_TRADE_VOL = bn('1000000')
+export const MAX_TRADE_VOL = fp('1e6')
 
-export const FORK_BLOCK = 15850930
+// export const FORK_BLOCK = 15850930
+export const FORK_BLOCK = 16913330
 
 export enum CurvePoolType {
   Plain,

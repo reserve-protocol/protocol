@@ -37,7 +37,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     /// @dev Override this when pricing is more complicated than just a single oracle
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    /// @return pegPrice {target/ref} The actual price observed in the peg
+    /// @return {target/ref} Unused. Always 0
     function tryPrice()
         external
         view
@@ -46,7 +46,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         returns (
             uint192 low,
             uint192 high,
-            uint192 pegPrice
+            uint192
         )
     {
         // Should include revenue hiding discount in the low discount but not high
@@ -65,9 +65,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply);
         high = aumHigh.div(supply);
-
-        // {UoA/tok} = {UoA/tok} + {UoA/tok}
-        pegPrice = (low + high) / 2; // avg of low + high
+        return (low, high, 0);
     }
 
     /// Should not revert
@@ -100,7 +98,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         }
 
         // Check for soft default + save prices
-        try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
             // {UoA/tok}, {UoA/tok}, {UoA/tok}
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
@@ -116,7 +114,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
-            if (pegPrice < pegBottom || pegPrice > pegTop || low == 0 || _anyDepegged()) {
+            if (low == 0 || _anyDepegged()) {
                 markStatus(CollateralStatus.IFFY);
             } else {
                 markStatus(CollateralStatus.SOUND);

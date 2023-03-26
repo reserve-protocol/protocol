@@ -158,6 +158,10 @@ export const deployCollateral = async (
   )
   await collateral.deployed()
 
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
+
   return collateral
 }
 
@@ -457,8 +461,6 @@ describeFork(`Collateral: Convex - Stable`, () => {
 
     describe('prices', () => {
       it('prices change as feed price changes', async () => {
-        await collateral.refresh()
-
         const feedData = await usdcFeed.latestRoundData()
         const initialRefPerTok = await collateral.refPerTok()
 
@@ -475,7 +477,7 @@ describeFork(`Collateral: Convex - Stable`, () => {
 
         const [newLow, newHigh] = await collateral.price()
 
-        expect(newLow.sub(1)).to.equal(low.mul(110).div(100))
+        expect(newLow).to.equal(low.mul(110).div(100))
         expect(newHigh.sub(1)).to.equal(high.mul(110).div(100))
 
         // Check refPerTok remains the same (because we have not refreshed)
@@ -484,8 +486,6 @@ describeFork(`Collateral: Convex - Stable`, () => {
       })
 
       it('prices change as refPerTok changes', async () => {
-        await collateral.refresh()
-
         const initRefPerTok = await collateral.refPerTok()
         const [initLow, initHigh] = await collateral.price()
 
@@ -506,8 +506,6 @@ describeFork(`Collateral: Convex - Stable`, () => {
       })
 
       it('returns a 0 price', async () => {
-        await collateral.refresh()
-
         await Promise.all([
           usdcFeed.updateAnswer(0).then((e) => e.wait()),
           daiFeed.updateAnswer(0).then((e) => e.wait()),
@@ -539,7 +537,6 @@ describeFork(`Collateral: Convex - Stable`, () => {
 
       it('decays lotPrice over priceTimeout period', async () => {
         // Prices should start out equal
-        await collateral.refresh()
         const p = await collateral.price()
         let lotP = await collateral.lotPrice()
         expect(p.length).to.equal(lotP.length)
