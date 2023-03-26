@@ -37,6 +37,8 @@ export interface ITokens {
   WBTC?: string
   EURT?: string
   RSR?: string
+  CRV?: string
+  CVX?: string
   ankrETH?: string
   frxETH?: string
   sfrxETH?: string
@@ -49,10 +51,6 @@ export interface ITokens {
 export interface IFeeds {
   stETHETH?: string
   stETHUSD?: string
-}
-
-export interface IPlugins {
-  Convex3Pool?: string
 }
 
 interface INetworkConfig {
@@ -108,6 +106,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
+      CRV: '0xD533a949740bb3306d119CC777fa900bA034cd52',
+      CVX: '0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B',
       ankrETH: '0xE95A203B1a91a908F9B9CE46459d101078c2c3cb',
       frxETH: '0x5E8422345238F34275888049021821E8E08CAa1f',
       sfrxETH: '0xac3E018457B222d93114458476f3E3416Abbe38F',
@@ -126,8 +126,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BUSD: '0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A',
       USDP: '0x09023c0DA49Aaf8fc3fA3ADF34C6A7016D38D5e3',
       TUSD: '0xec746eCF986E2927Abd291a2A1716c940100f8Ba',
-      FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
+      FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
@@ -185,6 +185,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
+      CRV: '0xD533a949740bb3306d119CC777fa900bA034cd52',
+      CVX: '0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B',
       ankrETH: '0xE95A203B1a91a908F9B9CE46459d101078c2c3cb',
       frxETH: '0x5E8422345238F34275888049021821E8E08CAa1f',
       sfrxETH: '0xac3E018457B222d93114458476f3E3416Abbe38F',
