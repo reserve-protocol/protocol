@@ -9,12 +9,13 @@ import "contracts/libraries/Fixed.sol";
 
 // solhint-disable func-name-mixedcase
 interface ICurvePool {
+    // For Curve Plain Pools and V2 Metapools
     function coins(uint256) external view returns (address);
 
     // Only exists in Curve Lending Pools
     function underlying_coins(uint256) external view returns (address);
 
-    // Only exists in Curve Metapools
+    // Only exists in V1 Curve Metapools; not used currently
     function base_coins(uint256) external view returns (address);
 
     function balances(uint256) external view returns (uint256);
@@ -33,7 +34,7 @@ interface ICurvePool {
 
 // solhint-enable func-name-mixedcase
 
-/// Supports CvxCurve stable pools for up to 4 tokens
+/// Supports CvxCurve non-meta pools for up to 4 tokens
 contract PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
@@ -44,7 +45,7 @@ contract PoolTokens {
     enum CurvePoolType {
         Plain,
         Lending,
-        Metapool
+        Metapool // not supported via this class. parent class handles metapool math
     }
 
     // === State (Immutable) ===
@@ -128,7 +129,7 @@ contract PoolTokens {
             } else if (config.poolType == CurvePoolType.Lending) {
                 tokens[i] = IERC20Metadata(curvePool.underlying_coins(i));
             } else {
-                tokens[i] = IERC20Metadata(curvePool.base_coins(i));
+                revert("Use MetaPoolTokens class");
             }
         }
 
@@ -228,8 +229,6 @@ contract PoolTokens {
         }
     }
 
-    // === Public Views ===
-
     /// @param index The index of the token: 0, 1, 2, or 3
     /// @return low {UoA/ref_index}
     /// @return high {UoA/ref_index}
@@ -277,9 +276,11 @@ contract PoolTokens {
         return toRange(x, y, xErr, yErr);
     }
 
+    // === Internal ===
+
     /// @return low {UoA}
     /// @return high {UoA}
-    function totalBalancesValue() public view returns (uint192 low, uint192 high) {
+    function totalBalancesValue() internal view returns (uint192 low, uint192 high) {
         for (uint8 i = 0; i < nTokens; ++i) {
             IERC20Metadata token = getToken(i);
             uint192 balance = shiftl_toFix(curvePool.balances(i), -int8(token.decimals()));
@@ -291,7 +292,7 @@ contract PoolTokens {
     }
 
     /// @return [{tok}]
-    function getBalances() public view returns (uint192[] memory) {
+    function getBalances() internal view virtual returns (uint192[] memory) {
         uint192[] memory balances = new uint192[](nTokens);
 
         for (uint8 i = 0; i < nTokens; ++i) {
