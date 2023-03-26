@@ -15,7 +15,7 @@ async function main() {
 
   const chainId = await getChainId(hre)
   // Get deployed collateral
-  const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId, 'mainnet-2.0.0')
+  const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId, 'mainnet-2.1.0')
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const { collateral: collaterals } = assetCollDeployments
