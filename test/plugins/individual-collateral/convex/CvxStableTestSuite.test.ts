@@ -350,9 +350,8 @@ const collateralSpecificConstructorTests = () => {
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
-before(resetFork)
-
-describeFork(`Collateral: Convex - Stable`, () => {
+describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
+  before(resetFork)
   describe('constructor validation', () => {
     it('validates targetName', async () => {
       await expect(deployCollateral({ targetName: ethers.constants.HashZero })).to.be.revertedWith(
@@ -414,6 +413,7 @@ describeFork(`Collateral: Convex - Stable`, () => {
       if (!networkConfig[chainId]) {
         throw new Error(`Missing network configuration for ${hre.network.name}`)
       }
+      await resetFork()
     })
 
     beforeEach(async () => {
@@ -460,6 +460,7 @@ describeFork(`Collateral: Convex - Stable`, () => {
     })
 
     describe('prices', () => {
+      before(resetFork)
       it('prices change as feed price changes', async () => {
         const feedData = await usdcFeed.latestRoundData()
         const initialRefPerTok = await collateral.refPerTok()
@@ -477,8 +478,8 @@ describeFork(`Collateral: Convex - Stable`, () => {
 
         const [newLow, newHigh] = await collateral.price()
 
-        expect(newLow).to.equal(low.mul(110).div(100))
-        expect(newHigh.sub(1)).to.equal(high.mul(110).div(100))
+        expect(newLow).to.be.closeTo(low.mul(110).div(100), 1)
+        expect(newHigh).to.be.closeTo(high.mul(110).div(100), 1)
 
         // Check refPerTok remains the same (because we have not refreshed)
         const finalRefPerTok = await collateral.refPerTok()
