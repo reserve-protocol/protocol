@@ -51,16 +51,16 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     {
         // Should include revenue hiding discount in the low discount but not high
 
-        // {tok}
-        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
-        // We can always assume that the total supply is non-zero
-
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
 
         // discount aumLow by the amount of revenue being hidden
         // {UoA} = {UoA} * {1}
         aumLow = aumLow.mul(revenueShowing);
+
+        // {tok}
+        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
+        // We can always assume that the total supply is non-zero
 
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply);
@@ -147,7 +147,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     // === Internal ===
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
+    function _underlyingRefPerTok() internal view virtual override returns (uint192) {
         return _safeWrap(curvePool.get_virtual_price());
     }
 

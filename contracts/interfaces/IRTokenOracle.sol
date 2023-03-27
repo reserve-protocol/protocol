@@ -11,9 +11,12 @@ struct Price {
 
 interface IRTokenOracle {
     /// Lookup price by rToken with refresh if necessary
+    /// @param forceRefresh If true, forces a refresh of the price regardless of cache status
     /// @return price {UoA/rTok} The current price
     /// @return timestamp {s} The timestamp at which price was saved
-    function price(IRToken rToken) external returns (Price memory price, uint48 timestamp);
+    function price(IRToken rToken, bool forceRefresh)
+        external
+        returns (Price memory price, uint48 timestamp);
 
     /// Lookup price by rToken without refresh
     /// @return price {UoA/rTok} The saved price

@@ -64,10 +64,11 @@ export const TRI_CRYPTO_HOLDER = '0xDeFd8FdD20e0f34115C7018CCfb655796F6B2168'
 export const FRAX_BP = '0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2'
 export const FRAX_BP_TOKEN = '0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC'
 
-// eUSD + fraxBP -- these metapools combine lpToken + curvePool
-export const RTOKEN_ORACLE = '0xA70e7F86c56bf63befEe3Ef76cA0d392acab8EF2'
+// eUSD + fraxBP -- this metapool combines lpToken + curvePool
+export const RTOKEN_ORACLE = '0x16fc605eEE1ece04792b563586ad530C9d535054'
 export const eUSD_FRAX_BP = '0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F'
 export const eUSD_FRAX_BP_POOL_ID = 156
+export const eUSD_FRAX_HOLDER = '0x8605dc0C339a2e7e85EEA043bD29d42DA2c6D784'
 
 export const FIX_ONE = 1n * 10n ** 18n
 export const PRICE_TIMEOUT = bn('604800') // 1 week
@@ -75,8 +76,8 @@ export const DEFAULT_THRESHOLD = fp('0.02') // 2%
 export const DELAY_UNTIL_DEFAULT = bn('86400')
 export const MAX_TRADE_VOL = fp('1e6')
 
-// export const FORK_BLOCK = 15850930
-export const FORK_BLOCK = 16913330
+// export const FORK_BLOCK = 15850930 // TODO delete after confirming all cvx tests still passing
+export const FORK_BLOCK = 16915576
 
 export enum CurvePoolType {
   Plain,

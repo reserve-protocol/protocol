@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: ISC
 pragma solidity 0.8.17;
 
-import "../PoolTokens.sol";
+import "../../plugins/assets/convex/PoolTokens.sol";
 
 contract CurvePoolMock is ICurvePool {
     uint256[] internal _balances;

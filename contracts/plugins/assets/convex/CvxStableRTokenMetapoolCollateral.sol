@@ -33,7 +33,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
     /// @dev Override this when pricing is more complicated than just a single oracle
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    /// @return pegPrice {target/ref} The actual price observed in the peg
+    /// @return {target/ref} Unused. Always 0.
     function tryPrice()
         external
         view
@@ -42,7 +42,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         returns (
             uint192 low,
             uint192 high,
-            uint192 pegPrice
+            uint192
         )
     {
         // Should include revenue hiding discount in the low discount but not high
@@ -67,16 +67,14 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply);
         high = aumHigh.div(supply);
-
-        // {UoA/tok} = {UoA/tok} + {UoA/tok}
-        pegPrice = (low + high) / 2; // avg of low + high
+        return (low, high, 0);
     }
 
     /// Should not revert
     /// Refresh exchange rates and update default status.
     /// Have to override to add custom default checks
     function refresh() public virtual override {
-        rTokenOracle.price(IRToken(address(pairedToken))); // update price in oracle
+        rTokenOracle.price(IRToken(address(pairedToken)), false); // refresh price in oracle
         super.refresh();
     }
 }

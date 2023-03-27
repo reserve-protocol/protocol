@@ -14,6 +14,7 @@ export interface ITokens {
   TUSD?: string
   BUSD?: string
   FRAX?: string
+  eUSD?: string
   aDAI?: string
   aUSDC?: string
   aUSDT?: string
@@ -53,6 +54,11 @@ export interface IFeeds {
   stETHUSD?: string
 }
 
+export interface IPlugins {
+  cvx3Pool?: string
+  cvxeUSDFRAXBP?: string
+}
+
 interface INetworkConfig {
   name: string
   tokens: ITokens
@@ -83,6 +89,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDP: '0x8E870D67F660D95d5be530380D0eC0bd388289E1',
       TUSD: '0x0000000000085d4780B73119b644AE5ecd22b376',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
+      eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
       aUSDT: '0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811',
@@ -163,6 +170,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDP: '0x8E870D67F660D95d5be530380D0eC0bd388289E1',
       TUSD: '0x0000000000085d4780B73119b644AE5ecd22b376',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
+      eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
       aUSDT: '0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811',

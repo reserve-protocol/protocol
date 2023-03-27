@@ -3,10 +3,12 @@ pragma solidity 0.8.17;
 
 import "./PoolTokens.sol";
 
-// solhint-disable-next-line no-empty-blocks
+// solhint-disable no-empty-blocks
 interface ICurveMetaPool is ICurvePool, IERC20Metadata {
 
 }
+
+// solhint-enable no-empty-blocks
 
 /// Supports CvxCurve 2.0 Metapools
 contract MetaPoolTokens is PoolTokens {
@@ -24,19 +26,18 @@ contract MetaPoolTokens is PoolTokens {
         // Sanity checks
         assert(address(pairedToken) != address(0));
         assert(metapool.coins(1) == address(lpToken));
-        assert(metapool.coins(2) == address(0)); // only 2 tokens
     }
 
     // === Internal ===
 
     /// @param lowPaired {UoA/pairedTok}
     /// @param highPaired {UoA/pairedTok}
-    /// @return low {UoA}
-    /// @return high {UoA}
+    /// @return aumLow {UoA}
+    /// @return aumHigh {UoA}
     function totalBalancesValue(uint192 lowPaired, uint192 highPaired)
         internal
         view
-        returns (uint192 low, uint192 high)
+        returns (uint192 aumLow, uint192 aumHigh)
     {
         // {UoA}
         (uint192 underlyingAumLow, uint192 underlyingAumHigh) = super.totalBalancesValue();
@@ -52,15 +53,15 @@ contract MetaPoolTokens is PoolTokens {
         uint192 balUnderlying = shiftl_toFix(metapool.balances(1), -int8(lpToken.decimals()));
 
         // {UoA} = {UoA/tokUnderlying} * {tokUnderlying}
-        low = underlyingLow.mul(balUnderlying, FLOOR);
-        high = underlyingHigh.mul(balUnderlying, CEIL);
+        aumLow = underlyingLow.mul(balUnderlying, FLOOR);
+        aumHigh = underlyingHigh.mul(balUnderlying, CEIL);
 
         // {pairedTok}
         uint192 pairedBal = shiftl_toFix(metapool.balances(0), -int8(pairedToken.decimals()));
 
         // Add-in contribution from pairedTok
         // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}
-        low += lowPaired.mul(pairedBal, FLOOR);
-        high += highPaired.mul(pairedBal, CEIL);
+        aumLow += lowPaired.mul(pairedBal, FLOOR);
+        aumHigh += highPaired.mul(pairedBal, CEIL);
     }
 }

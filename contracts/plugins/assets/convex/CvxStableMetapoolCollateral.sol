@@ -72,9 +72,7 @@ contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolToke
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply);
         high = aumHigh.div(supply);
-
-        // {UoA/tok} = {UoA/tok} + {UoA/tok}
-        pegPrice = (low + high) / 2; // avg of low + high
+        return (low, high, 0);
     }
 
     /// Should not revert
@@ -107,7 +105,7 @@ contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolToke
         }
 
         // Check for soft default + save prices
-        try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
             // {UoA/tok}, {UoA/tok}, {UoA/tok}
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
@@ -123,7 +121,7 @@ contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolToke
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
-            if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
+            if (low == 0 || _anyDepegged()) {
                 markStatus(CollateralStatus.IFFY);
             } else {
                 markStatus(CollateralStatus.SOUND);
@@ -157,6 +155,27 @@ contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolToke
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        return _safeWrap(curvePool.get_virtual_price());
+        return _safeWrap(metapool.get_virtual_price());
+    }
+
+    // Override this later to implement non-stable pools
+    function _anyDepegged() internal view virtual returns (bool) {
+        // Check reference token oracles
+        for (uint8 i = 0; i < nTokens; i++) {
+            try this.tokenPrice(i) returns (uint192 low, uint192 high) {
+                // {UoA/tok} = {UoA/tok} + {UoA/tok}
+                uint192 mid = (low + high) / 2;
+
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                if (mid < pegBottom || mid > pegTop) return true;
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                return true;
+            }
+        }
+
+        return false;
     }
 }

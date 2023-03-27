@@ -18,11 +18,11 @@ contract RTokenOracle is IRTokenOracle {
     }
 
     /// Lookup price by asset with refresh if necessary
-    function price(IRToken rToken) external returns (Price memory, uint48) {
+    function price(IRToken rToken, bool forceRefresh) external returns (Price memory, uint48) {
         Cache storage cache = entries[rToken];
 
         // Refresh cache if stale
-        if (block.timestamp - cache.savedAt > cacheTimeout) {
+        if (forceRefresh || block.timestamp - cache.savedAt > cacheTimeout) {
             IAsset rTokenAsset = rToken.main().assetRegistry().toAsset(IERC20(address(rToken)));
             (cache.price.low, cache.price.high) = rTokenAsset.price();
             cache.savedAt = uint48(block.timestamp); // block time assumed reasonable
