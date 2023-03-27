@@ -49,6 +49,7 @@ jobs:
           cache: 'yarn'
       - run: yarn install --immutable
       - run: yarn compile
+      - run: yarn test:plugins
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
         with:
@@ -62,7 +63,6 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-      - run: yarn test:plugins
 
   p0-tests:
     name: 'P0 tests'
