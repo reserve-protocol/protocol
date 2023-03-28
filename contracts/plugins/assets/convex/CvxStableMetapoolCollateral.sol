@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: ISC
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
-import "./vendor/IConvexStakingWrapper.sol";
-import "./MetaPoolTokens.sol";
+import "./CvxStableCollateral.sol";
+
+// solhint-disable no-empty-blocks
+interface ICurveMetaPool is ICurvePool, IERC20Metadata {
+
+}
 
 /**
  * @title CvxStableMetapoolCollateral
  *  This plugin contract is intended for 2-token stable metapools that
  *  DO NOT involve RTokens, such as alUSD-fraxBP.
  */
-contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolTokens {
+contract CvxStableMetapoolCollateral is CvxStableCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
+
+    ICurveMetaPool internal immutable metapool; // top-level LP token + CurvePool
+
+    IERC20Metadata internal immutable pairedToken; // the token paired with ptConfig.lpToken
 
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout should be set for paired token
     /// @dev config.erc20 should be a IConvexStakingWrapper
@@ -26,10 +28,14 @@ contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolToke
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
         ICurveMetaPool metapool_
-    ) AppreciatingFiatCollateral(config, revenueHiding) MetaPoolTokens(ptConfig, metapool_) {
-        // parent class requires chainlinkFeed is non-empty; doesn't matter what it is
-        require(address(config.chainlinkFeed) != address(0), "chainlinkFeed zero");
-        require(config.defaultThreshold > 0, "defaultThreshold zero");
+    ) CvxStableCollateral(config, revenueHiding, ptConfig) {
+        require(address(metapool_) != address(0), "metapool address is zero");
+        metapool = metapool_;
+        pairedToken = IERC20Metadata(metapool.coins(0)); // like eUSD or alUSD
+
+        // Sanity checks we have the correct pool
+        assert(address(pairedToken) != address(0));
+        assert(metapool.coins(1) == address(lpToken));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -56,7 +62,7 @@ contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolToke
         uint192 pairedError = pairedPrice.mul(oracleError); // {UoA/pairedTok}
 
         // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = totalBalancesValue(
+        (uint192 aumLow, uint192 aumHigh) = metapoolBalancesValue(
             pairedPrice - pairedError,
             pairedPrice + pairedError
         );
@@ -75,82 +81,6 @@ contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolToke
         return (low, high, 0);
     }
 
-    /// Should not revert
-    /// Refresh exchange rates and update default status.
-    /// Have to override to add custom default checks
-    function refresh() public virtual override {
-        if (alreadyDefaulted()) {
-            // continue to update rates
-            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
-            return;
-        }
-
-        CollateralStatus oldStatus = status();
-
-        // Check for hard default
-        // must happen before tryPrice() call since `refPerTok()` returns a stored value
-
-        // revenue hiding: do not DISABLE if drawdown is small
-        uint192 underlyingRefPerTok = _underlyingRefPerTok();
-
-        // {ref/tok} = {ref/tok} * {1}
-        uint192 hiddenReferencePrice = underlyingRefPerTok.mul(revenueShowing);
-
-        // uint192(<) is equivalent to Fix.lt
-        if (underlyingRefPerTok < exposedReferencePrice) {
-            exposedReferencePrice = hiddenReferencePrice;
-            markStatus(CollateralStatus.DISABLED);
-        } else if (hiddenReferencePrice > exposedReferencePrice) {
-            exposedReferencePrice = hiddenReferencePrice;
-        }
-
-        // Check for soft default + save prices
-        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
-            // {UoA/tok}, {UoA/tok}, {UoA/tok}
-            // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
-
-            // Save prices if priced
-            if (high < FIX_MAX) {
-                savedLowPrice = low;
-                savedHighPrice = high;
-                lastSave = uint48(block.timestamp);
-            } else {
-                // must be unpriced
-                assert(low == 0);
-            }
-
-            // If the price is below the default-threshold price, default eventually
-            // uint192(+/-) is the same as Fix.plus/minus
-            if (low == 0 || _anyDepegged()) {
-                markStatus(CollateralStatus.IFFY);
-            } else {
-                markStatus(CollateralStatus.SOUND);
-            }
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            markStatus(CollateralStatus.IFFY);
-        }
-
-        CollateralStatus newStatus = status();
-        if (oldStatus != newStatus) {
-            emit CollateralStatusChanged(oldStatus, newStatus);
-        }
-    }
-
-    /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev Use delegatecall
-    function claimRewards() external override(Asset, IRewardable) {
-        IConvexStakingWrapper wrapper = IConvexStakingWrapper(address(erc20));
-        IERC20 cvx = IERC20(wrapper.cvx());
-        IERC20 crv = IERC20(wrapper.crv());
-        uint256 cvxOldBal = cvx.balanceOf(address(this));
-        uint256 crvOldBal = crv.balanceOf(address(this));
-        wrapper.getReward(address(this));
-        emit RewardsClaimed(cvx, cvx.balanceOf(address(this)) - cvxOldBal);
-        emit RewardsClaimed(crv, crv.balanceOf(address(this)) - crvOldBal);
-    }
-
     // === Internal ===
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
@@ -158,24 +88,38 @@ contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolToke
         return _safeWrap(metapool.get_virtual_price());
     }
 
-    // Override this later to implement non-stable pools
-    function _anyDepegged() internal view virtual returns (bool) {
-        // Check reference token oracles
-        for (uint8 i = 0; i < nTokens; i++) {
-            try this.tokenPrice(i) returns (uint192 low, uint192 high) {
-                // {UoA/tok} = {UoA/tok} + {UoA/tok}
-                uint192 mid = (low + high) / 2;
+    /// @param lowPaired {UoA/pairedTok}
+    /// @param highPaired {UoA/pairedTok}
+    /// @return aumLow {UoA}
+    /// @return aumHigh {UoA}
+    function metapoolBalancesValue(uint192 lowPaired, uint192 highPaired)
+        internal
+        view
+        returns (uint192 aumLow, uint192 aumHigh)
+    {
+        // {UoA}
+        (uint192 underlyingAumLow, uint192 underlyingAumHigh) = totalBalancesValue();
 
-                // If the price is below the default-threshold price, default eventually
-                // uint192(+/-) is the same as Fix.plus/minus
-                if (mid < pegBottom || mid > pegTop) return true;
-            } catch (bytes memory errData) {
-                // see: docs/solidity-style.md#Catching-Empty-Data
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                return true;
-            }
-        }
+        // {tokUnderlying}
+        uint192 underlyingSupply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
 
-        return false;
+        // {UoA/tokUnderlying} = {UoA} / {tokUnderlying}
+        uint192 underlyingLow = underlyingAumLow.div(underlyingSupply, FLOOR);
+        uint192 underlyingHigh = underlyingAumHigh.div(underlyingSupply, CEIL);
+
+        // {tokUnderlying}
+        uint192 balUnderlying = shiftl_toFix(metapool.balances(1), -int8(lpToken.decimals()));
+
+        // {UoA} = {UoA/tokUnderlying} * {tokUnderlying}
+        aumLow = underlyingLow.mul(balUnderlying, FLOOR);
+        aumHigh = underlyingHigh.mul(balUnderlying, CEIL);
+
+        // {pairedTok}
+        uint192 pairedBal = shiftl_toFix(metapool.balances(0), -int8(pairedToken.decimals()));
+
+        // Add-in contribution from pairedTok
+        // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}
+        aumLow += lowPaired.mul(pairedBal, FLOOR);
+        aumHigh += highPaired.mul(pairedBal, CEIL);
     }
 }

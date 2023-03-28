@@ -54,7 +54,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         require(block.timestamp - savedAt <= rTokenOracle.cacheTimeout(), "call refresh()");
 
         // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = totalBalancesValue(lastPrice.low, lastPrice.high);
+        (uint192 aumLow, uint192 aumHigh) = metapoolBalancesValue(lastPrice.low, lastPrice.high);
 
         // discount aumLow by the amount of revenue being hidden
         // {UoA} = {UoA} * {1}
