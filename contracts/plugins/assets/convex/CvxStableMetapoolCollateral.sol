@@ -9,6 +9,11 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
 }
 
 /**
+ * DO NOT USE THIS CONTRACT
+ * This contract is currently used for inheritance only.
+ */
+
+/**
  * @title CvxStableMetapoolCollateral
  *  This plugin contract is intended for 2-token stable metapools that
  *  DO NOT involve RTokens, such as alUSD-fraxBP.
