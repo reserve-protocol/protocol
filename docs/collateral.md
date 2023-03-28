@@ -1,4 +1,4 @@
-# Writing Collateral Plugins
+# Collateral Plugins
 
 This document describes what a developer needs to know to begin writing and contributing collateral plugins.
 
