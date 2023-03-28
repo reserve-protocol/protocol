@@ -61,7 +61,7 @@ contract RTokenAsset is IAsset {
 
     // solhint-disable no-empty-blocks
     function refresh() public virtual override {
-        // No need to save lastPrice; can piggyback off the backing collateral's lotPrice()
+        // TODO write to IPriceCache in refresh()
     }
 
     // solhint-enable no-empty-blocks

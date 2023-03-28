@@ -8,24 +8,25 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import "./vendor/IConvexStakingWrapper.sol";
-import "./PoolTokens.sol";
+import "./MetaPoolTokens.sol";
 
 /**
- * @title CvxStableCollateral
- *  This plugin contract is fully general to any number of tokens in a stable pool,
- *  with between 1 and 2 oracles per each token. Stable means only like-kind pools.
+ * @title CvxStableMetapoolCollateral
+ *  This plugin contract is intended for 2-token stable metapools that
+ *  DO NOT involve RTokens, such as alUSD-fraxBP.
  */
-contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
+contract CvxStableMetapoolCollateral is AppreciatingFiatCollateral, MetaPoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    /// @param config Unused members: chainlinkFeed, oracleError, oracleTimeout
+    /// @dev config.chainlinkFeed/oracleError/oracleTimeout should be set for paired token
     /// @dev config.erc20 should be a IConvexStakingWrapper
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        PTConfiguration memory ptConfig
-    ) AppreciatingFiatCollateral(config, revenueHiding) PoolTokens(ptConfig) {
+        PTConfiguration memory ptConfig,
+        ICurveMetaPool metapool_
+    ) AppreciatingFiatCollateral(config, revenueHiding) MetaPoolTokens(ptConfig, metapool_) {
         // parent class requires chainlinkFeed is non-empty; doesn't matter what it is
         require(address(config.chainlinkFeed) != address(0), "chainlinkFeed zero");
         require(config.defaultThreshold > 0, "defaultThreshold zero");
@@ -37,7 +38,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     /// @dev Override this when pricing is more complicated than just a single oracle
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    /// @return {target/ref} Unused. Always 0
+    /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
         external
         view
@@ -46,20 +47,26 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
         returns (
             uint192 low,
             uint192 high,
-            uint192
+            uint192 pegPrice
         )
     {
         // Should include revenue hiding discount in the low discount but not high
 
+        uint192 pairedPrice = chainlinkFeed.price(oracleTimeout); // {UoA/pairedTok}
+        uint192 pairedError = pairedPrice.mul(oracleError); // {UoA/pairedTok}
+
         // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
+        (uint192 aumLow, uint192 aumHigh) = totalBalancesValue(
+            pairedPrice - pairedError,
+            pairedPrice + pairedError
+        );
 
         // discount aumLow by the amount of revenue being hidden
         // {UoA} = {UoA} * {1}
         aumLow = aumLow.mul(revenueShowing);
 
         // {tok}
-        uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
+        uint192 supply = shiftl_toFix(metapool.totalSupply(), -int8(metapool.decimals()));
         // We can always assume that the total supply is non-zero
 
         // {UoA/tok} = {UoA} / {tok}
@@ -147,8 +154,8 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     // === Internal ===
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view virtual override returns (uint192) {
-        return _safeWrap(curvePool.get_virtual_price());
+    function _underlyingRefPerTok() internal view override returns (uint192) {
+        return _safeWrap(metapool.get_virtual_price());
     }
 
     // Override this later to implement non-stable pools

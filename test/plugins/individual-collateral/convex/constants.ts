@@ -1,44 +1,52 @@
 import { bn, fp } from '../../../../common/numbers'
+import { networkConfig } from '../../../../common/configuration'
 
 // Mainnet Addresses
 
 // DAI
-export const DAI_USD_FEED = '0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9'
+export const DAI_USD_FEED = networkConfig['1'].chainlinkFeeds.DAI as string
 export const DAI_ORACLE_TIMEOUT = bn('86400')
 export const DAI_ORACLE_ERROR = fp('0.0025')
 
 // USDC
-export const USDC_USD_FEED = '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6'
+export const USDC_USD_FEED = networkConfig['1'].chainlinkFeeds.USDC as string
 export const USDC_ORACLE_TIMEOUT = bn('86400')
 export const USDC_ORACLE_ERROR = fp('0.0025')
 
 // USDT
-export const USDT_USD_FEED = '0x3E7d1eAB13ad0104d2750B8863b489D65364e32D'
+export const USDT_USD_FEED = networkConfig['1'].chainlinkFeeds.USDT as string
 export const USDT_ORACLE_TIMEOUT = bn('86400')
 export const USDT_ORACLE_ERROR = fp('0.0025')
 
+// FRAX
+export const FRAX_USD_FEED = networkConfig['1'].chainlinkFeeds.FRAX as string
+export const FRAX_ORACLE_TIMEOUT = bn('3600')
+export const FRAX_ORACLE_ERROR = fp('0.01')
+
 // WBTC
-export const WBTC_BTC_FEED = '0xfdfd9c85ad200c506cf9e21f1fd8dd01932fbb23'
-export const BTC_USD_FEED = '0xf4030086522a5beea4988f8ca5b36dbc97bee88c'
+export const WBTC_BTC_FEED = networkConfig['1'].chainlinkFeeds.WBTC as string
+export const BTC_USD_FEED = networkConfig['1'].chainlinkFeeds.BTC as string
 export const WBTC_ORACLE_TIMEOUT = bn('86400')
 export const WBTC_BTC_ORACLE_ERROR = fp('0.02')
 export const BTC_USD_ORACLE_ERROR = fp('0.005')
 
 // WETH
-export const WETH_USD_FEED = '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419'
+export const WETH_USD_FEED = networkConfig['1'].chainlinkFeeds.ETH as string
 export const WETH_ORACLE_TIMEOUT = bn('86400')
 export const WETH_ORACLE_ERROR = fp('0.005')
 
 // Tokens
-export const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f'
-export const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
-export const USDT = '0xdac17f958d2ee523a2206206994597c13d831ec7'
-export const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
-export const WBTC = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599'
+export const DAI = networkConfig['1'].tokens.DAI as string
+export const USDC = networkConfig['1'].tokens.USDC as string
+export const USDT = networkConfig['1'].tokens.USDT as string
+export const FRAX = networkConfig['1'].tokens.FRAX as string
+export const eUSD = networkConfig['1'].tokens.eUSD as string
+export const WETH = networkConfig['1'].tokens.WETH as string
+export const WBTC = networkConfig['1'].tokens.WBTC as string
 
-export const RSR = '0x320623b8e4ff03373931769a31fc52a4e78b5d70'
-export const CRV = '0xD533a949740bb3306d119CC777fa900bA034cd52'
-export const CVX = '0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B'
+export const RSR = networkConfig['1'].tokens.RSR as string
+export const CRV = networkConfig['1'].tokens.CRV as string
+export const CVX = networkConfig['1'].tokens.CVX as string
 
 // 3pool - USDC, USDT, DAI
 export const THREE_POOL = '0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7'
@@ -52,13 +60,24 @@ export const TRI_CRYPTO_TOKEN = '0xc4ad29ba4b3c580e6d59105fff484999997675ff'
 export const TRI_CRYPTO_CVX_POOL_ID = 38
 export const TRI_CRYPTO_HOLDER = '0xDeFd8FdD20e0f34115C7018CCfb655796F6B2168'
 
+// fraxBP
+export const FRAX_BP = '0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2'
+export const FRAX_BP_TOKEN = '0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC'
+
+// eUSD + fraxBP -- this metapool combines lpToken + curvePool
+export const RTOKEN_ORACLE = '0x16fc605eEE1ece04792b563586ad530C9d535054'
+export const eUSD_FRAX_BP = '0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F'
+export const eUSD_FRAX_BP_POOL_ID = 156
+export const eUSD_FRAX_HOLDER = '0x8605dc0C339a2e7e85EEA043bD29d42DA2c6D784'
+
 export const FIX_ONE = 1n * 10n ** 18n
 export const PRICE_TIMEOUT = bn('604800') // 1 week
-export const DEFAULT_THRESHOLD = fp('5e-2') // 0.05
+export const DEFAULT_THRESHOLD = fp('0.02') // 2%
 export const DELAY_UNTIL_DEFAULT = bn('86400')
-export const MAX_TRADE_VOL = bn('1000000')
+export const MAX_TRADE_VOL = fp('1e6')
 
-export const FORK_BLOCK = 15850930
+// export const FORK_BLOCK = 15850930 // TODO delete after confirming all cvx tests still passing
+export const FORK_BLOCK = 16915576
 
 export enum CurvePoolType {
   Plain,
