@@ -94,7 +94,7 @@ interface CvxVolatileCollateralOpts extends CollateralOpts {
 
 export const defaultCvxVolatileCollateralOpts: CvxVolatileCollateralOpts = {
   erc20: ZERO_ADDRESS,
-  targetName: ethers.utils.formatBytes32String('USD'),
+  targetName: ethers.utils.formatBytes32String('TRICRYPTO'),
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: USDT_USD_FEED, // unused but cannot be zero
   oracleTimeout: bn('1'), // unused but cannot be zero
