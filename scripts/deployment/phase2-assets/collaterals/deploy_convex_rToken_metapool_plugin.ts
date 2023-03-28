@@ -13,7 +13,7 @@ import {
   fileExists,
 } from '../../common'
 import { CvxStableRTokenMetapoolCollateral } from '../../../../typechain'
-import { revenueHiding } from '../../utils'
+import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
@@ -94,7 +94,10 @@ async function main() {
       curvePool: FRAX_BP,
       poolType: CurvePoolType.Plain,
       feeds: [[FRAX_USD_FEED], [USDC_USD_FEED]],
-      oracleTimeouts: [[FRAX_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT]],
+      oracleTimeouts: [
+        [oracleTimeout(chainId, FRAX_ORACLE_TIMEOUT)],
+        [oracleTimeout(chainId, USDC_ORACLE_TIMEOUT)],
+      ],
       oracleErrors: [[FRAX_ORACLE_ERROR], [USDC_ORACLE_ERROR]],
       lpToken: FRAX_BP_TOKEN,
     },
