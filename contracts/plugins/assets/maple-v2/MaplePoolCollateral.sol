@@ -2,63 +2,44 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/libraries/Fixed.sol";
+import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
-import "contracts/plugins/assets/ICToken.sol";
-import "contracts/plugins/assets/maple-finance/vendor/IMaplePool.sol";
+import { IMaplePool } from "contracts/plugins/assets/maple-v2/vendor/IMaplePool.sol";
 
 /**
  * @title MaplePoolCollateral
- * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
- * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
+ * @notice Collateral plugin for the token given to the liquidity providers
+ * The 2 target pools  are permissionless; one holds USDC, the other wETH
+ * {tok} = LP tokens
+ * {ref} = USDc or wETH
+ * {target} = USD or ETH
+ * {UoA} = USD
  */
 contract MaplePoolCollateral is AppreciatingFiatCollateral {
-    using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
+    using OracleLib for AggregatorV3Interface;
 
-    // All v2 cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
+    // All v2 liquidity provider tokens have 6 decimals
+    // Their underlying tokens may have 18 (wETH) or 6 (USDC) decimals
 
-    uint8 public immutable referenceERC20Decimals;
-
-    IComptroller public immutable comptroller;
-
+    /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    /// @param comptroller_ The CompoundFinance Comptroller
-    constructor(
-        CollateralConfig memory config,
-        uint192 revenueHiding,
-        IComptroller comptroller_
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(comptroller_) != address(0), "comptroller missing");
-        ICToken erc20 = ICToken(address(config.erc20));
-        referenceERC20Decimals = IERC20Metadata(erc20.underlying()).decimals();
-        comptroller = comptroller_;
-    }
+    constructor(CollateralConfig memory config, uint192 revenueHiding) AppreciatingFiatCollateral(config, revenueHiding) {}
 
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() public virtual override {
-        // == Refresh ==
-        // Update the Compound Protocol
-        ICToken(address(erc20)).exchangeRateCurrent();
-
-        // Intentional and correct for the super call to be last!
         super.refresh(); // already handles all necessary default checks
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        uint256 rate = ICToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
-        return shiftl_toFix(rate, shiftLeft);
+        uint256 rate = IMaplePool(address(erc20)).convertToAssets(uint256(1e18));
+        return shiftl_toFix(rate, -18); // convert to uint192 and actually keep the same value
     }
 
-    /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev delegatecall
-    function claimRewards() external virtual override(Asset, IRewardable) {
-        IERC20 comp = IERC20(comptroller.getCompAddress());
-        uint256 oldBal = comp.balanceOf(address(this));
-        comptroller.claimComp(address(this));
-        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
-    }
+    /// Maple pools doesn't hand out rewards for LP tokens
+    /// All the returns (from loan interests) are added to the LP, thus increasing the value of all the shares
+    /// The MPL rewards are discontinued; they were a temporary incentive 
+    function claimRewards() external virtual override(Asset, IRewardable) {}
 }
