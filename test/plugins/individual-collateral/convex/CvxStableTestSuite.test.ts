@@ -675,6 +675,37 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
       })
 
+      it('does revenue hiding correctly', async () => {
+        ctx = await loadFixture(makeCollateralFixtureContext(alice, { revenueHiding: fp('1e-6') }))
+        ;({ collateral } = ctx)
+
+        // Check initial state
+        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+        await mintCollateralTo(ctx, bn('20000e6'), alice, alice.address)
+        await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+
+        // State remains the same
+        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+        // Decrease refPerTok by 1 part in a million
+        const currentExchangeRate = await ctx.curvePool.get_virtual_price()
+        const newVirtualPrice = currentExchangeRate.sub(currentExchangeRate.div(bn('1e6')))
+        await ctx.curvePool.setVirtualPrice(newVirtualPrice)
+
+        // Collateral remains SOUND
+        await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
+
+        // One quanta more of decrease results in default
+        await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(1))
+        await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
+        expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
+      })
+
       it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
         const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
           'InvalidMockV3Aggregator'
