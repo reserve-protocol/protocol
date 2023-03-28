@@ -1,3 +1,14 @@
+## Asset Plugin Addresses
+
+Following are the addresses of non-collateral asset plugins.
+
+| Plugin                                                                             | Feed                                                                                                                  | Underlying                                                                                                            |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [COMP](https://etherscan.io/address/0xd5cc2875Bbc53AFBcc41Bf04E7bA37F2894CBFa1)    | [0xdbd020CAeF83eFd542f4De03e3cF0C28A4428bd5](https://etherscan.io/address/0xdbd020CAeF83eFd542f4De03e3cF0C28A4428bd5) | [0xc00e94Cb662C3520282E6f5717214004A7f26888](https://etherscan.io/address/0xc00e94Cb662C3520282E6f5717214004A7f26888) |
+| [stkAAVE](https://etherscan.io/address/0xC6e5CF6a9d215D2D3d4D433FABaeA44D5f396c43) | [0x547a514d5e3769680Ce22B2361c10Ea13619e8a9](https://etherscan.io/address/0x547a514d5e3769680Ce22B2361c10Ea13619e8a9) | [0x4da27a545c0c5B758a6BA100e3a049001de870f5](https://etherscan.io/address/0x4da27a545c0c5B758a6BA100e3a049001de870f5) |
+| [CRV](https://etherscan.io/address/0x23f7757fCd688BA06313DeD03DeFA9CaCEF4e5e4)     | [0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f](https://etherscan.io/address/0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f) | [0xD533a949740bb3306d119CC777fa900bA034cd52](https://etherscan.io/address/0xD533a949740bb3306d119CC777fa900bA034cd52) |
+| [CVX](https://etherscan.io/address/0x1be31Fa580bcAe6E58BA9545BdB26CeDa78F0094)     | [0xd962fC30A72A84cE50161031391756Bf2876Af5D](https://etherscan.io/address/0xd962fC30A72A84cE50161031391756Bf2876Af5D) | [0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B](https://etherscan.io/address/0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B) |
+
 ## Collateral Plugin Addresses
 
 Following are the addresses and configuration parameters of collateral plugins deployed to mainnet.

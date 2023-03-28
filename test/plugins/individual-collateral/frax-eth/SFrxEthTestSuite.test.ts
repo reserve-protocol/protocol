@@ -16,6 +16,7 @@ import { bn, fp } from '../../../../common/numbers'
 import { CollateralStatus } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
+  PRICE_TIMEOUT,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   MAX_TRADE_VOL,
@@ -50,7 +51,7 @@ export const defaultRethCollateralOpts: CollateralOpts = {
   erc20: SFRX_ETH,
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: WETH,
-  priceTimeout: ORACLE_TIMEOUT,
+  priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,

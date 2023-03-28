@@ -1,5 +1,8 @@
 {
-  "assets": {},
+  "assets": {
+    "CRV": "0x23f7757fCd688BA06313DeD03DeFA9CaCEF4e5e4",
+    "CVX": "0x1be31Fa580bcAe6E58BA9545BdB26CeDa78F0094"
+  },
   "collateral": {
     "wstETH": "0x47df1465672bFc4dC83f712531F7Eb1D658C0B66",
     "rETH": "0x45B9BCc340AFF7497e6F06dE763B6A69644B4645",
