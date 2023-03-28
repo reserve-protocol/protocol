@@ -12,18 +12,21 @@ import { verifyContract } from '../../deployment/utils'
 import { revenueHiding, oracleTimeout } from '../../deployment/utils'
 import {
   CurvePoolType,
-  DAI_ORACLE_ERROR,
-  DAI_ORACLE_TIMEOUT,
-  DAI_USD_FEED,
+  BTC_USD_ORACLE_ERROR,
+  BTC_ORACLE_TIMEOUT,
+  BTC_USD_FEED,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   MAX_TRADE_VOL,
   PRICE_TIMEOUT,
-  THREE_POOL,
-  THREE_POOL_TOKEN,
-  USDC_ORACLE_ERROR,
-  USDC_ORACLE_TIMEOUT,
-  USDC_USD_FEED,
+  TRI_CRYPTO,
+  TRI_CRYPTO_TOKEN,
+  WBTC_BTC_ORACLE_ERROR,
+  WETH_ORACLE_TIMEOUT,
+  WBTC_BTC_FEED,
+  WBTC_ORACLE_TIMEOUT,
+  WETH_USD_FEED,
+  WETH_ORACLE_ERROR,
   USDT_ORACLE_ERROR,
   USDT_ORACLE_TIMEOUT,
   USDT_USD_FEED,
@@ -45,19 +48,19 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  const w3PoolCollateral = await ethers.getContractAt(
-    'CvxStableCollateral',
-    deployments.collateral.cvx3Pool as string
+  const wTriCrypto = await ethers.getContractAt(
+    'ConvexStakingWrapper',
+    deployments.collateral.cvxTriCrypto as string
   )
 
-  /********  Verify 3Pool plugin  **************************/
+  /********  Verify TriCrypto plugin  **************************/
   await verifyContract(
     chainId,
-    deployments.collateral.cvx3Pool,
+    deployments.collateral.cvxTriCrypto,
     [
       {
-        erc20: await w3PoolCollateral.erc20(),
-        targetName: ethers.utils.formatBytes32String('USD'),
+        erc20: wTriCrypto.address,
+        targetName: ethers.utils.formatBytes32String('TRICRYPTO'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
         oracleError: bn('1'), // unused but cannot be zero
@@ -69,19 +72,23 @@ async function main() {
       revenueHiding.toString(),
       {
         nTokens: 3,
-        curvePool: THREE_POOL,
+        curvePool: TRI_CRYPTO,
         poolType: CurvePoolType.Plain,
-        feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED]],
+        feeds: [[USDT_USD_FEED], [WBTC_BTC_FEED, BTC_USD_FEED], [WETH_USD_FEED]],
         oracleTimeouts: [
-          [oracleTimeout(chainId, DAI_ORACLE_TIMEOUT)],
-          [oracleTimeout(chainId, USDC_ORACLE_TIMEOUT)],
           [oracleTimeout(chainId, USDT_ORACLE_TIMEOUT)],
+          [oracleTimeout(chainId, WBTC_ORACLE_TIMEOUT), oracleTimeout(chainId, BTC_ORACLE_TIMEOUT)],
+          [oracleTimeout(chainId, WETH_ORACLE_TIMEOUT)],
         ],
-        oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
-        lpToken: THREE_POOL_TOKEN,
+        oracleErrors: [
+          [USDT_ORACLE_ERROR],
+          [WBTC_BTC_ORACLE_ERROR, BTC_USD_ORACLE_ERROR],
+          [WETH_ORACLE_ERROR],
+        ],
+        lpToken: TRI_CRYPTO_TOKEN,
       },
     ],
-    'contracts/plugins/assets/convex/CvxStableCollateral.sol:CvxStableCollateral'
+    'contracts/plugins/assets/convex/CvxVolatileCollateral.sol:CvxVolatileCollateral'
   )
 }
 

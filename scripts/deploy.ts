@@ -46,6 +46,7 @@ async function main() {
     'phase2-assets/collaterals/deploy_flux_finance_collateral.ts',
     'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
     'phase2-assets/collaterals/deploy_convex_stable_plugin.ts',
+    'phase2-assets/collaterals/deploy_convex_volatile_plugin.ts',
     'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
     // ===============================================
     // These phase3 scripts will not deploy functional RTokens or Governance. They deploy bricked

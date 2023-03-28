@@ -9,6 +9,7 @@ import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
+  IDeployments,
   getDeploymentFilename,
   fileExists,
 } from '../../common'
@@ -54,6 +55,8 @@ async function main() {
   if (!fileExists(phase1File)) {
     throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
   }
+  const deployments = <IDeployments>getDeploymentFile(phase1File)
+
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
@@ -62,9 +65,7 @@ async function main() {
 
   /********  Deploy Convex Stable Pool for 3pool  **************************/
 
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const CvxMining = await CvxMiningFactory.deploy()
-
+  const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
   const CvxStableCollateralFactory = await hre.ethers.getContractFactory('CvxStableCollateral')
   const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
     libraries: { CvxMining: CvxMining.address },

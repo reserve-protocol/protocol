@@ -57,6 +57,7 @@ export interface IFeeds {
 export interface IPlugins {
   cvx3Pool?: string
   cvxeUSDFRAXBP?: string
+  cvxTriCrypto?: string
 }
 
 interface INetworkConfig {

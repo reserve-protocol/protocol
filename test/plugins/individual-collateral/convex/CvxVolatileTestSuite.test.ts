@@ -35,6 +35,7 @@ import {
   TRI_CRYPTO_TOKEN,
   WBTC_BTC_FEED,
   BTC_USD_FEED,
+  BTC_ORACLE_TIMEOUT,
   WETH_USD_FEED,
   WBTC_BTC_ORACLE_ERROR,
   WBTC_ORACLE_TIMEOUT,
@@ -110,7 +111,7 @@ export const defaultCvxVolatileCollateralOpts: CvxVolatileCollateralOpts = {
   feeds: [[USDT_USD_FEED], [WBTC_BTC_FEED, BTC_USD_FEED], [WETH_USD_FEED]],
   oracleTimeouts: [
     [USDT_ORACLE_TIMEOUT],
-    [WBTC_ORACLE_TIMEOUT, WBTC_ORACLE_TIMEOUT],
+    [WBTC_ORACLE_TIMEOUT, BTC_ORACLE_TIMEOUT],
     [WETH_ORACLE_TIMEOUT],
   ],
   oracleErrors: [

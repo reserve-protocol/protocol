@@ -46,8 +46,9 @@ async function main() {
     '7_verify_rToken.ts',
     '8_verify_governance.ts',
     'collateral-plugins/verify_convex_stable_plugin.ts',
-    'collateral-plugins/verify_cusdcv3_collateral.ts',
+    'collateral-plugins/verify_convex_volatile_plugin.ts',
     'collateral-plugins/verify_eusd_fraxbp_collateral.ts',
+    'collateral-plugins/verify_cusdcv3_collateral.ts',
     'collateral-plugins/verify_reth_collateral.ts',
     'collateral-plugins/verify_wsteth_collateral.ts',
   ]

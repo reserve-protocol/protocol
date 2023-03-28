@@ -27,6 +27,7 @@ export const FRAX_ORACLE_ERROR = fp('0.01')
 export const WBTC_BTC_FEED = networkConfig['1'].chainlinkFeeds.WBTC as string
 export const BTC_USD_FEED = networkConfig['1'].chainlinkFeeds.BTC as string
 export const WBTC_ORACLE_TIMEOUT = bn('86400')
+export const BTC_ORACLE_TIMEOUT = bn('3600')
 export const WBTC_BTC_ORACLE_ERROR = fp('0.02')
 export const BTC_USD_ORACLE_ERROR = fp('0.005')
 
