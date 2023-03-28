@@ -129,4 +129,7 @@ interface IFacadeRead {
     /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
     /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset
     function price(IRToken rToken) external view returns (uint192 low, uint192 high);
+
+    /// @return erc20s The list of ERC20s that have auctions that can be settled, for given trader
+    function auctionsSettleable(ITrading trader) external view returns (IERC20[] memory erc20s);
 }

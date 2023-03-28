@@ -57,6 +57,9 @@ interface ITrading is IComponent, IRewardableComponent {
     /// @return The ongoing trade for a sell token, or the zero address
     function trades(IERC20 sell) external view returns (ITrade);
 
+    /// @return The number of ongoing trades open
+    function tradesOpen() external view returns (uint48);
+
     /// Light wrapper around FixLib.mulDiv to support try-catch
     function mulDivCeil(
         uint192 x,
@@ -71,7 +74,4 @@ interface TestITrading is ITrading {
 
     /// @custom:governance
     function setMinTradeVolume(uint192 val) external;
-
-    /// @return The number of ongoing trades open
-    function tradesOpen() external view returns (uint48);
 }

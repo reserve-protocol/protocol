@@ -356,6 +356,28 @@ contract FacadeRead is IFacadeRead {
         return rToken.main().assetRegistry().toAsset(IERC20(address(rToken))).price();
     }
 
+    /// @return erc20s The list of ERC20s that have auctions that can be settled, for given trader
+    function auctionsSettleable(ITrading trader) external view returns (IERC20[] memory erc20s) {
+        IERC20[] memory allERC20s = trader.main().assetRegistry().erc20s();
+
+        // Calculate which erc20s can have auctions settled
+        uint256 num;
+        IERC20[] memory unfiltered = new IERC20[](allERC20s.length); // will filter down later
+        for (uint256 i = 0; i < allERC20s.length; ++i) {
+            ITrade trade = trader.trades(allERC20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                unfiltered[num] = allERC20s[i];
+                ++num;
+            }
+        }
+
+        // Filter down
+        erc20s = new IERC20[](num);
+        for (uint256 i = 0; i < num; ++i) {
+            erc20s[i] = unfiltered[i];
+        }
+    }
+
     // === Private ===
 
     /// Multiply two fixes, rounding up to FIX_MAX and down to 0
