@@ -12,19 +12,24 @@ There is no fee on withdrawal.
 
 ## Deployment
 
-Deploy the collateral plugin `MaplePoolCollateral.sol` with constructor arguments
+Deploy the collateral plugin `MaplePoolCollateral.sol` with constructor arguments:
 
 ```
-uint192 fallbackPrice_, // 1 USDC
-AggregatorV3Interface chainlinkFeed_, // USDC feed
-IERC20Metadata erc20_, // wrapped staked Goldfinch position
-uint192 maxTradeVolume_, // system default
-uint48 oracleTimeout_, // system default
-bytes32 targetName_, // USD
-uint192 defaultThreshold_, // system default
-uint256 delayUntilDefault_, // system default
-IGoldfinchSeniorPool goldfinch_, // Goldfinch Senior Pool contract
-uint192 allowedDropBasisPoints_ // e.g. 200 = 2%
+struct CollateralConfig {
+    uint48 priceTimeout; // {s} The number of seconds over which saved prices decay
+    AggregatorV3Interface chainlinkFeed; // Feed units: {target/ref}
+    uint192 oracleError; // {1} The % the oracle feed can be off by
+    IERC20Metadata erc20; // The ERC20 of the collateral token
+    uint192 maxTradeVolume; // {UoA} The max trade volume, in UoA
+    uint48 oracleTimeout; // {s} The number of seconds until a oracle value becomes invalid
+    bytes32 targetName; // The bytes32 representation of the target name
+    uint192 defaultThreshold; // {1} A value like 0.05 that represents a deviation tolerance
+    uint48 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
+}
+```
+
+```
+uint192 revenueHiding; // 1e-6 allowed drop, as a ratio of the refPerTok 
 ```
 
 ## Pool Accounting
@@ -45,8 +50,8 @@ Maven11 WETH Pool Contracts:
 | :---: | :---: | :---: | :---: |
 |  LPT  | wETH  |  USD  |  USD  |
 
-The token / shares given to liquidity providers in return for their assets is not named.
-Here I called it `LPT`, for "liquidity provider token".
+The tokens / shares given to liquidity providers in return for their assets are not named.
+Here I called it "LPT", for "liquidity provider token".
 
 It is different from the MPL / xMPL tokens.
 
@@ -75,53 +80,34 @@ Solidity code for the collateral plugin can be found in [`MaplePoolCollateral.so
 
 A number of auxilliary contracts are relied on in this implementation:
 
-#### [UniV3OracleAsset.sol](../assets/UniV3OracleAsset.sol)
+#### [IMaplePool.sol](./vendor/IMaplePool.sol)
 
-The price of GFI is not avaialble through a Chainlink feed. A Uniswap V3 pair for it exists, however, so we use the `UniV3OracleAsset.sol` contract to query the price of GFI in USD.
+#### [AppreciatingFiatCollateral.sol](../AppreciatingFiatCollateral.sol)
 
-#### [GoldfinchStakingWrapper.sol](./GoldfinchStakingWrapper.sol)
-
-GSP only earns GFI rewards when staked in a Synthetix-style staking contract. These positions are not inherently transferable, so we use the `GoldfinchStakingWrapper.sol` contract to wrap the staking positions in ERC20 tokens, which are in turn used as the `erc20` token in the collateral adapter.
-
-#### [RevenueHiding.sol](../assets/RevenueHiding.sol)
-
-Revenue hiding is used in the present implementation to permit a small drop in GSP share price due to any individual borrowers within the Senior Pool defaulting. This is to prevent the collateral adapter from being marked `DISABLED` when the Senior Pool is still for the most part healthy.
-
-In the tests, I initially configure a 2% allowable drop in GSP share price before the collateral adapter is marked `DISABLED`. This is loosely set heuristically, but there is some data to support this. The senior pool comprises a diversified portfolio of 14 borrowers, none of which have defaulted on payments in the history of Goldfinch's operations for the past 1.5 years. A Dune dashboard with detailed metrics is found here https://dune.com/fanhong/goldfinch-finance-credit-monitor.
-
-(credit to dna#9430 for the creating the abstract RevenueHiding contract)
-
-#### refPerTok
-
-The amount of USDC redeemable for each `gspToken` is queried with the pool `sharePrice()` method (e.g. 1.1 `USDC`/`gspToken`). A haircut of 0.5% is applied to this value to account for the withdrawal fee (arriving at the `strictPrice`), with the additional application of revenue hiding discussed above to arrive at `refPerTok`.
+Implements the revenue hiding and the refreshing logic.
 
 ## Relevant External Contracts
 
-### Maven11 USDC Pool Contracts
+### Maven11 Permissionless Pool Contracts
+
+USDC pool:
 
 | Contract | Address | Commit Hash |
 | -------- | ------- | ----------- |
-| Pool                      | [`0xd3cd37a7299B963bbc69592e5Ba933388f70dc88`](https://etherscan.io/address/0xd3cd37a7299B963bbc69592e5Ba933388f70dc88) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
-| PoolManager (Proxy)       | [`0x00d950A41a0d277ed91bF9fD366a5523FEF0371e`](https://etherscan.io/address/0x00d950A41a0d277ed91bF9fD366a5523FEF0371e) | [`proxy-factory @ v1.0.0`](https://github.com/maple-labs/proxy-factory/releases/tag/v1.0.0) |
-| LoanManager (Proxy)       | [`0x74CB3c1938A15e532CC1b465e3B641C2c7e40C2b`](https://etherscan.io/address/0x74CB3c1938A15e532CC1b465e3B641C2c7e40C2b) | [`proxy-factory @ v1.0.0`](https://github.com/maple-labs/proxy-factory/releases/tag/v1.0.0) |
-| WithdrawalManager (Proxy) | [`0x7ED195a0AE212D265511b0978Af577F59876C9BB`](https://etherscan.io/address/0x7ED195a0AE212D265511b0978Af577F59876C9BB) | [`proxy-factory @ v1.0.0`](https://github.com/maple-labs/proxy-factory/releases/tag/v1.0.0) |
-| PoolDelegateCover (Proxy) | [`0x9c74C5147653041239bb31C799c54767D9953f7D`](https://etherscan.io/address/0x9c74C5147653041239bb31C799c54767D9953f7D) | [`proxy-factory @ v1.0.0`](https://github.com/maple-labs/proxy-factory/releases/tag/v1.0.0) |
+| Pool     | [`0xd3cd37a7299B963bbc69592e5Ba933388f70dc88`](https://etherscan.io/address/0xd3cd37a7299B963bbc69592e5Ba933388f70dc88) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
 
-### Maven11 WETH Pool Contracts
+WETH pool:
 
 | Contract | Address | Commit Hash |
 | -------- | ------- | ----------- |
-| Pool                      | [`0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3`](https://etherscan.io/address/0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
-| PoolManager (Proxy)       | [`0x833A5c9Fc016a87419D21B10B64e24082Bd1e49d`](https://etherscan.io/address/0x833A5c9Fc016a87419D21B10B64e24082Bd1e49d) | [`proxy-factory @ v1.0.0`](https://github.com/maple-labs/proxy-factory/releases/tag/v1.0.0) |
-| LoanManager (Proxy)       | [`0x373BDCf21F6a939713d5DE94096ffdb24A406391`](https://etherscan.io/address/0x373BDCf21F6a939713d5DE94096ffdb24A406391) | [`proxy-factory @ v1.0.0`](https://github.com/maple-labs/proxy-factory/releases/tag/v1.0.0) |
-| WithdrawalManager (Proxy) | [`0x1Bb73D6384ae73DA2101a4556a42eaB82803Ef3d`](https://etherscan.io/address/0x1Bb73D6384ae73DA2101a4556a42eaB82803Ef3d) | [`proxy-factory @ v1.0.0`](https://github.com/maple-labs/proxy-factory/releases/tag/v1.0.0) |
-| PoolDelegateCover (Proxy) | [`0xdfDDE84b117f038785A2B1805B10D5C4d616dA08`](https://etherscan.io/address/0xdfDDE84b117f038785A2B1805B10D5C4d616dA08) | [`proxy-factory @ v1.0.0`](https://github.com/maple-labs/proxy-factory/releases/tag/v1.0.0) |
+| Pool     | [`0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3`](https://etherscan.io/address/0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
 
 ### Oracle Contracts
 
 | Contract | Address |
 | -------- | ------- |
 | PriceOracleUSDC         | [`0x5DC5E14be1280E747cD036c089C96744EBF064E7`](https://etherscan.io/address/0x5DC5E14be1280E747cD036c089C96744EBF064E7) |
+| ChainLinkAggregatorUSDC | [`0x8fffffd4afb6115b954bd326cbe7b4ba576818f6`](https://etherscan.io/address/0x8fffffd4afb6115b954bd326cbe7b4ba576818f6) |
 | ChainLinkAggregatorWETH | [`0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419`](https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419) |
 
 ### ERC-20 Contracts
@@ -133,12 +119,11 @@ The amount of USDC redeemable for each `gspToken` is queried with the pool `shar
 | MPL   | [`0x33349B282065b0284d756F0577FB39c158F935e6`](https://etherscan.io/address/0x33349B282065b0284d756F0577FB39c158F935e6) |
 | xMPL  | [`0x4937a209d4cdbd3ecd48857277cfd4da4d82914c`](https://etherscan.io/address/0x4937a209d4cdbd3ecd48857277cfd4da4d82914c) |
 
-
 ## Tests
 
 ### Context
 
-- The unit tests in `GoldfinchCollateral.test.ts` are predicated on `MAINNET_BLOCK = 16122421` as the interface of their staking rewards contract has been recently upgraded.
+- `MAINNET_BLOCK = 16122421`
 
 ## Appendix: Exchange Rate Break-Down
 
@@ -148,8 +133,8 @@ The value can potentially decrease as well as increase during these operations:
 - asset deposit
 - asset withdrawal
 - loan payment
-- loan default / impairment
 - loan interests collection
+- loan default / impairment
 
 Here we'll break down the accounting formulas and track the exchange rate over time.
 The goal is to verify that the RToken requirements are met, determine the conditions of default and assess the health of the pools.
@@ -235,6 +220,12 @@ $$\begin{align}
 
 Similarly to the withdrawal, a deposit keeps the overall exchange rate constant.
 The equations are identical to the ones from the previous paragraph, only the signs of the deltas changed.
+
+#### Fluctuations On Loan Payment
+
+#### Fluctuations On Loan Interest Collection
+
+#### Fluctuations On Loan Default / Impairment
 
 [etherscan-usdc-oracle]: https://etherscan.io/address/0x5DC5E14be1280E747cD036c089C96744EBF064E7
 [maple-code-pool-contract]: https://github.com/maple-labs/pool-v2/blob/main/contracts/Pool.sol
