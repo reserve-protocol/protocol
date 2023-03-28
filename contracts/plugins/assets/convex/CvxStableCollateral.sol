@@ -12,8 +12,13 @@ import "./PoolTokens.sol";
 
 /**
  * @title CvxStableCollateral
- *  This plugin contract is fully general to any number of tokens in a stable pool,
+ *  This plugin contract is fully general to any number of tokens in a plain stable pool,
  *  with between 1 and 2 oracles per each token. Stable means only like-kind pools.
+ *
+ * tok = ConvexStakingWrapper(cvxStablePlainPool)
+ * ref = cvxStablePlainPool pool invariant
+ * tar = USD
+ * UoA = USD
  */
 contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;

@@ -5,7 +5,12 @@ import "./CvxStableCollateral.sol";
 /**
  * @title CvxVolatileCollateral
  *  This plugin contract extends CvxCurveStableCollateral to work for
- *  volatile pools like TriCrypto
+ *  volatile pools like TriCrypto.
+ *
+ * tok = ConvexStakingWrapper(cvxVolatilePlainPool)
+ * ref = cvxVolatilePlainPool pool invariant
+ * tar = cvxVolatilePlainPool pool invariant
+ * UoA = USD
  */
 contract CvxVolatileCollateral is CvxStableCollateral {
     using FixLib for uint192;

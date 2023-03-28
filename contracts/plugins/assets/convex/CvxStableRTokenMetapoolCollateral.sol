@@ -8,6 +8,11 @@ import "./CvxStableMetapoolCollateral.sol";
  * @title CvxStableRTokenMetapoolCollateral
  *  This plugin contract is intended for 2-token stable metapools that
  *  involve RTokens, such as eUSD-fraxBP.
+ *
+ * tok = ConvexStakingWrapper(cvxPairedUSDRToken/USDBasePool)
+ * ref = PairedUSDRToken/USDBasePool pool invariant
+ * tar = USD
+ * UoA = USD
  */
 contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
     using FixLib for uint192;

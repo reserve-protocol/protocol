@@ -17,6 +17,11 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
  * @title CvxStableMetapoolCollateral
  *  This plugin contract is intended for 2-token stable metapools that
  *  DO NOT involve RTokens, such as alUSD-fraxBP.
+ *
+ * tok = ConvexStakingWrapper(PairedUSDToken/USDBasePool)
+ * ref = PairedUSDToken/USDBasePool pool invariant
+ * tar = USD
+ * UoA = USD
  */
 contract CvxStableMetapoolCollateral is CvxStableCollateral {
     using OracleLib for AggregatorV3Interface;
