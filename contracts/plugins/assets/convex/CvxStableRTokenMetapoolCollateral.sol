@@ -53,10 +53,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         // Should include revenue hiding discount in the low discount but not high
 
         // {UoA/pairedTok}
-        (Price memory lastPrice, uint48 savedAt) = rTokenOracle.priceView(
-            IRToken(address(pairedToken))
-        );
-        require(block.timestamp - savedAt <= rTokenOracle.cacheTimeout(), "call refresh()");
+        (Price memory lastPrice, ) = rTokenOracle.priceView(IRToken(address(pairedToken)), false);
 
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lastPrice.low, lastPrice.high);
@@ -88,8 +85,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         returns (uint192 lowPaired, uint192 highPaired)
     {
         // refresh price in oracle if needed
-        (Price memory p, uint48 ts) = rTokenOracle.priceView(IRToken(address(pairedToken)));
-        require(block.timestamp - ts <= rTokenOracle.cacheTimeout(), "call refresh()");
+        (Price memory p, ) = rTokenOracle.priceView(IRToken(address(pairedToken)), false);
         return (p.low, p.high);
     }
 

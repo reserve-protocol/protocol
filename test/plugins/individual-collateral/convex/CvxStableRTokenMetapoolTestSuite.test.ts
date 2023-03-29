@@ -194,7 +194,7 @@ const makeCollateralFixtureContext = (
     )
     const rTokenFeed = <RTokenOracleMock>await RTokenOracleFactory.deploy(bn('3600'))
     await rTokenFeed.price(eUSD, true)
-    const [rTokenPrice] = await rTokenFeed.priceView(eUSD)
+    const [rTokenPrice] = await rTokenFeed.priceView(eUSD, false)
     await rTokenFeed.setPrice(eUSD, rTokenPrice[0], rTokenPrice[1])
 
     const fix = await makeWeUSDFraxBP()
@@ -482,7 +482,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         expect(intermediateHigh).to.be.closeTo(high.mul(106).div(100), fp('1e-2'))
 
         // Update RToken price
-        const [rTokenPrice] = await rTokenFeed.priceView(ctx.eusd.address)
+        const [rTokenPrice] = await rTokenFeed.priceView(ctx.eusd.address, true)
         await rTokenFeed.setPrice(
           ctx.eusd.address,
           rTokenPrice.low.mul(110).div(100),
@@ -656,31 +656,6 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         await resetFork()
       })
 
-      it('enters IFFY state when price becomes stale', async () => {
-        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-        const oracleTimeout = FRAX_ORACLE_TIMEOUT.toNumber()
-        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-        await collateral.refresh()
-        expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-      })
-
-      it('enters IFFY state when _only_ the RToken de-pegs for 72h', async () => {
-        await collateral.refresh()
-        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-        // De-peg RToken to an avg price of $0.9799999, just below threshold of $0.98
-        await rTokenFeed.setPrice(eUSD, fp('0.96'), fp('0.999999'))
-        await collateral.refresh()
-        expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-
-        // Advance 72h
-        await setNextBlockTimestamp(
-          RTOKEN_DELAY_UNTIL_DEFAULT.add(await getLatestBlockTimestamp()).toNumber()
-        )
-        await collateral.refresh()
-        expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-      })
-
       it('enters DISABLED state when refPerTok() decreases', async () => {
         // Check initial state
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -731,6 +706,32 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
         expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
         expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
+      })
+
+      it('enters IFFY state when price becomes stale', async () => {
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+        const oracleTimeout = FRAX_ORACLE_TIMEOUT.toNumber()
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+      })
+
+      it('enters IFFY state when _only_ the RToken de-pegs for 72h', async () => {
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // De-peg RToken to an avg price of $0.9799999, just below threshold of $0.98
+        await rTokenFeed.setPrice(eUSD, fp('0.96'), fp('0.999999'))
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+
+        // Advance 72h
+        await setNextBlockTimestamp(
+          RTOKEN_DELAY_UNTIL_DEFAULT.add(await getLatestBlockTimestamp()).toNumber()
+        )
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
       })
 
       it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
