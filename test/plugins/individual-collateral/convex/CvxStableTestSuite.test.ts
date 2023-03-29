@@ -581,7 +581,7 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e7'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
@@ -604,7 +604,7 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Depeg USDC:USD - Raising price by 20% from 1 to 1.2
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('12e5'))
+        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('1.2e8'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
@@ -627,7 +627,7 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e7'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
