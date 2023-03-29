@@ -137,9 +137,10 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Add `AnkrStakedEthCollateral` + tests + deployment/verification scripts for ankrETH
 - Add FluxFinance collateral tests + deployment/verification scripts for fUSDC, fUSDT, fDAI, and fFRAX
 - Add CompoundV3 `CTokenV3Collateral` + tests + deployment/verification scripts for cUSDCV3
-- Add Convex `CvxStableCollateral` + tests + deployment/verification scripts for Curve 3Pool
-- Add Convex `CvxVolatileCollateral` + tests + deployment/verification scripts for Curve Tricrypto
-- Add Convex `CvxStableRTokenMetapoolCollateral` + tests + deployment/verification scripts for Curve eUSD/fraxBP
+- Add Convex `CvxStableCollateral` + tests + deployment/verification scripts for 3Pool
+- Add Convex `CvxVolatileCollateral` + tests + deployment/verification scripts for Tricrypto
+- Add Convex `CvxStableMetapoolCollateral` + tests + deployment/verification scripts for MIM/3Pool
+- Add Convex `CvxStableRTokenMetapoolCollateral` + tests + deployment/verification scripts for eUSD/fraxBP
 - Add Frax `SFraxEthCollateral` + tests + deployment/verification scripts for sfrxETH
 - Add Lido `LidoStakedEthCollateral` + tests + deployment/verification scripts for wstETH
 - Add RocketPool `RethCollateral` + tests + deployment/verification scripts for rETH
