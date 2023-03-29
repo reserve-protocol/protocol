@@ -19,8 +19,8 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    // In order to provide tighter price estimates this contract uses {UoA/tok} and {ref/target}
-    // price feeds. Here we include them directly and ignore the parent class' chainlinkFeed.
+    // In order to provide tighter price estimates this contract uses {UoA/target} and {ref/target}
+    // price feeds.
 
     AggregatorV3Interface public immutable targetPerRefChainlinkFeed; // {target/ref}
     uint48 public immutable targetPerRefChainlinkTimeout; // {s}
@@ -53,7 +53,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/tok}
+        // {UoA/target}
         uint192 pricePerTok = chainlinkFeed.price(oracleTimeout);
 
         // {target/ref} Get current market peg ({eth/steth})
