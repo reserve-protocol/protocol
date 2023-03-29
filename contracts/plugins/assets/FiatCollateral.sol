@@ -81,7 +81,7 @@ contract FiatCollateral is ICollateral, Asset {
         // Cache constants
         uint192 peg = targetPerRef(); // {target/ref}
 
-        // {target/ref}= {target/ref} * {1}
+        // {target/ref} = {target/ref} * {1}
         uint192 delta = peg.mul(config.defaultThreshold);
         pegBottom = peg - delta;
         pegTop = peg + delta;

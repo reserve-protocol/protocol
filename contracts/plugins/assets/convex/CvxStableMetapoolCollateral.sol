@@ -9,14 +9,9 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
 }
 
 /**
- * DO NOT USE THIS CONTRACT
- * This contract is currently used for inheritance only.
- */
-
-/**
  * @title CvxStableMetapoolCollateral
  *  This plugin contract is intended for 2-token stable metapools that
- *  DO NOT involve RTokens, such as alUSD-fraxBP.
+ *  DO NOT involve RTokens, such as alUSD-fraxBP or MIM-3CRV.
  *
  * tok = ConvexStakingWrapper(PairedUSDToken/USDBasePool)
  * ref = PairedUSDToken/USDBasePool pool invariant
@@ -27,9 +22,13 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    ICurveMetaPool internal immutable metapool; // top-level LP token + CurvePool
+    ICurveMetaPool public immutable metapool; // top-level LP token + CurvePool
 
-    IERC20Metadata internal immutable pairedToken; // the token paired with ptConfig.lpToken
+    IERC20Metadata public immutable pairedToken; // the token paired with ptConfig.lpToken
+
+    uint192 public immutable pairedTokenPegBottom; // {target/ref} pegBottom but for paired token
+
+    uint192 public immutable pairedTokenPegTop; // {target/ref} pegTop but for paired token
 
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout should be set for paired token
     /// @dev config.erc20 should be a IConvexStakingWrapper
@@ -37,11 +36,22 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
-        ICurveMetaPool metapool_
+        ICurveMetaPool metapool_,
+        uint192 pairedTokenDefaultThreshold_
     ) CvxStableCollateral(config, revenueHiding, ptConfig) {
         require(address(metapool_) != address(0), "metapool address is zero");
+        require(
+            pairedTokenDefaultThreshold_ > 0 && pairedTokenDefaultThreshold_ < FIX_ONE,
+            "pairedTokenDefaultThreshold out of bounds"
+        );
         metapool = metapool_;
-        pairedToken = IERC20Metadata(metapool.coins(0)); // like eUSD or alUSD
+        pairedToken = IERC20Metadata(metapool.coins(0)); // like alUSD or MIM
+
+        // {target/ref} = {target/ref} * {1}
+        uint192 peg = targetPerRef(); // {target/ref}
+        uint192 delta = peg.mul(pairedTokenDefaultThreshold_);
+        pairedTokenPegBottom = peg - delta;
+        pairedTokenPegTop = peg + delta;
 
         // Sanity checks we have the correct pool
         assert(address(pairedToken) != address(0));
@@ -68,14 +78,11 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     {
         // Should include revenue hiding discount in the low discount but not high
 
-        uint192 pairedPrice = chainlinkFeed.price(oracleTimeout); // {UoA/pairedTok}
-        uint192 pairedError = pairedPrice.mul(oracleError); // {UoA/pairedTok}
+        // {UoA/pairedTok}
+        (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
 
         // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = metapoolBalancesValue(
-            pairedPrice - pairedError,
-            pairedPrice + pairedError
-        );
+        (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
 
         // discount aumLow by the amount of revenue being hidden
         // {UoA} = {UoA} * {1}
@@ -91,6 +98,17 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         return (low, high, 0);
     }
 
+    /// Can revert, used by `_anyDepeggedOutsidePool()`
+    /// Should not return FIX_MAX for low
+    /// Should only return FIX_MAX for high if low is 0
+    /// @return lowPaired {UoA/pairedTok} The low price estimate of the paired token
+    /// @return highPaired {UoA/pairedTok} The high price estimate of the paired token
+    function tryPairedPrice() public view virtual returns (uint192 lowPaired, uint192 highPaired) {
+        uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/pairedTok}
+        uint192 delta = p.mul(oracleError);
+        return (p - delta, p + delta);
+    }
+
     // === Internal ===
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
@@ -98,11 +116,28 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         return _safeWrap(metapool.get_virtual_price());
     }
 
+    // Check for defaults outside the pool
+    function _anyDepeggedOutsidePool() internal view virtual override returns (bool) {
+        try this.tryPairedPrice() returns (uint192 low, uint192 high) {
+            // {UoA/tok} = {UoA/tok} + {UoA/tok}
+            uint192 mid = (low + high) / 2;
+
+            // If the price is below the default-threshold price, default eventually
+            // uint192(+/-) is the same as Fix.plus/minus
+            if (mid < pairedTokenPegBottom || mid > pairedTokenPegTop) return true;
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return true;
+        }
+        return false;
+    }
+
     /// @param lowPaired {UoA/pairedTok}
     /// @param highPaired {UoA/pairedTok}
     /// @return aumLow {UoA}
     /// @return aumHigh {UoA}
-    function metapoolBalancesValue(uint192 lowPaired, uint192 highPaired)
+    function _metapoolBalancesValue(uint192 lowPaired, uint192 highPaired)
         internal
         view
         returns (uint192 aumLow, uint192 aumHigh)

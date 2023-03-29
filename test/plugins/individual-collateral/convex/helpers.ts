@@ -14,6 +14,7 @@ import {
   DAI,
   USDC,
   USDT,
+  MIM,
   THREE_POOL,
   THREE_POOL_TOKEN,
   THREE_POOL_CVX_POOL_ID,
@@ -29,6 +30,9 @@ import {
   eUSD_FRAX_BP,
   eUSD_FRAX_BP_POOL_ID,
   eUSD_FRAX_HOLDER,
+  MIM_THREE_POOL,
+  MIM_THREE_POOL_POOL_ID,
+  MIM_THREE_POOL_HOLDER,
 } from './constants'
 
 interface WrappedPoolBase {
@@ -199,6 +203,72 @@ export const makeWeUSDFraxBP = async (): Promise<WrappedEUSDFraxBPFixture> => {
 
 export const mintWeUSDFraxBP = async (
   ctx: WrappedEUSDFraxBPFixture,
+  amount: BigNumberish,
+  user: SignerWithAddress,
+  recipient: string,
+  holder: string
+) => {
+  await whileImpersonating(holder, async (signer) => {
+    await ctx.realMetapool.connect(signer).transfer(user.address, amount)
+  })
+
+  await ctx.realMetapool.connect(user).approve(ctx.wPool.address, amount)
+  await ctx.wPool.connect(user).deposit(amount, recipient)
+}
+
+// === MIM + 3Pool
+
+export interface WrappedMIM3PoolFixture {
+  dai: ERC20Mock
+  usdc: ERC20Mock
+  usdt: ERC20Mock
+  mim: ERC20Mock
+  metapool: CurveMetapoolMock
+  realMetapool: CurveMetapoolMock
+  curvePool: ICurvePool
+  wPool: ConvexStakingWrapper
+}
+
+export const makeWMIM3Pool = async (): Promise<WrappedMIM3PoolFixture> => {
+  // Use real reference ERC20s
+  const dai = await ethers.getContractAt('ERC20Mock', DAI)
+  const usdc = await ethers.getContractAt('ERC20Mock', USDC)
+  const usdt = await ethers.getContractAt('ERC20Mock', USDT)
+  const mim = await ethers.getContractAt('ERC20Mock', MIM)
+
+  // Use real MIM pool
+  const curvePool = await ethers.getContractAt('ICurvePool', THREE_POOL)
+
+  // Use mock curvePool seeded with initial balances
+  const CurveMetapoolMockFactory = await ethers.getContractFactory('CurveMetapoolMock')
+  const realMetapool = <CurveMetapoolMock>(
+    await ethers.getContractAt('CurveMetapoolMock', MIM_THREE_POOL)
+  )
+  const metapool = <CurveMetapoolMock>(
+    await CurveMetapoolMockFactory.deploy(
+      [await realMetapool.balances(0), await realMetapool.balances(1)],
+      [await realMetapool.coins(0), await realMetapool.coins(1)]
+    )
+  )
+  await metapool.setVirtualPrice(await realMetapool.get_virtual_price())
+  await metapool.mint(MIM_THREE_POOL_HOLDER, await realMetapool.balanceOf(MIM_THREE_POOL_HOLDER))
+
+  // Deploy external cvxMining lib
+  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
+  const cvxMining = await CvxMiningFactory.deploy()
+
+  // Deploy Wrapper
+  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
+    libraries: { CvxMining: cvxMining.address },
+  })
+  const wPool = await wrapperFactory.deploy()
+  await wPool.initialize(MIM_THREE_POOL_POOL_ID)
+
+  return { dai, usdc, usdt, mim, metapool, realMetapool, curvePool, wPool }
+}
+
+export const mintWMIM3Pool = async (
+  ctx: WrappedMIM3PoolFixture,
   amount: BigNumberish,
   user: SignerWithAddress,
   recipient: string,

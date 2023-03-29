@@ -117,7 +117,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
-            if (low == 0 || _anyDepegged()) {
+            if (low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
                 markStatus(CollateralStatus.IFFY);
             } else {
                 markStatus(CollateralStatus.SOUND);
@@ -155,7 +155,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     }
 
     // Override this later to implement non-stable pools
-    function _anyDepegged() internal view virtual returns (bool) {
+    function _anyDepeggedInPool() internal view virtual returns (bool) {
         // Check reference token oracles
         for (uint8 i = 0; i < nTokens; i++) {
             try this.tokenPrice(i) returns (uint192 low, uint192 high) {
@@ -172,6 +172,11 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
             }
         }
 
+        return false;
+    }
+
+    // Override this in child classes to implement metapools
+    function _anyDepeggedOutsidePool() internal view virtual returns (bool) {
         return false;
     }
 }

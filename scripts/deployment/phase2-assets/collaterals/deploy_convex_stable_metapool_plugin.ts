@@ -2,9 +2,8 @@ import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
-import { bn } from '../../../../common/numbers'
 import { expect } from 'chai'
-import { CollateralStatus, ONE_ADDRESS } from '../../../../common/constants'
+import { CollateralStatus } from '../../../../common/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -13,28 +12,34 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { CvxStableRTokenMetapoolCollateral } from '../../../../typechain'
+import { CvxStableMetapoolCollateral } from '../../../../typechain'
 import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CurvePoolType,
-  DEFAULT_THRESHOLD,
-  eUSD_FRAX_BP,
-  eUSD_FRAX_BP_POOL_ID,
-  FRAX_BP,
-  FRAX_BP_TOKEN,
-  FRAX_ORACLE_ERROR,
-  FRAX_ORACLE_TIMEOUT,
-  FRAX_USD_FEED,
+  DELAY_UNTIL_DEFAULT,
+  MIM_DEFAULT_THRESHOLD,
+  MIM_THREE_POOL,
+  MIM_THREE_POOL_POOL_ID,
+  MIM_USD_FEED,
+  MIM_ORACLE_ERROR,
+  MIM_ORACLE_TIMEOUT,
   MAX_TRADE_VOL,
+  THREE_POOL_DEFAULT_THRESHOLD,
+  THREE_POOL,
+  THREE_POOL_TOKEN,
   PRICE_TIMEOUT,
-  RTOKEN_DELAY_UNTIL_DEFAULT,
-  RTOKEN_ORACLE,
   USDC_ORACLE_ERROR,
   USDC_ORACLE_TIMEOUT,
   USDC_USD_FEED,
+  DAI_ORACLE_ERROR,
+  DAI_ORACLE_TIMEOUT,
+  DAI_USD_FEED,
+  USDT_ORACLE_ERROR,
+  USDT_ORACLE_TIMEOUT,
+  USDT_USD_FEED,
 } from '../../../../test/plugins/individual-collateral/convex/constants'
 
-// This file specifically deploys Convex RToken Metapool Plugin for eUSD/fraxBP
+// This file specifically deploys Convex Metapool Plugin for MIM/3Pool
 
 async function main() {
   // ==== Read Configuration ====
@@ -42,7 +47,7 @@ async function main() {
 
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying CvxStableRTokenMetapoolCollateral to network ${hre.network.name} (${chainId})
+  console.log(`Deploying CvxStableMetapoolCollateral to network ${hre.network.name} (${chainId})
     with burner account: ${deployer.address}`)
 
   if (!networkConfig[chainId]) {
@@ -62,49 +67,49 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy Convex Stable Metapool for eUSD/fraxBP  **************************/
+  /********  Deploy Convex Stable Metapool for MIM/3Pool  **************************/
 
   const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
   const CvxStableCollateralFactory = await hre.ethers.getContractFactory(
-    'CvxStableRTokenMetapoolCollateral'
+    'CvxStableMetapoolCollateral'
   )
   const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
     libraries: { CvxMining: CvxMining.address },
   })
 
   const wPool = await ConvexStakingWrapperFactory.deploy()
-  await wPool.initialize(eUSD_FRAX_BP_POOL_ID)
+  await wPool.initialize(MIM_THREE_POOL_POOL_ID)
 
-  const collateral = <CvxStableRTokenMetapoolCollateral>await CvxStableCollateralFactory.connect(
+  const collateral = <CvxStableMetapoolCollateral>await CvxStableCollateralFactory.connect(
     deployer
   ).deploy(
     {
       erc20: wPool.address,
       targetName: ethers.utils.formatBytes32String('USD'),
       priceTimeout: PRICE_TIMEOUT,
-      chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
-      oracleError: bn('1'), // unused but cannot be zero
-      oracleTimeout: bn('1'), // unused but cannot be zero
+      chainlinkFeed: MIM_USD_FEED,
+      oracleError: MIM_ORACLE_ERROR,
+      oracleTimeout: MIM_ORACLE_TIMEOUT,
       maxTradeVolume: MAX_TRADE_VOL,
-      defaultThreshold: DEFAULT_THRESHOLD, // 2%: 1% error on FRAX oracle + 1% base defaultThreshold
-      delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
+      defaultThreshold: THREE_POOL_DEFAULT_THRESHOLD, // 1.25%
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
     },
     revenueHiding.toString(),
     {
-      nTokens: 2,
-      curvePool: FRAX_BP,
+      nTokens: 3,
+      curvePool: THREE_POOL,
       poolType: CurvePoolType.Plain,
-      feeds: [[FRAX_USD_FEED], [USDC_USD_FEED]],
+      feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED]],
       oracleTimeouts: [
-        [oracleTimeout(chainId, FRAX_ORACLE_TIMEOUT)],
+        [oracleTimeout(chainId, DAI_ORACLE_TIMEOUT)],
         [oracleTimeout(chainId, USDC_ORACLE_TIMEOUT)],
+        [oracleTimeout(chainId, USDT_ORACLE_TIMEOUT)],
       ],
-      oracleErrors: [[FRAX_ORACLE_ERROR], [USDC_ORACLE_ERROR]],
-      lpToken: FRAX_BP_TOKEN,
+      oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
+      lpToken: THREE_POOL_TOKEN,
     },
-    eUSD_FRAX_BP,
-    DEFAULT_THRESHOLD, // 2%
-    RTOKEN_ORACLE
+    MIM_THREE_POOL,
+    MIM_DEFAULT_THRESHOLD
   )
   await collateral.deployed()
   await collateral.refresh()
@@ -114,7 +119,7 @@ async function main() {
     `Deployed Convex RToken Metapool Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
-  assetCollDeployments.collateral.cvxeUSDFRAXBP = collateral.address
+  assetCollDeployments.collateral.cvxMIM3Pool = collateral.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

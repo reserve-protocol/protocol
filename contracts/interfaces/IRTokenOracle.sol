@@ -19,9 +19,13 @@ interface IRTokenOracle {
         returns (Price memory price, uint48 timestamp);
 
     /// Lookup price by rToken without refresh
+    /// @param allowStalePrice If false, requires the returned price is within the cacheTimeout
     /// @return price {UoA/rTok} The saved price
     /// @return timestamp {s} The timestamp at which price was saved
-    function priceView(IRToken rToken) external view returns (Price memory price, uint48 timestamp);
+    function priceView(IRToken rToken, bool allowStalePrice)
+        external
+        view
+        returns (Price memory price, uint48 timestamp);
 
     /// @return {s} The cache timeout for the oracle
     function cacheTimeout() external view returns (uint48);

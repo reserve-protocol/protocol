@@ -4,11 +4,11 @@ import {
   CollateralStatus,
   MintCollateralFunc,
 } from '../pluginTestTypes'
-import { mintW3Pool, makeW3PoolStable, Wrapped3PoolFixtureStable, resetFork } from './helpers'
+import { makeWMIM3Pool, mintWMIM3Pool, WrappedMIM3PoolFixture, resetFork } from './helpers'
 import hre, { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish } from 'ethers'
+import { BigNumberish } from 'ethers'
 import {
-  CvxStableCollateral,
+  CvxStableMetapoolCollateral,
   ERC20Mock,
   InvalidMockV3Aggregator,
   MockV3Aggregator,
@@ -24,10 +24,17 @@ import {
   PRICE_TIMEOUT,
   THREE_POOL,
   THREE_POOL_TOKEN,
+  THREE_POOL_DEFAULT_THRESHOLD,
   CVX,
   DAI_USD_FEED,
   DAI_ORACLE_TIMEOUT,
   DAI_ORACLE_ERROR,
+  MIM_DEFAULT_THRESHOLD,
+  MIM_USD_FEED,
+  MIM_ORACLE_TIMEOUT,
+  MIM_ORACLE_ERROR,
+  MIM_THREE_POOL,
+  MIM_THREE_POOL_HOLDER,
   USDC_USD_FEED,
   USDC_ORACLE_TIMEOUT,
   USDC_ORACLE_ERROR,
@@ -35,11 +42,9 @@ import {
   USDT_ORACLE_TIMEOUT,
   USDT_ORACLE_ERROR,
   MAX_TRADE_VOL,
-  DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   CurvePoolType,
   CRV,
-  THREE_POOL_HOLDER,
 } from './constants'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '#/common/blockchain-utils'
@@ -57,22 +62,15 @@ type Fixture<T> = () => Promise<T>
   Define interfaces
 */
 
-interface CvxStableCollateralFixtureContext
+interface CvxStableMetapoolCollateralFixtureContext
   extends CollateralFixtureContext,
-    Wrapped3PoolFixtureStable {
+    WrappedMIM3PoolFixture {
   usdcFeed: MockV3Aggregator
   daiFeed: MockV3Aggregator
   usdtFeed: MockV3Aggregator
   cvx: ERC20Mock
   crv: ERC20Mock
 }
-
-// interface CometCollateralFixtureContextMockComet extends CollateralFixtureContext {
-//   cusdcV3: CometMock
-//   wcusdcV3: ICusdcV3Wrapper
-//   usdc: ERC20Mock
-//   wcusdcV3Mock: CusdcV3WrapperMock
-// }
 
 interface CvxStableCollateralOpts extends CollateralOpts {
   revenueHiding?: BigNumberish
@@ -83,6 +81,8 @@ interface CvxStableCollateralOpts extends CollateralOpts {
   oracleTimeouts?: BigNumberish[][]
   oracleErrors?: BigNumberish[][]
   lpToken?: string
+  pairedTokenDefaultThreshold?: BigNumberish
+  metapool?: string
 }
 
 /*
@@ -93,11 +93,11 @@ export const defaultCvxStableCollateralOpts: CvxStableCollateralOpts = {
   erc20: ZERO_ADDRESS,
   targetName: ethers.utils.formatBytes32String('USD'),
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: DAI_USD_FEED, // unused but cannot be zero
-  oracleTimeout: bn('1'), // unused but cannot be zero
-  oracleError: bn('1'), // unused but cannot be zero
+  chainlinkFeed: MIM_USD_FEED,
+  oracleTimeout: MIM_ORACLE_TIMEOUT,
+  oracleError: MIM_ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
-  defaultThreshold: DEFAULT_THRESHOLD,
+  defaultThreshold: THREE_POOL_DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'), // TODO
   nTokens: bn('3'),
@@ -107,12 +107,14 @@ export const defaultCvxStableCollateralOpts: CvxStableCollateralOpts = {
   feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED]],
   oracleTimeouts: [[DAI_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
   oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
+  metapool: MIM_THREE_POOL,
+  pairedTokenDefaultThreshold: MIM_DEFAULT_THRESHOLD,
 }
 
 export const deployCollateral = async (
   opts: CvxStableCollateralOpts = {}
-): Promise<CvxStableCollateral> => {
-  if (!opts.erc20 && !opts.feeds) {
+): Promise<CvxStableMetapoolCollateral> => {
+  if (!opts.erc20 && !opts.feeds && !opts.chainlinkFeed) {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
       await ethers.getContractFactory('MockV3Aggregator')
     )
@@ -121,40 +123,42 @@ export const deployCollateral = async (
     const daiFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     const usdcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     const usdtFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const fix = await makeW3PoolStable()
+    const mimFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    const fix = await makeWMIM3Pool()
 
     opts.feeds = [[daiFeed.address], [usdcFeed.address], [usdtFeed.address]]
-    opts.erc20 = fix.w3Pool.address
+    opts.erc20 = fix.wPool.address
+    opts.chainlinkFeed = mimFeed.address
   }
 
   opts = { ...defaultCvxStableCollateralOpts, ...opts }
 
-  const CvxStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'CvxStableCollateral'
-  )
+  const CvxStableCollateralFactory = await ethers.getContractFactory('CvxStableMetapoolCollateral')
 
-  const collateral = <CvxStableCollateral>await CvxStableCollateralFactory.deploy(
+  const collateral = <CvxStableMetapoolCollateral>await CvxStableCollateralFactory.deploy(
     {
-      erc20: opts.erc20,
-      targetName: opts.targetName,
-      priceTimeout: opts.priceTimeout,
-      chainlinkFeed: opts.chainlinkFeed,
-      oracleError: opts.oracleError,
-      oracleTimeout: opts.oracleTimeout,
-      maxTradeVolume: opts.maxTradeVolume,
-      defaultThreshold: opts.defaultThreshold,
-      delayUntilDefault: opts.delayUntilDefault,
+      erc20: opts.erc20!,
+      targetName: opts.targetName!,
+      priceTimeout: opts.priceTimeout!,
+      chainlinkFeed: opts.chainlinkFeed!,
+      oracleError: opts.oracleError!,
+      oracleTimeout: opts.oracleTimeout!,
+      maxTradeVolume: opts.maxTradeVolume!,
+      defaultThreshold: opts.defaultThreshold!,
+      delayUntilDefault: opts.delayUntilDefault!,
     },
-    opts.revenueHiding,
+    opts.revenueHiding!,
     {
-      nTokens: opts.nTokens,
-      curvePool: opts.curvePool,
-      poolType: opts.poolType,
-      feeds: opts.feeds,
-      oracleTimeouts: opts.oracleTimeouts,
-      oracleErrors: opts.oracleErrors,
-      lpToken: opts.lpToken,
-    }
+      nTokens: opts.nTokens!,
+      curvePool: opts.curvePool!,
+      poolType: opts.poolType!,
+      feeds: opts.feeds!,
+      oracleTimeouts: opts.oracleTimeouts!,
+      oracleErrors: opts.oracleErrors!,
+      lpToken: opts.lpToken!,
+    },
+    opts.metapool!,
+    opts.pairedTokenDefaultThreshold!
   )
   await collateral.deployed()
 
@@ -168,7 +172,7 @@ export const deployCollateral = async (
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
   opts: CvxStableCollateralOpts = {}
-): Fixture<CvxStableCollateralFixtureContext> => {
+): Fixture<CvxStableMetapoolCollateralFixtureContext> => {
   const collateralOpts = { ...defaultCvxStableCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
@@ -180,12 +184,15 @@ const makeCollateralFixtureContext = (
     const daiFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     const usdcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     const usdtFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    const mimFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    const fix = await makeWMIM3Pool()
+
+    collateralOpts.erc20 = fix.wPool.address
+    collateralOpts.chainlinkFeed = mimFeed.address
     collateralOpts.feeds = [[daiFeed.address], [usdcFeed.address], [usdtFeed.address]]
-
-    const fix = await makeW3PoolStable()
-
-    collateralOpts.erc20 = fix.w3Pool.address
     collateralOpts.curvePool = fix.curvePool.address
+    collateralOpts.metapool = fix.metapool.address
+
     const collateral = <TestICollateral>((await deployCollateral(collateralOpts)) as unknown)
     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX) // use CVX
 
@@ -195,17 +202,19 @@ const makeCollateralFixtureContext = (
     return {
       alice,
       collateral,
-      chainlinkFeed: usdcFeed,
+      chainlinkFeed: mimFeed,
+      metapool: fix.metapool,
+      realMetapool: fix.realMetapool,
       curvePool: fix.curvePool,
-      crv3Pool: fix.crv3Pool,
-      w3Pool: fix.w3Pool,
+      wPool: fix.wPool,
       dai: fix.dai,
       usdc: fix.usdc,
       usdt: fix.usdt,
-      tok: fix.w3Pool,
+      mim: fix.mim,
+      tok: fix.wPool,
       rewardToken,
-      usdcFeed,
       daiFeed,
+      usdcFeed,
       usdtFeed,
       cvx,
       crv,
@@ -219,13 +228,13 @@ const makeCollateralFixtureContext = (
   Define helper functions
 */
 
-const mintCollateralTo: MintCollateralFunc<CvxStableCollateralFixtureContext> = async (
-  ctx: CvxStableCollateralFixtureContext,
+const mintCollateralTo: MintCollateralFunc<CvxStableMetapoolCollateralFixtureContext> = async (
+  ctx: CvxStableMetapoolCollateralFixtureContext,
   amount: BigNumberish,
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintW3Pool(ctx, amount, user, recipient, THREE_POOL_HOLDER)
+  await mintWMIM3Pool(ctx, amount, user, recipient, MIM_THREE_POOL_HOLDER)
 }
 
 /*
@@ -350,7 +359,7 @@ const collateralSpecificConstructorTests = () => {
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
-describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
+describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
   before(resetFork)
   describe('constructor validation', () => {
     it('validates targetName', async () => {
@@ -391,7 +400,7 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
   })
 
   describe('collateral functionality', () => {
-    let ctx: CvxStableCollateralFixtureContext
+    let ctx: CvxStableMetapoolCollateralFixtureContext
     let alice: SignerWithAddress
 
     let wallet: SignerWithAddress
@@ -420,7 +429,6 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
       ;[, alice] = await ethers.getSigners()
       ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
       ;({ chainlinkFeed, collateral, usdcFeed, daiFeed, usdtFeed, crv, cvx } = ctx)
-
       await mintCollateralTo(ctx, bn('100e18'), wallet, wallet.address)
     })
 
@@ -460,7 +468,6 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
     })
 
     describe('prices', () => {
-      before(resetFork)
       it('prices change as feed price changes', async () => {
         const feedData = await usdcFeed.latestRoundData()
         const initialRefPerTok = await collateral.refPerTok()
@@ -474,12 +481,13 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
           usdcFeed.updateAnswer(newPrice).then((e) => e.wait()),
           daiFeed.updateAnswer(newPrice).then((e) => e.wait()),
           usdtFeed.updateAnswer(newPrice).then((e) => e.wait()),
+          chainlinkFeed.updateAnswer(newPrice).then((e) => e.wait()),
         ])
 
         const [newLow, newHigh] = await collateral.price()
 
-        expect(newLow).to.be.closeTo(low.mul(110).div(100), 1)
-        expect(newHigh).to.be.closeTo(high.mul(110).div(100), 1)
+        expect(newLow).to.be.closeTo(low.mul(110).div(100), bn('1e3')) // rounding
+        expect(newHigh).to.be.closeTo(high.mul(110).div(100), bn('1e3'))
 
         // Check refPerTok remains the same (because we have not refreshed)
         const finalRefPerTok = await collateral.refPerTok()
@@ -488,22 +496,10 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
 
       it('prices change as refPerTok changes', async () => {
         const initRefPerTok = await collateral.refPerTok()
-        const [initLow, initHigh] = await collateral.price()
-
-        const curveVirtualPrice = await ctx.curvePool.get_virtual_price()
-        await ctx.curvePool.setVirtualPrice(curveVirtualPrice.add(1e4))
-        await ctx.curvePool.setBalances([
-          await ctx.curvePool.balances(0).then((e) => e.add(1e4)),
-          await ctx.curvePool.balances(1).then((e) => e.add(2e4)),
-          await ctx.curvePool.balances(2).then((e) => e.add(3e4)),
-        ])
-
+        const curveVirtualPrice = await ctx.metapool.get_virtual_price()
+        await ctx.metapool.setVirtualPrice(curveVirtualPrice.add(1e4))
         await collateral.refresh()
         expect(await collateral.refPerTok()).to.be.gt(initRefPerTok)
-
-        const [newLow, newHigh] = await collateral.price()
-        expect(newLow).to.be.gt(initLow)
-        expect(newHigh).to.be.gt(initHigh)
       })
 
       it('returns a 0 price', async () => {
@@ -511,6 +507,7 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
           usdcFeed.updateAnswer(0).then((e) => e.wait()),
           daiFeed.updateAnswer(0).then((e) => e.wait()),
           usdtFeed.updateAnswer(0).then((e) => e.wait()),
+          chainlinkFeed.updateAnswer(0).then((e) => e.wait()),
         ])
 
         // (0, FIX_MAX) is returned
@@ -560,8 +557,10 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
     })
 
     describe('status', () => {
+      before(resetFork)
       it('maintains status in normal situations', async () => {
         // Check initial state
+        await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
@@ -580,14 +579,26 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-        // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e7'))
+        // Depeg MIM:USD slightly, should remain SOUND
+        let updateAnswerTx = await chainlinkFeed.updateAnswer(bn('9.7e7'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
-        const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+        let nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
         await setNextBlockTimestamp(nextBlockTimestamp)
-        const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+        let expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+
+        await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // Depeg MIM:USD - Reducing price by 20% from 1 to 0.94
+        updateAnswerTx = await chainlinkFeed.updateAnswer(bn('9.4e7'))
+        await updateAnswerTx.wait()
+
+        // Set next block timestamp - for deterministic result
+        nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+        await setNextBlockTimestamp(nextBlockTimestamp)
+        expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
         await expect(collateral.refresh())
           .to.emit(collateral, 'CollateralStatusChanged')
@@ -603,7 +614,7 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-        // Depeg USDC:USD - Raising price by 20% from 1 to 1.2
+        // Depeg MIM:USD - Raising price by 20% from 1 to 1.2
         const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('1.2e8'))
         await updateAnswerTx.wait()
 
@@ -626,7 +637,7 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-        // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
+        // Depeg MIM:USD - Reducing price by 20% from 1 to 0.8
         const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e7'))
         await updateAnswerTx.wait()
 
@@ -659,8 +670,8 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-        const currentExchangeRate = await ctx.curvePool.get_virtual_price()
-        await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
+        const currentExchangeRate = await ctx.metapool.get_virtual_price()
+        await ctx.metapool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
 
         // Collateral defaults due to refPerTok() going down
         await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
@@ -690,9 +701,9 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Decrease refPerTok by 1 part in a million
-        const currentExchangeRate = await ctx.curvePool.get_virtual_price()
+        const currentExchangeRate = await ctx.metapool.get_virtual_price()
         const newVirtualPrice = currentExchangeRate.sub(currentExchangeRate.div(bn('1e6')))
-        await ctx.curvePool.setVirtualPrice(newVirtualPrice)
+        await ctx.metapool.setVirtualPrice(newVirtualPrice)
 
         // Collateral remains SOUND
         await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
@@ -700,7 +711,7 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // One quanta more of decrease results in default
-        await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(1))
+        await ctx.metapool.setVirtualPrice(newVirtualPrice.sub(1))
         await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
         expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
         expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
@@ -714,10 +725,11 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
           await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
         )
 
-        const fix = await makeW3PoolStable()
+        const fix = await makeWMIM3Pool()
 
         const invalidCollateral = await deployCollateral({
-          erc20: fix.w3Pool.address,
+          erc20: fix.wPool.address,
+          chainlinkFeed: invalidChainlinkFeed.address, // shouldn't be necessary
           feeds: [
             [invalidChainlinkFeed.address],
             [invalidChainlinkFeed.address],

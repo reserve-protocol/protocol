@@ -14,6 +14,7 @@ export interface ITokens {
   TUSD?: string
   BUSD?: string
   FRAX?: string
+  MIM?: string
   eUSD?: string
   aDAI?: string
   aUSDC?: string
@@ -58,6 +59,7 @@ export interface IPlugins {
   cvx3Pool?: string
   cvxeUSDFRAXBP?: string
   cvxTriCrypto?: string
+  cvxMIM3Pool?: string
 }
 
 interface INetworkConfig {
@@ -90,6 +92,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDP: '0x8E870D67F660D95d5be530380D0eC0bd388289E1',
       TUSD: '0x0000000000085d4780B73119b644AE5ecd22b376',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
+      MIM: '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3',
       eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
@@ -135,6 +138,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDP: '0x09023c0DA49Aaf8fc3fA3ADF34C6A7016D38D5e3',
       TUSD: '0xec746eCF986E2927Abd291a2A1716c940100f8Ba',
       FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
+      MIM: '0x7A364e8770418566e3eb2001A96116E6138Eb32F',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
@@ -173,6 +177,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDP: '0x8E870D67F660D95d5be530380D0eC0bd388289E1',
       TUSD: '0x0000000000085d4780B73119b644AE5ecd22b376',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
+      MIM: '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3',
       eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
@@ -217,6 +222,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDP: '0x09023c0DA49Aaf8fc3fA3ADF34C6A7016D38D5e3',
       TUSD: '0xec746eCF986E2927Abd291a2A1716c940100f8Ba',
       FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
+      MIM: '0x7A364e8770418566e3eb2001A96116E6138Eb32F',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
