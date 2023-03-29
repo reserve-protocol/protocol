@@ -36,11 +36,17 @@ export const WETH_USD_FEED = networkConfig['1'].chainlinkFeeds.ETH as string
 export const WETH_ORACLE_TIMEOUT = bn('86400')
 export const WETH_ORACLE_ERROR = fp('0.005')
 
+// MIM
+export const MIM_USD_FEED = networkConfig['1'].chainlinkFeeds.MIM as string
+export const MIM_ORACLE_TIMEOUT = bn('86400')
+export const MIM_ORACLE_ERROR = fp('0.005') // 0.5%
+
 // Tokens
 export const DAI = networkConfig['1'].tokens.DAI as string
 export const USDC = networkConfig['1'].tokens.USDC as string
 export const USDT = networkConfig['1'].tokens.USDT as string
 export const FRAX = networkConfig['1'].tokens.FRAX as string
+export const MIM = networkConfig['1'].tokens.MIM as string
 export const eUSD = networkConfig['1'].tokens.eUSD as string
 export const WETH = networkConfig['1'].tokens.WETH as string
 export const WBTC = networkConfig['1'].tokens.WBTC as string
@@ -71,6 +77,12 @@ export const eUSD_FRAX_BP = '0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F'
 export const eUSD_FRAX_BP_POOL_ID = 156
 export const eUSD_FRAX_HOLDER = '0x8605dc0C339a2e7e85EEA043bD29d42DA2c6D784'
 
+// MIM + 3pool
+export const MIM_THREE_POOL = '0x5a6A4D54456819380173272A5E8E9B9904BdF41B'
+export const MIM_THREE_POOL_POOL_ID = 40
+export const MIM_THREE_POOL_HOLDER = '0x66C90baCE2B68955C875FdA89Ba2c5A94e672440'
+
+// Common
 export const FIX_ONE = 1n * 10n ** 18n
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const DEFAULT_THRESHOLD = fp('0.02') // 2%

@@ -82,4 +82,9 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         rTokenOracle.price(IRToken(address(pairedToken)), false); // refresh price in oracle
         super.refresh();
     }
+
+    // Override CvxStableMetapoolCollateral, since paired RToken cannot default
+    function _anyDepeggedOutsidePool() internal view virtual override returns (bool) {
+        return false;
+    }
 }
