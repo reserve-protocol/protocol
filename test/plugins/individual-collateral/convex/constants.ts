@@ -40,6 +40,7 @@ export const WETH_ORACLE_ERROR = fp('0.005')
 export const MIM_USD_FEED = networkConfig['1'].chainlinkFeeds.MIM as string
 export const MIM_ORACLE_TIMEOUT = bn('86400')
 export const MIM_ORACLE_ERROR = fp('0.005') // 0.5%
+export const MIM_DEFAULT_THRESHOLD = fp('0.055') // 5.5%
 
 // Tokens
 export const DAI = networkConfig['1'].tokens.DAI as string
@@ -60,6 +61,7 @@ export const THREE_POOL = '0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7'
 export const THREE_POOL_TOKEN = '0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490'
 export const THREE_POOL_CVX_POOL_ID = 9
 export const THREE_POOL_HOLDER = '0xd632f22692fac7611d2aa1c0d552930d43caed3b'
+export const THREE_POOL_DEFAULT_THRESHOLD = fp('0.0125') // 1.25%
 
 // tricrypto2 - USDT, WBTC, ETH
 export const TRI_CRYPTO = '0xd51a44d3fae010294c616388b506acda1bfaae46'

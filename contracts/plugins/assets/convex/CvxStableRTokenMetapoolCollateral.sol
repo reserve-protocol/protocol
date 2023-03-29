@@ -26,8 +26,17 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
         ICurveMetaPool metapool_,
+        uint192 pairedTokenDefaultThreshold_,
         IRTokenOracle rTokenOracle_
-    ) CvxStableMetapoolCollateral(config, revenueHiding, ptConfig, metapool_) {
+    )
+        CvxStableMetapoolCollateral(
+            config,
+            revenueHiding,
+            ptConfig,
+            metapool_,
+            pairedTokenDefaultThreshold_
+        )
+    {
         require(address(rTokenOracle_) != address(0), "rTokenOracle missing");
         rTokenOracle = rTokenOracle_;
     }

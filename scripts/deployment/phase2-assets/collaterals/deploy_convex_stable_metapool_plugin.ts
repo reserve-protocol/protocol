@@ -2,7 +2,6 @@ import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
-import { fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
 import {
@@ -18,12 +17,14 @@ import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CurvePoolType,
   DELAY_UNTIL_DEFAULT,
+  MIM_DEFAULT_THRESHOLD,
   MIM_THREE_POOL,
   MIM_THREE_POOL_POOL_ID,
   MIM_USD_FEED,
   MIM_ORACLE_ERROR,
   MIM_ORACLE_TIMEOUT,
   MAX_TRADE_VOL,
+  THREE_POOL_DEFAULT_THRESHOLD,
   THREE_POOL,
   THREE_POOL_TOKEN,
   PRICE_TIMEOUT,
@@ -90,7 +91,7 @@ async function main() {
       oracleError: MIM_ORACLE_ERROR,
       oracleTimeout: MIM_ORACLE_TIMEOUT,
       maxTradeVolume: MAX_TRADE_VOL,
-      defaultThreshold: fp('0.055'), // 5.5%: 0.5% error on FRAX oracle + 5% base defaultThreshold
+      defaultThreshold: THREE_POOL_DEFAULT_THRESHOLD, // 1.25%
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
     },
     revenueHiding.toString(),
@@ -107,7 +108,8 @@ async function main() {
       oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
       lpToken: THREE_POOL_TOKEN,
     },
-    MIM_THREE_POOL
+    MIM_THREE_POOL,
+    MIM_DEFAULT_THRESHOLD
   )
   await collateral.deployed()
   await collateral.refresh()

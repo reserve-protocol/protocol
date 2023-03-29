@@ -22,9 +22,13 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    ICurveMetaPool internal immutable metapool; // top-level LP token + CurvePool
+    ICurveMetaPool public immutable metapool; // top-level LP token + CurvePool
 
-    IERC20Metadata internal immutable pairedToken; // the token paired with ptConfig.lpToken
+    IERC20Metadata public immutable pairedToken; // the token paired with ptConfig.lpToken
+
+    uint192 public immutable pairedTokenPegBottom; // {target/ref} pegBottom but for paired token
+
+    uint192 public immutable pairedTokenPegTop; // {target/ref} pegTop but for paired token
 
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout should be set for paired token
     /// @dev config.erc20 should be a IConvexStakingWrapper
@@ -32,11 +36,22 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
-        ICurveMetaPool metapool_
+        ICurveMetaPool metapool_,
+        uint192 pairedTokenDefaultThreshold_
     ) CvxStableCollateral(config, revenueHiding, ptConfig) {
         require(address(metapool_) != address(0), "metapool address is zero");
+        require(
+            pairedTokenDefaultThreshold_ > 0 && pairedTokenDefaultThreshold_ < FIX_ONE,
+            "pairedTokenDefaultThreshold out of bounds"
+        );
         metapool = metapool_;
         pairedToken = IERC20Metadata(metapool.coins(0)); // like alUSD or MIM
+
+        // {target/ref}= {target/ref} * {1}
+        uint192 peg = targetPerRef(); // {target/ref}
+        uint192 delta = peg.mul(pairedTokenDefaultThreshold_);
+        pairedTokenPegBottom = peg - delta;
+        pairedTokenPegTop = peg + delta;
 
         // Sanity checks we have the correct pool
         assert(address(pairedToken) != address(0));
@@ -109,7 +124,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
-            if (mid < pegBottom || mid > pegTop) return true;
+            if (mid < pairedTokenPegBottom || mid > pairedTokenPegTop) return true;
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string

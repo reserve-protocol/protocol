@@ -162,6 +162,7 @@ export const deployCollateral = async (
         lpToken: opts.lpToken,
       },
       opts.metapool,
+      opts.defaultThreshold, // use same 2% value
       opts.rTokenOracle
     )
   )

@@ -24,10 +24,12 @@ import {
   PRICE_TIMEOUT,
   THREE_POOL,
   THREE_POOL_TOKEN,
+  THREE_POOL_DEFAULT_THRESHOLD,
   CVX,
   DAI_USD_FEED,
   DAI_ORACLE_TIMEOUT,
   DAI_ORACLE_ERROR,
+  MIM_DEFAULT_THRESHOLD,
   MIM_USD_FEED,
   MIM_ORACLE_TIMEOUT,
   MIM_ORACLE_ERROR,
@@ -40,7 +42,6 @@ import {
   USDT_ORACLE_TIMEOUT,
   USDT_ORACLE_ERROR,
   MAX_TRADE_VOL,
-  DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   CurvePoolType,
   CRV,
@@ -81,6 +82,7 @@ interface CvxStableCollateralOpts extends CollateralOpts {
   oracleTimeouts?: BigNumberish[][]
   oracleErrors?: BigNumberish[][]
   lpToken?: string
+  pairedTokenDefaultThreshold?: BigNumberish
   metapool?: string
 }
 
@@ -96,7 +98,7 @@ export const defaultCvxStableCollateralOpts: CvxStableCollateralOpts = {
   oracleTimeout: MIM_ORACLE_TIMEOUT,
   oracleError: MIM_ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
-  defaultThreshold: DEFAULT_THRESHOLD,
+  defaultThreshold: THREE_POOL_DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'), // TODO
   nTokens: bn('3'),
@@ -107,6 +109,7 @@ export const defaultCvxStableCollateralOpts: CvxStableCollateralOpts = {
   oracleTimeouts: [[DAI_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
   oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
   metapool: MIM_THREE_POOL,
+  pairedTokenDefaultThreshold: MIM_DEFAULT_THRESHOLD,
 }
 
 export const deployCollateral = async (
@@ -578,14 +581,26 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-        // Depeg MIM:USD - Reducing price by 20% from 1 to 0.8
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+        // Depeg MIM:USD slightly, should remain SOUND
+        let updateAnswerTx = await chainlinkFeed.updateAnswer(bn('9.7e5'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
-        const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+        let nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
         await setNextBlockTimestamp(nextBlockTimestamp)
-        const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+        let expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+
+        await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
+        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // Depeg MIM:USD - Reducing price by 20% from 1 to 0.94
+        updateAnswerTx = await chainlinkFeed.updateAnswer(bn('9.4e5'))
+        await updateAnswerTx.wait()
+
+        // Set next block timestamp - for deterministic result
+        nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+        await setNextBlockTimestamp(nextBlockTimestamp)
+        expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
         await expect(collateral.refresh())
           .to.emit(collateral, 'CollateralStatusChanged')

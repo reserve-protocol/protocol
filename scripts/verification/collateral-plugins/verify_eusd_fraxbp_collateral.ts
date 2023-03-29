@@ -79,6 +79,7 @@ async function main() {
         lpToken: FRAX_BP_TOKEN,
       },
       eUSD_FRAX_BP,
+      DEFAULT_THRESHOLD, // 2%
       RTOKEN_ORACLE,
     ],
     'contracts/plugins/assets/convex/CvxStableRTokenMetapoolCollateral.sol:CvxStableRTokenMetapoolCollateral'

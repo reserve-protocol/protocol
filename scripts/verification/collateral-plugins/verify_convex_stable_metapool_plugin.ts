@@ -13,14 +13,15 @@ import {
   DAI_ORACLE_ERROR,
   DAI_ORACLE_TIMEOUT,
   DAI_USD_FEED,
-  DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   MAX_TRADE_VOL,
+  MIM_DEFAULT_THRESHOLD,
   MIM_USD_FEED,
   MIM_ORACLE_ERROR,
   MIM_ORACLE_TIMEOUT,
   MIM_THREE_POOL,
   PRICE_TIMEOUT,
+  THREE_POOL_DEFAULT_THRESHOLD,
   THREE_POOL,
   THREE_POOL_TOKEN,
   USDC_ORACLE_ERROR,
@@ -65,7 +66,7 @@ async function main() {
         oracleError: MIM_ORACLE_ERROR,
         oracleTimeout: MIM_ORACLE_TIMEOUT,
         maxTradeVolume: MAX_TRADE_VOL,
-        defaultThreshold: DEFAULT_THRESHOLD, // 5.5%: 0.5% error on FRAX oracle + 5% base defaultThreshold
+        defaultThreshold: THREE_POOL_DEFAULT_THRESHOLD, // 1.25%
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       revenueHiding.toString(),
@@ -83,6 +84,7 @@ async function main() {
         lpToken: THREE_POOL_TOKEN,
       },
       MIM_THREE_POOL,
+      MIM_DEFAULT_THRESHOLD,
     ],
     'contracts/plugins/assets/convex/CvxStableMetapoolCollateral.sol:CvxStableMetapoolCollateral'
   )
