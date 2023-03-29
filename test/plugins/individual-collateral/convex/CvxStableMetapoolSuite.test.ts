@@ -68,7 +68,6 @@ interface CvxStableMetapoolCollateralFixtureContext
   usdcFeed: MockV3Aggregator
   daiFeed: MockV3Aggregator
   usdtFeed: MockV3Aggregator
-  mimFeed: MockV3Aggregator
   cvx: ERC20Mock
   crv: ERC20Mock
 }
@@ -160,7 +159,8 @@ export const deployCollateral = async (
       oracleErrors: opts.oracleErrors,
       lpToken: opts.lpToken,
     },
-    opts.metapool
+    opts.metapool,
+    opts.pairedTokenDefaultThreshold
   )
   await collateral.deployed()
 
@@ -204,7 +204,7 @@ const makeCollateralFixtureContext = (
     return {
       alice,
       collateral,
-      chainlinkFeed: usdcFeed,
+      chainlinkFeed: mimFeed,
       metapool: fix.metapool,
       realMetapool: fix.realMetapool,
       curvePool: fix.curvePool,
@@ -218,7 +218,6 @@ const makeCollateralFixtureContext = (
       daiFeed,
       usdcFeed,
       usdtFeed,
-      mimFeed,
       cvx,
       crv,
     }
@@ -414,7 +413,6 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
     let usdcFeed: MockV3Aggregator
     let daiFeed: MockV3Aggregator
     let usdtFeed: MockV3Aggregator
-    let mimFeed: MockV3Aggregator
 
     let crv: ERC20Mock
     let cvx: ERC20Mock
@@ -432,7 +430,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
     beforeEach(async () => {
       ;[, alice] = await ethers.getSigners()
       ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
-      ;({ chainlinkFeed, collateral, usdcFeed, daiFeed, usdtFeed, mimFeed, crv, cvx } = ctx)
+      ;({ chainlinkFeed, collateral, usdcFeed, daiFeed, usdtFeed, crv, cvx } = ctx)
       await mintCollateralTo(ctx, bn('100e18'), wallet, wallet.address)
     })
 
@@ -485,7 +483,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
           usdcFeed.updateAnswer(newPrice).then((e) => e.wait()),
           daiFeed.updateAnswer(newPrice).then((e) => e.wait()),
           usdtFeed.updateAnswer(newPrice).then((e) => e.wait()),
-          mimFeed.updateAnswer(newPrice).then((e) => e.wait()),
+          chainlinkFeed.updateAnswer(newPrice).then((e) => e.wait()),
         ])
 
         const [newLow, newHigh] = await collateral.price()
@@ -511,7 +509,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
           usdcFeed.updateAnswer(0).then((e) => e.wait()),
           daiFeed.updateAnswer(0).then((e) => e.wait()),
           usdtFeed.updateAnswer(0).then((e) => e.wait()),
-          mimFeed.updateAnswer(0).then((e) => e.wait()),
+          chainlinkFeed.updateAnswer(0).then((e) => e.wait()),
         ])
 
         // (0, FIX_MAX) is returned
@@ -561,8 +559,10 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
     })
 
     describe('status', () => {
+      before(resetFork)
       it('maintains status in normal situations', async () => {
         // Check initial state
+        await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
@@ -582,7 +582,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Depeg MIM:USD slightly, should remain SOUND
-        let updateAnswerTx = await chainlinkFeed.updateAnswer(bn('9.7e5'))
+        let updateAnswerTx = await chainlinkFeed.updateAnswer(bn('9.7e7'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
@@ -594,7 +594,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
         // Depeg MIM:USD - Reducing price by 20% from 1 to 0.94
-        updateAnswerTx = await chainlinkFeed.updateAnswer(bn('9.4e5'))
+        updateAnswerTx = await chainlinkFeed.updateAnswer(bn('9.4e7'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
@@ -617,7 +617,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Depeg MIM:USD - Raising price by 20% from 1 to 1.2
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('12e5'))
+        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('1.2e8'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
@@ -640,7 +640,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Depeg MIM:USD - Reducing price by 20% from 1 to 0.8
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e7'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
