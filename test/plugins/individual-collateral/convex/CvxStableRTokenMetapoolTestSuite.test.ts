@@ -37,7 +37,7 @@ import {
   RTOKEN_ORACLE,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
-  DELAY_UNTIL_DEFAULT,
+  RTOKEN_DELAY_UNTIL_DEFAULT,
   eUSD,
   CurvePoolType,
   CRV,
@@ -102,7 +102,7 @@ export const defaultCvxStableCollateralOpts: CvxStableRTokenMetapoolCollateralOp
   oracleError: bn('1'), // unused but cannot be zero
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
-  delayUntilDefault: DELAY_UNTIL_DEFAULT,
+  delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'), // TODO
   nTokens: bn('2'),
   curvePool: FRAX_BP,
@@ -400,7 +400,6 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
     let chainId: number
 
     let collateral: TestICollateral
-    let chainlinkFeed: MockV3Aggregator
     let fraxFeed: MockV3Aggregator
     let usdcFeed: MockV3Aggregator
     let rTokenFeed: RTokenOracleMock
@@ -420,7 +419,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
     beforeEach(async () => {
       ;[, alice] = await ethers.getSigners()
       ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
-      ;({ chainlinkFeed, collateral, fraxFeed, usdcFeed, rTokenFeed, crv, cvx } = ctx)
+      ;({ collateral, fraxFeed, usdcFeed, rTokenFeed, crv, cvx } = ctx)
 
       await mintCollateralTo(ctx, bn('100e18'), wallet, wallet.address)
     })
@@ -586,7 +585,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+        const updateAnswerTx = await usdcFeed.updateAnswer(bn('8e5'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
@@ -609,7 +608,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Depeg USDC:USD - Raising price by 20% from 1 to 1.2
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('12e5'))
+        const updateAnswerTx = await usdcFeed.updateAnswer(bn('12e5'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
@@ -632,7 +631,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-        const updateAnswerTx = await chainlinkFeed.updateAnswer(bn('8e5'))
+        const updateAnswerTx = await usdcFeed.updateAnswer(bn('8e5'))
         await updateAnswerTx.wait()
 
         // Set next block timestamp - for deterministic result
@@ -663,6 +662,23 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
         await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+      })
+
+      it('enters IFFY state when _only_ the RToken de-pegs for 72h', async () => {
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // De-peg RToken to an avg price of $0.9799999, just below threshold of $0.98
+        await rTokenFeed.setPrice(eUSD, fp('0.96'), fp('0.999999'))
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+
+        // Advance 72h
+        await setNextBlockTimestamp(
+          RTOKEN_DELAY_UNTIL_DEFAULT.add(await getLatestBlockTimestamp()).toNumber()
+        )
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
       })
 
       it('enters DISABLED state when refPerTok() decreases', async () => {

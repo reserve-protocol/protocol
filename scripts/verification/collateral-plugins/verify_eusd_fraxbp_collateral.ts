@@ -13,7 +13,6 @@ import { revenueHiding, oracleTimeout } from '../../deployment/utils'
 import {
   CurvePoolType,
   DEFAULT_THRESHOLD,
-  DELAY_UNTIL_DEFAULT,
   eUSD_FRAX_BP,
   FRAX_BP,
   FRAX_BP_TOKEN,
@@ -22,6 +21,7 @@ import {
   FRAX_USD_FEED,
   MAX_TRADE_VOL,
   PRICE_TIMEOUT,
+  RTOKEN_DELAY_UNTIL_DEFAULT,
   RTOKEN_ORACLE,
   USDC_ORACLE_ERROR,
   USDC_ORACLE_TIMEOUT,
@@ -63,7 +63,7 @@ async function main() {
         oracleTimeout: bn('1'), // unused but cannot be zero
         maxTradeVolume: MAX_TRADE_VOL,
         defaultThreshold: DEFAULT_THRESHOLD, // 2%: 1% error on FRAX oracle + 1% base defaultThreshold
-        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
       },
       revenueHiding.toString(),
       {

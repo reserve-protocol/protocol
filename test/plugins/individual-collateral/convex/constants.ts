@@ -82,6 +82,9 @@ export const MIM_THREE_POOL = '0x5a6A4D54456819380173272A5E8E9B9904BdF41B'
 export const MIM_THREE_POOL_POOL_ID = 40
 export const MIM_THREE_POOL_HOLDER = '0x66C90baCE2B68955C875FdA89Ba2c5A94e672440'
 
+// RTokenMetapool-specific
+export const RTOKEN_DELAY_UNTIL_DEFAULT = bn('259200') // 72h
+
 // Common
 export const FIX_ONE = 1n * 10n ** 18n
 export const PRICE_TIMEOUT = bn('604800') // 1 week
