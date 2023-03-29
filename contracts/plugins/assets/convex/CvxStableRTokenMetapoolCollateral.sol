@@ -59,7 +59,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         require(block.timestamp - savedAt <= rTokenOracle.cacheTimeout(), "call refresh()");
 
         // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = metapoolBalancesValue(lastPrice.low, lastPrice.high);
+        (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lastPrice.low, lastPrice.high);
 
         // discount aumLow by the amount of revenue being hidden
         // {UoA} = {UoA} * {1}
@@ -75,16 +75,36 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         return (low, high, 0);
     }
 
-    /// Should not revert
+    /// Can revert, used by `_anyDepeggedOutsidePool()`
+    /// Should not return FIX_MAX for low
+    /// Should only return FIX_MAX for high if low is 0
+    /// @return lowPaired {UoA/pairedTok} The low price estimate of the paired token
+    /// @return highPaired {UoA/pairedTok} The high price estimate of the paired token
+    function tryPairedPrice()
+        public
+        view
+        virtual
+        override
+        returns (uint192 lowPaired, uint192 highPaired)
+    {
+        // refresh price in oracle if needed
+        (Price memory p, uint48 ts) = rTokenOracle.priceView(IRToken(address(pairedToken)));
+        require(block.timestamp - ts <= rTokenOracle.cacheTimeout(), "call refresh()");
+        return (p.low, p.high);
+    }
+
+    /// Should not revert (other than out-of-gas error / empty data)
     /// Refresh exchange rates and update default status.
     /// Have to override to add custom default checks
     function refresh() public virtual override {
-        rTokenOracle.price(IRToken(address(pairedToken)), false); // refresh price in oracle
+        // refresh price in rTokenOracle
+        try rTokenOracle.price(IRToken(address(pairedToken)), false) {} catch (
+            bytes memory errData
+        ) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            markStatus(CollateralStatus.IFFY);
+        }
         super.refresh();
-    }
-
-    // Override CvxStableMetapoolCollateral, since paired RToken cannot default
-    function _anyDepeggedOutsidePool() internal view virtual override returns (bool) {
-        return false;
     }
 }

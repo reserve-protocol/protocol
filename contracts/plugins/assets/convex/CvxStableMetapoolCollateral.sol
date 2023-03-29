@@ -67,7 +67,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
 
         // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = metapoolBalancesValue(lowPaired, highPaired);
+        (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
 
         // discount aumLow by the amount of revenue being hidden
         // {UoA} = {UoA} * {1}
@@ -86,9 +86,9 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     /// Can revert, used by `_anyDepeggedOutsidePool()`
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
-    /// @return low {UoA/pairedTok} The low price estimate
-    /// @return high {UoA/pairedTok} The high price estimate
-    function tryPairedPrice() public view virtual returns (uint192 low, uint192 high) {
+    /// @return lowPaired {UoA/pairedTok} The low price estimate of the paired token
+    /// @return highPaired {UoA/pairedTok} The high price estimate of the paired token
+    function tryPairedPrice() public view virtual returns (uint192 lowPaired, uint192 highPaired) {
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/pairedTok}
         uint192 delta = p.mul(oracleError);
         return (p - delta, p + delta);
@@ -122,7 +122,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     /// @param highPaired {UoA/pairedTok}
     /// @return aumLow {UoA}
     /// @return aumHigh {UoA}
-    function metapoolBalancesValue(uint192 lowPaired, uint192 highPaired)
+    function _metapoolBalancesValue(uint192 lowPaired, uint192 highPaired)
         internal
         view
         returns (uint192 aumLow, uint192 aumHigh)
