@@ -47,7 +47,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         metapool = metapool_;
         pairedToken = IERC20Metadata(metapool.coins(0)); // like alUSD or MIM
 
-        // {target/ref}= {target/ref} * {1}
+        // {target/ref} = {target/ref} * {1}
         uint192 peg = targetPerRef(); // {target/ref}
         uint192 delta = peg.mul(pairedTokenDefaultThreshold_);
         pairedTokenPegBottom = peg - delta;
