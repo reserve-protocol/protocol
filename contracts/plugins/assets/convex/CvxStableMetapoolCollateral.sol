@@ -63,6 +63,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     {
         // Should include revenue hiding discount in the low discount but not high
 
+        // {UoA/pairedTok}
         (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
 
         // {UoA}
@@ -85,10 +86,10 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     /// Can revert, used by `_anyDepeggedOutsidePool()`
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
-    /// @return low {UoA/tok} The low price estimate
-    /// @return high {UoA/tok} The high price estimate
+    /// @return low {UoA/pairedTok} The low price estimate
+    /// @return high {UoA/pairedTok} The high price estimate
     function tryPairedPrice() public view virtual returns (uint192 low, uint192 high) {
-        uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/pairedTok}
         uint192 delta = p.mul(oracleError);
         return (p - delta, p + delta);
     }
@@ -100,7 +101,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         return _safeWrap(metapool.get_virtual_price());
     }
 
-    // Override this in child classes to implement metapools
+    // Check for defaults outside the pool
     function _anyDepeggedOutsidePool() internal view virtual override returns (bool) {
         try this.tryPairedPrice() returns (uint192 low, uint192 high) {
             // {UoA/tok} = {UoA/tok} + {UoA/tok}
