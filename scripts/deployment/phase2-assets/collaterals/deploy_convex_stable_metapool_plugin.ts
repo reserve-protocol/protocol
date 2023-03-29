@@ -117,7 +117,7 @@ async function main() {
     `Deployed Convex RToken Metapool Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
-  assetCollDeployments.collateral.cvxMIM3CRV = collateral.address
+  assetCollDeployments.collateral.cvxMIM3Pool = collateral.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

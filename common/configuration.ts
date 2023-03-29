@@ -59,7 +59,7 @@ export interface IPlugins {
   cvx3Pool?: string
   cvxeUSDFRAXBP?: string
   cvxTriCrypto?: string
-  cvxMIM3CRV?: string
+  cvxMIM3Pool?: string
 }
 
 interface INetworkConfig {

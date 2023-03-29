@@ -49,13 +49,13 @@ async function main() {
 
   const wPoolCollateral = await ethers.getContractAt(
     'CvxStableMetapoolCollateral',
-    deployments.collateral.cvxMIM3CRV as string
+    deployments.collateral.cvxMIM3Pool as string
   )
 
   /********  Verify Convex MIM/3Pool plugin  **************************/
   await verifyContract(
     chainId,
-    deployments.collateral.cvxMIM3CRV,
+    deployments.collateral.cvxMIM3Pool,
     [
       {
         erc20: await wPoolCollateral.erc20(),
