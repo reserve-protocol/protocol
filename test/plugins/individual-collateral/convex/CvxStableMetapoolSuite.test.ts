@@ -6,7 +6,7 @@ import {
 } from '../pluginTestTypes'
 import { makeWMIM3Pool, mintWMIM3Pool, WrappedMIM3PoolFixture, resetFork } from './helpers'
 import hre, { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish } from 'ethers'
+import { BigNumberish } from 'ethers'
 import {
   CvxStableMetapoolCollateral,
   ERC20Mock,
@@ -133,34 +133,32 @@ export const deployCollateral = async (
 
   opts = { ...defaultCvxStableCollateralOpts, ...opts }
 
-  const CvxStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'CvxStableMetapoolCollateral'
-  )
+  const CvxStableCollateralFactory = await ethers.getContractFactory('CvxStableMetapoolCollateral')
 
   const collateral = <CvxStableMetapoolCollateral>await CvxStableCollateralFactory.deploy(
     {
-      erc20: opts.erc20,
-      targetName: opts.targetName,
-      priceTimeout: opts.priceTimeout,
-      chainlinkFeed: opts.chainlinkFeed,
-      oracleError: opts.oracleError,
-      oracleTimeout: opts.oracleTimeout,
-      maxTradeVolume: opts.maxTradeVolume,
-      defaultThreshold: opts.defaultThreshold,
-      delayUntilDefault: opts.delayUntilDefault,
+      erc20: opts.erc20!,
+      targetName: opts.targetName!,
+      priceTimeout: opts.priceTimeout!,
+      chainlinkFeed: opts.chainlinkFeed!,
+      oracleError: opts.oracleError!,
+      oracleTimeout: opts.oracleTimeout!,
+      maxTradeVolume: opts.maxTradeVolume!,
+      defaultThreshold: opts.defaultThreshold!,
+      delayUntilDefault: opts.delayUntilDefault!,
     },
-    opts.revenueHiding,
+    opts.revenueHiding!,
     {
-      nTokens: opts.nTokens,
-      curvePool: opts.curvePool,
-      poolType: opts.poolType,
-      feeds: opts.feeds,
-      oracleTimeouts: opts.oracleTimeouts,
-      oracleErrors: opts.oracleErrors,
-      lpToken: opts.lpToken,
+      nTokens: opts.nTokens!,
+      curvePool: opts.curvePool!,
+      poolType: opts.poolType!,
+      feeds: opts.feeds!,
+      oracleTimeouts: opts.oracleTimeouts!,
+      oracleErrors: opts.oracleErrors!,
+      lpToken: opts.lpToken!,
     },
-    opts.metapool,
-    opts.pairedTokenDefaultThreshold
+    opts.metapool!,
+    opts.pairedTokenDefaultThreshold!
   )
   await collateral.deployed()
 
