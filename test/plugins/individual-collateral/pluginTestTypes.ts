@@ -53,13 +53,13 @@ export type MintCollateralFunc<T extends CollateralFixtureContext> = (
 export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext> {
   // a function to deploy the collateral plugin and return the deployed instance of the contract
   deployCollateral: DeployCollateralFunc
-  
+
   // a group of tests, specific to the collateral plugin, focused on the plugin's constructor
   collateralSpecificConstructorTests: () => void
-  
+
   // a group of tests, specific to the collateral plugin, focused on status checks
   collateralSpecificStatusTests: () => void
-  
+
   // a function to be run in the `beforeEach` block of the rewards tests
   beforeEachRewardsTest: (ctx: T) => void
 
