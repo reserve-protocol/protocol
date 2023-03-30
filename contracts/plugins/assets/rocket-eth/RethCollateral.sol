@@ -57,13 +57,11 @@ contract RethCollateral is AppreciatingFiatCollateral {
         uint192 refPerTok = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pHigh = p.mul(refPerTok);
+        high = p.mul(refPerTok);
+        low = p.mul(refPerTok.mul(revenueShowing));
 
-        // {UoA/tok} = {UoA/tok} * {1}
-        uint192 pLow = pHigh.mul(revenueShowing);
-
-        low = pLow - pLow.mul(oracleError);
-        high = pHigh + pHigh.mul(oracleError);
+        high = high + high.mul(oracleError);
+        low = low - low.mul(oracleError);
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

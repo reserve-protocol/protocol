@@ -59,12 +59,14 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
         // {target/ref} Get current market peg ({eth/steth})
         pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout);
 
+        uint192 refPerTok = _underlyingRefPerTok();
+        
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pLow = p.mul(refPerTok());
-        uint192 pHigh = p.mul(_underlyingRefPerTok());
+        uint192 pHigh = p.mul(refPerTok);
+        uint192 pLow = p.mul(refPerTok.mul(revenueShowing));
 
-        low = pLow - pLow.mul(oracleError);
         high = pHigh + pHigh.mul(oracleError);
+        low = pLow - pLow.mul(oracleError);
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
