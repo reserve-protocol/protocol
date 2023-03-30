@@ -110,6 +110,7 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 
 - `BasketHandler`
   - Bugfix for `getPrimeBasket()` view
+  - Minor change to `_price()` rounding
 - `Broker`
   - Fix `GnosisTrade` trade implemention to treat defensive rounding by EasyAuction correctly
   - Add `setGnosis()` and `setTradeImplementation()` governance functions
@@ -135,6 +136,8 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Deploy CRV + CVX plugins
 
 #### Collateral
+
+Across all collateral, `tryPrice()` was updated to exclude revenueHiding considerations
 
 - Add `AnkrStakedEthCollateral` + tests + deployment/verification scripts for ankrETH
 - Add FluxFinance collateral tests + deployment/verification scripts for fUSDC, fUSDT, fDAI, and fFRAX
