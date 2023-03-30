@@ -251,7 +251,10 @@ export const makeWMIM3Pool = async (): Promise<WrappedMIM3PoolFixture> => {
     )
   )
   await metapoolToken.setVirtualPrice(await realMetapool.get_virtual_price())
-  await metapoolToken.mint(MIM_THREE_POOL_HOLDER, await realMetapool.balanceOf(MIM_THREE_POOL_HOLDER))
+  await metapoolToken.mint(
+    MIM_THREE_POOL_HOLDER,
+    await realMetapool.balanceOf(MIM_THREE_POOL_HOLDER)
+  )
 
   // Deploy external cvxMining lib
   const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
