@@ -19,6 +19,7 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
 
     IComptroller public immutable comptroller;
 
+    /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param referenceERC20Decimals_ The number of decimals in the reference token
     /// @param comptroller_ The CompoundFinance Comptroller
@@ -49,16 +50,13 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
-
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pLow = p.mul(refPerTok());
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
+        uint192 err = p.mul(oracleError, CEIL);
 
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pHigh = p.mul(_underlyingRefPerTok());
-
-        low = pLow - pLow.mul(oracleError);
-        high = pHigh + pHigh.mul(oracleError);
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
 
         pegPrice = targetPerRef();
     }

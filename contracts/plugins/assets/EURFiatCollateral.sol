@@ -45,7 +45,7 @@ contract EURFiatCollateral is FiatCollateral {
             uint192 pegPrice
         )
     {
-        uint192 refPrice = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
+        uint192 pricePerRef = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
 
         // {UoA/target}
         uint192 pricePerTarget = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
@@ -55,11 +55,13 @@ contract EURFiatCollateral is FiatCollateral {
             return (0, FIX_MAX, 0);
         }
 
-        uint192 delta = refPrice.mul(oracleError);
-        low = refPrice - delta;
-        high = refPrice + delta;
+        uint192 err = pricePerRef.mul(oracleError, CEIL);
+
+        low = pricePerRef - err;
+        high = pricePerRef + err;
+        // assert(low <= high); obviously true just by inspection
 
         // {target/ref} = {UoA/ref} / {UoA/target}
-        pegPrice = refPrice.div(pricePerTarget);
+        pegPrice = pricePerRef.div(pricePerTarget);
     }
 }

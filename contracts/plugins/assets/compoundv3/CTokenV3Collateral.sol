@@ -32,6 +32,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     IComet public immutable comet;
     uint256 public immutable reservesThresholdIffy; // {qUSDC}
 
+    /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,

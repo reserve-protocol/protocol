@@ -37,10 +37,12 @@ contract SelfReferentialCollateral is FiatCollateral {
         uint192 p = chainlinkFeed.price(oracleTimeout);
         // danger for inheritance: this assumes refPerTok() is 1
 
-        uint192 delta = p.mul(oracleError);
+        uint192 err = p.mul(oracleError, CEIL);
 
-        low = p - delta;
-        high = p + delta;
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
+
         pegPrice = targetPerRef();
     }
 }

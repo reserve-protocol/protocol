@@ -77,8 +77,9 @@ contract Asset is IAsset {
         )
     {
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
-        uint192 delta = p.mul(oracleError);
-        return (p - delta, p + delta, 0);
+        uint192 err = p.mul(oracleError);
+        // assert(low <= high); obviously true just by inspection
+        return (p - err, p + err, 0);
     }
 
     /// Should not revert

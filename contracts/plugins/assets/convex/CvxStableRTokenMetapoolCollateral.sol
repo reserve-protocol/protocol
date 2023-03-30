@@ -19,6 +19,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
 
     IRTokenOracle public immutable rTokenOracle;
 
+    /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout are unused; set chainlinkFeed to 0x1
     /// @dev config.erc20 should be a IConvexStakingWrapper
     constructor(

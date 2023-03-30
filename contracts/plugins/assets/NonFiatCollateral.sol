@@ -47,16 +47,15 @@ contract NonFiatCollateral is FiatCollateral {
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
-        // {UoA/target}
-        uint192 pricePerTarget = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
-
         // Assumption: {ref/tok} = 1; inherit from `AppreciatingFiatCollateral` if need appreciation
-        // {UoA/tok} = {UoA/target} * {ref/tok} * {target/ref} (1)
-        uint192 p = pricePerTarget.mul(pegPrice);
+        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok} (1)
+        uint192 p = targetUnitChainlinkFeed.price(targetUnitOracleTimeout).mul(pegPrice);
 
         // this oracleError is already the combined total oracle error
-        uint192 delta = p.mul(oracleError);
-        low = p - delta;
-        high = p + delta;
+        uint192 err = p.mul(oracleError);
+
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
     }
 }

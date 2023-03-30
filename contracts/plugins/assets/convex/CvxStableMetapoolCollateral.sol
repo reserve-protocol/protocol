@@ -30,6 +30,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
 
     uint192 public immutable pairedTokenPegTop; // {target/ref} pegTop but for paired token
 
+    /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout should be set for paired token
     /// @dev config.erc20 should be a IConvexStakingWrapper
     constructor(
@@ -76,25 +77,21 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
             uint192 pegPrice
         )
     {
-        // Should include revenue hiding discount in the low discount but not high
-
         // {UoA/pairedTok}
         (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
 
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
 
-        // discount aumLow by the amount of revenue being hidden
-        // {UoA} = {UoA} * {1}
-        aumLow = aumLow.mul(revenueShowing);
-
         // {tok}
         uint192 supply = shiftl_toFix(metapoolToken.totalSupply(), -int8(metapoolToken.decimals()));
         // We can always assume that the total supply is non-zero
 
         // {UoA/tok} = {UoA} / {tok}
-        low = aumLow.div(supply);
-        high = aumHigh.div(supply);
+        low = aumLow.div(supply, FLOOR);
+        high = aumHigh.div(supply, CEIL);
+        assert(low <= high); // not obviously true just by inspection
+
         return (low, high, 0);
     }
 
