@@ -11,7 +11,7 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
 /**
  * @title CvxStableMetapoolCollateral
  *  This plugin contract is intended for 2-token stable metapools that
- *  DO NOT involve RTokens, such as alUSD-fraxBP or MIM-3CRV.
+ *  DO NOT involve RTokens, such as LUSD-fraxBP or MIM-3CRV.
  *
  * tok = ConvexStakingWrapper(PairedUSDToken/USDBasePool)
  * ref = PairedUSDToken/USDBasePool pool invariant
@@ -22,7 +22,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    ICurveMetaPool public immutable metapool; // top-level LP token + CurvePool
+    ICurveMetaPool public immutable metapoolToken; // top-level LP token + CurvePool
 
     IERC20Metadata public immutable pairedToken; // the token paired with ptConfig.lpToken
 
@@ -36,16 +36,16 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
-        ICurveMetaPool metapool_,
+        ICurveMetaPool metapoolToken_,
         uint192 pairedTokenDefaultThreshold_
     ) CvxStableCollateral(config, revenueHiding, ptConfig) {
-        require(address(metapool_) != address(0), "metapool address is zero");
+        require(address(metapoolToken_) != address(0), "metapoolToken address is zero");
         require(
             pairedTokenDefaultThreshold_ > 0 && pairedTokenDefaultThreshold_ < FIX_ONE,
             "pairedTokenDefaultThreshold out of bounds"
         );
-        metapool = metapool_;
-        pairedToken = IERC20Metadata(metapool.coins(0)); // like alUSD or MIM
+        metapoolToken = metapoolToken_;
+        pairedToken = IERC20Metadata(metapoolToken.coins(0)); // like LUSD or MIM
 
         // {target/ref} = {target/ref} * {1}
         uint192 peg = targetPerRef(); // {target/ref}
@@ -55,7 +55,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
 
         // Sanity checks we have the correct pool
         assert(address(pairedToken) != address(0));
-        assert(metapool.coins(1) == address(lpToken));
+        assert(metapoolToken.coins(1) == address(lpToken));
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -89,7 +89,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         aumLow = aumLow.mul(revenueShowing);
 
         // {tok}
-        uint192 supply = shiftl_toFix(metapool.totalSupply(), -int8(metapool.decimals()));
+        uint192 supply = shiftl_toFix(metapoolToken.totalSupply(), -int8(metapoolToken.decimals()));
         // We can always assume that the total supply is non-zero
 
         // {UoA/tok} = {UoA} / {tok}
@@ -113,7 +113,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        return _safeWrap(metapool.get_virtual_price());
+        return _safeWrap(metapoolToken.get_virtual_price());
     }
 
     // Check for defaults outside the pool
@@ -153,14 +153,14 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         uint192 underlyingHigh = underlyingAumHigh.div(underlyingSupply, CEIL);
 
         // {tokUnderlying}
-        uint192 balUnderlying = shiftl_toFix(metapool.balances(1), -int8(lpToken.decimals()));
+        uint192 balUnderlying = shiftl_toFix(metapoolToken.balances(1), -int8(lpToken.decimals()));
 
         // {UoA} = {UoA/tokUnderlying} * {tokUnderlying}
         aumLow = underlyingLow.mul(balUnderlying, FLOOR);
         aumHigh = underlyingHigh.mul(balUnderlying, CEIL);
 
         // {pairedTok}
-        uint192 pairedBal = shiftl_toFix(metapool.balances(0), -int8(pairedToken.decimals()));
+        uint192 pairedBal = shiftl_toFix(metapoolToken.balances(0), -int8(pairedToken.decimals()));
 
         // Add-in contribution from pairedTok
         // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}

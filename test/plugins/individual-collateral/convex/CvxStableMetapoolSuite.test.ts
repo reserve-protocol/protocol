@@ -82,7 +82,7 @@ interface CvxStableCollateralOpts extends CollateralOpts {
   oracleErrors?: BigNumberish[][]
   lpToken?: string
   pairedTokenDefaultThreshold?: BigNumberish
-  metapool?: string
+  metapoolToken?: string
 }
 
 /*
@@ -107,7 +107,7 @@ export const defaultCvxStableCollateralOpts: CvxStableCollateralOpts = {
   feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED]],
   oracleTimeouts: [[DAI_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
   oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
-  metapool: MIM_THREE_POOL,
+  metapoolToken: MIM_THREE_POOL,
   pairedTokenDefaultThreshold: MIM_DEFAULT_THRESHOLD,
 }
 
@@ -157,7 +157,7 @@ export const deployCollateral = async (
       oracleErrors: opts.oracleErrors!,
       lpToken: opts.lpToken!,
     },
-    opts.metapool!,
+    opts.metapoolToken!,
     opts.pairedTokenDefaultThreshold!
   )
   await collateral.deployed()
@@ -191,7 +191,7 @@ const makeCollateralFixtureContext = (
     collateralOpts.chainlinkFeed = mimFeed.address
     collateralOpts.feeds = [[daiFeed.address], [usdcFeed.address], [usdtFeed.address]]
     collateralOpts.curvePool = fix.curvePool.address
-    collateralOpts.metapool = fix.metapool.address
+    collateralOpts.metapoolToken = fix.metapoolToken.address
 
     const collateral = <TestICollateral>((await deployCollateral(collateralOpts)) as unknown)
     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX) // use CVX
@@ -203,7 +203,7 @@ const makeCollateralFixtureContext = (
       alice,
       collateral,
       chainlinkFeed: mimFeed,
-      metapool: fix.metapool,
+      metapoolToken: fix.metapoolToken,
       realMetapool: fix.realMetapool,
       curvePool: fix.curvePool,
       wPool: fix.wPool,
@@ -496,8 +496,8 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
 
       it('prices change as refPerTok changes', async () => {
         const initRefPerTok = await collateral.refPerTok()
-        const curveVirtualPrice = await ctx.metapool.get_virtual_price()
-        await ctx.metapool.setVirtualPrice(curveVirtualPrice.add(1e4))
+        const curveVirtualPrice = await ctx.metapoolToken.get_virtual_price()
+        await ctx.metapoolToken.setVirtualPrice(curveVirtualPrice.add(1e4))
         await collateral.refresh()
         expect(await collateral.refPerTok()).to.be.gt(initRefPerTok)
       })
@@ -670,8 +670,8 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
-        const currentExchangeRate = await ctx.metapool.get_virtual_price()
-        await ctx.metapool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
+        const currentExchangeRate = await ctx.metapoolToken.get_virtual_price()
+        await ctx.metapoolToken.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
 
         // Collateral defaults due to refPerTok() going down
         await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
@@ -701,9 +701,9 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // Decrease refPerTok by 1 part in a million
-        const currentExchangeRate = await ctx.metapool.get_virtual_price()
+        const currentExchangeRate = await ctx.metapoolToken.get_virtual_price()
         const newVirtualPrice = currentExchangeRate.sub(currentExchangeRate.div(bn('1e6')))
-        await ctx.metapool.setVirtualPrice(newVirtualPrice)
+        await ctx.metapoolToken.setVirtualPrice(newVirtualPrice)
 
         // Collateral remains SOUND
         await expect(collateral.refresh()).to.not.emit(collateral, 'CollateralStatusChanged')
@@ -711,7 +711,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
         expect(await collateral.whenDefault()).to.equal(MAX_UINT48)
 
         // One quanta more of decrease results in default
-        await ctx.metapool.setVirtualPrice(newVirtualPrice.sub(1))
+        await ctx.metapoolToken.setVirtualPrice(newVirtualPrice.sub(1))
         await expect(collateral.refresh()).to.emit(collateral, 'CollateralStatusChanged')
         expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
         expect(await collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
