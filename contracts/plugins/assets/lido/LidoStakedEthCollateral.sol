@@ -60,7 +60,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
         pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout);
 
         uint192 refPerTok = _underlyingRefPerTok();
-        
+
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 pHigh = p.mul(refPerTok);
         uint192 pLow = p.mul(refPerTok.mul(revenueShowing));

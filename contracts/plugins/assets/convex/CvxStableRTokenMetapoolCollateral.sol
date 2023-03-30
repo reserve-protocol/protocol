@@ -63,6 +63,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
     /// Have to override to add custom default checks
     function refresh() public virtual override {
         // refresh price in rTokenOracle
+        // solhint-disable no-empty-blocks
         try rTokenOracle.price(IRToken(address(pairedToken)), false) {} catch (
             bytes memory errData
         ) {
