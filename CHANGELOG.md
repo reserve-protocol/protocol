@@ -108,12 +108,14 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 
 #### Core protocol contracts
 
+- `BasketHandler`
+  - Bugfix for `getPrimeBasket()` view
 - `Broker`
   - Fix `GnosisTrade` trade implemention to treat defensive rounding by EasyAuction correctly
   - Add `setGnosis()` and `setTradeImplementation()` governance functions
-- `BasketHandler.sol`
-  - Bugfix for `getPrimeBasket()` view
-- `StRSR.sol`
+- `RToken`
+  - Minor gas optimization added to `redeemTo` to use saved `assetRegistry` variable
+- `StRSR`
   - Expose RSR variables via `getDraftRSR()`, `getStakeRSR()`, and `getTotalDrafts()` views
 
 #### Facades
