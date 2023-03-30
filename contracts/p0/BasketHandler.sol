@@ -348,8 +348,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 ? reg.toAsset(basket.erc20s[i]).lotPrice()
                 : reg.toAsset(basket.erc20s[i]).price();
 
-            low256 += safeMul(qty, lowP, RoundingMode.ROUND);
-            high256 += safeMul(qty, highP, RoundingMode.ROUND);
+            low256 += safeMul(qty, lowP, RoundingMode.FLOOR);
+            high256 += safeMul(qty, highP, RoundingMode.CEIL);
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
