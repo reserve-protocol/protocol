@@ -43,7 +43,7 @@ contract RTokenAsset is IAsset {
     /// @return high {UoA/tok} The high price estimate
     function tryPrice() external view virtual returns (uint192 low, uint192 high) {
         (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
-        assert(low <= high); // not obviously true just by inspection
+        assert(lowBUPrice <= highBUPrice); // not obviously true just by inspection
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
         // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
