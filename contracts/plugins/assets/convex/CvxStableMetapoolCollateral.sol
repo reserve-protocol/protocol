@@ -102,7 +102,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     /// @return highPaired {UoA/pairedTok} The high price estimate of the paired token
     function tryPairedPrice() public view virtual returns (uint192 lowPaired, uint192 highPaired) {
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/pairedTok}
-        uint192 delta = p.mul(oracleError);
+        uint192 delta = p.mul(oracleError, CEIL);
         return (p - delta, p + delta);
     }
 

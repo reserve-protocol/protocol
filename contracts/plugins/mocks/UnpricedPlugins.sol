@@ -42,7 +42,7 @@ contract UnpricedAssetMock is Asset {
         if (unpriced) return (0, FIX_MAX, 0);
 
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
-        uint192 delta = p.mul(oracleError);
+        uint192 delta = p.mul(oracleError, CEIL);
         return (p - delta, p + delta, 0);
     }
 
