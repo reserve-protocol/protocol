@@ -174,7 +174,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         disabled = true;
     }
 
-    /// Switch the basket, only callable directly by governance
+    /// Switch the basket, only callable directly by governance or after a default
     /// @custom:interaction OR @custom:governance
     // checks: either caller has OWNER,
     //         or (basket is disabled after refresh and we're unpaused and unfrozen)
