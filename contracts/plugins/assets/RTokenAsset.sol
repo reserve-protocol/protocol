@@ -43,6 +43,7 @@ contract RTokenAsset is IAsset {
     /// @return high {UoA/tok} The high price estimate
     function tryPrice() external view virtual returns (uint192 low, uint192 high) {
         (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
+        assert(lowBUPrice <= highBUPrice); // not obviously true just by inspection
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
         // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
@@ -55,8 +56,9 @@ contract RTokenAsset is IAsset {
         BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        low = range.bottom.mulDiv(lowBUPrice, supply);
-        high = range.top.mulDiv(highBUPrice, supply);
+        low = range.bottom.mulDiv(lowBUPrice, supply, FLOOR);
+        high = range.top.mulDiv(highBUPrice, supply, CEIL);
+        // assert(low <= high); // obviously true at this point just by inspection
     }
 
     // solhint-disable no-empty-blocks

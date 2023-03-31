@@ -20,6 +20,7 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
     using FixLib for uint192;
 
     // solhint-disable no-empty-blocks
+    /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {}
@@ -40,18 +41,17 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        uint192 p = chainlinkFeed.price(oracleTimeout); // target==ref :: {UoA/target} == {UoA/ref}
+        uint192 pricePerRef = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pLow = p.mul(refPerTok());
+        uint192 p = pricePerRef.mul(_underlyingRefPerTok());
+        uint192 err = p.mul(oracleError, CEIL);
 
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pHigh = p.mul(_underlyingRefPerTok());
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
 
-        low = pLow - pLow.mul(oracleError);
-        high = pHigh + pHigh.mul(oracleError);
-
-        pegPrice = targetPerRef();
+        pegPrice = targetPerRef(); // ETH/ETH
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

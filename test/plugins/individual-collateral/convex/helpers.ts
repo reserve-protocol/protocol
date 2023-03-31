@@ -158,7 +158,7 @@ export interface WrappedEUSDFraxBPFixture {
   usdc: ERC20Mock
   frax: ERC20Mock
   eusd: ERC20Mock
-  metapool: CurveMetapoolMock
+  metapoolToken: CurveMetapoolMock
   realMetapool: CurveMetapoolMock
   curvePool: ICurvePool
   wPool: ConvexStakingWrapper
@@ -178,14 +178,14 @@ export const makeWeUSDFraxBP = async (): Promise<WrappedEUSDFraxBPFixture> => {
   const realMetapool = <CurveMetapoolMock>(
     await ethers.getContractAt('CurveMetapoolMock', eUSD_FRAX_BP)
   )
-  const metapool = <CurveMetapoolMock>(
+  const metapoolToken = <CurveMetapoolMock>(
     await CurveMetapoolMockFactory.deploy(
       [await realMetapool.balances(0), await realMetapool.balances(1)],
       [await realMetapool.coins(0), await realMetapool.coins(1)]
     )
   )
-  await metapool.setVirtualPrice(await realMetapool.get_virtual_price())
-  await metapool.mint(eUSD_FRAX_HOLDER, await realMetapool.balanceOf(eUSD_FRAX_HOLDER))
+  await metapoolToken.setVirtualPrice(await realMetapool.get_virtual_price())
+  await metapoolToken.mint(eUSD_FRAX_HOLDER, await realMetapool.balanceOf(eUSD_FRAX_HOLDER))
 
   // Deploy external cvxMining lib
   const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
@@ -198,7 +198,7 @@ export const makeWeUSDFraxBP = async (): Promise<WrappedEUSDFraxBPFixture> => {
   const wPool = await wrapperFactory.deploy()
   await wPool.initialize(eUSD_FRAX_BP_POOL_ID)
 
-  return { usdc, frax, eusd, metapool, realMetapool, curvePool, wPool }
+  return { usdc, frax, eusd, metapoolToken, realMetapool, curvePool, wPool }
 }
 
 export const mintWeUSDFraxBP = async (
@@ -223,7 +223,7 @@ export interface WrappedMIM3PoolFixture {
   usdc: ERC20Mock
   usdt: ERC20Mock
   mim: ERC20Mock
-  metapool: CurveMetapoolMock
+  metapoolToken: CurveMetapoolMock
   realMetapool: CurveMetapoolMock
   curvePool: ICurvePool
   wPool: ConvexStakingWrapper
@@ -244,14 +244,17 @@ export const makeWMIM3Pool = async (): Promise<WrappedMIM3PoolFixture> => {
   const realMetapool = <CurveMetapoolMock>(
     await ethers.getContractAt('CurveMetapoolMock', MIM_THREE_POOL)
   )
-  const metapool = <CurveMetapoolMock>(
+  const metapoolToken = <CurveMetapoolMock>(
     await CurveMetapoolMockFactory.deploy(
       [await realMetapool.balances(0), await realMetapool.balances(1)],
       [await realMetapool.coins(0), await realMetapool.coins(1)]
     )
   )
-  await metapool.setVirtualPrice(await realMetapool.get_virtual_price())
-  await metapool.mint(MIM_THREE_POOL_HOLDER, await realMetapool.balanceOf(MIM_THREE_POOL_HOLDER))
+  await metapoolToken.setVirtualPrice(await realMetapool.get_virtual_price())
+  await metapoolToken.mint(
+    MIM_THREE_POOL_HOLDER,
+    await realMetapool.balanceOf(MIM_THREE_POOL_HOLDER)
+  )
 
   // Deploy external cvxMining lib
   const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
@@ -264,7 +267,7 @@ export const makeWMIM3Pool = async (): Promise<WrappedMIM3PoolFixture> => {
   const wPool = await wrapperFactory.deploy()
   await wPool.initialize(MIM_THREE_POOL_POOL_ID)
 
-  return { dai, usdc, usdt, mim, metapool, realMetapool, curvePool, wPool }
+  return { dai, usdc, usdt, mim, metapoolToken, realMetapool, curvePool, wPool }
 }
 
 export const mintWMIM3Pool = async (

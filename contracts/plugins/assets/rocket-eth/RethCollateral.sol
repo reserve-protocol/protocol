@@ -22,6 +22,7 @@ contract RethCollateral is AppreciatingFiatCollateral {
     AggregatorV3Interface public immutable refPerTokChainlinkFeed;
     uint48 public immutable refPerTokChainlinkTimeout;
 
+    /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
@@ -48,22 +49,17 @@ contract RethCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        pegPrice = targetPerRef(); // {target/ref} ETH/ETH is always 1
-
-        // {UoA/ref}
-        uint192 p = chainlinkFeed.price(oracleTimeout); // target==ref :: {UoA/target} == {UoA/ref}
-
-        // {ref/tok}
-        uint192 refPerTok = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
-
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pHigh = p.mul(refPerTok);
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(
+            refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout)
+        );
+        uint192 err = p.mul(oracleError, CEIL);
 
-        // {UoA/tok} = {UoA/tok} * {1}
-        uint192 pLow = pHigh.mul(revenueShowing);
+        high = p + err;
+        low = p - err;
+        // assert(low <= high); obviously true just by inspection
 
-        low = pLow - pLow.mul(oracleError);
-        high = pHigh + pHigh.mul(oracleError);
+        pegPrice = targetPerRef(); // {target/ref} ETH/ETH is always 1
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

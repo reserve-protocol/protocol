@@ -174,7 +174,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         disabled = true;
     }
 
-    /// Switch the basket, only callable directly by governance
+    /// Switch the basket, only callable directly by governance or after a default
     /// @custom:interaction OR @custom:governance
     // checks: either caller has OWNER,
     //         or (basket is disabled after refresh and we're unpaused and unfrozen)
@@ -350,8 +350,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
-    /// @return low {UoA/BU} The lower end of the lot price estimate
-    /// @return high {UoA/BU} The upper end of the lot price estimate
+    /// @return low {UoA/BU} The lower end of the price estimate
+    /// @return high {UoA/BU} The upper end of the price estimate
     function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
         uint256 low256;
         uint256 high256;
@@ -365,8 +365,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 ? assetRegistry.toAsset(basket.erc20s[i]).lotPrice()
                 : assetRegistry.toAsset(basket.erc20s[i]).price();
 
-            low256 += safeMul(qty, lowP, RoundingMode.ROUND);
-            high256 += safeMul(qty, highP, RoundingMode.ROUND);
+            low256 += safeMul(qty, lowP, RoundingMode.FLOOR);
+            high256 += safeMul(qty, highP, RoundingMode.CEIL);
         }
 
         // safe downcast: FIX_MAX is type(uint192).max

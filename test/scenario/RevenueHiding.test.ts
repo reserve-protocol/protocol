@@ -33,10 +33,6 @@ const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 const REVENUE_HIDING = fp('1e-6') // 1 part in a million
 
-const toHiddenAmt = (x: BigNumber) => {
-  return x.mul(fp('1').sub(REVENUE_HIDING)).div(fp('1'))
-}
-
 describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -169,7 +165,9 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       // Should hide REVENUE_HIDING of the exchange rate
       initialExchangeRate = await cDAI.exchangeRateStored()
       initialRefPerTok = await cDAICollateral.refPerTok()
-      expect(initialRefPerTok).to.equal(toHiddenAmt(initialExchangeRate).div(bn('1e10')))
+
+      const expectedRefPerTok = initialExchangeRate.mul(fp('1').sub(REVENUE_HIDING)).div(fp('1'))
+      expect(initialRefPerTok).to.equal(expectedRefPerTok.div(bn('1e10')))
 
       // Issue
       issueAmt = initialBal.div(100)
@@ -227,28 +225,32 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     })
 
     it('prices should be correct', async () => {
-      // cDAICollateral should include discount in price for low estimate, and not for high
       const [low, high] = await cDAICollateral.price()
       let mid = fp('1').div(50)
-      expect(low).to.equal(toHiddenAmt(mid).sub(toHiddenAmt(mid).mul(ORACLE_ERROR).div(fp('1'))))
+      expect(low).to.equal(mid.sub(mid.mul(ORACLE_ERROR).div(fp('1'))))
       expect(high).to.equal(mid.add(mid.mul(ORACLE_ERROR).div(fp('1'))))
 
       // BasketHandler BU price - should overprice at the high end
       const [lowBaskets, highBaskets] = await basketHandler.price()
       mid = fp('2') // because DAI collateral
       const delta = mid.mul(ORACLE_ERROR).div(fp('1'))
-      expect(lowBaskets).to.eq(mid.sub(delta))
+
+      // We expect both lowBaskets + highBaskets to be above their exact values by 1 part in a million
+      // due to BasketHandler.quantity() rounding up with a CEIL
+      expect(lowBaskets).to.be.gt(mid.sub(delta))
+      expect(lowBaskets).to.be.closeTo(mid.sub(delta), mid.sub(delta).div(bn('1e6')))
       expect(highBaskets).to.be.gt(mid.add(delta)) // should be above expected
       expect(highBaskets).to.be.closeTo(mid.add(delta), mid.add(delta).div(bn('1e6')))
 
-      // RToken price - should overprice at the high end
+      // Same goes for RToken price
       const [lowRToken, highRToken] = await basketHandler.price()
-      expect(lowRToken).to.eq(mid.sub(delta))
+      expect(lowRToken).to.be.gt(mid.sub(delta))
+      expect(lowRToken).to.be.closeTo(mid.sub(delta), mid.sub(delta).div(bn('1e6')))
       expect(highRToken).to.be.gt(mid.add(delta)) // should be above expected
       expect(highRToken).to.be.closeTo(mid.add(delta), mid.add(delta).div(bn('1e6')))
     })
 
-    it('auction should be launched at discounted low price', async () => {
+    it('auction should be launched at low price ignoring revenueHiding', async () => {
       // Double exchange rate and launch auctions
       await cDAI.setExchangeRate(fp('2')) // double rate
       await backingManager.manageTokens([cDAI.address]) // transfers tokens to Traders
@@ -258,8 +260,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       // Auctions launched should be at discounted low price
       const t = await getTrade(rsrTrader, cDAI.address)
       const sellAmt = await t.initBal()
-      const sellPrice = toHiddenAmt(fp('2')).div(50)
-      const minBuyAmt = await toMinBuyAmt(sellAmt, sellPrice, fp('1'))
+      const minBuyAmt = await toMinBuyAmt(sellAmt, fp('2').div(50), fp('1'))
       const expectedPrice = minBuyAmt.mul(fp('1')).div(sellAmt)
       // price should be within 1 part in a 1 trillion of our discounted rate
       expect(await t.worstCasePrice()).to.be.closeTo(expectedPrice, expectedPrice.div(bn('1e9')))

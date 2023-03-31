@@ -19,13 +19,14 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
 
     IRTokenOracle public immutable rTokenOracle;
 
+    /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout are unused; set chainlinkFeed to 0x1
     /// @dev config.erc20 should be a IConvexStakingWrapper
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
-        ICurveMetaPool metapool_,
+        ICurveMetaPool metapoolToken_,
         uint192 pairedTokenDefaultThreshold_,
         IRTokenOracle rTokenOracle_
     )
@@ -33,52 +34,12 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
             config,
             revenueHiding,
             ptConfig,
-            metapool_,
+            metapoolToken_,
             pairedTokenDefaultThreshold_
         )
     {
         require(address(rTokenOracle_) != address(0), "rTokenOracle missing");
         rTokenOracle = rTokenOracle_;
-    }
-
-    /// Can revert, used by other contract functions in order to catch errors
-    /// Should not return FIX_MAX for low
-    /// Should only return FIX_MAX for high if low is 0
-    /// @dev Override this when pricing is more complicated than just a single oracle
-    /// @return low {UoA/tok} The low price estimate
-    /// @return high {UoA/tok} The high price estimate
-    /// @return {target/ref} Unused. Always 0.
-    function tryPrice()
-        external
-        view
-        virtual
-        override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192
-        )
-    {
-        // Should include revenue hiding discount in the low discount but not high
-
-        // {UoA/pairedTok}
-        (Price memory lastPrice, ) = rTokenOracle.priceView(IRToken(address(pairedToken)), false);
-
-        // {UoA}
-        (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lastPrice.low, lastPrice.high);
-
-        // discount aumLow by the amount of revenue being hidden
-        // {UoA} = {UoA} * {1}
-        aumLow = aumLow.mul(revenueShowing);
-
-        // {tok}
-        uint192 supply = shiftl_toFix(metapool.totalSupply(), -int8(metapool.decimals()));
-        // We can always assume that the total supply is non-zero
-
-        // {UoA/tok} = {UoA} / {tok}
-        low = aumLow.div(supply);
-        high = aumHigh.div(supply);
-        return (low, high, 0);
     }
 
     /// Can revert, used by `_anyDepeggedOutsidePool()`
@@ -103,6 +64,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
     /// Have to override to add custom default checks
     function refresh() public virtual override {
         // refresh price in rTokenOracle
+        // solhint-disable no-empty-blocks
         try rTokenOracle.price(IRToken(address(pairedToken)), false) {} catch (
             bytes memory errData
         ) {

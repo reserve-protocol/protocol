@@ -24,7 +24,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    /// @param config Unused members: chainlinkFeed, oracleError, oracleTimeout
+    /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
     /// @dev config.erc20 should be a IConvexStakingWrapper
     constructor(
         CollateralConfig memory config,
@@ -52,22 +52,18 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
             uint192
         )
     {
-        // Should include revenue hiding discount in the low discount but not high
-
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = totalBalancesValue();
-
-        // discount aumLow by the amount of revenue being hidden
-        // {UoA} = {UoA} * {1}
-        aumLow = aumLow.mul(revenueShowing);
 
         // {tok}
         uint192 supply = shiftl_toFix(lpToken.totalSupply(), -int8(lpToken.decimals()));
         // We can always assume that the total supply is non-zero
 
         // {UoA/tok} = {UoA} / {tok}
-        low = aumLow.div(supply);
-        high = aumHigh.div(supply);
+        low = aumLow.div(supply, FLOOR);
+        high = aumHigh.div(supply, CEIL);
+        assert(low <= high); // not obviously true just by inspection
+
         return (low, high, 0);
     }
 
