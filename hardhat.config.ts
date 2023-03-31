@@ -64,7 +64,7 @@ const config: HardhatUserConfig = {
         mnemonic: MNEMONIC,
       },
       // gasPrice: 10_000_000_000,
-      gasMultiplier: 1.015, // 1.5% buffer; seen failures on RToken deployment and asset refreshes
+      gasMultiplier: 1.02, // 2% buffer; seen failures on RToken deployment and asset refreshes
     },
   },
   solidity: {
