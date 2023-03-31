@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
+import { FixLib, shiftl_toFix } from "contracts/libraries/Fixed.sol";
+import { AggregatorV3Interface, OracleLib } from "contracts/plugins/assets/OracleLib.sol";
+import { IRewardable, Asset, CollateralConfig, AppreciatingFiatCollateral } from "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import { IMaplePool } from "contracts/plugins/assets/maple-v2/vendor/IMaplePool.sol";
 
 /**

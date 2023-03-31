@@ -11,8 +11,8 @@ In the end the tokens are redeemable for the underlying assets at the exchange r
 
 The collateral covers the Maven 11 permissionless pools:
 
-- [a pool of USD][maple-app-usd-pool]
-- [and another pool of wETH][maple-app-weth-pool]
+- [a pool of USD][maple-app-usd-pool] (M11 Credit Maple Pool USDC2)
+- [and another pool of wETH][maple-app-weth-pool] (M11 Credit Maple Pool WETH1)
 
 ## Deployment
 
@@ -49,7 +49,7 @@ struct CollateralConfig {
     uint48 priceTimeout; // 604800 {s} (1 week)
     AggregatorV3Interface chainlinkFeed; // "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" {ETH/USD}
     uint192 oracleError; // 0.005 {1}
-    IERC20Metadata erc20; // "0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3
+    IERC20Metadata erc20; // "0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3"
     uint192 maxTradeVolume; // 1e6 {UoA}
     uint48 oracleTimeout; // 3600 {s} (1h)
     bytes32 targetName; // "USD"
@@ -67,18 +67,17 @@ Maple has a thorough documentation; here we're interested in the [pool's logic][
 
 Maven11 USDC Pool Contracts:
 
-| `tok` | `ref` | `tgt` | `UoA` |
-| :---: | :---: | :---: | :---: |
-|  LPT  | USDC  |  USD  |  USD  |
+| `tok`         | `ref` | `tgt` | `UoA` |
+| :-----------: | :---: | :---: | :---: |
+|  MPL-mcUSDC2  | USDC  |  USD  |  USD  |
 
 Maven11 WETH Pool Contracts:
 
-| `tok` | `ref` | `tgt` | `UoA` |
-| :---: | :---: | :---: | :---: |
-|  LPT  | wETH  |  USD  |  USD  |
+| `tok`         | `ref` | `tgt` | `UoA` |
+| :-----------: | :---: | :---: | :---: |
+|  MPL-mcWETH1  | wETH  |  USD  |  USD  |
 
-The tokens / shares given to liquidity providers in return for their assets are not named.
-Here I called it "LPT", for "liquidity provider token".
+The token names are taken from the `symbol` method in the pool contracts.
 
 It is different from the MPL / xMPL tokens.
 
@@ -151,6 +150,13 @@ WETH pool:
 | xMPL  | [`0x4937a209d4cdbd3ecd48857277cfd4da4d82914c`](https://etherscan.io/address/0x4937a209d4cdbd3ecd48857277cfd4da4d82914c) |
 
 ## Tests
+
+The plugin tests run of memory with the default settings.
+The Hardhat option `--max-memory 4096` didn't work for me, I had to pass Node parameters to yarn:
+
+```bash
+NODE_OPTIONS="--max-old-space-size=4096" yarn run hardhat test test/plugins/individual-collateral/maple-v2/MaplePoolCollateral.test.ts
+```
 
 ### Context
 
