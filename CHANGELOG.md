@@ -108,8 +108,6 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 
 #### Core protocol contracts
 
-- `BackingManager`
-  - Fix natspec typo in `manageTokensSortedOrder()`
 - `BasketHandler`
   - Bugfix for `getPrimeBasket()` view
   - Minor change to `_price()` rounding
