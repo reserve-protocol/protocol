@@ -163,7 +163,7 @@ This variable should NOT be interpreted to mean that auction sizes above this va
 
 This parameter can be set to zero.
 
-Default value: `1e22` = $10k
+Default value: `1e21` = $1k
 Mainnet reasonable range: 1e19 to 1e23
 
 #### `rTokenMaxTradeVolume`
@@ -181,9 +181,9 @@ Mainnet reasonable range: 1e22 to 1e27.
 
 Dimension: `{1}`
 
-The `rewardRatio` is the fraction of the current reward amount that should be handed out per span of 12s.
+The `rewardRatio` is the fraction of the current reward amount that should be handed out per block.
 
-Default value: `3209014700000` = a half life of 30 days at a period of 12s.
+Default value: `3209014700000` = a half life of 30 days.
 
 Mainnet reasonable range: 1e11 to 1e13
 
@@ -204,7 +204,7 @@ Dimension: `{seconds}`
 
 The trading delay is how many seconds should pass after the basket has been changed before a trade can be opened. In the long term this can be set to 0 after MEV searchers are firmly integrated, but at the start it may be useful to have a delay before trading in order to avoid worst-case prices.
 
-Default value: `21600` = 6 hours
+Default value: `7200` = 2 hours
 Mainnet reasonable range: 0 to 604800
 
 ### `auctionLength`
@@ -220,9 +220,9 @@ Mainnet reasonable range: 60 to 3600
 
 Dimension: `{1}`
 
-The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This buffer allows collateral tokens to be periodically converted into the RToken, which is a more efficient form of revenue production than trading each individual collateral for the desired RToken.
+The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This buffer allows collateral tokens to be periodically converted into the RToken, which is a more efficient form of revenue production than trading each individual collateral for the desired RToken. It also adds a small buffer that can prevent RSR from being seized when there are small losses due to slippage during rebalancing.
 
-Default value: `1e14` = 0.01%
+Default value: `1e15` = 0.1%
 Mainnet reasonable range: 1e12 to 1e18
 
 ### `maxTradeSlippage`
@@ -231,7 +231,7 @@ Dimension: `{1}`
 
 The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at. Oracle prices have ranges of their own; the maximum trade slippage permits additional price movement beyond the worst-case oracle price.
 
-Default value: `0.01e18` or `0.02e18` = 1/2%
+Default value: `0.005e18` = 0.5%
 Mainnet reasonable range: 1e12 to 1e18
 
 ### `shortFreeze`
@@ -247,9 +247,9 @@ Mainnet reasonable range: 3600 to 2592000 (1 hour to 1 month)
 
 Dimension: `{s}`
 
-The number of seconds a long freeze lasts. Long freezes can be disabled by removing all addresses from the `LONG_FREEZER` role.
+The number of seconds a long freeze lasts. Long freezes can be disabled by removing all addresses from the `LONG_FREEZER` role. A long freezer has 6 charges that can be used.
 
-Default value: `2592000` = 30 days
+Default value: `604800` = 7 days
 Mainnet reasonable range: 86400 to 31536000 (1 day to 1 year)
 
 ### `RToken Supply Throttles`
@@ -277,7 +277,7 @@ A fraction of the RToken supply that indicates how much net issuance to allow pe
 
 Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 
-Default value: `5e16` = 5% per hour
+Default value: `2.5e16` = 2.5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 #### `redemptionThrottle.amtRate`
@@ -288,7 +288,7 @@ A quantity of RToken that serves as a lower-bound for how much net redemption to
 
 Must be at least 1 whole RToken, or 1e18. Can be as large as 1e48. Set it to 1e48 if you want to effectively disable the redemption throttle altogether.
 
-Default value: `1e24` = 1,000,000 RToken
+Default value: `2e24` = 2,000,000 RToken
 Mainnet reasonable range: 1e23 to 1e27
 
 #### `redemptionThrottle.pctRate`
@@ -299,7 +299,7 @@ A fraction of the RToken supply that indicates how much net redemption to allow 
 
 Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 
-Default value: `2.5e16` = 2.5% per hour
+Default value: `5e16` = 5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 ### Governance Parameters
