@@ -20,6 +20,7 @@ export interface ITokens {
   aBUSD?: string
   aUSDP?: string
   aWETH?: string
+  aWBTC?: string
   cDAI?: string
   cUSDC?: string
   cUSDT?: string
@@ -62,6 +63,8 @@ interface INetworkConfig {
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  MORPHO_AAVE_CONTROLLER?: string
+  MORPHO_AAVE_LENS?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -87,6 +90,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aBUSD: '0xA361718326c15715591c299427c62086F69923D9',
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
+      aWBTC: '0x9ff58f4ffb29fa2266ab25e75e2a8b3503311656',
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
@@ -139,6 +143,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
+    MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0'
   },
   '3': {
     name: 'ropsten',
@@ -212,7 +218,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
-    GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101'
   },
   '5': {
     name: 'goerli',
