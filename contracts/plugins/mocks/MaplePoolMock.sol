@@ -11,8 +11,7 @@ contract MaplePoolMock is ERC20Mock {
 
     uint192 internal _refPerTok;
 
-    constructor(string memory name, string memory symbol, address underlyingToken) ERC20Mock(name, symbol) {
-        _underlyingToken = underlyingToken;
+    constructor(string memory name, string memory symbol) ERC20Mock(name, symbol) {
         _refPerTok = FIX_ONE;
     }
 
@@ -20,20 +19,16 @@ contract MaplePoolMock is ERC20Mock {
         return 6;
     }
 
-    function convertToShares(uint256 assets_) external returns (uint256) {
+    function convertToShares(uint256 assets_) external view returns (uint256) {
         return FIX_ONE.div(_refPerTok).mulu_toUint(assets_);
     }
 
-    function convertToAssets(uint256 shares_) external returns (uint256) {
+    function convertToAssets(uint256 shares_) external view returns (uint256) {
         return _refPerTok.mulu_toUint(shares_);
     }
 
     /// @param rate {ref/tok}
     function setRefPerTok(uint192 rate) external {
         _refPerTok = rate;
-    }
-
-    function underlying() external view returns (address) {
-        return _underlyingToken;
     }
 }

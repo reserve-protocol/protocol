@@ -6,6 +6,31 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 interface IMaplePool is IERC20Metadata {
 
     /**************************************************************************************************************************************/
+    /*** State Changing Functions                                                                                                       ***/
+    /**************************************************************************************************************************************/
+
+    /**
+     *  @dev    Mints `shares_` to `receiver_` by depositing `assets_` into the Vault.
+     *          MUST emit the {Deposit} event.
+     *          MUST revert if all of the assets cannot be deposited (due to insufficient approval, deposit limits, slippage, etc).
+     *  @param  assets_   The amount of assets to deposit.
+     *  @param  receiver_ The receiver of the shares.
+     *  @return shares_   The amount of shares minted.
+     */
+     function deposit(uint256 assets_, address receiver_) external returns (uint256 shares_);
+ 
+     /**
+      *  @dev    Burns `shares_` from `owner_` and sends `assets_` to `receiver_`.
+      *          MUST emit the {Withdraw} event.
+      *          MUST revert if all of the shares cannot be redeemed (due to insufficient shares, withdrawal limits, slippage, etc).
+      *  @param  shares_   The amount of shares to redeem.
+      *  @param  receiver_ The receiver of the assets.
+      *  @param  owner_    The owner of the shares.
+      *  @return assets_   The amount of assets sent to the receiver.
+      */
+     function redeem(uint256 shares_, address receiver_, address owner_) external returns (uint256 assets_);
+
+    /**************************************************************************************************************************************/
     /*** View Functions                                                                                                                 ***/
     /**************************************************************************************************************************************/
 

@@ -1,269 +1,244 @@
 import collateralTests from '../collateralTests'
-import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
-import { resetFork, mintWSTETH } from './helpers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { ContractFactory, BigNumber, BigNumberish } from 'ethers'
-import {
-  ERC20Mock,
-  ISTETH,
-  MockV3Aggregator,
-  MockV3Aggregator__factory,
-  TestICollateral,
-  IWSTETH,
-} from '../../../../typechain'
-import { bn, fp } from '../../../../common/numbers'
-import { ZERO_ADDRESS } from '../../../../common/constants'
+import { ContractFactory, BigNumberish } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { MockV3Aggregator, MockV3Aggregator__factory, TestICollateral, IMaplePool, MaplePoolMock } from '../../../../typechain'
+import { bn, fp } from '../../../../common/numbers'
+import { advanceBlocks } from '../../../utils/time'
+import { CollateralFixtureContext, CollateralStatus, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
+import { resetFork, mintMaplePoolToken } from './helpers'
 import {
-  ORACLE_ERROR,
+  MAPLE_USDC_POOL,
+  MAPLE_WETH_POOL,
+  USDC_HOLDER,
+  WETH_HOLDER,
+  USDC_TOKEN,
+  WETH_TOKEN,
+  USDC_PRICE_FEED,
+  ETH_PRICE_FEED,
+  USDC_PRICE_ERROR,
+  WETH_PRICE_ERROR,
+  PRICE_TIMEOUT,
   ORACLE_TIMEOUT,
-  MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
-  STETH,
-  WSTETH,
-  STETH_USD_PRICE_FEED,
-  STETH_ETH_PRICE_FEED,
-  LIDO_ORACLE,
+  MAX_TRADE_VOL,
+  REVENUE_HIDING,
 } from './constants'
-import { whileImpersonating } from '../../../utils/impersonation'
 
-/*
-  Define interfaces
-*/
-interface WSTETHCollateralFixtureContext extends CollateralFixtureContext {
-  steth: ISTETH
-  wsteth: IWSTETH
-  targetPerRefChainlinkFeed: MockV3Aggregator
+// Iterate over both USDC and wETH MaplePool tokens
+
+interface MaplePoolTokenEnumeration {
+  testName: string
+  tokenName: string
+  underlying: string
+  holder: string
+  MaplePoolToken: string
+  chainlinkFeed: string
+  oracleError: BigNumberish
+  defaultOraclePrice: BigNumberish
 }
 
-/*
-  Define deployment functions
-*/
+const all = [
+  {
+    testName: 'Maple USDC Collateral',
+    tokenName: 'MPL-mcUSDC2',
+    underlying: USDC_TOKEN,
+    holder: USDC_HOLDER,
+    MaplePoolToken: MAPLE_USDC_POOL,
+    oracleError: USDC_PRICE_ERROR,
+    chainlinkFeed: USDC_PRICE_FEED, // {target/ref}
+    defaultOraclePrice: bn('1e8'), // 8 decimals
+  },
+  {
+    testName: 'Maple wETH Collateral',
+    tokenName: 'MPL-mcWETH1',
+    underlying: WETH_TOKEN,
+    holder: WETH_HOLDER,
+    MaplePoolToken: MAPLE_WETH_POOL,
+    oracleError: WETH_PRICE_ERROR,
+    chainlinkFeed: ETH_PRICE_FEED, // {target/ref}
+    defaultOraclePrice: bn('1800e8'), // 8 decimals
+  },
+]
+all.forEach((current: MaplePoolTokenEnumeration) => {
+  const defaultCollateralOpts: CollateralOpts = {
+    erc20: current.MaplePoolToken,
+    targetName: ethers.utils.formatBytes32String('USD'),
+    priceTimeout: PRICE_TIMEOUT,
+    chainlinkFeed: current.chainlinkFeed,
+    oracleTimeout: ORACLE_TIMEOUT,
+    oracleError: current.oracleError,
+    maxTradeVolume: MAX_TRADE_VOL,
+    defaultThreshold: DEFAULT_THRESHOLD,
+    delayUntilDefault: DELAY_UNTIL_DEFAULT,
+    revenueHiding: REVENUE_HIDING,
+  }
 
-interface WSTETHCollateralOpts extends CollateralOpts {
-  targetPerRefChainlinkFeed?: string
-  targetPerRefChainlinkTimeout?: BigNumberish
-}
+  const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
+    opts = { ...defaultCollateralOpts, ...opts }
 
-export const defaultWSTETHCollateralOpts: WSTETHCollateralOpts = {
-  erc20: WSTETH,
-  targetName: ethers.utils.formatBytes32String('ETH'),
-  rewardERC20: ZERO_ADDRESS,
-  priceTimeout: ORACLE_TIMEOUT,
-  chainlinkFeed: STETH_USD_PRICE_FEED,
-  oracleTimeout: ORACLE_TIMEOUT,
-  oracleError: ORACLE_ERROR,
-  maxTradeVolume: MAX_TRADE_VOL,
-  defaultThreshold: DEFAULT_THRESHOLD,
-  delayUntilDefault: DELAY_UNTIL_DEFAULT,
-  targetPerRefChainlinkFeed: STETH_ETH_PRICE_FEED,
-  targetPerRefChainlinkTimeout: ORACLE_TIMEOUT,
-  revenueHiding: fp('0'),
-}
+    const MaplePoolCollateralFactory: ContractFactory = await ethers.getContractFactory('MaplePoolCollateral')
 
-export const deployCollateral = async (
-  opts: WSTETHCollateralOpts = {}
-): Promise<TestICollateral> => {
-  opts = { ...defaultWSTETHCollateralOpts, ...opts }
-
-  const WStEthCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'LidoStakedEthCollateral'
-  )
-
-  const collateral = <TestICollateral>await WStEthCollateralFactory.deploy(
-    {
-      erc20: opts.erc20,
-      targetName: opts.targetName,
-      rewardERC20: opts.rewardERC20,
-      priceTimeout: opts.priceTimeout,
-      chainlinkFeed: opts.chainlinkFeed,
-      oracleError: opts.oracleError,
-      oracleTimeout: opts.oracleTimeout,
-      maxTradeVolume: opts.maxTradeVolume,
-      defaultThreshold: opts.defaultThreshold,
-      delayUntilDefault: opts.delayUntilDefault,
-    },
-    opts.revenueHiding,
-    opts.targetPerRefChainlinkFeed,
-    opts.targetPerRefChainlinkTimeout,
-    { gasLimit: 2000000000 }
-  )
-  await collateral.deployed()
-  // sometimes we are trying to test a negative test case and we want this to fail silently
-  // fortunately this syntax fails silently because our tools are terrible
-  await expect(collateral.refresh())
-
-  return collateral
-}
-
-const chainlinkDefaultAnswer = bn('1800e8')
-const chainlinkTargetUnitDefaultAnswer = bn('1e8')
-
-type Fixture<T> = () => Promise<T>
-
-const makeCollateralFixtureContext = (
-  alice: SignerWithAddress,
-  opts: CollateralOpts = {}
-): Fixture<WSTETHCollateralFixtureContext> => {
-  const collateralOpts = { ...defaultWSTETHCollateralOpts, ...opts }
-
-  const makeCollateralFixtureContext = async () => {
-    const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
-      await ethers.getContractFactory('MockV3Aggregator')
+    const collateral = <TestICollateral>await MaplePoolCollateralFactory.deploy(
+      {
+        erc20: opts.erc20,
+        targetName: opts.targetName,
+        priceTimeout: opts.priceTimeout,
+        chainlinkFeed: opts.chainlinkFeed,
+        oracleError: opts.oracleError,
+        oracleTimeout: opts.oracleTimeout,
+        maxTradeVolume: opts.maxTradeVolume,
+        defaultThreshold: opts.defaultThreshold,
+        delayUntilDefault: opts.delayUntilDefault,
+      },
+      opts.revenueHiding,
+      { gasLimit: 2000000000 }
     )
+    await collateral.deployed()
 
-    const chainlinkFeed = <MockV3Aggregator>(
-      await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
-    )
+    // sometimes we are trying to test a negative test case and we want this to fail silently
+    // fortunately this syntax fails silently because our tools are terrible
+    await expect(collateral.refresh())
 
-    const targetPerRefChainlinkFeed = <MockV3Aggregator>(
-      await MockV3AggregatorFactory.deploy(8, chainlinkTargetUnitDefaultAnswer)
-    )
+    return collateral
+  }
 
+  type Fixture<T> = () => Promise<T>
+
+  const makeCollateralFixtureContext = (alice: SignerWithAddress, opts: CollateralOpts = {}): Fixture<CollateralFixtureContext> => {
+    const collateralOpts = { ...defaultCollateralOpts, ...opts }
+
+    const _makeCollateralFixtureContext = async () => {
+      const MockV3AggregatorFactory = <MockV3Aggregator__factory>(await ethers.getContractFactory('MockV3Aggregator'))
+
+      const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, current.defaultOraclePrice)
+      collateralOpts.chainlinkFeed = chainlinkFeed.address
+
+      const collateral = await deployCollateral(collateralOpts)
+      const erc20 = await ethers.getContractAt('IMaplePool', collateralOpts.erc20 as string) // the Maple pool
+
+      return {
+        alice,
+        collateral,
+        chainlinkFeed,
+        tok: erc20,
+      }
+    }
+
+    return _makeCollateralFixtureContext
+  }
+
+  const deployCollateralMockContext = async (opts: CollateralOpts = {}): Promise<CollateralFixtureContext> => {
+    const collateralOpts = { ...defaultCollateralOpts, ...opts }
+
+    const MockV3AggregatorFactory = <MockV3Aggregator__factory>(await ethers.getContractFactory('MockV3Aggregator'))
+
+    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, current.defaultOraclePrice)
     collateralOpts.chainlinkFeed = chainlinkFeed.address
-    collateralOpts.targetPerRefChainlinkFeed = targetPerRefChainlinkFeed.address
 
-    const steth = (await ethers.getContractAt('ISTETH', STETH)) as ISTETH
-    const wsteth = (await ethers.getContractAt('IWSTETH', WSTETH)) as IWSTETH
-    const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
+    const MaplePoolMockFactory = await ethers.getContractFactory('MaplePoolMock')
+    const erc20 = await MaplePoolMockFactory.deploy('Mock MaplePool', 'Mock '.concat(current.tokenName))
+    collateralOpts.erc20 = erc20.address // ?? side effect ?
+
     const collateral = await deployCollateral(collateralOpts)
 
     return {
-      alice,
       collateral,
       chainlinkFeed,
-      steth,
-      wsteth,
-      tok: wsteth,
-      rewardToken,
-      targetPerRefChainlinkFeed,
+      tok: erc20,
     }
   }
 
-  return makeCollateralFixtureContext
-}
+  // helpers
 
-/*
-  Define helper functions
-*/
+  const mintCollateralTo: MintCollateralFunc<CollateralFixtureContext> = async (
+    ctx: CollateralFixtureContext,
+    amount: BigNumberish,
+    user: SignerWithAddress,
+    recipient: string
+  ) => {
+    const tok = ctx.tok as IMaplePool
+    const underlying = await ethers.getContractAt('IERC20Metadata', current.underlying)
+    await mintMaplePoolToken(underlying, current.holder, tok, amount, recipient)
+  }
 
-const mintCollateralTo: MintCollateralFunc<WSTETHCollateralFixtureContext> = async (
-  ctx: WSTETHCollateralFixtureContext,
-  amount: BigNumberish,
-  user: SignerWithAddress,
-  recipient: string
-) => {
-  await mintWSTETH(ctx.wsteth, user, amount, recipient)
-}
+  const increaseRefPerTok = async (ctx: CollateralFixtureContext) => {
+    await advanceBlocks(1)
+    await (ctx.tok as IMaplePool).convertToAssets(1e18)
+  }
 
-const reduceTargetPerRef = async (
-  ctx: WSTETHCollateralFixtureContext,
-  pctDecrease: BigNumberish
-) => {
-  const lastRound = await ctx.targetPerRefChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
-  await ctx.targetPerRefChainlinkFeed.updateAnswer(nextAnswer)
-}
+  const collateralSpecificConstructorTests = () => {
+    return
+  }
 
-const increaseTargetPerRef = async (
-  ctx: WSTETHCollateralFixtureContext,
-  pctIncrease: BigNumberish
-) => {
-  const lastRound = await ctx.targetPerRefChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
-  await ctx.targetPerRefChainlinkFeed.updateAnswer(nextAnswer)
-}
+  const collateralSpecificStatusTests = () => {
+    it('does revenue hiding correctly', async () => {
+      const { collateral, tok } = await deployCollateralMockContext({ revenueHiding: fp('0.01') })
 
-const reduceRefPerTok = async (ctx: WSTETHCollateralFixtureContext, pctDecrease: BigNumberish) => {
-  // Decrease wsteth to eth exchange rate so refPerTok decreases
-  const [, beaconValidators, beaconBalance] = await ctx.steth.getBeaconStat()
-  const beaconBalanceLower: BigNumberish = beaconBalance.sub(
-    beaconBalance.mul(pctDecrease).div(100)
-  )
+      // the exposed refPerTok is 0.99 the max (here current) refPerTok
+      await (tok as MaplePoolMock).setRefPerTok(fp('2')) // twice the default rpt
+      await collateral.refresh() // refresh actually updates the rpt
+      const before = await collateral.refPerTok()
+      expect(before).to.equal(fp('1.98'))
+      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  // Impersonate Lido Oracle
-  await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
-    await ctx.steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceLower)
-  })
-}
+      // Should be SOUND if drops just under 1%
+      await (tok as MaplePoolMock).setRefPerTok(fp('1.98001'))
+      await collateral.refresh()
+      let after = await collateral.refPerTok()
+      expect(before).to.eq(after)
+      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-const increaseRefPerTok = async (
-  ctx: WSTETHCollateralFixtureContext,
-  pctIncrease: BigNumberish
-) => {
-  // Increase wsteth to steth exchange rate so refPerTok increases
-  const [, beaconValidators, beaconBalance] = await ctx.steth.getBeaconStat()
-  const beaconBalanceHigher: BigNumberish = beaconBalance.add(
-    beaconBalance.mul(pctIncrease).div(100)
-  )
+      // Should be DISABLED if drops just over 1%
+      await (tok as MaplePoolMock).setRefPerTok(fp('1.97999'))
+      await collateral.refresh()
+      after = await collateral.refPerTok()
+      expect(before).to.be.gt(after)
+      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
+    })
+  }
 
-  // Impersonate Lido Oracle
-  await whileImpersonating(LIDO_ORACLE, async (lidoSigner) => {
-    await ctx.steth.connect(lidoSigner).handleOracleReport(beaconValidators, beaconBalanceHigher)
-  })
-}
+  const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
+    const initRefPerTok = await ctx.collateral.refPerTok()
 
-const getExpectedPrice = async (ctx: WSTETHCollateralFixtureContext): Promise<BigNumber> => {
-  // UoA/tok feed
-  const clData = await ctx.chainlinkFeed.latestRoundData()
-  const clDecimals = await ctx.chainlinkFeed.decimals()
+    const decimals = await ctx.chainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
-  const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
-  return expectedPegPrice.mul(refPerTok).div(fp('1'))
-}
+    const initData = await ctx.chainlinkFeed.latestRoundData()
+    return initData.answer
+      .mul(bn(10).pow(18 - decimals))
+      .mul(initRefPerTok)
+      .div(fp('1'))
+  }
 
-/*
-  Define collateral-specific tests
-*/
+  // Run the test suite
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {
-  it('does not allow missing targetPerRef chainlink feed', async () => {
-    await expect(
-      deployCollateral({ targetPerRefChainlinkFeed: ethers.constants.AddressZero })
-    ).to.be.revertedWith('missing targetPerRef feed')
-  })
+  const emptyFn = () => {
+    return
+  }
 
-  it('does not allow targetPerRef oracle timeout at 0', async () => {
-    await expect(deployCollateral({ targetPerRefChainlinkTimeout: 0 })).to.be.revertedWith(
-      'targetPerRefChainlinkTimeout zero'
-    )
-  })
-}
+  const opts = {
+    deployCollateral,
+    collateralSpecificConstructorTests: collateralSpecificConstructorTests,
+    collateralSpecificStatusTests,
+    beforeEachRewardsTest: emptyFn,
+    makeCollateralFixtureContext,
+    mintCollateralTo,
+    reduceTargetPerRef: emptyFn,
+    increaseTargetPerRef: emptyFn,
+    reduceRefPerTok: emptyFn,
+    increaseRefPerTok,
+    getExpectedPrice,
+    itClaimsRewards: it.skip,
+    itChecksTargetPerRefDefault: it.skip,
+    itChecksRefPerTokDefault: it.skip,
+    itChecksPriceChanges: it,
+    itHasRevenueHiding: it.skip, // in this file
+    resetFork,
+    collateralName: current.testName,
+    chainlinkDefaultAnswer: bn('1e8'),
+  }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => {}
-
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const beforeEachRewardsTest = async () => {}
-
-/*
-  Run the test suite
-*/
-
-const opts = {
-  deployCollateral,
-  collateralSpecificConstructorTests,
-  collateralSpecificStatusTests,
-  beforeEachRewardsTest,
-  makeCollateralFixtureContext,
-  mintCollateralTo,
-  reduceTargetPerRef,
-  increaseTargetPerRef,
-  reduceRefPerTok,
-  increaseRefPerTok,
-  getExpectedPrice,
-  itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it,
-  itChecksRefPerTokDefault: it,
-  itChecksPriceChanges: it,
-  itHasRevenueHiding: it,
-  resetFork,
-  collateralName: 'LidoStakedETH',
-  chainlinkDefaultAnswer,
-}
-
-collateralTests(opts)
+  collateralTests(opts)
+})
