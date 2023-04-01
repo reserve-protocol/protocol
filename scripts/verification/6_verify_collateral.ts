@@ -70,7 +70,7 @@ async function main() {
       'Static ' + (await aToken.name()),
       's' + (await aToken.symbol()),
     ],
-    'contracts/plugins/aave/StaticATokenLM.sol:StaticATokenLM'
+    'contracts/plugins/assets/aave/StaticATokenLM.sol:StaticATokenLM'
   )
   /********  Verify ATokenFiatCollateral - aDAI  **************************/
   await verifyContract(
@@ -90,7 +90,7 @@ async function main() {
       },
       revenueHiding.toString(),
     ],
-    'contracts/plugins/assets/ATokenFiatCollateral.sol:ATokenFiatCollateral'
+    'contracts/plugins/assets/aave/ATokenFiatCollateral.sol:ATokenFiatCollateral'
   )
   /********************** Verify CTokenFiatCollateral - cDAI  ****************************************/
   await verifyContract(
@@ -111,7 +111,7 @@ async function main() {
       revenueHiding.toString(),
       networkConfig[chainId].COMPTROLLER,
     ],
-    'contracts/plugins/assets/CTokenFiatCollateral.sol:CTokenFiatCollateral'
+    'contracts/plugins/assets/compoundv2/CTokenFiatCollateral.sol:CTokenFiatCollateral'
   )
   /********************** Verify CTokenNonFiatCollateral - cWBTC  ****************************************/
 
@@ -139,7 +139,7 @@ async function main() {
       revenueHiding.toString(),
       networkConfig[chainId].COMPTROLLER,
     ],
-    'contracts/plugins/assets/CTokenNonFiatCollateral.sol:CTokenNonFiatCollateral'
+    'contracts/plugins/assets/compoundv2/CTokenNonFiatCollateral.sol:CTokenNonFiatCollateral'
   )
   /********************** Verify CTokenSelfReferentialFiatCollateral - cETH  ****************************************/
   await verifyContract(
@@ -161,7 +161,7 @@ async function main() {
       '18',
       networkConfig[chainId].COMPTROLLER,
     ],
-    'contracts/plugins/assets/CTokenSelfReferentialCollateral.sol:CTokenSelfReferentialCollateral'
+    'contracts/plugins/assets/compoundv2/CTokenSelfReferentialCollateral.sol:CTokenSelfReferentialCollateral'
   )
   /********************** Verify NonFiatCollateral - wBTC  ****************************************/
   await verifyContract(

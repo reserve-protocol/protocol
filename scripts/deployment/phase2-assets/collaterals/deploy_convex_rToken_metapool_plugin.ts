@@ -73,7 +73,8 @@ async function main() {
   })
 
   const wPool = await ConvexStakingWrapperFactory.deploy()
-  await wPool.initialize(eUSD_FRAX_BP_POOL_ID)
+  await wPool.deployed()
+  await (await wPool.initialize(eUSD_FRAX_BP_POOL_ID)).wait()
 
   const collateral = <CvxStableRTokenMetapoolCollateral>await CvxStableCollateralFactory.connect(
     deployer
@@ -107,7 +108,7 @@ async function main() {
     RTOKEN_ORACLE
   )
   await collateral.deployed()
-  await collateral.refresh()
+  await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(

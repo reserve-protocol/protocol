@@ -49,7 +49,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const wTriCrypto = await ethers.getContractAt(
-    'ConvexStakingWrapper',
+    'CvxVolatileCollateral',
     deployments.collateral.cvxTriCrypto as string
   )
 
@@ -59,7 +59,7 @@ async function main() {
     deployments.collateral.cvxTriCrypto,
     [
       {
-        erc20: wTriCrypto.address,
+        erc20: await wTriCrypto.erc20(),
         targetName: ethers.utils.formatBytes32String('TRICRYPTO'),
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero

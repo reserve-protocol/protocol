@@ -72,7 +72,8 @@ async function main() {
   })
 
   const w3Pool = await ConvexStakingWrapperFactory.deploy()
-  await w3Pool.initialize(THREE_POOL_CVX_POOL_ID)
+  await w3Pool.deployed()
+  await (await w3Pool.initialize(THREE_POOL_CVX_POOL_ID)).wait()
 
   const collateral = <CvxStableCollateral>await CvxStableCollateralFactory.connect(deployer).deploy(
     {
@@ -102,7 +103,7 @@ async function main() {
     }
   )
   await collateral.deployed()
-  await collateral.refresh()
+  await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(

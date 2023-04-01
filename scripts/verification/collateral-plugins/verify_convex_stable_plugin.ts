@@ -5,8 +5,10 @@ import { bn } from '../../../common/numbers'
 import { ONE_ADDRESS } from '../../../common/constants'
 import {
   getDeploymentFile,
+  getDeploymentFilename,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
+  IDeployments,
 } from '../../deployment/common'
 import { verifyContract } from '../../deployment/utils'
 import { revenueHiding, oracleTimeout } from '../../deployment/utils'
@@ -42,12 +44,33 @@ async function main() {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
 
+  const deploymentFilename = getDeploymentFilename(chainId)
+  const coreDeployments = <IDeployments>getDeploymentFile(deploymentFilename)
+
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const w3PoolCollateral = await ethers.getContractAt(
     'CvxStableCollateral',
     deployments.collateral.cvx3Pool as string
+  )
+
+  /********  Verify ConvexStakingWrapper  **************************/
+
+  await verifyContract(
+    chainId,
+    await w3PoolCollateral.erc20(),
+    [],
+    'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper'
+  )
+
+  /********  Verify CvxMining Lib  **************************/
+
+  await verifyContract(
+    chainId,
+    coreDeployments.cvxMiningLib,
+    [],
+    'contracts/plugins/assets/convex/vendor/CvxMining.sol:CvxMining'
   )
 
   /********  Verify 3Pool plugin  **************************/
