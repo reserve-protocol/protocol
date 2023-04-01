@@ -74,10 +74,6 @@ const config: HardhatUserConfig = {
         settings,
       },
       {
-        version: '0.6.11',
-        settings: { optimizer: { enabled: true, runs: 1 } }, // to fit ContexStakingWrapper
-      },
-      {
         version: '0.6.12',
         settings,
       },
@@ -86,7 +82,14 @@ const config: HardhatUserConfig = {
         settings,
       },
     ],
+    overrides: {
+      'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
+        version: '0.6.12',
+        settings: { optimizer: { enabled: true, runs: 1 } }, // to fit ContexStakingWrapper
+      },
+    },
   },
+
   paths: {
     sources: src_dir,
   },
