@@ -63,8 +63,8 @@ const config: HardhatUserConfig = {
       accounts: {
         mnemonic: MNEMONIC,
       },
-      // gasPrice: 10_000_000_000,
-      gasMultiplier: 1.02, // 2% buffer; seen failures on RToken deployment and asset refreshes
+      // gasPrice: 30_000_000_000,
+      gasMultiplier: 1.03, // 3% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
   },
   solidity: {
@@ -74,10 +74,16 @@ const config: HardhatUserConfig = {
         settings,
       },
       {
+        version: '0.6.11',
+        settings: { optimizer: { enabled: true, runs: 1 } }, // to fit ContexStakingWrapper
+      },
+      {
         version: '0.6.12',
+        settings,
       },
       {
         version: '0.4.24',
+        settings,
       },
     ],
   },
