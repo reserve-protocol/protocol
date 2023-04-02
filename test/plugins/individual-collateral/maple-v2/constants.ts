@@ -2,7 +2,7 @@ import { bn, fp } from '../../../../common/numbers'
 import { networkConfig } from '../../../../common/configuration'
 
 export const config = networkConfig['31337'] // use mainnet fork
-export const FORK_BLOCK = 14916729
+export const FORK_BLOCK = 16300000
 
 // Mainnet Addresses
 
