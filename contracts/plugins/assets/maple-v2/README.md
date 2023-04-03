@@ -122,23 +122,16 @@ Allows to manipulate the exchange rate on the pools to test the behavior of the 
 
 #### [AppreciatingFiatCollateral.sol][reserve-collateral-parent-contract]
 
-Implements the revenue hiding, the refreshing logic on top of all the common logic of assets.
+Implements the revenue hiding and the refreshing logic on top of all the common logic of assets.
 
 ## Relevant External Contracts
 
 ### Maven11 Permissionless Pool Contracts
 
-USDC pool:
-
-| Contract | Address | Commit Hash |
-| -------- | ------- | ----------- |
-| Pool     | [`0xd3cd37a7299B963bbc69592e5Ba933388f70dc88`](https://etherscan.io/address/0xd3cd37a7299B963bbc69592e5Ba933388f70dc88) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
-
-WETH pool:
-
-| Contract | Address | Commit Hash |
-| -------- | ------- | ----------- |
-| Pool     | [`0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3`](https://etherscan.io/address/0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
+| Contract  | Address | Commit Hash |
+| --------- | ------- | ----------- |
+| USDC Pool | [`0xd3cd37a7299B963bbc69592e5Ba933388f70dc88`](https://etherscan.io/address/0xd3cd37a7299B963bbc69592e5Ba933388f70dc88) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
+| wETH Pool | [`0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3`](https://etherscan.io/address/0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
 
 ### Oracle Contracts
 
@@ -154,8 +147,6 @@ WETH pool:
 | -------- | ------- |
 | USDC  | [`0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48`](https://etherscan.io/address/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48) |
 | WETH9 | [`0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2`](https://etherscan.io/address/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2) |
-| MPL   | [`0x33349B282065b0284d756F0577FB39c158F935e6`](https://etherscan.io/address/0x33349B282065b0284d756F0577FB39c158F935e6) |
-| xMPL  | [`0x4937a209d4cdbd3ecd48857277cfd4da4d82914c`](https://etherscan.io/address/0x4937a209d4cdbd3ecd48857277cfd4da4d82914c) |
 
 ## Tests
 
@@ -183,28 +174,38 @@ The Maple contracts are plugged into this testing suite by implementing the absr
 ## Appendix: Exchange Rate Break-Down
 
 Hidden inside the variable `totalAssets` are all the actions from the protocol.
-The value can potentially decrease as well as increase during these operations:
 
-- asset deposit
-- asset withdrawal
-- loan creation
-- loan payment
-- loan interests collection
-- loan default / impairment
+Judging from historic data on the blockchain, it can move up as-well as down:
+
+USDC Pool                                  | WETH Pool
+:-----------------------------------------:|:------------------------------------------:
+![][reserve-collateral-plot-usdc-overview] | ![][reserve-collateral-plot-weth-overview]
 
 Here we'll break down the accounting formulas and track the exchange rate over time.
 The goal is to verify that the RToken requirements are met, determine the conditions of default and assess the health of the pools.
 
+### Normal Operation
+
+Apart from extraordinary events, the protocol strongly enforces an increasing exchange rate.
+
+The following graphs are zooms on the trailing end of the previous overview: the exchange rate is slowly but steadily increasing.
+
+USDC Pool                                               | WETH Pool
+:------------------------------------------------------:|:-------------------------------------------------------:
+![][reserve-collateral-plot-usdc-zoom-normal-operation] | ![][reserve-collateral-plot-weth-zoom-normal-operation]
+
 ### Risks
 
-A single loan can take up to 97% of the pool's liquidity!
+Still, a single loan can take up to 97% of the pool's liquidity!
 IE a single credit default will totally blow the ERC20 token.
 
 And loan defaults **do** happen: 31M USDC and 3900 wETH were lost for each pool.
 This is all due to a single company -Orthogonal Trading- not being solvable.
-For the USDC pool, it represented 80% of the assets locked.
 
-Still, at the time of writing, the pool delegates are now splitting the liquidity over several loans.
+For the USDC pool, it represented 80% of the assets locked:
+the graph of RPT drops from 1 to 0.2!
+
+The pool delegates are now splitting the liquidity over several loans and some of these losses were recovered.
 
 ### Notations
 
@@ -241,11 +242,23 @@ The protocol makes a distinction between loan impairment and default.
 The difference between this 2 events is that the impairment is a proactive measure of the protocol to recover its funds before the maturity time.
 The default occurs when the $outstandingPrincipal$ from a loan is not totally paid back when the loan ends.
 
+On the following graphs zooms in on the loan defauts.
+The red line accounts for the potential losses, while the blue moves when actual losses / gains are registered.
+
+USDC Pool                                              | WETH Pool
+:-----------------------------------------------------:|:------------------------------------------------------:
+![][reserve-collateral-plot-usdc-zoom-unrealized-loss] | ![][reserve-collateral-plot-weth-zoom-unrealized-loss]
+
 On impairment the foreseen loss is called "unrealized losses" or $unrealizedLosses$ in the formulas.
 
 This $unrealizedLosses$ is actually the amount that has not yet been paid back by the borrower, or the $outstandingPrincipal$ for this particular loan.
+As the protocol anticipates a loss, the red line goes down by that amount.
+If the blue line also goes down and meets the red one, the loss is actually realized.
 
 The protocol has cover mechanisms and it may at least partially recover the funds before the maturity.
+This is especially obvious on the wETH pool where the protocol anticipates a loss and totally covers it.
+The red line goes back to meet the blue and the exchange rate is maintained.
+
 Waiting is encouraged by the protocol and will always lower the actual loss if any.
 
 ### Difference Between Withdraw and Deposit
@@ -272,9 +285,11 @@ The **collateral uses the version `convertToAssets`**.
 
 #### Outside Of Scope
 
-- stakers
-- pool delegate
-- fees
+Some operations are made outside of the pool.
+
+In particular the fees for the stakers are all collected upstream on the loan interests.
+
+They do not impact the exchange rate.
 
 #### Fluctuations On Withdrawal / Redeeming
 
@@ -319,13 +334,21 @@ $$\begin{align}
 Similarly to the withdrawal, **a deposit keeps the overall exchange rate constant**.
 The equations are identical to the ones from the previous paragraph, only the signs of the deltas changed.
 
-#### Fluctuations On Loan Creation
+#### Fluctuations On Loan Creation & Payment
 
-#### Fluctuations On Loan Payment
+Loan creation and payment moves liquidity between the $cash$ and the $outstandingPrincipal$.
+
+This doesn't change either the total assets or shares: the rate is unchanged.
 
 #### Fluctuations On Loan Interest Collection
 
+Interest collection increases the exchange rate evenly for all the lenders.
+
 #### Fluctuations On Loan Default / Impairment
+
+As seen above an impairment is not an actual loss.
+
+Only the loan default leads to a diminution of the total assets as the outstanding principal is not paid back.
 
 [etherscan-usdc-oracle]: https://etherscan.io/address/0x5DC5E14be1280E747cD036c089C96744EBF064E7
 [maple-app-usd-pool]: https://app.maple.finance/#/v2/lend/pool/0xd3cd37a7299b963bbc69592e5ba933388f70dc88
@@ -342,6 +365,12 @@ The equations are identical to the ones from the previous paragraph, only the si
 [reserve-collateral-maple-mock]: ../../mocks/MaplePoolMock.sol
 [reserve-collateral-parent-contract]: ../AppreciatingFiatCollateral.sol
 [reserve-collateral-parent-test-script]: ../../../../test/plugins/individual-collateral/collateralTests.ts
+[reserve-collateral-plot-usdc-overview]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_overview.png
+[reserve-collateral-plot-weth-overview]: ../../../../.github/assets/images/ref-per-tok_weth-pool_overview.png
+[reserve-collateral-plot-usdc-zoom-unrealized-loss]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-unrealized-loss.png
+[reserve-collateral-plot-weth-zoom-unrealized-loss]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-unrealized-loss.png
+[reserve-collateral-plot-usdc-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-normal-operation.png
+[reserve-collateral-plot-weth-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-normal-operation.png
 [reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/maple-v2/MaplePoolCollateral.test.ts
 [reserve-collateral-usdc-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_usdc_collateral.ts
 [reserve-collateral-weth-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_weth_collateral.ts
