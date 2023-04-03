@@ -14,6 +14,49 @@ The collateral covers the Maven 11 permissionless pools:
 - [a pool of USD][maple-app-usd-pool] (M11 Credit Maple Pool USDC2)
 - [and another pool of wETH][maple-app-weth-pool] (M11 Credit Maple Pool WETH1)
 
+## Pool Accounting
+
+Maple has a thorough documentation; here we're interested in the [pool's logic][maple-docs-pools].
+
+### Units
+
+Maven11 USDC Pool Contracts:
+
+| `tok`         | `ref` | `tgt` | `UoA` |
+| :-----------: | :---: | :---: | :---: |
+|  MPL-mcUSDC2  | USDC  |  USD  |  USD  |
+
+Maven11 WETH Pool Contracts:
+
+| `tok`         | `ref` | `tgt` | `UoA` |
+| :-----------: | :---: | :---: | :---: |
+|  MPL-mcWETH1  | wETH  |  USD  |  USD  |
+
+The token names are taken from the `symbol` method in the pool contracts.
+
+It is different from the MPL / xMPL tokens.
+
+### Exchange Rate Calculation (refPerTok)
+
+The calculation is straightforward and [well documented][maple-docs-exchange-rate]:
+
+$$\begin{align}
+exchangeRate = \frac{totalAssets}{totalSupply}
+\end{align}$$
+
+Where the `exchangeRate` is actually `refPerTok`.
+It is implemented by the pool contract [`convertToAssets][maple-code-pool-contract-converttoassets].
+
+The `totalAssets` take the accrued interests and past losses into account.
+
+### Conditions of Default
+
+Defaults of the collateral happen when `refPerTok` decreases.
+This happens iff `` from the ERC4626 decreases.
+
+As detailed in [appendix section](#appendix-exchange-rate-break-down) this can only be triggered by loan default.
+This section explains why the collateral does not default on loan impairment.
+
 ## Deployment
 
 ### Scripts
@@ -59,47 +102,6 @@ struct CollateralConfig {
 uint192 revenueHiding; // 1e-6 allowed drop, as a ratio of the refPerTok 
 ```
 
-## Pool Accounting
-
-Maple has a thorough documentation; here we're interested in the [pool's logic][maple-docs-pools].
-
-### Units
-
-Maven11 USDC Pool Contracts:
-
-| `tok`         | `ref` | `tgt` | `UoA` |
-| :-----------: | :---: | :---: | :---: |
-|  MPL-mcUSDC2  | USDC  |  USD  |  USD  |
-
-Maven11 WETH Pool Contracts:
-
-| `tok`         | `ref` | `tgt` | `UoA` |
-| :-----------: | :---: | :---: | :---: |
-|  MPL-mcWETH1  | wETH  |  USD  |  USD  |
-
-The token names are taken from the `symbol` method in the pool contracts.
-
-It is different from the MPL / xMPL tokens.
-
-### Exchange Rate Calculation (refPerTok)
-
-The calculation is straightforward and [well documented][maple-docs-exchange-rate]:
-
-$$\begin{align}
-exchangeRate = \frac{totalAssets}{totalSupply}
-\end{align}$$
-
-Where the `exchangeRate` is actually `refPerTok`.
-It is implemented by the pool contract [`convertToAssets][maple-code-pool-contract-converttoassets].
-
-The `totalAssets` take the accrued interests and past losses into account.
-
-### Conditions of Default
-
-Defaults of the collateral happen when `refPerTok` decreases.
-
-As detailed in 
-
 ## Implementation
 
 ### Main Contract
@@ -108,13 +110,19 @@ Solidity code for the collateral plugin can be found in [`MaplePoolCollateral.so
 
 ### Internal Dependencies
 
-A number of auxilliary contracts are relied on in this implementation:
+This implementation relies on a number of auxiliary contracts:
 
 #### [IMaplePool.sol][reserve-collateral-maple-interface]
 
+Used to interact with both permissionless pools.
+
+#### [MaplePoolMock.sol][reserve-collateral-maple-mock]
+
+Allows to manipulate the exchange rate on the pools to test the behavior of the collateral.
+
 #### [AppreciatingFiatCollateral.sol][reserve-collateral-parent-contract]
 
-Implements the revenue hiding and the refreshing logic.
+Implements the revenue hiding, the refreshing logic on top of all the common logic of assets.
 
 ## Relevant External Contracts
 
@@ -151,24 +159,26 @@ WETH pool:
 
 ## Tests
 
-### List Of Unit Tests
-
-Included:
-
-Excluded:
-
 ### Running The Tests
 
-The plugin tests run of memory with the default settings.
-The Hardhat option `--max-memory 4096` didn't work for me, I had to pass Node parameters to yarn:
+The tests require more memory than the defaults allow:
 
 ```bash
 NODE_OPTIONS="--max-old-space-size=4096" yarn run hardhat test test/plugins/individual-collateral/maple-v2/MaplePoolCollateral.test.ts
 ```
 
+The Hardhat option `--max-memory 4096` didn't work for me.
+I had to use `NODE_OPTIONS` to pass parameters from Yarn to Node.
+
 ### Context
 
-- `MAINNET_BLOCK = 16122421`
+- `FORK_BLOCK = 16964294` (the pools were created at `16162536` and `16162554`)
+
+### List Of Unit Tests
+
+Most of the test suite comes from [the collateral test suite][reserve-collateral-parent-test-script].
+
+The Maple contracts are plugged into this testing suite by implementing the absract factories in [this script][reserve-collateral-test-script].
 
 ## Appendix: Exchange Rate Break-Down
 
@@ -224,13 +234,28 @@ totalAssets_i &= cash_i + assetsUnderManagement_i \\
 
 Where $j$ iterates over the loans.
 
+### Loan Impairment Vs Default
+
+The protocol makes a distinction between loan impairment and default.
+
+The difference between this 2 events is that the impairment is a proactive measure of the protocol to recover its funds before the maturity time.
+The default occurs when the $outstandingPrincipal$ from a loan is not totally paid back when the loan ends.
+
+On impairment the foreseen loss is called "unrealized losses" or $unrealizedLosses$ in the formulas.
+
+This $unrealizedLosses$ is actually the amount that has not yet been paid back by the borrower, or the $outstandingPrincipal$ for this particular loan.
+
+The protocol has cover mechanisms and it may at least partially recover the funds before the maturity.
+Waiting is encouraged by the protocol and will always lower the actual loss if any.
+
 ### Difference Between Withdraw and Deposit
 
-The exchange rate is enforced on both the `deposit` and `withdraw` functions and equal to the ratio in the pool:
+The exchange rate is enforced on both the `deposit` and `withdraw` functions and equal to the overall ratio in the pool:
 
 $$\alpha = \alpha_i = \frac{A_i}{S_i}$$
 
-The rate differs for deposit and withdraw: the latter takes into account the temporary losses (called "unrealized losses" in the docs).
+As [explained in the docs][maple-docs-exchange-rate], there is a subtle difference between the rate on deposit and withdraw.
+The latter takes into account the temporary losses explained in the previous section.
 
 $$\begin{align}
 exchangeRate = \frac{totalAssets-unrealizedLosses}{totalSupply}
@@ -238,10 +263,10 @@ exchangeRate = \frac{totalAssets-unrealizedLosses}{totalSupply}
 
 It is implemented by the pool contract [`convertToExitAssets`][maple-code-pool-contract-converttoexitassets].
 
-These losses lower the exchange rate and should be refunded by cover mechanisms over time.
+These foreseen losses lower the exchange rate and should be refunded by cover mechanisms over time.
 In the end the two rates will be the same, the difference counters opportunities to withdraw / deposit at key times.
 
-The collateral uses the version `convertToAssets`.
+The **collateral uses the version `convertToAssets`**.
 
 ### Exchange Rate Fluctuations
 
@@ -278,6 +303,9 @@ $$\begin{align}
 
 In short, the overall **`refPerTok` is unchanged**.
 
+This is especially important in case of an emergency situation, when a loan is about to default, where lenders might panic and redeem.
+Waiting can only improve the `refPerTok`, unless the pool's liquidity is null.
+
 #### Fluctuations On Deposit
 
 For a deposit, the shares are calculated from the number of assets entering the pool:
@@ -311,6 +339,9 @@ The equations are identical to the ones from the previous paragraph, only the si
 [maple-docs-pools]: https://maplefinance.gitbook.io/maple/technical-resources/pools/pools
 [reserve-collateral-main-contract]: ./MaplePoolCollateral.sol
 [reserve-collateral-maple-interface]: ./vendor/IMaplePool.sol
-[reserve-collateral-parent-contract]: ./MaplePoolCollateral.sol
+[reserve-collateral-maple-mock]: ../../mocks/MaplePoolMock.sol
+[reserve-collateral-parent-contract]: ../AppreciatingFiatCollateral.sol
+[reserve-collateral-parent-test-script]: ../../../../test/plugins/individual-collateral/collateralTests.ts
+[reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/maple-v2/MaplePoolCollateral.test.ts
 [reserve-collateral-usdc-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_usdc_collateral.ts
 [reserve-collateral-weth-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_weth_collateral.ts
