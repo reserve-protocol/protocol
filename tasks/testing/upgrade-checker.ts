@@ -12,7 +12,6 @@ import { pushOraclesForward } from './upgrade-checker-utils/oracles'
 import { redeemRTokens } from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
-import { runTrade } from './upgrade-checker-utils/trades'
 import runChecks2_1_0 from './upgrade-checker-utils/upgrades/runChecks-2_1_0'
 import { passAndExecuteProposal } from './upgrade-checker-utils/governance'
 
