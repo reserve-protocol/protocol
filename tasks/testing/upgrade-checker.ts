@@ -14,6 +14,7 @@ import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
 import { runTrade } from './upgrade-checker-utils/trades'
 import runChecks2_1_0 from './upgrade-checker-utils/upgrades/runChecks-2_1_0'
+import { passAndExecuteProposal } from './upgrade-checker-utils/governance'
 
 // run script for eUSD
 // current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
@@ -59,7 +60,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     }
 
     // 1. Approve and execute the govnerance proposal
-    // await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposal)
+    await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposal)
 
     // 2. Run various checks
     const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
