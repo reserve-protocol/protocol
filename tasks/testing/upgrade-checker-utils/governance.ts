@@ -31,6 +31,7 @@ export const passAndExecuteProposal = async (
 
   if (propState == ProposalState.Active) {
     console.log(`Prop ${proposalId} is ACTIVE, moving to SUCCEEDED...`)
+
     // gather enough whale voters
     let whales: Array<Delegate> = await getDelegates(rtokenAddress.toLowerCase())
     const startBlock = await governor.proposalSnapshot(proposalId)
@@ -84,7 +85,6 @@ export const passAndExecuteProposal = async (
     await governor.queue(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
   
     // Check proposal state
-
     propState = await governor.state(proposalId)
     if (propState != ProposalState.Queued) {
       throw new Error('Proposal should be queued')
