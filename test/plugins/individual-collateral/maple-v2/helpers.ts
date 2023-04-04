@@ -13,8 +13,9 @@ export const resetFork = getResetFork(FORK_BLOCK)
 export const mintMaplePoolToken = async (underlying: IERC20Metadata, holder: string, mToken: IMaplePool, amount: BigNumberish, recipient: string) => {
     await whileImpersonating(holder, async (signer: SignerWithAddress) => {
         const _balance = await underlying.balanceOf(signer.address)
+        const _assets = await mToken.convertToAssets(amount) // the aim is to get "amount" number of shares by depositing assets
         await underlying.connect(signer).approve(mToken.address, _balance)
-        await mToken.connect(signer).deposit(amount, recipient)
+        await mToken.connect(signer).deposit(_assets, recipient)
     })
 }
 
