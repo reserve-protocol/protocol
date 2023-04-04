@@ -6,19 +6,18 @@ import { BigNumber } from "ethers"
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 
 export const passAndExecuteProposal = async (
-    hre: HardhatRuntimeEnvironment,
-    rtokenAddress: string,
-    governorAddress: string,
-    proposalId: string
-  ) => {
-    const governor = await hre.ethers.getContractAt('Governance', governorAddress)
-  
-    // Check proposal state
-    let propState = await governor.state(proposalId)
-    if (propState != ProposalState.Pending) {
-      throw new Error(`Proposal should be pending but was ${propState}`)
-    }
-  
+  hre: HardhatRuntimeEnvironment,
+  rtokenAddress: string,
+  governorAddress: string,
+  proposalId: string
+) => {
+  const governor = await hre.ethers.getContractAt('Governance', governorAddress)
+
+  // Check proposal state
+  let propState = await governor.state(proposalId)
+  if (propState == ProposalState.Pending) {
+    console.log(`Prop ${proposalId} is PENDING, moving to ACTIVE...`)
+
     // Advance time to start voting
     const votingDelay = await governor.votingDelay()
     await advanceBlocks(hre, votingDelay.add(1))
@@ -28,7 +27,11 @@ export const passAndExecuteProposal = async (
     if (propState != ProposalState.Active) {
       throw new Error(`Proposal should be active but was ${propState}`)
     }
-  
+  }
+
+  if (propState == ProposalState.Active) {
+    console.log(`Prop ${proposalId} is ACTIVE, moving to SUCCEEDED...`)
+
     // gather enough whale voters
     let whales: Array<Delegate> = await getDelegates(rtokenAddress.toLowerCase())
     const startBlock = await governor.proposalSnapshot(proposalId)
@@ -58,26 +61,46 @@ export const passAndExecuteProposal = async (
     // Advance time till voting is complete
     const votingPeriod = await governor.votingPeriod()
     await advanceBlocks(hre, votingPeriod.add(1))
-  
+
+    propState = await governor.state(proposalId)
     // Finished voting - Check proposal state
-    if ((await governor.state(proposalId)) != ProposalState.Succeeded) {
+    if (propState != ProposalState.Succeeded) {
       throw new Error('Proposal should have succeeded')
     }
-  
-    const proposal: Proposal = await getProposalDetails(
+  }
+
+  let proposal: Proposal
+  let descriptionHash: string
+
+  if (propState == ProposalState.Succeeded) {
+    console.log(`Prop ${proposalId} is SUCCEEDED, moving to QUEUED...`)
+
+    proposal = await getProposalDetails(
       `${governorAddress.toLowerCase()}-${proposalId}`
     )
-    const descriptionHash = hre.ethers.utils.keccak256(
+    descriptionHash = hre.ethers.utils.keccak256(
       hre.ethers.utils.toUtf8Bytes(proposal.description)
     )
     // Queue propoal
     await governor.queue(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
   
     // Check proposal state
-    if ((await governor.state(proposalId)) != ProposalState.Queued) {
+    propState = await governor.state(proposalId)
+    if (propState != ProposalState.Queued) {
       throw new Error('Proposal should be queued')
     }
-  
+  }
+
+  if (propState == ProposalState.Queued) {
+    console.log(`Prop ${proposalId} is QUEUED, moving to EXECUTED...`)
+
+    proposal = await getProposalDetails(
+      `${governorAddress.toLowerCase()}-${proposalId}`
+    )
+    descriptionHash = hre.ethers.utils.keccak256(
+      hre.ethers.utils.toUtf8Bytes(proposal.description)
+    )
+
     const timelock = await hre.ethers.getContractAt('TimelockController', await governor.timelock())
     const minDelay = await timelock.getMinDelay()
   
@@ -87,10 +110,14 @@ export const passAndExecuteProposal = async (
   
     // Execute
     await governor.execute(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
-  
+
     // Check proposal state
-    if ((await governor.state(proposalId)) != ProposalState.Executed) {
+    propState = await governor.state(proposalId)
+    if (propState != ProposalState.Executed) {
       throw new Error('Proposal should be executed')
     }
   }
+
+  console.log(`Prop ${proposalId} is EXECUTED.`)
+}
   
