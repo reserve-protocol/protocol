@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp } from '../common/numbers'
-import { setOraclePrice } from './utils/oracles'
+import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import {
   Asset,
   CTokenMock,
@@ -248,7 +248,6 @@ describe('FacadeRead contract', () => {
 
     it('Should return backingOverview backing correctly when an asset price is 0', async () => {
       await setOraclePrice(tokenAsset.address, bn(0))
-      await basketHandler.refreshBasket()
       const [backing, overCollateralization] = await facade.callStatic.backingOverview(
         rToken.address
       )
@@ -258,7 +257,7 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.equal(0)
     })
 
-    it('Should return backingOverview backing correctly when an asset is UNPRICED', async () => {
+    it('Should return backingOverview backing correctly when RSR is UNPRICED', async () => {
       await setOraclePrice(tokenAsset.address, MAX_UINT256.div(2).sub(1))
       await basketHandler.refreshBasket()
       const [backing, overCollateralization] = await facade.callStatic.backingOverview(
@@ -266,7 +265,7 @@ describe('FacadeRead contract', () => {
       )
 
       // Check values - Fully collateralized and no over-collateralization
-      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(backing).to.be.closeTo(fp('0'), 10)
       expect(overCollateralization).to.equal(0)
     })
 
@@ -383,7 +382,7 @@ describe('FacadeRead contract', () => {
       await expectValidBasketBreakdown(rToken)
     })
 
-    it('Should return basketBreakdown correctly for tokens with (0,FIXED_MAX) price', async () => {
+    it('Should return basketBreakdown correctly for tokens with (0, FIX_MAX) price', async () => {
       const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
         await ethers.getContractAt('MockV3Aggregator', await tokenAsset.chainlinkFeed())
       )
