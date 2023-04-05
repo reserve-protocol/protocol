@@ -12,6 +12,9 @@ export const MAPLE_WETH_POOL = '0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3'
 export const USDC_HOLDER = '0x0A59649758aa4d66E25f08Dd01271e891fe52199'
 export const WETH_HOLDER = '0x08638ef1a205be6762a8b935f5da9b700cf7322c'
 
+export const MPL_mcUSDC2_HOLDER = '0x7ED195a0AE212D265511b0978Af577F59876C9BB'
+export const MPL_mcWETH1_HOLDER = '0x1Bb73D6384ae73DA2101a4556a42eaB82803Ef3d'
+
 export const USDC_TOKEN = config.tokens.USDC as string
 export const WETH_TOKEN = config.tokens.WETH as string
 

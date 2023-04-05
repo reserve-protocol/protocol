@@ -6,12 +6,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MockV3Aggregator, MockV3Aggregator__factory, TestICollateral, IMaplePool, MaplePoolMock } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { CollateralStatus, CollateralOpts, CollateralFixtureContext, DeployCollateralFunc, MakeCollateralFixtureFunc, MintCollateralFunc } from '../pluginTestTypes'
-import { resetFork, mintMaplePoolToken, getExpectedPrice, increaseRefPerTok } from './helpers'
+import { resetFork, transferMaplePoolToken, getExpectedPrice, increaseRefPerTok } from './helpers'
 import {
     MAPLE_USDC_POOL,
     MAPLE_WETH_POOL,
-    USDC_HOLDER,
-    WETH_HOLDER,
+    MPL_mcUSDC2_HOLDER,
+    MPL_mcWETH1_HOLDER,
     USDC_TOKEN,
     WETH_TOKEN,
     USDC_PRICE_FEED,
@@ -128,9 +128,7 @@ const deployCollateralMockFixtureContextFactory = (defaults: CollateralOpts, pri
 
 const mintCollateralToFactory = (underlying: string, holder: string): MintCollateralFunc<CollateralFixtureContext> => {
     const _mintCollateralTo = async (ctx: CollateralFixtureContext, amount: BigNumberish, user: SignerWithAddress, recipient: string) => {
-        const _tok = ctx.tok as IMaplePool
-        const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)
-        await mintMaplePoolToken(_underlying, holder, _tok, amount, recipient)
+        await transferMaplePoolToken(holder, (ctx.tok as IMaplePool), amount, recipient)
     }
 
     return _mintCollateralTo
@@ -188,7 +186,7 @@ const all = [
         testName: 'Maple USDC Collateral',
         tokenName: 'MPL-mcUSDC2',
         underlying: USDC_TOKEN,
-        holder: USDC_HOLDER,
+        holder: MPL_mcUSDC2_HOLDER,
         MaplePoolToken: MAPLE_USDC_POOL,
         oracleError: USDC_PRICE_ERROR,
         chainlinkFeed: USDC_PRICE_FEED, // {target/ref}
@@ -198,7 +196,7 @@ const all = [
         testName: 'Maple wETH Collateral',
         tokenName: 'MPL-mcWETH1',
         underlying: WETH_TOKEN,
-        holder: WETH_HOLDER,
+        holder: MPL_mcWETH1_HOLDER,
         MaplePoolToken: MAPLE_WETH_POOL,
         oracleError: WETH_PRICE_ERROR,
         chainlinkFeed: ETH_PRICE_FEED, // {target/ref}

@@ -19,6 +19,12 @@ export const mintMaplePoolToken = async (underlying: IERC20Metadata, holder: str
     })
 }
 
+export const transferMaplePoolToken = async (holder: string, mToken: IMaplePool, amount: BigNumberish, recipient: string) => {
+    await whileImpersonating(holder, async (signer: SignerWithAddress) => {
+        await mToken.connect(signer).transfer(recipient, amount)
+    })
+}
+
 export const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
     const _refPerTok = await ctx.collateral.refPerTok()
     const _decimals = await ctx.chainlinkFeed.decimals()

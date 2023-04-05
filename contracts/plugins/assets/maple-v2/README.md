@@ -45,14 +45,15 @@ exchangeRate = \frac{totalAssets}{totalSupply}
 \end{align}$$
 
 Where the `exchangeRate` is actually `refPerTok`.
-It is implemented by the pool contract [`convertToAssets][maple-code-pool-contract-converttoassets].
+It is implemented by the pool contract [convertToAssets][maple-code-pool-contract-converttoassets].
 
 The `totalAssets` take the accrued interests and past losses into account.
 
 ### Conditions of Default
 
-Defaults of the collateral happen when `refPerTok` decreases.
-This happens iff `` from the ERC4626 decreases.
+Defaults of the collateral happen when `refPerTok` decreases below the allowed dropped set for "revenue hiding".
+
+And this happens iff `convertToAssets` from the ERC4626 decreases.
 
 As detailed in [appendix section](#appendix-exchange-rate-break-down) this can only be triggered by loan default.
 This section explains why the collateral does not default on loan impairment.
