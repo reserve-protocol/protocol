@@ -126,7 +126,7 @@ const deployCollateralMockFixtureContextFactory = (defaults: CollateralOpts, pri
 
 // Maple token minting factory
 
-const mintCollateralToFactory = (underlying: string, holder: string): MintCollateralFunc<CollateralFixtureContext> => {
+const mintCollateralToFactory = (holder: string): MintCollateralFunc<CollateralFixtureContext> => {
     const _mintCollateralTo = async (ctx: CollateralFixtureContext, amount: BigNumberish, user: SignerWithAddress, recipient: string) => {
         await transferMaplePoolToken(holder, (ctx.tok as IMaplePool), amount, recipient)
     }
@@ -228,7 +228,7 @@ all.forEach((current: MaplePoolTokenEnumeration) => {
         collateralSpecificStatusTests: collateralSpecificStatusTestsFactory(defaultCollateralOpts, current.defaultOraclePrice, current.tokenName),
         beforeEachRewardsTest: emptyFn,
         makeCollateralFixtureContext: makeCollateralFixtureContextFactory(defaultCollateralOpts, current.defaultOraclePrice),
-        mintCollateralTo: mintCollateralToFactory(current.underlying, current.holder),
+        mintCollateralTo: mintCollateralToFactory(current.holder),
         reduceTargetPerRef: emptyFn,
         increaseTargetPerRef: emptyFn,
         reduceRefPerTok: emptyFn,
