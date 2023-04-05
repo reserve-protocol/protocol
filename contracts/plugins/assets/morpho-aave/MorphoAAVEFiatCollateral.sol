@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "./AppreciatingFiatCollateral.sol";
-import "../../libraries/Fixed.sol";
+import "../AppreciatingFiatCollateral.sol";
+import "../../../libraries/Fixed.sol";
 import "./MorphoAAVEPositionWrapper.sol";
 
 contract MorphoAAVEFiatCollateral is AppreciatingFiatCollateral {
@@ -10,15 +10,13 @@ contract MorphoAAVEFiatCollateral is AppreciatingFiatCollateral {
     using FixLib for uint192;
 
     MorphoAAVEPositionWrapper wrapper;
-    
+
     constructor(
         CollateralConfig memory config,
-        MorphoAAVEPositionWrapper _wrapper,
         uint192 revenue_hiding
     ) AppreciatingFiatCollateral(config, revenue_hiding) {
         require(address(config.erc20) != address(0), "missing erc20");
-        require(address(_wrapper) != address(0), "missing wrapper");
-        wrapper = _wrapper;
+        wrapper = MorphoAAVEPositionWrapper(address(config.erc20));
     }
 
     function refresh() public virtual override {

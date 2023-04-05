@@ -2,9 +2,10 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import "../../libraries/Fixed.sol";
+import "../../../libraries/Fixed.sol";
 import "./IMorpho.sol";
 
 struct MorphoAAVEWrapperConfig {
@@ -16,6 +17,7 @@ struct MorphoAAVEWrapperConfig {
 }
 
 contract MorphoAAVEPositionWrapper is ERC20, ERC20Burnable {
+    using SafeERC20 for IERC20Metadata;
     using FixLib for uint192;
 
     uint8 private immutable _decimals;
@@ -42,17 +44,26 @@ contract MorphoAAVEPositionWrapper is ERC20, ERC20Burnable {
         exchange_rate = FIX_ONE;
     }
 
+    function wrapper_to_fix(uint256 x) internal pure returns (uint192) {
+        return shiftl_toFix(x, -18);
+    }
+
     function underlying_to_fix(uint256 x) internal view returns (uint192) {
-        //TODO
-        return shiftl_toFix(x, 18 - int8(_decimals));
+        return shiftl_toFix(x, -int8(_decimals));
+    }
+
+    function test_underlying_to_fix() external view returns (uint192) {
+        return shiftl_toFix(1e18, -18);
     }
     
     function fix_to_underlying(uint192 x) internal view returns (uint256) {
-        //TODO
         return x.shiftl_toUint(int8(_decimals));
     }
 
     function adjust_exchange_rate() internal {
+        if (tokens_supplied == 0) {
+            return;
+        }
         (, , uint256 grown_balance) = morpho_lens.getCurrentSupplyBalanceInOf(pool_token, address(this));
         exchange_rate = exchange_rate.mul(
             underlying_to_fix(grown_balance).div(underlying_to_fix(tokens_supplied))
@@ -64,18 +75,39 @@ contract MorphoAAVEPositionWrapper is ERC20, ERC20Burnable {
         adjust_exchange_rate();
     }
 
-    function get_exchange_rate() external view returns (uint192) {
+    function get_exchange_rate() external virtual view returns (uint192) {
         return exchange_rate;
     }
 
     function mint(address to, uint256 amount) public {
         adjust_exchange_rate();
 
-        underlying_erc20.transferFrom(msg.sender, address(this), amount);
-        morpho_controller.supply(pool_token, amount);
-        tokens_supplied += amount;
+        uint256 to_transfer_of_underlying = fix_to_underlying(wrapper_to_fix(amount).mul(exchange_rate));
+         
+        underlying_erc20.safeTransferFrom(msg.sender, address(this), to_transfer_of_underlying);
+        underlying_erc20.safeIncreaseAllowance(address(morpho_controller), to_transfer_of_underlying);
+        morpho_controller.supply(pool_token, to_transfer_of_underlying);
+        tokens_supplied += to_transfer_of_underlying;
 
-        _mint(to, fix_to_underlying(underlying_to_fix(amount).div(exchange_rate)));
+        _mint(to, amount);
+    }
+
+    function test_mint(address to, uint256 amount) public view returns (uint256, uint256) {
+        //adjust_exchange_rate();
+
+        uint256 to_transfer_of_underlying = fix_to_underlying(wrapper_to_fix(amount).mul(exchange_rate));
+        return (to_transfer_of_underlying, amount);
+         
+        //underlying_erc20.safeTransferFrom(msg.sender, address(this), to_transfer_of_underlying);
+        //underlying_erc20.safeIncreaseAllowance(address(morpho_controller), to_transfer_of_underlying);
+        //morpho_controller.supply(pool_token, to_transfer_of_underlying);
+        //tokens_supplied += to_transfer_of_underlying;
+
+        //_mint(to, amount);
+    }
+
+    function get_underlying_erc20() external view returns (IERC20Metadata) {
+        return underlying_erc20;
     }
 
     function burn(uint256 amount) public override {
@@ -83,12 +115,10 @@ contract MorphoAAVEPositionWrapper is ERC20, ERC20Burnable {
 
         _burn(_msgSender(), amount);
 
-        morpho_controller.withdraw(pool_token, amount);
-        tokens_supplied -= amount;
+        uint256 to_transfer_of_underlying = fix_to_underlying(wrapper_to_fix(amount).mul(exchange_rate));
+        morpho_controller.withdraw(pool_token, to_transfer_of_underlying);
+        tokens_supplied -= to_transfer_of_underlying;
 
-        underlying_erc20.transferFrom(
-            address(this), msg.sender,
-            fix_to_underlying(underlying_to_fix(amount).mul(exchange_rate))
-        );
+        underlying_erc20.transferFrom(address(this), msg.sender, to_transfer_of_underlying);
     }
 }

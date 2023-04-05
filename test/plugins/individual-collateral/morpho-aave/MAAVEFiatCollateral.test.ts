@@ -45,6 +45,7 @@ import {
   TestIMain,
   TestIRToken,
   MorphoAAVEPositionWrapper,
+  MorphoAAVEPositionWrapperMock,
 } from '../../../../typechain'
 import { useEnv } from '#/utils/env'
 
@@ -65,7 +66,7 @@ const setup = async (blockNumber: number) => {
 }
 
 // Holder address in Mainnet
-const holderWBTC = '0x7f62f9592b823331e012d3c5ddf2a7714cfb9de2'
+const holderUSDT = '0xd6216fc19db775df9774a6e33526131da7d19a2c'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
@@ -77,10 +78,10 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
   let addr2: SignerWithAddress
 
   // Tokens/Assets
-  let wbtc: ERC20Mock
+  let usdt: ERC20Mock
 
-  let wbtcMorphoPlugin: MorphoAAVEFiatCollateral
-  let wbtcMorphoWrapper: MorphoAAVEPositionWrapper
+  let usdtMorphoPlugin: MorphoAAVEFiatCollateral
+  let usdtMorphoWrapper: MorphoAAVEPositionWrapper
 
   let rsr: ERC20Mock
   let rsrAsset: Asset
@@ -139,7 +140,7 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
   let mockChainlinkFeed: MockV3Aggregator
 
   before(async () => {
-    await setup(forkBlockNumber['morpho-aave']) // Jun-06-2022
+    await setup(forkBlockNumber['morpho-aave']) // https://etherscan.io/block/16859314, March 19 2023
 
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
@@ -159,56 +160,51 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     //  await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.COMP || '')
     //)
     // WBTC token
-    wbtc = <ERC20Mock>(
-      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.WBTC || '')
+    usdt = <ERC20Mock>(
+      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDT || '')
     )
 
     //TODO: Create mocks of Morpho controller, lens and reward token
 
-    console.log(networkConfig[chainId].MORPHO_AAVE_CONTROLLER, networkConfig[chainId].MORPHO_AAVE_LENS, chainId)
     MorphoAAVEPositionWrapperFactory = await ethers.getContractFactory('MorphoAAVEPositionWrapper')
-    wbtcMorphoWrapper = <MorphoAAVEPositionWrapper>await MorphoAAVEPositionWrapperFactory.deploy(
+    usdtMorphoWrapper = <MorphoAAVEPositionWrapper>await MorphoAAVEPositionWrapperFactory.deploy(
       {
         morpho_controller: networkConfig[chainId].MORPHO_AAVE_CONTROLLER,
         morpho_lens: networkConfig[chainId].MORPHO_AAVE_LENS,
-        underlying_erc20: wbtc.address,
-        pool_token: networkConfig[chainId].tokens.aWBTC,
+        underlying_erc20: usdt.address,
+        pool_token: networkConfig[chainId].tokens.aUSDT,
         underlying_symbol: ethers.utils.formatBytes32String('WBTC')
       }
     )
 
-    console.log(wbtcMorphoWrapper.address)
     MorphoAAVECollateralFactory = await ethers.getContractFactory('MorphoAAVEFiatCollateral')
-    wbtcMorphoPlugin = <MorphoAAVEFiatCollateral>await MorphoAAVECollateralFactory.deploy(
+    usdtMorphoPlugin = <MorphoAAVEFiatCollateral>await MorphoAAVECollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC as string,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT as string,
         oracleError: ORACLE_ERROR,
-        erc20: wbtcMorphoWrapper.address,
+        erc20: usdtMorphoWrapper.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
       },
-      wbtcMorphoWrapper.address,
       REVENUE_HIDING,
     )
-    console.log("b")
 
     // Setup balances for addr1 - Transfer from Mainnet holder
     // wBTC
-    // Send 4000 wbtc from rich acct to addr1
-    initialBal = bn('4000')
-    await whileImpersonating(holderWBTC, async (wbtcHolderSigner) => {
-      await wbtc.connect(wbtcHolderSigner).transfer(addr1.address, toBNDecimals(initialBal, 8))
+    // Send 10000 wbtc from rich acct to addr1
+    initialBal = bn('10000e6')
+    await whileImpersonating(holderUSDT, async (usdtHolderSigner) => {
+      await usdt.connect(usdtHolderSigner).transfer(addr1.address, initialBal)
     })
 
-    // Send 4000 wbtc from rich acct to addr2
-    await whileImpersonating(holderWBTC, async (wbtcHolderSigner) => {
-      await wbtc.connect(wbtcHolderSigner).transfer(addr2.address, toBNDecimals(initialBal, 8))
+    // Send 10000 wbtc from rich acct to addr2
+    await whileImpersonating(holderUSDT, async (usdtHolderSigner) => {
+      await usdt.connect(usdtHolderSigner).transfer(addr2.address, initialBal)
     })
-    console.log("c", wbtcMorphoPlugin.address)
 
     // Set parameters
     const rTokenConfig: IRTokenConfig = {
@@ -222,24 +218,20 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     const rTokenSetup: IRTokenSetup = {
       //TODO: Add morpho reward token as asset
       assets: [],
-      primaryBasket: [wbtcMorphoPlugin.address],
+      primaryBasket: [usdtMorphoPlugin.address],
       weights: [fp('1')],
       backups: [],
       beneficiaries: [],
     }
 
     // Deploy RToken via FacadeWrite
-    console.log(facadeWrite.address, owner.address, wbtcMorphoPlugin.address, wbtcMorphoWrapper.address)
     const receipt = await (
       await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
     ).wait()
-    console.log("c a")
 
     // Get Main
     const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main
-    console.log("split")
     main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
-    console.log("d")
 
     // Get core contracts
     assetRegistry = <IAssetRegistry>(
@@ -251,12 +243,10 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     basketHandler = <IBasketHandler>(
       await ethers.getContractAt('IBasketHandler', await main.basketHandler())
     )
-    console.log("e")
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
     rTokenAsset = <RTokenAsset>(
       await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
     )
-    console.log("f")
 
     // Setup owner and unpause
     await facadeWrite.connect(owner).setupGovernance(
@@ -269,6 +259,8 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       ZERO_ADDRESS // no pauser
     )
 
+    //console.log(await usdtMorphoWrapper.test_underlying_to_fix())
+
     // Setup mock chainlink feed for some of the tests (so we can change the value)
     MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
     mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
@@ -280,38 +272,39 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       // Check Rewards assets (if applies) (no rewards)
       
       // Check Wrapper Deployment
-      expect(await wbtcMorphoWrapper.decimals()).to.equal(18)
-      expect(await wbtcMorphoWrapper.get_exchange_rate()).to.equal(fp('1'))
+      expect(await usdtMorphoWrapper.decimals()).to.equal(18)
+      expect(await usdtMorphoWrapper.get_exchange_rate()).to.equal(fp('1'))
 
       // Check Collateral plugin
       // maWBTC (CTokenFiatCollateral)
-      expect(await wbtcMorphoPlugin.isCollateral()).to.equal(true)
-      expect(await wbtcMorphoPlugin.referenceERC20Decimals()).to.equal(await wbtcMorphoWrapper.decimals())
-      expect(await wbtcMorphoPlugin.erc20()).to.equal(wbtcMorphoWrapper.address)
-      expect(await wbtcMorphoPlugin.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await wbtcMorphoPlugin.refPerTok()).to.be.closeTo(fp('1'), fp('0.001'))
-      expect(await wbtcMorphoPlugin.targetPerRef()).to.equal(fp('1'))
-      expect(await wbtcMorphoPlugin.exposedReferencePrice()).to.equal(
-        await wbtcMorphoPlugin.refPerTok()
+      expect(await usdtMorphoPlugin.isCollateral()).to.equal(true)
+      expect(await usdtMorphoPlugin.erc20()).to.equal(usdtMorphoWrapper.address)
+      expect(await usdtMorphoPlugin.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(await usdtMorphoPlugin.refPerTok()).to.be.closeTo(fp('1'), fp('0.001'))
+      expect(await usdtMorphoPlugin.targetPerRef()).to.equal(fp('1'))
+      expect(await usdtMorphoPlugin.exposedReferencePrice()).to.equal(
+        await usdtMorphoPlugin.refPerTok()
       )
+
       await expectPrice(
-        wbtcMorphoPlugin.address,
-        fp('0.022015105509346448'),
+        usdtMorphoPlugin.address,
+        fp('1.00278919'),
         ORACLE_ERROR,
         true,
         bn('1e5')
-      ) // close to $0.022 cents
+      ) // close to $1.00278919 cents
 
       // Check claim data
-      await expect(wbtcMorphoPlugin.claimRewards())
-        .to.emit(wbtcMorphoPlugin, 'RewardsClaimed')
-        .withArgs(compToken.address, 0)
-      expect(await wbtcMorphoPlugin.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+      //await expect(wbtcMorphoPlugin.claimRewards())
+      //  .to.emit(wbtcMorphoPlugin, 'RewardsClaimed')
+      //  .withArgs(compToken.address, 0)
+
+      expect(await usdtMorphoPlugin.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
-      expect(wbtcMorphoPlugin.address).to.not.equal(ZERO_ADDRESS)
-      expect(wbtcMorphoWrapper.address).to.not.equal(ZERO_ADDRESS)
+      expect(usdtMorphoPlugin.address).to.not.equal(ZERO_ADDRESS)
+      expect(usdtMorphoWrapper.address).to.not.equal(ZERO_ADDRESS)
     })
 
     // Check assets/collaterals in the Asset Registry
@@ -320,18 +313,18 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       const ERC20s = await assetRegistry.erc20s()
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
-      expect(ERC20s[2]).to.equal(compToken.address)
-      expect(ERC20s[3]).to.equal(wbtcMorphoWrapper.address)
-      expect(ERC20s.length).to.eql(4)
+      //expect(ERC20s[2]).to.equal(compToken.address)
+      expect(ERC20s[2]).to.equal(usdtMorphoWrapper.address)
+      expect(ERC20s.length).to.eql(3)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(compAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(wbtcMorphoWrapper.address)
+      //expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(compAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(usdtMorphoPlugin.address)
 
       // Collaterals
-      expect(await assetRegistry.toColl(ERC20s[3])).to.equal(wbtcMorphoWrapper.address)
+      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(usdtMorphoPlugin.address)
     })
 
     // Check RToken basket
@@ -339,23 +332,36 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(wbtcMorphoWrapper.address)
+      expect(backing[0]).to.equal(usdtMorphoWrapper.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
-
+      
       // Check RToken price
-      const issueAmount: BigNumber = bn('10000e18')
-      await wbtcMorphoWrapper.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await expectPrice(
+        basketHandler.address,
+        fp('1.00278919'),
+        ORACLE_ERROR,
+        true,
+        bn('1e5')
+      ) 
+
+      // Approve usdtMorphoWrapper to spend 5000 of addr1 usdt, then mint usdtMorphoWrapper
+      await usdt.connect(addr1).approve(usdtMorphoWrapper.address, bn("5000e6"))
+      await usdtMorphoWrapper.connect(addr1).mint(addr1.address, bn("100e18"))
+
+      // Addr1 approves rToken to spend its wrapper tokens
+      await usdtMorphoWrapper.connect(addr1).approve(rToken.address, bn("100e18"))
+
+      // Issue tokens and check price
       await advanceTime(3600)
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      await expect(rToken.connect(addr1).issue(bn("100e18"))).to.emit(rToken, 'Issuance')
       await expectRTokenPrice(
         rTokenAsset.address,
-        fp('1'),
+        fp('1.00278919'),
         ORACLE_ERROR,
         await backingManager.maxTradeSlippage(),
         config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
@@ -380,28 +386,8 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
             delayUntilDefault,
           },
           REVENUE_HIDING,
-          ZERO_ADDRESS
         )
       ).to.be.revertedWith('missing erc20')
-
-      // Comptroller
-      await expect(
-        MorphoAAVECollateralFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
-            oracleError: ORACLE_ERROR,
-            erc20: wbtcMorphoWrapper.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold,
-            delayUntilDefault,
-          },
-          REVENUE_HIDING,
-          ZERO_ADDRESS
-        )
-      ).to.be.revertedWith('comptroller missing')
     })
   })
 
@@ -412,8 +398,12 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
-      // Provide approvals for issuances
-      await wbtcMorphoWrapper.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      // Approve usdtMorphoWrapper to spend 5000 of addr1 usdt, then mint usdtMorphoWrapper
+      await usdt.connect(addr1).approve(usdtMorphoWrapper.address, bn("10000e6"))
+      await usdtMorphoWrapper.connect(addr1).mint(addr1.address, issueAmount)
+
+      // Addr1 approves rToken to spend its wrapper tokens
+      await usdtMorphoWrapper.connect(addr1).approve(rToken.address, issueAmount);
 
       await advanceTime(3600)
 
@@ -424,20 +414,20 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
-      const balanceAddr1cDai: BigNumber = await wbtcMorphoWrapper.balanceOf(addr1.address)
+      const balanceAddr1USDT: BigNumber = await usdtMorphoWrapper.balanceOf(addr1.address)
 
       // Check rates and prices
-      const [cDaiPriceLow1, cDaiPriceHigh1] = await wbtcMorphoPlugin.price() // ~ 0.022015 cents
-      const cDaiRefPerTok1: BigNumber = await wbtcMorphoPlugin.refPerTok() // ~ 0.022015 cents
+      const [usdtPriceLow1, usdtPriceHigh1] = await usdtMorphoPlugin.price() // ~ 0.022015 cents
+      const usdtRefPerTok1: BigNumber = await usdtMorphoPlugin.refPerTok() // ~ 0.022015 cents
 
       await expectPrice(
-        cDaiCollateral.address,
-        fp('0.022015105946267361'),
+        usdtMorphoPlugin.address,
+        fp('1.00278919'),
         ORACLE_ERROR,
         true,
         bn('1e5')
       )
-      expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(usdtRefPerTok1).to.be.closeTo(fp('1'), fp('0.001'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -450,27 +440,27 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await advanceBlocks(10000)
 
       // Refresh cToken manually (required)
-      await cDaiCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await usdtMorphoPlugin.refresh()
+      expect(await usdtMorphoPlugin.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight inrease
-      const [cDaiPriceLow2, cDaiPriceHigh2] = await cDaiCollateral.price() // ~0.022016
-      const cDaiRefPerTok2: BigNumber = await cDaiCollateral.refPerTok() // ~0.022016
+      const [usdtPriceLow2, usdtPriceHigh2] = await usdtMorphoPlugin.price() // ~0.022016
+      const usdtRefPerTok2: BigNumber = await usdtMorphoPlugin.refPerTok() // ~0.022016
 
       // Check rates and price increase
-      expect(cDaiPriceLow2).to.be.gt(cDaiPriceLow1)
-      expect(cDaiPriceHigh2).to.be.gt(cDaiPriceHigh1)
-      expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
+      expect(usdtPriceLow2).to.be.gt(usdtPriceLow1)
+      expect(usdtPriceHigh2).to.be.gt(usdtPriceHigh1)
+      expect(usdtRefPerTok2).to.be.gt(usdtRefPerTok1)
 
       // Still close to the original values
       await expectPrice(
-        cDaiCollateral.address,
-        fp('0.022016198467092545'),
+        usdtMorphoPlugin.address,
+        fp('1.00278919'),
         ORACLE_ERROR,
         true,
-        bn('1e5')
+        bn('1e3')
       )
-      expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(usdtRefPerTok2).to.be.closeTo(fp('1'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -483,26 +473,26 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await advanceBlocks(100000000)
 
       // Refresh cToken manually (required)
-      await cDaiCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await usdtMorphoPlugin.refresh()
+      expect(await usdtMorphoPlugin.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const [cDaiPriceLow3, cDaiPriceHigh3] = await cDaiCollateral.price() // ~0.03294
-      const cDaiRefPerTok3: BigNumber = await cDaiCollateral.refPerTok() // ~0.03294
+      const [usdtPriceLow3, usdtPriceHigh3] = await usdtMorphoPlugin.price() // ~0.03294
+      const usdtRefPerTok3: BigNumber = await usdtMorphoPlugin.refPerTok() // ~0.03294
 
       // Check rates and price increase
-      expect(cDaiPriceLow3).to.be.gt(cDaiPriceLow2)
-      expect(cDaiPriceHigh3).to.be.gt(cDaiPriceHigh2)
-      expect(cDaiRefPerTok3).to.be.gt(cDaiRefPerTok2)
+      expect(usdtPriceLow3).to.be.gt(usdtPriceLow2)
+      expect(usdtPriceHigh3).to.be.gt(usdtPriceHigh2)
+      expect(usdtRefPerTok3).to.be.gt(usdtRefPerTok2)
 
+      expect(usdtRefPerTok3).to.be.closeTo(fp('1.14492'), fp('0.001'))
       await expectPrice(
-        cDaiCollateral.address,
-        fp('0.032941254792840879'),
+        usdtMorphoPlugin.address,
+        fp('1.148122554980383617'),
         ORACLE_ERROR,
         true,
         bn('1e5')
       )
-      expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -521,17 +511,17 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Check balances - Fewer cTokens should have been sent to the user
-      const newBalanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
+      const newBalanceAddr1usdtWrapper: BigNumber = await usdtMorphoWrapper.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
+      expect(newBalanceAddr1usdtWrapper.sub(balanceAddr1USDT)).to.be.closeTo(bn('8734.1650501e18'), bn('0.01e18')) // ~8734.1650501 * 1.14812 ~= 10K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
+      expect(await usdtMorphoWrapper.balanceOf(backingManager.address)).to.be.closeTo(bn('1265.8104e18'), bn('0.01e18')) // ~= 1453.8 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('4962.8'), // ~= 4962.8 usd (from above)
+        fp('1453.8'), // ~= 1453.8 usd (from above)
         fp('0.5')
       )
     })
@@ -542,7 +532,7 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
   describe('Rewards', () => {
     it('Should be able to claim rewards (if applicable)', async () => {
       // Claim rewards
-      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.not.emit(backingManager, 'RewardsClaimed').and.to.not.be.reverted
     })
   })
 
@@ -552,21 +542,21 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Compound
-      await expectUnpriced(cDaiCollateral.address)
+      await expectUnpriced(usdtMorphoPlugin.address)
 
       // Refresh should mark status IFFY
-      await cDaiCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await usdtMorphoPlugin.refresh()
+      expect(await usdtMorphoPlugin.status()).to.equal(CollateralStatus.IFFY)
 
       // CTokens Collateral with no price
-      const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral')
+      const nonpriceCtokenCollateral: MorphoAAVEFiatCollateral = <MorphoAAVEFiatCollateral>await (
+        await ethers.getContractFactory('MorphoAAVEFiatCollateral')
       ).deploy(
         {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
           oracleError: ORACLE_ERROR,
-          erc20: cDai.address,
+          erc20: usdtMorphoWrapper.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
@@ -574,7 +564,6 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
           delayUntilDefault,
         },
         REVENUE_HIDING,
-        comptroller.address
       )
 
       // CTokens - Collateral with no price info should revert
@@ -585,14 +574,14 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Does not revert with zero price
-      const zeropriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral')
+      const zeropriceCtokenCollateral: MorphoAAVEFiatCollateral = <MorphoAAVEFiatCollateral>await (
+        await ethers.getContractFactory('MorphoAAVEFiatCollateral')
       ).deploy(
         {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
-          erc20: cDai.address,
+          erc20: usdtMorphoWrapper.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
@@ -600,7 +589,6 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
           delayUntilDefault,
         },
         REVENUE_HIDING,
-        comptroller.address
       )
 
       await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
@@ -622,22 +610,21 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+      const newCDaiCollateral: MorphoAAVEFiatCollateral = <MorphoAAVEFiatCollateral>await (
         await ethers.getContractFactory('MorphoAAVEFiatCollateral')
       ).deploy(
         {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
-          erc20: await cDaiCollateral.erc20(),
-          maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
-          oracleTimeout: await cDaiCollateral.oracleTimeout(),
-          targetName: await cDaiCollateral.targetName(),
+          erc20: await usdtMorphoPlugin.erc20(),
+          maxTradeVolume: await usdtMorphoPlugin.maxTradeVolume(),
+          oracleTimeout: await usdtMorphoPlugin.oracleTimeout(),
+          targetName: await usdtMorphoPlugin.targetName(),
           defaultThreshold,
-          delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+          delayUntilDefault: await usdtMorphoPlugin.delayUntilDefault(),
         },
-        REVENUE_HIDING,
-        comptroller.address
+        REVENUE_HIDING
       )
 
       // Check initial state
@@ -676,31 +663,36 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     // Test for hard default
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a CToken mock to be able to change the rate
-      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-      const symbol = await cDai.symbol()
-      const cDaiMock: CTokenMock = <CTokenMock>(
-        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+      const MorphoAAVEPositionWrapperMockFactory: ContractFactory = await ethers.getContractFactory('MorphoAAVEPositionWrapperMock')
+      const usdtMorphoWrapperMock = <MorphoAAVEPositionWrapperMock>await MorphoAAVEPositionWrapperMockFactory.deploy(
+        {
+          morpho_controller: networkConfig[chainId].MORPHO_AAVE_CONTROLLER,
+          morpho_lens: networkConfig[chainId].MORPHO_AAVE_LENS,
+          underlying_erc20: usdt.address,
+          pool_token: networkConfig[chainId].tokens.aUSDT,
+          underlying_symbol: ethers.utils.formatBytes32String('WBTC')
+        }
       )
+
       // Set initial exchange rate to the new cDai Mock
-      await cDaiMock.setExchangeRate(fp('0.02'))
+      await usdtMorphoWrapperMock.set_exchange_rate(fp('1'))
 
       // Redeploy plugin using the new cDai mock
-      const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral')
+      const newCDaiCollateral: MorphoAAVEFiatCollateral = <MorphoAAVEFiatCollateral>await (
+        await ethers.getContractFactory('MorphoAAVEFiatCollateral')
       ).deploy(
         {
           priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
+          chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
-          erc20: cDaiMock.address,
-          maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
-          oracleTimeout: await cDaiCollateral.oracleTimeout(),
-          targetName: await cDaiCollateral.targetName(),
+          erc20: usdtMorphoWrapperMock.address,
+          maxTradeVolume: await usdtMorphoPlugin.maxTradeVolume(),
+          oracleTimeout: await usdtMorphoPlugin.oracleTimeout(),
+          targetName: await usdtMorphoPlugin.targetName(),
           defaultThreshold,
-          delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+          delayUntilDefault: await usdtMorphoPlugin.delayUntilDefault(),
         },
-        REVENUE_HIDING,
-        comptroller.address
+        REVENUE_HIDING
       )
       await newCDaiCollateral.refresh()
 
@@ -709,7 +701,7 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       // Decrease rate for cDAI, will disable collateral immediately
-      await cDaiMock.setExchangeRate(fp('0.019'))
+      await usdtMorphoWrapperMock.set_exchange_rate(fp('0.9'))
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await expect(newCDaiCollateral.refresh())
@@ -729,21 +721,20 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      const invalidCTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
-        await CTokenCollateralFactory.deploy(
+      const invalidCTokenCollateral: MorphoAAVEFiatCollateral = <MorphoAAVEFiatCollateral>(
+        await MorphoAAVECollateralFactory.deploy(
           {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: invalidChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
-            erc20: await cDaiCollateral.erc20(),
-            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
-            oracleTimeout: await cDaiCollateral.oracleTimeout(),
-            targetName: await cDaiCollateral.targetName(),
+            erc20: await usdtMorphoPlugin.erc20(),
+            maxTradeVolume: await usdtMorphoPlugin.maxTradeVolume(),
+            oracleTimeout: await usdtMorphoPlugin.oracleTimeout(),
+            targetName: await usdtMorphoPlugin.targetName(),
             defaultThreshold,
-            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+            delayUntilDefault: await usdtMorphoPlugin.delayUntilDefault(),
           },
           REVENUE_HIDING,
-          comptroller.address
         )
       )
 
