@@ -28,7 +28,7 @@ import {
   ORACLE_ERROR,
 } from './fixtures'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
-import { CollateralStatus } from '#/common/constants'
+import { CollateralStatus, MAX_UINT256 } from '#/common/constants'
 
 describe('FacadeRead contract', () => {
   let owner: SignerWithAddress
@@ -258,6 +258,18 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.equal(0)
     })
 
+    it('Should return backingOverview backing correctly when an asset is UNPRICED', async () => {
+      await setOraclePrice(tokenAsset.address, MAX_UINT256.div(2).sub(1))
+      await basketHandler.refreshBasket()
+      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
+
+      // Check values - Fully collateralized and no over-collateralization
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(overCollateralization).to.equal(0)
+    })
+
     it('Should return backingOverview over-collateralization correctly when RSR price is 0', async () => {
       // Mint some RSR
       const stakeAmount = bn('50e18') // Half in value compared to issued RTokens
@@ -285,6 +297,28 @@ describe('FacadeRead contract', () => {
       // Check values - Fully collateralized and no over-collateralization
       expect(backing2).to.be.closeTo(fp('1'), 10)
       expect(overCollateralization2).to.equal(0)
+    })
+
+    it('Should return backingOverview backing correctly when RSR is UNPRICED', async () => {
+      // Mint some RSR
+      const stakeAmount = bn('50e18') // Half in value compared to issued RTokens
+      await rsr.connect(owner).mint(addr1.address, stakeAmount.mul(2))
+
+      // Stake some RSR
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
+      await stRSR.connect(addr1).stake(stakeAmount)
+
+      // Check values - Fully collateralized and with 50%-collateralization
+      let [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(overCollateralization).to.equal(fp('0.5'))
+
+      await setOraclePrice(rsrAsset.address, MAX_UINT256.div(2).sub(1))
+      ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully collateralized and no over-collateralization
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(overCollateralization).to.equal(0)
     })
 
     it('Should return traderBalances correctly', async () => {
