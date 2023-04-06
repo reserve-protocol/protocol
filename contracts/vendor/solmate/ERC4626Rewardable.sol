@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.17;
 
-import {ERC20} from "./ERC20.sol";
+import {ERC20Solmate} from "./ERC20Solmate.sol";
 import {SafeTransferLib} from "./SafeTransferLib.sol";
 import {FixedPointMathLib} from "./FixedPointMathLib.sol";
 
 /// @notice Minimal ERC4626Rewardable tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
 /// @notice Modified by Reserve Protocol to add the ability for depositors to claim rewards
-abstract contract ERC4626Rewardable is ERC20 {
-    using SafeTransferLib for ERC20;
+abstract contract ERC4626Rewardable is ERC20Solmate {
+    using SafeTransferLib for ERC20Solmate;
     using FixedPointMathLib for uint256;
 
     /*//////////////////////////////////////////////////////////////
@@ -30,13 +30,13 @@ abstract contract ERC4626Rewardable is ERC20 {
                                IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
-    ERC20 public immutable asset;
+    ERC20Solmate public immutable asset;
 
     constructor(
-        ERC20 _asset,
+        ERC20Solmate _asset,
         string memory _name,
         string memory _symbol
-    ) ERC20(_name, _symbol, _asset.decimals()) {
+    ) ERC20Solmate(_name, _symbol, _asset.decimals()) {
         asset = _asset;
     }
 
@@ -47,6 +47,8 @@ abstract contract ERC4626Rewardable is ERC20 {
     function deposit(uint256 assets, address receiver) public virtual returns (uint256 shares) {
         // Check for rounding error since we round down in previewDeposit.
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
+
+        beforeDeposit(assets, shares, receiver);
 
         // Need to transfer before minting or ERC777s could reenter.
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -60,6 +62,8 @@ abstract contract ERC4626Rewardable is ERC20 {
 
     function mint(uint256 shares, address receiver) public virtual returns (uint256 assets) {
         assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
+
+        beforeDeposit(assets, shares, receiver);
 
         // Need to transfer before minting or ERC777s could reenter.
         asset.safeTransferFrom(msg.sender, address(this), assets);
@@ -90,6 +94,8 @@ abstract contract ERC4626Rewardable is ERC20 {
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
+        afterWithdraw(assets, shares, owner);
+
         asset.safeTransfer(receiver, assets);
     }
 
@@ -110,6 +116,8 @@ abstract contract ERC4626Rewardable is ERC20 {
         beforeWithdraw(assets, shares, owner);
 
         _burn(owner, shares);
+
+        afterWithdraw(assets, shares, owner);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
@@ -179,6 +187,10 @@ abstract contract ERC4626Rewardable is ERC20 {
     //////////////////////////////////////////////////////////////*/
 
     function beforeWithdraw(uint256 assets, uint256 shares, address owner) internal virtual {}
+
+    function afterWithdraw(uint256 assets, uint256 shares, address owner) internal virtual {}
+
+    function beforeDeposit(uint256 assets, uint256 shares, address receiver) internal virtual {}
 
     function afterDeposit(uint256 assets, uint256 shares, address receiver) internal virtual {}
 }
