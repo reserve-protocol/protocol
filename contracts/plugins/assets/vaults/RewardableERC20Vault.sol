@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
-import "../../interfaces/IRewardable.sol";
-import "../../vendor/solmate/ERC4626Rewardable.sol";
-import "../../vendor/solmate/ERC20Solmate.sol";
-import "../../vendor/solmate/SafeTransferLib.sol";
+import "../../../interfaces/IRewardable.sol";
+import "../../../vendor/solmate/ERC4626Rewardable.sol";
+import "../../../vendor/solmate/ERC20Solmate.sol";
+import "../../../vendor/solmate/SafeTransferLib.sol";
 
 abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
     using SafeTransferLib for ERC20Solmate;
@@ -47,6 +47,7 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
         uint256 initialBal = rewardToken.balanceOf(address(this));
         _claimAssetRewards();
         uint256 endingBal = rewardToken.balanceOf(address(this));
+        emit RewardsClaimed(IERC20(address(rewardToken)), endingBal - initialBal);
         rewardsPerShare += ((endingBal - initialBal) * one) / totalSupply;
     }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../assets/RewardableERC20Vault.sol";
+import "../assets/vaults/RewardableERC20Vault.sol";
 import "./ERC20MockRewarding.sol";
 
 contract RewardableERC20VaultTest is RewardableERC20Vault {
