@@ -9,7 +9,7 @@ import "../../vendor/solmate/SafeTransferLib.sol";
 abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
     using SafeTransferLib for ERC20Solmate;
 
-    uint256 public constant FIXED_SCALE = 1e18;
+    uint256 public immutable FIXED_SCALE;
     ERC20Solmate public immutable rewardToken;
 
     uint256 public rewardsPerShare;
@@ -24,6 +24,7 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
         ERC20Solmate _rewardToken
     ) ERC4626Rewardable(_asset, _name, _symbol) {
         rewardToken = _rewardToken;
+        FIXED_SCALE = 10**_asset.decimals();
 	}
 
     function claimRewards() external {

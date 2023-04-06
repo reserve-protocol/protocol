@@ -45,7 +45,7 @@ abstract contract ERC4626Rewardable is ERC20Solmate {
     //////////////////////////////////////////////////////////////*/
 
     function deposit(uint256 assets, address receiver) public virtual returns (uint256 shares) {
-        // Check for rounding error since we round down in previewDeposit.
+        // Check for rounding error since we round down in previewDeposit.)
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
         beforeDeposit(assets, shares, receiver);
