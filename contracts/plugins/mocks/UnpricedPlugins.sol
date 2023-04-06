@@ -61,6 +61,7 @@ contract UnpricedAppreciatingFiatCollateralMock is AppreciatingFiatCollateral {
 
     // solhint-disable no-empty-blocks
 
+    /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {}
@@ -80,17 +81,16 @@ contract UnpricedAppreciatingFiatCollateralMock is AppreciatingFiatCollateral {
         // If unpriced is marked, return 0, FIX_MAX
         if (unpriced) return (0, FIX_MAX, 0);
 
-        // Should include revenue hiding discount in the low discount but not high
-        pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
+        // {target/ref} = {UoA/ref} / {UoA/target} (1)
+        pegPrice = chainlinkFeed.price(oracleTimeout);
 
         // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
-        uint192 pLow = pegPrice.mul(refPerTok());
+        uint192 p = pegPrice.mul(_underlyingRefPerTok());
+        uint192 err = p.mul(oracleError, CEIL);
 
-        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
-        uint192 pHigh = pegPrice.mul(_underlyingRefPerTok());
-
-        low = pLow - pLow.mul(oracleError);
-        high = pHigh + pHigh.mul(oracleError);
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
     }
 
     /// Mock function, required but not used in tests

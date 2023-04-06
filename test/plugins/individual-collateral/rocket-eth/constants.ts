@@ -13,6 +13,7 @@ export const RETH_TRUSTED_NODE = '0x8fB569C14b372430f9aF8B235940187b449d0dec'
 export const RETH_STORAGE = '0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46'
 export const RETH_ETH_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.rETH as string
 
+export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const ORACLE_TIMEOUT = bn(86400) // 24 hours in seconds
 export const ORACLE_ERROR = fp('0.005')
 export const DEFAULT_THRESHOLD = bn(5).mul(bn(10).pow(16)) // 0.05

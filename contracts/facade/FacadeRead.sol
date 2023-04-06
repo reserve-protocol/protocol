@@ -177,7 +177,7 @@ contract FacadeRead is IFacadeRead {
     // === Views ===
 
     /// @param account The account for the query
-    /// @return unstakings All the pending RToken issuances for an account
+    /// @return unstakings All the pending StRSR unstakings for an account
     /// @custom:view
     function pendingUnstakings(RTokenP1 rToken, address account)
         external
@@ -354,6 +354,28 @@ contract FacadeRead is IFacadeRead {
     /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset
     function price(IRToken rToken) external view returns (uint192 low, uint192 high) {
         return rToken.main().assetRegistry().toAsset(IERC20(address(rToken))).price();
+    }
+
+    /// @return erc20s The list of ERC20s that have auctions that can be settled, for given trader
+    function auctionsSettleable(ITrading trader) external view returns (IERC20[] memory erc20s) {
+        IERC20[] memory allERC20s = trader.main().assetRegistry().erc20s();
+
+        // Calculate which erc20s can have auctions settled
+        uint256 num;
+        IERC20[] memory unfiltered = new IERC20[](allERC20s.length); // will filter down later
+        for (uint256 i = 0; i < allERC20s.length; ++i) {
+            ITrade trade = trader.trades(allERC20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                unfiltered[num] = allERC20s[i];
+                ++num;
+            }
+        }
+
+        // Filter down
+        erc20s = new IERC20[](num);
+        for (uint256 i = 0; i < num; ++i) {
+            erc20s[i] = unfiltered[i];
+        }
     }
 
     // === Private ===

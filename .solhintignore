@@ -17,3 +17,5 @@ contracts/libraries/Fixed.sol
 # Ignore vendord files
 
 contracts/vendor
+contracts/plugins/assets/compound/vendor
+contracts/plugins/assets/convex/vendor

@@ -1,6 +1,6 @@
 # Staked-Frax-ETH Collateral Plugin
 
-**NOTE: The SFraxEthCollateral plugin SHOULD NOT be deployed and used until a `frxETH/ETH` chainlink oracle can be integrated with the plugin.  As of 3/14/23, there is no chainlink oracle, but the FRAX team is working on getting one.**
+**NOTE: The SFraxEthCollateral plugin SHOULD NOT be deployed and used until a `frxETH/ETH` chainlink oracle can be integrated with the plugin. As of 3/14/23, there is no chainlink oracle, but the FRAX team is working on getting one.**
 
 ## Summary
 
@@ -16,15 +16,14 @@ You can get the `frxETH/sfrxETH` exchange rate from [`sfrxETH.pricePerShare()`](
 
 `frxETH` contract: <https://etherscan.io/address/0x5E8422345238F34275888049021821E8E08CAa1f>
 
-
 `wstETH` and `stETH` can be always swapped at any time to each other without any risk and limitation (Except smart contract risk), like `wETH` and `ETH`. Wrap & Unwrap app can be found here: <https://stake.lido.fi/wrap>
 
 ## Implementation
 
 ### Units
 
-| tok    | ref   | target | UoA |
-| ------ | ----- | ------ | --- |
+| tok     | ref    | target | UoA |
+| ------- | ------ | ------ | --- |
 | sfrxETH | frxETH | ETH    | USD |
 
 ### Functions

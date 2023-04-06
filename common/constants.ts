@@ -1,5 +1,4 @@
-import { ethers } from 'hardhat'
-import { BigNumber } from 'ethers'
+import { utils, BigNumber } from 'ethers'
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 export const ONE_ADDRESS = '0x0000000000000000000000000000000000000001'
@@ -58,7 +57,7 @@ export const STRSR_DEST = '0x0000000000000000000000000000000000000002'
 export const QUEUE_START = '0x0000000000000000000000000000000000000000000000000000000000000001'
 
 // Auth roles
-export const OWNER = ethers.utils.formatBytes32String('OWNER')
-export const SHORT_FREEZER = ethers.utils.formatBytes32String('SHORT_FREEZER')
-export const LONG_FREEZER = ethers.utils.formatBytes32String('LONG_FREEZER')
-export const PAUSER = ethers.utils.formatBytes32String('PAUSER')
+export const OWNER = utils.formatBytes32String('OWNER')
+export const SHORT_FREEZER = utils.formatBytes32String('SHORT_FREEZER')
+export const LONG_FREEZER = utils.formatBytes32String('LONG_FREEZER')
+export const PAUSER = utils.formatBytes32String('PAUSER')

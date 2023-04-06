@@ -25,7 +25,7 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
     AggregatorV3Interface public immutable targetPerRefChainlinkFeed; // {target/ref}
     uint48 public immutable targetPerRefChainlinkTimeout; // {s}
 
-    /// @param config.chainlinkFeed {UoA/tok} Override parent class type
+    /// @param config.chainlinkFeed {UoA/ref}
     /// @param config.oracleError {1} Should be the oracle error _only_ for the {UoA/tok} feed
     constructor(
         CollateralConfig memory config,
@@ -53,18 +53,16 @@ contract LidoStakedEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/tok}
-        uint192 pricePerTok = chainlinkFeed.price(oracleTimeout);
-
         // {target/ref} Get current market peg ({eth/steth})
         pegPrice = targetPerRefChainlinkFeed.price(targetPerRefChainlinkTimeout);
 
-        // {UoA/tok} = {UoA/tok} * {ref/tok}
-        uint192 pLow = pricePerTok.mul(refPerTok());
-        uint192 pHigh = pricePerTok.mul(_underlyingRefPerTok());
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
+        uint192 err = p.mul(oracleError, CEIL);
 
-        low = pLow - pLow.mul(oracleError);
-        high = pHigh + pHigh.mul(oracleError);
+        high = p + err;
+        low = p - err;
+        // assert(low <= high); obviously true just by inspection
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

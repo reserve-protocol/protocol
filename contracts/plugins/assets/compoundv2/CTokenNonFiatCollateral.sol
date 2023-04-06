@@ -52,16 +52,14 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
-        // {UoA/target}
-        uint192 pricePerTarget = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
-
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        uint192 pLow = pricePerTarget.mul(pegPrice).mul(refPerTok());
+        uint192 p = targetUnitChainlinkFeed.price(targetUnitOracleTimeout).mul(pegPrice).mul(
+            _underlyingRefPerTok()
+        );
+        uint192 err = p.mul(oracleError, CEIL);
 
-        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        uint192 pHigh = pricePerTarget.mul(pegPrice).mul(_underlyingRefPerTok());
-
-        low = pLow - pLow.mul(oracleError);
-        high = pHigh + pHigh.mul(oracleError);
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
     }
 }

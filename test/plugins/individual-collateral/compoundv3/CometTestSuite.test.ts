@@ -35,6 +35,7 @@ import {
 import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
   COMP,
   CUSDC_V3,
   USDC_USD_PRICE_FEED,
@@ -78,7 +79,7 @@ export const defaultCometCollateralOpts: CometCollateralOpts = {
   erc20: CUSDC_V3,
   targetName: ethers.utils.formatBytes32String('USD'),
   rewardERC20: COMP,
-  priceTimeout: ORACLE_TIMEOUT,
+  priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: USDC_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,

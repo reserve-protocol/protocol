@@ -4,7 +4,7 @@ const forkBlockNumber = {
   'mainnet-deployment': 15690042, // Ethereum
   'flux-finance': 16836855, // Ethereum
   'morpho-aave': 16859314, // Ethereum
-  default: 16859314, // Ethereum
+  default: 16934828, // Ethereum
 }
 
 export default forkBlockNumber

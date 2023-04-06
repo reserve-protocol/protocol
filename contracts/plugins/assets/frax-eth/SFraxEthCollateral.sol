@@ -20,6 +20,7 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
     using FixLib for uint192;
 
     // solhint-disable no-empty-blocks
+    /// @param config.chainlinkFeed Feed units: {UoA/target}
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {}
@@ -40,16 +41,13 @@ contract SFraxEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        uint192 p = chainlinkFeed.price(oracleTimeout); // target==ref :: {UoA/target} == {UoA/ref}
+        // {UoA/tok} = {UoA/target} * {ref/tok} * {target/ref} (1)
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
+        uint192 err = p.mul(oracleError, CEIL);
 
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pLow = p.mul(refPerTok());
-
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 pHigh = p.mul(_underlyingRefPerTok());
-
-        low = pLow - pLow.mul(oracleError);
-        high = pHigh + pHigh.mul(oracleError);
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
 
         pegPrice = targetPerRef();
     }

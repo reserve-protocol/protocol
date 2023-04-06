@@ -30,6 +30,7 @@ import {
   DAI_ORACLE_ERROR,
   FRAX_ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
@@ -99,7 +100,7 @@ all.forEach((curr: FTokenEnumeration) => {
   const defaultCollateralOpts: FTokenCollateralOpts = {
     erc20: curr.fToken,
     targetName: ethers.utils.formatBytes32String('USD'),
-    priceTimeout: ORACLE_TIMEOUT,
+    priceTimeout: PRICE_TIMEOUT,
     chainlinkFeed: curr.chainlinkFeed,
     oracleTimeout: ORACLE_TIMEOUT,
     oracleError: curr.oracleError,

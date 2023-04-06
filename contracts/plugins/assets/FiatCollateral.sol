@@ -81,7 +81,7 @@ contract FiatCollateral is ICollateral, Asset {
         // Cache constants
         uint192 peg = targetPerRef(); // {target/ref}
 
-        // {target/ref}= {target/ref} * {1}
+        // {target/ref} = {target/ref} * {1}
         uint192 delta = peg.mul(config.defaultThreshold);
         pegBottom = peg - delta;
         pegTop = peg + delta;
@@ -105,13 +105,15 @@ contract FiatCollateral is ICollateral, Asset {
             uint192 pegPrice
         )
     {
-        pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
+        // {target/ref} = {UoA/ref} / {UoA/target} (1)
+        pegPrice = chainlinkFeed.price(oracleTimeout);
 
         // {target/ref} = {target/ref} * {1}
-        uint192 delta = pegPrice.mul(oracleError);
+        uint192 err = pegPrice.mul(oracleError, CEIL);
 
-        low = pegPrice - delta;
-        high = pegPrice + delta;
+        low = pegPrice - err;
+        high = pegPrice + err;
+        // assert(low <= high); obviously true just by inspection
     }
 
     /// Should not revert
