@@ -73,6 +73,7 @@ interface INetworkConfig {
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  RTOKEN_ORACLE?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -157,6 +158,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    RTOKEN_ORACLE: '0x03b8E7dBeB8Ea61D30594b445A1987cfC0F214bB',
   },
   '3': {
     name: 'ropsten',
@@ -238,6 +240,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    RTOKEN_ORACLE: '0x03b8E7dBeB8Ea61D30594b445A1987cfC0F214bB',
   },
   '5': {
     name: 'goerli',
@@ -294,6 +297,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_LENDING_POOL: '0x3e9E33B84C1cD9037be16AA45A0B296ae5F185AD', // mock
     GNOSIS_EASY_AUCTION: '0x1fbab40c338e2e7243da945820ba680c92ef8281', // canonical
     COMPTROLLER: '0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b', // canonical
+    RTOKEN_ORACLE: '0x62C394620f674e85768a7618a6C202baE7fB8Dd1',
   },
 }
 

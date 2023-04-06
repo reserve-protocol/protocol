@@ -7,6 +7,7 @@ export interface IPrerequisites {
   RSR: string
   RSR_FEED: string
   GNOSIS_EASY_AUCTION: string
+  RTOKEN_ORACLE: string
 }
 
 export interface IDeployments {

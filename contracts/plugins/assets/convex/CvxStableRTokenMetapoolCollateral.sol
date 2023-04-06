@@ -54,7 +54,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         override
         returns (uint192 lowPaired, uint192 highPaired)
     {
-        // refresh price in oracle if needed
+        // do not require a fresh price; refresh() must mark IFFY if stale
         (Price memory p, ) = rTokenOracle.priceView(IRToken(address(pairedToken)), false);
         return (p.low, p.high);
     }
@@ -63,7 +63,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
     /// Refresh exchange rates and update default status.
     /// Have to override to add custom default checks
     function refresh() public virtual override {
-        // refresh price in rTokenOracle
+        // refresh price in rTokenOracle only if necessary
         // solhint-disable no-empty-blocks
         try rTokenOracle.price(IRToken(address(pairedToken)), false) {} catch (
             bytes memory errData

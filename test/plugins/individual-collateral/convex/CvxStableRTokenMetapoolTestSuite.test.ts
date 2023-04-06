@@ -195,7 +195,7 @@ const makeCollateralFixtureContext = (
     )
     const rTokenFeed = <RTokenOracleMock>await RTokenOracleFactory.deploy(bn('3600'))
     await rTokenFeed.price(eUSD, true)
-    const [rTokenPrice] = await rTokenFeed.priceView(eUSD, false)
+    const [rTokenPrice] = await rTokenFeed.priceView(eUSD, true)
     await rTokenFeed.setPrice(eUSD, rTokenPrice[0], rTokenPrice[1])
 
     const fix = await makeWeUSDFraxBP()
@@ -483,7 +483,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         expect(intermediateHigh).to.be.closeTo(high.mul(106).div(100), fp('1e-2'))
 
         // Update RToken price
-        const [rTokenPrice] = await rTokenFeed.priceView(ctx.eusd.address, true)
+        const [rTokenPrice] = await rTokenFeed.priceView(ctx.eusd.address, false)
         await rTokenFeed.setPrice(
           ctx.eusd.address,
           rTokenPrice.low.mul(110).div(100),

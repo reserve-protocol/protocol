@@ -46,16 +46,27 @@ async function main() {
   } else if (!(await isValidContract(hre, gnosisAddr))) {
     throw new Error(`GNOSIS_EASY_AUCTION contract not found in network ${hre.network.name}`)
   }
+
+  // Get RToken Oracle Address
+  const rTokenOracleAddr = networkConfig[chainId].RTOKEN_ORACLE
+  if (!rTokenOracleAddr) {
+    throw new Error(`Missing address for RTOKEN_ORACLE in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, rTokenOracleAddr))) {
+    throw new Error(`RTOKEN_ORACLE contract not found in network ${hre.network.name}`)
+  }
   // ********************* Output Configuration******************************
   const deployments: IDeployments = {
     prerequisites: {
       RSR: rsrAddr,
       RSR_FEED: rsrFeedAddr,
       GNOSIS_EASY_AUCTION: gnosisAddr,
+      RTOKEN_ORACLE: rTokenOracleAddr,
     },
     tradingLib: '',
     facadeRead: '',
     facadeAct: '',
+    facadeMonitor: '',
+    cvxMiningLib: '',
     facadeWriteLib: '',
     facadeWrite: '',
     deployer: '',
@@ -83,6 +94,7 @@ async function main() {
     RSR: ${rsrAddr}
     RSR FEED: ${rsrFeedAddr}
     GNOSIS_EASY_AUCTION: ${gnosisAddr}
+    RTOKEN_ORACLE: ${rTokenOracleAddr}
     Deployment file: ${deploymentFilename}`)
 }
 
