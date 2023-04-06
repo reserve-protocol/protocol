@@ -322,23 +322,29 @@ describe('FacadeRead contract', () => {
 
     it('Should return traderBalances correctly', async () => {
       // BackingManager
+      const backingManager = await ethers.getContractAt(
+        'TestIBackingManager',
+        await main.backingManager()
+      )
       let [erc20s, balances, balancesNeeded] = await facade.traderBalances(
         rToken.address,
-        await main.backingManager()
+        backingManager.address
       )
       expect(erc20s.length).to.equal(8)
       expect(balances.length).to.equal(8)
       expect(balancesNeeded.length).to.equal(8)
 
+      const backingBuffer = await backingManager.backingBuffer()
       for (let i = 0; i < 8; i++) {
         let bal = bn('0')
         if (erc20s[i] == token.address) bal = issueAmount.div(4)
         if (erc20s[i] == usdc.address) bal = issueAmount.div(4).div(bn('1e12'))
         if (erc20s[i] == aToken.address) bal = issueAmount.div(4)
         if (erc20s[i] == cToken.address) bal = issueAmount.div(4).mul(50).div(bn('1e10'))
-
         expect(balances[i]).to.equal(bal)
-        expect(balancesNeeded[i]).to.equal(bal)
+
+        const balNeeded = bal.add(bal.mul(backingBuffer).div(fp('1')))
+        expect(balancesNeeded[i]).to.equal(balNeeded)
       }
 
       // RTokenTrader

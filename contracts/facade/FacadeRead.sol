@@ -304,9 +304,10 @@ contract FacadeRead is IFacadeRead {
         balances = new uint256[](erc20s.length);
         balancesNeeded = new uint256[](erc20s.length);
 
-        bool isBackingManager = trader == backingManager;
-        uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
+        uint192 backingBuffer = TestIBackingManager(address(backingManager)).backingBuffer();
+        uint192 basketsNeeded = rToken.basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
 
+        bool isBackingManager = trader == backingManager;
         for (uint256 i = 0; i < erc20s.length; ++i) {
             balances[i] = erc20s[i].balanceOf(address(trader));
 
