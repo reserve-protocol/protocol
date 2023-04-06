@@ -21,27 +21,19 @@ library RewardableLibP1 {
     /// Claim all rewards
     /// @custom:interaction mostly CEI but see comments
     // actions:
-    //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()")) for asset in assets
+    //   do asset.claimRewards() for asset in assets
     function claimRewards(IAssetRegistry reg) internal {
         Registry memory registry = reg.getRegistry();
         for (uint256 i = 0; i < registry.assets.length; ++i) {
-            // Claim rewards via delegatecall
-            address(registry.assets[i]).functionDelegateCall(
-                abi.encodeWithSignature("claimRewards()"),
-                "rewards claim failed"
-            );
+            IRewardable(address(registry.assets[i])).claimRewards();
         }
     }
 
     /// Claim rewards for a single ERC20
     /// @custom:interaction mostly CEI but see comments
     // actions:
-    //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()"))
+    //   do asset.claimRewards()
     function claimRewardsSingle(IAsset asset) internal {
-        // Claim rewards via delegatecall
-        address(asset).functionDelegateCall(
-            abi.encodeWithSignature("claimRewards()"),
-            "rewards claim failed"
-        );
+        IRewardable(address(asset)).claimRewards();
     }
 }
