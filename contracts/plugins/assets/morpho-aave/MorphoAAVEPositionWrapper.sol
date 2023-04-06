@@ -16,6 +16,11 @@ struct MorphoAAVEWrapperConfig {
     string underlying_symbol;
 }
 
+/**
+ * @title MorphoAAVEPositionWrapper
+ * @notice ERC20 that wraps a Morpho AAVE position, requiring underlying tokens on mint and redeeming underlying tokens on burn.
+ * Designed to mimic a Compound cToken.
+ */
 contract MorphoAAVEPositionWrapper is ERC20, ERC20Burnable {
     using SafeERC20 for IERC20Metadata;
     using FixLib for uint192;
@@ -31,6 +36,7 @@ contract MorphoAAVEPositionWrapper is ERC20, ERC20Burnable {
     //Amount of the underlying that can be exchanged for 1 of this ERC20
     uint192 private exchange_rate;
 
+    /// @param config Configuration of this wrapper. config.pool_token must be the respective AAVE pool token (e.g. aUSDC)
     constructor(MorphoAAVEWrapperConfig memory config) ERC20(
         string.concat("RMorphoAAVE", config.underlying_symbol), 
         string.concat("rma", config.underlying_symbol)
@@ -44,22 +50,28 @@ contract MorphoAAVEPositionWrapper is ERC20, ERC20Burnable {
         exchange_rate = FIX_ONE;
     }
 
+    // Takes an uint256 amount of the wrapper token represented by this contract and returns
+    // a fixed point representation of that value.
     function wrapper_to_fix(uint256 x) internal pure returns (uint192) {
         return shiftl_toFix(x, -18);
     }
 
+    // Takes an uint256 amount of the underlying token to be deposited into Morpho and returns
+    // a fixed point representation of that value.
     function underlying_to_fix(uint256 x) internal view returns (uint192) {
         return shiftl_toFix(x, -int8(_decimals));
     }
 
-    function test_underlying_to_fix() external view returns (uint192) {
-        return shiftl_toFix(1e18, -18);
-    }
-    
+    // Takes a fixed point representation of the underlying token to be
+    // deposited into Morpho and returns its uint256 amount.
     function fix_to_underlying(uint192 x) internal view returns (uint256) {
         return x.shiftl_toUint(int8(_decimals));
     }
 
+    /* Check the current morpho pool's balance, and update the exchange_rate accordingly, 
+     * taking into account the number of tokens expected to be in the pool.
+     * This is called on mint and burn, and can be called manually to update the exchange rate.
+     */
     function adjust_exchange_rate() internal {
         if (tokens_supplied == 0) {
             return;
@@ -79,6 +91,9 @@ contract MorphoAAVEPositionWrapper is ERC20, ERC20Burnable {
         return exchange_rate;
     }
 
+    /* On mint, we transfer the underlying tokens from the user to this contract, 
+     * and then supply them to the morpho pool. We then mint an appropriate amount of this ERC20.
+     */
     function mint(address to, uint256 amount) public {
         adjust_exchange_rate();
 
@@ -92,24 +107,9 @@ contract MorphoAAVEPositionWrapper is ERC20, ERC20Burnable {
         _mint(to, amount);
     }
 
-    function test_mint(address to, uint256 amount) public view returns (uint256, uint256) {
-        //adjust_exchange_rate();
-
-        uint256 to_transfer_of_underlying = fix_to_underlying(wrapper_to_fix(amount).mul(exchange_rate));
-        return (to_transfer_of_underlying, amount);
-         
-        //underlying_erc20.safeTransferFrom(msg.sender, address(this), to_transfer_of_underlying);
-        //underlying_erc20.safeIncreaseAllowance(address(morpho_controller), to_transfer_of_underlying);
-        //morpho_controller.supply(pool_token, to_transfer_of_underlying);
-        //tokens_supplied += to_transfer_of_underlying;
-
-        //_mint(to, amount);
-    }
-
-    function get_underlying_erc20() external view returns (IERC20Metadata) {
-        return underlying_erc20;
-    }
-
+    /* On burn, we transfer the underlying tokens from the morpho pool to this contract, 
+     * and then transfer them to the user. We then burn an appropriate amount of this ERC20.
+     */
     function burn(uint256 amount) public override {
         adjust_exchange_rate();
 

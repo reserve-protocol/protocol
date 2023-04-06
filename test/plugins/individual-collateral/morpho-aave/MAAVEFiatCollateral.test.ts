@@ -28,9 +28,7 @@ import {
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../../utils/time'
 import {
   Asset,
-  ComptrollerMock,
   MorphoAAVEFiatCollateral,
-  CTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -154,17 +152,13 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       defaultFixture
     ))
 
-    // Get required contracts for cDAI
-    // COMP token
-    //compToken = <ERC20Mock>(
-    //  await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.COMP || '')
-    //)
-    // WBTC token
+    // Get required contracts for USDT
+    // USDT token
     usdt = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDT || '')
     )
 
-    //TODO: Create mocks of Morpho controller, lens and reward token
+    //TODO: Add support for MORPHO rewards once chainlink releases MORPHO / USDT
 
     MorphoAAVEPositionWrapperFactory = await ethers.getContractFactory('MorphoAAVEPositionWrapper')
     usdtMorphoWrapper = <MorphoAAVEPositionWrapper>await MorphoAAVEPositionWrapperFactory.deploy(
@@ -173,7 +167,7 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         morpho_lens: networkConfig[chainId].MORPHO_AAVE_LENS,
         underlying_erc20: usdt.address,
         pool_token: networkConfig[chainId].tokens.aUSDT,
-        underlying_symbol: ethers.utils.formatBytes32String('WBTC')
+        underlying_symbol: ethers.utils.formatBytes32String('USDT')
       }
     )
 
@@ -195,13 +189,13 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
     // Setup balances for addr1 - Transfer from Mainnet holder
     // wBTC
-    // Send 10000 wbtc from rich acct to addr1
+    // Send 10000 usdt from rich acct to addr1
     initialBal = bn('10000e6')
     await whileImpersonating(holderUSDT, async (usdtHolderSigner) => {
       await usdt.connect(usdtHolderSigner).transfer(addr1.address, initialBal)
     })
 
-    // Send 10000 wbtc from rich acct to addr2
+    // Send 10000 usdt from rich acct to addr2
     await whileImpersonating(holderUSDT, async (usdtHolderSigner) => {
       await usdt.connect(usdtHolderSigner).transfer(addr2.address, initialBal)
     })
@@ -276,7 +270,7 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await usdtMorphoWrapper.get_exchange_rate()).to.equal(fp('1'))
 
       // Check Collateral plugin
-      // maWBTC (CTokenFiatCollateral)
+      // maUSDT (MorphoAAVEFiatCollateral)
       expect(await usdtMorphoPlugin.isCollateral()).to.equal(true)
       expect(await usdtMorphoPlugin.erc20()).to.equal(usdtMorphoWrapper.address)
       expect(await usdtMorphoPlugin.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -294,11 +288,6 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         bn('1e5')
       ) // close to $1.00278919 cents
 
-      // Check claim data
-      //await expect(wbtcMorphoPlugin.claimRewards())
-      //  .to.emit(wbtcMorphoPlugin, 'RewardsClaimed')
-      //  .withArgs(compToken.address, 0)
-
       expect(await usdtMorphoPlugin.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
@@ -313,14 +302,12 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       const ERC20s = await assetRegistry.erc20s()
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
-      //expect(ERC20s[2]).to.equal(compToken.address)
       expect(ERC20s[2]).to.equal(usdtMorphoWrapper.address)
       expect(ERC20s.length).to.eql(3)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-      //expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(compAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(usdtMorphoPlugin.address)
 
       // Collaterals
@@ -610,7 +597,7 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newCDaiCollateral: MorphoAAVEFiatCollateral = <MorphoAAVEFiatCollateral>await (
+      const newUSDTCollateral: MorphoAAVEFiatCollateral = <MorphoAAVEFiatCollateral>await (
         await ethers.getContractFactory('MorphoAAVEFiatCollateral')
       ).deploy(
         {
@@ -628,36 +615,36 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       )
 
       // Check initial state
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await newUSDTCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newUSDTCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       // Depeg one of the underlying tokens - Reducing price 20%
-      await setOraclePrice(newCDaiCollateral.address, bn('8e7')) // -20%
+      await setOraclePrice(newUSDTCollateral.address, bn('8e7')) // -20%
 
       // Force updates - Should update whenDefault and status
-      await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+      await expect(newUSDTCollateral.refresh())
+        .to.emit(newUSDTCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await newUSDTCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
         delayUntilDefault
       )
-      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newUSDTCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
       // Move time forward past delayUntilDefault
       await advanceTime(Number(delayUntilDefault))
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newUSDTCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
       // CToken
-      const prevWhenDefault: BigNumber = await newCDaiCollateral.whenDefault()
-      await expect(newCDaiCollateral.refresh()).to.not.emit(
-        newCDaiCollateral,
+      const prevWhenDefault: BigNumber = await newUSDTCollateral.whenDefault()
+      await expect(newUSDTCollateral.refresh()).to.not.emit(
+        newUSDTCollateral,
         'CollateralStatusChanged'
       )
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
+      expect(await newUSDTCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newUSDTCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
     // Test for hard default
@@ -674,11 +661,11 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         }
       )
 
-      // Set initial exchange rate to the new cDai Mock
+      // Set initial exchange rate to the new USDT Mock
       await usdtMorphoWrapperMock.set_exchange_rate(fp('1'))
 
-      // Redeploy plugin using the new cDai mock
-      const newCDaiCollateral: MorphoAAVEFiatCollateral = <MorphoAAVEFiatCollateral>await (
+      // Redeploy plugin using the new USDT mock
+      const newUSDTCollateral: MorphoAAVEFiatCollateral = <MorphoAAVEFiatCollateral>await (
         await ethers.getContractFactory('MorphoAAVEFiatCollateral')
       ).deploy(
         {
@@ -694,23 +681,23 @@ describeFork(`MAAVEFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         },
         REVENUE_HIDING
       )
-      await newCDaiCollateral.refresh()
+      await newUSDTCollateral.refresh()
 
       // Check initial state
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await newUSDTCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newUSDTCollateral.whenDefault()).to.equal(MAX_UINT48)
 
-      // Decrease rate for cDAI, will disable collateral immediately
+      // Decrease rate for USDT, will disable collateral immediately
       await usdtMorphoWrapperMock.set_exchange_rate(fp('0.9'))
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
-      await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+      await expect(newUSDTCollateral.refresh())
+        .to.emit(newUSDTCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newUSDTCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newUSDTCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
