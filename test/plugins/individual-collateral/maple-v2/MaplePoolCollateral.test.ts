@@ -4,6 +4,7 @@ import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MockV3Aggregator, MockV3Aggregator__factory, TestICollateral, IMaplePool, MaplePoolMock } from '../../../../typechain'
+import { ZERO_ADDRESS } from '../../../../common/constants'
 import { bn, fp } from '../../../../common/numbers'
 import { CollateralStatus, CollateralOpts, CollateralFixtureContext, DeployCollateralFunc, MakeCollateralFixtureFunc, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, transferMaplePoolToken, getExpectedPrice, increaseRefPerTok } from './helpers'
@@ -14,10 +15,9 @@ import {
     MPL_mcWETH1_HOLDER,
     USDC_TOKEN,
     WETH_TOKEN,
-    USDC_PRICE_FEED,
-    ETH_PRICE_FEED,
-    USDC_PRICE_ERROR,
-    WETH_PRICE_ERROR,
+    USDC_TO_USD_PRICE_FEED,
+    USDC_TO_USD_PRICE_ERROR,
+    ETH_TO_USD_PRICE_ERROR,
     PRICE_TIMEOUT,
     ORACLE_TIMEOUT,
     DEFAULT_THRESHOLD,
@@ -36,7 +36,17 @@ const emptyFn = () => {return}
 
 const deployCollateralFactory = (defaults: CollateralOpts = {}): DeployCollateralFunc => {
     const _deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
-        const _opts = { ...defaults, ...opts }
+        let _defaults = defaults
+
+        // for the wETH collateral {target} = {ref} = wETH: the oracle should constantly return 1
+        if (_defaults.chainlinkFeed == ZERO_ADDRESS) {
+            const _mockV3AggregatorFactory = <MockV3Aggregator__factory>(await ethers.getContractFactory('MockV3Aggregator'))
+
+            const _chainlinkFeed = <MockV3Aggregator>await _mockV3AggregatorFactory.deploy(8, bn('1e8'))
+            _defaults.chainlinkFeed = _chainlinkFeed.address
+        }
+
+        const _opts = { ..._defaults, ...opts }
 
         const _MaplePoolCollateralFactory: ContractFactory = await ethers.getContractFactory('MaplePoolCollateral')
 
@@ -59,7 +69,7 @@ const deployCollateralFactory = (defaults: CollateralOpts = {}): DeployCollatera
 
         // sometimes we are trying to test a negative test case and we want this to fail silently
         // fortunately this syntax fails silently because our tools are terrible
-        expect(await _collateral.refresh())
+        await expect(_collateral.refresh())
 
         return _collateral
     }
@@ -188,8 +198,8 @@ const all = [
         underlying: USDC_TOKEN,
         holder: MPL_mcUSDC2_HOLDER,
         MaplePoolToken: MAPLE_USDC_POOL,
-        oracleError: USDC_PRICE_ERROR,
-        chainlinkFeed: USDC_PRICE_FEED, // {target/ref}
+        oracleError: USDC_TO_USD_PRICE_ERROR,
+        chainlinkFeed: USDC_TO_USD_PRICE_FEED, // {target/ref}
         defaultOraclePrice: bn('1e8'), // 8 decimals
     },
     {
@@ -198,9 +208,9 @@ const all = [
         underlying: WETH_TOKEN,
         holder: MPL_mcWETH1_HOLDER,
         MaplePoolToken: MAPLE_WETH_POOL,
-        oracleError: WETH_PRICE_ERROR,
-        chainlinkFeed: ETH_PRICE_FEED, // {target/ref}
-        defaultOraclePrice: bn('1800e8'), // 8 decimals
+        oracleError: ETH_TO_USD_PRICE_ERROR,
+        chainlinkFeed: ZERO_ADDRESS, // {target/ref} = constant 1 (wETH to ETH), the oracle is a mock
+        defaultOraclePrice: bn('1e8'), // 8 decimals
     },
 ]
 

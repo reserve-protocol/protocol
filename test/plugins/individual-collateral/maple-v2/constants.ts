@@ -18,13 +18,13 @@ export const MPL_mcWETH1_HOLDER = '0x1Bb73D6384ae73DA2101a4556a42eaB82803Ef3d'
 export const USDC_TOKEN = config.tokens.USDC as string
 export const WETH_TOKEN = config.tokens.WETH as string
 
-export const USDC_PRICE_FEED = config.chainlinkFeeds.USDC as string
-export const ETH_PRICE_FEED = config.chainlinkFeeds.ETH as string
+export const USDC_TO_USD_PRICE_FEED = config.chainlinkFeeds.USDC as string
+export const ETH_TO_USD_PRICE_FEED = config.chainlinkFeeds.ETH as string // not used: the target for the wETH collateral is ETH
 
 // Configuration
 
-export const USDC_PRICE_ERROR = fp('0.0025') // 0.25%
-export const WETH_PRICE_ERROR = fp('0.005') // 0.5
+export const USDC_TO_USD_PRICE_ERROR = fp('0.0025') // 0.25%
+export const ETH_TO_USD_PRICE_ERROR = fp('0.005') // 0.5
 
 export const PRICE_TIMEOUT = bn(604800) // 1 week
 export const ORACLE_TIMEOUT = bn(86400) // 24 hours

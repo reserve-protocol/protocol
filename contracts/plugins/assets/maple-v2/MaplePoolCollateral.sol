@@ -10,7 +10,7 @@ import { IMaplePool } from "contracts/plugins/assets/maple-v2/vendor/IMaplePool.
  * @title MaplePoolCollateral
  * @notice Collateral plugin for the token given to the liquidity providers
  * The 2 target pools  are permissionless; one holds USDC, the other wETH
- * {tok} = LP tokens
+ * {tok} = MPL-mcUSDC2 or MPL-mcWETH1
  * {ref} = USDc or wETH
  * {target} = USD or ETH
  * {UoA} = USD
@@ -38,7 +38,7 @@ contract MaplePoolCollateral is AppreciatingFiatCollateral {
         return shiftl_toFix(rate, -18); // convert to uint192 and actually keep the same value
     }
 
-    /// Maple pools doesn't hand out rewards for LP tokens
+    /// Maple pools don't hand out rewards for LP tokens
     /// All the returns (from loan interests) are added to the LP, thus increasing the value of all the shares
     /// The MPL rewards are discontinued; they were a temporary incentive 
     function claimRewards() external virtual override(Asset, IRewardable) {}

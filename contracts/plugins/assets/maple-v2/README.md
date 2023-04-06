@@ -30,7 +30,7 @@ Maven11 WETH Pool Contracts:
 
 | `tok`         | `ref` | `tgt` | `UoA` |
 | :-----------: | :---: | :---: | :---: |
-|  MPL-mcWETH1  | wETH  |  USD  |  USD  |
+|  MPL-mcWETH1  | wETH  |  ETH  |  USD  |
 
 The token names are taken from the `symbol` method in the pool contracts.
 
@@ -49,6 +49,20 @@ It is implemented by the pool contract [convertToAssets][maple-code-pool-contrac
 
 The `totalAssets` take the accrued interests and past losses into account.
 
+### Price Calculation
+
+Like any other collateral, the price is `{target/ref} * {ref/tok}`.
+
+And `{target/ref}` is retrieved via a Chainlink oracle:
+
+- [USDC to USD][chainlink-feed-usdc-to-usd] for the USDC pool
+- and a [mock wETH to ETH oracle][reserve-collateral-chainlink-mock] for the wETH
+
+Just like the `SelfReferentialCollateral`, the wETH collateral has its `{ref}` pegged 1:1 to the `{target}`.
+
+To keep the same logic / contract for both pools, the contract still uses the `chainlinkFeed` property and instantiates a mock oracle.
+This mock oracle always returns 1 (10e8 with the decimals) as price.
+
 ### Conditions of Default
 
 Defaults of the collateral happen when `refPerTok` decreases below the allowed dropped set for "revenue hiding".
@@ -56,7 +70,7 @@ Defaults of the collateral happen when `refPerTok` decreases below the allowed d
 And this happens iff `convertToAssets` from the ERC4626 decreases.
 
 As detailed in [appendix section](#appendix-exchange-rate-break-down) this can only be triggered by loan default.
-This section explains why the collateral does not default on loan impairment.
+This section also explains why the collateral does not default on loan impairment.
 
 ## Deployment
 
@@ -156,10 +170,10 @@ Implements the revenue hiding and the refreshing logic on top of all the common 
 The tests require more memory than the defaults allow:
 
 ```bash
-NODE_OPTIONS="--max-old-space-size=4096" yarn run hardhat test test/plugins/individual-collateral/maple-v2/MaplePoolCollateral.test.ts
+NODE_OPTIONS="--max-old-space-size=8192" yarn run hardhat test test/plugins/individual-collateral/maple-v2/MaplePoolCollateral.test.ts
 ```
 
-The Hardhat option `--max-memory 4096` didn't work for me.
+The Hardhat option `--max-memory 8192` didn't work for me.
 I had to use `NODE_OPTIONS` to pass parameters from Yarn to Node.
 
 ### Context
@@ -168,7 +182,7 @@ I had to use `NODE_OPTIONS` to pass parameters from Yarn to Node.
 
 ### List Of Unit Tests
 
-Most of the test suite comes from [the collateral test suite][reserve-collateral-parent-test-script].
+Most of the tests comes from [the collateral test suite][reserve-collateral-parent-test-script].
 
 The Maple contracts are plugged into this testing suite by implementing the absract factories in [this script][reserve-collateral-test-script].
 
@@ -361,6 +375,7 @@ Only the loan default leads to a diminution of the total assets as the outstandi
 [maple-docs-exchange-rate]:  https://maplefinance.gitbook.io/maple/technical-resources/pools/accounting/pool-exchange-rates
 [maple-docs-overview]: https://maplefinance.gitbook.io/maple/technical-resources/protocol-overview
 [maple-docs-pools]: https://maplefinance.gitbook.io/maple/technical-resources/pools/pools
+[reserve-collateral-chainlink-mock]: ../../mocks/MockV3Aggregator.sol
 [reserve-collateral-main-contract]: ./MaplePoolCollateral.sol
 [reserve-collateral-maple-interface]: ./vendor/IMaplePool.sol
 [reserve-collateral-maple-mock]: ../../mocks/MaplePoolMock.sol
