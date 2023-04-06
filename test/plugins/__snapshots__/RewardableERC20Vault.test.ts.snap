@@ -1,0 +1,37 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Gas Reporting ERC20Vault claimRewards 1`] = `22816`;
+
+exports[`Gas Reporting ERC20Vault deposit 1`] = `111010`;
+
+exports[`Gas Reporting ERC20Vault deposit 2`] = `59945`;
+
+exports[`Gas Reporting ERC20Vault withdraw 1`] = `70442`;
+
+exports[`Gas Reporting ERC20Vault withdraw 2`] = `42674`;
+
+exports[`Gas Reporting RewardableERC20Vault claimRewards 1`] = `158712`;
+
+exports[`Gas Reporting RewardableERC20Vault claimRewards 2`] = `82170`;
+
+exports[`Gas Reporting RewardableERC20Vault deposit 1`] = `115695`;
+
+exports[`Gas Reporting RewardableERC20Vault deposit 2`] = `84000`;
+
+exports[`Gas Reporting RewardableERC20Vault withdraw 1`] = `94497`;
+
+exports[`Gas Reporting RewardableERC20Vault withdraw 2`] = `62997`;
+
+exports[`Gas Reporting claimRewards 1`] = `158712`;
+
+exports[`Gas Reporting claimRewards 2`] = `82170`;
+
+exports[`Gas Reporting deposit 1`] = `115695`;
+
+exports[`Gas Reporting deposit 2`] = `84000`;
+
+exports[`Gas Reporting deposit 3`] = `84000`;
+
+exports[`Gas Reporting withdraw 1`] = `94497`;
+
+exports[`Gas Reporting withdraw 2`] = `62997`;
