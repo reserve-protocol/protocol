@@ -28,7 +28,7 @@ import {
   ORACLE_ERROR,
 } from './fixtures'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
-import { CollateralStatus } from '#/common/constants'
+import { CollateralStatus, MAX_UINT256 } from '#/common/constants'
 
 describe('FacadeRead contract', () => {
   let owner: SignerWithAddress
@@ -248,13 +248,24 @@ describe('FacadeRead contract', () => {
 
     it('Should return backingOverview backing correctly when an asset price is 0', async () => {
       await setOraclePrice(tokenAsset.address, bn(0))
-      await basketHandler.refreshBasket()
       const [backing, overCollateralization] = await facade.callStatic.backingOverview(
         rToken.address
       )
 
       // Check values - Fully collateralized and no over-collateralization
       expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(overCollateralization).to.equal(0)
+    })
+
+    it('Should return backingOverview backing correctly when RSR is UNPRICED', async () => {
+      await setOraclePrice(tokenAsset.address, MAX_UINT256.div(2).sub(1))
+      await basketHandler.refreshBasket()
+      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
+
+      // Check values - Fully collateralized and no over-collateralization
+      expect(backing).to.be.closeTo(fp('0'), 10)
       expect(overCollateralization).to.equal(0)
     })
 
@@ -287,25 +298,53 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization2).to.equal(0)
     })
 
+    it('Should return backingOverview backing correctly when RSR is UNPRICED', async () => {
+      // Mint some RSR
+      const stakeAmount = bn('50e18') // Half in value compared to issued RTokens
+      await rsr.connect(owner).mint(addr1.address, stakeAmount.mul(2))
+
+      // Stake some RSR
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
+      await stRSR.connect(addr1).stake(stakeAmount)
+
+      // Check values - Fully collateralized and with 50%-collateralization
+      let [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(overCollateralization).to.equal(fp('0.5'))
+
+      await setOraclePrice(rsrAsset.address, MAX_UINT256.div(2).sub(1))
+      ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully collateralized and no over-collateralization
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(overCollateralization).to.equal(0)
+    })
+
     it('Should return traderBalances correctly', async () => {
       // BackingManager
+      const backingManager = await ethers.getContractAt(
+        'TestIBackingManager',
+        await main.backingManager()
+      )
       let [erc20s, balances, balancesNeeded] = await facade.traderBalances(
         rToken.address,
-        await main.backingManager()
+        backingManager.address
       )
       expect(erc20s.length).to.equal(8)
       expect(balances.length).to.equal(8)
       expect(balancesNeeded.length).to.equal(8)
 
+      const backingBuffer = await backingManager.backingBuffer()
       for (let i = 0; i < 8; i++) {
         let bal = bn('0')
         if (erc20s[i] == token.address) bal = issueAmount.div(4)
         if (erc20s[i] == usdc.address) bal = issueAmount.div(4).div(bn('1e12'))
         if (erc20s[i] == aToken.address) bal = issueAmount.div(4)
         if (erc20s[i] == cToken.address) bal = issueAmount.div(4).mul(50).div(bn('1e10'))
-
         expect(balances[i]).to.equal(bal)
-        expect(balancesNeeded[i]).to.equal(bal)
+
+        const balNeeded = bal.add(bal.mul(backingBuffer).div(fp('1')))
+        expect(balancesNeeded[i]).to.equal(balNeeded)
       }
 
       // RTokenTrader
@@ -349,7 +388,7 @@ describe('FacadeRead contract', () => {
       await expectValidBasketBreakdown(rToken)
     })
 
-    it('Should return basketBreakdown correctly for tokens with (0,FIXED_MAX) price', async () => {
+    it('Should return basketBreakdown correctly for tokens with (0, FIX_MAX) price', async () => {
       const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
         await ethers.getContractAt('MockV3Aggregator', await tokenAsset.chainlinkFeed())
       )
