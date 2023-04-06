@@ -24,8 +24,8 @@ library RewardableLibP1 {
     //   do asset.claimRewards() for asset in assets
     function claimRewards(IAssetRegistry reg) internal {
         Registry memory registry = reg.getRegistry();
-        for (uint256 i = 0; i < registry.assets.length; ++i) {
-            IRewardable(address(registry.assets[i])).claimRewards();
+        for (uint256 i = 0; i < registry.erc20s.length; ++i) {
+            IRewardable(address(registry.erc20s[i])).claimRewards();
         }
     }
 
