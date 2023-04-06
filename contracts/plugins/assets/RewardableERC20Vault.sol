@@ -9,7 +9,7 @@ import "../../vendor/solmate/SafeTransferLib.sol";
 abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
     using SafeTransferLib for ERC20Solmate;
 
-    uint256 public immutable FIXED_SCALE;
+    uint256 public immutable one;
     ERC20Solmate public immutable rewardToken;
 
     uint256 public rewardsPerShare;
@@ -17,15 +17,15 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
     mapping(address => uint256) public accumulatedRewards;
     mapping(address => uint256) public claimedRewards;
 
-	constructor(
+    constructor(
         ERC20Solmate _asset,
         string memory _name,
         string memory _symbol,
         ERC20Solmate _rewardToken
     ) ERC4626Rewardable(_asset, _name, _symbol) {
         rewardToken = _rewardToken;
-        FIXED_SCALE = 10**_asset.decimals();
-	}
+        one = 10**_asset.decimals();
+    }
 
     function claimRewards() external {
         _claimAndSyncRewards();
@@ -37,7 +37,7 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
         uint256 accountRewardsPershare = lastRewardsPerShare[account];
         if (rewardsPerShare == accountRewardsPershare) return;
         uint256 delta = rewardsPerShare - accountRewardsPershare;
-        uint256 newRewards = delta * shares / FIXED_SCALE;
+        uint256 newRewards = (delta * shares) / one;
         lastRewardsPerShare[account] = rewardsPerShare;
         accumulatedRewards[account] += newRewards;
     }
@@ -47,7 +47,7 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
         uint256 initialBal = rewardToken.balanceOf(address(this));
         _claimAssetRewards();
         uint256 endingBal = rewardToken.balanceOf(address(this));
-        rewardsPerShare += (endingBal - initialBal) * FIXED_SCALE / totalSupply;
+        rewardsPerShare += ((endingBal - initialBal) * one) / totalSupply;
     }
 
     function _claimAssetRewards() internal virtual;
@@ -63,20 +63,21 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
         return totalSupply;
     }
 
-    function beforeWithdraw(uint256 assets, uint256 shares, address owner) internal virtual override {
+    function beforeWithdraw(
+        uint256,
+        uint256,
+        address owner
+    ) internal virtual override {
         _claimAndSyncRewards();
         _syncAccount(owner, balanceOf[owner]);
     }
 
-    function afterWithdraw(uint256 assets, uint256 shares, address owner) internal virtual override {
-
-    }
-
-    function beforeDeposit(uint256 assets, uint256 shares, address receiver) internal virtual override {
+    function beforeDeposit(
+        uint256,
+        uint256,
+        address receiver
+    ) internal virtual override {
         _claimAndSyncRewards();
         _syncAccount(receiver, balanceOf[receiver]);
-    }
-
-    function afterDeposit(uint256 assets, uint256 shares, address receiver) internal virtual override {
     }
 }
