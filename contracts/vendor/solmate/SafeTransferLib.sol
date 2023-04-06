@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.17;
 
-import {ERC20} from "./ERC20.sol";
+import {ERC20Solmate} from "./ERC20Solmate.sol";
 
-/// @notice Safe ETH and ERC20 transfer library that gracefully handles missing return values.
+/// @notice Safe ETH and ERC20Solmate transfer library that gracefully handles missing return values.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/utils/SafeTransferLib.sol)
 /// @dev Use with caution! Some functions in this library knowingly create dirty bits at the destination of the free memory pointer.
 /// @dev Note that none of the functions in this library check that a token has code at all! That responsibility is delegated to the caller.
@@ -25,11 +25,11 @@ library SafeTransferLib {
     }
 
     /*//////////////////////////////////////////////////////////////
-                            ERC20 OPERATIONS
+                            ERC20Solmate OPERATIONS
     //////////////////////////////////////////////////////////////*/
 
     function safeTransferFrom(
-        ERC20 token,
+        ERC20Solmate token,
         address from,
         address to,
         uint256 amount
@@ -63,7 +63,7 @@ library SafeTransferLib {
     }
 
     function safeTransfer(
-        ERC20 token,
+        ERC20Solmate token,
         address to,
         uint256 amount
     ) internal {
@@ -95,7 +95,7 @@ library SafeTransferLib {
     }
 
     function safeApprove(
-        ERC20 token,
+        ERC20Solmate token,
         address to,
         uint256 amount
     ) internal {
