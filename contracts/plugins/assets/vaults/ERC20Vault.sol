@@ -6,7 +6,7 @@ import "../../../vendor/solmate/ERC4626.sol";
 import "../../../vendor/solmate/ERC20Solmate.sol";
 import "../../../vendor/solmate/SafeTransferLib.sol";
 
-abstract contract ERC20Vault is IRewardable, ERC4626 {
+contract ERC20Vault is IRewardable, ERC4626 {
     using SafeTransferLib for ERC20Solmate;
 
     constructor(
