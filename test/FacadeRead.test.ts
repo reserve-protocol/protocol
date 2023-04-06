@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp } from '../common/numbers'
-import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
+import { setOraclePrice } from './utils/oracles'
 import {
   Asset,
   CTokenMock,
