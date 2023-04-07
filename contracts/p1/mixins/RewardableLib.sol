@@ -25,7 +25,8 @@ library RewardableLibP1 {
     function claimRewards(IAssetRegistry reg) internal {
         Registry memory registry = reg.getRegistry();
         for (uint256 i = 0; i < registry.erc20s.length; ++i) {
-            IRewardable(address(registry.erc20s[i])).claimRewards();
+            // empty try/catch because not every erc20 will be wrapped & have a claimRewards func
+            try IRewardable(address(registry.erc20s[i])).claimRewards() {} catch {}
         }
     }
 
@@ -34,6 +35,7 @@ library RewardableLibP1 {
     // actions:
     //   do asset.claimRewards()
     function claimRewardsSingle(IAsset asset) internal {
-        IRewardable(address(asset)).claimRewards();
+        // empty try/catch because not every erc20 will be wrapped & have a claimRewards func
+        try IRewardable(address(asset)).claimRewards() {} catch {}
     }
 }
