@@ -314,10 +314,29 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return basket.refAmts[erc20].div(refPerTok, CEIL);
     }
 
+    /// Should not revert
+    /// @return {UoA/BU} The lower end of the price estimate
+    /// @return {UoA/BU} The upper end of the price estimate
+    // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
+    function price() external view returns (uint192, uint192) {
+        (Price memory p, ) = prices();
+        return (p.low, p.high);
+    }
+
+    /// Should not revert
+    /// lowLow should be nonzero when the asset might be worth selling
+    /// @return {UoA/BU} The lower end of the lot price estimate
+    /// @return {UoA/BU} The upper end of the lot price estimate
+    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
+    function lotPrice() external view returns (uint192, uint192) {
+        (, Price memory lotP) = prices();
+        return (lotP.low, lotP.high);
+    }
+
     /// Returns both the price + lotPrice at once, for gas optimization
-    /// @return price {UoA/tok} The low and high price estimate of an RToken
-    /// @return lotPrice {UoA/tok} The low and high lotprice of an RToken
-    function prices() external view returns (Price memory price, Price memory lotPrice) {
+    /// @return price_ {UoA/tok} The low and high price estimate of an RToken
+    /// @return lotPrice_ {UoA/tok} The low and high lotprice of an RToken
+    function prices() public view returns (Price memory price_, Price memory lotPrice_) {
         uint256 low256;
         uint256 high256;
         uint256 lotLow256;
@@ -339,10 +358,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
-        price.low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
-        price.high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
-        lotPrice.low = lotLow256 >= FIX_MAX ? FIX_MAX : uint192(lotLow256);
-        lotPrice.high = lotHigh256 >= FIX_MAX ? FIX_MAX : uint192(lotHigh256);
+        price_.low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
+        price_.high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
+        lotPrice_.low = lotLow256 >= FIX_MAX ? FIX_MAX : uint192(lotLow256);
+        lotPrice_.high = lotHigh256 >= FIX_MAX ? FIX_MAX : uint192(lotHigh256);
     }
 
     /// Multiply two fixes, rounding up to FIX_MAX and down to 0
