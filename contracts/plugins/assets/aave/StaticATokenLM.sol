@@ -421,7 +421,6 @@ contract StaticATokenLM is
         );
         uint256 lifetimeRewards = _lifetimeRewardsClaimed.add(freshlyClaimed);
         uint256 rewardsAccrued = lifetimeRewards.sub(_lifetimeRewards).wadToRay();
-
         if (supply > 0 && rewardsAccrued > 0) {
             _accRewardsPerToken = _accRewardsPerToken.add(
                 (rewardsAccrued).rayDivNoRounding(supply.wadToRay())
