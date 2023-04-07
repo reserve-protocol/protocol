@@ -105,21 +105,18 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         }
     }
 
-    /// @return reg The list of registered ERC20s, Assets, and basket quantities
+    /// @return reg The list of registered ERC20s and Assets, in the same order
     function getRegistry() external view returns (Registry memory reg) {
         uint256 length = _erc20s.length();
         reg.erc20s = new IERC20[](length);
         reg.assets = new IAsset[](length);
-        reg.quantities = new uint192[](length);
         for (uint256 i = 0; i < length; ++i) {
             reg.erc20s[i] = IERC20(_erc20s.at(i));
             reg.assets[i] = assets[IERC20(_erc20s.at(i))];
-            reg.quantities[i] = main.basketHandler().quantityUnsafe(reg.erc20s[i], reg.assets[i]);
             assert(address(reg.erc20s[i]) != address(0));
             assert(address(reg.assets[i]) != address(0));
         }
         assert(reg.erc20s.length == reg.assets.length);
-        assert(reg.quantities.length == reg.assets.length);
     }
 
     //

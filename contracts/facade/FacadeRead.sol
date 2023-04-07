@@ -439,10 +439,15 @@ contract FacadeRead is IFacadeRead {
 
             Registry memory reg = ctx.reg.getRegistry();
 
+            uint192[] memory quantities = new uint192[](reg.erc20s.length);
+            for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+                quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            }
+
             (Price memory buPrice, ) = bh.prices();
 
             // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(ctx, reg, buPrice);
+            range = RecollateralizationLibP1.basketRange(ctx, reg, quantities, buPrice);
         }
     }
 }

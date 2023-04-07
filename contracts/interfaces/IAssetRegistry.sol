@@ -9,7 +9,6 @@ import "./IComponent.sol";
 struct Registry {
     IERC20[] erc20s;
     IAsset[] assets;
-    uint192[] quantities; // {tok/BU} Quantity of whole token in the basket
 }
 
 /**
@@ -50,7 +49,7 @@ interface IAssetRegistry is IComponent {
     /// @return A list of all registered ERC20s
     function erc20s() external view returns (IERC20[] memory);
 
-    /// @return reg The list of registered ERC20s, Assets, and basket quantities
+    /// @return reg The list of registered ERC20s and Assets, in the same order
     function getRegistry() external view returns (Registry memory reg);
 
     function register(IAsset asset) external returns (bool);

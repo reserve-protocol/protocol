@@ -165,8 +165,13 @@ contract RTokenAsset is IAsset {
 
             Registry memory reg = assetRegistry.getRegistry();
 
+            uint192[] memory quantities = new uint192[](reg.erc20s.length);
+            for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+                quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            }
+
             // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(ctx, reg, buPrice);
+            range = RecollateralizationLibP1.basketRange(ctx, reg, quantities, buPrice);
         }
     }
 }
