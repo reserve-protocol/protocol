@@ -30,7 +30,7 @@ struct TradingContext {
     uint192 maxTradeSlippage; // {1}
 }
 
-struct PricingContext {
+struct NextTradePairContext {
     BasketRange range;
     Price rTokenPrice;
     Price rTokenLotPrice;
@@ -56,7 +56,7 @@ library RecollateralizationLibP1 {
     /// basket range to avoid overeager/duplicate trading.
     // This is the "main loop" for recollateralization trading:
     // actions:
-    //   let range = basketRange(all erc20s)
+    //   let range = basketRange(...)
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(...) with a 0 minBuyAmount
@@ -103,7 +103,7 @@ library RecollateralizationLibP1 {
         TradeInfo memory trade = nextTradePair(
             ctx,
             reg,
-            PricingContext(range, rTokenPrice, rTokenLotPrice)
+            NextTradePairContext(range, rTokenPrice, rTokenLotPrice)
         );
 
         // Don't trade if no pair is selected
@@ -146,8 +146,8 @@ library RecollateralizationLibP1 {
     //       run-to-run, but will never increase it
     //
     // Preconditions:
-    // - ctx is correctly populated with current basketsHeld.bottom + basketsHeld.top
-    // - reg contains erc20 + asset arrays in same order and without duplicates
+    // - ctx is correctly populated, with current basketsHeld.bottom + basketsHeld.top
+    // - reg contains erc20 + asset + quantities arrays in same order and without duplicates
     // Trading Strategy:
     // - We will not aim to hold more than rToken.basketsNeeded() BUs
     // - No double trades: if we buy B in one trade, we won't sell B in another trade
@@ -185,7 +185,8 @@ library RecollateralizationLibP1 {
         int256 deltaTop; // D18{BU} even though this is int256, it is D18
         // not required for range.bottom
 
-        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+        uint256 len = reg.erc20s.length;
+        for (uint256 i = 0; i < len; ++i) {
             // Exclude RToken balances to avoid double counting value
             if (reg.erc20s[i] == IERC20(address(ctx.rToken))) continue;
 
@@ -329,7 +330,7 @@ library RecollateralizationLibP1 {
     function nextTradePair(
         TradingContext memory ctx,
         Registry memory reg,
-        PricingContext memory priceCtx
+        NextTradePairContext memory ntpCtx
     ) private view returns (TradeInfo memory trade) {
         MaxSurplusDeficit memory maxes;
         maxes.surplusStatus = CollateralStatus.IFFY; // least-desirable sell status
@@ -343,7 +344,7 @@ library RecollateralizationLibP1 {
 
             // {tok} = {BU} * {tok/BU}
             // needed(Top): token balance needed for range.top baskets: quantity(e) * range.top
-            uint192 needed = priceCtx.range.top.mul(reg.quantities[i], CEIL); // {tok}
+            uint192 needed = ntpCtx.range.top.mul(reg.quantities[i], CEIL); // {tok}
 
             if (bal.gt(needed)) {
                 uint192 low; // {UoA/sellTok}
@@ -388,7 +389,7 @@ library RecollateralizationLibP1 {
                 }
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range
-                needed = priceCtx.range.bottom.mul(reg.quantities[i], CEIL); // {buyTok};
+                needed = ntpCtx.range.bottom.mul(reg.quantities[i], CEIL); // {buyTok};
 
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
@@ -417,22 +418,22 @@ library RecollateralizationLibP1 {
             uint192 bal = rTokenAsset.bal(address(ctx.bm));
 
             if (
-                priceCtx.rTokenPrice.high > 0 &&
+                ntpCtx.rTokenPrice.high > 0 &&
                 isBetterSurplus(
                     maxes,
                     CollateralStatus.SOUND,
-                    bal.mul(priceCtx.rTokenLotPrice.low, FLOOR)
+                    bal.mul(ntpCtx.rTokenLotPrice.low, FLOOR)
                 ) &&
                 TradeLib.isEnoughToSell(
                     rTokenAsset,
                     bal,
-                    priceCtx.rTokenLotPrice.low,
+                    ntpCtx.rTokenLotPrice.low,
                     ctx.minTradeVolume
                 )
             ) {
                 trade.sell = rTokenAsset;
                 trade.sellAmount = bal;
-                trade.sellPrice = priceCtx.rTokenPrice.low;
+                trade.sellPrice = ntpCtx.rTokenPrice.low;
             }
         }
 
