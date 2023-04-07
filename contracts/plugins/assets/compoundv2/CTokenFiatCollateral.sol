@@ -4,7 +4,9 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
+import "../../../interfaces/IRewardable.sol";
 import "./ICToken.sol";
+import "../../../vendor/solmate/IERC4626.sol";
 
 /**
  * @title CTokenFiatCollateral
@@ -30,8 +32,8 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
         IComptroller comptroller_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(address(comptroller_) != address(0), "comptroller missing");
-        ICToken erc20 = ICToken(address(config.erc20));
-        referenceERC20Decimals = IERC20Metadata(erc20.underlying()).decimals();
+        IERC4626 erc20 = IERC4626(address(config.erc20));
+        referenceERC20Decimals = IERC20Metadata(ICToken(address(erc20.asset())).underlying()).decimals();
         comptroller = comptroller_;
     }
 
@@ -56,9 +58,6 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @dev delegatecall
     function claimRewards() external virtual override(Asset, IRewardable) {
-        IERC20 comp = IERC20(comptroller.getCompAddress());
-        uint256 oldBal = comp.balanceOf(address(this));
-        comptroller.claimComp(address(this));
-        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
+        IRewardable(address(erc20)).claimRewards();
     }
 }
