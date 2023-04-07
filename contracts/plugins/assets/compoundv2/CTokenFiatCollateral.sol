@@ -32,8 +32,8 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
         IComptroller comptroller_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(address(comptroller_) != address(0), "comptroller missing");
-        IERC4626 erc20 = IERC4626(address(config.erc20));
-        referenceERC20Decimals = IERC20Metadata(ICToken(address(erc20.asset())).underlying()).decimals();
+        ICToken asset = ICToken(address(IERC4626(address(config.erc20)).asset()));
+        referenceERC20Decimals = IERC20Metadata(asset.underlying()).decimals();
         comptroller = comptroller_;
     }
 

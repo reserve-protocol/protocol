@@ -33,7 +33,6 @@ import {
   CTokenMock,
   CTokenVault,
   ERC20Mock,
-  ERC20Vault,
   FacadeRead,
   FacadeTest,
   FacadeWrite,
@@ -191,7 +190,13 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
     const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenVault')
     cDaiVault = <CTokenVault>(
-      await cDaiVaultFactory.deploy(cDai.address, "cDAI RToken Vault", "rv_cDAI", compToken.address, comptroller.address)
+      await cDaiVaultFactory.deploy(
+        cDai.address,
+        'cDAI RToken Vault',
+        'rv_cDAI',
+        compToken.address,
+        comptroller.address
+      )
     )
 
     // Deploy cDai collateral plugin
@@ -317,8 +322,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Check claim data
       await expect(cDaiVault.claimRewards())
-      .to.emit(cDaiVault, 'RewardsClaimed')
-      .withArgs(compToken.address, anyValue)
+        .to.emit(cDaiVault, 'RewardsClaimed')
+        .withArgs(compToken.address, anyValue)
 
       await expect(cDaiCollateral.claimRewards())
         .to.emit(cDaiVault, 'RewardsClaimed')
@@ -542,7 +547,10 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
+      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
+        bn(150663e8),
+        bn('5e7')
+      ) // ~= 4962.8 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
@@ -751,7 +759,13 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenVault')
       const cDaiMockVault = <CTokenVault>(
-        await cDaiVaultFactory.deploy(cDaiMock.address, "cDAI Mock RToken Vault", "rv_mock_cDAI", compToken.address, comptroller.address)
+        await cDaiVaultFactory.deploy(
+          cDaiMock.address,
+          'cDAI Mock RToken Vault',
+          'rv_mock_cDAI',
+          compToken.address,
+          comptroller.address
+        )
       )
 
       // Redeploy plugin using the new cDai mock
