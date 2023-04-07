@@ -78,9 +78,13 @@ contract RTokenAsset is IAsset {
     function price() public view virtual returns (uint192, uint192) {
         (BasketRange memory buRange, Price memory buPrice, Price memory buLotPrice) = basketRange();
 
-        // prices() should not revert because all underlying.price() calls should not revert
-        (Price memory p, ) = prices(buRange, buPrice, buLotPrice);
-        return (p.low, p.high);
+        try this.prices(buRange, buPrice, buLotPrice) returns (Price memory p, Price memory) {
+            return (p.low, p.high);
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return (0, FIX_MAX);
+        }
     }
 
     /// Should not revert
@@ -91,8 +95,13 @@ contract RTokenAsset is IAsset {
         (BasketRange memory buRange, Price memory buPrice, Price memory buLotPrice) = basketRange();
 
         // prices() should not revert because all underlying.price() calls should not revert
-        (, Price memory lotP) = prices(buRange, buPrice, buLotPrice);
-        return (lotP.low, lotP.high);
+        try this.prices(buRange, buPrice, buLotPrice) returns (Price memory, Price memory lotP) {
+            return (lotP.low, lotP.high);
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return (0, FIX_MAX);
+        }
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
