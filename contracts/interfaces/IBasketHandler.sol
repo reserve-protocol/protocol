@@ -103,16 +103,10 @@ interface IBasketHandler is IComponent {
     ///         bottom {BU} The number of whole basket units held by the account
     function basketsHeldBy(address account) external view returns (BasketRange memory);
 
-    /// Should not revert
-    /// @return low {UoA/BU} The lower end of the price estimate
-    /// @return high {UoA/BU} The upper end of the price estimate
-    function price() external view returns (uint192 low, uint192 high);
-
-    /// Should not revert
-    /// lotLow should be nonzero if a BU could be worth selling
-    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
+    /// Returns both the price + lotPrice at once, for gas optimization
+    /// @return price {UoA/tok} The low and high price estimate of an RToken
+    /// @return lotPrice {UoA/tok} The low and high lotprice of an RToken
+    function prices() external view returns (Price memory price, Price memory lotPrice);
 
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);

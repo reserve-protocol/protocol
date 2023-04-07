@@ -276,10 +276,10 @@ contract FacadeRead is IFacadeRead {
         uint192 rsrUoA = rsrBal.mul(lowPrice);
 
         // {UoA/BU}
-        (uint192 buPriceLow, ) = rToken.main().basketHandler().price();
+        (Price memory buPrice, ) = rToken.main().basketHandler().prices();
 
         // {UoA} = {BU} * {UoA/BU}
-        uint192 uoaNeeded = basketsNeeded.mul(buPriceLow);
+        uint192 uoaNeeded = basketsNeeded.mul(buPrice.low);
 
         // {1} = {UoA} / {UoA}
         overCollateralization = rsrUoA.div(uoaNeeded);
@@ -439,8 +439,10 @@ contract FacadeRead is IFacadeRead {
 
             Registry memory reg = ctx.reg.getRegistry();
 
+            (Price memory buPrice, ) = bh.prices();
+
             // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(ctx, reg);
+            range = RecollateralizationLibP1.basketRange(ctx, reg, buPrice);
         }
     }
 }

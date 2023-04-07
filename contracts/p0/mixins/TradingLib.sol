@@ -261,7 +261,7 @@ library TradingLibP0 {
         view
         returns (BasketRange memory range)
     {
-        (uint192 basketPriceLow, uint192 basketPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        (Price memory buPrice, ) = ctx.bh.prices(); // {UoA/BU}
 
         // Cap ctx.basketsHeld.top
         if (ctx.basketsHeld.top > ctx.rToken.basketsNeeded()) {
@@ -315,14 +315,14 @@ library TradingLibP0 {
                     // deficit: deduct optimistic estimate of baskets missing
 
                     // {BU} = {UoA/tok} * {tok} / {UoA/BU}
-                    deltaTop -= int256(uint256(low.mulDiv(anchor - bal, basketPriceHigh, FLOOR)));
+                    deltaTop -= int256(uint256(low.mulDiv(anchor - bal, buPrice.high, FLOOR)));
                     // does not need underflow protection: using low price of asset
                 } else {
                     // surplus: add-in optimistic estimate of baskets purchaseable
 
                     // {BU} = {UoA/tok} * {tok} / {UoA/BU}
                     deltaTop += int256(
-                        uint256(ctx.bm.safeMulDivCeil(high, bal - anchor, basketPriceLow))
+                        uint256(ctx.bm.safeMulDivCeil(high, bal - anchor, buPrice.low))
                     );
                     // needs overflow protection: using high price of asset which can be FIX_MAX
                 }
@@ -352,7 +352,7 @@ library TradingLibP0 {
                 // {BU} = {UoA} * {1} / {UoA/BU}
                 range.bottom += val.mulDiv(
                     FIX_ONE.minus(ctx.maxTradeSlippage),
-                    basketPriceHigh,
+                    buPrice.high,
                     FLOOR
                 );
             }

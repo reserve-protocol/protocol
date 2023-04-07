@@ -4,11 +4,6 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IRToken.sol";
 
-struct Price {
-    uint192 low; // {UoA/tok}
-    uint192 high; // {UoA/tok}
-}
-
 interface IRTokenOracle {
     /// Lookup price by rToken with refresh if necessary
     /// @param forceRefresh If true, forces a refresh of the price regardless of cache status

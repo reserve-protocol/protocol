@@ -314,47 +314,35 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return basket.refAmts[erc20].div(refPerTok, CEIL);
     }
 
-    /// Should not revert
-    /// @return low {UoA/BU} The lower end of the price estimate
-    /// @return high {UoA/BU} The upper end of the price estimate
-    // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function price() external view returns (uint192 low, uint192 high) {
-        return _price(false);
-    }
-
-    /// Should not revert
-    /// lowLow should be nonzero when the asset might be worth selling
-    /// @return lotLow {UoA/BU} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/BU} The upper end of the lot price estimate
-    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
-        return _price(true);
-    }
-
-    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
-    /// @return low {UoA/BU} The lower end of the lot price estimate
-    /// @return high {UoA/BU} The upper end of the lot price estimate
-    function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
-        IAssetRegistry reg = main.assetRegistry();
-
+    /// Returns both the price + lotPrice at once, for gas optimization
+    /// @return price {UoA/tok} The low and high price estimate of an RToken
+    /// @return lotPrice {UoA/tok} The low and high lotprice of an RToken
+    function prices() external view returns (Price memory price, Price memory lotPrice) {
         uint256 low256;
         uint256 high256;
+        uint256 lotLow256;
+        uint256 lotHigh256;
 
-        for (uint256 i = 0; i < basket.erc20s.length; i++) {
+        uint256 len = basket.erc20s.length;
+        for (uint256 i = 0; i < len; ++i) {
             uint192 qty = quantity(basket.erc20s[i]);
             if (qty == 0) continue;
 
-            (uint192 lowP, uint192 highP) = useLotPrice
-                ? reg.toAsset(basket.erc20s[i]).lotPrice()
-                : reg.toAsset(basket.erc20s[i]).price();
+            IAsset asset = main.assetRegistry().toAsset(basket.erc20s[i]);
+            (uint192 lowP, uint192 highP) = asset.price();
+            (uint192 lotLowP, uint192 lotHighP) = asset.price();
 
             low256 += safeMul(qty, lowP, RoundingMode.FLOOR);
             high256 += safeMul(qty, highP, RoundingMode.CEIL);
+            lotLow256 += safeMul(qty, lotLowP, RoundingMode.FLOOR);
+            lotHigh256 += safeMul(qty, lotHighP, RoundingMode.CEIL);
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
-        low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
-        high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
+        price.low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
+        price.high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
+        lotPrice.low = lotLow256 >= FIX_MAX ? FIX_MAX : uint192(lotLow256);
+        lotPrice.high = lotHigh256 >= FIX_MAX ? FIX_MAX : uint192(lotHigh256);
     }
 
     /// Multiply two fixes, rounding up to FIX_MAX and down to 0
