@@ -9,6 +9,7 @@ import "./IComponent.sol";
 struct Registry {
     IERC20[] erc20s;
     IAsset[] assets;
+    uint192[] quantities; // {tok/BU} Quantity of whole token in the basket
 }
 
 /**

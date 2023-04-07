@@ -144,9 +144,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         uint256 length = _erc20s.length();
         reg.erc20s = new IERC20[](length);
         reg.assets = new IAsset[](length);
+        reg.quantities = new uint192[](length);
         for (uint256 i = 0; i < length; ++i) {
             reg.erc20s[i] = IERC20(_erc20s.at(i));
             reg.assets[i] = assets[IERC20(_erc20s.at(i))];
+            reg.quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
         }
     }
 

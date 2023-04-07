@@ -30,7 +30,7 @@ struct TradingContext {
     uint192 maxTradeSlippage; // {1}
 }
 
-struct TradingPriceContext {
+struct PricingContext {
     BasketRange range;
     Price rTokenPrice;
     Price rTokenLotPrice;
@@ -103,7 +103,7 @@ library RecollateralizationLibP1 {
         TradeInfo memory trade = nextTradePair(
             ctx,
             reg,
-            TradingPriceContext(range, rTokenPrice, rTokenLotPrice)
+            PricingContext(range, rTokenPrice, rTokenLotPrice)
         );
 
         // Don't trade if no pair is selected
@@ -170,6 +170,7 @@ library RecollateralizationLibP1 {
         Price memory buPrice
     ) internal view returns (BasketRange memory range) {
         uint192 basketsNeeded = ctx.rToken.basketsNeeded();
+
         // Cap ctx.basketsHeld.top
         if (ctx.basketsHeld.top > basketsNeeded) {
             ctx.basketsHeld.top = basketsNeeded;
@@ -195,14 +196,13 @@ library RecollateralizationLibP1 {
                 bal = bal.plus(reg.assets[i].bal(address(ctx.stRSR)));
             }
 
-            uint192 q = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]); // {tok/BU}
             {
                 // Skip over dust-balance assets not in the basket
                 (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
 
                 // Intentionally include value of IFFY/DISABLED collateral
                 if (
-                    q == 0 &&
+                    reg.quantities[i] == 0 &&
                     !TradeLib.isEnoughToSell(reg.assets[i], bal, lotLow, ctx.minTradeVolume)
                 ) continue;
             }
@@ -215,7 +215,7 @@ library RecollateralizationLibP1 {
             // if in surplus relative to ctx.basketsHeld.top: add-in surplus baskets
             {
                 // {tok} = {tok/BU} * {BU}
-                uint192 anchor = q.mul(ctx.basketsHeld.top, CEIL);
+                uint192 anchor = reg.quantities[i].mul(ctx.basketsHeld.top, CEIL);
 
                 if (anchor > bal) {
                     // deficit: deduct optimistic estimate of baskets missing
@@ -238,7 +238,7 @@ library RecollateralizationLibP1 {
             // add-in surplus baskets relative to ctx.basketsHeld.bottom
             {
                 // {tok} = {tok/BU} * {BU}
-                uint192 anchor = q.mul(ctx.basketsHeld.bottom, FLOOR);
+                uint192 anchor = reg.quantities[i].mul(ctx.basketsHeld.bottom, FLOOR);
 
                 // (1) Sell tokens at low price
                 // {UoA} = {UoA/tok} * {tok}
@@ -329,7 +329,7 @@ library RecollateralizationLibP1 {
     function nextTradePair(
         TradingContext memory ctx,
         Registry memory reg,
-        TradingPriceContext memory priceCtx
+        PricingContext memory priceCtx
     ) private view returns (TradeInfo memory trade) {
         MaxSurplusDeficit memory maxes;
         maxes.surplusStatus = CollateralStatus.IFFY; // least-desirable sell status
@@ -343,10 +343,7 @@ library RecollateralizationLibP1 {
 
             // {tok} = {BU} * {tok/BU}
             // needed(Top): token balance needed for range.top baskets: quantity(e) * range.top
-            uint192 needed = priceCtx.range.top.mul(
-                ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]),
-                CEIL
-            ); // {tok}
+            uint192 needed = priceCtx.range.top.mul(reg.quantities[i], CEIL); // {tok}
 
             if (bal.gt(needed)) {
                 uint192 low; // {UoA/sellTok}
@@ -391,10 +388,7 @@ library RecollateralizationLibP1 {
                 }
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range
-                needed = priceCtx.range.bottom.mul(
-                    ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]),
-                    CEIL
-                ); // {buyTok};
+                needed = priceCtx.range.bottom.mul(reg.quantities[i], CEIL); // {buyTok};
 
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
