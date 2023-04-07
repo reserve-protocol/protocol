@@ -65,7 +65,7 @@ async function main() {
     oracleTimeout(chainId, '86400').toString() // targetPerRefChainlinkTimeout
   )
   await collateral.deployed()
-  await collateral.refresh()
+  await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed Lido wStETH to ${hre.network.name} (${chainId}): ${collateral.address}`)

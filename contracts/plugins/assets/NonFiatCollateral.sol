@@ -52,7 +52,7 @@ contract NonFiatCollateral is FiatCollateral {
         uint192 p = targetUnitChainlinkFeed.price(targetUnitOracleTimeout).mul(pegPrice);
 
         // this oracleError is already the combined total oracle error
-        uint192 err = p.mul(oracleError);
+        uint192 err = p.mul(oracleError, CEIL);
 
         low = p - err;
         high = p + err;

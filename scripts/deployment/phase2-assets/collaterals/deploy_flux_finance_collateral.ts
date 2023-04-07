@@ -56,7 +56,7 @@ async function main() {
     comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
   })
   let collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdcCollateral)
-  await collateral.refresh()
+  await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDC = fUsdcCollateral
@@ -80,7 +80,7 @@ async function main() {
     comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdtCollateral)
-  await collateral.refresh()
+  await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDT = fUsdtCollateral

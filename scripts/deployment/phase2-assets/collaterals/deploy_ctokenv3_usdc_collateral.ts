@@ -69,7 +69,7 @@ async function main() {
     bn('10000e6').toString() // $10k
   )
   await collateral.deployed()
-  await collateral.refresh()
+  await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(`Deployed CompoundV3 USDC to ${hre.network.name} (${chainId}): ${collateral.address}`)

@@ -10,7 +10,7 @@ import {
 // This prints an MD table of all the collateral plugin parameters
 // Usage: npx hardhat run --network mainnet scripts/collateral-params.ts
 async function main() {
-  const header = ['Plugin', 'Threshold', 'Delay (hrs)', 'Feed', 'Underlying']
+  const header = ['Plugin', 'Tolerance', 'Delay (hrs)', 'Oracle(s)', 'Underlying']
   const body: string[][] = []
 
   const chainId = await getChainId(hre)
@@ -23,24 +23,33 @@ async function main() {
   for (const [collateral, address] of Object.entries(collaterals)) {
     const collateralContract = await ethers.getContractAt('FiatCollateral', address)
 
+    const targetPerRef = await collateralContract.targetPerRef()
     const pegBottom = await collateralContract.pegBottom()
     const delay = await collateralContract.delayUntilDefault()
     const underlyingAddr = await collateralContract.erc20()
     const chainlinkFeed = await collateralContract.chainlinkFeed()
+    // we cannot read the chainlink feeds for multi-oracle collateral because we used immutable internal vars :(
 
     const collateralMd = getEtherscanMd(address, collateral)
     const underlyingMd = getEtherscanMd(underlyingAddr)
     const clFeedMd = getEtherscanMd(chainlinkFeed)
 
+    const NEEDS_ATTENTION = ['[cvxMIM3'] // first 8 chars only
+
     body.push([
       collateralMd,
-      formatEther(pegBottom),
+      `${formatEther(targetPerRef.sub(pegBottom).mul(100))}% ${
+        NEEDS_ATTENTION.indexOf(collateralMd.substring(0, 8)) >= 0 ? '(needs attention)' : ''
+      }`,
       (delay / 3600).toString(),
       clFeedMd,
       underlyingMd,
     ])
   }
   printTable(header, body)
+  console.log(
+    'WARNING: FILL IN "(needs attention)" BEFORE BLINDLY SAVING TO docs/plugin-addresses.md'
+  )
 }
 
 main().catch((error) => {

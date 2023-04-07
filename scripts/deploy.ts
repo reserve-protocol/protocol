@@ -48,12 +48,13 @@ async function main() {
     'phase2-assets/collaterals/deploy_convex_stable_plugin.ts',
     'phase2-assets/collaterals/deploy_convex_volatile_plugin.ts',
     'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
+    'phase2-assets/collaterals/deploy_convex_stable_metapool_plugin.ts',
     // ===============================================
     // These phase3 scripts will not deploy functional RTokens or Governance. They deploy bricked
     // versions that are used for verification only. Further deployment is left up to the Register.
-    'phase3-rtoken/0_setup_deployments.ts',
-    'phase3-rtoken/1_deploy_rtoken.ts',
-    'phase3-rtoken/2_deploy_governance.ts',
+    // 'phase3-rtoken/0_setup_deployments.ts',
+    // 'phase3-rtoken/1_deploy_rtoken.ts',
+    // 'phase3-rtoken/2_deploy_governance.ts',
     // We can uncomment this section whenever we update governance, which will be rarely
   ]
 

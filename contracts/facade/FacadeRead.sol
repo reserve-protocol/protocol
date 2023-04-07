@@ -75,7 +75,7 @@ contract FacadeRead is IFacadeRead {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IAsset asset = reg.toAsset(IERC20(tokens[i]));
             (uint192 low, uint192 high) = asset.price();
-            if (low == 0) continue;
+            if (low == 0 || high == FIX_MAX) continue;
 
             uint192 mid = (low + high) / 2;
 
@@ -159,11 +159,10 @@ contract FacadeRead is IFacadeRead {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
             int8 decimals = int8(IERC20Metadata(erc20s[i]).decimals());
-            (uint192 lowPrice, uint192 highPrice) = coll.price();
-            uint192 midPrice = lowPrice > 0 ? lowPrice.plus(highPrice).div(2) : lowPrice;
+            (uint192 lowPrice, ) = coll.price();
 
             // {UoA} = {qTok} * {tok/qTok} * {UoA/tok}
-            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(midPrice);
+            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(lowPrice);
             uoaSum += uoaAmts[i];
             targets[i] = coll.targetName();
         }
@@ -254,61 +253,36 @@ contract FacadeRead is IFacadeRead {
         uint256 supply = rToken.totalSupply();
         if (supply == 0) return (0, 0);
 
-        // {UoA/BU}
-        (uint192 buPriceLow, uint192 buPriceHigh) = rToken.main().basketHandler().price();
-        // untestable:
-        //      if buPriceLow==0 then basketMidPrice=0 and uoaNeeded=0
-        //      this functions will then panic when `uoaHeld.div(uoaNeeded)`
-        uint192 basketMidPrice = buPriceLow > 0 ? buPriceLow.plus(buPriceHigh).div(2) : buPriceLow;
+        // {BU}
+        uint192 basketsNeeded = rToken.basketsNeeded();
 
-        // {UoA} = {BU} * {UoA/BU}
-        uint192 uoaNeeded = rToken.basketsNeeded().mul(basketMidPrice);
+        // {BU}
+        BasketRange memory buRange = basketRange(rToken, basketsNeeded);
 
-        // Useful abbreviations
-        IAssetRegistry assetRegistry = rToken.main().assetRegistry();
-        address backingMgr = address(rToken.main().backingManager());
-        IERC20 rsr = rToken.main().rsr();
-
-        // Compute backing
-        {
-            IERC20[] memory erc20s = assetRegistry.erc20s();
-
-            // Bound each withdrawal by the prorata share, in case under-collateralized
-            uint192 uoaHeld;
-            for (uint256 i = 0; i < erc20s.length; i++) {
-                if (erc20s[i] == rsr) continue;
-
-                IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
-                (uint192 lowPrice, uint192 highPrice) = asset.price();
-                uint192 midPrice = lowPrice > 0 ? lowPrice.plus(highPrice).div(2) : lowPrice;
-
-                // {UoA} = {tok} * {UoA/tok}
-                uint192 uoa = asset.bal(backingMgr).mul(midPrice);
-                uoaHeld = uoaHeld.plus(uoa);
-            }
-
-            // {1} = {UoA} / {UoA}
-            backing = uoaHeld.div(uoaNeeded);
-        }
+        // {1} = {UoA} / {UoA}
+        backing = buRange.bottom.div(basketsNeeded);
 
         // Compute overCollateralization
-        {
-            IAsset rsrAsset = assetRegistry.toAsset(rsr);
+        IAsset rsrAsset = rToken.main().assetRegistry().toAsset(rToken.main().rsr());
 
-            // {tok} = {tok} + {tok}
-            uint192 rsrBal = rsrAsset.bal(backingMgr).plus(
-                rsrAsset.bal(address(rToken.main().stRSR()))
-            );
+        // {tok} = {tok} + {tok}
+        uint192 rsrBal = rsrAsset.bal(address(rToken.main().backingManager())).plus(
+            rsrAsset.bal(address(rToken.main().stRSR()))
+        );
 
-            (uint192 lowPrice, uint192 highPrice) = rsrAsset.price();
-            uint192 midPrice = lowPrice > 0 ? lowPrice.plus(highPrice).div(2) : lowPrice;
+        (uint192 lowPrice, ) = rsrAsset.price();
 
-            // {UoA} = {tok} * {UoA/tok}
-            uint192 rsrUoA = rsrBal.mul(midPrice);
+        // {UoA} = {tok} * {UoA/tok}
+        uint192 rsrUoA = rsrBal.mul(lowPrice);
 
-            // {1} = {UoA} / {UoA}
-            overCollateralization = rsrUoA.div(uoaNeeded);
-        }
+        // {UoA/BU}
+        (uint192 buPriceLow, ) = rToken.main().basketHandler().price();
+
+        // {UoA} = {BU} * {UoA/BU}
+        uint192 uoaNeeded = basketsNeeded.mul(buPriceLow);
+
+        // {1} = {UoA} / {UoA}
+        overCollateralization = rsrUoA.div(uoaNeeded);
     }
 
     /// @return erc20s The registered ERC20s
@@ -330,9 +304,10 @@ contract FacadeRead is IFacadeRead {
         balances = new uint256[](erc20s.length);
         balancesNeeded = new uint256[](erc20s.length);
 
-        bool isBackingManager = trader == backingManager;
-        uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
+        uint192 backingBuffer = TestIBackingManager(address(backingManager)).backingBuffer();
+        uint192 basketsNeeded = rToken.basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
 
+        bool isBackingManager = trader == backingManager;
         for (uint256 i = 0; i < erc20s.length; ++i) {
             balances[i] = erc20s[i].balanceOf(address(trader));
 
@@ -427,6 +402,45 @@ contract FacadeRead is IFacadeRead {
 
             // return _div(rawDelta, FIX_ONE, rounding)
             return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
+        }
+    }
+
+    function basketRange(IRToken rToken, uint192 basketsNeeded)
+        private
+        view
+        returns (BasketRange memory range)
+    {
+        IMain main = rToken.main();
+        IBasketHandler bh = main.basketHandler();
+        IBackingManager bm = main.backingManager();
+        BasketRange memory basketsHeld = bh.basketsHeldBy(address(bm));
+
+        // if (bh.fullyCollateralized())
+        if (basketsHeld.bottom >= basketsNeeded) {
+            range.bottom = basketsNeeded;
+            range.top = basketsNeeded;
+        } else {
+            // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
+            // there is _some_ asset to represent the RToken itself when it is deployed, in
+            // the absence of an external price feed. Any RToken that gets reasonably big
+            // should switch over to an asset with a price feed.
+
+            TradingContext memory ctx = TradingContext({
+                basketsHeld: basketsHeld,
+                bm: bm,
+                bh: bh,
+                reg: main.assetRegistry(),
+                stRSR: main.stRSR(),
+                rsr: main.rsr(),
+                rToken: main.rToken(),
+                minTradeVolume: bm.minTradeVolume(),
+                maxTradeSlippage: bm.maxTradeSlippage()
+            });
+
+            Registry memory reg = ctx.reg.getRegistry();
+
+            // will exclude UoA value from RToken balances at BackingManager
+            range = RecollateralizationLibP1.basketRange(ctx, reg);
         }
     }
 }

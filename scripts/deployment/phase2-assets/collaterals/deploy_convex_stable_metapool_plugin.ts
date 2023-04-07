@@ -78,7 +78,8 @@ async function main() {
   })
 
   const wPool = await ConvexStakingWrapperFactory.deploy()
-  await wPool.initialize(MIM_THREE_POOL_POOL_ID)
+  await wPool.deployed()
+  await (await wPool.initialize(MIM_THREE_POOL_POOL_ID)).wait()
 
   const collateral = <CvxStableMetapoolCollateral>await CvxStableCollateralFactory.connect(
     deployer
@@ -112,7 +113,7 @@ async function main() {
     MIM_DEFAULT_THRESHOLD
   )
   await collateral.deployed()
-  await collateral.refresh()
+  await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
