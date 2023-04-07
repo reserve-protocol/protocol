@@ -39,27 +39,20 @@ contract RTokenAsset is IAsset {
         maxTradeVolume = maxTradeVolume_;
     }
 
-    /// @return range {BU} An estimate of the range of baskets held by the BackingManager
-    /// @return buPrice {UoA/BU} Lower and upper bu price
-    /// @return buLotPrice {UoA/BU} Lower and upper bu lotPrice
-    function basketRange()
-        external
-        view
-        returns (
-            BasketRange memory range,
-            Price memory buPrice,
-            Price memory buLotPrice
-        )
-    {
-        (buPrice, buLotPrice) = basketHandler.prices();
+    /// Calculates price() + lotPrice() in a non-gas-optimized way
+    /// @return price_ {UoA/tok} The low and high price estimate of an RToken
+    /// @return lotPrice_ {UoA/tok} The low and high lotprice of an RToken
+    function prices() public view returns (Price memory price_, Price memory lotPrice_) {
+        BasketRange memory buRange; // {BU}
+        (Price memory buPrice, Price memory buLotPrice) = basketHandler.prices(); // {UoA/BU}
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(backingManager));
         uint192 basketsNeeded = IRToken(address(erc20)).basketsNeeded(); // {BU}
 
         // if (basketHandler.fullyCollateralized())
         if (basketsHeld.bottom >= basketsNeeded) {
-            range.bottom = basketsNeeded;
-            range.top = basketsNeeded;
+            buRange.bottom = basketsNeeded;
+            buRange.top = basketsNeeded;
         } else {
             // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
             // there is _some_ asset to represent the RToken itself when it is deployed, in
@@ -70,8 +63,7 @@ contract RTokenAsset is IAsset {
             TradingContext memory ctx = TradingContext({
                 basketsHeld: basketsHeld,
                 bm: backingManager,
-                bh: main.basketHandler(),
-                reg: main.assetRegistry(),
+                ar: assetRegistry,
                 stRSR: main.stRSR(),
                 rsr: main.rsr(),
                 rToken: main.rToken(),
@@ -83,12 +75,26 @@ contract RTokenAsset is IAsset {
 
             uint192[] memory quantities = new uint192[](reg.erc20s.length);
             for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+                quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
             }
 
             // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(ctx, reg, quantities, buPrice);
+            buRange = RecollateralizationLibP1.basketRange(ctx, reg, quantities, buPrice);
         }
+
+        // Here we take advantage of the fact that we know RToken has 18 decimals
+        // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
+        uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
+
+        if (supply == 0) return (buPrice, buLotPrice);
+
+        // {UoA/tok} = {BU} * {UoA/BU} / {tok}
+        price_.low = buRange.bottom.mulDiv(buPrice.low, supply, FLOOR);
+        price_.high = buRange.top.mulDiv(buPrice.high, supply, CEIL);
+        lotPrice_.low = buRange.bottom.mulDiv(buLotPrice.low, supply, FLOOR);
+        lotPrice_.high = buRange.top.mulDiv(buLotPrice.high, supply, CEIL);
+        assert(price_.low <= price_.high);
+        assert(lotPrice_.low <= lotPrice_.high);
     }
 
     /// Calculates price() + lotPrice() in a gas-optimized way using a cached BasketRange
@@ -129,18 +135,8 @@ contract RTokenAsset is IAsset {
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
-        try this.basketRange() returns (
-            BasketRange memory buRange,
-            Price memory buPrice,
-            Price memory buLotPrice
-        ) {
-            try this.prices(buRange, buPrice, buLotPrice) returns (Price memory p, Price memory) {
-                return (p.low, p.high);
-            } catch (bytes memory errData) {
-                // see: docs/solidity-style.md#Catching-Empty-Data
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                return (0, FIX_MAX);
-            }
+        try this.prices() returns (Price memory p, Price memory) {
+            return (p.low, p.high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -153,21 +149,8 @@ contract RTokenAsset is IAsset {
     /// @return {UoA/tok} The lower end of the lot price estimate
     /// @return {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192, uint192) {
-        try this.basketRange() returns (
-            BasketRange memory buRange,
-            Price memory buPrice,
-            Price memory buLotPrice
-        ) {
-            try this.prices(buRange, buPrice, buLotPrice) returns (
-                Price memory,
-                Price memory lotP
-            ) {
-                return (lotP.low, lotP.high);
-            } catch (bytes memory errData) {
-                // see: docs/solidity-style.md#Catching-Empty-Data
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                return (0, FIX_MAX);
-            }
+        try this.prices() returns (Price memory, Price memory lotP) {
+            return (lotP.low, lotP.high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string

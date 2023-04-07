@@ -4,11 +4,11 @@ exports[`Max Basket Size - P1 ATokens/CTokens Should Issue/Redeem with max baske
 
 exports[`Max Basket Size - P1 ATokens/CTokens Should Issue/Redeem with max basket correctly 2`] = `8297573`;
 
-exports[`Max Basket Size - P1 ATokens/CTokens Should claim rewards correctly 1`] = `2360983`;
+exports[`Max Basket Size - P1 ATokens/CTokens Should claim rewards correctly 1`] = `2361006`;
 
 exports[`Max Basket Size - P1 ATokens/CTokens Should switch basket correctly 1`] = `8453412`;
 
-exports[`Max Basket Size - P1 ATokens/CTokens Should switch basket correctly 2`] = `19817394`;
+exports[`Max Basket Size - P1 ATokens/CTokens Should switch basket correctly 2`] = `19816331`;
 
 exports[`Max Basket Size - P1 Fiatcoins Should Issue/Redeem with max basket correctly 1`] = `10461171`;
 
@@ -16,4 +16,4 @@ exports[`Max Basket Size - P1 Fiatcoins Should Issue/Redeem with max basket corr
 
 exports[`Max Basket Size - P1 Fiatcoins Should switch basket correctly 1`] = `4082384`;
 
-exports[`Max Basket Size - P1 Fiatcoins Should switch basket correctly 2`] = `13529818`;
+exports[`Max Basket Size - P1 Fiatcoins Should switch basket correctly 2`] = `13528754`;

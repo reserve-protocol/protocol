@@ -20,8 +20,7 @@ struct TradingContext {
 
     // Components
     IBackingManager bm;
-    IBasketHandler bh;
-    IAssetRegistry reg;
+    IAssetRegistry ar;
     IStRSR stRSR;
     IERC20 rsr;
     IRToken rToken;
@@ -75,34 +74,32 @@ library RecollateralizationLibP1 {
         TradingContext memory ctx = TradingContext({
             basketsHeld: basketsHeld,
             bm: bm,
-            bh: main.basketHandler(),
-            reg: main.assetRegistry(),
+            ar: main.assetRegistry(),
             stRSR: main.stRSR(),
             rsr: main.rsr(),
             rToken: main.rToken(),
             minTradeVolume: bm.minTradeVolume(),
             maxTradeSlippage: bm.maxTradeSlippage()
         });
-        Registry memory reg = ctx.reg.getRegistry();
+        Registry memory reg = ctx.ar.getRegistry();
 
         // Calculate quantities up-front for re-use
+        IBasketHandler bh = main.basketHandler();
         ntpCtx.quantities = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            ntpCtx.quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            ntpCtx.quantities[i] = bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
         }
 
         // ============================
 
         // Compute BU price
-        (Price memory buPrice, Price memory buLotPrice) = ctx.bh.prices();
+        (Price memory buPrice, Price memory buLotPrice) = bh.prices();
 
         // Compute a target basket range for trading -  {BU}
         ntpCtx.range = basketRange(ctx, reg, ntpCtx.quantities, buPrice);
 
         // Compute RToken price
-        RTokenAsset rTokenAsset = RTokenAsset(
-            address(ctx.reg.toAsset(IERC20(address(ctx.rToken))))
-        );
+        RTokenAsset rTokenAsset = RTokenAsset(address(ctx.ar.toAsset(IERC20(address(ctx.rToken)))));
         (ntpCtx.rTokenPrice, ntpCtx.rTokenLotPrice) = rTokenAsset.prices(
             ntpCtx.range,
             buPrice,
@@ -420,7 +417,7 @@ library RecollateralizationLibP1 {
         // Special-case RToken
         {
             RTokenAsset rTokenAsset = RTokenAsset(
-                address(ctx.reg.toAsset(IERC20(address(ctx.rToken))))
+                address(ctx.ar.toAsset(IERC20(address(ctx.rToken))))
             );
             uint192 bal = rTokenAsset.bal(address(ctx.bm));
 
@@ -446,7 +443,7 @@ library RecollateralizationLibP1 {
 
         // Use RSR if needed
         if (address(trade.sell) == address(0) && address(trade.buy) != address(0)) {
-            IAsset rsrAsset = ctx.reg.toAsset(ctx.rsr);
+            IAsset rsrAsset = ctx.ar.toAsset(ctx.rsr);
 
             uint192 rsrAvailable = rsrAsset.bal(address(ctx.bm)).plus(
                 rsrAsset.bal(address(ctx.stRSR))

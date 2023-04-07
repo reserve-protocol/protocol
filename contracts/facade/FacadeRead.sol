@@ -428,8 +428,7 @@ contract FacadeRead is IFacadeRead {
             TradingContext memory ctx = TradingContext({
                 basketsHeld: basketsHeld,
                 bm: bm,
-                bh: bh,
-                reg: main.assetRegistry(),
+                ar: main.assetRegistry(),
                 stRSR: main.stRSR(),
                 rsr: main.rsr(),
                 rToken: main.rToken(),
@@ -437,11 +436,11 @@ contract FacadeRead is IFacadeRead {
                 maxTradeSlippage: bm.maxTradeSlippage()
             });
 
-            Registry memory reg = ctx.reg.getRegistry();
+            Registry memory reg = ctx.ar.getRegistry();
 
             uint192[] memory quantities = new uint192[](reg.erc20s.length);
             for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+                quantities[i] = bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
             }
 
             (Price memory buPrice, ) = bh.prices();
