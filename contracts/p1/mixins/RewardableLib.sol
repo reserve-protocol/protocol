@@ -26,6 +26,7 @@ library RewardableLibP1 {
         Registry memory registry = reg.getRegistry();
         for (uint256 i = 0; i < registry.erc20s.length; ++i) {
             // empty try/catch because not every erc20 will be wrapped & have a claimRewards func
+            // solhint-disable-next-line
             try IRewardable(address(registry.erc20s[i])).claimRewards() {} catch {}
         }
     }
@@ -36,6 +37,7 @@ library RewardableLibP1 {
     //   do asset.claimRewards()
     function claimRewardsSingle(IAsset asset) internal {
         // empty try/catch because not every erc20 will be wrapped & have a claimRewards func
+        // solhint-disable-next-line
         try IRewardable(address(asset)).claimRewards() {} catch {}
     }
 }
