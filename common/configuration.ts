@@ -48,6 +48,7 @@ export interface ITokens {
   wstETH?: string
   rETH?: string
   cUSDCv3?: string
+  bendWETH?: string
 }
 
 export interface IFeeds {
@@ -73,9 +74,11 @@ interface INetworkConfig {
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  BENDWETH_DATA_PROVIDER?: string
+  BENDWETH_LEND_POOL_ADDRESS_PROVIDER?: string
 }
 
-export const networkConfig: { [key: string]: INetworkConfig } = {
+export const  networkConfig: { [key: string]: INetworkConfig } = {
   default: {
     name: 'hardhat',
     tokens: {},
@@ -126,6 +129,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      bendWETH: '0xeD1840223484483C0cb050E6fC344d1eBF0778a9',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -157,6 +161,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    BENDWETH_DATA_PROVIDER: '0x132E3E3eC6652299B235A26D601aa9C68806e3FE',
+    BENDWETH_LEND_POOL_ADDRESS_PROVIDER: '0x24451F47CaF13B24f4b5034e1dF6c0E401ec0e46',
   },
   '3': {
     name: 'ropsten',
@@ -210,6 +216,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      bendWETH: '0xeD1840223484483C0cb050E6fC344d1eBF0778a9',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
