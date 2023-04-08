@@ -48,6 +48,10 @@ export interface ITokens {
   wstETH?: string
   rETH?: string
   cUSDCv3?: string
+  dWETH?: string
+  dDAI?: string
+  dUSDC?: string
+  dFRAX?: string
 }
 
 export interface IFeeds {
@@ -73,6 +77,10 @@ interface INetworkConfig {
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  GEARBOX_WETH_POOL_SERVICE?: string
+  GEARBOX_DAI_POOL_SERVICE?: string
+  GEARBOX_USDC_POOL_SERVICE?: string
+  GEARBOX_FRAX_POOL_SERVICE?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -126,6 +134,10 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      dWETH: '0xF21fc650C1B34eb0FDE786D52d23dA99Db3D6278',
+      dDAI: '0x6CFaF95457d7688022FC53e7AbE052ef8DFBbdBA',
+      dUSDC: '0xc411dB5f5Eb3f7d552F9B8454B2D74097ccdE6E3',
+      dFRAX: '0x79012c8d491DcF3A30Db20d1f449b14CAF01da6C',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -157,6 +169,10 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    GEARBOX_WETH_POOL_SERVICE: '0xB03670c20F87f2169A7c4eBE35746007e9575901',
+    GEARBOX_DAI_POOL_SERVICE: '0x24946bCbBd028D5ABb62ad9B635EB1b1a67AF668',
+    GEARBOX_USDC_POOL_SERVICE: '0x86130bDD69143D8a4E5fc50bf4323D48049E98E4',
+    GEARBOX_FRAX_POOL_SERVICE: '0x79012c8d491dcf3a30db20d1f449b14caf01da6c',
   },
   '3': {
     name: 'ropsten',
