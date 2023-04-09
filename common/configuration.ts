@@ -49,6 +49,7 @@ export interface ITokens {
   rETH?: string
   cUSDCv3?: string
   bendWETH?: string
+  BEND?: string
 }
 
 export interface IFeeds {
@@ -76,6 +77,7 @@ interface INetworkConfig {
   EASY_AUCTION_OWNER?: string
   BENDWETH_DATA_PROVIDER?: string
   BENDWETH_LEND_POOL_ADDRESS_PROVIDER?: string
+  BENDDAO_INCENTIVES_CONTROLLER?: string
 }
 
 export const  networkConfig: { [key: string]: INetworkConfig } = {
@@ -130,6 +132,7 @@ export const  networkConfig: { [key: string]: INetworkConfig } = {
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
       bendWETH: '0xeD1840223484483C0cb050E6fC344d1eBF0778a9',
+      BEND: '0x0d02755a5700414B26FF040e1dE35D337DF56218',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -163,6 +166,7 @@ export const  networkConfig: { [key: string]: INetworkConfig } = {
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
     BENDWETH_DATA_PROVIDER: '0x132E3E3eC6652299B235A26D601aa9C68806e3FE',
     BENDWETH_LEND_POOL_ADDRESS_PROVIDER: '0x24451F47CaF13B24f4b5034e1dF6c0E401ec0e46',
+    BENDDAO_INCENTIVES_CONTROLLER: '0x26FC1f11E612366d3367fc0cbFfF9e819da91C8d',
   },
   '3': {
     name: 'ropsten',

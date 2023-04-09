@@ -63,6 +63,10 @@ async function main() {
     fp('0').toString(), // revenueHiding = 0%
     networkConfig[chainId].BENDWETH_DATA_PROVIDER,
     networkConfig[chainId].BENDWETH_LEND_POOL_ADDRESS_PROVIDER,
+    networkConfig[chainId].BENDDAO_INCENTIVES_CONTROLLER,
+    networkConfig[chainId].tokens.bendWETH,
+    networkConfig[chainId].tokens.BEND,
+    { gasLimit: 2000000000 }
   )
   await collateral.deployed()
   await collateral.refresh()

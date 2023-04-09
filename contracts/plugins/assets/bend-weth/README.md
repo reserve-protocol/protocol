@@ -61,8 +61,8 @@ Gets the exchange rate for `bendWETH` to `ETH` from BendDAO's Reserve Logic cont
 
 ### claimRewards()
 
-There are no rewards to claim from bendETH. The rewards are claimed upon redeeming the bTokens back to ETH by calling the withdrawETH function at the Bend DAO WETH Gateway contract.
-
+There are no rewards to claim DIRECTLY from bendWETH. The rewards are claimed upon redeeming the bTokens back to ETH by calling the withdrawETH function at the Bend DAO WETH Gateway contract.
+There are, though, indirect rewards that are accrued by BEND DAO's incentives controller contract. These rewards are distributed as `BEND` tokens and are claimed by calling the `claimRewards` function at the `incentivesController` contract.
 
 ## Tests
 

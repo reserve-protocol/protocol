@@ -22,6 +22,10 @@ contract BendWethCollateral is AppreciatingFiatCollateral {
 
     IUiPoolDataProvider public immutable dataProvider;
     address public immutable lendPoolAddressProvider;
+    IIncentivesController public immutable incentivesController;
+    IBToken public immutable bendWeth;
+    IBToken public immutable bend;
+
 
     
 
@@ -30,10 +34,17 @@ contract BendWethCollateral is AppreciatingFiatCollateral {
         CollateralConfig memory config,
         uint192 revenueHiding,
         IUiPoolDataProvider uiPoolDataProvider,
-        address _lendPoolAddressProvider
+        address _lendPoolAddressProvider,
+        IIncentivesController _incentivesController,
+        IBToken _bendWeth,
+        IBToken _bend
+
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         dataProvider = uiPoolDataProvider;
         lendPoolAddressProvider = _lendPoolAddressProvider;
+        incentivesController = _incentivesController;
+        bendWeth =_bendWeth;
+        bend = _bend;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -68,5 +79,22 @@ contract BendWethCollateral is AppreciatingFiatCollateral {
         IUiPoolDataProvider.AggregatedReserveData[] memory rate = IUiPoolDataProvider(address(dataProvider)).getSimpleReservesData(ILendPoolAddressesProvider(lendPoolAddressProvider));
         uint128 liquidityIndex = rate[0].liquidityIndex;
         return _safeWrap(liquidityIndex);
+    }
+
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @dev Use delegatecall
+    function claimRewards() external virtual override(Asset, IRewardable) {
+        uint256 oldBal = bend.balanceOf(address(this));
+        IScaledBalanceToken[] memory assets = new IScaledBalanceToken[](1);
+        assets[0] = IScaledBalanceToken(address(bendWeth));
+        incentivesController.claimRewards(
+            assets,
+            type(uint256).max
+        );
+
+        uint256 newBal = bend.balanceOf(address(this));
+
+        emit RewardsClaimed(IERC20(address(bend)), newBal - oldBal);
+
     }
 }

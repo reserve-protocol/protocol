@@ -1,4 +1,4 @@
-import collateralTests from '../collateralTests'
+import collateralTests from './collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { resetFork, mintBendWETH } from './helpers'
 import { ethers } from 'hardhat'
@@ -21,11 +21,13 @@ import {
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
+  BEND,
   BENDWETH,
   ETH_WHALE,
   BENDDAO_WETH_GATEWAY,
   BENDWETH_DATA_PROVIDER,
   BENDWETH_LEND_POOL_ADDRESS_PROVIDER,
+  BENDDAO_INCENTIVES_CONTROLLER,
   ETH_USD_PRICE_FEED,
 } from './constants'
 import { whileImpersonating } from '../../../utils/impersonation'
@@ -45,7 +47,7 @@ interface BendWETHCollateralFixtureContext extends CollateralFixtureContext {
 export const defaultBendWethCollateralOpts: CollateralOpts = {
   erc20: BENDWETH,
   targetName: ethers.utils.formatBytes32String('ETH'),
-  rewardERC20: ZERO_ADDRESS,
+  rewardERC20: BEND,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
@@ -80,6 +82,9 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
     opts.revenueHiding,
     BENDWETH_DATA_PROVIDER,
     BENDWETH_LEND_POOL_ADDRESS_PROVIDER,
+    BENDDAO_INCENTIVES_CONTROLLER,
+    BENDWETH,
+    BEND,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -210,7 +215,7 @@ const opts = {
   reduceRefPerTok,
   increaseRefPerTok,
   getExpectedPrice,
-  itClaimsRewards: it.skip,
+  itClaimsRewards: it,
   itChecksTargetPerRefDefault: it.skip,
   itChecksRefPerTokDefault: it.skip,
   itChecksPriceChanges: it,
