@@ -16,7 +16,13 @@ import {
   TestICollateral,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
-import { MAX_UINT192, MAX_UINT48, ZERO_ADDRESS, ONE_ADDRESS } from '../../../../common/constants'
+import {
+  MAX_UINT256,
+  MAX_UINT192,
+  MAX_UINT48,
+  ZERO_ADDRESS,
+  ONE_ADDRESS,
+} from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
@@ -492,7 +498,20 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         expect(low).to.equal(0)
         expect(high).to.equal(0)
 
-        // When refreshed, sets status to Unpriced
+        // When refreshed, sets status to IFFY
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+      })
+
+      it('still reads out pool token price when paired price is broken', async () => {
+        await eusdFeed.updateAnswer(MAX_UINT256.div(2).sub(1))
+
+        // (>0.5, +inf) is returned
+        const [low, high] = await collateral.price()
+        expect(low).to.be.gt(fp('0.5'))
+        expect(high).to.be.gt(fp('1e27')) // won't quite be FIX_MAX always
+
+        // When refreshed, sets status to IFFY
         await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
       })
@@ -505,7 +524,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         expect(low).to.equal(0)
         expect(high).to.equal(MAX_UINT192)
 
-        // When refreshed, sets status to Unpriced
+        // When refreshed, sets status to IFFY
         await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
       })

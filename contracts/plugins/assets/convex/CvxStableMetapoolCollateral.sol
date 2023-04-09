@@ -78,7 +78,12 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         )
     {
         // {UoA/pairedTok}
-        (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
+        uint192 lowPaired;
+        uint192 highPaired = FIX_MAX;
+        try this.tryPairedPrice() returns (uint192 lowPaired_, uint192 highPaired_) {
+            lowPaired = lowPaired_;
+            highPaired = highPaired_;
+        } catch {}
 
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
@@ -162,7 +167,11 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         // Add-in contribution from pairedTok
         // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}
         aumLow += lowPaired.mul(pairedBal, FLOOR);
-        aumHigh += safeMul(highPaired, pairedBal, CEIL);
+
+        // Add-in high part carefully
+        uint192 toAdd = safeMul(highPaired, pairedBal, CEIL);
+        if (aumHigh + uint256(toAdd) >= FIX_MAX) aumHigh = FIX_MAX;
+        else aumHigh += toAdd;
     }
 
     /// Multiply two fixes, rounding up to FIX_MAX and down to 0
