@@ -22,7 +22,6 @@ import {
   MAX_TRADE_VOL,
   PRICE_TIMEOUT,
   RTOKEN_DELAY_UNTIL_DEFAULT,
-  RTOKEN_ORACLE,
   USDC_ORACLE_ERROR,
   USDC_ORACLE_TIMEOUT,
   USDC_USD_FEED,
@@ -80,7 +79,6 @@ async function main() {
       },
       eUSD_FRAX_BP,
       DEFAULT_THRESHOLD, // 2%
-      RTOKEN_ORACLE,
     ],
     'contracts/plugins/assets/convex/CvxStableRTokenMetapoolCollateral.sol:CvxStableRTokenMetapoolCollateral'
   )
