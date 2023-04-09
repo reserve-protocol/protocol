@@ -130,7 +130,6 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
   - Add `canRunRecollateralizationAuctions()`
   - Add `getRevenueAuctionERC20s()`
   - Add `runRevenueAuctions()`
-- Init `RTokenOracle`. Only current use is by `CvxStableRTokenMetapoolCollateral`
 
 #### Assets
 
