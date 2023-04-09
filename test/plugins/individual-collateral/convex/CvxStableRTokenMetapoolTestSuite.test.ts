@@ -13,8 +13,6 @@ import {
   InvalidMockV3Aggregator,
   MockV3Aggregator,
   MockV3Aggregator__factory,
-  RTokenOracleMock,
-  RTokenOracleMock__factory,
   TestICollateral,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
@@ -34,11 +32,9 @@ import {
   FRAX_USD_FEED,
   FRAX_ORACLE_TIMEOUT,
   FRAX_ORACLE_ERROR,
-  RTOKEN_ORACLE,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   RTOKEN_DELAY_UNTIL_DEFAULT,
-  eUSD,
   CurvePoolType,
   CRV,
   eUSD_FRAX_HOLDER,
@@ -64,7 +60,7 @@ interface CvxStableRTokenMetapoolCollateralFixtureContext
     WrappedEUSDFraxBPFixture {
   fraxFeed: MockV3Aggregator
   usdcFeed: MockV3Aggregator
-  rTokenFeed: RTokenOracleMock
+  eusdFeed: MockV3Aggregator
   cvx: ERC20Mock
   crv: ERC20Mock
 }
@@ -86,7 +82,6 @@ interface CvxStableRTokenMetapoolCollateralOpts extends CollateralOpts {
   oracleErrors?: BigNumberish[][]
   lpToken?: string
   metapoolToken?: string
-  rTokenOracle?: string
 }
 
 /*
@@ -112,7 +107,6 @@ export const defaultCvxStableCollateralOpts: CvxStableRTokenMetapoolCollateralOp
   oracleTimeouts: [[FRAX_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT]],
   oracleErrors: [[FRAX_ORACLE_ERROR], [USDC_ORACLE_ERROR]],
   metapoolToken: eUSD_FRAX_BP,
-  rTokenOracle: RTOKEN_ORACLE,
 }
 
 export const deployCollateral = async (
@@ -123,10 +117,11 @@ export const deployCollateral = async (
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    // Substitute all 3 feeds: DAI, USDC, USDT
+    // Substitute all 3 feeds: FRAX, USDC, eUSD
     const fraxFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     const usdcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-    const fix = await makeWeUSDFraxBP()
+    const eusdFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    const fix = await makeWeUSDFraxBP(eusdFeed)
 
     opts.feeds = [[fraxFeed.address], [usdcFeed.address]]
     opts.erc20 = fix.wPool.address
@@ -162,8 +157,7 @@ export const deployCollateral = async (
         lpToken: opts.lpToken,
       },
       opts.metapoolToken,
-      opts.defaultThreshold, // use same 2% value
-      opts.rTokenOracle
+      opts.defaultThreshold // use same 2% value
     )
   )
   await collateral.deployed()
@@ -189,18 +183,10 @@ const makeCollateralFixtureContext = (
     // Substitute all feeds: FRAX, USDC, RToken
     const fraxFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     const usdcFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    const eusdFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
 
-    const RTokenOracleFactory = <RTokenOracleMock__factory>(
-      await ethers.getContractFactory('RTokenOracleMock')
-    )
-    const rTokenFeed = <RTokenOracleMock>await RTokenOracleFactory.deploy(bn('3600'))
-    await rTokenFeed.price(eUSD, true)
-    const [rTokenPrice] = await rTokenFeed.priceView(eUSD, false)
-    await rTokenFeed.setPrice(eUSD, rTokenPrice[0], rTokenPrice[1])
-
-    const fix = await makeWeUSDFraxBP()
+    const fix = await makeWeUSDFraxBP(eusdFeed)
     collateralOpts.feeds = [[fraxFeed.address], [usdcFeed.address]]
-    collateralOpts.rTokenOracle = rTokenFeed.address
 
     collateralOpts.erc20 = fix.wPool.address
     collateralOpts.curvePool = fix.curvePool.address
@@ -227,7 +213,7 @@ const makeCollateralFixtureContext = (
       rewardToken,
       fraxFeed,
       usdcFeed,
-      rTokenFeed,
+      eusdFeed,
       cvx,
       crv,
     }
@@ -403,7 +389,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
     let collateral: TestICollateral
     let fraxFeed: MockV3Aggregator
     let usdcFeed: MockV3Aggregator
-    let rTokenFeed: RTokenOracleMock
+    let eusdFeed: MockV3Aggregator
 
     let crv: ERC20Mock
     let cvx: ERC20Mock
@@ -420,7 +406,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
     beforeEach(async () => {
       ;[, alice] = await ethers.getSigners()
       ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
-      ;({ collateral, fraxFeed, usdcFeed, rTokenFeed, crv, cvx } = ctx)
+      ;({ collateral, fraxFeed, usdcFeed, eusdFeed, crv, cvx } = ctx)
 
       await mintCollateralTo(ctx, bn('100e18'), wallet, wallet.address)
     })
@@ -473,26 +459,11 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         await Promise.all([
           fraxFeed.updateAnswer(newPrice).then((e) => e.wait()),
           usdcFeed.updateAnswer(newPrice).then((e) => e.wait()),
+          eusdFeed.updateAnswer(newPrice).then((e) => e.wait()),
         ])
 
-        // Intermediately it should be around 1.06 with just the fraxBP-side updates
-        const [intermediateLow, intermediateHigh] = await collateral.price()
-
-        // Only fraxBP has appreciated; RToken is using real oracles
-        expect(intermediateLow).to.be.closeTo(low.mul(106).div(100), fp('1e-2'))
-        expect(intermediateHigh).to.be.closeTo(high.mul(106).div(100), fp('1e-2'))
-
-        // Update RToken price
-        const [rTokenPrice] = await rTokenFeed.priceView(ctx.eusd.address, true)
-        await rTokenFeed.setPrice(
-          ctx.eusd.address,
-          rTokenPrice.low.mul(110).div(100),
-          rTokenPrice.high.mul(110).div(100)
-        )
-
+        // Appreciated 10%
         const [newLow, newHigh] = await collateral.price()
-
-        // Only fraxBP has appreciated; RToken is using real oracles
         expect(newLow).to.be.closeTo(low.mul(110).div(100), 1)
         expect(newHigh).to.be.closeTo(high.mul(110).div(100), 1)
 
@@ -513,10 +484,10 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         await Promise.all([
           fraxFeed.updateAnswer(0).then((e) => e.wait()),
           usdcFeed.updateAnswer(0).then((e) => e.wait()),
+          eusdFeed.updateAnswer(0).then((e) => e.wait()),
         ])
-        await rTokenFeed.setPrice(ctx.eusd.address, 0, 0)
 
-        // (0, FIX_MAX) is returned
+        // (0, 0) is returned
         const [low, high] = await collateral.price()
         expect(low).to.equal(0)
         expect(high).to.equal(0)
@@ -722,8 +693,8 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
         await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-        // De-peg RToken to an avg price of $0.9799999, just below threshold of $0.98
-        await rTokenFeed.setPrice(eUSD, fp('0.96'), fp('0.999999'))
+        // De-peg RToken to just below threshold of $0.98
+        await eusdFeed.updateAnswer(fp('0.9799999'))
         await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -743,7 +714,7 @@ describeFork(`Collateral: Convex - RToken Metapool (eUSD/fraxBP)`, () => {
           await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
         )
 
-        const fix = await makeWeUSDFraxBP()
+        const fix = await makeWeUSDFraxBP(eusdFeed)
 
         const invalidCollateral = await deployCollateral({
           erc20: fix.wPool.address,

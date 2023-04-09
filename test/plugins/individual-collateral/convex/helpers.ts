@@ -2,12 +2,14 @@ import { ethers } from 'hardhat'
 import { BigNumberish } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { whileImpersonating } from '../../../utils/impersonation'
+import { bn, fp } from '../../../../common/numbers'
 import {
   ConvexStakingWrapper,
   CurvePoolMock,
   CurveMetapoolMock,
   ERC20Mock,
   ICurvePool,
+  MockV3Aggregator,
 } from '../../../../typechain'
 import { getResetFork } from '../helpers'
 import {
@@ -164,7 +166,27 @@ export interface WrappedEUSDFraxBPFixture {
   wPool: ConvexStakingWrapper
 }
 
-export const makeWeUSDFraxBP = async (): Promise<WrappedEUSDFraxBPFixture> => {
+export const makeWeUSDFraxBP = async (
+  eusdFeed: MockV3Aggregator
+): Promise<WrappedEUSDFraxBPFixture> => {
+  // Make a fake RTokenAsset and register it with eUSD's assetRegistry
+  const AssetFactory = await ethers.getContractFactory('Asset')
+  const mockRTokenAsset = await AssetFactory.deploy(
+    bn('604800'),
+    eusdFeed.address,
+    fp('0.01'),
+    eUSD,
+    fp('1e6'),
+    bn('604800')
+  )
+  const eUSDAssetRegistry = await ethers.getContractAt(
+    'IAssetRegistry',
+    '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
+  )
+  await whileImpersonating('0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c', async (signer) => {
+    await eUSDAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
+  })
+
   // Use real reference ERC20s
   const usdc = await ethers.getContractAt('ERC20Mock', USDC)
   const frax = await ethers.getContractAt('ERC20Mock', FRAX)
