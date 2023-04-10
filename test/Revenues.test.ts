@@ -24,12 +24,12 @@ import {
   FacadeTest,
   GnosisMock,
   IAssetRegistry,
-  IBasketHandler,
   InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDistributor,
   TestIFurnace,
@@ -108,7 +108,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
   let main: TestIMain
 
