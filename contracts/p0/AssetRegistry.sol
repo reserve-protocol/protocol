@@ -27,13 +27,16 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         }
     }
 
-    /// Force updates in all collateral assets
+    /// Force updates in all collateral assets. Tracks basket status.
     /// @custom:refresher
     function refresh() public {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         for (uint256 i = 0; i < _erc20s.length(); i++) {
             assets[IERC20(_erc20s.at(i))].refresh();
         }
+
+        IBasketHandler basketHandler = main.basketHandler();
+        basketHandler.trackStatus();
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered

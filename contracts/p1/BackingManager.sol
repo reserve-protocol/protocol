@@ -107,8 +107,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         assetRegistry.refresh();
 
         if (tradesOpen > 0) return;
-        // Only trade when all the collateral assets in the basket are SOUND
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
+
+        // Ensure basket is ready, SOUND and not in warmup period
+        require(basketHandler.isReady(), "basket not ready");
 
         uint48 basketTimestamp = basketHandler.timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;

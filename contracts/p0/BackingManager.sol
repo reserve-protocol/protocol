@@ -72,8 +72,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         if (tradesOpen > 0) return;
 
-        // Do not trade when not SOUND
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
+        // Ensure basket is ready, SOUND and not in warmup period
+        require(main.basketHandler().isReady(), "basket not ready");
 
         uint48 basketTimestamp = main.basketHandler().timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;

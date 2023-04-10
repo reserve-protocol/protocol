@@ -101,8 +101,9 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         // Call collective state keepers.
         main.poke();
 
+        // Ensure basket is ready, SOUND and not in warmup period
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket unsound");
+        require(basketHandler.isReady(), "basket not ready");
 
         // Revert if issuance exceeds either supply throttle
         issuanceThrottle.useAvailable(totalSupply(), int256(amount)); // reverts on over-issuance

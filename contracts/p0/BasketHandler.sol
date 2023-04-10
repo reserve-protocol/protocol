@@ -109,6 +109,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
 
+    uint48 public constant MAX_WARMUP_PERIOD = 31536000; // {s} 1 year
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
@@ -126,6 +127,18 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // be paused.
     bool private disabled;
 
+    // These are effectively local variables of _switchBasket.
+    // Nothing should use their values from previous transactions.
+    EnumerableSet.Bytes32Set private targetNames;
+    Basket private newBasket; // Always empty
+
+    uint48 public warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
+
+    // basket status changes, mainly set when `trackStatus()` is called
+    // used to enforce warmup period, after regaining SOUND
+    CollateralStatus private lastStatus;
+    uint48 private lastStatusTimestamp;
+
     // ==== Invariants ====
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
@@ -136,8 +149,15 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // if basket.erc20s is empty then disabled == true
 
     // BasketHandler.init() just leaves the BasketHandler state zeroed
-    function init(IMain main_) external initializer {
+    function init(IMain main_, uint48 warmupPeriod_) external initializer {
         __Component_init(main_);
+
+        setWarmupPeriod(warmupPeriod_);
+
+        // Set last status to DISABLED (default)
+        lastStatus = CollateralStatus.DISABLED;
+        lastStatusTimestamp = uint48(block.timestamp);
+
         disabled = true;
     }
 
@@ -174,6 +194,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             "basket unrefreshable"
         );
         _switchBasket();
+
+        trackStatus();
     }
 
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
@@ -273,6 +295,24 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
             if (s.worseThan(status_)) status_ = s;
         }
+    }
+
+    /// Track basket status changes if they ocurred
+    // effects: lastStatus' = status(), and lastStatusTimestamp' = current timestamp
+    function trackStatus() public {
+        CollateralStatus currentStatus = status();
+        if (currentStatus != lastStatus) {
+            emit BasketStatusChanged(lastStatus, currentStatus);
+            lastStatus = currentStatus;
+            lastStatusTimestamp = uint48(block.timestamp);
+        }
+    }
+
+    /// @return Whether the basket is ready to issue and trade
+    function isReady() external view returns (bool) {
+        return
+            status() == CollateralStatus.SOUND &&
+            (block.timestamp >= lastStatusTimestamp + warmupPeriod);
     }
 
     /// @param erc20 The token contract to check for quantity for
@@ -447,6 +487,15 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
+    // === Governance Setters ===
+
+    /// @custom:governance
+    function setWarmupPeriod(uint48 val) public governance {
+        require(val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
+        emit WarmupPeriodSet(warmupPeriod, val);
+        warmupPeriod = val;
+    }
+
     /* _switchBasket computes basket' from three inputs:
        - the basket configuration (config: BasketConfig)
        - the function (isGood: erc20 -> bool), implemented here by goodCollateral()
@@ -501,11 +550,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
          nonce' = nonce + 1
          timestamp' = now
     */
-
-    // These are effectively local variables of _switchBasket.
-    // Nothing should use their values from previous transactions.
-    EnumerableSet.Bytes32Set private targetNames;
-    Basket private newBasket; // Always empty
 
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// (The mutator that actually does all the work in this contract.)
@@ -671,5 +715,5 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[48] private __gap;
+    uint256[47] private __gap;
 }
