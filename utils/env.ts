@@ -19,6 +19,8 @@ type IEnvVars =
   | 'JOBS'
   | 'EXTREME'
   | 'SUBGRAPH_URL'
+  | 'TEST_ADDRESS_PK'
+  | 'TENDERLY_RPC_URL'
 
 export function useEnv(key: IEnvVars | IEnvVars[], _default = ''): string {
   if (typeof key === 'string') {
