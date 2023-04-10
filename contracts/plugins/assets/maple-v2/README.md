@@ -76,10 +76,11 @@ This section also explains why the collateral does not default on loan impairmen
 
 ### Scripts
 
-The deployment of the Maple Pool collaterals is automated with a script for each pool:
+The deployment of the Maple Pool collaterals can be automated with a script.
 
-- [Maven 11 USDC][reserve-collateral-usdc-deployment-script]
-- [Maven 11 wETH][reserve-collateral-weth-deployment-script]
+An example is given for the [Maven 11 USDC pool][reserve-collateral-usdc-deployment-script].
+
+The deployment of the wETH pool collateral depends on the choice made for the target unit / price calculation (see [the PR][reserve-collateral-pull-request]).
 
 ### Parameters
 
@@ -387,6 +388,7 @@ Only the loan default leads to a diminution of the total assets as the outstandi
 [reserve-collateral-plot-weth-zoom-unrealized-loss]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-unrealized-loss.png
 [reserve-collateral-plot-usdc-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-normal-operation.png
 [reserve-collateral-plot-weth-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-normal-operation.png
+[reserve-collateral-pull-request]: https://github.com/reserve-protocol/protocol/pull/757
 [reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/maple-v2/MaplePoolCollateral.test.ts
-[reserve-collateral-usdc-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_usdc_collateral.ts
-[reserve-collateral-weth-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_weth_collateral.ts
+[reserve-collateral-usdc-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_usdc_collateral.ts
+[reserve-collateral-weth-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_weth_collateral.ts

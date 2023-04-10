@@ -48,6 +48,8 @@ export interface ITokens {
   wstETH?: string
   rETH?: string
   cUSDCv3?: string
+  MPLmcUSDC2?: string
+  MPLmcWETH1?: string
 }
 
 export interface IFeeds {
@@ -126,6 +128,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      MPLmcUSDC2: '0xd3cd37a7299B963bbc69592e5Ba933388f70dc88',
+      MPLmcWETH1: '0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',

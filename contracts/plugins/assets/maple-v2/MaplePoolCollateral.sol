@@ -19,8 +19,8 @@ contract MaplePoolCollateral is AppreciatingFiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    // All v2 liquidity provider tokens have 6 decimals
-    // Their underlying tokens may have 18 (wETH) or 6 (USDC) decimals
+    // The underlying tokens may have 18 (wETH) or 6 (USDC) decimals
+    // The Maple v2 tokens have the same number of decimals than their underlying
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
