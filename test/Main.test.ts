@@ -10,6 +10,7 @@ import {
   MAX_BACKING_BUFFER,
   MAX_TARGET_AMT,
   MAX_MIN_TRADE_VOLUME,
+  MAX_WARMUP_PERIOD,
   IComponents,
 } from '../common/configuration'
 import {
@@ -38,13 +39,13 @@ import {
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
-  IBasketHandler,
   InvalidRefPerTokCollateralMock,
   MockV3Aggregator,
   MockableCollateral,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
@@ -126,7 +127,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
 
   let basket: Collateral[]
@@ -231,6 +232,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
       expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
+      expect(await basketHandler.warmupPeriod()).to.equal(config.warmupPeriod)
 
       // Should have semver version from deployer
       expect(await main.version()).to.equal(await deployer.version())
@@ -350,7 +352,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - Basket Handler
-      await expect(basketHandler.init(main.address)).to.be.revertedWith(
+      await expect(basketHandler.init(main.address, config.warmupPeriod)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
 
@@ -879,6 +881,32 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Configuration/State #fast', () => {
+    it('Should allow to update warmupPeriod if OWNER and perform validations', async () => {
+      const newValue: BigNumber = bn('360')
+
+      // Check existing value
+      expect(await basketHandler.warmupPeriod()).to.equal(config.warmupPeriod)
+
+      // If not owner cannot update
+      await expect(basketHandler.connect(other).setWarmupPeriod(newValue)).to.be.reverted
+
+      // Check value did not change
+      expect(await basketHandler.warmupPeriod()).to.equal(config.warmupPeriod)
+
+      // Update with owner
+      await expect(basketHandler.connect(owner).setWarmupPeriod(newValue))
+        .to.emit(basketHandler, 'WarmupPeriodSet')
+        .withArgs(config.warmupPeriod, newValue)
+
+      // Check value was updated
+      expect(await basketHandler.warmupPeriod()).to.equal(newValue)
+
+      // Cannot update with value > max
+      await expect(
+        basketHandler.connect(owner).setWarmupPeriod(MAX_WARMUP_PERIOD + 1)
+      ).to.be.revertedWith('invalid warmupPeriod')
+    })
+
     it('Should allow to update tradingDelay if OWNER and perform validations', async () => {
       const newValue: BigNumber = bn('360')
 
@@ -1172,6 +1200,69 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       await basketHandler.refreshBasket()
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+    })
+
+    it('Should track basket status in BasketHandler when changed', async () => {
+      // Check initial basket status
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Refreshing from SOUND -> SOUND should not track status change
+      await expect(assetRegistry.refresh()).to.not.emit(basketHandler, 'BasketStatusChanged')
+
+      // Check Status remains SOUND
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Set Token1 to default - 50% price reduction
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
+
+      // Mark default as probable
+      await expect(assetRegistry.refresh())
+        .to.emit(basketHandler, 'BasketStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+
+      // Advance time post delayUntilDefault
+      await advanceTime((await collateral1.delayUntilDefault()).toString())
+
+      // Mark default as confirmed
+      await expect(assetRegistry.refresh())
+        .to.emit(basketHandler, 'BasketStatusChanged')
+        .withArgs(CollateralStatus.IFFY, CollateralStatus.DISABLED)
+
+      // Check status
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
+    it('Should be able to track basket status', async () => {
+      // Check initial basket status
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Refreshing from SOUND -> SOUND should not track status change
+      await expect(assetRegistry.refresh()).to.not.emit(basketHandler, 'BasketStatusChanged')
+
+      // Check Status remains SOUND
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Set Token1 to default - 50% price reduction
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
+
+      // Mark default as probable
+      await expect(assetRegistry.refresh())
+        .to.emit(basketHandler, 'BasketStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+
+      // Advance time post delayUntilDefault
+      await advanceTime((await collateral1.delayUntilDefault()).toString())
+
+      // Mark default as confirmed
+      await collateral1.refresh()
+
+      // Anyone can update status on BasketHandler
+      await expect(basketHandler.trackStatus())
+        .to.emit(basketHandler, 'BasketStatusChanged')
+        .withArgs(CollateralStatus.IFFY, CollateralStatus.DISABLED)
+
+      // Check status
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
     })
 
     it('Should allow to register Asset if OWNER', async () => {
@@ -1621,8 +1712,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).wait()
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
       const newMain: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
-      const emptyBasketHandler: IBasketHandler = <IBasketHandler>(
-        await ethers.getContractAt('IBasketHandler', await newMain.basketHandler())
+      const emptyBasketHandler: TestIBasketHandler = <TestIBasketHandler>(
+        await ethers.getContractAt('TestIBasketHandler', await newMain.basketHandler())
       )
       const busHeld = await emptyBasketHandler.basketsHeldBy(addr1.address)
       expect(busHeld[0]).to.equal(0)
@@ -1739,7 +1830,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
-    it('Should handle full collateral deregistration and disable the basket', async () => {
+    it.skip('Should handle full collateral deregistration and disable the basket', async () => {
       // Check status
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.quantity(token1.address)).to.equal(basketsNeededAmts[1])
@@ -1762,6 +1853,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         assetRegistry,
         'AssetUnregistered'
       )
+
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 

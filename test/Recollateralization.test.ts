@@ -18,11 +18,11 @@ import {
   FiatCollateral,
   GnosisMock,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIMain,
   TestIRToken,
   TestIStRSR,
@@ -91,7 +91,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let main: TestIMain
 
   interface IBackingInfo {
@@ -518,7 +518,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
         // Cannot issue because collateral is not sound
-        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket unsound')
+        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket not ready')
       })
 
       it('Should handle having invalid tokens in the backup configuration', async () => {
@@ -765,7 +765,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
         // Cannot issue because collateral is not sound
-        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket unsound')
+        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket not ready')
       })
     })
   })
@@ -814,10 +814,117 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
       it('Should not trade if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
-        await expect(backingManager.manageTokens([])).to.be.revertedWith('basket not sound')
+        await expect(backingManager.manageTokens([])).to.be.revertedWith('basket not ready')
         await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
-          'basket not sound'
+          'basket not ready'
         )
+      })
+
+      it('Should not trade during warmup period', async () => {
+        const warmupPeriod = bn('259200') // 3 days
+
+        // Set warmup period
+        await basketHandler.connect(owner).setWarmupPeriod(warmupPeriod)
+
+        await expect(backingManager.manageTokens([])).to.be.revertedWith('basket not ready')
+        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
+          'basket not ready'
+        )
+      })
+
+      it('Should not apply warmup period when moving from SOUND -> SOUND', async () => {
+        const warmupPeriod = bn('259200') // 3 days
+
+        // Set warmup period and advance time
+        await basketHandler.connect(owner).setWarmupPeriod(warmupPeriod)
+        await advanceTime(warmupPeriod.add(1).toString())
+
+        // Setup new prime basket
+        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+
+        // Switch Basket
+        await expect(basketHandler.connect(owner).refreshBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(3, [token1.address], [fp('1')], false)
+
+        // Trigger recollateralization
+        const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
+        // Auction can be run even during warmupPeriod
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
+          .to.emit(backingManager, 'TradeStarted')
+          .withArgs(
+            anyValue,
+            token0.address,
+            token1.address,
+            sellAmt,
+            toBNDecimals(minBuyAmt, 6).add(1)
+          )
+
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
+
+        // Check auction registered
+        // Token0 -> Token1 Auction
+        await expectTrade(backingManager, {
+          sell: token0.address,
+          buy: token1.address,
+          endTime: auctionTimestamp + Number(config.auctionLength),
+          externalId: bn('0'),
+        })
+      })
+
+      it('Should skip start recollateralization after warmupPeriod, when regaining SOUND', async () => {
+        const warmupPeriod = bn('259200') // 3 days
+
+        // Set warmup period
+        await basketHandler.connect(owner).setWarmupPeriod(warmupPeriod)
+
+        // Set basket to IFFY
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        await assetRegistry.refresh()
+
+        // Setup new prime basket
+        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+
+        // Switch Basket
+        await expect(basketHandler.connect(owner).refreshBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(3, [token1.address], [fp('1')], false)
+
+        // Trigger recollateralization
+        const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('0.5'), fp('1'))
+
+        // Attempt to trigger before warmup period - will revert
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.be.revertedWith(
+          'basket not ready'
+        )
+
+        // Advance time post warmup period
+        await advanceTime(warmupPeriod.add(1).toString())
+
+        // Auction can be run now
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
+          .to.emit(backingManager, 'TradeStarted')
+          .withArgs(
+            anyValue,
+            token0.address,
+            token1.address,
+            sellAmt,
+            toBNDecimals(minBuyAmt, 6).add(1)
+          )
+
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
+
+        // Check auction registered
+        // Token0 -> Token1 Auction
+        await expectTrade(backingManager, {
+          sell: token0.address,
+          buy: token1.address,
+          endTime: auctionTimestamp + Number(config.auctionLength),
+          externalId: bn('0'),
+        })
       })
 
       it('Should skip start recollateralization after tradingDelay', async () => {

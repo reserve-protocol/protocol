@@ -18,9 +18,9 @@ import {
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIDistributor,
   TestIStRSR,
   TestIRevenueTrader,
@@ -71,7 +71,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
 
   let ERC20Mock: ContractFactory
