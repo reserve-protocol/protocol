@@ -37,12 +37,12 @@ import {
   IAToken,
   IERC20,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   NonFiatCollateral,
   RTokenAsset,
   StaticATokenLM,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIMain,
   TestIRToken,
   USDCMock,
@@ -153,7 +153,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let config: IConfig
 
   // Factories

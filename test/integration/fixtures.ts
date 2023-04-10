@@ -30,7 +30,6 @@ import {
   FurnaceP1,
   GnosisTrade,
   IAssetRegistry,
-  IBasketHandler,
   IERC20Metadata,
   MainP1,
   NonFiatCollateral,
@@ -41,6 +40,7 @@ import {
   StaticATokenLM,
   StRSRP1Votes,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
@@ -570,7 +570,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   main: TestIMain
   assetRegistry: IAssetRegistry
   backingManager: TestIBackingManager
-  basketHandler: IBasketHandler
+  basketHandler: TestIBasketHandler
   distributor: TestIDistributor
   rsrAsset: Asset
   compAsset: Asset
@@ -614,6 +614,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     longFreeze: bn('2592000'), // 30 days
     rewardRatio: bn('1069671574938'), // approx. half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
+    warmupPeriod: bn('0'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
@@ -758,8 +759,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   const backingManager: TestIBackingManager = <TestIBackingManager>(
     await ethers.getContractAt('TestIBackingManager', await main.backingManager())
   )
-  const basketHandler: IBasketHandler = <IBasketHandler>(
-    await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+  const basketHandler: TestIBasketHandler = <TestIBasketHandler>(
+    await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
   )
   const distributor: TestIDistributor = <TestIDistributor>(
     await ethers.getContractAt('TestIDistributor', await main.distributor())

@@ -38,9 +38,9 @@ import {
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
-  IBasketHandler,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIRToken,
   TestIStRSR,
@@ -65,7 +65,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
   let rToken: TestIRToken
   let broker: TestIBroker
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
 
