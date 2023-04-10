@@ -16,7 +16,7 @@ import "./CvxStableMetapoolCollateral.sol";
 contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
     using FixLib for uint192;
 
-    IAssetRegistry internal immutable reg; // AssetRegistry of pairedToken
+    IAssetRegistry internal immutable pairedAssetRegistry; // AssetRegistry of pairedToken
 
     /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout are unused; set chainlinkFeed to 0x1
@@ -36,7 +36,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
             pairedTokenDefaultThreshold_
         )
     {
-        reg = IRToken(address(pairedToken)).main().assetRegistry();
+        pairedAssetRegistry = IRToken(address(pairedToken)).main().assetRegistry();
     }
 
     /// Can revert, used by `_anyDepeggedOutsidePool()`
@@ -50,6 +50,6 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         override
         returns (uint192 lowPaired, uint192 highPaired)
     {
-        return reg.toAsset(pairedToken).price();
+        return pairedAssetRegistry.toAsset(pairedToken).price();
     }
 }
