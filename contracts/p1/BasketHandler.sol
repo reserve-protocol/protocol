@@ -367,7 +367,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             IAsset asset = assetRegistry.toAsset(basket.erc20s[i]);
             (uint192 lowP, uint192 highP) = asset.price();
-            (uint192 lotLowP, uint192 lotHighP) = asset.price();
+            (uint192 lotLowP, uint192 lotHighP) = asset.lotPrice();
 
             low256 += safeMul(qty, lowP, RoundingMode.FLOOR);
             high256 += safeMul(qty, highP, RoundingMode.CEIL);
