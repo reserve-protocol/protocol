@@ -35,6 +35,18 @@ export const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
     return _targetPerRef.answer.mul(bn(10).pow(18 - _decimals)).mul(_strictRefPerTok).div(fp('1'))
 }
 
+export const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
+    const _latestRound = await ctx.chainlinkFeed.latestRoundData()
+    const _nextAnswer = _latestRound.answer.sub(_latestRound.answer.mul(pctDecrease).div(100))
+    await ctx.chainlinkFeed.updateAnswer(_nextAnswer)
+}
+
+export const increaseTargetPerRef = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
+    const _latestRound = await ctx.chainlinkFeed.latestRoundData()
+    const _nextAnswer = _latestRound.answer.add(_latestRound.answer.mul(pctIncrease).div(100))
+    await ctx.chainlinkFeed.updateAnswer(_nextAnswer)
+}
+
 export const increaseRefPerTok = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
     await advanceBlocks(1)
 }

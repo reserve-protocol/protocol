@@ -7,7 +7,7 @@ import { MockV3Aggregator, MockV3Aggregator__factory, TestICollateral, IMaplePoo
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { bn, fp } from '../../../../common/numbers'
 import { CollateralStatus, CollateralOpts, CollateralFixtureContext, DeployCollateralFunc, MakeCollateralFixtureFunc, MintCollateralFunc } from '../pluginTestTypes'
-import { resetFork, transferMaplePoolToken, getExpectedPrice, increaseRefPerTok } from './helpers'
+import { resetFork, transferMaplePoolToken, getExpectedPrice, reduceTargetPerRef, increaseTargetPerRef, increaseRefPerTok } from './helpers'
 import {
     MAPLE_USDC_POOL,
     MAPLE_WETH_POOL,
@@ -239,13 +239,13 @@ all.forEach((current: MaplePoolTokenEnumeration) => {
         beforeEachRewardsTest: emptyFn,
         makeCollateralFixtureContext: makeCollateralFixtureContextFactory(defaultCollateralOpts, current.defaultOraclePrice),
         mintCollateralTo: mintCollateralToFactory(current.holder),
-        reduceTargetPerRef: emptyFn,
-        increaseTargetPerRef: emptyFn,
+        reduceTargetPerRef: reduceTargetPerRef,
+        increaseTargetPerRef: increaseTargetPerRef,
         reduceRefPerTok: emptyFn,
         increaseRefPerTok: increaseRefPerTok,
         getExpectedPrice: getExpectedPrice,
         itClaimsRewards: it.skip,
-        itChecksTargetPerRefDefault: it.skip,
+        itChecksTargetPerRefDefault: it,
         itChecksRefPerTokDefault: it.skip,
         itChecksPriceChanges: it,
         itHasRevenueHiding: it.skip,
