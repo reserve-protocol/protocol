@@ -36,11 +36,11 @@ import {
   FacadeTest,
   FacadeWrite,
   IAssetRegistry,
-  IBasketHandler,
   InvalidMockV3Aggregator,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIDeployer,
   TestIMain,
   TestIRToken,
@@ -90,7 +90,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let rTokenAsset: RTokenAsset
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   let deployer: TestIDeployer
   let facade: FacadeRead
@@ -242,8 +242,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     backingManager = <TestIBackingManager>(
       await ethers.getContractAt('TestIBackingManager', await main.backingManager())
     )
-    basketHandler = <IBasketHandler>(
-      await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+    basketHandler = <TestIBasketHandler>(
+      await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
     )
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
     rTokenAsset = <RTokenAsset>(
