@@ -39,7 +39,7 @@ contract RTokenAsset is IAsset {
         maxTradeVolume = maxTradeVolume_;
     }
 
-    /// Calculates price() + lotPrice() in a non-gas-optimized way
+    /// Calculates price() & lotPrice() in a non-gas-optimized way
     /// @return price_ {UoA/tok} The low and high price estimate of an RToken
     /// @return lotPrice_ {UoA/tok} The low and high lotprice of an RToken
     function prices() public view returns (Price memory price_, Price memory lotPrice_) {
@@ -97,7 +97,7 @@ contract RTokenAsset is IAsset {
         assert(lotPrice_.low <= lotPrice_.high);
     }
 
-    /// Calculates price() + lotPrice() in a gas-optimized way using a cached BasketRange
+    /// Calculates price() & lotPrice() in a gas-optimized way using a cached BasketRange
     /// Used by RecollateralizationLib for efficient price calculation
     /// @param buRange {BU} The top and bottom of the bu band; how many BUs we expect to hold
     /// @param buPrice {UoA/BU} The low and high price estimate of a basket unit

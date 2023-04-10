@@ -333,7 +333,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return (lotP.low, lotP.high);
     }
 
-    /// Returns both the price + lotPrice at once, for gas optimization
+    /// Returns both the price() & lotPrice() at once, for gas optimization
     /// @return price_ {UoA/tok} The low and high price estimate of an RToken
     /// @return lotPrice_ {UoA/tok} The low and high lotprice of an RToken
     function prices() public view returns (Price memory price_, Price memory lotPrice_) {
