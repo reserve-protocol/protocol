@@ -27,7 +27,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         }
     }
 
-    /// Force updates in all collateral assets. Tracks basket status.
+    /// Force updates in all collateral assets. Track basket status.
     /// @custom:refresher
     function refresh() public {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
