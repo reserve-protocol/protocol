@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: ISC
 pragma solidity 0.8.17;
 
-import ".../../../libraries/SafeMul.sol";
 import "./CvxStableCollateral.sol";
 
 // solhint-disable no-empty-blocks
@@ -170,7 +169,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
         aumLow += lowPaired.mul(pairedBal, FLOOR);
 
         // Add-in high part carefully
-        uint192 toAdd = SafeMul.safeMul(highPaired, pairedBal, CEIL);
+        uint192 toAdd = highPaired.safeMul(pairedBal, CEIL);
         if (aumHigh + uint256(toAdd) >= FIX_MAX) aumHigh = FIX_MAX;
         else aumHigh += toAdd;
     }

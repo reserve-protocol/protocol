@@ -9,7 +9,6 @@ import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
-import "../libraries/SafeMul.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/Component.sol";
 
@@ -366,8 +365,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 ? assetRegistry.toAsset(basket.erc20s[i]).lotPrice()
                 : assetRegistry.toAsset(basket.erc20s[i]).price();
 
-            low256 += SafeMul.safeMul(qty, lowP, RoundingMode.FLOOR);
-            high256 += SafeMul.safeMul(qty, highP, RoundingMode.CEIL);
+            low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
+            high256 += qty.safeMul(highP, RoundingMode.CEIL);
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
@@ -393,12 +392,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             erc20s[i] = address(basket.erc20s[i]);
 
             // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            quantities[i] = SafeMul
-                .safeMul(quantity(basket.erc20s[i]), amount, rounding)
-                .shiftl_toUint(
-                    int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
-                    rounding
-                );
+            quantities[i] = quantity(basket.erc20s[i]).safeMul(amount, rounding).shiftl_toUint(
+                int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
+                rounding
+            );
         }
     }
 

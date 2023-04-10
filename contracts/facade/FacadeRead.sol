@@ -8,7 +8,6 @@ import "../interfaces/IFacadeRead.sol";
 import "../interfaces/IRToken.sol";
 import "../interfaces/IStRSR.sol";
 import "../libraries/Fixed.sol";
-import "../libraries/SafeMul.sol";
 import "../p1/BasketHandler.sol";
 import "../p1/BackingManager.sol";
 import "../p1/Furnace.sol";
@@ -314,16 +313,15 @@ contract FacadeRead is IFacadeRead {
 
             if (isBackingManager) {
                 // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-                balancesNeeded[i] = SafeMul
-                    .safeMul(
-                        basketHandler.quantity(erc20s[i]),
-                        basketsNeeded,
-                        RoundingMode.FLOOR // FLOOR to match redemption
-                    )
-                    .shiftl_toUint(
-                        int8(IERC20Metadata(address(erc20s[i])).decimals()),
-                        RoundingMode.FLOOR
-                    );
+                uint192 balNeededFix = basketHandler.quantity(erc20s[i]).safeMul(
+                    basketsNeeded,
+                    RoundingMode.FLOOR // FLOOR to match redemption
+                );
+
+                balancesNeeded[i] = balNeededFix.shiftl_toUint(
+                    int8(IERC20Metadata(address(erc20s[i])).decimals()),
+                    RoundingMode.FLOOR
+                );
             }
         }
     }
