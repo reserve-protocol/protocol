@@ -13,11 +13,11 @@ import {
   ComptrollerMock,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   IFacadeTest,
   MockV3Aggregator,
   SelfReferentialCollateral,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
@@ -70,7 +70,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let facadeTest: IFacadeTest

@@ -10,12 +10,12 @@ import { CollateralStatus } from '../../common/constants'
 import {
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   IFacadeTest,
   MockV3Aggregator,
   NonFiatCollateral,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
@@ -63,7 +63,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let facadeTest: IFacadeTest

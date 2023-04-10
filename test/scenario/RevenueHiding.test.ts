@@ -12,9 +12,9 @@ import {
   ComptrollerMock,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   SelfReferentialCollateral,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
@@ -59,7 +59,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 

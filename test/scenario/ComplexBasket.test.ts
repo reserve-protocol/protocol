@@ -15,11 +15,11 @@ import {
   FacadeTest,
   GnosisMock,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIRevenueTrader,
   TestIRToken,
   WETH9,
@@ -100,7 +100,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager

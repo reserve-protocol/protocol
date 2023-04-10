@@ -11,11 +11,11 @@ import {
   BadCollateralPlugin,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRToken,
 } from '../../typechain'
@@ -60,7 +60,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

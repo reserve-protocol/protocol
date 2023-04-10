@@ -11,10 +11,10 @@ import {
   SelfReferentialCollateral,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   IFacadeTest,
   MockV3Aggregator,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
@@ -58,7 +58,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let facadeTest: IFacadeTest

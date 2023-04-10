@@ -10,10 +10,10 @@ import {
   BadERC20,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIFurnace,
   TestIStRSR,
   TestIRevenueTrader,
@@ -62,7 +62,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let backingManager: TestIBackingManager
   let rTokenTrader: TestIRevenueTrader
   let rsrTrader: TestIRevenueTrader
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   // Computes the minBuyAmt for a sellAmt at two prices
   // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
