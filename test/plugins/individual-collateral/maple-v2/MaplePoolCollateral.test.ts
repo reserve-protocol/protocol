@@ -7,7 +7,7 @@ import { MockV3Aggregator, MockV3Aggregator__factory, TestICollateral, IMaplePoo
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { bn, fp } from '../../../../common/numbers'
 import { CollateralStatus, CollateralOpts, CollateralFixtureContext, DeployCollateralFunc, MakeCollateralFixtureFunc, MintCollateralFunc } from '../pluginTestTypes'
-import { resetFork, transferMaplePoolToken, getExpectedPrice, reduceTargetPerRef, increaseTargetPerRef, increaseRefPerTok } from './helpers'
+import { resetFork, transferMaplePoolToken, getExpectedPrice, increaseTargetPerRef, reduceTargetPerRef, increaseRefPerTokFactory, reduceRefPerTokFactory } from './helpers'
 import {
     MAPLE_USDC_POOL,
     MAPLE_WETH_POOL,
@@ -241,14 +241,15 @@ all.forEach((current: MaplePoolTokenEnumeration) => {
         mintCollateralTo: mintCollateralToFactory(current.holder),
         reduceTargetPerRef: reduceTargetPerRef,
         increaseTargetPerRef: increaseTargetPerRef,
-        reduceRefPerTok: emptyFn,
-        increaseRefPerTok: increaseRefPerTok,
+        reduceRefPerTok: reduceRefPerTokFactory(current.underlying, current.holder),
+        increaseRefPerTok: increaseRefPerTokFactory(current.underlying, current.holder),
         getExpectedPrice: getExpectedPrice,
         itClaimsRewards: it.skip,
         itChecksTargetPerRefDefault: it,
-        itChecksRefPerTokDefault: it.skip,
+        itChecksRefPerTokDefault: it,
         itChecksPriceChanges: it,
         itHasRevenueHiding: it.skip,
+        itIsPricedByPeg: true,
         resetFork: resetFork,
         collateralName: current.testName,
         chainlinkDefaultAnswer: current.defaultOraclePrice,
