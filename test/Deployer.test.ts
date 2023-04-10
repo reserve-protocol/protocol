@@ -12,9 +12,9 @@ import {
   FacadeRead,
   GnosisMock,
   IAssetRegistry,
-  IBasketHandler,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
@@ -58,7 +58,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let main: TestIMain
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
