@@ -170,7 +170,10 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
 
         // Add-in high part carefully
         uint192 toAdd = highPaired.safeMul(pairedBal, CEIL);
-        if (aumHigh + uint256(toAdd) >= FIX_MAX) aumHigh = FIX_MAX;
-        else aumHigh += toAdd;
+        if (aumHigh + uint256(toAdd) >= FIX_MAX) {
+            aumHigh = FIX_MAX;
+        } else {
+            aumHigh += toAdd;
+        }
     }
 }
