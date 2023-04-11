@@ -95,6 +95,19 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
         uint48 basketNonce
     ) external;
 
+    /// Redeem RToken for a linear combination of historical baskets, to a particular recipient
+    /// @param recipient The address to receive the backing collateral tokens
+    /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
+    /// @param basketNonces An array of basket nonces to do redemption from
+    /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
+    /// @custom:interaction
+    function historicalRedeemTo(
+        address recipient,
+        uint256 amount,
+        uint48[] memory basketNonces,
+        uint192[] memory portions
+    ) external;
+
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
