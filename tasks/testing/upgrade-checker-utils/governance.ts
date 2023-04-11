@@ -180,7 +180,18 @@ export const proposeUpgrade = async (
   await stakeAndDelegateRsr(hre, rTokenAddress, governorAddress, tester.address)
 
   const proposal = await proposalBuilder(hre, rTokenAddress, governorAddress)
+  
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
+
+  const call = await governor.populateTransaction.propose(
+    proposal.targets,
+    proposal.values,
+    proposal.calldatas,
+    proposal.description
+  )
+
+  console.log(`Proposal Transaction:\n`, call.data)
+
   const r = await governor.propose(
     proposal.targets,
     proposal.values,
@@ -189,7 +200,8 @@ export const proposeUpgrade = async (
   )
   const resp = await r.wait()
 
-  console.log(`proposed: ${resp.events![0].args!.proposalId}`)
+  console.log('\nSuccessfully proposed!')
+  console.log(`Proposal ID: ${resp.events![0].args!.proposalId}`)
 
   return { ...proposal, proposalId: resp.events![0].args!.proposalId}
 }

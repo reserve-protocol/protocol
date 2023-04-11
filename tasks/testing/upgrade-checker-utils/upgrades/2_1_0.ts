@@ -81,18 +81,5 @@ export const proposal_2_1_0: ProposalBuilder = async (
 
   const description = "release 2.1.0 test"
 
-  const proposal = buildProposal(txs, description)
-
-  const governor = await hre.ethers.getContractAt('Governance', governorAddress)
-
-  const call = await governor.populateTransaction.propose(
-    proposal.targets,
-    proposal.values,
-    proposal.calldatas,
-    proposal.description
-  )
-
-  console.log(`Proposal Transaction:`, call)
-
-  return proposal
+  return buildProposal(txs, description)
 }

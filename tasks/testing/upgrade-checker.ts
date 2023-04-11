@@ -6,7 +6,7 @@ import { ContractFactory } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { resetFork } from '#/utils/chain'
 import { bn, fp } from '#/common/numbers'
-import { formatEther, formatUnits } from 'ethers/lib/utils'
+import { Interface, LogDescription, formatEther, formatUnits } from 'ethers/lib/utils'
 import { FacadeTest } from '@typechain/FacadeTest'
 import { pushOraclesForward } from './upgrade-checker-utils/oracles'
 import { redeemRTokens } from './upgrade-checker-utils/rtokens'
@@ -16,8 +16,10 @@ import { runTrade } from './upgrade-checker-utils/trades'
 import runChecks2_1_0, { proposal_2_1_0 } from './upgrade-checker-utils/upgrades/2_1_0'
 import { passAndExecuteProposal, proposeUpgrade, stakeAndDelegateRsr } from './upgrade-checker-utils/governance'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { getLatestBlockNumber } from '#/utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
 import { Proposal } from '#/utils/subgraph'
+import { CollateralStatus } from '#/common/constants'
+import { logToken } from './upgrade-checker-utils/logs'
 
 // run script for eUSD
 // current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
@@ -120,8 +122,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     // await claimRsrRewards(hre, params.rtoken)
 
-
-
     /*
     
       mint
@@ -141,7 +141,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const cUsdc = await hre.ethers.getContractAt('ICToken', cUsdcAddress)
 
     // get saUsdt
-    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!], async (usdtSigner) => {
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!.toLowerCase()], async (usdtSigner) => {
       await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal)
       await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
     })
@@ -149,7 +149,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await saUsdt.connect(tester).approve(rToken.address, saUsdtBal)
 
     // get cUsdt
-    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!], async (usdtSigner) => {
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!.toLowerCase()], async (usdtSigner) => {
       await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
       await cUsdt.connect(usdtSigner).mint(initialBal)
       const bal = await cUsdt.balanceOf(usdtSigner.address)
@@ -159,7 +159,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await cUsdt.connect(tester).approve(rToken.address, cUsdtBal)
 
     // get saUsdc
-    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!], async (usdcSigner) => {
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!.toLowerCase()], async (usdcSigner) => {
       await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal)
       await saUsdc.connect(usdcSigner).deposit(tester.address, initialBal, 0, true)
     })
@@ -167,7 +167,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await saUsdc.connect(tester).approve(rToken.address, saUsdcBal)
 
     // get cUsdc
-    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!], async (usdcSigner) => {
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!.toLowerCase()], async (usdcSigner) => {
       await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal)
       await cUsdc.connect(usdcSigner).mint(initialBal)
       const bal = await cUsdc.balanceOf(usdcSigner.address)
@@ -196,17 +196,47 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
 
     await claimRsrRewards(hre, params.rtoken)
-
+    
     // switch basket
-    // await whileImpersonating(hre, params.governor, async (gov) => {
-    //   await basketHandler
-    //     .connect(gov)
-    //     .setPrimeBasket([saUsdtAddress, cUsdtAddress, usdcAddress], [25, 25, 50])
-    // })
-    // await basketHandler.refreshBasket()
-    // const registeredERC20s = await assetRegistry.erc20s()
-    // await backingManager.manageTokens(registeredERC20s)
-    // await runTrade(hre, backingManager, usdtAddress, true)
+    const iface: Interface = backingManager.interface
+
+    const governor = await hre.ethers.getContractAt('Governance', params.governor)
+    const timelockAddress = await governor.timelock()
+    await whileImpersonating(hre, timelockAddress, async (tl) => {
+      await basketHandler
+        .connect(tl)
+        .setPrimeBasket([saUsdtAddress, cUsdtAddress, usdcAddress], [fp('0.25'), fp('0.25'), fp('0.5')])
+      await basketHandler.connect(tl).refreshBasket()
+      const tradingDelay = await backingManager.tradingDelay()
+      await advanceBlocks(hre, tradingDelay/12 + 1)
+      await advanceTime(hre, tradingDelay + 1)
+    })
+    
+    console.log(`\n\n* * * * * Recollateralizing RToken ${rToken.address}...`)
+    const registeredERC20s = await assetRegistry.erc20s()
+    let r = await backingManager.manageTokens(registeredERC20s)
+    let tradesRemain = true
+    while (tradesRemain) {
+      tradesRemain = false
+      const resp = await r.wait()
+      for (const event of resp.events!) {
+        let parsedLog: LogDescription | undefined
+        try { parsedLog = iface.parseLog(event) } catch {}
+        if (parsedLog && parsedLog.name == 'TradeStarted') {
+          tradesRemain = true
+          console.log(`\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(parsedLog.args.buy)} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${parsedLog.args.sellAmount}`)
+          await runTrade(hre, backingManager, parsedLog.args.sell, false)
+        }
+      }
+      r = await backingManager.manageTokens(registeredERC20s)
+    }
+
+    const basketStatus = await basketHandler.status()
+    if (basketStatus != CollateralStatus.SOUND) {
+      throw new Error(`Basket is not SOUND after recollateralizing new basket`)
+    }
+
+    console.log("Recollateralization complete!")
 
     await runChecks2_1_0(hre, params.rtoken, params.governor)
   })
