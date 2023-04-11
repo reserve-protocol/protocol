@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity 0.6.12;
+pragma solidity 0.8.4;
 pragma experimental ABIEncoderV2;
 
-import { IERC20 } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
-import { ILendingPool } from "@aave/protocol-v2/contracts/interfaces/ILendingPool.sol";
-import { IAaveIncentivesController } from "./IAaveIncentivesController.sol";
+import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import { ILendPool } from "./ILendPool.sol";
+import { IIncentivesController } from "./IIncentivesController.sol";
 
 interface IStaticATokenLM is IERC20 {
     struct SignatureParams {
@@ -229,9 +229,9 @@ interface IStaticATokenLM is IERC20 {
 
     function getLastRewardBlock() external view returns (uint256);
 
-    function LENDING_POOL() external view returns (ILendingPool);
+    function LEND_POOL() external view returns (ILendPool);
 
-    function INCENTIVES_CONTROLLER() external view returns (IAaveIncentivesController);
+    function INCENTIVES_CONTROLLER() external view returns (IIncentivesController);
 
     function ATOKEN() external view returns (IERC20);
 
@@ -241,5 +241,5 @@ interface IStaticATokenLM is IERC20 {
 
     function UNDERLYING_ASSET_ADDRESS() external view returns (address);
 
-    function getIncentivesController() external view returns (IAaveIncentivesController);
+    function getIncentivesController() external view returns (IIncentivesController);
 }
