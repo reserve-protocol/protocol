@@ -1,36 +1,36 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity 0.6.12;
+pragma solidity 0.8.4;
 pragma experimental ABIEncoderV2;
 
-import { ILendingPool } from "@aave/protocol-v2/contracts/interfaces/ILendingPool.sol";
-import { IERC20 } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
+import { ILendPool } from "./ILendPool.sol";
+import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-import { IERC20Detailed } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20Detailed.sol";
-import { IAToken } from "./IAToken.sol";
-import { IStaticATokenLM } from "./IStaticATokenLM.sol";
-import { IAaveIncentivesController } from "./IAaveIncentivesController.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
+import { IBToken } from "./IBToken.sol";
+import { IStaticBTokenLM } from "./IStaticBTokenLM.sol";
+import { IIncentivesController } from "./IIncentivesController.sol";
 
-import { StaticATokenErrors } from "./StaticATokenErrors.sol";
+import { StaticBTokenErrors } from "./StaticBTokenErrors.sol";
 
 import { ERC20 } from "./ERC20.sol";
 import { ReentrancyGuard } from "./ReentrancyGuard.sol";
 
-import { SafeERC20 } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeERC20.sol";
-import { WadRayMath } from "@aave/protocol-v2/contracts/protocol/libraries/math/WadRayMath.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { WadRayMath } from "./WadRayMath.sol";
 import { RayMathNoRounding } from "./RayMathNoRounding.sol";
-import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeMath.sol";
+import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
- * @title StaticATokenLM
+ * @title StaticBTokenLM
  * @notice Wrapper token that allows to deposit tokens on the Aave protocol and receive
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
  * The token support claiming liquidity mining rewards from the Aave system.
  * @author Aave
  **/
-contract StaticATokenLM is
+contract StaticBTokenLM is
     ReentrancyGuard,
     ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"),
-    IStaticATokenLM
+    IStaticBTokenLM
 {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -57,8 +57,8 @@ contract StaticATokenLM is
 
     uint256 public constant STATIC_ATOKEN_LM_REVISION = 0x1;
 
-    ILendingPool public override LENDING_POOL;
-    IAaveIncentivesController public override INCENTIVES_CONTROLLER;
+    ILendPool public override LEND_POOL;
+    IIncentivesController public override INCENTIVES_CONTROLLER;
     IERC20 public override ATOKEN;
     IERC20 public override ASSET;
     IERC20 public override REWARD_TOKEN;
@@ -76,20 +76,20 @@ contract StaticATokenLM is
     mapping(address => uint256) private _unclaimedRewards;
 
     constructor(
-        ILendingPool pool,
+        ILendPool pool,
         address aToken,
         string memory staticATokenName,
         string memory staticATokenSymbol
     ) public {
-        LENDING_POOL = pool;
+        LEND_POOL = pool;
         ATOKEN = IERC20(aToken);
 
         _name = staticATokenName;
         _symbol = staticATokenSymbol;
-        _setupDecimals(IERC20Detailed(aToken).decimals());
+        _setupDecimals(IERC20Metadata(aToken).decimals());
 
-        try IAToken(aToken).getIncentivesController() returns (
-            IAaveIncentivesController incentivesController
+        try IBToken(aToken).getIncentivesController() returns (
+            IIncentivesController incentivesController
         ) {
             if (address(incentivesController) != address(0)) {
                 INCENTIVES_CONTROLLER = incentivesController;
@@ -97,11 +97,11 @@ contract StaticATokenLM is
             }
         } catch {}
 
-        ASSET = IERC20(IAToken(aToken).UNDERLYING_ASSET_ADDRESS());
+        ASSET = IERC20(IBToken(aToken).UNDERLYING_ASSET_ADDRESS());
         ASSET.safeApprove(address(pool), type(uint256).max);
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function deposit(
         address recipient,
         uint256 amount,
@@ -111,7 +111,7 @@ contract StaticATokenLM is
         return _deposit(msg.sender, recipient, amount, referralCode, fromUnderlying);
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function withdraw(
         address recipient,
         uint256 amount,
@@ -120,7 +120,7 @@ contract StaticATokenLM is
         return _withdraw(msg.sender, recipient, amount, 0, toUnderlying);
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function withdrawDynamicAmount(
         address recipient,
         uint256 amount,
@@ -129,7 +129,7 @@ contract StaticATokenLM is
         return _withdraw(msg.sender, recipient, 0, amount, toUnderlying);
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function permit(
         address owner,
         address spender,
@@ -139,9 +139,9 @@ contract StaticATokenLM is
         bytes32 r,
         bytes32 s
     ) external override {
-        require(owner != address(0), StaticATokenErrors.INVALID_OWNER);
+        require(owner != address(0), StaticBTokenErrors.INVALID_OWNER);
         //solium-disable-next-line
-        require(block.timestamp <= deadline, StaticATokenErrors.INVALID_EXPIRATION);
+        require(block.timestamp <= deadline, StaticBTokenErrors.INVALID_EXPIRATION);
         uint256 currentValidNonce = _nonces[owner];
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -152,12 +152,12 @@ contract StaticATokenLM is
                 )
             )
         );
-        require(owner == ecrecover(digest, v, r, s), StaticATokenErrors.INVALID_SIGNATURE);
+        require(owner == ecrecover(digest, v, r, s), StaticBTokenErrors.INVALID_SIGNATURE);
         _nonces[owner] = currentValidNonce.add(1);
         _approve(owner, spender, value);
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function metaDeposit(
         address depositor,
         address recipient,
@@ -167,9 +167,9 @@ contract StaticATokenLM is
         uint256 deadline,
         SignatureParams calldata sigParams
     ) external override nonReentrant returns (uint256) {
-        require(depositor != address(0), StaticATokenErrors.INVALID_DEPOSITOR);
+        require(depositor != address(0), StaticBTokenErrors.INVALID_DEPOSITOR);
         //solium-disable-next-line
-        require(block.timestamp <= deadline, StaticATokenErrors.INVALID_EXPIRATION);
+        require(block.timestamp <= deadline, StaticBTokenErrors.INVALID_EXPIRATION);
         uint256 currentValidNonce = _nonces[depositor];
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -191,13 +191,13 @@ contract StaticATokenLM is
         );
         require(
             depositor == ecrecover(digest, sigParams.v, sigParams.r, sigParams.s),
-            StaticATokenErrors.INVALID_SIGNATURE
+            StaticBTokenErrors.INVALID_SIGNATURE
         );
         _nonces[depositor] = currentValidNonce.add(1);
         return _deposit(depositor, recipient, value, referralCode, fromUnderlying);
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function metaWithdraw(
         address owner,
         address recipient,
@@ -207,9 +207,9 @@ contract StaticATokenLM is
         uint256 deadline,
         SignatureParams calldata sigParams
     ) external override nonReentrant returns (uint256, uint256) {
-        require(owner != address(0), StaticATokenErrors.INVALID_OWNER);
+        require(owner != address(0), StaticBTokenErrors.INVALID_OWNER);
         //solium-disable-next-line
-        require(block.timestamp <= deadline, StaticATokenErrors.INVALID_EXPIRATION);
+        require(block.timestamp <= deadline, StaticBTokenErrors.INVALID_EXPIRATION);
         uint256 currentValidNonce = _nonces[owner];
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -232,33 +232,33 @@ contract StaticATokenLM is
 
         require(
             owner == ecrecover(digest, sigParams.v, sigParams.r, sigParams.s),
-            StaticATokenErrors.INVALID_SIGNATURE
+            StaticBTokenErrors.INVALID_SIGNATURE
         );
         _nonces[owner] = currentValidNonce.add(1);
         return _withdraw(owner, recipient, staticAmount, dynamicAmount, toUnderlying);
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function dynamicBalanceOf(address account) external view override returns (uint256) {
         return _staticToDynamicAmount(balanceOf(account), rate());
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function staticToDynamicAmount(uint256 amount) external view override returns (uint256) {
         return _staticToDynamicAmount(amount, rate());
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function dynamicToStaticAmount(uint256 amount) external view override returns (uint256) {
         return _dynamicToStaticAmount(amount, rate());
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function rate() public view override returns (uint256) {
-        return LENDING_POOL.getReserveNormalizedIncome(address(ASSET));
+        return LEND_POOL.getReserveNormalizedIncome(address(ASSET));
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function getDomainSeparator() public view override returns (bytes32) {
         uint256 chainId;
         assembly {
@@ -291,12 +291,12 @@ contract StaticATokenLM is
         uint16 referralCode,
         bool fromUnderlying
     ) internal returns (uint256) {
-        require(recipient != address(0), StaticATokenErrors.INVALID_RECIPIENT);
+        require(recipient != address(0), StaticBTokenErrors.INVALID_RECIPIENT);
         _updateRewards();
 
         if (fromUnderlying) {
             ASSET.safeTransferFrom(depositor, address(this), amount);
-            LENDING_POOL.deposit(address(ASSET), amount, address(this), referralCode);
+            LEND_POOL.deposit(address(ASSET), amount, address(this), referralCode);
         } else {
             ATOKEN.safeTransferFrom(depositor, address(this), amount);
         }
@@ -314,10 +314,10 @@ contract StaticATokenLM is
         uint256 dynamicAmount,
         bool toUnderlying
     ) internal returns (uint256, uint256) {
-        require(recipient != address(0), StaticATokenErrors.INVALID_RECIPIENT);
+        require(recipient != address(0), StaticBTokenErrors.INVALID_RECIPIENT);
         require(
             staticAmount == 0 || dynamicAmount == 0,
-            StaticATokenErrors.ONLY_ONE_AMOUNT_FORMAT_ALLOWED
+            StaticBTokenErrors.ONLY_ONE_AMOUNT_FORMAT_ALLOWED
         );
         _updateRewards();
 
@@ -341,7 +341,7 @@ contract StaticATokenLM is
         _burn(owner, amountToBurn);
 
         if (toUnderlying) {
-            uint256 amt = LENDING_POOL.withdraw(address(ASSET), amountToWithdraw, recipient);
+            uint256 amt = LEND_POOL.withdraw(address(ASSET), amountToWithdraw, recipient);
             assert(amt == amountToWithdraw);
         } else {
             ATOKEN.safeTransfer(recipient, amountToWithdraw);
@@ -432,7 +432,7 @@ contract StaticATokenLM is
         _lifetimeRewardsClaimed = lifetimeRewards;
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function collectAndUpdateRewards() external override nonReentrant {
         _collectAndUpdateRewards();
     }
@@ -476,7 +476,7 @@ contract StaticATokenLM is
 
         require(
             msg.sender == onBehalfOf || msg.sender == INCENTIVES_CONTROLLER.getClaimer(onBehalfOf),
-            StaticATokenErrors.INVALID_CLAIMER
+            StaticBTokenErrors.INVALID_CLAIMER
         );
         _claimRewardsOnBehalf(onBehalfOf, receiver, forceUpdate);
     }
@@ -573,7 +573,7 @@ contract StaticATokenLM is
         return reward.rayToWadNoRounding();
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function getTotalClaimableRewards() external view override returns (uint256) {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return 0;
@@ -585,12 +585,12 @@ contract StaticATokenLM is
         return REWARD_TOKEN.balanceOf(address(this)).add(freshRewards);
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function getClaimableRewards(address user) external view override returns (uint256) {
         return _getClaimableRewards(user, balanceOf(user), true);
     }
 
-    ///@inheritdoc IStaticATokenLM
+    ///@inheritdoc IStaticBTokenLM
     function getUnclaimedRewards(address user) external view override returns (uint256) {
         return _unclaimedRewards[user].rayToWadNoRounding();
     }
@@ -611,7 +611,7 @@ contract StaticATokenLM is
         return _lastRewardBlock;
     }
 
-    function getIncentivesController() external view override returns (IAaveIncentivesController) {
+    function getIncentivesController() external view override returns (IIncentivesController) {
         return INCENTIVES_CONTROLLER;
     }
 

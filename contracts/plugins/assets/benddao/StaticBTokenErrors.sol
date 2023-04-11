@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity 0.6.12;
+pragma solidity 0.8.4;
 
-library StaticATokenErrors {
+library StaticBTokenErrors {
     string public constant INVALID_OWNER = "1";
     string public constant INVALID_EXPIRATION = "2";
     string public constant INVALID_SIGNATURE = "3";
