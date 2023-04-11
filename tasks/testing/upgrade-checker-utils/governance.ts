@@ -1,8 +1,9 @@
 import { ProposalState } from "#/common/constants"
+import { bn } from "#/common/numbers"
 import { whileImpersonating } from "#/utils/impersonation"
 import { Delegate, Proposal, getDelegates, getProposalDetails } from "#/utils/subgraph"
 import { advanceBlocks, advanceTime } from "#/utils/time"
-import { BigNumber } from "ethers"
+import { BigNumber, PopulatedTransaction } from "ethers"
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 
 export const passAndExecuteProposal = async (
@@ -151,71 +152,42 @@ export const stakeAndDelegateRsr = async (
   })
 }
 
-export const proposeUpgrade = async (hre: HardhatRuntimeEnvironment, rTokenAddress: string, governorAddress: string): Promise<Proposal> => {
+export const buildProposal = (txs: Array<PopulatedTransaction>, description: string): Proposal => {
+  const targets = txs.map((tx: PopulatedTransaction) => tx.to!)
+  const values = txs.map((tx: PopulatedTransaction) => bn(0))
+  const calldatas = txs.map((tx: PopulatedTransaction) => tx.data!)
+  return {
+    targets,
+    values,
+    calldatas,
+    description
+  }
+}
+
+export type ProposalBuilder = (hre: HardhatRuntimeEnvironment, rTokenAddress: string, governorAddress: string) => Promise<Proposal>
+
+export const proposeUpgrade = async (
+  hre: HardhatRuntimeEnvironment,
+  rTokenAddress: string,
+  governorAddress: string,
+  proposalBuilder: ProposalBuilder
+): Promise<Proposal> => {
   const [tester] = await hre.ethers.getSigners()
 
   await hre.run("give-rsr", {address: tester.address})
   await stakeAndDelegateRsr(hre, rTokenAddress, governorAddress, tester.address)
 
-  const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
-  const main = await hre.ethers.getContractAt('IMain', await rToken.main())
-  const broker = await hre.ethers.getContractAt(
-    'BrokerP1',
-    await main.broker()
-  )
-  const stRSR = await hre.ethers.getContractAt(
-    'StRSRP1Votes',
-    await main.stRSR()
-  )
-  const basketHandler = await hre.ethers.getContractAt(
-    'BasketHandlerP1',
-    await main.basketHandler()
-  )
-
-  const votes = await stRSR.getVotes(tester.address)
-  console.log('votes', votes)
-
-  const targets = [
-    broker.address,
-    stRSR.address,
-    basketHandler.address,
-    rToken.address,
-    broker.address
-  ]
-
-  const values = [
-    bn(0),
-    bn(0),
-    bn(0),
-    bn(0),
-    bn(0)
-  ]
-
-  const calldatas = [
-    (await broker.populateTransaction.upgradeTo("0x89209a52d085D975b14555F3e828F43fb7EaF3B7")).data!,
-    (await stRSR.populateTransaction.upgradeTo("0xfDa8C62d86E426D5fB653B6c44a455Bb657b693f")).data!,
-    (await basketHandler.populateTransaction.upgradeTo("0x5c13b3b6f40aD4bF7aa4793F844BA24E85482030")).data!,
-    (await rToken.populateTransaction.upgradeTo("0x5643D5AC6b79ae8467Cf2F416da6D465d8e7D9C1")).data!,
-    (await broker.populateTransaction.setTradeImplementation("0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439")).data!
-  ]
-
-  console.log('calldatas', calldatas)
-
-  const description = "release 2.1.0 test"
-
+  const proposal = await proposalBuilder(hre, rTokenAddress, governorAddress)
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
-
-  const call = await governor.populateTransaction.propose(targets, values, calldatas, description)
-
-  const r = await governor.propose(targets, values, calldatas, description)
+  const r = await governor.propose(
+    proposal.targets,
+    proposal.values,
+    proposal.calldatas,
+    proposal.description
+  )
   const resp = await r.wait()
 
   console.log(`proposed: ${resp.events![0].args!.proposalId}`)
-  return {
-    targets,
-    values,
-    calldatas,
-    description,
-    proposalId: resp.events![0].args!.proposalId
-  }
+
+  return { ...proposal, proposalId: resp.events![0].args!.proposalId}
 }

@@ -12,7 +12,8 @@ import { pushOraclesForward } from './upgrade-checker-utils/oracles'
 import { redeemRTokens } from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
-import runChecks2_1_0 from './upgrade-checker-utils/upgrades/runChecks-2_1_0'
+import { runTrade } from './upgrade-checker-utils/trades'
+import runChecks2_1_0, { proposal_2_1_0 } from './upgrade-checker-utils/upgrades/2_1_0'
 import { passAndExecuteProposal, proposeUpgrade, stakeAndDelegateRsr } from './upgrade-checker-utils/governance'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { getLatestBlockNumber } from '#/utils/time'
@@ -35,7 +36,6 @@ import { Proposal } from '#/utils/subgraph'
       - dynamically run and complete necessary auctions to realize revenue
     - generic basket switching (8 pts)
       - not sure if possible if there is no backup basket
-    - update oracles whenever time progresses to make sure collaterals stay sound (5 pts)
 
   21-34 more points of work to make this more generic
 */
@@ -65,12 +65,13 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     console.log(`starting at block ${await getLatestBlockNumber(hre)}`)
 
-    const proposal = await proposeUpgrade(hre, params.rtoken, params.governor)
+    const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, proposal_2_1_0)
 
     // 1. Approve and execute the govnerance proposal
     await passAndExecuteProposal(hre, params.rtoken, params.governor, proposal.proposalId!, proposal)
     // await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposal)
-/*
+
+    /*
     // 2. Run various checks
     const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
     const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
@@ -181,5 +182,5 @@ task('propose', 'propose a gov action')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .setAction(async (params, hre) => {
-    await proposeUpgrade(hre, params.rtoken, params.governor)
+    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_2_1_0)
   })
