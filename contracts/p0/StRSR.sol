@@ -218,6 +218,50 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         main.rsr().safeTransfer(account, total);
     }
 
+    function cancelUnstake(uint256 endId) external notPausedOrFrozen {
+        address account = _msgSender();
+
+        // Call state keepers
+        main.poke();
+
+        IBasketHandler bh = main.basketHandler();
+        require(bh.fullyCollateralized(), "RToken uncollateralized");
+        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
+
+        Withdrawal[] storage queue = withdrawals[account];
+        if (endId == 0) return;
+        require(endId <= queue.length, "index out-of-bounds");
+        // require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
+
+        // Skip executed withdrawals - Both amounts should be 0
+        uint256 start = 0;
+        while (start < endId && queue[start].rsrAmount == 0 && queue[start].stakeAmount == 0)
+            start++;
+
+        // Accumulate and zero executable withdrawals
+        uint256 total = 0;
+        uint256 i = start;
+        for (; i < endId; i++) {
+            total += queue[i].rsrAmount;
+            queue[i].rsrAmount = 0;
+            queue[i].stakeAmount = 0;
+        }
+
+        // Execute accumulated withdrawals
+        emit UnstakingCancelled(start, i, era, account, total);
+
+        uint256 stakeAmount = total;
+        if (totalStaked > 0) stakeAmount = (total * totalStaked) / rsrBacking;
+
+        // Create stRSR balance
+        if (balances[account] == 0) accounts.add(account);
+        balances[account] += stakeAmount;
+        totalStaked += stakeAmount;
+
+        // Move deposited RSR to backing
+        rsrBacking += total;
+    }
+
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
     function endIdForWithdraw(address account) external view returns (uint256) {
         Withdrawal[] storage queue = withdrawals[account];

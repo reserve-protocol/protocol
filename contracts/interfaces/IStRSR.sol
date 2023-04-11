@@ -65,6 +65,23 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
         uint256 rsrAmount
     );
 
+    /// Emitted when RSR unstaking is cancelled
+    /// @param firstId The beginning of the range of draft IDs withdrawn in this transaction
+    /// @param endId The end of range of draft IDs withdrawn in this transaction
+    ///   (ID i was withdrawn if firstId <= i < endId)
+    /// @param draftEra The era of the draft.
+    ///   The triple (staker, draftEra, id) is a unique ID among drafts
+    /// @param staker The address of the unstaker
+
+    /// @param rsrAmount {qRSR} How much RSR this unstaking was worth
+    event UnstakingCancelled(
+        uint256 indexed firstId,
+        uint256 indexed endId,
+        uint256 draftEra,
+        address indexed staker,
+        uint256 rsrAmount
+    );
+
     /// Emitted whenever the exchange rate changes
     event ExchangeRateSet(uint192 indexed oldVal, uint192 indexed newVal);
 
@@ -106,6 +123,10 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// Complete delayed unstaking for the account, up to (but not including!) `endId`
     /// @custom:interaction
     function withdraw(address account, uint256 endId) external;
+
+    /// Cancel unstaking for the account, up to (but not including!) `endId`
+    /// @custom:interaction
+    function cancelUnstake(uint256 endId) external;
 
     /// Seize RSR, only callable by main.backingManager()
     /// @custom:protected
