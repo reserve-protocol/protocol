@@ -140,10 +140,15 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // and everything except redemption should be paused.
     bool private disabled;
 
+    // === Function-local transitory vars ===
+
     // These are effectively local variables of _switchBasket.
     // Nothing should use their values from previous transactions.
     EnumerableSet.Bytes32Set private _targetNames;
     Basket private _newBasket; // Always empty
+
+    // === Warmup Period ===
+    // Added in 3.0.0
 
     // Warmup Period
     uint48 public warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
@@ -152,6 +157,20 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // used to enforce warmup period, after regaining SOUND
     uint48 private lastStatusTimestamp;
     CollateralStatus private lastStatus;
+
+    // === Historical basket nonces ===
+    // Added in 3.0.0
+
+    // Nonce of the first reference basket from the current history
+    // A new historical record begins whenever the prime basket is changed
+    // There can be 0 to any number of reference baskets from the current history
+    uint48 private historicalNonce; // {nonce}
+    // TODO double-check historicalNonce fits in the Warmup Period slot
+
+    // The historical baskets by basket nonce; includes current basket
+    mapping(uint48 => Basket) private historicalBaskets;
+
+    // ===
 
     // ==== Invariants ====
     // basket is a valid Basket:
@@ -275,6 +294,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             config.targetNames[erc20s[i]] = names[i];
         }
 
+        historicalNonce = nonce + 1; // set historicalNonce to the next nonce
         emit PrimeBasketSet(erc20s, targetAmts, names);
     }
 
@@ -449,6 +469,86 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
+    /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
+    /// Requires `portions` sums to FIX_ONE
+    /// @param basketNonces An array of basket nonces to do redemption from
+    /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
+    /// @param amount {BU}
+    /// @return erc20s The backing collateral erc20s
+    /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
+    // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
+    function quoteHistoricalRedemption(
+        uint48[] memory basketNonces,
+        uint192[] memory portions,
+        uint192 amount
+    ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
+        require(basketNonces.length == portions.length, "portions does not mirror basketNonces");
+        uint256 lenAll = assetRegistry.size();
+        IERC20[] memory erc20sAll = new IERC20[](lenAll);
+        uint192[] memory refAmtsAll = new uint192[](lenAll);
+
+        uint256 len; // length of return arrays
+
+        // Calculate the linear combination basket
+        for (uint48 i = 0; i < basketNonces.length; ++i) {
+            require(
+                basketNonces[i] >= historicalNonce && basketNonces[i] <= nonce,
+                "invalid basketNonce"
+            ); // will always revert directly after setPrimeBasket()
+            Basket storage b = historicalBaskets[i];
+
+            // Add-in refAmts contribution from historical basket
+            for (uint256 j = 0; j < b.erc20s.length; ++j) {
+                IERC20 erc20 = b.erc20s[j];
+                if (address(erc20) == address(0)) continue;
+
+                // Ugly search through erc20sAll
+                uint256 erc20Index = type(uint256).max;
+                for (uint256 k = 0; k < len; ++k) {
+                    if (erc20 == erc20sAll[k]) {
+                        erc20Index = k;
+                        continue;
+                    }
+                }
+
+                // Add new ERC20 entry if not found
+                if (erc20Index == type(uint256).max) {
+                    erc20sAll[len] = erc20;
+
+                    // {ref} = {1} * {ref}
+                    refAmtsAll[len] = portions[j].mul(b.refAmts[erc20], FLOOR);
+                    ++len;
+                } else {
+                    // {ref} = {1} * {ref}
+                    refAmtsAll[erc20Index] += portions[j].mul(b.refAmts[erc20], FLOOR);
+                }
+            }
+        }
+
+        erc20s = new address[](len);
+        quantities = new uint256[](len);
+
+        // Calculate quantities
+        for (uint256 i = 0; i < len; ++i) {
+            IERC20Metadata erc20 = IERC20Metadata(address(erc20sAll[i]));
+            erc20s[i] = address(erc20);
+            IAsset asset = assetRegistry.toAsset(erc20);
+            if (!asset.isCollateral()) continue; // skip token if no longer registered
+
+            // prevent div-by-zero
+            uint192 refPerTok = ICollateral(address(asset)).refPerTok();
+            if (refPerTok == 0) continue; // quantities[i] = 0;
+
+            // {tok} = {BU} * {ref/BU} / {ref/tok}
+            quantities[i] = amount.mulDiv(refAmtsAll[i], refPerTok, FLOOR).shiftl_toUint(
+                int8(erc20.decimals()),
+                FLOOR
+            );
+            // slightly more penalizing than its sibling calculation that uses through _quantity()
+            // because does not intermediately CEIL as part of the division
+        }
+    }
+
     /// @return baskets {BU}
     ///          .top The number of partial basket units: e.g max(coll.map((c) => c.balAsBUs())
     ///          .bottom The number of whole basket units held by the account
@@ -542,8 +642,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
        ==== Usual specs ====
 
        Then, finally, given all that, the effects of _switchBasket() are:
-         basket' = _newBasket, as defined above
          nonce' = nonce + 1
+         basket' = _newBasket, as defined above
          timestamp' = now
     */
 
@@ -554,6 +654,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // _targetNames := {}
         while (_targetNames.length() > 0) _targetNames.remove(_targetNames.at(0));
+
         // _newBasket := {}
         _newBasket.empty();
 
@@ -665,8 +766,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // Update the basket if it's not disabled
         if (!disabled) {
-            basket.setFrom(_newBasket);
             nonce += 1;
+            basket.setFrom(_newBasket);
+            historicalBaskets[nonce].setFrom(_newBasket);
             timestamp = uint48(block.timestamp);
         }
 
@@ -768,5 +870,5 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[41] private __gap;
+    uint256[40] private __gap;
 }

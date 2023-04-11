@@ -185,6 +185,40 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Redeem RToken for basket collateral to a particular recipient
+    /// @param recipient The address to receive the backing collateral tokens
+    /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
+    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
+    /// @custom:interaction
+    function redeemTo(
+        address recipient,
+        uint256 amount,
+        uint48 basketNonce
+    ) public {
+        uint48[] memory basketNonces = new uint48[](1);
+        basketNonces[0] = basketNonce;
+        uint192[] memory portions = new uint192[](1);
+        portions[0] = FIX_ONE;
+
+        _redeemTo(recipient, amount, basketNonces, portions);
+    }
+
+    /// Redeem RToken for a linear combination of historical baskets, to a particular recipient
+    /// @param recipient The address to receive the backing collateral tokens
+    /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
+    /// @param basketNonces An array of basket nonces to do redemption from
+    /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
+    /// @custom:interaction
+    function historicalRedeemTo(
+        address recipient,
+        uint256 amount,
+        uint48[] memory basketNonces,
+        uint192[] memory portions
+    ) external {
+        _redeemTo(recipient, amount, basketNonces, portions);
+    }
+
+    /// Redeem RToken for basket collateral to a particular recipient
+    /// Handles both historical and present-basket redemptions
     // checks:
     //   amount > 0
     //   amount <= balanceOf(caller)
@@ -206,13 +240,15 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
+    /// @param basketNonces An array of basket nonces to do redemption from
+    /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
     /// @custom:interaction
-    function redeemTo(
+    function _redeemTo(
         address recipient,
         uint256 amount,
-        uint48 basketNonce
-    ) public notFrozen exchangeRateIsValidAfter {
+        uint48[] memory basketNonces,
+        uint192[] memory portions
+    ) internal notFrozen exchangeRateIsValidAfter {
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -238,11 +274,28 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, supply); // FLOOR
         emit Redemption(redeemer, recipient, amount, basketsRedeemed);
 
-        require(basketHandler.nonce() == basketNonce, "non-current basket nonce");
-        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(
-            basketsRedeemed,
-            FLOOR
-        );
+        // Confirm portions sums to FIX_ONE
+        uint256 portionsSum;
+        for (uint256 i = 0; i < portions.length; ++i) portionsSum += portions[i];
+        require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
+
+        address[] memory erc20s;
+        uint256[] memory amounts;
+        if (basketNonces.length == 1 && basketHandler.nonce() == basketNonces[0]) {
+            // Current-basket redemption
+
+            require(portions.length == 1, "portions does not mirror basketNonces");
+            (erc20s, amounts) = basketHandler.quote(basketsRedeemed, FLOOR);
+        } else {
+            // Historical basket redemption
+
+            // BasketHandler will handle the require that portions sum to FIX_ZERO
+            (erc20s, amounts) = basketHandler.quoteHistoricalRedemption(
+                basketNonces,
+                portions,
+                basketsRedeemed
+            );
+        }
 
         // ==== Prorate redemption ====
         // i.e, set amounts = min(amounts, balances * amount / totalSupply)
