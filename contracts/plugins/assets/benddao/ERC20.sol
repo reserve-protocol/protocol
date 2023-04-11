@@ -2,11 +2,10 @@
 
 pragma solidity ^0.6.0;
 
-import "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/Context.sol";
-import "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
-import "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeMath.sol";
-import "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/Address.sol";
-
+import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 /**
  * @dev Implementation of the {IERC20} interface.
  *
