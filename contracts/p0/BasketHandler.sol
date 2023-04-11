@@ -348,48 +348,13 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 ? reg.toAsset(basket.erc20s[i]).lotPrice()
                 : reg.toAsset(basket.erc20s[i]).price();
 
-            low256 += safeMul(qty, lowP, RoundingMode.FLOOR);
-            high256 += safeMul(qty, highP, RoundingMode.CEIL);
+            low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
+            high256 += qty.safeMul(highP, RoundingMode.CEIL);
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
         low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
         high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
-    }
-
-    /// Multiply two fixes, rounding up to FIX_MAX and down to 0
-    /// @param a First param to multiply
-    /// @param b Second param to multiply
-    function safeMul(
-        uint192 a,
-        uint192 b,
-        RoundingMode rounding
-    ) internal pure returns (uint192) {
-        // untestable:
-        //      a will never = 0 here because of the check in _price()
-        if (a == 0 || b == 0) return 0;
-        // untestable:
-        //      a = FIX_MAX iff b = 0
-        if (a == FIX_MAX || b == FIX_MAX) return FIX_MAX;
-
-        // return FIX_MAX instead of throwing overflow errors.
-        unchecked {
-            // p and mul *are* Fix values, so have 18 decimals (D18)
-            uint256 rawDelta = uint256(b) * a; // {D36} = {D18} * {D18}
-            // if we overflowed, then return FIX_MAX
-            if (rawDelta / b != a) return FIX_MAX;
-            uint256 shiftDelta = rawDelta;
-
-            // add in rounding
-            if (rounding == RoundingMode.ROUND) shiftDelta += (FIX_ONE / 2);
-            else if (rounding == RoundingMode.CEIL) shiftDelta += FIX_ONE - 1;
-
-            if (shiftDelta < rawDelta) return FIX_MAX;
-            if (shiftDelta / FIX_ONE > FIX_MAX) return FIX_MAX;
-
-            // return _div(rawDelta, FIX_ONE, rounding)
-            return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
-        }
     }
 
     /// Return the current issuance/redemption value of `amount` BUs
@@ -409,7 +374,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             erc20s[i] = address(basket.erc20s[i]);
 
             // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            quantities[i] = safeMul(quantity(basket.erc20s[i]), amount, rounding).shiftl_toUint(
+            quantities[i] = quantity(basket.erc20s[i]).safeMul(amount, rounding).shiftl_toUint(
                 int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
                 rounding
             );
