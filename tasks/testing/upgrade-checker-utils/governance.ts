@@ -13,6 +13,7 @@ export const passAndExecuteProposal = async (
   proposalId: string,
   proposal?: Proposal
 ) => {
+  console.log(`\nPassing & executing proposal ${proposalId}...`)
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
 
   // Check proposal state
@@ -172,6 +173,7 @@ export const proposeUpgrade = async (
   governorAddress: string,
   proposalBuilder: ProposalBuilder
 ): Promise<Proposal> => {
+  console.log(`\nGenerating and proposing proposal...`)
   const [tester] = await hre.ethers.getSigners()
 
   await hre.run("give-rsr", {address: tester.address})

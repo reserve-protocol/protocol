@@ -18,7 +18,7 @@ const overrideOracle = async (
 }
   
 export const pushOraclesForward = async (hre: HardhatRuntimeEnvironment, rTokenAddress: string) => {
-  console.log(`Pushing oracles forward for RToken ${rTokenAddress}...`)
+  console.log(`\nPushing oracles forward for RToken ${rTokenAddress}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const assetRegistry = await hre.ethers.getContractAt(

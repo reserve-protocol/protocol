@@ -43,33 +43,40 @@ import { Proposal } from '#/utils/subgraph'
 task('upgrade-checker', 'Mints all the tokens to an address')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
-  .addParam('proposal', 'the ID of the governance proposal')
+  .addOptionalParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params, hre) => {
     await resetFork(hre, Number(useEnv('MAINNET_BLOCK')))
     const [tester] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)
 
-    // ********** Read config **********
+    // make sure config exists
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
 
-    // if (hre.network.name != 'localhost' && hre.network.name != 'hardhat') {
-    //   throw new Error('Only run this on a local fork')
-    // }
+    // only run locally
+    if (hre.network.name != 'localhost' && hre.network.name != 'hardhat') {
+      throw new Error('Only run this on a local fork')
+    }
 
+    // make sure subgraph is configured
     if (!useEnv('SUBGRAPH_URL')) {
       throw new Error('SUBGRAPH_URL required for subgraph queries')
     }
 
     console.log(`starting at block ${await getLatestBlockNumber(hre)}`)
 
-    const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, proposal_2_1_0)
-
     // 1. Approve and execute the govnerance proposal
-    await passAndExecuteProposal(hre, params.rtoken, params.governor, proposal.proposalId!, proposal)
-    // await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposal)
+    if (!params.proposalid) {
+      const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, proposal_2_1_0)
+      await passAndExecuteProposal(hre, params.rtoken, params.governor, proposal.proposalId!, proposal)
+    } else {
+      await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposalid)
+    }
+
+    // we pushed the chain forward, so we need to keep the rToken SOUND
+    await pushOraclesForward(hre, params.rtoken)
 
 
     // 2. Run various checks
@@ -113,9 +120,11 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     // await claimRsrRewards(hre, params.rtoken)
 
-    await pushOraclesForward(hre, params.rtoken)
 
-    /* mint
+
+    /*
+    
+      mint
 
      this is another area that needs to be made general
      for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
@@ -167,7 +176,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const cUsdcBal = await cUsdc.balanceOf(tester.address)
     await cUsdc.connect(tester).approve(rToken.address, cUsdcBal)
 
-    console.log(`issuing  ${formatEther(issueAmount)} RTokens...`)
+    console.log(`\nIssuing  ${formatEther(issueAmount)} RTokens...`)
     await rToken.connect(tester).issue(issueAmount)
     const postIssueBal = await rToken.balanceOf(tester.address)
     if (!postIssueBal.eq(issueAmount)) {
@@ -182,13 +191,10 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     console.log('successfully minted RTokens')
 
 
-    
 
-    // redeem
     const redeemAmount = fp('5e4')
     await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
 
-    // claim rewards
     await claimRsrRewards(hre, params.rtoken)
 
     // switch basket

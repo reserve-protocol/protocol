@@ -30,7 +30,7 @@ export const redeemRTokens = async (
     rTokenAddress: string,
     redeemAmount: BigNumber
   ) => {
-    console.log(`Redeeming ${formatEther(redeemAmount)}...`)
+    console.log(`\nRedeeming ${formatEther(redeemAmount)}...`)
     const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     const basketHandler = await hre.ethers.getContractAt(
