@@ -2,13 +2,13 @@
 pragma solidity 0.8.4;
 pragma experimental ABIEncoderV2;
 
-import { ILendPool } from "./ILendPool.sol";
+import { ILendPool } from "./dependencies/interfaces/ILendPool.sol";
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import { IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import { IBToken } from "./IBToken.sol";
-import { IStaticBTokenLM } from "./IStaticBTokenLM.sol";
-import { IIncentivesController } from "./IIncentivesController.sol";
+import { IBToken } from "./dependencies/interfaces/IBToken.sol";
+import { IStaticBTokenLM } from "./dependencies/interfaces/IStaticBTokenLM.sol";
+import { IIncentivesController } from "./dependencies/interfaces/IIncentivesController.sol";
 
 import { StaticBTokenErrors } from "./StaticBTokenErrors.sol";
 
@@ -16,7 +16,7 @@ import { ERC20 } from "./ERC20.sol";
 import { ReentrancyGuard } from "./ReentrancyGuard.sol";
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { WadRayMath } from "./WadRayMath.sol";
+import { WadRayMath } from "./dependencies/libraries/WadRayMath.sol";
 import { RayMathNoRounding } from "./RayMathNoRounding.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
