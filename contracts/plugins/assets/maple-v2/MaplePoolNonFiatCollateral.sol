@@ -62,7 +62,7 @@ contract MaplePoolNonFiatCollateral is MaplePoolFiatCollateral {
         pegPrice = targetPerRef(); // 1 (FIX_ONE)
         
         if (constantTargetPerRef == false) { // bypass the oracle for {ETH/wETH}, which is constant = 1
-            chainlinkFeed.price(oracleTimeout); // {target/ref}
+            pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
         }
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}

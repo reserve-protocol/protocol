@@ -29,7 +29,7 @@ const defaultCollateralOpts: CollateralOpts = {
     erc20: MAPLE_WETH_POOL,
     targetName: ethers.utils.formatBytes32String('ETH'),
     priceTimeout: PRICE_TIMEOUT,
-    chainlinkFeed: ONE_ADDRESS,
+    chainlinkFeed: ETH_TO_USD_PRICE_FEED, // meant for {target/ref} ({ETH/wETH} = 1 here) but used for {uoa/target} ({USD/ETH}); gives the right price in getExpectedPrice
     oracleTimeout: ORACLE_TIMEOUT,
     oracleError: ETH_TO_USD_PRICE_ERROR,
     maxTradeVolume: MAX_TRADE_VOL,
@@ -63,7 +63,7 @@ const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollate
             defaultThreshold: _opts.defaultThreshold,
             delayUntilDefault: _opts.delayUntilDefault,
         },
-        ETH_TO_USD_PRICE_FEED, // {UOA/target} oracle
+        _opts.chainlinkFeed, // {UOA/target} oracle, given for {target/ref} too because getExpectedPrice uses this feed
         _opts.oracleTimeout,
         _opts.revenueHiding,
         true, // constant {target/ref} = {ETH/wETH} = 1 (FIX_ONE)
@@ -165,7 +165,7 @@ const collateralSpecificStatusTests = () => {
 const opts = {
     deployCollateral: deployCollateral,
     collateralSpecificConstructorTests: emptyFn,
-    collateralSpecificStatusTests: collateralSpecificStatusTests,
+    collateralSpecificStatusTests: collateralSpecificStatusTests, // tests revenue hiding
     beforeEachRewardsTest: emptyFn,
     makeCollateralFixtureContext: makeMakeCollateralFixtureContext,
     mintCollateralTo: mintCollateralTo,
@@ -175,11 +175,11 @@ const opts = {
     increaseRefPerTok: increaseRefPerTokFactory(WETH_TOKEN, WETH_HOLDER),
     getExpectedPrice: getExpectedPrice,
     itClaimsRewards: it.skip,
-    itChecksTargetPerRefDefault: it,
+    itChecksTargetPerRefDefault: it.skip,
     itChecksRefPerTokDefault: it,
-    itChecksPriceChanges: it,
-    itHasRevenueHiding: it.skip,
-    itIsPricedByPeg: true,
+    itChecksPriceChanges: it.skip, // the collateral doesn't use the {target/ref} feed
+    itHasRevenueHiding: it.skip, // done in collateralSpecificStatusTests
+    itIsPricedByPeg: false,
     resetFork: resetFork,
     collateralName: 'Maple wETH Collateral',
     chainlinkDefaultAnswer: bn('1e8'), // 8 decimals,

@@ -161,7 +161,7 @@ const collateralSpecificStatusTests = () => {
 const opts = {
     deployCollateral: deployCollateral,
     collateralSpecificConstructorTests: emptyFn,
-    collateralSpecificStatusTests: collateralSpecificStatusTests,
+    collateralSpecificStatusTests: collateralSpecificStatusTests, // tests revenue hiding
     beforeEachRewardsTest: emptyFn,
     makeCollateralFixtureContext: makeMakeCollateralFixtureContext,
     mintCollateralTo: mintCollateralTo,
@@ -174,7 +174,7 @@ const opts = {
     itChecksTargetPerRefDefault: it,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
-    itHasRevenueHiding: it.skip,
+    itHasRevenueHiding: it.skip, // done in collateralSpecificStatusTests
     itIsPricedByPeg: true,
     resetFork: resetFork,
     collateralName: 'Maple USDC Collateral',

@@ -6,7 +6,7 @@ import { bn, fp } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { getResetFork } from '../helpers'
 import { CollateralFixtureContext } from '../pluginTestTypes'
-import { FORK_BLOCK, REVENUE_HIDING } from './constants'
+import { FORK_BLOCK } from './constants'
 
 export const resetFork = getResetFork(FORK_BLOCK)
 
@@ -26,13 +26,11 @@ export const transferMaplePoolToken = async (holder: string, mToken: IMaplePool,
 }
 
 export const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
-    const _exposedRefPerTok = await ctx.collateral.refPerTok()
-    const _revenueShowingInv = fp('1').mul(fp('1')).div(fp('1').sub(REVENUE_HIDING))
-    const _strictRefPerTok = _exposedRefPerTok.mul(_revenueShowingInv).div(fp('1'))
+    const _refPerTok = await (ctx.tok as IMaplePool).convertToAssets(fp('1'))
     const _decimals = await ctx.chainlinkFeed.decimals()
     const _targetPerRef = await ctx.chainlinkFeed.latestRoundData()
 
-    return _targetPerRef.answer.mul(bn(10).pow(18 - _decimals)).mul(_strictRefPerTok).div(fp('1'))
+    return _targetPerRef.answer.mul(bn(10).pow(18 - _decimals)).mul(_refPerTok).div(fp('1'))
 }
 
 export const increaseTargetPerRef = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
