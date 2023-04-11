@@ -6,7 +6,7 @@ import "../../../libraries/Fixed.sol";
 import "../OracleLib.sol";
 
 /**
- * @title BendWeth Collateral
+ * @title BendWethCollateral
  * @notice Collateral plugin for BendDAO supplied ETH
  * tok = sBendWETH (Static Bend interest bearing WETH)
  * ref = WETH
@@ -16,13 +16,26 @@ import "../OracleLib.sol";
 contract BendWethCollateral is ATokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
-    constructor(CollateralConfig memory config, uint192 revenueHiding) ATokenFiatCollateral(config, revenueHiding) {}
-    
+
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        ATokenFiatCollateral(config, revenueHiding)
+    {}
+
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref} FIX_ONE
-    function tryPrice() external view virtual override returns (uint192 low, uint192 high, uint192 pegPrice) {
+    function tryPrice()
+        external
+        view
+        virtual
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
+    {
         // FIX_ONE
         pegPrice = targetPerRef();
 
