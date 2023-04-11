@@ -211,7 +211,7 @@ describe('FacadeRead contract', () => {
       let [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully collateralized and no over-collateralization
-      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(0)
 
       // Mint some RSR
@@ -224,7 +224,7 @@ describe('FacadeRead contract', () => {
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully collateralized and fully over-collateralized
-      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.be.closeTo(fp('0.5'), 10)
 
       // Stake more RSR
@@ -232,8 +232,8 @@ describe('FacadeRead contract', () => {
       await stRSR.connect(addr1).stake(stakeAmount)
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
-      expect(backing).to.be.closeTo(fp('1'), 10)
-      expect(overCollateralization).to.be.closeTo(fp('1'), 10)
+      expect(backing).to.equal(fp('1'))
+      expect(overCollateralization).to.equal(fp('1'))
 
       // Redeem all RTokens
       await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
@@ -246,6 +246,19 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.equal(0)
     })
 
+    it('Should return backingOverview backing correctly when undercollateralized', async () => {
+      const backingManager = await main.backingManager()
+      await usdc.burn(backingManager, (await usdc.balanceOf(backingManager)).div(2))
+      await basketHandler.refreshBasket()
+      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
+
+      // Check values - Fully collateralized and no over-collateralization
+      expect(backing).to.equal(fp('0.875'))
+      expect(overCollateralization).to.equal(0)
+    })
+
     it('Should return backingOverview backing correctly when an asset price is 0', async () => {
       await setOraclePrice(tokenAsset.address, bn(0))
       const [backing, overCollateralization] = await facade.callStatic.backingOverview(
@@ -253,7 +266,19 @@ describe('FacadeRead contract', () => {
       )
 
       // Check values - Fully collateralized and no over-collateralization
-      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(backing).to.equal(fp('1'))
+      expect(overCollateralization).to.equal(0)
+    })
+
+    it('Should return backingOverview backing correctly when basket collateral is UNPRICED', async () => {
+      await setOraclePrice(tokenAsset.address, MAX_UINT256.div(2).sub(1))
+      await basketHandler.refreshBasket()
+      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+        rToken.address
+      )
+
+      // Check values - Fully collateralized and no over-collateralization
+      expect(backing).to.equal(fp('1')) // since price is unknown for uoaHeldInBaskets
       expect(overCollateralization).to.equal(0)
     })
 
@@ -265,7 +290,7 @@ describe('FacadeRead contract', () => {
       )
 
       // Check values - Fully collateralized and no over-collateralization
-      expect(backing).to.be.closeTo(fp('0'), 10)
+      expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(0)
     })
 
@@ -283,7 +308,7 @@ describe('FacadeRead contract', () => {
       )
 
       // Check values - Fully collateralized and no over-collateralization
-      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(fp('0.5'))
 
       // Set price to 0
@@ -294,7 +319,7 @@ describe('FacadeRead contract', () => {
       )
 
       // Check values - Fully collateralized and no over-collateralization
-      expect(backing2).to.be.closeTo(fp('1'), 10)
+      expect(backing2).to.equal(fp('1'))
       expect(overCollateralization2).to.equal(0)
     })
 
@@ -309,14 +334,14 @@ describe('FacadeRead contract', () => {
 
       // Check values - Fully collateralized and with 50%-collateralization
       let [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
-      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(fp('0.5'))
 
       await setOraclePrice(rsrAsset.address, MAX_UINT256.div(2).sub(1))
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully collateralized and no over-collateralization
-      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(0)
     })
 
