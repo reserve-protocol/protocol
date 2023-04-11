@@ -10,13 +10,15 @@ contract MaplePoolMock is ERC20Mock {
     address internal _underlyingToken;
 
     uint192 internal _refPerTok;
+    uint8 _decimals;
 
-    constructor(string memory name, string memory symbol) ERC20Mock(name, symbol) {
+    constructor(string memory name, string memory symbol, uint8 decimals_) ERC20Mock(name, symbol) {
         _refPerTok = FIX_ONE;
+        _decimals = decimals_;
     }
 
-    function decimals() public pure override returns (uint8) {
-        return 6;
+    function decimals() public view override returns (uint8) {
+        return _decimals;
     }
 
     function convertToShares(uint256 assets_) external view returns (uint256) {

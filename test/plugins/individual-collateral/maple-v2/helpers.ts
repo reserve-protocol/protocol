@@ -47,6 +47,8 @@ export const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecre
     await ctx.chainlinkFeed.updateAnswer(_nextAnswer)
 }
 
+// {ref/tok} = totalAssets / totalSupply
+// so we directly transfer underlying assets to the pool to increase {ref/tok}
 export const increaseRefPerTokFactory = (underlying: string, holder: string) => {
     const _increaseRefPerTok = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
         const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)
@@ -59,6 +61,8 @@ export const increaseRefPerTokFactory = (underlying: string, holder: string) => 
     return _increaseRefPerTok
 }
 
+// {ref/tok} = totalAssets / totalSupply
+// so we directly transfer underlying assets from the pool to reduce {ref/tok}
 export const reduceRefPerTokFactory = (underlying: string, recipient: string) => {
     const _reduceRefPerTok = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
         const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)

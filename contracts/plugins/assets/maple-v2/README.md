@@ -51,17 +51,17 @@ The `totalAssets` take the accrued interests and past losses into account.
 
 ### Price Calculation
 
-Like any other collateral, the price is `{target/ref} * {ref/tok}`.
+Like any other collateral, the price is `{uoa/target} * {target/ref} * {ref/tok}`.
 
-And `{target/ref}` is retrieved via a Chainlink oracle:
+For the USDC pool:
 
-- [USDC to USD][chainlink-feed-usdc-to-usd] for the USDC pool
-- and a [mock wETH to ETH oracle][reserve-collateral-chainlink-mock] for the wETH
+- `{target/ref} = {USD/USDC}` is retrieved via the [USDC to USD Chainlink oracle][chainlink-feed-usdc-to-usd]
+- `{uoa/target} = 1` does not need any processing
 
-Just like the `SelfReferentialCollateral`, the wETH collateral has its `{ref}` pegged 1:1 to the `{target}`.
+While the wETH pool has:
 
-To keep the same logic / contract for both pools, the contract still uses the `chainlinkFeed` property and instantiates a mock oracle.
-This mock oracle always returns 1 (10e8 with the decimals) as price.
+- `{target/ref} = {ETH/wETH} = 1` is set on contract creation
+- `{uoa/target} = {USD/ETH}` uses the [ETH to USD Chainlink oracle][chainlink-feed-eth-to-usd]
 
 ### Conditions of Default
 
@@ -80,8 +80,6 @@ The deployment of the Maple Pool collaterals can be automated with a script.
 
 An example is given for the [Maven 11 USDC pool][reserve-collateral-usdc-deployment-script].
 
-The deployment of the wETH pool collateral depends on the choice made for the target unit / price calculation (see [the PR][reserve-collateral-pull-request]).
-
 ### Parameters
 
 For the USD pool:
@@ -94,7 +92,7 @@ struct CollateralConfig {
     IERC20Metadata erc20; // "0xd3cd37a7299B963bbc69592e5Ba933388f70dc88"
     uint192 maxTradeVolume; // 1e6 {UoA}
     uint48 oracleTimeout; // 86400 {s} (24h)
-    bytes32 targetName; // "USD"
+    bytes32 targetName; // bytes32 representation of "USD"
     uint192 defaultThreshold; // 0.05 {1}
     uint48 delayUntilDefault; // 86400 {s} (24h)
 }
@@ -106,23 +104,29 @@ For the wETH pool:
 ```solidity
 struct CollateralConfig {
     uint48 priceTimeout; // 604800 {s} (1 week)
-    AggregatorV3Interface chainlinkFeed; // "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" {ETH/USD}
-    uint192 oracleError; // 0.005 {1}
+    AggregatorV3Interface chainlinkFeed; // "0x0000000000000000000000000000000000000001" {ETH/wETH} does not require an oracle
+    uint192 oracleError; // 0.005 {1} which is actually the error for the {USD/ETH} oracle here
     IERC20Metadata erc20; // "0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3"
     uint192 maxTradeVolume; // 1e6 {UoA}
     uint48 oracleTimeout; // 3600 {s} (1h)
-    bytes32 targetName; // "USD"
+    bytes32 targetName; // bytes32 representation of  "ETH"
     uint192 defaultThreshold; // 0.15 {1}
     uint48 delayUntilDefault; // 86400 {s} (24h)
 }
-uint192 revenueHiding; // 1e-6 allowed drop, as a ratio of the refPerTok 
+AggregatorV3Interface uoaPerTargetChainlinkFeed; // "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
+uint48 uoaPerTargetOracleTimeout; // 3600 {s} (1h)
+uint192 revenueHiding; // 1e-6 allowed drop, as a ratio of the refPerTok
+bool constantTargetPerRef; // true ({target/ref} does not call an external feed)
 ```
 
 ## Implementation
 
-### Main Contract
+### Main Contracts
 
-Solidity code for the collateral plugin can be found in [`MaplePoolCollateral.sol`][reserve-collateral-main-contract].
+Solidity code for the fiat collateral plugin can be found in [`MaplePoolFiatCollateral.sol`][reserve-collateral-fiat-contract].
+This script is used for the USDC pool.
+
+The wETH pool relies on [`MaplePoolNonFiatCollateral.sol`][reserve-collateral-non-fiat-contract].
 
 ### Internal Dependencies
 
@@ -171,7 +175,7 @@ Implements the revenue hiding and the refreshing logic on top of all the common 
 The tests require more memory than the defaults allow:
 
 ```bash
-NODE_OPTIONS="--max-old-space-size=8192" yarn run hardhat test test/plugins/individual-collateral/maple-v2/MaplePoolCollateral.test.ts
+NODE_OPTIONS="--max-old-space-size=8192" yarn run hardhat test test/plugins/individual-collateral/maple-v2/MaplePoolFiatCollateral.test.ts
 ```
 
 The Hardhat option `--max-memory 8192` didn't work for me.
@@ -183,7 +187,7 @@ I had to use `NODE_OPTIONS` to pass parameters from Yarn to Node.
 
 ### List Of Unit Tests
 
-Most of the tests comes from [the collateral test suite][reserve-collateral-parent-test-script].
+Most of the tests come from [the collateral test suite][reserve-collateral-parent-test-script].
 
 The Maple contracts are plugged into this testing suite by implementing the absract factories in [this script][reserve-collateral-test-script].
 
@@ -366,7 +370,8 @@ As seen above an impairment is not an actual loss.
 
 Only the loan default leads to a diminution of the total assets as the outstanding principal is not paid back.
 
-[etherscan-usdc-oracle]: https://etherscan.io/address/0x5DC5E14be1280E747cD036c089C96744EBF064E7
+[chainlink-feed-usdc-to-usd]: https://etherscan.io/address/0x8fffffd4afb6115b954bd326cbe7b4ba576818f6
+[chainlink-feed-eth-to-usd]: https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
 [maple-app-usd-pool]: https://app.maple.finance/#/v2/lend/pool/0xd3cd37a7299b963bbc69592e5ba933388f70dc88
 [maple-app-weth-pool]: https://app.maple.finance/#/v2/lend/pool/0xfff9a1caf78b2e5b0a49355a8637ea78b43fb6c3
 [maple-code-pool-contract]: https://github.com/maple-labs/pool-v2/blob/main/contracts/Pool.sol
@@ -376,8 +381,8 @@ Only the loan default leads to a diminution of the total assets as the outstandi
 [maple-docs-exchange-rate]:  https://maplefinance.gitbook.io/maple/technical-resources/pools/accounting/pool-exchange-rates
 [maple-docs-overview]: https://maplefinance.gitbook.io/maple/technical-resources/protocol-overview
 [maple-docs-pools]: https://maplefinance.gitbook.io/maple/technical-resources/pools/pools
-[reserve-collateral-chainlink-mock]: ../../mocks/MockV3Aggregator.sol
-[reserve-collateral-main-contract]: ./MaplePoolCollateral.sol
+[reserve-collateral-fiat-contract]: ./MaplePoolFiatCollateral.sol
+[reserve-collateral-non-fiat-contract]: ./MaplePoolNonFiatCollateral.sol
 [reserve-collateral-maple-interface]: ./vendor/IMaplePool.sol
 [reserve-collateral-maple-mock]: ../../mocks/MaplePoolMock.sol
 [reserve-collateral-parent-contract]: ../AppreciatingFiatCollateral.sol
@@ -389,6 +394,6 @@ Only the loan default leads to a diminution of the total assets as the outstandi
 [reserve-collateral-plot-usdc-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-normal-operation.png
 [reserve-collateral-plot-weth-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-normal-operation.png
 [reserve-collateral-pull-request]: https://github.com/reserve-protocol/protocol/pull/757
-[reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/maple-v2/MaplePoolCollateral.test.ts
+[reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/maple-v2/MaplePoolFiatCollateral.test.ts
 [reserve-collateral-usdc-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_usdc_collateral.ts
 [reserve-collateral-weth-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_weth_collateral.ts

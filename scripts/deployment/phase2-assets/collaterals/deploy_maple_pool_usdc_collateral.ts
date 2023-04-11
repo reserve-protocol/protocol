@@ -7,7 +7,7 @@ import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
 import { getDeploymentFile, getAssetCollDeploymentFilename, IAssetCollDeployments, getDeploymentFilename, fileExists } from '../../common'
 import { priceTimeout, oracleTimeout } from '../../utils'
-import { MaplePoolCollateral } from '../../../../typechain'
+import { MaplePoolFiatCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
 async function main() {
@@ -36,11 +36,11 @@ async function main() {
 
     /********  Deploy Maple Permissionless USDC Pool Collateral (MPL-mcUSDC2)  **************************/
 
-    const MaplePoolCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-        'MaplePoolCollateral'
+    const MaplePoolFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+        'MaplePoolFiatCollateral'
     )
 
-    const collateral = <MaplePoolCollateral>await MaplePoolCollateralFactory.connect(
+    const collateral = <MaplePoolFiatCollateral>await MaplePoolFiatCollateralFactory.connect(
         deployer
     ).deploy(
         {
@@ -62,7 +62,7 @@ async function main() {
 
     console.log(`Deployed Maple MPL-mcUSDC2 to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
-    assetCollDeployments.collateral.wstETH = collateral.address
+    assetCollDeployments.collateral.MPLmcUSDC2 = collateral.address
     deployedCollateral.push(collateral.address.toString())
 
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

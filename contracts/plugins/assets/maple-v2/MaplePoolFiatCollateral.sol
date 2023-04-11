@@ -7,22 +7,22 @@ import { IRewardable, Asset, CollateralConfig, AppreciatingFiatCollateral } from
 import { IMaplePool } from "contracts/plugins/assets/maple-v2/vendor/IMaplePool.sol";
 
 /**
- * @title MaplePoolCollateral
+ * @title MaplePoolFiatCollateral
  * @notice Collateral plugin for the token given to the liquidity providers
  * The 2 target pools  are permissionless; one holds USDC, the other wETH
- * {tok} = MPL-mcUSDC2 or MPL-mcWETH1
- * {ref} = USDc or wETH
- * {target} = USD or ETH
+ * {tok} = MPL-mcUSDC2
+ * {ref} = USDc
+ * {target} = USD
  * {UoA} = USD
  */
-contract MaplePoolCollateral is AppreciatingFiatCollateral {
+contract MaplePoolFiatCollateral is AppreciatingFiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
     // The underlying tokens may have 18 (wETH) or 6 (USDC) decimals
     // The Maple v2 tokens have the same number of decimals than their underlying
 
-    /// @param config.chainlinkFeed Feed units: {UoA/ref}
+    /// @param config.chainlinkFeed Feed units: {UoA/ref} = {target/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding) AppreciatingFiatCollateral(config, revenueHiding) {}
 
