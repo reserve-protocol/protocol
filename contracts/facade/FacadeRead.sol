@@ -253,14 +253,35 @@ contract FacadeRead is IFacadeRead {
         uint256 supply = rToken.totalSupply();
         if (supply == 0) return (0, 0);
 
-        // {BU}
-        uint192 basketsNeeded = rToken.basketsNeeded();
+        uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
+        uint192 uoaNeeded; // {UoA}
+        uint192 uoaHeldInBaskets; // {UoA}
+        {
+            (address[] memory basketERC20s, uint256[] memory quantities) = rToken
+                .main()
+                .basketHandler()
+                .quote(basketsNeeded, FLOOR);
 
-        // {BU}
-        BasketRange memory buRange = basketRange(rToken, basketsNeeded);
+            IAssetRegistry reg = rToken.main().assetRegistry();
+            IBackingManager bm = rToken.main().backingManager();
+            for (uint256 i = 0; i < basketERC20s.length; i++) {
+                IAsset asset = reg.toAsset(IERC20(basketERC20s[i]));
 
-        // {1} = {UoA} / {UoA}
-        backing = buRange.bottom.div(basketsNeeded);
+                // {UoA/tok}
+                (uint192 low, ) = asset.price();
+
+                // {tok}
+                uint192 needed = shiftl_toFix(quantities[i], -int8(asset.erc20Decimals()));
+
+                // {UoA} = {UoA} + {tok}
+                uoaNeeded += needed.mul(low);
+
+                // {UoA} = {UoA} + {tok} * {UoA/tok}
+                uoaHeldInBaskets += fixMin(needed, asset.bal(address(bm))).mul(low);
+            }
+
+            backing = uoaHeldInBaskets.div(uoaNeeded);
+        }
 
         // Compute overCollateralization
         IAsset rsrAsset = rToken.main().assetRegistry().toAsset(rToken.main().rsr());
@@ -274,12 +295,6 @@ contract FacadeRead is IFacadeRead {
 
         // {UoA} = {tok} * {UoA/tok}
         uint192 rsrUoA = rsrBal.mul(lowPrice);
-
-        // {UoA/BU}
-        (uint192 buPriceLow, ) = rToken.main().basketHandler().price();
-
-        // {UoA} = {BU} * {UoA/BU}
-        uint192 uoaNeeded = basketsNeeded.mul(buPriceLow);
 
         // {1} = {UoA} / {UoA}
         overCollateralization = rsrUoA.div(uoaNeeded);
