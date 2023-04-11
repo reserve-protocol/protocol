@@ -221,12 +221,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     function cancelUnstake(uint256 endId) external notPausedOrFrozen {
         address account = _msgSender();
 
-        // Call state keepers
-        main.poke();
-
-        IBasketHandler bh = main.basketHandler();
-        require(bh.fullyCollateralized(), "RToken uncollateralized");
-        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
+        // IBasketHandler bh = main.basketHandler();
+        // require(bh.fullyCollateralized(), "RToken uncollateralized");
+        // require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         Withdrawal[] storage queue = withdrawals[account];
         if (endId == 0) return;
