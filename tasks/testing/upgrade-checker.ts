@@ -74,9 +74,11 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     // 2. Run various checks
     const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
-    const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
+    const saUsdcAddress = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()
     const usdtAddress = networkConfig['1'].tokens.USDT!
     const usdcAddress = networkConfig['1'].tokens.USDC!
+    const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
+    const cUsdcAddress = networkConfig['1'].tokens.cUSDC!
 
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
@@ -107,22 +109,29 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     // console.log('successfully settled trade')
 
-    // mint
-    // this is another area that needs to be made general
-    // for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
+    // await pushOraclesForward(hre, params.rtoken)
+
+    // await claimRsrRewards(hre, params.rtoken)
 
     await pushOraclesForward(hre, params.rtoken)
-    
-    await claimRsrRewards(hre, params.rtoken)
 
-    await pushOraclesForward(hre, params.rtoken)
+    /* mint
+
+     this is another area that needs to be made general
+     for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
+
+    */
 
     const initialBal = bn('2e11')
     const issueAmount = fp('1e5')
     const usdt = await hre.ethers.getContractAt('ERC20Mock', usdtAddress)
+    const usdc = await hre.ethers.getContractAt('ERC20Mock', usdcAddress)
     const saUsdt = await hre.ethers.getContractAt('StaticATokenLM', saUsdtAddress)
     const cUsdt = await hre.ethers.getContractAt('ICToken', cUsdtAddress)
+    const saUsdc = await hre.ethers.getContractAt('StaticATokenLM', saUsdcAddress)
+    const cUsdc = await hre.ethers.getContractAt('ICToken', cUsdcAddress)
 
+    // get saUsdt
     await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!], async (usdtSigner) => {
       await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal)
       await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
@@ -130,6 +139,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const saUsdtBal = await saUsdt.balanceOf(tester.address)
     await saUsdt.connect(tester).approve(rToken.address, saUsdtBal)
 
+    // get cUsdt
     await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!], async (usdtSigner) => {
       await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
       await cUsdt.connect(usdtSigner).mint(initialBal)
@@ -139,10 +149,23 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const cUsdtBal = await cUsdt.balanceOf(tester.address)
     await cUsdt.connect(tester).approve(rToken.address, cUsdtBal)
 
-    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!], async (usdtSigner) => {
-      await usdt.connect(usdtSigner).transfer(tester.address, initialBal)
+    // get saUsdc
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!], async (usdcSigner) => {
+      await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal)
+      await saUsdc.connect(usdcSigner).deposit(tester.address, initialBal, 0, true)
     })
-    await usdt.connect(tester).approve(rToken.address, initialBal)
+    const saUsdcBal = await saUsdc.balanceOf(tester.address)
+    await saUsdc.connect(tester).approve(rToken.address, saUsdcBal)
+
+    // get cUsdc
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!], async (usdcSigner) => {
+      await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal)
+      await cUsdc.connect(usdcSigner).mint(initialBal)
+      const bal = await cUsdc.balanceOf(usdcSigner.address)
+      await cUsdc.connect(usdcSigner).transfer(tester.address, bal)
+    })
+    const cUsdcBal = await cUsdc.balanceOf(tester.address)
+    await cUsdc.connect(tester).approve(rToken.address, cUsdcBal)
 
     console.log(`issuing  ${formatEther(issueAmount)} RTokens...`)
     await rToken.connect(tester).issue(issueAmount)
@@ -157,6 +180,9 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     }
 
     console.log('successfully minted RTokens')
+
+
+    
 
     // redeem
     const redeemAmount = fp('5e4')
