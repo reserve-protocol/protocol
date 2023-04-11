@@ -2,6 +2,7 @@ import { task } from 'hardhat/config'
 import { networkConfig } from '../../common/configuration'
 import { getChainId } from '../../common/blockchain-utils'
 import { fp } from '#/common/numbers'
+import { whileImpersonating } from '#/utils/impersonation'
 
 task('give-eth', 'Mints ETH to an address on a tenderly fork')
   .addParam('address', 'Ethereum address to receive the tokens')
@@ -24,7 +25,7 @@ task('give-eth', 'Mints ETH to an address on a tenderly fork')
     console.log(`10 ETH sent to ${params.address}`)
   })
 
-task('give-rsr', 'Mints RSR to an address on a tenderly fork')
+task('give-rsr-tenderly', 'Mints RSR to an address on a tenderly fork')
   .addParam('address', 'Ethereum address to receive the tokens')
   .addParam('rpc', 'The Tenderly RPC endpoint')
   .setAction(async (params, hre) => {

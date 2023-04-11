@@ -6,6 +6,8 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../scripts/deployment/common'
+import { whileImpersonating } from '#/utils/impersonation'
+import { fp } from '#/common/numbers'
 
 task('mint-tokens', 'Mints all the tokens to an address')
   .addParam('address', 'Ethereum address to receive the tokens')
@@ -94,4 +96,24 @@ task('mint-tokens', 'Mints all the tokens to an address')
         `Minted the tokens we've mocked on ${hre.network.name} (${chainId}) to account ${params.address}`
       )
     }
+  })
+
+task('give-rsr', 'Mints RSR to an address on a tenderly fork')
+  .addParam('address', 'Ethereum address to receive the tokens')
+  .setAction(async (params, hre) => {
+    const chainId = await getChainId(hre)
+
+    // ********** Read config **********
+    if (!networkConfig[chainId]) {
+      throw new Error(`Missing network configuration for ${hre.network.name}`)
+    }
+
+    const rsr = await hre.ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.RSR!)
+
+    const rsrWhale = "0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1"
+    await whileImpersonating(hre, rsrWhale, async (signer) => {
+      await rsr.connect(signer).transfer(params.address, fp('100e6'))
+    })
+
+    console.log(`100m RSR sent to ${params.address}`)
   })

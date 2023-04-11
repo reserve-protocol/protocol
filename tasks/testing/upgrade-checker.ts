@@ -13,11 +13,16 @@ import { redeemRTokens } from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
 import runChecks2_1_0 from './upgrade-checker-utils/upgrades/runChecks-2_1_0'
-import { passAndExecuteProposal } from './upgrade-checker-utils/governance'
+import { passAndExecuteProposal, proposeUpgrade, stakeAndDelegateRsr } from './upgrade-checker-utils/governance'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { getLatestBlockNumber } from '#/utils/time'
+import { Proposal } from '#/utils/subgraph'
 
 // run script for eUSD
 // current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 25816366707034079050811482613682060088827919577695117773877308143394113022827 --network localhost
+//
+// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 4444567576556684443782001443774813208623707478190954944832481687972571551950 --network tenderly
 
 /*
   This script is currently useful for the upcoming eUSD upgrade.
@@ -50,17 +55,22 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
 
-    if (hre.network.name != 'localhost' && hre.network.name != 'hardhat') {
-      throw new Error('Only run this on a local fork')
-    }
+    // if (hre.network.name != 'localhost' && hre.network.name != 'hardhat') {
+    //   throw new Error('Only run this on a local fork')
+    // }
 
     if (!useEnv('SUBGRAPH_URL')) {
       throw new Error('SUBGRAPH_URL required for subgraph queries')
     }
 
-    // 1. Approve and execute the govnerance proposal
-    await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposal)
+    console.log(`starting at block ${await getLatestBlockNumber(hre)}`)
 
+    const proposal = await proposeUpgrade(hre, params.rtoken, params.governor)
+
+    // 1. Approve and execute the govnerance proposal
+    await passAndExecuteProposal(hre, params.rtoken, params.governor, proposal.proposalId!, proposal)
+    // await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposal)
+/*
     // 2. Run various checks
     const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
     const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
@@ -164,4 +174,12 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // await runTrade(hre, backingManager, usdtAddress, true)
 
     await runChecks2_1_0(hre, params.rtoken, params.governor)
+    */
+  })
+
+task('propose', 'propose a gov action')
+  .addParam('rtoken', 'the address of the RToken being upgraded')
+  .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
+  .setAction(async (params, hre) => {
+    await proposeUpgrade(hre, params.rtoken, params.governor)
   })
