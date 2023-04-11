@@ -126,6 +126,7 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
   - Extend `issue()` to return the estimated USD value of deposits as `depositsUoA`
   - Add `traderBalances()`
   - Add `auctionsSettleable()`
+  - Modify `backingOverview() to handle unpriced cases`
 - `FacadeAct`
   - Add `canRunRecollateralizationAuctions()`
   - Add `getRevenueAuctionERC20s()`
