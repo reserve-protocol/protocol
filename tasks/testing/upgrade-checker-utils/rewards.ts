@@ -19,6 +19,7 @@ const claimRewards = async (claimer: IRewardable) => {
 }
 
 export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddress: string) => {
+  console.log(`Claiming RSR rewards...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const backingManager = await hre.ethers.getContractAt(
@@ -31,6 +32,7 @@ export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddr
   const rsrRatePre = await strsr.exchangeRate()
 
   const rewards = await claimRewards(backingManager)
+  console.log(rewards)
   await backingManager.manageTokens(rewards)
   // for (const reward of rewards) {
 

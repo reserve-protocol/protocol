@@ -71,7 +71,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await passAndExecuteProposal(hre, params.rtoken, params.governor, proposal.proposalId!, proposal)
     // await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposal)
 
-    /*
+
     // 2. Run various checks
     const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
     const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
@@ -111,6 +111,8 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // this is another area that needs to be made general
     // for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
 
+    await pushOraclesForward(hre, params.rtoken)
+    
     await claimRsrRewards(hre, params.rtoken)
 
     await pushOraclesForward(hre, params.rtoken)
@@ -175,7 +177,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // await runTrade(hre, backingManager, usdtAddress, true)
 
     await runChecks2_1_0(hre, params.rtoken, params.governor)
-    */
   })
 
 task('propose', 'propose a gov action')
