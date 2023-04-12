@@ -90,10 +90,7 @@ export default async (hre: HardhatRuntimeEnvironment, rTokenAddress: string, gov
     const assetContract = await hre.ethers.getContractAt('TestIAsset', asset)
     const erc20 = await assetContract.erc20()
     if (!logToken(erc20).includes('USDC')) {
-      console.log(`pushing ${logToken(erc20)}`)
       await pushOracleForward(hre, asset)
-    } else {
-      console.log(`not pushing ${logToken(erc20)}`)
     }
   }
 
@@ -203,7 +200,7 @@ export const proposal_2_1_0: ProposalBuilder = async (
     await broker.populateTransaction.setTradeImplementation("0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439")
   ]
 
-  const description = "release 2.1.0 test"
+  const description = "Upgrade Broker implementation and set new trade plugin"
 
   return buildProposal(txs, description)
 }

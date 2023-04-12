@@ -208,9 +208,15 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     await pushOraclesForward(hre, params.rtoken)
 
+    const bas = await basketHandler.getPrimeBasket()
+    console.log(bas.erc20s)
+
     const governor = await hre.ethers.getContractAt('Governance', params.governor)
     const timelockAddress = await governor.timelock()
     await whileImpersonating(hre, timelockAddress, async (tl) => {
+      // await basketHandler
+      //   .connect(tl)
+      //   .setBackupConfig(hre.ethers.utils.formatBytes32String('USD'), bn(1), [networkConfig['1'].tokens.USDC!])
       await basketHandler
         .connect(tl)
         .setPrimeBasket([saUsdtAddress, cUsdtAddress, usdcAddress], [fp('0.25'), fp('0.25'), fp('0.5')])
@@ -220,7 +226,8 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       await advanceTime(hre, tradingDelay + 1)
     })
 
-    console.log(await usdc.balanceOf(backingManager.address))
+    const b = await basketHandler.getPrimeBasket()
+    console.log(b.erc20s)
     
     await recollateralize(hre, rToken.address)
   })
