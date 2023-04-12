@@ -401,6 +401,7 @@ export const MAX_THROTTLE_PCT_RATE = BigNumber.from(10).pow(18)
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)
 export const MAX_TRADING_DELAY = 31536000 // 1 year
+export const MIN_WARMUP_PERIOD = 60 // 1 minute
 export const MAX_WARMUP_PERIOD = 31536000 // 1 year
 export const MAX_AUCTION_LENGTH = 604800 // 1 week
 export const MAX_UNSTAKING_DELAY = 31536000 // 1 year

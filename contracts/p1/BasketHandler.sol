@@ -115,6 +115,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using FixLib for uint192;
 
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
+    uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
     uint48 public constant MAX_WARMUP_PERIOD = 31536000; // {s} 1 year
 
     // Peer components
@@ -525,7 +526,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @custom:governance
     function setWarmupPeriod(uint48 val) public governance {
-        require(val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
+        require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
         emit WarmupPeriodSet(warmupPeriod, val);
         warmupPeriod = val;
     }

@@ -10,6 +10,7 @@ import {
   MAX_BACKING_BUFFER,
   MAX_TARGET_AMT,
   MAX_MIN_TRADE_VOLUME,
+  MIN_WARMUP_PERIOD,
   MAX_WARMUP_PERIOD,
   IComponents,
 } from '../common/configuration'
@@ -900,6 +901,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await basketHandler.warmupPeriod()).to.equal(newValue)
+
+      // Cannot update with value < min
+      await expect(
+        basketHandler.connect(owner).setWarmupPeriod(MIN_WARMUP_PERIOD - 1)
+      ).to.be.revertedWith('invalid warmupPeriod')
 
       // Cannot update with value > max
       await expect(
