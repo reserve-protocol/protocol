@@ -9,7 +9,6 @@ import {
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
   ETH_USD_PRICE_FEED,
-  INCENTIVES_CONTROLLER,
   MAX_TRADE_VOL,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -19,7 +18,6 @@ import {
 } from './constants'
 import {
   ERC20Mock,
-  IIncentivesController,
   IStaticBToken,
   IStaticBTokenLM,
   MockV3Aggregator,
@@ -32,7 +30,7 @@ import { bn, fp } from '../../../../common/numbers'
 
 interface BendCollateralFixtureContext extends CollateralFixtureContext {
   weth: WETH9
-  sBendWeth: IStaticBTokenLM
+  staticBendWeth: IStaticBTokenLM
   tok: IStaticBToken
 }
 
@@ -97,7 +95,7 @@ const makeCollateralFixtureContext = (
       await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
     )
 
-    const { tok, sBendWeth, weth } = await makeStaticBendWeth()
+    const { tok, staticBendWeth, weth } = await makeStaticBendWeth()
     const rewardToken = (await ethers.getContractAt('ERC20Mock', BEND)) as ERC20Mock
 
     collateralOpts.chainlinkFeed = chainlinkFeed.address
@@ -109,7 +107,7 @@ const makeCollateralFixtureContext = (
       collateral,
       chainlinkFeed,
       weth,
-      sBendWeth,
+      staticBendWeth,
       tok: tok,
       rewardToken,
     }
@@ -124,7 +122,7 @@ const mintCollateralTo: MintCollateralFunc<BendCollateralFixtureContext> = async
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintStaticBendWeth(ctx.weth, ctx.sBendWeth, user, amount, recipient)
+  await mintStaticBendWeth(ctx.weth, ctx.staticBendWeth, user, amount, recipient)
 }
 
 const increaseRefPerTok = async (ctx: BendCollateralFixtureContext, pctIncrease: BigNumberish) => {
@@ -162,16 +160,7 @@ const collateralSpecificConstructorTests = () => {}
 const collateralSpecificStatusTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const beforeEachRewardsTest = async (ctx: BendCollateralFixtureContext) => {
-  // //const incentivesControllerAddress = await ctx.sBendWeth.INCENTIVES_CONTROLLER()
-  // const claimableRewards = await ctx.tok.REWARD_TOKEN()
-  // await expect(claimableRewards).to.equal(BEND)
-  // const incentivesController = <IIncentivesController>(
-  //   await ethers.getContractAt('IIncentivesController', INCENTIVES_CONTROLLER)
-  // )
-  // const rewardToken = await incentivesController.REWARD_TOKEN()
-  // await expect(rewardToken).to.equal(BEND)
-}
+const beforeEachRewardsTest = async () => {}
 
 const opts = {
   deployCollateral,

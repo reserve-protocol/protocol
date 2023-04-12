@@ -17,7 +17,7 @@ export const resetFork = getResetFork(FORK_BLOCK)
 
 interface Fixture {
   tok: IStaticBToken
-  sBendWeth: IStaticBTokenLM
+  staticBendWeth: IStaticBTokenLM
   bendWeth: IBToken
   weth: WETH9
 }
@@ -31,21 +31,27 @@ export const makeStaticBendWeth = async (): Promise<Fixture> => {
   const tok = <IStaticBToken>(
     await staticBTokenFactory.deploy(LENDPOOL, bendWeth.address, 'Static Bend WETH', 'sBendWETH')
   )
-  const sBendWeth = <IStaticBTokenLM>await ethers.getContractAt('IStaticBTokenLM', tok.address)
+  const staticBendWeth = <IStaticBTokenLM>await ethers.getContractAt('IStaticBTokenLM', tok.address)
 
-  return { tok, sBendWeth, bendWeth, weth }
+  return { tok, staticBendWeth, bendWeth, weth }
 }
 
 export const mintStaticBendWeth = async (
   weth: IERC20,
-  sBendWeth: IStaticBTokenLM,
+  staticBendWeth: IStaticBTokenLM,
   account: SignerWithAddress,
   amount: BigNumberish,
   recipient: string
 ) => {
-  const dynamicAmount = await sBendWeth.staticToDynamicAmount(amount)
+  // const dynamicAmount = await staticBendWeth.staticToDynamicAmount(amount)
+  // await whileImpersonating(WETH_WHALE, async (wethWhale) => {
+  //   await weth.connect(wethWhale).approve(staticBendWeth.address, dynamicAmount)
+  //   await staticBendWeth.connect(wethWhale).deposit(recipient, dynamicAmount, 0, true)
+  // })
+  
+  const dynamicAmount = await staticBendWeth.staticToDynamicAmount(amount)
   await whileImpersonating(WETH_WHALE, async (wethWhale) => {
-    await weth.connect(wethWhale).approve(sBendWeth.address, dynamicAmount)
-    await sBendWeth.connect(wethWhale).deposit(recipient, dynamicAmount, 0, true)
+    await weth.connect(wethWhale).approve(staticBendWeth.address, dynamicAmount)
+    await staticBendWeth.connect(wethWhale).deposit(recipient, dynamicAmount, 0, true)
   })
 }
