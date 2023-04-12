@@ -1,12 +1,12 @@
 import { BEND_WETH, FORK_BLOCK, LENDPOOL, WETH, WETH_WHALE } from './constants'
 import { getResetFork } from '../helpers'
 import {
-  IAToken,
-  StaticATokenLM__factory,
-  IStaticATokenLM,
+  IBToken,
+  StaticBTokenLM__factory,
+  IStaticBTokenLM,
   IERC20,
-  IERC20Metadata,
   WETH9,
+  IStaticBToken,
 } from '../../../../typechain'
 import { ethers } from 'hardhat'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -16,29 +16,29 @@ import { whileImpersonating } from '../../../utils/impersonation'
 export const resetFork = getResetFork(FORK_BLOCK)
 
 interface Fixture {
-  tok: IERC20Metadata
-  sBendWeth: IStaticATokenLM
-  bendWeth: IAToken
+  tok: IStaticBToken
+  sBendWeth: IStaticBTokenLM
+  bendWeth: IBToken
   weth: WETH9
 }
 
 export const makeStaticBendWeth = async (): Promise<Fixture> => {
   const weth = <WETH9>await ethers.getContractAt('WETH9', WETH)
-  const bendWeth = <IAToken>await ethers.getContractAt('IAToken', BEND_WETH)
-  const staticATokenFactory = <StaticATokenLM__factory>(
-    await ethers.getContractFactory('StaticATokenLM')
+  const bendWeth = <IBToken>await ethers.getContractAt('IBToken', BEND_WETH)
+  const staticBTokenFactory = <StaticBTokenLM__factory>(
+    await ethers.getContractFactory('StaticBTokenLM')
   )
-  const sBendWeth = <IStaticATokenLM>(
-    await staticATokenFactory.deploy(LENDPOOL, bendWeth.address, 'Static Bend WETH', 'sBendWETH')
+  const tok = <IStaticBToken>(
+    await staticBTokenFactory.deploy(LENDPOOL, bendWeth.address, 'Static Bend WETH', 'sBendWETH')
   )
-  const tok = <IERC20Metadata>await ethers.getContractAt('IERC20Metadata', sBendWeth.address)
+  const sBendWeth = <IStaticBTokenLM>await ethers.getContractAt('IStaticBTokenLM', tok.address)
 
   return { tok, sBendWeth, bendWeth, weth }
 }
 
 export const mintStaticBendWeth = async (
   weth: IERC20,
-  sBendWeth: IStaticATokenLM,
+  sBendWeth: IStaticBTokenLM,
   account: SignerWithAddress,
   amount: BigNumberish,
   recipient: string

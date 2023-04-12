@@ -1,13 +1,13 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   ERC20Mock,
-  IAToken,
-  IAaveIncentivesController,
+  IBToken,
+  IIncentivesController,
   ILendingPool,
-  IStaticATokenLM,
+  IStaticBTokenLM,
   IWETH,
-  StaticATokenLM,
-  StaticATokenLM__factory,
+  StaticBTokenLM,
+  StaticBTokenLM__factory,
 } from '../../../../typechain'
 import { BigNumber, providers, utils } from 'ethers'
 import { makeStaticBendWeth, resetFork } from './helpers'
@@ -59,9 +59,9 @@ type tBalancesInvolved = {
 }
 
 type tContextParams = {
-  staticBendWeth: StaticATokenLM
+  staticBendWeth: StaticBTokenLM
   underlying: ERC20Mock
-  bendWeth: IAToken
+  bendWeth: IBToken
   bend: ERC20Mock
   user: string
   user2: string
@@ -100,17 +100,17 @@ const getContext = async ({
   staticBendWethSupply: await staticBendWeth.totalSupply(),
 })
 
-describe('StaticBendWETH: aToken wrapper with static balances and liquidity mining of Bend protocol', () => {
+describe('StaticBendWETH: BToken wrapper with static balances and liquidity mining', () => {
   let user1: SignerWithAddress
   let user2: SignerWithAddress
   let userSigner: providers.JsonRpcSigner
   let user2Signer: providers.JsonRpcSigner
   let lendingPool: ILendingPool
-  let incentives: IAaveIncentivesController
+  let incentives: IIncentivesController
   let weth: IWETH
-  let bendWeth: IAToken
+  let bendWeth: IBToken
   let bend: ERC20Mock
-  let staticBendWeth: StaticATokenLM
+  let staticBendWeth: StaticBTokenLM
 
   let ctxtParams: tContextParams
   let snap: string
@@ -123,23 +123,19 @@ describe('StaticBendWETH: aToken wrapper with static balances and liquidity mini
     user2Signer = hre.ethers.provider.getSigner(await user2.getAddress())
 
     lendingPool = <ILendingPool>await ethers.getContractAt('ILendingPool', LENDPOOL, userSigner)
-    incentives = <IAaveIncentivesController>(
-      await ethers.getContractAt(
-        'IAaveIncentivesController',
-        networkConfig['31337'].BEND_INCENTIVES || '',
-        userSigner
-      )
+    incentives = <IIncentivesController>(
+      await ethers.getContractAt('IIncentivesController', INCENTIVES_CONTROLLER, userSigner)
     )
     // TODO: use makeStaticBendWeth from helper
     weth = <IWETH>await ethers.getContractAt('IWETH', WETH, userSigner)
-    bendWeth = <IAToken>await ethers.getContractAt('IAToken', BEND_WETH, userSigner)
+    bendWeth = <IBToken>await ethers.getContractAt('IBToken', BEND_WETH, userSigner)
     bend = <ERC20Mock>await ethers.getContractAt('ERC20Mock', BEND, userSigner)
 
-    const staticATokenFactory = <StaticATokenLM__factory>(
-      await ethers.getContractFactory('StaticATokenLM')
+    const staticBTokenFactory = <StaticBTokenLM__factory>(
+      await ethers.getContractFactory('StaticBTokenLM')
     )
-    staticBendWeth = <StaticATokenLM>(
-      await staticATokenFactory.deploy(LENDPOOL, bendWeth.address, 'Static Bend WETH', 'sBendWETH')
+    staticBendWeth = <StaticBTokenLM>(
+      await staticBTokenFactory.deploy(LENDPOOL, bendWeth.address, 'Static Bend WETH', 'sBendWETH')
     )
 
     expect(await staticBendWeth.getIncentivesController()).to.equal(INCENTIVES_CONTROLLER)
@@ -209,7 +205,7 @@ describe('StaticBendWETH: aToken wrapper with static balances and liquidity mini
       await staticBendWeth.connect(userSigner).claimRewards(userSigner._address, true)
     )
 
-    // const ctxtAfterClaimForce = await getContext(ctxtParams)
+    const ctxtAfterClaimForce = await getContext(ctxtParams)
 
     // Check that scaled BendWeth balance is equal to the staticBendWeth supply at every stage.
     expect(ctxtInitial.staticBendWethScaledBalanceBendWeth).to.be.eq(
@@ -260,14 +256,14 @@ describe('StaticBendWETH: aToken wrapper with static balances and liquidity mini
     )
     expect(ctxtAfterWithdrawal.userBendBalance).to.be.eq(0)
 
-    // expect(ctxtAfterClaimNoForce.userBendBalance).to.be.eq(0)
-    // expect(ctxtAfterClaimNoForce.staticBendWethBendBalance).to.be.eq(0)
+    expect(ctxtAfterClaimNoForce.userBendBalance).to.be.eq(0)
+    expect(ctxtAfterClaimNoForce.staticBendWethBendBalance).to.be.eq(0)
 
-    // expect(ctxtAfterClaimForce.userBendBalance).to.be.eq(ctxtAfterClaimNoForce.userPendingRewards)
-    // expect(ctxtAfterClaimForce.staticBendWethBendBalance).to.be.eq(
-    //   ctxtAfterClaimNoForce.staticBendWethTotalClaimableRewards.sub(
-    //     ctxtAfterClaimNoForce.userPendingRewards
-    //   )
-    // )
+    expect(ctxtAfterClaimForce.userBendBalance).to.be.eq(ctxtAfterClaimNoForce.userPendingRewards)
+    expect(ctxtAfterClaimForce.staticBendWethBendBalance).to.be.eq(
+      ctxtAfterClaimNoForce.staticBendWethTotalClaimableRewards.sub(
+        ctxtAfterClaimNoForce.userPendingRewards
+      )
+    )
   })
 })
