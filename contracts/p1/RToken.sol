@@ -257,6 +257,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(redeemer), "insufficient balance");
 
+        // Confirm portions sums to FIX_ONE
+        uint256 portionsSum;
+        for (uint256 i = 0; i < portions.length; ++i) portionsSum += portions[i];
+        require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
+
         // Failure to melt results in a lower redemption price, so we can allow it when paused
         // solhint-disable-next-line no-empty-blocks
         try main.furnace().melt() {} catch {}
@@ -270,14 +275,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // i.e, set (erc20s, amounts) = basketHandler.quote(amount * basketsNeeded / totalSupply)
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        // downcast is safe: amount < totalSupply and basketsNeeded < 1e57 < 2^190 (just barely)
         uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, supply); // FLOOR
         emit Redemption(redeemer, recipient, amount, basketsRedeemed);
-
-        // Confirm portions sums to FIX_ONE
-        uint256 portionsSum;
-        for (uint256 i = 0; i < portions.length; ++i) portionsSum += portions[i];
-        require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
 
         address[] memory erc20s;
         uint256[] memory amounts;
