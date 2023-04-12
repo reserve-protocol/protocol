@@ -3,12 +3,6 @@
 ## Summary
 This plugin allows RToken to use bendWETH as collateral. bendWETH is the token minted when ETH is deposited into the BendDAO protocol for lending. It is an interest-bearing token and behaves in the same manner as AAVE ATokens based on the [docs](https://docs.benddao.xyz/portal/lending-protocol/bendeth-valuation).
 
-Therefore, it depends on AAVE plugin including the StaticATokenLM contract. The code is not copied to this folder to make maintenance and upgrades easier.
-
-The only difference to ATokenFiatCollateral is the `tryPrice()` method. pegPrice and explanation are changed here.
-
-`refPerTok` and `claimRewards` are the same as ATokenFiatCollateral. However, the reward token for bendWETH is not stkAAVE, it is Bend token.
-
 bendWETH is also known as bendETH. I choose the word bendWETH cause the ETH is converted to WETH via gateway, and bendWETH is the [token](https://etherscan.io/token/0xeD1840223484483C0cb050E6fC344d1eBF0778a9#readProxyContract) symbol. The contract name is [BToken](https://github.com/BendDAO/bend-lending-protocol/blob/6d20ec4497f549fe2f02ffd88d6158714a6b8ccd/contracts/protocol/BToken.sol) and so far, bendWETH is the only BToken.
 
 BendDAO deployed contracts can be found in the [docs](https://docs.benddao.xyz/developers/deployed-contracts/lending-protocol). Please note that the `LendPool` and `IncentivesController` can be derived from `LendPoolAddressProvider` contract methods.
@@ -31,7 +25,7 @@ BendDAO deployed contracts can be found in the [docs](https://docs.benddao.xyz/d
 | --------- | ------------------------ | -------------- |
 | targetName        | FiatCollateral    | target name   |
 | status            | FiatCollateral    | collateral status |
-| refPerTok         | AppreciatingFiatCollateral    | {ref/tok} depends on _underlyingRefPerTok in ATokenFiatCollateral contract  |
+| refPerTok         | AppreciatingFiatCollateral    | {ref/tok} depends on _underlyingRefPerTok in BendWethCollateral contract  |
 | targetPerRef      | FiatCollateral    | {target/ref} = 1  |
 | refresh           | AppreciatingFiatCollateral    | update status if {ref/tok} or price cross thresholds |
 | price             | Asset | price relies on tryPrice in BendWethCollateral contract |
@@ -41,4 +35,4 @@ BendDAO deployed contracts can be found in the [docs](https://docs.benddao.xyz/d
 | erc20Decimals     | Asset | tok decimals  |
 | isCollateral      | FiatCollateral    | True  |
 | maxTradeVolume    | Asset | max trade volume |
-| claimRewards      | ATokenFiatCollateral  | Claim rewards. However, the reward in BendDAO protocol is BEND, not stkAAVE. |
+| claimRewards      | BendWethCollateral  | Claim BEND rewards. |
