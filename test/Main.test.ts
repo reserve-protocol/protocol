@@ -1830,7 +1830,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
-    it.skip('Should handle full collateral deregistration and disable the basket', async () => {
+    it('Should handle full collateral deregistration and disable the basket', async () => {
       // Check status
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.quantity(token1.address)).to.equal(basketsNeededAmts[1])
