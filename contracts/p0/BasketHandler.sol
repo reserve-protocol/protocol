@@ -136,8 +136,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     // basket status changes, mainly set when `trackStatus()` is called
     // used to enforce warmup period, after regaining SOUND
-    CollateralStatus private lastStatus;
     uint48 private lastStatusTimestamp;
+    CollateralStatus private lastStatus;
 
     // ==== Invariants ====
     // basket is a valid Basket:
