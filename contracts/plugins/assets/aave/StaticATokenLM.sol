@@ -26,6 +26,7 @@ import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
  * The token support claiming liquidity mining rewards from the Aave system.
  * @author Aave
+ * From: https://github.com/aave/protocol-v2/blob/238e5af2a95c3fbb83b0c8f44501ed2541215122/contracts/protocol/tokenization/StaticATokenLM.sol#L255
  **/
 contract StaticATokenLM is
     ReentrancyGuard,
