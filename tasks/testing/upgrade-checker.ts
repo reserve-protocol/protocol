@@ -8,8 +8,8 @@ import { resetFork } from '#/utils/chain'
 import { bn, fp } from '#/common/numbers'
 import { Interface, LogDescription, formatEther, formatUnits } from 'ethers/lib/utils'
 import { FacadeTest } from '@typechain/FacadeTest'
-import { pushOraclesForward } from './upgrade-checker-utils/oracles'
-import { redeemRTokens } from './upgrade-checker-utils/rtokens'
+import { overrideOracle, pushOraclesForward } from './upgrade-checker-utils/oracles'
+import { recollateralize, redeemRTokens } from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
 import { runTrade } from './upgrade-checker-utils/trades'
@@ -22,10 +22,7 @@ import { CollateralStatus } from '#/common/constants'
 import { logToken } from './upgrade-checker-utils/logs'
 
 // run script for eUSD
-// current proposal id is to test passing a past proposal (broker upgrade proposal id will be different)
-// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 25816366707034079050811482613682060088827919577695117773877308143394113022827 --network localhost
-//
-// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --proposal 4444567576556684443782001443774813208623707478190954944832481687972571551950 --network tenderly
+// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
 
 /*
   This script is currently useful for the upcoming eUSD upgrade.
@@ -80,7 +77,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // we pushed the chain forward, so we need to keep the rToken SOUND
     await pushOraclesForward(hre, params.rtoken)
 
-
     // 2. Run various checks
     const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
     const saUsdcAddress = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()
@@ -106,21 +102,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       'AssetRegistryP1',
       await main.assetRegistry()
     )
-
-    // recollateralize
-    // here we will make any trades needed to recollateralize the RToken
-    // this is specific to eUSD so that we don't have to wait for the market to do this
-    // we can make this generic, but will leave it specific for now for testing the upcoming eUSD changes
-
-    // await facadeTest.runAuctionsForAllTraders(rToken.address)
-    // await runTrade(hre, backingManager, rsr.address, false)
-    // await facadeTest.runAuctionsForAllTraders(rToken.address)
-
-    // console.log('successfully settled trade')
-
-    // await pushOraclesForward(hre, params.rtoken)
-
-    // await claimRsrRewards(hre, params.rtoken)
 
     /*
     
@@ -192,13 +173,40 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
 
 
+    /*
+
+      redeem
+
+    */
     const redeemAmount = fp('5e4')
     await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
 
-    await claimRsrRewards(hre, params.rtoken)
     
-    // switch basket
-    const iface: Interface = backingManager.interface
+    // 2. Run the 2.1.0 checks
+    await runChecks2_1_0(hre, params.rtoken, params.governor)
+
+    
+    /*
+
+      claim rewards
+
+    */
+      await claimRsrRewards(hre, params.rtoken)
+    
+
+
+    /*
+
+      switch basket and recollateralize
+
+    */
+    const ar = await hre.ethers.getContractAt('AssetRegistryP1', await main.assetRegistry())
+    const usdcCollatAddress = await ar.toColl(networkConfig['1'].tokens.USDC!)
+    const usdcCollat = await hre.ethers.getContractAt('FiatCollateral', usdcCollatAddress)
+    const oracle = await overrideOracle(hre, await usdcCollat.chainlinkFeed())
+    await oracle.updateAnswer(bn('1e8'))
+
+    await pushOraclesForward(hre, params.rtoken)
 
     const governor = await hre.ethers.getContractAt('Governance', params.governor)
     const timelockAddress = await governor.timelock()
@@ -211,34 +219,10 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       await advanceBlocks(hre, tradingDelay/12 + 1)
       await advanceTime(hre, tradingDelay + 1)
     })
+
+    console.log(await usdc.balanceOf(backingManager.address))
     
-    console.log(`\n\n* * * * * Recollateralizing RToken ${rToken.address}...`)
-    const registeredERC20s = await assetRegistry.erc20s()
-    let r = await backingManager.manageTokens(registeredERC20s)
-    let tradesRemain = true
-    while (tradesRemain) {
-      tradesRemain = false
-      const resp = await r.wait()
-      for (const event of resp.events!) {
-        let parsedLog: LogDescription | undefined
-        try { parsedLog = iface.parseLog(event) } catch {}
-        if (parsedLog && parsedLog.name == 'TradeStarted') {
-          tradesRemain = true
-          console.log(`\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(parsedLog.args.buy)} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${parsedLog.args.sellAmount}`)
-          await runTrade(hre, backingManager, parsedLog.args.sell, false)
-        }
-      }
-      r = await backingManager.manageTokens(registeredERC20s)
-    }
-
-    const basketStatus = await basketHandler.status()
-    if (basketStatus != CollateralStatus.SOUND) {
-      throw new Error(`Basket is not SOUND after recollateralizing new basket`)
-    }
-
-    console.log("Recollateralization complete!")
-
-    await runChecks2_1_0(hre, params.rtoken, params.governor)
+    await recollateralize(hre, rToken.address)
   })
 
 task('propose', 'propose a gov action')
