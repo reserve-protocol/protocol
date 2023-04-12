@@ -2,7 +2,13 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
+import {
+  IConfig,
+  IImplementations,
+  IRevenueShare,
+  MIN_WARMUP_PERIOD,
+  networkConfig,
+} from '../common/configuration'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
 import { CollateralStatus } from '../common/constants'
@@ -55,7 +61,7 @@ import {
   FacadeMonitor,
   ZeroDecimalMock,
 } from '../typechain'
-import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
+import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
 
 export enum Implementation {
@@ -650,6 +656,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   // Set non-empty basket
   await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
   await basketHandler.connect(owner).refreshBasket()
+
+  // Advance time post warmup period
+  await advanceTime(MIN_WARMUP_PERIOD + 1)
 
   // Set up allowances
   for (let i = 0; i < basket.length; i++) {
