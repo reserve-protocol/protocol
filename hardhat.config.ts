@@ -70,7 +70,9 @@ const config: HardhatUserConfig = {
     tenderly: {
       chainId: 1,
       url: TENDERLY_RPC_URL,
-      accounts: [useEnv('TEST_ADDRESS_PK')],
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
       // gasPrice: 10_000_000_000,
       gasMultiplier: 1.015, // 1.5% buffer; seen failures on RToken deployment and asset refreshes
     }
