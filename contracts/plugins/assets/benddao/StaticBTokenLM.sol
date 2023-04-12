@@ -7,8 +7,9 @@ import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import { IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import { IBToken } from "./dependencies/interfaces/IBToken.sol";
-import { IStaticBTokenLM } from "./dependencies/interfaces/IStaticBTokenLM.sol";
+import { IStaticBTokenLM } from "./IStaticBTokenLM.sol";
 import { IIncentivesController } from "./dependencies/interfaces/IIncentivesController.sol";
+import { IScaledBalanceToken } from "./dependencies/interfaces/IScaledBalanceToken.sol";
 
 import { StaticBTokenErrors } from "./StaticBTokenErrors.sol";
 
@@ -25,11 +26,10 @@ import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
  * @notice Wrapper token that allows to deposit tokens on the Aave protocol and receive
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
  * The token support claiming liquidity mining rewards from the Aave system.
- * @author Aave
  **/
 contract StaticBTokenLM is
     ReentrancyGuard,
-    ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"),
+    ERC20("STATIC_BTOKEN_IMPL", "STATIC_BTOKEN_IMPL"),
     IStaticBTokenLM
 {
     using SafeERC20 for IERC20;
@@ -37,33 +37,11 @@ contract StaticBTokenLM is
     using WadRayMath for uint256;
     using RayMathNoRounding for uint256;
 
-    bytes public constant EIP712_REVISION = bytes("1");
-    bytes32 internal constant EIP712_DOMAIN =
-        keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
-    bytes32 public constant PERMIT_TYPEHASH =
-        keccak256(
-            "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
-        );
-    bytes32 public constant METADEPOSIT_TYPEHASH =
-        keccak256(
-            "Deposit(address depositor,address recipient,uint256 value,uint16 referralCode,bool fromUnderlying,uint256 nonce,uint256 deadline)"
-        );
-    bytes32 public constant METAWITHDRAWAL_TYPEHASH =
-        keccak256(
-            "Withdraw(address owner,address recipient,uint256 staticAmount,uint256 dynamicAmount,bool toUnderlying,uint256 nonce,uint256 deadline)"
-        );
-
-    uint256 public constant STATIC_ATOKEN_LM_REVISION = 0x1;
-
     ILendPool public override LEND_POOL;
     IIncentivesController public override INCENTIVES_CONTROLLER;
-    IERC20 public override ATOKEN;
+    IERC20 public override BTOKEN;
     IERC20 public override ASSET;
     IERC20 public override REWARD_TOKEN;
-
-    mapping(address => uint256) public _nonces;
 
     uint256 internal _accRewardsPerToken;
     uint256 internal _lifetimeRewardsClaimed;
@@ -77,27 +55,27 @@ contract StaticBTokenLM is
 
     constructor(
         ILendPool pool,
-        address aToken,
-        string memory staticATokenName,
-        string memory staticATokenSymbol
+        address bToken,
+        string memory staticBTokenName,
+        string memory staticBTokenSymbol
     ) public {
         LEND_POOL = pool;
-        ATOKEN = IERC20(aToken);
+        BTOKEN = IERC20(bToken);
 
-        _name = staticATokenName;
-        _symbol = staticATokenSymbol;
-        _setupDecimals(IERC20Metadata(aToken).decimals());
+        _name = staticBTokenName;
+        _symbol = staticBTokenSymbol;
+        _setupDecimals(IERC20Metadata(bToken).decimals());
 
-        try IBToken(aToken).getIncentivesController() returns (
+        try IBToken(bToken).getIncentivesController() returns (
             IIncentivesController incentivesController
         ) {
             if (address(incentivesController) != address(0)) {
                 INCENTIVES_CONTROLLER = incentivesController;
-                REWARD_TOKEN = IERC20(INCENTIVES_CONTROLLER.REWARD_TOKEN());
+                REWARD_TOKEN = IERC20(address(INCENTIVES_CONTROLLER.REWARD_TOKEN()));
             }
         } catch {}
 
-        ASSET = IERC20(IBToken(aToken).UNDERLYING_ASSET_ADDRESS());
+        ASSET = IERC20(IBToken(bToken).UNDERLYING_ASSET_ADDRESS());
         ASSET.safeApprove(address(pool), type(uint256).max);
     }
 
@@ -130,115 +108,6 @@ contract StaticBTokenLM is
     }
 
     ///@inheritdoc IStaticBTokenLM
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external override {
-        require(owner != address(0), StaticBTokenErrors.INVALID_OWNER);
-        //solium-disable-next-line
-        require(block.timestamp <= deadline, StaticBTokenErrors.INVALID_EXPIRATION);
-        uint256 currentValidNonce = _nonces[owner];
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                getDomainSeparator(),
-                keccak256(
-                    abi.encode(PERMIT_TYPEHASH, owner, spender, value, currentValidNonce, deadline)
-                )
-            )
-        );
-        require(owner == ecrecover(digest, v, r, s), StaticBTokenErrors.INVALID_SIGNATURE);
-        _nonces[owner] = currentValidNonce.add(1);
-        _approve(owner, spender, value);
-    }
-
-    ///@inheritdoc IStaticBTokenLM
-    function metaDeposit(
-        address depositor,
-        address recipient,
-        uint256 value,
-        uint16 referralCode,
-        bool fromUnderlying,
-        uint256 deadline,
-        SignatureParams calldata sigParams
-    ) external override nonReentrant returns (uint256) {
-        require(depositor != address(0), StaticBTokenErrors.INVALID_DEPOSITOR);
-        //solium-disable-next-line
-        require(block.timestamp <= deadline, StaticBTokenErrors.INVALID_EXPIRATION);
-        uint256 currentValidNonce = _nonces[depositor];
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                getDomainSeparator(),
-                keccak256(
-                    abi.encode(
-                        METADEPOSIT_TYPEHASH,
-                        depositor,
-                        recipient,
-                        value,
-                        referralCode,
-                        fromUnderlying,
-                        currentValidNonce,
-                        deadline
-                    )
-                )
-            )
-        );
-        require(
-            depositor == ecrecover(digest, sigParams.v, sigParams.r, sigParams.s),
-            StaticBTokenErrors.INVALID_SIGNATURE
-        );
-        _nonces[depositor] = currentValidNonce.add(1);
-        return _deposit(depositor, recipient, value, referralCode, fromUnderlying);
-    }
-
-    ///@inheritdoc IStaticBTokenLM
-    function metaWithdraw(
-        address owner,
-        address recipient,
-        uint256 staticAmount,
-        uint256 dynamicAmount,
-        bool toUnderlying,
-        uint256 deadline,
-        SignatureParams calldata sigParams
-    ) external override nonReentrant returns (uint256, uint256) {
-        require(owner != address(0), StaticBTokenErrors.INVALID_OWNER);
-        //solium-disable-next-line
-        require(block.timestamp <= deadline, StaticBTokenErrors.INVALID_EXPIRATION);
-        uint256 currentValidNonce = _nonces[owner];
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                getDomainSeparator(),
-                keccak256(
-                    abi.encode(
-                        METAWITHDRAWAL_TYPEHASH,
-                        owner,
-                        recipient,
-                        staticAmount,
-                        dynamicAmount,
-                        toUnderlying,
-                        currentValidNonce,
-                        deadline
-                    )
-                )
-            )
-        );
-
-        require(
-            owner == ecrecover(digest, sigParams.v, sigParams.r, sigParams.s),
-            StaticBTokenErrors.INVALID_SIGNATURE
-        );
-        _nonces[owner] = currentValidNonce.add(1);
-        return _withdraw(owner, recipient, staticAmount, dynamicAmount, toUnderlying);
-    }
-
-    ///@inheritdoc IStaticBTokenLM
     function dynamicBalanceOf(address account) external view override returns (uint256) {
         return _staticToDynamicAmount(balanceOf(account), rate());
     }
@@ -256,24 +125,6 @@ contract StaticBTokenLM is
     ///@inheritdoc IStaticBTokenLM
     function rate() public view override returns (uint256) {
         return LEND_POOL.getReserveNormalizedIncome(address(ASSET));
-    }
-
-    ///@inheritdoc IStaticBTokenLM
-    function getDomainSeparator() public view override returns (bytes32) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        return
-            keccak256(
-                abi.encode(
-                    EIP712_DOMAIN,
-                    keccak256(bytes(name())),
-                    keccak256(EIP712_REVISION),
-                    chainId,
-                    address(this)
-                )
-            );
     }
 
     function _dynamicToStaticAmount(uint256 amount, uint256 rate_) internal pure returns (uint256) {
@@ -298,7 +149,7 @@ contract StaticBTokenLM is
             ASSET.safeTransferFrom(depositor, address(this), amount);
             LEND_POOL.deposit(address(ASSET), amount, address(this), referralCode);
         } else {
-            ATOKEN.safeTransferFrom(depositor, address(this), amount);
+            BTOKEN.safeTransferFrom(depositor, address(this), amount);
         }
 
         uint256 amountToMint = _dynamicToStaticAmount(amount, rate());
@@ -344,7 +195,7 @@ contract StaticBTokenLM is
             uint256 amt = LEND_POOL.withdraw(address(ASSET), amountToWithdraw, recipient);
             assert(amt == amountToWithdraw);
         } else {
-            ATOKEN.safeTransfer(recipient, amountToWithdraw);
+            BTOKEN.safeTransfer(recipient, amountToWithdraw);
         }
 
         return (amountToBurn, amountToWithdraw);
@@ -386,8 +237,8 @@ contract StaticBTokenLM is
                 return;
             }
 
-            address[] memory assets = new address[](1);
-            assets[0] = address(ATOKEN);
+            IScaledBalanceToken[] memory assets = new IScaledBalanceToken[](1);
+            assets[0] = IScaledBalanceToken(address(BTOKEN));
 
             uint256 freshRewards = INCENTIVES_CONTROLLER.getRewardsBalance(assets, address(this));
             uint256 lifetimeRewards = _lifetimeRewardsClaimed.add(freshRewards);
@@ -408,13 +259,12 @@ contract StaticBTokenLM is
         _lastRewardBlock = block.number;
         uint256 supply = totalSupply();
 
-        address[] memory assets = new address[](1);
-        assets[0] = address(ATOKEN);
+        IScaledBalanceToken[] memory assets = new IScaledBalanceToken[](1);
+        assets[0] = IScaledBalanceToken(address(BTOKEN));
 
         uint256 freshlyClaimed = INCENTIVES_CONTROLLER.claimRewards(
             assets,
-            type(uint256).max,
-            address(this)
+            type(uint256).max
         );
         uint256 lifetimeRewards = _lifetimeRewardsClaimed.add(freshlyClaimed);
         uint256 rewardsAccrued = lifetimeRewards.sub(_lifetimeRewards).wadToRay();
@@ -465,22 +315,7 @@ contract StaticBTokenLM is
         }
     }
 
-    function claimRewardsOnBehalf(
-        address onBehalfOf,
-        address receiver,
-        bool forceUpdate
-    ) external override nonReentrant {
-        if (address(INCENTIVES_CONTROLLER) == address(0)) {
-            return;
-        }
-
-        require(
-            msg.sender == onBehalfOf || msg.sender == INCENTIVES_CONTROLLER.getClaimer(onBehalfOf),
-            StaticBTokenErrors.INVALID_CLAIMER
-        );
-        _claimRewardsOnBehalf(onBehalfOf, receiver, forceUpdate);
-    }
-
+    ///@inheritdoc IStaticBTokenLM
     function claimRewards(address receiver, bool forceUpdate) external override nonReentrant {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
@@ -488,6 +323,7 @@ contract StaticBTokenLM is
         _claimRewardsOnBehalf(msg.sender, receiver, forceUpdate);
     }
 
+    ///@inheritdoc IStaticBTokenLM
     function claimRewardsToSelf(bool forceUpdate) external override nonReentrant {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
@@ -542,8 +378,8 @@ contract StaticBTokenLM is
         uint256 accRewardsPerToken = _accRewardsPerToken;
 
         if (supply != 0 && fresh) {
-            address[] memory assets = new address[](1);
-            assets[0] = address(ATOKEN);
+            IScaledBalanceToken[] memory assets = new IScaledBalanceToken[](1);
+            assets[0] = IScaledBalanceToken(address(BTOKEN));
 
             uint256 freshReward = INCENTIVES_CONTROLLER.getRewardsBalance(assets, address(this));
             uint256 lifetimeRewards = _lifetimeRewardsClaimed.add(freshReward);
@@ -579,8 +415,8 @@ contract StaticBTokenLM is
             return 0;
         }
 
-        address[] memory assets = new address[](1);
-        assets[0] = address(ATOKEN);
+        IScaledBalanceToken[] memory assets = new IScaledBalanceToken[](1);
+        assets[0] = IScaledBalanceToken(address(BTOKEN));
         uint256 freshRewards = INCENTIVES_CONTROLLER.getRewardsBalance(assets, address(this));
         return REWARD_TOKEN.balanceOf(address(this)).add(freshRewards);
     }

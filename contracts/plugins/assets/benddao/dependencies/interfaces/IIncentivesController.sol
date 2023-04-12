@@ -3,6 +3,7 @@ pragma solidity 0.8.4;
 pragma abicoder v2;
 
 import {IScaledBalanceToken} from "./IScaledBalanceToken.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IIncentivesController {
     event RewardsAccrued(address indexed _user, uint256 _amount);
@@ -62,4 +63,9 @@ interface IIncentivesController {
         external
         view
         returns (uint256);
+
+    /**
+     * @dev it's in BendProtocolIncentivesController but not in IIncentivesController of BendDAO contracts
+     */
+    function REWARD_TOKEN() external view returns (IERC20Upgradeable);
 }
