@@ -1324,6 +1324,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Ensure valid basket
     await basketHandler.refreshBasket()
 
+    // Advance time post warmup period
+    await advanceTime(Number(config.warmupPeriod) + 1)
+
     const [, newQuotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
     const newExpectedTkn4: BigNumber = issueAmount
       .mul(targetAmts[4].add(targetAmts[5]))
@@ -1548,6 +1551,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Ensure valid basket
     await basketHandler.refreshBasket()
+
+    // Advance time post warmup period
+    await advanceTime(Number(config.warmupPeriod) + 1)
 
     const [, newQuotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
     const newExpectedTkn6: BigNumber = issueAmount

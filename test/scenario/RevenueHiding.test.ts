@@ -19,6 +19,7 @@ import {
   TestIRevenueTrader,
   TestIRToken,
 } from '../../typechain'
+import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
@@ -137,6 +138,9 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       .connect(owner)
       .setBackupConfig(await ethers.utils.formatBytes32String('USD'), 1, [dai.address])
     await basketHandler.refreshBasket()
+
+    // Advance time post warmup period - SOUND just regained
+    await advanceTime(Number(config.warmupPeriod) + 1)
 
     await backingManager.grantRTokenAllowance(cDAI.address)
     await backingManager.grantRTokenAllowance(dai.address)
