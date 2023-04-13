@@ -7,12 +7,12 @@ import { IConfig, MAX_DELAY_UNTIL_DEFAULT } from '../../common/configuration'
 import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AppreciatingFiatCollateral,
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
   CTokenMock,
+  CTokenVaultMock,
   CTokenSelfReferentialCollateral,
   ERC20Mock,
   EURFiatCollateral,
@@ -29,6 +29,7 @@ import {
   TestIRToken,
   USDCMock,
   WETH9,
+  UnpricedAppreciatingFiatCollateralMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
@@ -63,7 +64,8 @@ describe('Collateral contracts', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenMock
+  let cTokenMock: CTokenMock
+  let cTokenVault: CTokenVaultMock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
 
@@ -124,18 +126,21 @@ describe('Collateral contracts', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenCollateral.erc20())
     )
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenCollateral.erc20())
+    cTokenVault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await cTokenCollateral.erc20())
+    cTokenMock = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenVault.asset())
 
     await token.connect(owner).mint(owner.address, amt)
     await usdc.connect(owner).mint(owner.address, amt.div(bn('1e12')))
     await aToken.connect(owner).mint(owner.address, amt)
-    await cToken.connect(owner).mint(owner.address, amt.div(bn('1e10')).mul(50))
+    await cTokenMock.connect(owner).mint(owner.address, amt.div(bn('1e10')).mul(50))
+    await cTokenMock.connect(owner).approve(cTokenVault.address, amt.div(bn('1e10')).mul(50))
+    await cTokenVault.connect(owner).mint(amt.div(bn('1e10')).mul(50), owner.address)
 
     // Issue RToken to enable RToken.price
     await token.connect(owner).approve(rToken.address, amt)
     await usdc.connect(owner).approve(rToken.address, amt.div(bn('1e12')))
     await aToken.connect(owner).approve(rToken.address, amt)
-    await cToken.connect(owner).approve(rToken.address, amt.div(bn('1e10')).mul(50))
+    await cTokenVault.connect(owner).approve(rToken.address, amt.div(bn('1e10')).mul(50))
     await rToken.connect(owner).issue(amt)
 
     // Factories
@@ -206,14 +211,14 @@ describe('Collateral contracts', () => {
       )
       await expectPrice(aTokenCollateral.address, fp('1'), ORACLE_ERROR, true)
       await expect(aTokenCollateral.claimRewards())
-        .to.emit(aTokenCollateral, 'RewardsClaimed')
+        .to.emit(aToken, 'RewardsClaimed')
         .withArgs(aaveToken.address, 0)
 
       // CToken
       expect(await cTokenCollateral.isCollateral()).to.equal(true)
       expect(await cTokenCollateral.referenceERC20Decimals()).to.equal(18)
-      expect(await cTokenCollateral.erc20()).to.equal(cToken.address)
-      expect(await cToken.decimals()).to.equal(8)
+      expect(await cTokenCollateral.erc20()).to.equal(cTokenVault.address)
+      expect(await cTokenVault.decimals()).to.equal(8)
       expect(await cTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
@@ -230,7 +235,7 @@ describe('Collateral contracts', () => {
       )
       await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
       await expect(cTokenCollateral.claimRewards())
-        .to.emit(cTokenCollateral, 'RewardsClaimed')
+        .to.emit(cTokenVault, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
     })
   })
@@ -292,7 +297,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
-            erc20: cToken.address,
+            erc20: cTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -345,7 +350,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
-            erc20: cToken.address,
+            erc20: cTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -399,7 +404,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: bn('0'),
-            erc20: cToken.address,
+            erc20: cTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -453,7 +458,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: fp('1'),
-            erc20: cToken.address,
+            erc20: cTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -493,7 +498,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
-            erc20: cToken.address,
+            erc20: cTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -514,7 +519,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await cTokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
-            erc20: cToken.address,
+            erc20: cTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -579,7 +584,7 @@ describe('Collateral contracts', () => {
 
       // Increase rate for Ctoken and AToken to double
       await aToken.setExchangeRate(fp(2))
-      await cToken.setExchangeRate(fp(2))
+      await cTokenMock.setExchangeRate(fp(2))
 
       // Check prices doubled
       await assetRegistry.refresh()
@@ -713,7 +718,7 @@ describe('Collateral contracts', () => {
       const UnpricedAppreciatingFactory = await ethers.getContractFactory(
         'UnpricedAppreciatingFiatCollateralMock'
       )
-      const unpricedAppFiatCollateral: AppreciatingFiatCollateral = <AppreciatingFiatCollateral>(
+      const unpricedAppFiatCollateral: UnpricedAppreciatingFiatCollateralMock = <UnpricedAppreciatingFiatCollateralMock>(
         await UnpricedAppreciatingFactory.deploy(
           {
             priceTimeout: PRICE_TIMEOUT,
@@ -888,7 +893,7 @@ describe('Collateral contracts', () => {
 
       // Decrease rate for AToken and CToken, will disable collateral immediately
       await aToken.setExchangeRate(fp('0.99'))
-      await cToken.setExchangeRate(fp('0.95'))
+      await cTokenMock.setExchangeRate(fp('0.95'))
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await expect(tokenCollateral.refresh()).to.not.emit(
@@ -1041,7 +1046,7 @@ describe('Collateral contracts', () => {
       // Set COMP and AAVE rewards for Main
       const rewardAmountCOMP: BigNumber = bn('100e18')
       const rewardAmountAAVE: BigNumber = bn('20e18')
-      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+      await compoundMock.setRewards(cTokenVault.address, rewardAmountCOMP)
       await aToken.setRewards(backingManager.address, rewardAmountAAVE)
 
       // Check funds not yet swept
@@ -1052,27 +1057,9 @@ describe('Collateral contracts', () => {
       await facadeTest.claimRewards(rToken.address)
 
       // Check rewards were transfered to BackingManager
-      expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+      // only 1/4 of the minted ctoken was used to issue the rtoken
+      expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP.div(4))
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
-    })
-
-    it('Should handle failure in the Rewards call', async function () {
-      // Set COMP reward for Main
-      const rewardAmountCOMP: BigNumber = bn('100e18')
-      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-
-      // Check funds not yet swept
-      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
-      // Force call to fail, set an invalid COMP token in Comptroller
-      await compoundMock.connect(owner).setCompToken(cTokenCollateral.address)
-      await expect(facadeTest.claimRewards(rToken.address)).to.be.revertedWith(
-        'rewards claim failed'
-      )
-
-      // Check funds not yet swept
-      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
     })
   })
 
@@ -1325,6 +1312,7 @@ describe('Collateral contracts', () => {
     let cTokenNonFiatCollateral: CTokenNonFiatCollateral
     let nonFiatToken: ERC20Mock
     let cNonFiatToken: CTokenMock
+    let cNonFiatTokenVault: CTokenVaultMock
     let targetUnitOracle: MockV3Aggregator
     let referenceUnitOracle: MockV3Aggregator
 
@@ -1344,6 +1332,10 @@ describe('Collateral contracts', () => {
         await ethers.getContractFactory('CTokenMock')
       ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address)
 
+      cNonFiatTokenVault = await (
+        await ethers.getContractFactory('CTokenVaultMock')
+      ).deploy(cNonFiatToken.address, 'cWBTC Token', 'cWBTC', compToken.address, compoundMock.address)
+
       CTokenNonFiatFactory = await ethers.getContractFactory('CTokenNonFiatCollateral')
 
       cTokenNonFiatCollateral = <CTokenNonFiatCollateral>await CTokenNonFiatFactory.deploy(
@@ -1351,7 +1343,7 @@ describe('Collateral contracts', () => {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
-          erc20: cNonFiatToken.address,
+          erc20: cNonFiatTokenVault.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1367,6 +1359,8 @@ describe('Collateral contracts', () => {
 
       // Mint some tokens
       await cNonFiatToken.connect(owner).mint(owner.address, amt.div(bn('1e10')))
+      await cNonFiatToken.connect(owner).approve(cNonFiatTokenVault.address, amt.div(bn('1e10')))
+      await cNonFiatTokenVault.connect(owner).mint(amt.div(bn('1e10')), owner.address)
     })
 
     it('Should not allow missing delayUntilDefault', async () => {
@@ -1376,7 +1370,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatToken.address,
+            erc20: cNonFiatTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1398,7 +1392,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatToken.address,
+            erc20: cNonFiatTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1420,7 +1414,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: ZERO_ADDRESS,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatToken.address,
+            erc20: cNonFiatTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1442,7 +1436,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatToken.address,
+            erc20: cNonFiatTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1464,7 +1458,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatToken.address,
+            erc20: cNonFiatTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1486,7 +1480,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatToken.address,
+            erc20: cNonFiatTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1509,8 +1503,9 @@ describe('Collateral contracts', () => {
       )
       expect(await cTokenNonFiatCollateral.chainlinkFeed()).to.equal(referenceUnitOracle.address)
       expect(await cTokenNonFiatCollateral.referenceERC20Decimals()).to.equal(18)
-      expect(await cTokenNonFiatCollateral.erc20()).to.equal(cNonFiatToken.address)
+      expect(await cTokenNonFiatCollateral.erc20()).to.equal(cNonFiatTokenVault.address)
       expect(await cNonFiatToken.decimals()).to.equal(8)
+      expect(await cNonFiatTokenVault.decimals()).to.equal(8)
       expect(await cTokenNonFiatCollateral.targetName()).to.equal(
         ethers.utils.formatBytes32String('BTC')
       )
@@ -1534,7 +1529,7 @@ describe('Collateral contracts', () => {
 
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true) // 0.02 of 20k
       await expect(cTokenNonFiatCollateral.claimRewards())
-        .to.emit(cTokenNonFiatCollateral, 'RewardsClaimed')
+        .to.emit(cNonFiatTokenVault, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
     })
 
@@ -1592,7 +1587,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: invalidChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
-            erc20: cNonFiatToken.address,
+            erc20: cNonFiatTokenVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1622,7 +1617,7 @@ describe('Collateral contracts', () => {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
-          erc20: cNonFiatToken.address,
+          erc20: cNonFiatTokenVault.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1791,7 +1786,7 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
 
-      // cToken Self Ref
+      // cTokenVault Self Ref
       cSelfRefToken = await (
         await ethers.getContractFactory('CTokenMock')
       ).deploy('cETH Token', 'cETH', selfRefToken.address)
@@ -2287,7 +2282,7 @@ describe('Collateral contracts', () => {
     it('Force Updates - Hard Default - ATokens/CTokens', async function () {
       // Decrease rate for AToken and CToken, will disable collateral immediately
       await aToken.setExchangeRate(fp('0.99'))
-      await cToken.setExchangeRate(fp('0.95'))
+      await cTokenMock.setExchangeRate(fp('0.95'))
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await snapshotGasCost(aTokenCollateral.refresh())
