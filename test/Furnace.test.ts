@@ -7,6 +7,7 @@ import { IConfig, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
 import {
   CTokenMock,
+  CTokenVaultMock,
   ERC20Mock,
   StaticATokenMock,
   TestIFurnace,
@@ -26,6 +27,7 @@ import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
 import { ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -51,6 +53,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let token2: StaticATokenMock
+  let token3Vault: CTokenVaultMock
   let token3: CTokenMock
 
   let collateral0: Collateral
@@ -84,18 +87,10 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token3Vault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
 
     // Mint Tokens
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
-
-    await token0.connect(owner).mint(addr2.address, initialBal)
-    await token1.connect(owner).mint(addr2.address, initialBal)
-    await token2.connect(owner).mint(addr2.address, initialBal)
-    await token3.connect(owner).mint(addr2.address, initialBal)
+    await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
   })
 
   describe('Deployment #fast', () => {
@@ -166,12 +161,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token3Vault.connect(addr1).approve(rToken.address, initialBal)
 
       await token0.connect(addr2).approve(rToken.address, initialBal)
       await token1.connect(addr2).approve(rToken.address, initialBal)
       await token2.connect(addr2).approve(rToken.address, initialBal)
-      await token3.connect(addr2).approve(rToken.address, initialBal)
+      await token3Vault.connect(addr2).approve(rToken.address, initialBal)
 
       // Issue tokens
       const issueAmount: BigNumber = bn('100e18')
@@ -431,14 +426,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await furnace.connect(owner).setRatio(ratio)
 
       const max256 = bn(2).pow(256).sub(1)
-      await token0.connect(owner).mint(addr1.address, max256)
-      await token1.connect(owner).mint(addr1.address, max256)
-      await token2.connect(owner).mint(addr1.address, max256)
-      await token3.connect(owner).mint(addr1.address, max256)
-      await token0.connect(addr1).approve(rToken.address, max256)
-      await token1.connect(addr1).approve(rToken.address, max256)
-      await token2.connect(addr1).approve(rToken.address, max256)
-      await token3.connect(addr1).approve(rToken.address, max256)
+      await mintCollaterals(owner, [addr1, addr2], max256, basket)
 
       // Set up larger throttles
       const throttle = { amtRate: bal.lt(fp('1')) ? fp('1') : bal, pctRate: 0 }
@@ -491,12 +479,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token3Vault.connect(addr1).approve(rToken.address, initialBal)
 
       await token0.connect(addr2).approve(rToken.address, initialBal)
       await token1.connect(addr2).approve(rToken.address, initialBal)
       await token2.connect(addr2).approve(rToken.address, initialBal)
-      await token3.connect(addr2).approve(rToken.address, initialBal)
+      await token3Vault.connect(addr2).approve(rToken.address, initialBal)
 
       // Issue tokens
       const issueAmount: BigNumber = bn('100e18')
