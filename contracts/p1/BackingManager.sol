@@ -112,7 +112,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(basketHandler.isReady(), "basket not ready");
 
         uint48 basketTimestamp = basketHandler.timestamp();
-        if (block.timestamp < basketTimestamp + tradingDelay) return;
+        require(block.timestamp >= basketTimestamp + tradingDelay, "trading delayed");
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
         uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}

@@ -947,10 +947,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
-        // Attempt to trigger before trading delay - will not open auction
-        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
-          backingManager,
-          'TradeStarted'
+        // Attempt to trigger before trading delay - Should revert
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.be.revertedWith(
+          'trading delayed'
         )
 
         // Advance time post trading delay
