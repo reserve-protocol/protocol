@@ -200,11 +200,11 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       switch basket and recollateralize
 
     */
-    const ar = await hre.ethers.getContractAt('AssetRegistryP1', await main.assetRegistry())
-    const usdcCollatAddress = await ar.toColl(networkConfig['1'].tokens.USDC!)
-    const usdcCollat = await hre.ethers.getContractAt('FiatCollateral', usdcCollatAddress)
-    const oracle = await overrideOracle(hre, await usdcCollat.chainlinkFeed())
-    await oracle.updateAnswer(bn('1e8'))
+    // const ar = await hre.ethers.getContractAt('AssetRegistryP1', await main.assetRegistry())
+    // const usdcCollatAddress = await ar.toColl(networkConfig['1'].tokens.USDC!)
+    // const usdcCollat = await hre.ethers.getContractAt('FiatCollateral', usdcCollatAddress)
+    // const oracle = await overrideOracle(hre, await usdcCollat.chainlinkFeed())
+    // await oracle.updateAnswer(bn('1e8'))
 
     await pushOraclesForward(hre, params.rtoken)
 
@@ -214,12 +214,9 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const governor = await hre.ethers.getContractAt('Governance', params.governor)
     const timelockAddress = await governor.timelock()
     await whileImpersonating(hre, timelockAddress, async (tl) => {
-      // await basketHandler
-      //   .connect(tl)
-      //   .setBackupConfig(hre.ethers.utils.formatBytes32String('USD'), bn(1), [networkConfig['1'].tokens.USDC!])
       await basketHandler
         .connect(tl)
-        .setPrimeBasket([saUsdtAddress, cUsdtAddress, usdcAddress], [fp('0.25'), fp('0.25'), fp('0.5')])
+        .setPrimeBasket([saUsdtAddress, cUsdtAddress], [fp('0.5'), fp('0.5')])
       await basketHandler.connect(tl).refreshBasket()
       const tradingDelay = await backingManager.tradingDelay()
       await advanceBlocks(hre, tradingDelay/12 + 1)
