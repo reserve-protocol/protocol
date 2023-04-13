@@ -641,6 +641,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await basketHandler.connect(owner).setPrimeBasket(initialTokens, [fp('0.5'), fp('0.5')])
         await basketHandler.connect(owner).refreshBasket()
 
+        // Advance time post warmup period - SOUND just regained
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
         // Set initial values
         initialQuotes = [bn('0.5e18'), bn('0.5e6')]
         initialQuantities = initialQuotes.map((q) => {
@@ -1115,6 +1118,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expect(basketHandler.connect(owner).refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(3, [token1.address], [fp('1')], false)
+
+        // Advance time post warmup period - temporary IFFY->SOUND
+        await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -2009,6 +2015,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await basketHandler.refreshBasket()
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
+        // Advance time post warmup period - SOUND just regained
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
@@ -2036,6 +2045,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Confirm default and trigger basket switch
         await basketHandler.refreshBasket()
+
+        // Advance time post warmup period - SOUND just regained
+        await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Check new state after basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -2356,6 +2368,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await assetRegistry.refresh()
         await basketHandler.refreshBasket()
 
+        // Advance time post warmup period - SOUND just regained
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
         // Check new state after basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
@@ -2553,6 +2568,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(3, newTokens, newRefAmounts, false)
 
+        // Advance time post warmup period - SOUND just regained
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
         // Check new state after basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
@@ -2728,6 +2746,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Confirm default and trigger basket switch
         await assetRegistry.refresh()
         await basketHandler.refreshBasket()
+
+        // Advance time post warmup period - SOUND just regained
+        await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Running auctions will trigger recollateralization - All balance can be redeemed
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -3179,6 +3200,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(2, newTokens, newRefAmounts, false)
 
+        // Advance time post warmup period - SOUND just regained
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
@@ -3412,6 +3436,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(2, newTokens, newRefAmounts, false)
+
+        // Advance time post warmup period - SOUND just regained
+        await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -4110,6 +4137,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await backingManager.maxTradeSlippage(),
           config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
         )
+
+        // Advance time post warmup period - SOUND just regained
+        await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
