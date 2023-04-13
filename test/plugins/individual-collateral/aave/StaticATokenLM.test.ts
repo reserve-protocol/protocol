@@ -295,11 +295,19 @@ describe('StaticATokenLM: aToken wrapper with static balances and liquidity mini
     const ctxtAfterWithdrawal = await getContext(ctxtParams)
 
     // Claiming the rewards
-    await waitForTx(await staticAToken.connect(userSigner)["claimRewards(address,bool)"](userSigner._address, false))
+    await waitForTx(
+      await staticAToken
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, false)
+    )
 
     const ctxtAfterClaimNoForce = await getContext(ctxtParams)
 
-    await waitForTx(await staticAToken.connect(userSigner)["claimRewards(address,bool)"](userSigner._address, true))
+    await waitForTx(
+      await staticAToken
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, true)
+    )
 
     const ctxtAfterClaimForce = await getContext(ctxtParams)
 
@@ -387,13 +395,21 @@ describe('StaticATokenLM: aToken wrapper with static balances and liquidity mini
     const ctxtAfterWithdrawal = await getContext(ctxtParams)
 
     // Claim
-    await waitForTx(await staticAToken.connect(userSigner)["claimRewards(address,bool)"](userSigner._address, false))
+    await waitForTx(
+      await staticAToken
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, false)
+    )
     const ctxtAfterClaim = await getContext(ctxtParams)
 
     await waitForTx(await staticAToken.collectAndUpdateRewards())
     const ctxtAfterUpdate = await getContext(ctxtParams)
 
-    await waitForTx(await staticAToken.connect(userSigner)["claimRewards(address,bool)"](userSigner._address, false))
+    await waitForTx(
+      await staticAToken
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, false)
+    )
     const ctxtAfterClaim2 = await getContext(ctxtParams)
 
     expect(ctxtInitial.userStaticATokenBalance).to.be.eq(0)
@@ -1059,7 +1075,9 @@ describe('StaticATokenLM: aToken wrapper with static balances and liquidity mini
 
     // Claim
     await waitForTx(
-      await staticAToken.connect(user2Signer)["claimRewards(address,bool)"](user2Signer._address, true)
+      await staticAToken
+        .connect(user2Signer)
+        ['claimRewards(address,bool)'](user2Signer._address, true)
     )
     const ctxtAfterClaim = await getContext(ctxtParams)
 
@@ -1686,11 +1704,15 @@ describe('StaticATokenLM: aToken wrapper with static balances and liquidity mini
       const pendingRewards3 = await staticAToken.getClaimableRewards(userSigner._address)
 
       const userBalance3 = await stkAave.balanceOf(userSigner._address)
-      await staticAToken.connect(user2Signer)["claimRewards(address,bool)"](userSigner._address, true)
+      await staticAToken
+        .connect(user2Signer)
+        ['claimRewards(address,bool)'](userSigner._address, true)
       const userBalance4 = await stkAave.balanceOf(userSigner._address)
 
       await waitForTx(
-        await staticAToken.connect(userSigner)["claimRewards(address,bool)"](user2Signer._address, true)
+        await staticAToken
+          .connect(userSigner)
+          ['claimRewards(address,bool)'](user2Signer._address, true)
       )
 
       const pendingRewards5 = await staticAToken.getClaimableRewards(userSigner._address)
@@ -2143,7 +2165,9 @@ describe('StaticATokenLM: aToken wrapper with static balances and liquidity mini
       pendingRewards.push(pendingReward)
     }
     for (let i = 0; i < users.length; i++) {
-      await waitForTx(await staticAToken.connect(users[i])["claimRewards(address,bool)"](receiverAddress, false))
+      await waitForTx(
+        await staticAToken.connect(users[i])['claimRewards(address,bool)'](receiverAddress, false)
+      )
       sum = sum.add(pendingRewards[i])
       expect(await stkAave.balanceOf(await receiverAddress)).to.be.eq(sum)
     }
