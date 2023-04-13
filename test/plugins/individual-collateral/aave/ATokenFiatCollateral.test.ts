@@ -17,7 +17,7 @@ import {
 } from '../../../../common/configuration'
 import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
 import { expectEvents, expectInIndirectReceipt } from '../../../../common/events'
-import { bn, fp, toBNDecimals } from '../../../../common/numbers'
+import { bn, fp } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
 import {
   expectPrice,
@@ -29,8 +29,6 @@ import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../../ut
 import {
   Asset,
   ATokenFiatCollateral,
-  ATokenMock,
-  CTokenVault,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -39,7 +37,6 @@ import {
   IBasketHandler,
   InvalidMockV3Aggregator,
   MockV3Aggregator,
-  RewardableERC20Vault,
   RTokenAsset,
   TestIBackingManager,
   TestIDeployer,
@@ -163,9 +160,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
     )
     // aDAI token
-    aDai = <IAToken>(
-      await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
-    )
+    aDai = <IAToken>await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
 
     // stkAAVE
     stkAave = <ERC20Mock>(
@@ -214,7 +209,10 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       REVENUE_HIDING
     )
 
-    chainlinkFeed = await ethers.getContractAt('AggregatorInterface', networkConfig[chainId].chainlinkFeeds.DAI as string)
+    chainlinkFeed = await ethers.getContractAt(
+      'AggregatorInterface',
+      networkConfig[chainId].chainlinkFeeds.DAI as string
+    )
 
     // Setup balances for addr1 - Transfer from Mainnet holder
     // aDAI
@@ -309,22 +307,23 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await aDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(refPerTok).to.be.closeTo(fp('1.0829'), fp('0.001'))
       expect(await aDaiCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await aDaiCollateral.exposedReferencePrice()).to.equal(
-        refPerTok
-      )
+      expect(await aDaiCollateral.exposedReferencePrice()).to.equal(refPerTok)
 
-      let answer = await chainlinkFeed.latestAnswer()
-      
+      const answer = await chainlinkFeed.latestAnswer()
+
       await expectPrice(
         aDaiCollateral.address,
-        answer.mul(10**10).mul(refPerTok).div(fp('1')),
+        answer
+          .mul(10 ** 10)
+          .mul(refPerTok)
+          .div(fp('1')),
         ORACLE_ERROR,
         true,
         bn('1e5')
       ) // close to $0.022 cents
 
       // Check claim data
-      await expect(staticAToken["claimRewards()"]())
+      await expect(staticAToken['claimRewards()']())
         .to.emit(staticAToken, 'RewardsClaimed')
         .withArgs(stkAave.address, anyValue)
 
@@ -438,7 +437,10 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       await expectPrice(
         aDaiCollateral.address,
-        answer.mul(10**10).mul(aDaiRefPerTok1).div(fp(1)),
+        answer
+          .mul(10 ** 10)
+          .mul(aDaiRefPerTok1)
+          .div(fp(1)),
         ORACLE_ERROR,
         true,
         bn('1e5')
@@ -473,7 +475,10 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Still close to the original values
       await expectPrice(
         aDaiCollateral.address,
-        answer.mul(10**10).mul(aDaiRefPerTok2).div(fp(1)),
+        answer
+          .mul(10 ** 10)
+          .mul(aDaiRefPerTok2)
+          .div(fp(1)),
         ORACLE_ERROR,
         true,
         bn('1e5')
@@ -507,7 +512,10 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       await expectPrice(
         aDaiCollateral.address,
-        answer.mul(10**10).mul(aDaiRefPerTok3).div(fp(1)),
+        answer
+          .mul(10 ** 10)
+          .mul(aDaiRefPerTok3)
+          .div(fp(1)),
         ORACLE_ERROR,
         true,
         bn('1e5')
@@ -529,7 +537,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Check funds were transferred
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
-      472500855786016270000
+      
       // Check balances - Fewer aTokens should have been sent to the user
       const newBalanceAddr1aDai: BigNumber = await staticAToken.balanceOf(addr1.address)
 
@@ -541,7 +549,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         bn('472.5e18'),
         fp('0.1')
       )
-      
+
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
         bn('539.1e18'),
@@ -738,7 +746,9 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Test for hard default
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a CToken mock to be able to change the rate
-      const sATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
+      const sATokenMockFactory: ContractFactory = await ethers.getContractFactory(
+        'StaticATokenMock'
+      )
       const aDaiErc20 = await ethers.getContractAt('ERC20Mock', aDai.address)
       const symbol = await aDaiErc20.symbol()
       const saDaiMock: StaticATokenMock = <StaticATokenMock>(
