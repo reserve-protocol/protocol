@@ -22,6 +22,7 @@ import {
   TestIRToken,
   WETH9,
 } from '../../typechain'
+import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
 import {
@@ -226,6 +227,10 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     it('should change basket around cETH', async () => {
       await token0.setExchangeRate(fp('0.99')) // default
       await basketHandler.refreshBasket()
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await expect(backingManager.manageTokens([token0.address, cETH.address])).to.emit(
         backingManager,
         'TradeStarted'
@@ -301,6 +306,9 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await cETHCollateral.refresh()
       await cETH.setExchangeRate(fp('0.99'))
       await basketHandler.refreshBasket()
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Should swap WETH in for cETH
       const [tokens] = await basketHandler.quote(fp('1'), 2)

@@ -386,6 +386,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         await basketHandler.refreshBasket()
       }
 
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       // Check new basket
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       const newBacking: string[] = await facade.basketTokens(rToken.address)

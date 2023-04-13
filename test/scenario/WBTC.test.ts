@@ -196,6 +196,10 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
     it('should change basket around wbtc', async () => {
       await token0.setExchangeRate(fp('0.99')) // default
       await basketHandler.refreshBasket()
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await expect(backingManager.manageTokens([token0.address, wbtc.address])).to.emit(
         backingManager,
         'TradeStarted'

@@ -393,6 +393,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await basketHandler.setPrimeBasket(primeBasketERC20s, targetAmts)
     await basketHandler.connect(owner).refreshBasket()
 
+    // Advance time post warmup period
+    await advanceTime(Number(config.warmupPeriod) + 1)
+
     // Mint and approve initial balances
     const backing: string[] = await facade.basketTokens(rToken.address)
     await prepareBacking(backing)

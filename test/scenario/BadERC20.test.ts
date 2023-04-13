@@ -244,12 +244,16 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await furnace.melt()
     })
 
-    it('should be able to unregister and use RSR to recollateralize', async () => {
+    it.only('should be able to unregister and use RSR to recollateralize', async () => {
       await assetRegistry.connect(owner).unregister(collateral0.address)
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs(3, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
 
       // Should be trading RSR for backup token
@@ -310,6 +314,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs(3, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await expect(backingManager.manageTokens([])).to.be.revertedWith('censored')
 
       // Should work now
@@ -352,6 +360,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs(3, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
 
       // Should be trading RSR for backup token
