@@ -15,6 +15,7 @@ import forkBlockNumber from '#/test/integration/fork-block-numbers'
 
 // eslint-disable-next-line node/no-missing-require
 require('#/tasks')
+require('hardhat-tracer')
 
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
@@ -71,6 +72,10 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: '0.8.17',
+        settings,
+      },
+      {
+        version: '0.7.1',
         settings,
       },
       {

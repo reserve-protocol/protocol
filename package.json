@@ -109,6 +109,7 @@
   },
   "packageManager": "yarn@3.3.1",
   "dependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^2.0.1"
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "hardhat-tracer": "^2.2.2"
   }
 }
