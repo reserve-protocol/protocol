@@ -2410,6 +2410,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@uniswap/v3-core@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "@uniswap/v3-core@npm:1.0.1"
+  checksum: 4bfd8b218391a3d9efde44e0f984cfec3bc25889cd4d1386766828521006e71b210a3583ee32b52f3c81d384af9e8c39f471f2229e9af4d50da6801446ecb3e4
+  languageName: node
+  linkType: hard
+
 "abbrev@npm:1":
   version: 1.1.1
   resolution: "abbrev@npm:1.1.1"
@@ -8265,6 +8272,7 @@ fsevents@~2.1.1:
     "@types/node": ^12.20.37
     "@typescript-eslint/eslint-plugin": ^5.17.0
     "@typescript-eslint/parser": ^5.17.0
+    "@uniswap/v3-core": ^1.0.1
     axios: ^0.24.0
     bignumber.js: ^9.1.1
     caip: ^1.1.0

@@ -22,4 +22,5 @@ contract ERC20Mock is ERC20 {
     ) external {
         _approve(owner, spender, amount);
     }
+
 }

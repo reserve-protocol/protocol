@@ -48,6 +48,8 @@ export interface ITokens {
   wstETH?: string
   rETH?: string
   cUSDCv3?: string
+  GUNIV3DAIUSDC1?: string
+  GUNIV3DAIUSDC2?: string
 }
 
 export interface IFeeds {
@@ -73,6 +75,10 @@ interface INetworkConfig {
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  MCD_VAT?: string
+  MCD_JOIN_GUNIV3DAIUSDC1_A?: string
+  MCD_JOIN_GUNIV3DAIUSDC2_A?: string
+  ARRAKIS_V1_ROUTER_STAKING?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -126,6 +132,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      GUNIV3DAIUSDC1: '0xAbDDAfB225e10B90D798bB8A886238Fb835e2053',
+      GUNIV3DAIUSDC2: '0x50379f632ca68D36E50cfBC8F78fe16bd1499d1e',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -157,6 +165,10 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    MCD_VAT: '0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B',
+    MCD_JOIN_GUNIV3DAIUSDC1_A: '0xbFD445A97e7459b0eBb34cfbd3245750Dba4d7a4',
+    MCD_JOIN_GUNIV3DAIUSDC2_A: '0xA7e4dDde3cBcEf122851A7C8F7A55f23c0Daf335',
+    ARRAKIS_V1_ROUTER_STAKING: '0xdD92062aDF9F6EDf528babe7F04804fe86424A74',
   },
   '3': {
     name: 'ropsten',
