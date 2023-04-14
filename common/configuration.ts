@@ -9,6 +9,7 @@ interface ICurrencies {
 export interface ITokens {
   DAI?: string
   USDC?: string
+  STG?: string
   USDT?: string
   USDP?: string
   TUSD?: string
@@ -25,6 +26,7 @@ export interface ITokens {
   cUSDP?: string
   cETH?: string
   cWBTC?: string
+  sUSDC?: string
   AAVE?: string
   stkAAVE?: string
   COMP?: string
@@ -74,6 +76,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cUSDP: '0x041171993284df560249B57358F931D9eB7b925D',
       cETH: '0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5',
       cWBTC: '0xccF4429DB6322D5C611ee964527D42E5d685DD6a',
+      sUSDC: '0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56',
       AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
@@ -81,6 +84,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
+      STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -134,6 +138,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cUSDP: '0x041171993284df560249B57358F931D9eB7b925D',
       cETH: '0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5',
       cWBTC: '0xccF4429DB6322D5C611ee964527D42E5d685DD6a',
+      sUSDC: '0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56',
       AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
@@ -141,6 +146,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
+      STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
