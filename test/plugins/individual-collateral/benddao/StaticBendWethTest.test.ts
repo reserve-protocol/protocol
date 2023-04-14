@@ -597,8 +597,6 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
     )
   })
 
-  // TODO: issue with rounding error
-  // Just one goddamn dust
   it('Deposit bendWETH on staticBendWETH to recipient and then withdraw all to recipient in bendWETH', async () => {
     const amountToDeposit = utils.parseEther('5')
     const amountToWithdraw = MAX_UINT256
