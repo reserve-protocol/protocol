@@ -89,7 +89,6 @@ interface IBasketHandler is IComponent {
     function status() external view returns (CollateralStatus status);
 
     /// Track the basket status changes
-    /// @custom:protected
     function trackStatus() external;
 
     /// @return If the basket is ready to issue and trade

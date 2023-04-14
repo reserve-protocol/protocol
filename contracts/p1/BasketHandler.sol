@@ -217,6 +217,18 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         trackStatus();
     }
 
+    /// Track basket status changes if they ocurred
+    // effects: lastStatus' = status(), and lastStatusTimestamp' = current timestamp
+    /// @custom:refresher
+    function trackStatus() public {
+        CollateralStatus currentStatus = status();
+        if (currentStatus != lastStatus) {
+            emit BasketStatusChanged(lastStatus, currentStatus);
+            lastStatus = currentStatus;
+            lastStatusTimestamp = uint48(block.timestamp);
+        }
+    }
+
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
@@ -313,17 +325,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < size; ++i) {
             CollateralStatus s = assetRegistry.toColl(basket.erc20s[i]).status();
             if (s.worseThan(status_)) status_ = s;
-        }
-    }
-
-    /// Track basket status changes if they ocurred
-    // effects: lastStatus' = status(), and lastStatusTimestamp' = current timestamp
-    function trackStatus() public {
-        CollateralStatus currentStatus = status();
-        if (currentStatus != lastStatus) {
-            emit BasketStatusChanged(lastStatus, currentStatus);
-            lastStatus = currentStatus;
-            lastStatusTimestamp = uint48(block.timestamp);
         }
     }
 
