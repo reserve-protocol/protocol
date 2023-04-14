@@ -347,19 +347,6 @@ describeFork(`Collateral: BWETHDAI`, () => {
       it('does not revert', async () => {
         await expect(collateral.claimRewards()).to.not.be.reverted
       })
-
-      // it('claims balancer rewards', async () => {
-      //   const amount = bn('100').mul(bn(10).pow(await ctx.tok.decimals()))
-      //   await mintCollateralTo(ctx, amount, alice, collateral.address)
-
-      //   await advanceBlocks(1000)
-      //   await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1200000)
-
-      //   const balBefore = await bal.balanceOf(collateral.address)
-      //   await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
-      //   const balAfter = await bal.balanceOf(collateral.address)
-      //   expect(balAfter).gt(balBefore)
-      // })
     })
 
     describe('prices', () => {

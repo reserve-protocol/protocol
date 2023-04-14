@@ -76,4 +76,5 @@ uint256 delayUntilDefault_, // time till status goes from IFFY to DISABLED
 ```
 
 ## 2.0 Testing
-The unit tests for these plugins are [BalancerLPCollateral.test.ts](/test/plugins/individual-collateral/balancer/BalancerCollateralTestSuite.test.ts) and run at mainnet block `17031699` which is set in [constants.ts](/test/plugins/individual-collateral/balancer/constants.ts).
+The unit tests for these plugins are [BalancerLPCollateral.test.ts](/test/plugins/individual-collateral/balancer/BalancerCollateralTestSuite.test.ts) and run at mainnet block `17031699` which is set in [constants.ts](/test/plugins/individual-collateral/balancer/constants.ts). \
+**NOTE**: The `claimRewards()` function cannot be tested, since Balancer calculates BAL distributions to LPs off-chain, and transfers are only accounted for through this off-chain mechanism ([see here for more information on how this is done](https://github.com/balancer/bal-mining-scripts/))
