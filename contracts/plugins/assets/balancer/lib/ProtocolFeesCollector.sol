@@ -58,7 +58,7 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
         // The ProtocolFeesCollector is a singleton, so it simply uses its own address to disambiguate action
         // identifiers.
         // Authentication(bytes32(uint256(address(this))))
-        Authentication(bytes32(uint256(uint160(address(this))))) // TODO: This was modified 
+        Authentication(bytes32(uint256(uint160(address(this))))) // TODO: This was modified from the above line to support solidity 0.8.0+
     {
         vault = _vault;
     }

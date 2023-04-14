@@ -35,12 +35,15 @@ import {
   WETH_WHALE,
   BWETHDAI_WHALE,
   DAI_WHALE,
+  GAUGE_FACTORY,
+  BALANCER_MINTER,
+  BAL,
 } from './constants'
 import { whileImpersonating } from '#/test/utils/impersonation'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '#/common/blockchain-utils'
 import { networkConfig } from '#/common/configuration'
-import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '#/test/utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '#/test/utils/time'
 
 /*
   Define interfaces
@@ -52,6 +55,7 @@ interface BalancerLPCollateralFixtureContext
   collateral: BalancerLPCollateral
   weth: WETH9
   dai: ERC20Mock
+  bal: ERC20Mock
   wethFeed: MockV3Aggregator
   daiFeed: MockV3Aggregator
 }
@@ -61,6 +65,8 @@ interface BalancerLPCollateralOpts extends CollateralOpts {
   token0ChainlinkFeed?: string
   token1ChainlinkFeed?: string
   poolId?: string
+  gaugeFactory?: string
+  balancerMinter?: string
 }
 /*
   Define deployment functions
@@ -71,13 +77,14 @@ export const defaultBalancerLPCollateralOpts: BalancerLPCollateralOpts = {
   erc20: BWETHDAI,
   priceTimeout: PRICE_TIMEOUT,
   poolId: BWETHDAIPOOLID,
-  targetName: ethers.utils.formatBytes32String('BWETHDAI'),
-  rewardERC20: WETH,
   token0ChainlinkFeed: DAI_USD_PRICE_FEED,
   token1ChainlinkFeed: ETH_USD_PRICE_FEED,
+  gaugeFactory: GAUGE_FACTORY,
+  balancerMinter: BALANCER_MINTER,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
+  targetName: ethers.utils.formatBytes32String('BWETHDAI'),
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: fp('0'), // TODO: is this really needed?
@@ -113,6 +120,8 @@ export const deployCollateral = async (
       poolId: opts.poolId,
       token0ChainlinkFeed: opts.token0ChainlinkFeed,
       token1ChainlinkFeed: opts.token1ChainlinkFeed,
+      gaugeFactory: opts.gaugeFactory,
+      balancerMinter: opts.balancerMinter,
       oracleError: opts.oracleError,
       erc20: opts.erc20,
       maxTradeVolume: opts.maxTradeVolume,
@@ -154,6 +163,7 @@ const makeCollateralFixtureContext = (
     collateralOpts.token1ChainlinkFeed = wethFeed.address
 
     const weth = (await ethers.getContractAt('WETH9', WETH)) as WETH9
+    const bal = (await ethers.getContractAt('ERC20Mock', BAL)) as ERC20Mock
     const dai = (await ethers.getContractAt('ERC20Mock', DAI)) as ERC20Mock // TODO: is this the ideal way to do this?
     // const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
@@ -169,6 +179,7 @@ const makeCollateralFixtureContext = (
       poolId: '0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a',
       tok: bwethdai,
       weth: weth,
+      bal: bal,
       dai: dai,
       wethFeed: wethFeed,
       daiFeed: daiFeed,
@@ -177,56 +188,6 @@ const makeCollateralFixtureContext = (
 
   return makeCollateralFixtureContext
 }
-
-// const deployCollateralCometMockContext = async (
-//   opts: CometCollateralOpts = {}
-// ): Promise<BalancerLPCollateralFixtureContextMockComet> => {
-//   const collateralOpts = { ...defaultCometCollateralOpts, ...opts }
-
-//   const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
-//     await ethers.getContractFactory('MockV3Aggregator')
-//   )
-//   const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
-//   collateralOpts.chainlinkFeed = chainlinkFeed.address
-
-//   const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
-//   const cusdcV3 = <CometMock>await CometFactory.deploy(bn('5e15'), bn('1e15'), CUSDC_V3)
-
-//   const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
-//     await ethers.getContractFactory('CusdcV3Wrapper')
-//   )
-//   const wcusdcV3 = <ICusdcV3Wrapper>(
-//     await CusdcV3WrapperFactory.deploy(cusdcV3.address, REWARDS, COMP)
-//   )
-//   const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
-//     await ethers.getContractFactory('CusdcV3WrapperMock')
-//   )
-//   const wcusdcV3Mock = await (<ICusdcV3WrapperMock>(
-//     await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)
-//   ))
-
-//   const realMock = (await ethers.getContractAt(
-//     'ICusdcV3WrapperMock',
-//     wcusdcV3Mock.address
-//   )) as ICusdcV3WrapperMock
-//   collateralOpts.erc20 = wcusdcV3.address
-//   collateralOpts.erc20 = realMock.address
-//   const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', DAI)
-//   const collateral = await deployCollateral(collateralOpts)
-
-//   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-
-//   return {
-//     collateral,
-//     chainlinkFeed,
-//     cusdcV3,
-//     wcusdcV3: <ICusdcV3WrapperMock>wcusdcV3Mock,
-//     wcusdcV3Mock,
-//     usdc,
-//     tok: wcusdcV3,
-//     rewardToken,
-//   }
-// }
 
 /*
   Define helper functions
@@ -300,6 +261,18 @@ describeFork(`Collateral: BWETHDAI`, () => {
       ).to.be.revertedWith('missing chainlink feed')
     })
 
+    it('does not allow missing gaugeFactory', async () => {
+      await expect(
+        deployCollateral({ gaugeFactory: ethers.constants.AddressZero })
+      ).to.be.revertedWith('missing gaugeFactory')
+    })
+
+    it('does not allow missing balancer minter', async () => {
+      await expect(
+        deployCollateral({ balancerMinter: ethers.constants.AddressZero })
+      ).to.be.revertedWith('missing balancer minter')
+    })
+
     it('max trade volume must be greater than zero', async () => {
       await expect(deployCollateral({ maxTradeVolume: 0 })).to.be.revertedWith(
         'invalid max trade volume'
@@ -330,6 +303,7 @@ describeFork(`Collateral: BWETHDAI`, () => {
     let chainlinkFeed: MockV3Aggregator
 
     let weth: WETH9
+    let bal: ERC20Mock
     let dai: ERC20Mock
 
     let daiFeed: MockV3Aggregator
@@ -348,13 +322,12 @@ describeFork(`Collateral: BWETHDAI`, () => {
       ;[, alice] = await ethers.getSigners()
       ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
       let tok
-      ;({ chainlinkFeed, collateral, daiFeed, wethFeed, tok, weth, dai } = ctx)
+      ;({ chainlinkFeed, collateral, daiFeed, wethFeed, tok, weth, dai, bal} = ctx)
       bwethdai = tok
       await hre.network.provider.request({
         method: 'hardhat_impersonateAccount',
         params: [WETH_WHALE],
       })
-      wethWhale = await ethers.getSigner(WETH_WHALE)
     })
 
     describe('functions', () => {
@@ -374,6 +347,19 @@ describeFork(`Collateral: BWETHDAI`, () => {
       it('does not revert', async () => {
         await expect(collateral.claimRewards()).to.not.be.reverted
       })
+
+      // it('claims balancer rewards', async () => {
+      //   const amount = bn('100').mul(bn(10).pow(await ctx.tok.decimals()))
+      //   await mintCollateralTo(ctx, amount, alice, collateral.address)
+
+      //   await advanceBlocks(1000)
+      //   await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1200000)
+
+      //   const balBefore = await bal.balanceOf(collateral.address)
+      //   await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
+      //   const balAfter = await bal.balanceOf(collateral.address)
+      //   expect(balAfter).gt(balBefore)
+      // })
     })
 
     describe('prices', () => {

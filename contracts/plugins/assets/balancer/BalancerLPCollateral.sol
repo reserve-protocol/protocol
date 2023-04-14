@@ -4,6 +4,8 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "./interfaces/IVault.sol";
+import "./interfaces/ILiquidityGaugeFactory.sol";
+import "./interfaces/IBalancerMinter.sol";
 import "./interfaces/BPool.sol";
 
 import "../FiatCollateral.sol";
@@ -14,6 +16,8 @@ struct BalancerCollateralConfig {
     bytes32 poolId; // balancer pool id
     AggregatorV3Interface token0ChainlinkFeed; 
     AggregatorV3Interface token1ChainlinkFeed; 
+    ILiquidityGaugeFactory gaugeFactory;
+    IBalancerMinter balancerMinter;
     uint192 oracleError; // {1} The % the oracle feed can be off by
     BPool erc20; // The ERC20 of the collateral token
     uint192 maxTradeVolume; // {UoA} The max trade volume, in UoA
@@ -55,6 +59,10 @@ contract BalancerLPCollateral is FiatCollateral {
     AggregatorV3Interface public immutable token1ChainlinkFeed; 
     IVault balancerVault;
     BPool balancerPool;
+    ILiquidityGaugeFactory gaugeFactory;
+    address gauge;
+    IBalancerMinter balancerMinter;
+    IERC20 balancerToken;
 
     // bitmap of which tokens are fiat:
     // e.g if the bit representation of tokenIsFiat is:
@@ -82,8 +90,25 @@ contract BalancerLPCollateral is FiatCollateral {
     {
         require(address(config.token1ChainlinkFeed) != address(0), "missing token1 chainlink feed");
         require(address(config.erc20) != address(0), "missing balancer pool");
-        IVault balancerVault_ = config.erc20.getVault();
-        require(address(balancerVault_) != address(0), "missing balancer vault");
+        // scope out var to prevent stack depth error
+        {
+            IVault balancerVault_ = config.erc20.getVault();
+            balancerVault = balancerVault_;
+            require(address(balancerVault_) != address(0), "missing balancer vault");
+        }
+        {
+            require(address(config.gaugeFactory) != address(0), "missing gaugeFactory");
+            address gauge_ = config.gaugeFactory.getPoolGauge(address(erc20));
+            require(gauge_ != address(0), "missing gauge");
+            gauge = gauge_;
+        }
+        require(address(config.balancerMinter) != address(0), "missing balancer minter");
+        balancerMinter = config.balancerMinter;
+        {
+            IERC20 balancerToken_ = balancerMinter.getBalancerToken();
+            require(address(balancerToken_) != address(0), "missing balancer token");
+            balancerToken = balancerToken_;
+        }
         require(config.tokenIsFiat <= 3 && config.tokenIsFiat >= 0, "invalid tokenIsFiat bitmap");
         require(config.targetName != bytes32(0), "targetName missing");
         if (config.defaultThreshold > 0) {
@@ -93,7 +118,6 @@ contract BalancerLPCollateral is FiatCollateral {
 
         // {target/ref} = {target/ref} * {1}
         tokenIsFiat = config.tokenIsFiat;
-        balancerVault = balancerVault_;
         balancerPool = config.erc20; // TODO: is this needed? Isn't it handled by the base class's constructor?
         poolId = config.poolId;
         prevReferencePrice = refPerTok();
@@ -213,5 +237,13 @@ contract BalancerLPCollateral is FiatCollateral {
 
         uint192 rate = divuu(Math.sqrt(token0Supply * token1Supply), balancerPool.totalSupply());
         return rate;
+    }
+
+    // Claim balancer token rewards - only works for certain pools
+    /// @dev Use delegatecall
+    function claimRewards() external override(Asset, IRewardable) {
+        uint256 balOldBal = balancerToken.balanceOf(address(this));
+        balancerMinter.mint_for(gauge, address(this));
+        emit RewardsClaimed(balancerToken, balancerToken.balanceOf(address(this)) - balOldBal);
     }
 }

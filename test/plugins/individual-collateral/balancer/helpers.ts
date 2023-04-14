@@ -1,6 +1,6 @@
 import { WETH_WHALE } from './constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { BPool, IERC20Metadata, WETH9 } from '../../../../typechain'
+import { BPool, WETH9 } from '../../../../typechain'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { BigNumberish } from 'ethers'
 import { FORK_BLOCK, BWETHDAI_WHALE, BWETHDAI } from './constants'
