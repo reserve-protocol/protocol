@@ -66,7 +66,7 @@ interface IAuth is IAccessControlUpgradeable {
     /// @param newVal The new value of `tradingPaused`
     event TradingPausedSet(bool indexed oldVal, bool indexed newVal);
 
-     /// Emitted when the system is paused or unpaused for issuance
+    /// Emitted when the system is paused or unpaused for issuance
     /// @param oldVal The old value of `issuancePaused`
     /// @param newVal The new value of `issuancePaused`
     event IssuancePausedSet(bool indexed oldVal, bool indexed newVal);

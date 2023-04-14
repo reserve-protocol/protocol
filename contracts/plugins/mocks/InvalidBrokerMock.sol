@@ -35,7 +35,12 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
     }
 
     /// Invalid implementation - Reverts
-    function openTrade(TradeRequest memory req) external view notTradingPausedOrFrozen returns (ITrade) {
+    function openTrade(TradeRequest memory req)
+        external
+        view
+        notTradingPausedOrFrozen
+        returns (ITrade)
+    {
         require(!disabled, "broker disabled");
         req;
 

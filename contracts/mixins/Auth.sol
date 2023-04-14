@@ -43,7 +43,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     bool public tradingPaused;
     bool public issuancePaused;
-    
+
     /* ==== Invariants ====
        0 <= longFreeze[a] <= LONG_FREEZE_CHARGES for all addrs a
        set{a has LONG_FREEZER} == set{a : longFreeze[a] == 0}
@@ -183,7 +183,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         tradingPaused = false;
     }
 
-      // checks: caller has PAUSER
+    // checks: caller has PAUSER
     // effects: issuancePaused' = true
     function issuancePause() external onlyRole(PAUSER) {
         emit IssuancePausedSet(issuancePaused, true);
