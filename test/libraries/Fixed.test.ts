@@ -495,7 +495,7 @@ describe('In FixLib,', () => {
     [1.001, 999, 999.999],
     [12, 13, 156],
   ]
-  describe('mul + mulRnd', () => {
+  describe('mul + mulRnd + safeMul', () => {
     it('correctly multiplies inside its range', async () => {
       const commutes = mulu_table.flatMap(([a, b, c]) => [
         [a, b, c],
@@ -504,12 +504,16 @@ describe('In FixLib,', () => {
       const table = commutes.flatMap(([a, b, c]) => [[a, b, c]])
       for (const [a, b, c] of table) {
         expect(await caller.mul(fp(a), fp(b)), `mul(fp(${a}), fp(${b}))`).to.equal(fp(c))
+        expect(await caller.safeMul_(fp(a), fp(b), ROUND), `safeMul(fp(${a}), fp(${b}))`).to.equal(
+          fp(c)
+        )
       }
     })
 
     function mulTest(x: string, y: string, result: string) {
       it(`mul(${x}, ${y}) == ${result}`, async () => {
         expect(await caller.mul(fp(x), fp(y))).to.equal(fp(result))
+        expect(await caller.safeMul_(fp(x), fp(y), ROUND)).to.equal(fp(result))
       })
     }
 
@@ -527,6 +531,8 @@ describe('In FixLib,', () => {
       for (const [a, b, c] of table) {
         expect(await caller.mul(a, b), `mul(${a}, ${b})`).to.equal(c)
         expect(await caller.mul(b, a), `mul(${b}, ${a})`).to.equal(c)
+        expect(await caller.safeMul_(a, b, ROUND), `safeMul(${b}, ${a})`).to.equal(c)
+        expect(await caller.safeMul_(b, a, ROUND), `safeMul(${b}, ${a})`).to.equal(c)
       }
     })
 
@@ -541,12 +547,25 @@ describe('In FixLib,', () => {
         expect(await caller.mulRnd(a, b, FLOOR), `mulRnd((${a}, ${b}, FLOOR)`).to.equal(floor)
         expect(await caller.mulRnd(a, b, ROUND), `mulRnd((${a}, ${b}, ROUND)`).to.equal(round)
         expect(await caller.mulRnd(a, b, CEIL), `mulRnd((${a}, ${b}, CEIL)`).to.equal(ceil)
+        expect(await caller.safeMul_(a, b, FLOOR), `safeMul((${a}, ${b}, FLOOR)`).to.equal(floor)
+        expect(await caller.safeMul_(a, b, ROUND), `safeMul((${a}, ${b}, ROUND)`).to.equal(round)
+        expect(await caller.safeMul_(a, b, CEIL), `safeMul((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
     it('fails outside its range', async () => {
       await expect(caller.mul(MAX_UINT192.div(2).add(1), fp(2)), 'mul(MAX/2 + 2, 2)').to.be.reverted
       await expect(caller.mul(fp(bn(2).pow(81)), fp(bn(2).pow(81))), 'mul(2^81, 2^81)').to.be
         .reverted
+
+      // SafeMul should not fail
+      await expect(
+        caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), ROUND),
+        'safeMul(MAX/2 + 2, 2)'
+      ).to.not.be.reverted
+      await expect(
+        caller.safeMul_(fp(bn(2).pow(81)), fp(bn(2).pow(81)), ROUND),
+        'safeMul(2^81, 2^81)'
+      ).to.not.be.reverted
     })
   })
 
@@ -964,6 +983,14 @@ describe('In FixLib,', () => {
       expect(await caller.mulDivRnd(bn(0), bn(0), bn(1), CEIL)).to.equal(bn(0))
       expect(await caller.mulDivRnd(bn(0), bn(0), bn(1), ROUND)).to.equal(bn(0))
       expect(await caller.mulDiv(bn(0), bn(0), bn(1))).to.equal(bn(0))
+    })
+  })
+
+  describe('safeMul', () => {
+    it('rounds up to FIX_MAX', async () => {
+      expect(await caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), CEIL)).to.equal(MAX_UINT192)
     })
   })
 
