@@ -3,8 +3,9 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/IMain.sol";
 import "../interfaces/IAssetRegistry.sol";
+import "../interfaces/IMain.sol";
+import "./mixins/SwapLib.sol";
 import "./mixins/Trading.sol";
 import "./mixins/TradeLib.sol";
 
@@ -129,7 +130,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     function getSwap(IERC20 sell) public view returns (Swap memory) {
         IAsset sellAsset = assetRegistry.toAsset(sell);
         return
-            TradeLib.prepareSwap(
+            SwapLib.prepareSwap(
                 TradeRequest(
                     sellAsset,
                     assetRegistry.toAsset(tokenToBuy),
@@ -137,7 +138,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
                     0 // unused, will be overwritten
                 ),
                 swapPricepoint,
-                SwapVariant.CALCULATE_BUY_AMOUNT
+                SwapLib.SwapVariant.CALCULATE_BUY_AMOUNT
             );
     }
 

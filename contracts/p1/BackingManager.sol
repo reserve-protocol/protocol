@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IBackingManager.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
-import "./mixins/Trading.sol";
+import "./mixins/SwapLib.sol";
 import "./mixins/RecollateralizationLib.sol";
+import "./mixins/Trading.sol";
 
 /**
  * @title BackingManager
@@ -19,7 +20,7 @@ import "./mixins/RecollateralizationLib.sol";
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     // Cache of peer components
     IAssetRegistry private assetRegistry;
@@ -42,8 +43,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // TODO check storage slots
 
     // ==== Invariants ====
-    // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
-    //
+    // tradingDelay <= MAX_TRADING_DELAY
+    // backingBuffer <= MAX_BACKING_BUFFER
+    // tradeCooldown <= MAX_TRADE_COOLDOWN
     // ... and the *much* more complicated temporal properties for _manageTokens()
 
     function init(
@@ -80,8 +82,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function grantRTokenAllowance(IERC20 erc20) external notFrozen {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
-        IERC20Upgradeable(address(erc20)).safeApprove(address(main.rToken()), 0);
-        IERC20Upgradeable(address(erc20)).safeApprove(address(main.rToken()), type(uint256).max);
+        erc20.safeApprove(address(main.rToken()), 0);
+        erc20.safeApprove(address(main.rToken()), type(uint256).max);
     }
 
     /// Maintain the overall backing policy; handout assets otherwise
@@ -114,14 +116,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // == Refresh ==
         assetRegistry.refresh();
 
-        require(tradesOpen == 0, "trade open");
-
-        // Ensure basket is ready, SOUND and not in warmup period
-        require(basketHandler.isReady(), "basket not ready");
-        require(block.timestamp >= whenNextTrade, "cooling down");
-
-        uint48 basketTimestamp = basketHandler.timestamp();
-        require(block.timestamp >= basketTimestamp + tradingDelay, "trading delayed");
+        requireReadyToTrade();
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
         uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
@@ -204,17 +199,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// @return The next Swap, without refreshing the assetRegistry
     function getSwap() public view returns (Swap memory) {
-        require(tradesOpen == 0, "trade open");
-        require(basketHandler.isReady(), "basket not ready");
-        require(block.timestamp >= whenNextTrade, "cooling down");
-        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
+        requireReadyToTrade();
 
         // TradeRequest from manageTokens()
         (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
             .prepareRecollateralizationTrade(this, basketHandler.basketsHeldBy(address(this)));
 
         require(doTrade, "swap not available");
-        return TradeLib.prepareSwap(req, swapPricepoint, SwapVariant.CALCULATE_SELL_AMOUNT);
+        return SwapLib.prepareSwap(req, swapPricepoint, SwapLib.SwapVariant.CALCULATE_SELL_AMOUNT);
     }
 
     // === Private ===
@@ -243,10 +235,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // Forward any RSR held to StRSR pool; RSR should never be sold for RToken yield
         if (rsr.balanceOf(address(this)) > 0) {
             // For CEI, this is an interaction "within our system" even though RSR is already live
-            IERC20Upgradeable(address(rsr)).safeTransfer(
-                address(stRSR),
-                rsr.balanceOf(address(this))
-            );
+            rsr.safeTransfer(address(stRSR), rsr.balanceOf(address(this)));
         }
 
         // Mint revenue RToken and update `basketsNeeded`
@@ -306,7 +295,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // == Interactions ==
         for (uint256 i = 0; i < length; ++i) {
-            IERC20Upgradeable erc20 = IERC20Upgradeable(address(erc20s[i]));
+            IERC20 erc20 = IERC20(address(erc20s[i]));
             if (toRToken[i] > 0) erc20.safeTransfer(address(rTokenTrader), toRToken[i]);
             if (toRSR[i] > 0) erc20.safeTransfer(address(rsrTrader), toRSR[i]);
         }
@@ -321,6 +310,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
         assert(tradesOpen == 0 && basketsHeldBottom < basketsNeeded);
         rToken.setBasketsNeeded(basketsHeldBottom);
+    }
+
+    /// Require all the pre-conditions to trading of any kind
+    function requireReadyToTrade() private view {
+        require(tradesOpen == 0, "trade open");
+        require(basketHandler.isReady(), "basket not ready");
+        require(block.timestamp >= whenNextTrade, "cooling down");
+        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
     }
 
     // === Governance Setters ===
