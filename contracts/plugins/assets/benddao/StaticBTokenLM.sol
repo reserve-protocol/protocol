@@ -262,10 +262,7 @@ contract StaticBTokenLM is
         IScaledBalanceToken[] memory assets = new IScaledBalanceToken[](1);
         assets[0] = IScaledBalanceToken(address(BTOKEN));
 
-        uint256 freshlyClaimed = INCENTIVES_CONTROLLER.claimRewards(
-            assets,
-            type(uint256).max
-        );
+        uint256 freshlyClaimed = INCENTIVES_CONTROLLER.claimRewards(assets, type(uint256).max);
         uint256 lifetimeRewards = _lifetimeRewardsClaimed.add(freshlyClaimed);
         uint256 rewardsAccrued = lifetimeRewards.sub(_lifetimeRewards).wadToRay();
 
