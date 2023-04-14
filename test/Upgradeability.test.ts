@@ -24,7 +24,6 @@ import {
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
-  IBasketHandler,
   MainP1,
   MainP1V2,
   RevenueTraderP1,
@@ -35,6 +34,7 @@ import {
   StRSRP1Votes,
   StRSRP1VotesV2,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDistributor,
   TestIFurnace,
@@ -70,7 +70,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let main: TestIMain
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
@@ -237,7 +237,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - BasketHandler', async () => {
       const newBasketHandler: BasketHandlerP1 = <BasketHandlerP1>await upgrades.deployProxy(
         BasketHandlerFactory,
-        [main.address],
+        [main.address, config.warmupPeriod],
         {
           initializer: 'init',
           kind: 'uups',

@@ -182,7 +182,7 @@ contract DeployerP1 is IDeployer, Versioned {
         );
 
         // Init Basket Handler
-        components.basketHandler.init(main);
+        components.basketHandler.init(main, params.warmupPeriod);
 
         // Init Revenue Traders
         components.rsrTrader.init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);

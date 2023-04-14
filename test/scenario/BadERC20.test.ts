@@ -10,10 +10,10 @@ import {
   BadERC20,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIFurnace,
   TestIStRSR,
   TestIRevenueTrader,
@@ -62,7 +62,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let backingManager: TestIBackingManager
   let rTokenTrader: TestIRevenueTrader
   let rsrTrader: TestIRevenueTrader
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   // Computes the minBuyAmt for a sellAmt at two prices
   // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
@@ -250,6 +250,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs(3, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
 
       // Should be trading RSR for backup token
@@ -310,6 +314,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs(3, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await expect(backingManager.manageTokens([])).to.be.revertedWith('censored')
 
       // Should work now
@@ -352,6 +360,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs(3, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
 
       // Should be trading RSR for backup token

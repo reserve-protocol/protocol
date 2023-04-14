@@ -7,6 +7,12 @@ import "../libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
 
+// Not used directly in the IAsset interface, but used by many consumers to save stack space
+struct Price {
+    uint192 low; // {UoA/tok}
+    uint192 high; // {UoA/tok}
+}
+
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,

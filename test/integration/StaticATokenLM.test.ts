@@ -168,7 +168,9 @@ const getContext = async ({
   staticATokenSupply: await staticAToken.totalSupply(),
 })
 
-describe('StaticATokenLM: aToken wrapper with static balances and liquidity mining', () => {
+const describeFork = useEnv('FORK') ? describe : describe.skip
+
+describeFork('StaticATokenLM: aToken wrapper with static balances and liquidity mining', () => {
   let user1: SignerWithAddress
   let user2: SignerWithAddress
   let userSigner: providers.JsonRpcSigner

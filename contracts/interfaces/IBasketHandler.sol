@@ -38,8 +38,21 @@ interface IBasketHandler is IComponent {
     /// @param erc20s The set of backup collateral tokens
     event BackupConfigSet(bytes32 indexed targetName, uint256 indexed max, IERC20[] erc20s);
 
+    /// Emitted when the warmup period is changed
+    /// @param oldVal The old warmup period
+    /// @param newVal The new warmup period
+    event WarmupPeriodSet(uint48 indexed oldVal, uint48 indexed newVal);
+
+    /// Emitted when the status of a basket has changed
+    /// @param oldStatus The previous basket status
+    /// @param newStatus The new basket status
+    event BasketStatusChanged(
+        CollateralStatus indexed oldStatus,
+        CollateralStatus indexed newStatus
+    );
+
     // Initialization
-    function init(IMain main_) external;
+    function init(IMain main_, uint48 warmupPeriod_) external;
 
     /// Set the prime basket
     /// @param erc20s The collateral tokens for the new prime basket
@@ -69,11 +82,18 @@ interface IBasketHandler is IComponent {
     /// @custom:interaction
     function refreshBasket() external;
 
+    /// Track the basket status changes
+    /// @custom:refresher
+    function trackStatus() external;
+
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply
     function fullyCollateralized() external view returns (bool);
 
     /// @return status The worst CollateralStatus of all collateral in the basket
     function status() external view returns (CollateralStatus status);
+
+    /// @return If the basket is ready to issue and trade
+    function isReady() external view returns (bool);
 
     /// @param erc20 The ERC20 token contract for the asset
     /// @return {tok/BU} The whole token quantity of token in the reference basket
@@ -114,9 +134,20 @@ interface IBasketHandler is IComponent {
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
+    /// Returns both the price & lotPrice at once, for gas optimization
+    /// @return price_ {UoA/tok} The low and high price estimate of an RToken
+    /// @return lotPrice_ {UoA/tok} The low and high lotprice of an RToken
+    function prices() external view returns (Price memory price_, Price memory lotPrice_);
+
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);
 
     /// @return The current basket nonce, regardless of status
     function nonce() external view returns (uint48);
+}
+
+interface TestIBasketHandler is IBasketHandler {
+    function warmupPeriod() external view returns (uint48);
+
+    function setWarmupPeriod(uint48 val) external;
 }

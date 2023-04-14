@@ -208,6 +208,15 @@ The trading delay is how many seconds should pass after the basket has been chan
 Default value: `7200` = 2 hours
 Mainnet reasonable range: 0 to 604800
 
+### `warmupPeriod`
+
+Dimension: `{seconds}`
+
+The warmup period is how many seconds should pass after the basket regained the SOUND status before an RToken can be issued and/or a trade can be opened.
+
+Default value: `900` = 15 minutes
+Mainnet reasonable range: 0 to 604800
+
 ### `auctionLength`
 
 Dimension: `{seconds}`

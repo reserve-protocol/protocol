@@ -18,9 +18,9 @@ import {
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIDistributor,
   TestIStRSR,
   TestIRevenueTrader,
@@ -71,7 +71,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
 
   let ERC20Mock: ContractFactory
@@ -641,7 +641,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       )
       await basketHandler.connect(owner).refreshBasket()
 
-      // Insure with RSR
+      // Over-collateralize with RSR
       await rsr.connect(owner).mint(addr1.address, fp('1e29'))
       await rsr.connect(addr1).approve(stRSR.address, fp('1e29'))
       await stRSR.connect(addr1).stake(fp('1e29'))
@@ -661,6 +661,10 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       }
 
       await basketHandler.refreshBasket()
+
+      // Advance time post warmup period
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await runRecollateralizationAuctions(basketSize)
     }
 

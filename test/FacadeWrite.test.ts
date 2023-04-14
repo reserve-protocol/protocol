@@ -30,7 +30,6 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
-  IBasketHandler,
   FacadeRead,
   FacadeTest,
   FacadeWrite,
@@ -39,6 +38,7 @@ import {
   IAssetRegistry,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
@@ -109,7 +109,7 @@ describe('FacadeWrite contract', () => {
   let main: TestIMain
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let broker: TestIBroker
   let distributor: TestIDistributor
   let furnace: TestIFurnace
@@ -301,8 +301,8 @@ describe('FacadeWrite contract', () => {
       backingManager = <TestIBackingManager>(
         await ethers.getContractAt('TestIBackingManager', await main.backingManager())
       )
-      basketHandler = <IBasketHandler>(
-        await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+      basketHandler = <TestIBasketHandler>(
+        await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
       )
 
       broker = <TestIBroker>await ethers.getContractAt('TestIBroker', await main.broker())
