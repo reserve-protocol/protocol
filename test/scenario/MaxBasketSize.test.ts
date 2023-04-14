@@ -16,11 +16,11 @@ import {
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
-  IBasketHandler,
   TestIStRSR,
   MockV3Aggregator,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIRToken,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -65,7 +65,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let rsr: ERC20Mock
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
@@ -386,6 +386,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         await basketHandler.refreshBasket()
       }
 
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       // Check new basket
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       const newBacking: string[] = await facade.basketTokens(rToken.address)
@@ -506,6 +509,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       } else {
         await basketHandler.refreshBasket()
       }
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Check new basket
       expect(await basketHandler.fullyCollateralized()).to.equal(false)

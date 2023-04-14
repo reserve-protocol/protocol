@@ -129,8 +129,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Checks-effects block ==
         address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
 
-        // Ensure SOUND basket
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket unsound");
+        // Ensure basket is ready, SOUND and not in warmup period
+        require(basketHandler.isReady(), "basket not ready");
 
         furnace.melt();
         uint256 supply = totalSupply();

@@ -36,11 +36,11 @@ import {
   FacadeTest,
   FacadeWrite,
   IAssetRegistry,
-  IBasketHandler,
   InvalidMockV3Aggregator,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIDeployer,
   TestIMain,
   TestIRToken,
@@ -90,7 +90,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let rTokenAsset: RTokenAsset
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   let deployer: TestIDeployer
   let facade: FacadeRead
@@ -111,6 +111,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     longFreeze: bn('2592000'), // 30 days
     rewardRatio: bn('1069671574938'), // approx. half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
+    warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
@@ -242,8 +243,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     backingManager = <TestIBackingManager>(
       await ethers.getContractAt('TestIBackingManager', await main.backingManager())
     )
-    basketHandler = <IBasketHandler>(
-      await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+    basketHandler = <TestIBasketHandler>(
+      await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
     )
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
     rTokenAsset = <RTokenAsset>(

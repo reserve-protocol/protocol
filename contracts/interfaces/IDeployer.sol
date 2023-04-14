@@ -35,6 +35,9 @@ struct DeploymentParams {
     // === StRSR ===
     uint48 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
     //
+    // === BasketHandler ===
+    uint48 warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
+    //
     // === BackingManager ===
     uint48 tradingDelay; // {s} how long to wait until starting auctions after switching basket
     uint48 auctionLength; // {s} the length of an auction

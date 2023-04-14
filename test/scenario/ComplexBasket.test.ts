@@ -15,11 +15,11 @@ import {
   FacadeTest,
   GnosisMock,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIRevenueTrader,
   TestIRToken,
   WETH9,
@@ -100,7 +100,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
@@ -392,6 +392,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Set basket
     await basketHandler.setPrimeBasket(primeBasketERC20s, targetAmts)
     await basketHandler.connect(owner).refreshBasket()
+
+    // Advance time post warmup period
+    await advanceTime(Number(config.warmupPeriod) + 1)
 
     // Mint and approve initial balances
     const backing: string[] = await facade.basketTokens(rToken.address)
@@ -1321,6 +1324,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Ensure valid basket
     await basketHandler.refreshBasket()
 
+    // Advance time post warmup period
+    await advanceTime(Number(config.warmupPeriod) + 1)
+
     const [, newQuotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
     const newExpectedTkn4: BigNumber = issueAmount
       .mul(targetAmts[4].add(targetAmts[5]))
@@ -1545,6 +1551,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Ensure valid basket
     await basketHandler.refreshBasket()
+
+    // Advance time post warmup period
+    await advanceTime(Number(config.warmupPeriod) + 1)
 
     const [, newQuotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
     const newExpectedTkn6: BigNumber = issueAmount

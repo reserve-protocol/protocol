@@ -23,9 +23,9 @@ import {
   FacadeAct,
   FiatCollateral,
   GnosisMock,
-  IBasketHandler,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIDistributor,
   TestIRevenueTrader,
   TestIRToken,
@@ -71,7 +71,7 @@ describe('FacadeMonitor Contract', () => {
 
   // Main
   let rToken: TestIRToken
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let backingManager: TestIBackingManager
   let distributor: TestIDistributor
   let gnosis: GnosisMock
