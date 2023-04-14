@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { ITokens, IComponents, IImplementations } from '../../common/configuration'
+import { ITokens, IComponents, IImplementations, IPlugins } from '../../common/configuration'
 
 // This file is intended to have minimal imports, so that it can be used from tasks if necessary
 
@@ -14,6 +14,7 @@ export interface IDeployments {
   tradingLib: string
   facadeRead: string
   facadeWriteLib: string
+  cvxMiningLib: string
   facadeMonitor: string
   facadeWrite: string
   facadeAct: string
@@ -24,7 +25,7 @@ export interface IDeployments {
 
 export interface IAssetCollDeployments {
   assets: ITokens
-  collateral: ITokens
+  collateral: ITokens & IPlugins
 }
 
 export interface IRTokenDeployments {
@@ -45,7 +46,7 @@ export const getDeploymentFilename = (chainId: number): string => {
 }
 
 export const getAssetCollDeploymentFilename = (chainId: number, version?: string): string => {
-  return `${pathToFolder}${version ? `/${version}/` : null}${chainId}${tempAssetCollFileSuffix}`
+  return `${pathToFolder}${version ? `/${version}/` : ''}${chainId}${tempAssetCollFileSuffix}`
 }
 
 export const getRTokenDeploymentFilename = (chainId: number, name: string): string => {

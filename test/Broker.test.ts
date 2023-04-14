@@ -1,5 +1,6 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
@@ -37,6 +38,7 @@ const describeGas =
 describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
+  let mock: SignerWithAddress
   let other: SignerWithAddress
 
   // Assets / Tokens
@@ -64,7 +66,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let collateral: Collateral[]
 
   beforeEach(async () => {
-    ;[owner, addr1, other] = await ethers.getSigners()
+    ;[owner, addr1, mock, other] = await ethers.getSigners()
     // Deploy fixture
     ;({
       basket,
@@ -121,6 +123,67 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   })
 
   describe('Configuration/State', () => {
+    it('Should allow to update Gnosis if Owner and perform validations', async () => {
+      // Check existing value
+      expect(await broker.gnosis()).to.equal(gnosis.address)
+
+      // If not owner cannot update
+      await expect(broker.connect(other).setGnosis(mock.address)).to.be.revertedWith(
+        'governance only'
+      )
+
+      // Check value did not change
+      expect(await broker.gnosis()).to.equal(gnosis.address)
+
+      // Attempt to update with Owner but zero address - not allowed
+      await expect(broker.connect(owner).setGnosis(ZERO_ADDRESS)).to.be.revertedWith(
+        'invalid Gnosis address'
+      )
+
+      // Update with owner
+      await expect(broker.connect(owner).setGnosis(mock.address))
+        .to.emit(broker, 'GnosisSet')
+        .withArgs(gnosis.address, mock.address)
+
+      // Check value was updated
+      expect(await broker.gnosis()).to.equal(mock.address)
+    })
+
+    it('Should allow to update Trade Implementation if Owner and perform validations', async () => {
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const tradeImpl: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Update to a trade implementation to use as baseline for tests
+      await expect(broker.connect(owner).setTradeImplementation(tradeImpl.address))
+        .to.emit(broker, 'TradeImplementationSet')
+        .withArgs(anyValue, tradeImpl.address)
+
+      // Check existing value
+      expect(await broker.tradeImplementation()).to.equal(tradeImpl.address)
+
+      // If not owner cannot update
+      await expect(broker.connect(other).setTradeImplementation(mock.address)).to.be.revertedWith(
+        'governance only'
+      )
+
+      // Check value did not change
+      expect(await broker.tradeImplementation()).to.equal(tradeImpl.address)
+
+      // Attempt to update with Owner but zero address - not allowed
+      await expect(broker.connect(owner).setTradeImplementation(ZERO_ADDRESS)).to.be.revertedWith(
+        'invalid Trade Implementation address'
+      )
+
+      // Update with owner
+      await expect(broker.connect(owner).setTradeImplementation(mock.address))
+        .to.emit(broker, 'TradeImplementationSet')
+        .withArgs(tradeImpl.address, mock.address)
+
+      // Check value was updated
+      expect(await broker.tradeImplementation()).to.equal(mock.address)
+    })
+
     it('Should allow to update auctionLength if Owner', async () => {
       const newValue: BigNumber = bn('360')
 

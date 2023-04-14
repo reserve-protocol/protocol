@@ -35,6 +35,14 @@ async function main() {
     [],
     'contracts/facade/FacadeMonitor.sol:FacadeMonitor'
   )
+
+  /** ******************** Verify FacadeAct ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.facadeAct,
+    [],
+    'contracts/facade/FacadeAct.sol:FacadeAct'
+  )
 }
 
 main().catch((error) => {

@@ -20,9 +20,9 @@ contract SelfReferentialCollateral is FiatCollateral {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
-    /// @param pegPrice {target/ref}
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
+    /// @return pegPrice {target/ref}
     function tryPrice()
         external
         view
@@ -37,10 +37,12 @@ contract SelfReferentialCollateral is FiatCollateral {
         uint192 p = chainlinkFeed.price(oracleTimeout);
         // danger for inheritance: this assumes refPerTok() is 1
 
-        uint192 delta = p.mul(oracleError);
+        uint192 err = p.mul(oracleError, CEIL);
 
-        low = p - delta;
-        high = p + delta;
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
+
         pegPrice = targetPerRef();
     }
 }

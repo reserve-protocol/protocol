@@ -4535,6 +4535,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
 
+      // Send BackingManager with nonzero RToken balance to incur maximum gas costs
+      await rToken.connect(addr1).transfer(backingManager.address, 1000)
+
       // Mint some RSR
       await rsr.connect(owner).mint(addr1.address, initialBal)
     })

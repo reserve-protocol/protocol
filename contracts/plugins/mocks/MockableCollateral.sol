@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../assets/ATokenFiatCollateral.sol";
+import "../assets/aave/ATokenFiatCollateral.sol";
 
 contract MockableCollateral is ATokenFiatCollateral {
     using FixLib for uint192;

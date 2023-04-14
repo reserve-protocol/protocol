@@ -27,10 +27,10 @@ contract BrokerP1 is ComponentP1, IBroker {
     IRevenueTrader private rsrTrader;
     IRevenueTrader private rTokenTrader;
 
-    // The trade contract to clone on openTrade(). Immutable after init.
+    // The trade contract to clone on openTrade(). Governance parameter.
     ITrade public tradeImplementation;
 
-    // The Gnosis contract to init each trade with. Immutable after init.
+    // The Gnosis contract to init each trade with. Governance parameter.
     IGnosis public gnosis;
 
     // {s} the length of an auction. Governance parameter.
@@ -46,7 +46,6 @@ contract BrokerP1 is ComponentP1, IBroker {
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
 
-    // checks: gnosis_ and tradeImplementation_ are nonzero
     // effects: initial parameters are set
     function init(
         IMain main_,
@@ -54,19 +53,14 @@ contract BrokerP1 is ComponentP1, IBroker {
         ITrade tradeImplementation_,
         uint48 auctionLength_
     ) external initializer {
-        require(address(gnosis_) != address(0), "invalid Gnosis address");
-        require(
-            address(tradeImplementation_) != address(0),
-            "invalid Trade Implementation address"
-        );
         __Component_init(main_);
 
         backingManager = main_.backingManager();
         rsrTrader = main_.rsrTrader();
         rTokenTrader = main_.rTokenTrader();
 
-        gnosis = gnosis_;
-        tradeImplementation = tradeImplementation_;
+        setGnosis(gnosis_);
+        setTradeImplementation(tradeImplementation_);
         setAuctionLength(auctionLength_);
     }
 
@@ -128,6 +122,25 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     // === Setters ===
+
+    /// @custom:governance
+    function setGnosis(IGnosis newGnosis) public governance {
+        require(address(newGnosis) != address(0), "invalid Gnosis address");
+
+        emit GnosisSet(gnosis, newGnosis);
+        gnosis = newGnosis;
+    }
+
+    /// @custom:governance
+    function setTradeImplementation(ITrade newTradeImplementation) public governance {
+        require(
+            address(newTradeImplementation) != address(0),
+            "invalid Trade Implementation address"
+        );
+
+        emit TradeImplementationSet(tradeImplementation, newTradeImplementation);
+        tradeImplementation = newTradeImplementation;
+    }
 
     /// @custom:governance
     function setAuctionLength(uint48 newAuctionLength) public governance {

@@ -137,7 +137,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let mockChainlinkFeed: MockV3Aggregator
 
   before(async () => {
-    await setup(forkBlockNumber['default'])
+    await setup(forkBlockNumber['asset-plugins'])
+
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -359,6 +360,25 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Validate constructor arguments
     // Note: Adapt it to your plugin constructor validations
     it('Should validate constructor arguments correctly', async () => {
+      // Comptroller
+      await expect(
+        CTokenCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
+            oracleError: ORACLE_ERROR,
+            erc20: ZERO_ADDRESS,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
+          REVENUE_HIDING,
+          ZERO_ADDRESS
+        )
+      ).to.be.revertedWith('missing erc20')
+
       // Comptroller
       await expect(
         CTokenCollateralFactory.deploy(

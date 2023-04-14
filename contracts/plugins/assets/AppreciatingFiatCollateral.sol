@@ -45,9 +45,9 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
     /// @dev Override this when pricing is more complicated than just a single oracle
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
-    /// @param pegPrice {target/ref} The actual price observed in the peg
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
+    /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
         external
         view
@@ -59,18 +59,16 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
             uint192 pegPrice
         )
     {
-        // Should include revenue hiding discount in the low discount but not high
-
-        pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
-
-        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
-        uint192 pLow = pegPrice.mul(refPerTok());
+        // {target/ref} = {UoA/ref} / {UoA/target} (1)
+        pegPrice = chainlinkFeed.price(oracleTimeout);
 
         // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
-        uint192 pHigh = pegPrice.mul(_underlyingRefPerTok());
+        uint192 p = pegPrice.mul(_underlyingRefPerTok());
+        uint192 err = p.mul(oracleError, CEIL);
 
-        low = pLow - pLow.mul(oracleError);
-        high = pHigh + pHigh.mul(oracleError);
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
     }
 
     /// Should not revert
