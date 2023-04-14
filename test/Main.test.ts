@@ -204,8 +204,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.getRoleAdmin(PAUSER)).to.equal(OWNER)
 
       // Should start unfrozen and unpaused
-      expect(await main.paused()).to.equal(false)
-      expect(await main.pausedOrFrozen()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.tradingPausedOrFrozen()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
+      expect(await main.issuancePausedOrFrozen()).to.equal(false)
       expect(await main.frozen()).to.equal(false)
 
       // Components
@@ -529,41 +531,54 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check initial status
       expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
       expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
-      expect(await main.paused()).to.equal(false)
-      expect(await main.pausedOrFrozen()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.tradingPausedOrFrozen()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
+      expect(await main.issuancePausedOrFrozen()).to.equal(false)
 
       // Pause with PAUSER
-      await main.connect(addr1).pause()
+      await main.connect(addr1).tradingPause()
+      await main.connect(addr1).issuancePause()
 
       // Check if Paused, should not lose PAUSER
-      expect(await main.paused()).to.equal(true)
+      expect(await main.tradingPaused()).to.equal(true)
+      expect(await main.issuancePaused()).to.equal(true)
       expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
       expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
 
       // Unpause
-      await main.connect(addr1).unpause()
+      await main.connect(addr1).tradingUnpause()
+      await main.connect(addr1).issuanceUnpause()
 
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
 
       // OWNER should still be able to Pause
-      await main.connect(owner).pause()
+      await main.connect(owner).tradingPause()
+      await main.connect(owner).issuancePause()
 
       // Check if Paused
-      expect(await main.pausedOrFrozen()).to.equal(true)
-      expect(await main.paused()).to.equal(true)
+      expect(await main.tradingPausedOrFrozen()).to.equal(true)
+      expect(await main.tradingPaused()).to.equal(true)
+      expect(await main.issuancePausedOrFrozen()).to.equal(true)
+      expect(await main.issuancePaused()).to.equal(true)
     })
 
     it('Should not allow to Pause/Unpause if not PAUSER or OWNER', async () => {
-      await expect(main.connect(other).pause()).to.be.reverted
+      await expect(main.connect(other).tradingPause()).to.be.reverted
+      await expect(main.connect(other).issuancePause()).to.be.reverted
 
       // Check no changes
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
 
       // Attempt to unpause
-      await expect(main.connect(other).unpause()).to.be.reverted
+      await expect(main.connect(other).tradingUnpause()).to.be.reverted
+      await expect(main.connect(other).issuanceUnpause()).to.be.reverted
 
       // Check no changes
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
     })
 
     it('Should not allow to set PAUSER if not OWNER', async () => {
@@ -622,7 +637,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.hasRole(LONG_FREEZER, addr1.address)).to.equal(false)
       expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(true)
       expect(await main.frozen()).to.equal(false)
-      expect(await main.pausedOrFrozen()).to.equal(false)
+      expect(await main.tradingPausedOrFrozen()).to.equal(false)
+      expect(await main.issuancePausedOrFrozen()).to.equal(false)
     })
 
     it('Should only permit owner to freeze forever', async () => {
@@ -997,7 +1013,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should grant allowances when paused', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).tradingPause()
+      await main.connect(owner).issuancePause()
       await expect(backingManager.grantRTokenAllowance(ZERO_ADDRESS)).to.be.revertedWith(
         'erc20 unregistered'
       )
@@ -1682,7 +1699,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to refresh basket if not OWNER when paused', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).tradingPause()
       await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
         'basket unrefreshable'
       )
@@ -1696,13 +1713,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to poke when paused', async () => {
-      await main.connect(owner).pause()
-      await expect(main.connect(other).poke()).to.be.revertedWith('paused or frozen')
+      await main.connect(owner).tradingPause()
+      await expect(main.connect(other).poke()).to.be.revertedWith('frozen or trading paused')
     })
 
     it('Should not allow to poke when frozen', async () => {
       await main.connect(owner).freezeForever()
-      await expect(main.connect(other).poke()).to.be.revertedWith('paused or frozen')
+      await expect(main.connect(other).poke()).to.be.revertedWith('frozen or trading paused')
     })
 
     it('Should not allow to refresh basket if not OWNER when unfrozen and unpaused', async () => {
@@ -1718,7 +1735,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should allow to call refresh Basket if OWNER and paused - No changes', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).tradingPause()
       // Switch basket - No backup nor default
       await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
@@ -1735,7 +1752,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Not updated so basket last changed is not set
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      await main.connect(owner).unpause()
+      await main.connect(owner).tradingUnpause()
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 

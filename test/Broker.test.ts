@@ -274,7 +274,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     })
 
     it('Should not allow to open trade if paused', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).tradingPause()
 
       // Attempt to open trade
       const tradeRequest: ITradeRequest = {
@@ -286,13 +286,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
     })
 
     it('Should not allow to open trade if frozen', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).freezeShort()
 
       // Attempt to open trade
       const tradeRequest: ITradeRequest = {
@@ -304,7 +304,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
     })
@@ -373,15 +373,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // Check not disabled
       expect(await broker.disabled()).to.equal(false)
 
-      await main.connect(owner).pause()
+      await main.connect(owner).tradingPause()
 
-      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith('paused or frozen')
+      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith('frozen or trading paused')
 
-      await main.connect(owner).unpause()
+      await main.connect(owner).tradingUnpause()
 
       await main.connect(owner).freezeShort()
 
-      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith('paused or frozen')
+      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith('frozen or trading paused')
 
       // Check nothing changed
       expect(await broker.disabled()).to.equal(false)

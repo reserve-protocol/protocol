@@ -180,13 +180,13 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not melt if paused #fast', async () => {
-      await main.connect(owner).pause()
-      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
+      await main.connect(owner).tradingPause()
+      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('frozen or trading paused')
     })
 
     it('Should not melt if frozen #fast', async () => {
       await main.connect(owner).freezeShort()
-      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
+      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('frozen or trading paused')
     })
 
     it('Should not melt any funds in the initial block #fast', async () => {

@@ -387,7 +387,8 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       const amount: BigNumber = bn('1000e18')
 
       // Pause Main
-      await main.connect(owner).pause()
+      await main.connect(owner).tradingPause()
+      await main.connect(owner).issuancePause()
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -485,13 +486,13 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not unstake if paused', async () => {
-      await main.connect(owner).pause()
-      await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('paused or frozen')
+      await main.connect(owner).tradingPause()
+      await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('frozen or trading paused')
     })
 
     it('Should not unstake if frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('paused or frozen')
+      await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('frozen or trading paused')
     })
 
     it('Should create Pending withdrawal when unstaking', async () => {
@@ -631,15 +632,15 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay)
 
         // Pause Main
-        await main.connect(owner).pause()
+        await main.connect(owner).tradingPause()
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
 
         // If unpaused should withdraw OK
-        await main.connect(owner).unpause()
+        await main.connect(owner).tradingUnpause()
 
         // Withdraw
         await stRSR.connect(addr1).withdraw(addr1.address, 1)
@@ -663,7 +664,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
 
         // If unpaused should withdraw OK
@@ -1125,7 +1126,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Rewards should not be handed out when paused but staking should still work', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).tradingPause()
       await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
 
       // Stake
@@ -1310,16 +1311,16 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to remove RSR if paused', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).tradingPause()
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('paused or frozen')
+        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('frozen or trading paused')
       })
     })
 
     it('Should not allow to remove RSR if frozen', async () => {
       await main.connect(owner).freezeShort()
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('paused or frozen')
+        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('frozen or trading paused')
       })
     })
 
