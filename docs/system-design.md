@@ -110,7 +110,8 @@ On the other hand, while a redemption is pending in the mempool, the quantities 
 
 ## System States
 
-- `paused`: all interactions disabled EXCEPT ERC20 functions + RToken.redeem + StRSR.stake + StRSR.payoutRewards
+- `tradingPaused`: all interactions disabled EXCEPT ERC20 functions + RToken.issue + RToken.redeem + StRSR.stake + StRSR.payoutRewards
+- `issuancePaused`: all interactions enabled EXCEPT RToken.issue
 - `frozen`: all interactions disabled EXCEPT ERC20 functions + StRSR.stake
 
 Freezing can occur over two timescales: short freezing + long freezing.
