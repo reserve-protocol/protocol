@@ -304,7 +304,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).issuancePause()
 
       // Try to issue
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('frozen or issuance paused')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+        'frozen or issuance paused'
+      )
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
@@ -317,7 +319,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).freezeShort()
 
       // Try to issue
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('frozen or issuance paused')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+        'frozen or issuance paused'
+      )
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
@@ -1796,12 +1800,16 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     it('should not monetize while paused', async () => {
       await main.connect(owner).tradingPause()
-      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('frozen or trading paused')
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith(
+        'frozen or trading paused'
+      )
     })
 
     it('should not monetize while frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('frozen or trading paused')
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith(
+        'frozen or trading paused'
+      )
     })
 
     it('should monetize registered erc20s', async () => {

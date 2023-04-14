@@ -375,13 +375,17 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       await main.connect(owner).tradingPause()
 
-      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith('frozen or trading paused')
+      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
+        'frozen or trading paused'
+      )
 
       await main.connect(owner).tradingUnpause()
 
       await main.connect(owner).freezeShort()
 
-      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith('frozen or trading paused')
+      await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
+        'frozen or trading paused'
+      )
 
       // Check nothing changed
       expect(await broker.disabled()).to.equal(false)

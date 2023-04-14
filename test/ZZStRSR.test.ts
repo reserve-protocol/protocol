@@ -1313,14 +1313,18 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to remove RSR if paused', async () => {
       await main.connect(owner).tradingPause()
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('frozen or trading paused')
+        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith(
+          'frozen or trading paused'
+        )
       })
     })
 
     it('Should not allow to remove RSR if frozen', async () => {
       await main.connect(owner).freezeShort()
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('frozen or trading paused')
+        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith(
+          'frozen or trading paused'
+        )
       })
     })
 
