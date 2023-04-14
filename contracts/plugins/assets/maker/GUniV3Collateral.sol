@@ -34,6 +34,11 @@ contract GUniV3Collateral is FiatCollateral {
     address public immutable mcdVat;
     address public immutable mcdGemJoin;
     ERC20PresetMinterPauser public immutable wrapperToken;
+    AggregatorV3Interface public immutable usdcFeed;
+
+    uint192 public immutable usdcPegBottom; // {target/ref} The bottom of the peg
+
+    uint192 public immutable usdcPegTop; // {target/ref} The top of the peg
 
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
@@ -42,18 +47,82 @@ contract GUniV3Collateral is FiatCollateral {
         bytes32 _poolIlk, // a bytes32 identifier for the pool
         address _mcdVat,  // maker's vault contract
         address _mcdGemJoin, // maker's gem join contract
-        ERC20PresetMinterPauser  _wrapperToken
+        ERC20PresetMinterPauser  _wrapperToken,
+        AggregatorV3Interface _usdcFeed
     ) FiatCollateral(config) {
         require(_poolIlk[0] != 0, "poolIlk = 0");
         require(_mcdVat != address(0), "mcdVat = 0");
         require(_mcdGemJoin != address(0), "mcdGemJoin = 0");
+        require(address(_wrapperToken) != address(0), "wrapperToken = 0");
+        require(address(_usdcFeed) != address(0), "usdcFeed = 0");
         poolIlk = _poolIlk;
         mcdVat = _mcdVat;
         mcdGemJoin = _mcdGemJoin;
         wrapperToken = _wrapperToken;
+        usdcFeed = _usdcFeed;
 
+        // Cache constants
+        uint192 peg = targetPerRef(); // {target/ref}
+
+        // {target/ref} = {target/ref} * {1}
+        uint192 delta = peg.mul(config.defaultThreshold);
+        usdcPegBottom = peg - delta;
+        usdcPegTop = peg + delta;
         
         
+    }
+
+    /// Should not revert
+    /// Refresh exchange rates and update default status.
+    /// Original function overriden to check the USDC peg as well.
+    /// @dev May need to override: limited to handling collateral with refPerTok() = 1
+    function refresh() public virtual override {
+        if (alreadyDefaulted()) return;
+        CollateralStatus oldStatus = status();
+
+        // Check for soft default + save lotPrice
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
+            // {UoA/tok}, {UoA/tok}, {target/ref}
+            // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
+
+            // Save prices if priced
+            if (high < FIX_MAX) {
+                savedLowPrice = low;
+                savedHighPrice = high;
+                lastSave = uint48(block.timestamp);
+            } else {
+                // must be unpriced
+                assert(low == 0);
+            }
+
+            // try usdc chainlink feed and evaluate it's peg
+            try this.usdcPrice() returns (uint192 usdcPrice) {
+                // {UoA/ref}
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                if (usdcPrice < usdcPegBottom || usdcPrice > usdcPegTop) {
+                    markStatus(CollateralStatus.IFFY);
+                } else {
+                    markStatus(CollateralStatus.SOUND);
+                }
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
+            }
+
+            // If the price is below the default-threshold price, default eventually
+            // uint192(+/-) is the same as Fix.plus/minus
+            if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
+                markStatus(CollateralStatus.IFFY);
+            } else {
+                markStatus(CollateralStatus.SOUND);
+            }
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            markStatus(CollateralStatus.IFFY);
+        }
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -81,6 +150,17 @@ contract GUniV3Collateral is FiatCollateral {
         // assert(low <= high); obviously true just by inspection
 
         pegPrice = targetPerRef(); // {target/ref} DAI/DAI is always 1
+    }
+
+    function usdcPrice()
+        external
+        view
+        returns (
+            uint192
+        )
+    {
+        // {UoA/ref}
+        return usdcFeed.price(oracleTimeout);
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

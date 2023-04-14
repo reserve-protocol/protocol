@@ -104,6 +104,7 @@ export const deployCollateral = async (
     MCD_VAT,
     MCD_JOIN_GUNIV3DAIUSDC1_A,
     wrapperToken.address,
+    USDC_USD_PRICE_FEED,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -254,6 +255,7 @@ const collateralSpecificConstructorTests = () => {
       MCD_VAT,
       MCD_JOIN_GUNIV3DAIUSDC1_A,
       wrapperToken.address,
+      USDC_USD_PRICE_FEED,
       { gasLimit: 2000000000 }
     )).to.be.revertedWith("poolIlk = 0")
 
@@ -278,6 +280,7 @@ const collateralSpecificConstructorTests = () => {
       ethers.constants.AddressZero,
       MCD_JOIN_GUNIV3DAIUSDC1_A,
       wrapperToken.address,
+      USDC_USD_PRICE_FEED,
       { gasLimit: 2000000000 }
     )).to.be.revertedWith("mcdVat = 0")
   })
@@ -301,6 +304,7 @@ const collateralSpecificConstructorTests = () => {
       MCD_VAT,
       ethers.constants.AddressZero,
       wrapperToken.address,
+      USDC_USD_PRICE_FEED,
       { gasLimit: 2000000000 }
     )).to.be.revertedWith("mcdGemJoin = 0")
   })
@@ -341,6 +345,7 @@ const collateralSpecificStatusTests = () => {
       MCD_VAT,
       MCD_JOIN_GUNIV3DAIUSDC1_A,
       wrapperToken.address,
+      USDC_USD_PRICE_FEED,
       { gasLimit: 2000000000 }
     )
 
