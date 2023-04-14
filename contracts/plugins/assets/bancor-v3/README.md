@@ -2,45 +2,49 @@
 
 ## Introduction
 
-[Bancor][bancor-docs-overview] is a decentralized network of on-chain automated market makers (AMMs) supporting instant, low-cost trading, as well as Single-Sided Liquidity Provision and Liquidity Protection for any listed token.
+[Bancor][bancor-docs-overview] is a decentralized network of on-chain automated market makers (AMMs).
 
-Participants in the liquidity pools deposit assets and receive LP tokens in return.
-The value of the LP tokens accrues every block with the interests collected from loans on the liquidity gathered.
+It supports instant, low-cost trading, as well as Single-Sided Liquidity Provision and Liquidity Protection for any listed token.
 
-In the end the tokens are redeemable for the underlying assets at the exchange rate of the time, which is designed to always increase.
+Participants in the liquidity pools deposit assets (like ETH) and receive BN tokens (like bnETH) in return.
 
-The collateral covers the Maven 11 permissionless pools:
-
-- [a pool of USD][maple-app-usd-pool] (M11 Credit Maple Pool USDC2)
-- [and another pool of wETH][maple-app-weth-pool] (M11 Credit Maple Pool WETH1)
+Bancor more than a hundred of liquidity pools, which cover new and old tokens, stables and derivatives alike.
 
 ## Pool Accounting
 
-Maple has a thorough documentation; here we're interested in the [pool's logic][bancor-docs-pools].
-
 ### Units
 
-| `tok`         | `ref` | `tgt` | `UoA` |
-| :-----------: | :---: | :---: | :---: |
-|  MPL-mcUSDC2  | USDC  |  USD  |  USD  |
-|  MPL-mcWETH1  | wETH  |  ETH  |  USD  |
+Examples of fiat tokens:
 
-The token names are taken from the `symbol` method in the pool contracts.
+| `tok`    | `ref` | `tgt` | `UoA` |
+| :------: | :---: | :---: | :---: |
+|  bnUSDc  | USDC  |  USD  |  USD  |
+|  bnDAI   | DAI   |  USD  |  USD  |
 
-It is different from the MPL / xMPL tokens.
+And non-fiat tokens:
+
+| `tok`    | `ref` | `tgt` | `UoA` |
+| :------: | :---: | :---: | :---: |
+|  bnETH   | ETH   |  ETH  |  USD  |
+
+There are many more tokens in the Bancor protocol, and these contracts can be used for any.
 
 ### Exchange Rate Calculation (refPerTok)
 
-The calculation is straightforward and [well documented][bancor-docs-exchange-rate]:
+Bancor has a decent documentation, very practical.
+However the "how-to" guides don't say much on the internal mechanics...
+
+The pool contracts provide the [`poolTokenToUnderlying`][bancor-code-pool-contract-pooltokentounderlying] view, which computes:
 
 $$\begin{align}
 exchangeRate = \frac{totalAssets}{totalSupply}
 \end{align}$$
 
 Where the `exchangeRate` is actually `refPerTok`.
-It is implemented by the pool contract [convertToAssets][maple-code-pool-contract-converttoassets].
 
 The `totalAssets` take the accrued interests and past losses into account.
+
+The value of the LP tokens accrues every block with the interests collected from loans on the liquidity gathered.
 
 ### Price Calculation
 
@@ -65,6 +69,10 @@ And this happens iff `convertToAssets` from the ERC4626 decreases.
 As detailed in [appendix section](#appendix-exchange-rate-break-down) this can only be triggered by loan default.
 This section also explains why the collateral does not default on loan impairment.
 
+### Fees
+
+[conversionFee](https://github.com/bancorprotocol/docs/blob/master/guides/querying-a-pool-contract.md)
+
 ### Rewards
 
 ## Deployment
@@ -73,11 +81,9 @@ This section also explains why the collateral does not default on loan impairmen
 
 The deployment of the Maple Pool collaterals can be automated with a script.
 
-An example is given for the [Maven 11 USDC pool][reserve-collateral-usdc-deployment-script].
+An example is given for the [USDC pool][reserve-collateral-usdc-deployment-script].
 
 ### Parameters
-
-For the USD pool:
 
 ```solidity
 struct CollateralConfig {
@@ -118,20 +124,25 @@ bool constantTargetPerRef; // true ({target/ref} does not call an external feed)
 
 ### Main Contracts
 
-Solidity code for the fiat collateral plugin can be found in [`MaplePoolFiatCollateral.sol`][reserve-collateral-fiat-contract].
-This script is used for the USDC pool.
+Solidity code for the fiat collateral plugin can be found in [`BnTokenFiatCollateral.sol`][reserve-collateral-fiat-contract].
 
-The wETH pool relies on [`MaplePoolNonFiatCollateral.sol`][reserve-collateral-non-fiat-contract].
+The non-fiat pools -like ETH- rely on [`BnTokenNonFiatCollateral.sol`][reserve-collateral-non-fiat-contract].
+
+The PoolCollection address changes from time to time. To identify the latest address
 
 ### Internal Dependencies
 
 This implementation relies on a number of auxiliary contracts:
 
-#### [IMaplePool.sol][reserve-collateral-maple-interface]
+#### [IBnToken.sol][reserve-collateral-maple-interface]
 
 Used to interact with both permissionless pools.
 
-#### [MaplePoolMock.sol][reserve-collateral-maple-mock]
+### [IPoolCollection][]
+
+bla
+
+#### [BnTokenMock.sol][reserve-collateral-maple-mock]
 
 Allows to manipulate the exchange rate on the pools to test the behavior of the collateral.
 
@@ -170,7 +181,7 @@ Implements the revenue hiding and the refreshing logic on top of all the common 
 The tests require more memory than the defaults allow:
 
 ```bash
-NODE_OPTIONS="--max-old-space-size=8192" yarn run hardhat test test/plugins/individual-collateral/maple-v2/MaplePoolFiatCollateral.test.ts
+NODE_OPTIONS="--max-old-space-size=8192" yarn run hardhat test test/plugins/individual-collateral/bancor-v3/BnTokenFiatCollateral.test.ts
 ```
 
 The Hardhat option `--max-memory 8192` didn't work for me.
@@ -188,198 +199,22 @@ The Maple contracts are plugged into this testing suite by implementing the absr
 
 ## Appendix: Exchange Rate Break-Down
 
-Hidden inside the variable `totalAssets` are all the actions from the protocol.
-
-Judging from historic data on the blockchain, it can move up as-well as down:
+Judging from historic data on the blockchain, the `{ref/tok}` can move up as-well as down:
 
 USDC Pool                                  | WETH Pool
 :-----------------------------------------:|:------------------------------------------:
 ![][reserve-collateral-plot-usdc-overview] | ![][reserve-collateral-plot-weth-overview]
 
-Here we'll break down the accounting formulas and track the exchange rate over time.
-The goal is to verify that the RToken requirements are met, determine the conditions of default and assess the health of the pools.
-
-### Normal Operation
-
-Apart from extraordinary events, the protocol strongly enforces an increasing exchange rate.
-
-The following graphs are zooms on the trailing end of the previous overview: the exchange rate is slowly but steadily increasing.
-
-USDC Pool                                               | WETH Pool
-:------------------------------------------------------:|:-------------------------------------------------------:
-![][reserve-collateral-plot-usdc-zoom-normal-operation] | ![][reserve-collateral-plot-weth-zoom-normal-operation]
-
-### Risks
-
-Still, a single loan can take up to 97% of the pool's liquidity!
-IE a single credit default will totally blow the ERC20 token.
-
-And loan defaults **do** happen: 31M USDC and 3900 wETH were lost for each pool.
-This is all due to a single company -Orthogonal Trading- not being solvable.
-
-For the USDC pool, it represented 80% of the assets locked:
-the graph of RPT drops from 1 to 0.2!
-
-The pool delegates are now splitting the liquidity over several loans and some of these losses were recovered.
-
-### Notations
-
-To improve the readability of the formulas, the following notations will be used:
-
-- $A$ for the total supply of assets in the pool
-- $S$ for the total number of shares (LP tokens) on the pool assets
-- $\Delta$ for the differences in these values between two blocks
-- $\alpha$ for the exchange rate, IE `refPerToken`
-- all the variables will be indexed by the block number $i$
-
-### Main Formula
-
-Then the exchange rate is written:
-
-$$\begin{align}
-\alpha_i = exchangeRate_i = \frac{totalAssets_i}{totalSupply_i} = \frac{A_i}{S_i}
-\end{align}$$
-
-With:
-
-$$\begin{align}
-totalAssets_i &= cash_i + assetsUnderManagement_i \\
-              &= cash_i + \sum_j \Big({outstandingPrincipal_{i,j}} + {outstandingInterest_{i,j}}\Big) \\
-              &= cash_i + \sum_j \Big({outstandingPrincipal_{i,j}} + {accountedInterest_i + issuanceRate \times (t_i - domainStart)}\Big) \\
-\end{align}$$
-
-Where $j$ iterates over the loans.
-
-### Loan Impairment Vs Default
-
-The protocol makes a distinction between loan impairment and default.
-
-The difference between this 2 events is that the impairment is a proactive measure of the protocol to recover its funds before the maturity time.
-The default occurs when the $outstandingPrincipal$ from a loan is not totally paid back when the loan ends.
-
-On the following graphs zooms in on the loan defauts.
-The red line accounts for the potential losses, while the blue moves when actual losses / gains are registered.
-
-USDC Pool                                              | WETH Pool
-:-----------------------------------------------------:|:------------------------------------------------------:
-![][reserve-collateral-plot-usdc-zoom-unrealized-loss] | ![][reserve-collateral-plot-weth-zoom-unrealized-loss]
-
-On impairment the foreseen loss is called "unrealized losses" or $unrealizedLosses$ in the formulas.
-
-This $unrealizedLosses$ is actually the amount that has not yet been paid back by the borrower, or the $outstandingPrincipal$ for this particular loan.
-As the protocol anticipates a loss, the red line goes down by that amount.
-If the blue line also goes down and meets the red one, the loss is actually realized.
-
-The protocol has cover mechanisms and it may at least partially recover the funds before the maturity.
-This is especially obvious on the wETH pool where the protocol anticipates a loss and totally covers it.
-The red line goes back to meet the blue and the exchange rate is maintained.
-
-Waiting is encouraged by the protocol and will always lower the actual loss if any.
-
-### Difference Between Withdraw and Deposit
-
-The exchange rate is enforced on both the `deposit` and `withdraw` functions and equal to the overall ratio in the pool:
-
-$$\alpha = \alpha_i = \frac{A_i}{S_i}$$
-
-As [explained in the docs][bancor-docs-exchange-rate], there is a subtle difference between the rate on deposit and withdraw.
-The latter takes into account the temporary losses explained in the previous section.
-
-$$\begin{align}
-exchangeRate = \frac{totalAssets-unrealizedLosses}{totalSupply}
-\end{align}$$
-
-It is implemented by the pool contract [`convertToExitAssets`][maple-code-pool-contract-converttoexitassets].
-
-These foreseen losses lower the exchange rate and should be refunded by cover mechanisms over time.
-In the end the two rates will be the same, the difference counters opportunities to withdraw / deposit at key times.
-
-The **collateral uses the version `convertToAssets`**.
-
-### Exchange Rate Fluctuations
-
-#### Outside Of Scope
-
-Some operations are made outside of the pool.
-
-In particular the fees for the stakers are all collected upstream on the loan interests.
-
-They do not impact the exchange rate.
-
-#### Fluctuations On Withdrawal / Redeeming
-
-First, there's a rumor saying the shares aren't burnt upon withdrawal:
-In Maple core-v2, it is false as can be seen [in the code][maple-code-pool-contract-withdraw].
-
-So, for a withdrawal, the number of assets to remove from the pool are computed from the shares:
-
-$$\begin{align}
-\Delta A_i = \alpha_i * \Delta S_i \\
-\Delta A_i < 0 \\
-\Delta S_i < 0
-\end{align}$$
-
-To be precise, $\Delta A_i < 0$ means there's a transfer of assets and $\Delta S_i < 0$ means that the corresponding shares are burnt.
-
-With this, we can prove that a withdrawal actually keeps the overall exchange rate constant:
-
-$$\begin{align}
-\alpha_{i+1} &= \frac{A_{i+1}}{S_{i+1}} \\
-             &= \frac{A_i + \Delta A_i}{S_i + \Delta S_i} \\
-             &= \frac{A_i + \Delta A_i}{S_i + \frac{\Delta A_i}{\alpha_i}} \\
-             &= \alpha_i * \frac{A_i + \Delta A_i}{\alpha_i * S_i + \Delta A_i} \\
-             &= \alpha_i
-\end{align}$$
-
-In short, the overall **`refPerTok` is unchanged**.
-
-This is especially important in case of an emergency situation, when a loan is about to default, where lenders might panic and redeem.
-Waiting can only improve the `refPerTok`, unless the pool's liquidity is null.
-
-#### Fluctuations On Deposit
-
-For a deposit, the shares are calculated from the number of assets entering the pool:
-
-$$\begin{align}
-\Delta S_i = \frac{\Delta A_i}{\alpha_i} \\
-\Delta A_i > 0 \\
-\Delta S_i > 0
-\end{align}$$
-
-Similarly to the withdrawal, **a deposit keeps the overall exchange rate constant**.
-The equations are identical to the ones from the previous paragraph, only the signs of the deltas changed.
-
-#### Fluctuations On Loan Creation & Payment
-
-Loan creation and payment moves liquidity between the $cash$ and the $outstandingPrincipal$.
-
-This doesn't change either the total assets or shares: the rate is unchanged.
-
-#### Fluctuations On Loan Interest Collection
-
-Interest collection increases the exchange rate evenly for all the lenders.
-
-#### Fluctuations On Loan Default / Impairment
-
-As seen above an impairment is not an actual loss.
-
-Only the loan default leads to a diminution of the total assets as the outstanding principal is not paid back.
-
 [chainlink-feed-usdc-to-usd]: https://etherscan.io/address/0x8fffffd4afb6115b954bd326cbe7b4ba576818f6
-[chainlink-feed-eth-to-usd]: https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
-[maple-app-usd-pool]: https://app.maple.finance/#/v2/lend/pool/0xd3cd37a7299b963bbc69592e5ba933388f70dc88
-[maple-app-weth-pool]: https://app.maple.finance/#/v2/lend/pool/0xfff9a1caf78b2e5b0a49355a8637ea78b43fb6c3
-[maple-code-pool-contract]: https://github.com/maple-labs/pool-v2/blob/main/contracts/Pool.sol
-[maple-code-pool-contract-converttoassets]: https://github.com/maple-labs/pool-v2/blob/main/contracts/Pool.sol#L303
-[maple-code-pool-contract-converttoexitassets]: https://github.com/maple-labs/pool-v2/blob/main/contracts/Pool.sol#L309
-[maple-code-pool-contract-withdraw]: https://github.com/maple-labs/pool-v2/blob/main/contracts/Pool.sol#L126
-[bancor-docs-exchange-rate]:  https://docs.bancor.network/maple/technical-resources/pools/accounting/pool-exchange-rates
+[bancor-app-pools-list]: https://app.bancor.network/earn
+[bancor-code-pool-contract]: https://github.com/maple-labs/pool-v2/blob/main/contracts/Pool.sol
+[bancor-code-pool-contract-pooltokentounderlying]: https://github.com/bancorprotocol/contracts-v3/blob/dev/contracts/pools/PoolCollection.sol#L468
 [bancor-docs-overview]: https://docs.bancor.network/about-bancor-network/bancor-v3
-[bancor-docs-pools]: https://docs.bancor.network/maple/technical-resources/pools/pools
-[reserve-collateral-fiat-contract]: ./MaplePoolFiatCollateral.sol
-[reserve-collateral-non-fiat-contract]: ./MaplePoolNonFiatCollateral.sol
-[reserve-collateral-maple-interface]: ./vendor/IMaplePool.sol
-[reserve-collateral-maple-mock]: ../../mocks/MaplePoolMock.sol
+[bancor-docs-pools]: https://docs.bancor.network/about-bancor-network/faqs/liquidity-pools
+[reserve-collateral-fiat-contract]: ./BnTokenFiatCollateral.sol
+[reserve-collateral-non-fiat-contract]: ./BnTokenNonFiatCollateral.sol
+[reserve-collateral-maple-interface]: ./vendor/IBnToken.sol
+[reserve-collateral-maple-mock]: ../../mocks/BnTokenMock.sol
 [reserve-collateral-parent-contract]: ../AppreciatingFiatCollateral.sol
 [reserve-collateral-parent-test-script]: ../../../../test/plugins/individual-collateral/collateralTests.ts
 [reserve-collateral-plot-usdc-overview]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_overview.png
@@ -389,6 +224,6 @@ Only the loan default leads to a diminution of the total assets as the outstandi
 [reserve-collateral-plot-usdc-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-normal-operation.png
 [reserve-collateral-plot-weth-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-normal-operation.png
 [reserve-collateral-pull-request]: https://github.com/reserve-protocol/protocol/pull/757
-[reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/maple-v2/MaplePoolFiatCollateral.test.ts
+[reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/bancor-v3/BnTokenFiatCollateral.test.ts
 [reserve-collateral-usdc-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_usdc_collateral.ts
 [reserve-collateral-weth-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_weth_collateral.ts

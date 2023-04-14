@@ -3,46 +3,43 @@ pragma solidity 0.8.17;
 
 import { FixLib, shiftl_toFix, CEIL } from "contracts/libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "contracts/plugins/assets/OracleLib.sol";
-import { CollateralConfig, MaplePoolFiatCollateral } from "contracts/plugins/assets/maple-v2/MaplePoolFiatCollateral.sol";
-import { IMaplePool } from "contracts/plugins/assets/maple-v2/vendor/IMaplePool.sol";
+import { CollateralConfig, BnTokenFiatCollateral } from "contracts/plugins/assets/maple-v2/BnTokenFiatCollateral.sol";
+import { IPoolCollection } from "contracts/plugins/assets/bancor-v3/vendor/IPoolCollection.sol";
 
 /**
- * @title MaplePoolFiatCollateral
+ * @title BnTokenNonFiatCollateral
  * @notice Collateral plugin for the token given to the liquidity providers
- * The 2 target pools  are permissionless; one holds USDC, the other wETH
- * {tok} = MPL-mcWETH1
- * {ref} = wETH
- * {target} = ETH
+ * {tok} = bnXYZ
+ * {ref} = XYZ, any non-fiat token
+ * {target} = XYZ
  * {UoA} = USD
  */
-contract MaplePoolNonFiatCollateral is MaplePoolFiatCollateral {
+contract BnTokenNonFiatCollateral is BnTokenFiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
     AggregatorV3Interface public immutable uoaPerTargetChainlinkFeed; // {UoA/target}
     uint48 public immutable uoaPerTargetOracleTimeout; // {s}
-    bool constantTargetPerRef; // whether or not to use the Chainlink feed for {target/ref}
 
     // The underlying tokens may have 18 (wETH) or 6 (USDC) decimals
     // The Maple v2 tokens have the same number of decimals than their underlying
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
+    /// @param poolCollection_ The address of the collection corresponding to the pool
     /// @param uoaPerTargetChainlinkFeed_ Feed units: {UoA/target}
     /// @param uoaPerTargetOracleTimeout_ {s} oracle timeout to use for uoaPerTargetChainlinkFeed
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    /// @param constantTargetPerRef_ {1} true / false, in case the {target/ref} is actually constant, like {ETH/wETH}
     constructor(
         CollateralConfig memory config,
+        IPoolCollection poolCollection_,
         AggregatorV3Interface uoaPerTargetChainlinkFeed_,
         uint48 uoaPerTargetOracleTimeout_,
-        uint192 revenueHiding,
-        bool constantTargetPerRef_
-    ) MaplePoolFiatCollateral(config, revenueHiding) {
+        uint192 revenueHiding
+    ) BnTokenFiatCollateral(config, poolCollection_, revenueHiding) {
         require(address(uoaPerTargetChainlinkFeed_) != address(0), "missing uoaPerTarget feed");
         require(uoaPerTargetOracleTimeout_ > 0, "uoaPerTargetOracleTimeout cannot be 0");
         uoaPerTargetChainlinkFeed = uoaPerTargetChainlinkFeed_;
         uoaPerTargetOracleTimeout = uoaPerTargetOracleTimeout_;
-        constantTargetPerRef = constantTargetPerRef_;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -59,11 +56,7 @@ contract MaplePoolNonFiatCollateral is MaplePoolFiatCollateral {
             uint192 pegPrice
         )
     {
-        pegPrice = targetPerRef(); // 1 (FIX_ONE)
-        
-        if (constantTargetPerRef == false) { // bypass the oracle for {ETH/wETH}, which is constant = 1
-            pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
-        }
+        pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         uint192 p = uoaPerTargetChainlinkFeed.price(uoaPerTargetOracleTimeout).mul(pegPrice).mul(
