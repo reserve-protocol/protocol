@@ -38,9 +38,9 @@ import {
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
-  IBasketHandler,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIRToken,
   TestIStRSR,
@@ -65,7 +65,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
   let rToken: TestIRToken
   let broker: TestIBroker
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
 
@@ -569,6 +569,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await collateral0.status()).to.equal(CollateralStatus.DISABLED)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
+      // Advance warmup period
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       // Should launch auction for token1
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
 
@@ -663,6 +666,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await collateral0.refresh()
       await advanceTime((await collateral0.delayUntilDefault()).toString())
       await basketHandler.refreshBasket()
+
+      // Advance warmup period
+      await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Should launch auction for token1
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')

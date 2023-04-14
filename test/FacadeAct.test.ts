@@ -26,11 +26,11 @@ import {
   FiatCollateral,
   GnosisMock,
   IAssetRegistry,
-  IBasketHandler,
   InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIDistributor,
   TestIRevenueTrader,
   TestIRToken,
@@ -93,7 +93,7 @@ describe('FacadeAct contract', () => {
   // Main
   let rToken: TestIRToken
   let stRSR: TestIStRSR
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let distributor: TestIDistributor

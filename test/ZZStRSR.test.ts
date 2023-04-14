@@ -13,11 +13,11 @@ import {
   ERC20Mock,
   ERC1271Mock,
   FacadeRead,
-  IBasketHandler,
   StRSRP0,
   StRSRP1Votes,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIMain,
   TestIRToken,
   TestIStRSR,
@@ -66,7 +66,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
   // Main
   let main: TestIMain
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rToken: TestIRToken
   let facade: FacadeRead
 

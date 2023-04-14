@@ -14,7 +14,7 @@ import {
   MockV3Aggregator,
   StaticATokenMock,
   StRSRP1,
-  IBasketHandler,
+  TestIBasketHandler,
   TestIMain,
   TestIStRSR,
   TestIRToken,
@@ -59,7 +59,7 @@ describe('FacadeRead contract', () => {
   let rToken: TestIRToken
   let main: TestIMain
   let stRSR: TestIStRSR
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   // RSR
   let rsrAsset: Asset
