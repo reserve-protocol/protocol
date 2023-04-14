@@ -82,14 +82,15 @@ interface IBasketHandler is IComponent {
     /// @custom:interaction
     function refreshBasket() external;
 
+    /// Track the basket status changes
+    /// @custom:refresher
+    function trackStatus() external;
+
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply
     function fullyCollateralized() external view returns (bool);
 
     /// @return status The worst CollateralStatus of all collateral in the basket
     function status() external view returns (CollateralStatus status);
-
-    /// Track the basket status changes
-    function trackStatus() external;
 
     /// @return If the basket is ready to issue and trade
     function isReady() external view returns (bool);
