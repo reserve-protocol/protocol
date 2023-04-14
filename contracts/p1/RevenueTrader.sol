@@ -142,12 +142,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             );
     }
 
-    // By an accident of history, only BackingManager actually uses this param
-    /// @custom:governance
-    function setMinTradeVolume(uint192) public pure override {
-        revert("minTradeVolume not used by RevenueTrader");
-    }
-
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.

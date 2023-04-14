@@ -168,7 +168,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     // Only BackingManager actually uses this param
     /// @custom:governance
-    function setMinTradeVolume(uint192 val) public virtual governance {
+    function setMinTradeVolume(uint192 val) public governance {
         require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;
