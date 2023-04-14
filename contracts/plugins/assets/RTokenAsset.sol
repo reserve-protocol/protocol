@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import "../../p1/mixins/RecollateralizationLib.sol";
 import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
-import "../../interfaces/IRTokenOracle.sol";
 import "./Asset.sol";
 
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
