@@ -108,6 +108,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         }
     }
 
+    /// @return reg The list of registered ERC20s and Assets, in the same order
     function getRegistry() external view returns (Registry memory reg) {
         uint256 length = _erc20s.length();
         reg.erc20s = new IERC20[](length);

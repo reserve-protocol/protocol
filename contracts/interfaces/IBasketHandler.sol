@@ -134,6 +134,11 @@ interface IBasketHandler is IComponent {
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
+    /// Returns both the price & lotPrice at once, for gas optimization
+    /// @return price_ {UoA/tok} The low and high price estimate of an RToken
+    /// @return lotPrice_ {UoA/tok} The low and high lotprice of an RToken
+    function prices() external view returns (Price memory price_, Price memory lotPrice_);
+
     /// @return timestamp The timestamp at which the basket was last set
     function timestamp() external view returns (uint48);
 
