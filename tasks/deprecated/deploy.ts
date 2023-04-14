@@ -95,7 +95,8 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
   await basketHandler.connect(deployer).refreshBasket()
 
   console.log('Unpausing...')
-  await main.connect(deployer).unpause()
+  await main.connect(deployer).tradingUnpause()
+  await main.connect(deployer).issuanceUnpause()
 
   // Grant allowances
   for (let i = 0; i < basketCollaterals.length; i++) {
