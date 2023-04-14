@@ -16,6 +16,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     uint192 public constant MAX_TRADE_VOLUME = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
+    uint192 public constant MAX_SWAP_PRICEPOINT = 1e18; // {1}
 
     // All trades
     mapping(IERC20 => ITrade) public trades;
@@ -26,17 +27,24 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     uint192 public minTradeVolume; // {UoA}
 
+    // 0% = the lowest price estimate: a discount to the user of oracleError on each side
+    // 50% = use the midpoint of the lowest and highest price estimates
+    // 100% = the highest price estimate: a premium for the protocol of oracleError on each side
+    uint192 public swapPricepoint; // {1} the percentile price to use within a swap
+
     // untestable:
     //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
     //      This function is only called inside other `init` functions, each of which is wrapped
     //      in an `initializer` modifier, which would fail first.
     // solhint-disable-next-line func-name-mixedcase
-    function __Trading_init(uint192 maxTradeSlippage_, uint192 minTradeVolume_)
-        internal
-        onlyInitializing
-    {
+    function __Trading_init(
+        uint192 maxTradeSlippage_,
+        uint192 minTradeVolume_,
+        uint192 swapPricepoint_
+    ) internal onlyInitializing {
         setMaxTradeSlippage(maxTradeSlippage_);
         setMinTradeVolume(minTradeVolume_);
+        setSwapPricepoint(swapPricepoint_);
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
@@ -53,7 +61,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    function tryTrade(TradeRequest memory req) internal {
+    function openTrade(TradeRequest memory req) internal {
         IBroker broker = main.broker();
         assert(address(trades[req.sell.erc20()]) == address(0));
         require(!broker.disabled(), "broker disabled");
@@ -74,6 +82,29 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         );
     }
 
+    /// Performs an atomic swap with the caller for exactly the provided Swap amounts
+    function executeSwap(Swap memory s) internal {
+        assert(
+            address(s.sell) != address(0) &&
+                address(s.buy) != address(0) &&
+                s.buyAmount != 0 &&
+                s.sellAmount != 0
+        );
+
+        uint256 sellBal = s.sell.balanceOf(address(this));
+        uint256 buyBal = s.buy.balanceOf(address(this));
+
+        // Transfer tokens in
+        IERC20Metadata(address(s.buy)).safeTransferFrom(_msgSender(), address(this), s.buyAmount);
+        assert(s.buy.balanceOf(address(this)) - buyBal == s.buyAmount);
+
+        // Transfer tokens out
+        IERC20Metadata(address(s.sell)).safeTransfer(_msgSender(), s.sellAmount);
+        assert(sellBal - s.sell.balanceOf(address(this)) == s.sellAmount);
+
+        emit SwapCompleted(s.sell, s.buy, s.sellAmount, s.buyAmount);
+    }
+
     // === Setters ===
 
     /// @custom:governance
@@ -88,6 +119,13 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;
+    }
+
+    /// @custom:governance
+    function setSwapPricepoint(uint192 val) public governance {
+        require(val <= MAX_SWAP_PRICEPOINT, "invalid swapPricepoint");
+        emit SwapPricepointSet(swapPricepoint, val);
+        swapPricepoint = val;
     }
 
     // === FixLib Helper ===

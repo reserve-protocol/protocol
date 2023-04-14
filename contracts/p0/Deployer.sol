@@ -89,19 +89,28 @@ contract DeployerP0 is IDeployer, Versioned {
             params.tradingDelay,
             params.backingBuffer,
             params.maxTradeSlippage,
-            params.minTradeVolume
+            params.minTradeVolume,
+            params.swapPricepoint,
+            params.tradeCooldown
         );
 
         // Init Basket Handler
         main.basketHandler().init(main, params.warmupPeriod);
 
         // Init Revenue Traders
-        main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);
+        main.rsrTrader().init(
+            main,
+            rsr,
+            params.maxTradeSlippage,
+            params.minTradeVolume,
+            params.swapPricepoint
+        );
         main.rTokenTrader().init(
             main,
             IERC20(address(rToken)),
             params.maxTradeSlippage,
-            params.minTradeVolume
+            params.minTradeVolume,
+            params.swapPricepoint
         );
 
         // Init Distributor

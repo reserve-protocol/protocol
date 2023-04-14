@@ -32,9 +32,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     IRevenueTrader private rTokenTrader;
     uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = FIX_ONE; // {1} 100%
+    uint192 public constant MAX_TRADE_COOLDOWN = 86400; // {s} 24hr
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
+    uint48 public tradeCooldown; // {s} number of seconds between any type of trade
+    uint48 public whenNextTrade; // {s} block timestamp at which can next trade
+
+    // TODO check storage slots
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
@@ -46,10 +51,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         uint48 tradingDelay_,
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_,
-        uint192 minTradeVolume_
+        uint192 minTradeVolume_,
+        uint192 swapPricepoint_,
+        uint48 tradeCooldown_
     ) external initializer {
         __Component_init(main_);
-        __Trading_init(main_, maxTradeSlippage_, minTradeVolume_);
+        __Trading_init(main_, maxTradeSlippage_, minTradeVolume_, swapPricepoint_);
 
         assetRegistry = main_.assetRegistry();
         basketHandler = main_.basketHandler();
@@ -62,6 +69,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
+        setTradeCooldown(tradeCooldown_);
     }
 
     /// Give RToken max allowance over the registered token `erc20`
@@ -106,10 +114,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // == Refresh ==
         assetRegistry.refresh();
 
-        if (tradesOpen > 0) return;
+        require(tradesOpen == 0, "trade open");
 
         // Ensure basket is ready, SOUND and not in warmup period
         require(basketHandler.isReady(), "basket not ready");
+        require(block.timestamp >= whenNextTrade, "cooling down");
 
         uint48 basketTimestamp = basketHandler.timestamp();
         require(block.timestamp >= basketTimestamp + tradingDelay, "trading delayed");
@@ -146,13 +155,69 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                     if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
                 }
 
-                tryTrade(req);
+                ITrade trade = openTrade(req);
+                whenNextTrade = trade.endTime() + tradeCooldown;
             } else {
                 // Haircut time
                 compromiseBasketsNeeded(basketsHeld.bottom, basketsNeeded);
+                whenNextTrade = uint48(block.timestamp) + tradeCooldown;
+                // this isn't a trade technically, but seems like it should reset the cooldown too
             }
         }
     }
+
+    /// Maintain the overall backing policy in an atomic swap with the caller
+    /// Supports both exactInput and exactOutput swap methods
+    /// @dev Caller must have granted tokenIn allowances for up to maxAmountIn
+    /// @param tokenIn The input token, the one the caller provides
+    /// @param tokenOut The output token, the one the protocol provides
+    /// @param minAmountOut {qTokenOut} The minimum amount the swapper wants in output tokens
+    /// @param maxAmountIn {qTokenIn} The most the swapper is willing to pay in input tokens
+    /// @return s The actual swap performed
+    /// @custom:interaction
+    function swap(
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 maxAmountIn,
+        uint256 minAmountOut
+    ) external notPausedOrFrozen returns (Swap memory s) {
+        // == Refresh ==
+        assetRegistry.refresh();
+
+        // Get precise Swap
+        s = getSwap();
+        whenNextTrade = uint48(block.timestamp) + tradeCooldown;
+
+        // Require the calculated swap is better than the passed-in swap
+        require(s.sell == tokenOut && s.buy == tokenIn, "swap tokens changed");
+        require(s.sellAmount >= minAmountOut, "output amount fell");
+        require(s.buyAmount <= maxAmountIn, "input amount increased");
+
+        // Seize RSR if needed
+        if (s.sell == rsr) {
+            uint256 bal = s.sell.balanceOf(address(this));
+            if (s.sellAmount > bal) stRSR.seizeRSR(s.sellAmount - bal);
+        }
+
+        executeSwap(s);
+    }
+
+    /// @return The next Swap, without refreshing the assetRegistry
+    function getSwap() public view returns (Swap memory) {
+        require(tradesOpen == 0, "trade open");
+        require(basketHandler.isReady(), "basket not ready");
+        require(block.timestamp >= whenNextTrade, "cooling down");
+        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
+
+        // TradeRequest from manageTokens()
+        (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
+            .prepareRecollateralizationTrade(this, basketHandler.basketsHeldBy(address(this)));
+
+        require(doTrade, "swap not available");
+        return TradeLib.prepareSwap(req, swapPricepoint, SwapVariant.CALCULATE_SELL_AMOUNT);
+    }
+
+    // === Private ===
 
     /// Send excess assets to the RSR and RToken traders
     /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
@@ -274,10 +339,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         backingBuffer = val;
     }
 
+    /// @custom:governance
+    function setTradeCooldown(uint48 val) public governance {
+        require(val <= MAX_TRADE_COOLDOWN, "invalid tradeCooldown");
+        emit TradeCooldownSet(tradeCooldown, val);
+        tradeCooldown = val;
+    }
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[41] private __gap;
+    uint256[40] private __gap;
 }

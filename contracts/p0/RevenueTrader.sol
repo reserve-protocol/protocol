@@ -20,11 +20,12 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         IMain main_,
         IERC20 tokenToBuy_,
         uint192 maxTradeSlippage_,
-        uint192 minTradeVolume_
+        uint192 minTradeVolume_,
+        uint192 swapPricepoint_
     ) public initializer {
         require(address(tokenToBuy_) != address(0), "invalid token address");
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_, minTradeVolume_);
+        __Trading_init(maxTradeSlippage_, minTradeVolume_, swapPricepoint_);
         tokenToBuy = tokenToBuy_;
     }
 
@@ -70,7 +71,50 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         );
 
         if (launch) {
-            tryTrade(req);
+            openTrade(req);
         }
+    }
+
+    /// Perform a swap for the tokenToBuy
+    /// @dev Caller must have granted tokenIn allowances
+    /// @param tokenIn The input token, the one the caller provides
+    /// @param tokenOut The output token, the one the protocol provides
+    /// @param minAmountOut {qTokenOut} The minimum amount the swapper wants out
+    /// @param maxAmountIn {qTokenIn} The most the swapper is willing to pay
+    /// @return s The actual swap performed
+    /// @custom:interaction
+    function swap(
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 maxAmountIn,
+        uint256 minAmountOut
+    ) external notPausedOrFrozen returns (Swap memory s) {
+        // == Refresh ==
+        main.assetRegistry().refresh();
+
+        require(tokenIn == tokenToBuy, "wrong tokenIn");
+
+        s = getSwap(tokenOut);
+
+        // Require the calculated swap is better than the passed-in swap
+        require(s.sell == tokenOut && s.buy == tokenIn, "swap tokens changed");
+        require(s.sellAmount >= minAmountOut, "output amount fell");
+        require(s.buyAmount <= maxAmountIn, "input amount increased");
+
+        executeSwap(s);
+    }
+
+    /// @param sell The token the protocol is selling
+    /// @return The next Swap, without refreshing the assetRegistry
+    function getSwap(IERC20 sell) public view returns (Swap memory) {
+        IAsset sellAsset = main.assetRegistry().toAsset(sell);
+        TradeRequest memory req = TradeRequest(
+            sellAsset,
+            main.assetRegistry().toAsset(tokenToBuy),
+            sellAsset.bal(address(this)),
+            0 // unused, will be overwritten
+        );
+
+        return TradingLibP0.prepareSwap(req, swapPricepoint, SwapVariant.CALCULATE_BUY_AMOUNT);
     }
 }

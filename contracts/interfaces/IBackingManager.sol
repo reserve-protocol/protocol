@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IBroker.sol";
 import "./IComponent.sol";
 import "./ITrading.sol";
 
@@ -33,7 +34,9 @@ interface IBackingManager is IComponent, ITrading {
         uint48 tradingDelay_,
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_,
-        uint192 minTradeVolume_
+        uint192 minTradeVolume_,
+        uint192 atomicTradingBias_,
+        uint48 tradeCooldown_
     ) external;
 
     // Give RToken max allowance over a registered token
@@ -51,6 +54,25 @@ interface IBackingManager is IComponent, ITrading {
     /// @dev Performs a uniqueness check on the erc20s list in O(n)
     /// @custom:interaction
     function manageTokensSortedOrder(IERC20[] memory erc20s) external;
+
+    /// Maintain the overall backing policy in an atomic swap with the caller
+    /// Supports both exactInput and exactOutput swap methods
+    /// @dev Caller must have granted tokenIn allowances for up to maxAmountIn
+    /// @param tokenIn The input token, the one the caller provides
+    /// @param tokenOut The output token, the one the protocol provides
+    /// @param minAmountOut {qTokenOut} The minimum amount the swapper wants in output tokens
+    /// @param maxAmountIn {qTokenIn} The most the swapper is willing to pay in input tokens
+    /// @return The actual swap performed
+    /// @custom:interaction
+    function swap(
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 maxAmountIn,
+        uint256 minAmountOut
+    ) external returns (Swap memory);
+
+    /// @return The next Swap, without refreshing the assetRegistry
+    function getSwap() external view returns (Swap memory);
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

@@ -22,21 +22,27 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
+    uint192 public constant MAX_TRADE_COOLDOWN = 86400; // {s} 24hr
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
+    uint48 public tradeCooldown; // {s} number of seconds between any type of trade
+    uint48 public whenNextTrade; // {s} block timestamp at which can next trade
 
     function init(
         IMain main_,
         uint48 tradingDelay_,
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_,
-        uint192 maxTradeVolume_
+        uint192 maxTradeVolume_,
+        uint192 swapPricepoint_,
+        uint48 tradeCooldown_
     ) public initializer {
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_, maxTradeVolume_);
+        __Trading_init(maxTradeSlippage_, maxTradeVolume_, swapPricepoint_);
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
+        setTradeCooldown(tradeCooldown_);
     }
 
     // Give RToken max allowance over a registered token
@@ -111,7 +117,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                     if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
                 }
 
-                tryTrade(req);
+                openTrade(req);
             } else {
                 // Haircut time
                 compromiseBasketsNeeded(basketsHeld.bottom);
@@ -179,6 +185,62 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
     }
 
+    /// Maintain the overall backing policy in an atomic swap with the caller
+    /// Supports both exactInput and exactOutput swap methods
+    /// @dev Caller must have granted tokenIn allowances for up to maxAmountIn
+    /// @param tokenIn The input token, the one the caller provides
+    /// @param tokenOut The output token, the one the protocol provides
+    /// @param minAmountOut {qTokenOut} The minimum amount the swapper wants in output tokens
+    /// @param maxAmountIn {qTokenIn} The most the swapper is willing to pay in input tokens
+    /// @return s The actual swap performed
+    /// @custom:interaction
+    function swap(
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 maxAmountIn,
+        uint256 minAmountOut
+    ) external notPausedOrFrozen returns (Swap memory s) {
+        // == Refresh ==
+        main.assetRegistry().refresh();
+
+        // Get precise Swap
+        s = getSwap();
+        whenNextTrade = uint48(block.timestamp) + tradeCooldown;
+
+        // Require the calculated swap is better than the passed-in swap
+        require(s.sell == tokenOut && s.buy == tokenIn, "swap tokens changed");
+        require(s.sellAmount >= minAmountOut, "output amount fell");
+        require(s.buyAmount <= maxAmountIn, "input amount increased");
+
+        // Seize RSR if needed
+        if (s.sell == main.rsr()) {
+            uint256 bal = s.sell.balanceOf(address(this));
+            if (s.sellAmount > bal) main.stRSR().seizeRSR(s.sellAmount - bal);
+        }
+
+        executeSwap(s);
+    }
+
+    /// @return The next Swap, without refreshing the assetRegistry
+    function getSwap() public view returns (Swap memory) {
+        require(tradesOpen == 0, "trade open");
+        require(main.basketHandler().isReady(), "basket not ready");
+        require(block.timestamp >= whenNextTrade, "cooling down");
+        require(
+            block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
+            "trading delayed"
+        );
+
+        // TradeRequest from manageTokens()
+        (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareRecollateralizationTrade(
+            this,
+            main.basketHandler().basketsHeldBy(address(this))
+        );
+
+        require(doTrade, "swap not available");
+        return TradingLibP0.prepareSwap(req, swapPricepoint, SwapVariant.CALCULATE_SELL_AMOUNT);
+    }
+
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
     function compromiseBasketsNeeded(uint192 wholeBasketsHeld) private {
@@ -201,5 +263,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(val <= MAX_BACKING_BUFFER, "invalid backingBuffer");
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
+    }
+
+    /// @custom:governance
+    function setTradeCooldown(uint48 val) public governance {
+        require(val <= MAX_TRADE_COOLDOWN, "invalid tradeCooldown");
+        emit TradeCooldownSet(tradeCooldown, val);
+        tradeCooldown = val;
     }
 }

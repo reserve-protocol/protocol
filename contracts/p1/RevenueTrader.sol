@@ -20,15 +20,17 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     IAssetRegistry private assetRegistry;
     IDistributor private distributor;
 
+    /// @dev minTradeVolume_ is unused by this class
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
         uint192 maxTradeSlippage_,
-        uint192 minTradeVolume_
+        uint192 minTradeVolume_,
+        uint192 swapPricepoint_
     ) external initializer {
         require(address(tokenToBuy_) != address(0), "invalid token address");
         __Component_init(main_);
-        __Trading_init(main_, maxTradeSlippage_, minTradeVolume_);
+        __Trading_init(main_, maxTradeSlippage_, minTradeVolume_, swapPricepoint_);
         assetRegistry = main_.assetRegistry();
         distributor = main_.distributor();
         tokenToBuy = tokenToBuy_;
@@ -48,7 +50,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //
     // If erc20 is any other registered asset (checked):
     //   actions:
-    //     tryTrade(prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
+    //     openTrade(prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
     function manageToken(IERC20 erc20) external notTradingPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
@@ -84,13 +86,65 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         // Any asset with a broken price feed will trigger a revert here
         (bool launch, TradeRequest memory req) = TradeLib.prepareTradeSell(
             trade,
-            minTradeVolume,
+            0,
             maxTradeSlippage
         );
 
         if (launch) {
-            tryTrade(req);
+            openTrade(req);
         }
+    }
+
+    /// Perform a swap for the tokenToBuy
+    /// @dev Caller must have granted tokenIn allowances
+    /// @param tokenIn The input token, the one the caller provides
+    /// @param tokenOut The output token, the one the protocol provides
+    /// @param minAmountOut {qTokenOut} The minimum amount the swapper wants out
+    /// @param maxAmountIn {qTokenIn} The most the swapper is willing to pay
+    /// @return s The actual swap performed
+    /// @custom:interaction
+    function swap(
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 maxAmountIn,
+        uint256 minAmountOut
+    ) external notPausedOrFrozen returns (Swap memory s) {
+        // == Refresh ==
+        assetRegistry.refresh();
+
+        require(tokenIn == tokenToBuy, "wrong tokenIn");
+
+        s = getSwap(tokenOut);
+
+        // Require the calculated swap is better than the passed-in swap
+        require(s.sell == tokenOut && s.buy == tokenIn, "swap tokens changed");
+        require(s.sellAmount >= minAmountOut, "output amount fell");
+        require(s.buyAmount <= maxAmountIn, "input amount increased");
+
+        executeSwap(s);
+    }
+
+    /// @param sell The token the protocol is selling
+    /// @return The next Swap, without refreshing the assetRegistry
+    function getSwap(IERC20 sell) public view returns (Swap memory) {
+        IAsset sellAsset = assetRegistry.toAsset(sell);
+        return
+            TradeLib.prepareSwap(
+                TradeRequest(
+                    sellAsset,
+                    assetRegistry.toAsset(tokenToBuy),
+                    sellAsset.bal(address(this)),
+                    0 // unused, will be overwritten
+                ),
+                swapPricepoint,
+                SwapVariant.CALCULATE_BUY_AMOUNT
+            );
+    }
+
+    // By an accident of history, only BackingManager actually uses this param
+    /// @custom:governance
+    function setMinTradeVolume(uint192) public pure override {
+        revert("minTradeVolume not used by RevenueTrader");
     }
 
     /**
