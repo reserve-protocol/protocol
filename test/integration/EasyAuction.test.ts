@@ -770,7 +770,8 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         1,
         1
       )
-      await main.connect(owner).unpause()
+      await main.connect(owner).tradingUnpause()
+      await main.connect(owner).issuanceUnpause()
       await broker.init(main.address, easyAuction.address, ONE_ADDRESS, config.auctionLength)
       const sellTok = await ERC20Factory.deploy('Sell Token', 'SELL', sellTokDecimals)
       const buyTok = await ERC20Factory.deploy('Buy Token', 'BUY', buyTokDecimals)
