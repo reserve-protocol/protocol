@@ -17,7 +17,9 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     /**
      * System-wide states (does not impact ERC20 functions)
      *  - Frozen: only allow OWNER actions and staking
-     *  - Paused: only allow OWNER actions, redemption, staking, and rewards payout
+     *  - Trading Paused: only allow OWNER actions, issuance, redemption, staking,
+     *                    and rewards payout
+     *  - Issuance Paused: disallow issuance
      *
      * Typically freezing thaws on its own in a predetemined number of blocks.
      *   However, OWNER can also freeze forever.
@@ -39,8 +41,9 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // === Pausing ===
 
-    bool public paused;
-
+    bool public tradingPaused;
+    bool public issuancePaused;
+    
     /* ==== Invariants ====
        0 <= longFreeze[a] <= LONG_FREEZE_CHARGES for all addrs a
        set{a has LONG_FREEZER} == set{a : longFreeze[a] == 0}
@@ -103,9 +106,15 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     }
 
     /// @dev This -or- condition is a performance optimization for the consuming Component
-    // returns: bool(main is frozen or paused) == paused || (now < unfreezeAt)
-    function pausedOrFrozen() public view returns (bool) {
-        return paused || block.timestamp < unfreezeAt;
+    // returns: bool(main is frozen or tradingPaused) == tradingPaused || (now < unfreezeAt)
+    function tradingPausedOrFrozen() public view returns (bool) {
+        return tradingPaused || block.timestamp < unfreezeAt;
+    }
+
+    /// @dev This -or- condition is a performance optimization for the consuming Component
+    // returns: bool(main is frozen or issuancePaused) == issuancePaused || (now < unfreezeAt)
+    function issuancePausedOrFrozen() public view returns (bool) {
+        return issuancePaused || block.timestamp < unfreezeAt;
     }
 
     // === Freezing ===
@@ -161,17 +170,31 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // === Pausing ===
     // checks: caller has PAUSER
-    // effects: paused' = true
-    function pause() external onlyRole(PAUSER) {
-        emit PausedSet(paused, true);
-        paused = true;
+    // effects: tradingPaused' = true
+    function tradingPause() external onlyRole(PAUSER) {
+        emit TradingPausedSet(tradingPaused, true);
+        tradingPaused = true;
     }
 
     // checks: caller has PAUSER
-    // effects: paused' = false
-    function unpause() external onlyRole(PAUSER) {
-        emit PausedSet(paused, false);
-        paused = false;
+    // effects: tradingPaused' = false
+    function tradingUnpause() external onlyRole(PAUSER) {
+        emit TradingPausedSet(tradingPaused, false);
+        tradingPaused = false;
+    }
+
+      // checks: caller has PAUSER
+    // effects: issuancePaused' = true
+    function issuancePause() external onlyRole(PAUSER) {
+        emit IssuancePausedSet(issuancePaused, true);
+        issuancePaused = true;
+    }
+
+    // checks: caller has PAUSER
+    // effects: issuancePaused' = false
+    function issuanceUnpause() external onlyRole(PAUSER) {
+        emit IssuancePausedSet(issuancePaused, false);
+        issuancePaused = false;
     }
 
     // === Gov params ===

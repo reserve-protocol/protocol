@@ -25,10 +25,16 @@ abstract contract ComponentP0 is Versioned, Initializable, ContextUpgradeable, I
 
     // === See docs/security.md ===
 
-    modifier notPausedOrFrozen() {
-        require(!main.pausedOrFrozen(), "paused or frozen");
+    modifier notTradingPausedOrFrozen() {
+        require(!main.tradingPausedOrFrozen(), "frozen or trading paused");
         _;
     }
+
+    modifier notIssuancePausedOrFrozen() {
+        require(!main.issuancePausedOrFrozen(), "frozen or issuance paused");
+        _;
+    }
+
     modifier notFrozen() {
         require(!main.frozen(), "frozen");
         _;

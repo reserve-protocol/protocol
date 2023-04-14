@@ -68,7 +68,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// @dev Requires setting an allowance in advance
     /// @custom:interaction CEI
     // checks:
-    //   not disabled, paused, or frozen
+    //   not disabled, paused (trading), or frozen
     //   caller is a system Trader
     // effects:
     //   Deploys a new trade clone, `trade`
@@ -76,7 +76,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // actions:
     //   Transfers req.sellAmount of req.sell.erc20 from caller to `trade`
     //   Calls trade.init() with appropriate parameters
-    function openTrade(TradeRequest memory req) external notPausedOrFrozen returns (ITrade) {
+    function openTrade(TradeRequest memory req) external notTradingPausedOrFrozen returns (ITrade) {
         require(!disabled, "broker disabled");
 
         address caller = _msgSender();
@@ -113,9 +113,9 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
-    // checks: not paused, not frozen, caller is a Trade this contract cloned
+    // checks: not paused (trading), not frozen, caller is a Trade this contract cloned
     // effects: disabled' = true
-    function reportViolation() external notPausedOrFrozen {
+    function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
         disabled = true;
