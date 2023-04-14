@@ -218,7 +218,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         main.rsr().safeTransfer(account, total);
     }
 
-    function cancelUnstake(uint256 endId) external notPausedOrFrozen {
+    function cancelUnstake(uint256 endId) external notTradingPausedOrFrozen {
         address account = _msgSender();
 
         // IBasketHandler bh = main.basketHandler();

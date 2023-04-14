@@ -335,7 +335,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         IERC20Upgradeable(address(rsr)).safeTransfer(account, rsrAmount);
     }
 
-    function cancelUnstake(uint256 endId) external notPausedOrFrozen {
+    function cancelUnstake(uint256 endId) external notTradingPausedOrFrozen {
         address account = _msgSender();
 
         // We specifically allow unstaking when under collateralized
