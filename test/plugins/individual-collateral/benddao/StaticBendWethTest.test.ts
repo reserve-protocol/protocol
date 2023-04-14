@@ -400,6 +400,96 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
     )
   })
 
+  it('Deposit WETH on staticBendWETH to recipient and then withdraw some balance in underlying', async () => {
+    const amountToDeposit = utils.parseEther('5')
+    const amountToWithdraw = utils.parseEther('2.5')
+
+    // Preparation
+    await waitForTx(await weth.deposit({ value: amountToDeposit }))
+    await waitForTx(await weth.approve(staticBendWeth.address, amountToDeposit, defaultTxParams))
+
+    const ctxtInitial = await getContext(ctxtParams)
+
+    // Deposit to recipient user2
+    await waitForTx(
+      await staticBendWeth.deposit(user2Signer._address, amountToDeposit, 0, true, defaultTxParams)
+    )
+
+    const ctxtAfterDeposit = await getContext(ctxtParams)
+
+    // Withdraw
+    await waitForTx(
+      await staticBendWeth
+        .connect(user2Signer)
+        .withdraw(user2Signer._address, amountToWithdraw, true, defaultTxParams)
+    )
+    const ctxtAfterWithdrawal = await getContext(ctxtParams)
+
+    // Claim
+    await waitForTx(
+      await staticBendWeth.connect(user2Signer).claimRewards(user2Signer._address, false)
+    )
+    const ctxtAfterClaim = await getContext(ctxtParams)
+
+    await waitForTx(await staticBendWeth.collectAndUpdateRewards())
+    const ctxtAfterUpdate = await getContext(ctxtParams)
+
+    await waitForTx(
+      await staticBendWeth.connect(user2Signer).claimRewards(user2Signer._address, false)
+    )
+    const ctxtAfterClaim2 = await getContext(ctxtParams)
+
+    expect(ctxtInitial.user2StaticBendWethBalance).to.be.eq(0)
+    expect(ctxtInitial.staticBendWethSupply).to.be.eq(0)
+    expect(ctxtInitial.staticBendWethUnderlyingBalance).to.be.eq(0)
+    expect(ctxtAfterDeposit.user2DynamicStaticBendWethBalance).to.be.eq(
+      ctxtAfterDeposit.staticBendWethBendWethBalance
+    )
+    expect(ctxtAfterDeposit.user2StaticBendWethBalance).to.be.eq(
+      ctxtAfterDeposit.staticBendWethSupply
+    )
+    expect(ctxtAfterDeposit.staticBendWethBendWethBalance).to.be.eq(
+      ctxtAfterDeposit.user2DynamicStaticBendWethBalance
+    )
+    expect(ctxtAfterDeposit.staticBendWethBendWethBalance).to.be.eq(amountToDeposit)
+
+    expect(ctxtAfterWithdrawal.user2DynamicStaticBendWethBalance).to.be.eq(
+      BigNumber.from(
+        rayMul(
+          new bnjs(ctxtAfterDeposit.user2StaticBendWethBalance.sub(amountToWithdraw).toString()),
+          new bnjs(ctxtAfterWithdrawal.currentRate.toString())
+        ).toString()
+      )
+    )
+    expect(ctxtAfterWithdrawal.user2StaticBendWethBalance).to.be.eq(
+      ctxtAfterDeposit.user2StaticBendWethBalance.sub(amountToWithdraw)
+    )
+
+    expect(ctxtAfterUpdate.user2BendBalance).to.be.eq(0)
+    expect(ctxtAfterClaim2.user2BendBalance).to.be.eq(ctxtAfterUpdate.user2PendingRewards)
+    expect(ctxtAfterClaim2.user2PendingRewards).to.be.gt(0)
+
+    // Check that rewards are always covered
+    expect(ctxtInitial.staticBendWethTotalClaimableRewards).to.be.gte(
+      ctxtInitial.user2PendingRewards
+    )
+    expect(ctxtAfterDeposit.staticBendWethTotalClaimableRewards).to.be.gte(
+      ctxtAfterDeposit.user2PendingRewards
+    )
+    expect(ctxtAfterWithdrawal.staticBendWethTotalClaimableRewards).to.be.gte(
+      ctxtAfterWithdrawal.user2PendingRewards
+    )
+    expect(ctxtAfterClaim.staticBendWethTotalClaimableRewards).to.be.gte(
+      ctxtAfterClaim.user2PendingRewards
+    )
+    expect(ctxtAfterUpdate.staticBendWethTotalClaimableRewards).to.be.gte(
+      ctxtAfterUpdate.user2PendingRewards
+    )
+    expect(ctxtAfterClaim2.staticBendWethTotalClaimableRewards).to.be.gte(
+      ctxtAfterClaim2.user2PendingRewards
+    )
+  })
+
   it('Deposit WETH on staticBendWETH and then withdraw all the balance in bendWETH', async () => {
     const amountToDeposit = utils.parseEther('5')
     const amountToWithdraw = MAX_UINT256
@@ -505,6 +595,71 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
         ).toString()
       )
     )
+  })
+
+  // TODO: issue with rounding error
+  // Just one goddamn dust
+  it('Deposit bendWETH on staticBendWETH to recipient and then withdraw all to recipient in bendWETH', async () => {
+    const amountToDeposit = utils.parseEther('5')
+    const amountToWithdraw = MAX_UINT256
+
+    // Preparation
+    await waitForTx(await weth.deposit({ value: amountToDeposit }))
+    await waitForTx(await weth.approve(lendPool.address, amountToDeposit, defaultTxParams))
+    await waitForTx(
+      await lendPool.deposit(weth.address, amountToDeposit, userSigner._address, 0, defaultTxParams)
+    )
+    const ctxtInitial = await getContext(ctxtParams)
+    await waitForTx(
+      await bendWeth.approve(staticBendWeth.address, amountToDeposit, defaultTxParams)
+    )
+
+    // Deposit to recipient user2
+    await waitForTx(
+      await staticBendWeth.deposit(user2Signer._address, amountToDeposit, 0, false, defaultTxParams)
+    )
+
+    const ctxtAfterDeposit = await getContext(ctxtParams)
+
+    // Withdraw back to user1
+    await waitForTx(
+      await staticBendWeth
+        .connect(user2Signer)
+        .withdraw(userSigner._address, amountToWithdraw, false, defaultTxParams)
+    )
+
+    const ctxtAfterWithdrawal = await getContext(ctxtParams)
+
+    expect(ctxtInitial.userStaticBendWethBalance).to.be.eq(0)
+    expect(ctxtInitial.userBendWethBalance).to.eq(amountToDeposit)
+    expect(ctxtInitial.staticBendWethSupply).to.be.eq(0)
+    expect(ctxtInitial.staticBendWethUnderlyingBalance).to.be.eq(0)
+
+    expect(ctxtAfterDeposit.user2DynamicStaticBendWethBalance).to.be.eq(
+      ctxtAfterDeposit.staticBendWethBendWethBalance
+    )
+    expect(ctxtAfterDeposit.user2StaticBendWethBalance).to.be.eq(
+      ctxtAfterDeposit.staticBendWethSupply
+    )
+    expect(ctxtAfterDeposit.staticBendWethBendWethBalance).to.be.eq(amountToDeposit)
+
+    expect(ctxtAfterDeposit.user2DynamicStaticBendWethBalance).to.be.eq(amountToDeposit)
+
+    const user2OnWithdrawal = rayMul(
+      ctxtAfterDeposit.user2StaticBendWethBalance.toString(),
+      ctxtAfterWithdrawal.currentRate.toString()
+    )
+    // User1 had bendWETH crumbles after deposit
+    const userOnWithdrawal = rayMul(
+      ctxtAfterDeposit.userScaledBalanceBendWeth.toString(),
+      ctxtAfterWithdrawal.currentRate.toString()
+    )
+
+    expect(ctxtAfterWithdrawal.userBendWethBalance).to.be.eq(
+      user2OnWithdrawal.plus(userOnWithdrawal).toString()
+    )
+    expect(ctxtAfterWithdrawal.userStaticBendWethBalance).to.be.eq(0)
+    expect(ctxtAfterWithdrawal.user2StaticBendWethBalance).to.be.eq(0)
   })
 
   it('Withdraw using withdrawDynamicAmount()', async () => {
@@ -692,46 +847,7 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
     expect(ctxtAfterClaim.staticBendWethBendBalance).to.be.lt(5)
   })
 
-  // TODO: modify to claimRewards to recipient
-  // it('Deposit WETH on staticBendWETH, then transfer and withdraw of the whole balance in underlying, finally someone else claims on behalf (reverts)', async () => {
-  //   const amountToDeposit = utils.parseEther('5')
-  //   const amountToWithdraw = MAX_UINT256
-
-  //   const [, , claimer] = await hre.ethers.getSigners()
-  //   const claimerSigner = hre.ethers.provider.getSigner(await claimer.getAddress())
-
-  //   // Preparation
-  //   await waitForTx(await weth.deposit({ value: amountToDeposit }))
-  //   await waitForTx(await weth.approve(staticBendWeth.address, amountToDeposit, defaultTxParams))
-
-  //   // Deposit
-  //   await waitForTx(
-  //     await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //   )
-
-  //   const ctxtAfterDeposit = await getContext(ctxtParams)
-  //   // Transfer staticBendWeths to other user
-  //   await waitForTx(
-  //     await staticBendWeth.transfer(
-  //       user2Signer._address,
-  //       ctxtAfterDeposit.userStaticBendWethBalance
-  //     )
-  //   )
-
-  //   // Withdraw
-  //   await waitForTx(
-  //     await staticBendWeth
-  //       .connect(user2Signer)
-  //       .withdraw(user2Signer._address, amountToWithdraw, true, defaultTxParams)
-  //   )
-
-  //   // Claim
-  //   await expect(
-  //     staticBendWeth.connect(claimerSigner).claimRewards(user2Signer._address, true)
-  //   ).to.be.revertedWith(LM_ERRORS.INVALID_CLAIMER)
-  // })
-
-  it('Deposit WETH on staticBendWETH, then transfer and withdraw of the whole balance in underlying, finally claims on behalf of self', async () => {
+  it('Deposit WETH on staticBendWETH, then transfer and withdraw of the whole balance in underlying, finally claims to recipient', async () => {
     const amountToDeposit = utils.parseEther('5')
     const amountToWithdraw = MAX_UINT256
 
@@ -766,9 +882,9 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
 
     const ctxtAfterWithdrawal = await getContext(ctxtParams)
 
-    // Claim
+    // Claim to user1
     await waitForTx(
-      await staticBendWeth.connect(user2Signer).claimRewards(user2Signer._address, true)
+      await staticBendWeth.connect(user2Signer).claimRewards(userSigner._address, true)
     )
     const ctxtAfterClaim = await getContext(ctxtParams)
 
@@ -792,8 +908,8 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
       ctxtAfterWithdrawal.user2PendingRewards
     )
 
-    expect(ctxtAfterClaim.userBendBalance).to.be.eq(0)
-    expect(ctxtAfterClaim.user2BendBalance).to.be.eq(ctxtAfterWithdrawal.user2PendingRewards)
+    expect(ctxtAfterClaim.user2BendBalance).to.be.eq(0)
+    expect(ctxtAfterClaim.userBendBalance).to.be.eq(ctxtAfterWithdrawal.user2PendingRewards)
     expect(ctxtAfterClaim.staticBendWethBendBalance).to.be.eq(
       ctxtAfterWithdrawal.staticBendWethTotalClaimableRewards.sub(
         ctxtAfterWithdrawal.user2PendingRewards
@@ -803,438 +919,437 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
     expect(ctxtAfterClaim.staticBendWethBendBalance).to.be.lt(5)
   })
 
-  // TODO
-  // describe('Rewards - Small checks', () => {
-  //   it('Rewards increase at deposit, update and withdraw and set to 0 at claim', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
-  //     const amountToWithdraw = MAX_UINT256
-
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
-
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
-
-  //     const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
-
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
-
-  //     const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
-
-  //     await waitForTx(await staticBendWeth.collectAndUpdateRewards())
-
-  //     const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
-
-  //     // Withdrawing all.
-  //     await waitForTx(
-  //       await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
-  //     )
-
-  //     const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const totPendingRewards4 = await staticBendWeth.getTotalClaimableRewards()
-  //     const claimedRewards4 = await bend.balanceOf(userSigner._address)
-  //     const bendStatic4 = await bend.balanceOf(staticBendWeth.address)
-
-  //     await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(false))
-
-  //     const pendingRewards5 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const totPendingRewards5 = await staticBendWeth.getTotalClaimableRewards()
-  //     const claimedRewards5 = await bend.balanceOf(userSigner._address)
-  //     const bendStatic5 = await bend.balanceOf(staticBendWeth.address)
-
-  //     await waitForTx(await staticBendWeth.collectAndUpdateRewards())
-  //     const pendingRewards6 = await staticBendWeth.getClaimableRewards(userSigner._address)
-
-  //     // Checks
-  //     expect(pendingRewards2).to.be.gt(pendingRewards1)
-  //     expect(pendingRewards3).to.be.gt(pendingRewards2)
-  //     expect(pendingRewards4).to.be.gt(pendingRewards3)
-  //     expect(totPendingRewards4).to.be.gte(pendingRewards4)
-  //     expect(pendingRewards5).to.be.eq(0) // User "sacrifice" excess rewards to save on gas-costs
-  //     expect(pendingRewards6).to.be.eq(0)
-  //     expect(claimedRewards4).to.be.eq(0)
-
-  //     // Expect the user to have withdrawn everything.
-  //     expect(claimedRewards5).to.be.eq(bendStatic4)
-  //     expect(bendStatic5).to.be.eq(0)
-  //     expect(totPendingRewards5).to.be.gt(0)
-  //   })
-
-  //   it('Check getters', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
-
-  //     const accRewardsPerTokenPre = await staticBendWeth.getAccRewardsPerToken()
-  //     const lifetimeRewardsClaimedPre = await staticBendWeth.getLifetimeRewardsClaimed()
-  //     const lifetimeRewards = await staticBendWeth.getLifetimeRewards()
-  //     const lastRewardBlock = await staticBendWeth.getLastRewardBlock()
-
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
-
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
-
-  //     const staticBalance = await staticBendWeth.balanceOf(userSigner._address)
-  //     const dynamicBalance = await staticBendWeth.dynamicBalanceOf(userSigner._address)
-
-  //     const dynamicBalanceFromStatic = await staticBendWeth.staticToDynamicAmount(staticBalance)
-  //     const staticBalanceFromDynamic = await staticBendWeth.dynamicToStaticAmount(dynamicBalance)
-
-  //     expect(staticBalance).to.be.eq(staticBalanceFromDynamic)
-  //     expect(dynamicBalance).to.be.eq(dynamicBalanceFromStatic)
-
-  //     await staticBendWeth.collectAndUpdateRewards()
-
-  //     expect(await staticBendWeth.getAccRewardsPerToken()).to.be.gt(accRewardsPerTokenPre)
-  //     expect(await staticBendWeth.getLifetimeRewardsClaimed()).to.be.gt(lifetimeRewardsClaimedPre)
-  //     expect(await staticBendWeth.getLifetimeRewards()).to.be.gt(lifetimeRewards)
-  //     expect(await staticBendWeth.getLastRewardBlock()).to.be.gt(lastRewardBlock)
-  //   })
+  describe('Rewards - Small checks', () => {
+    it('Rewards increase at deposit, update and withdraw and set to 0 at claim', async () => {
+      const amountToDeposit = utils.parseEther('5')
+      const amountToWithdraw = MAX_UINT256
+
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
+
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
+
+      const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
+
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
+
+      const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
+
+      await waitForTx(await staticBendWeth.collectAndUpdateRewards())
+
+      const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
+
+      // Withdrawing all.
+      await waitForTx(
+        await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
+      )
+
+      const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const totPendingRewards4 = await staticBendWeth.getTotalClaimableRewards()
+      const claimedRewards4 = await bend.balanceOf(userSigner._address)
+      const bendStatic4 = await bend.balanceOf(staticBendWeth.address)
+
+      await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(false))
+
+      const pendingRewards5 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const totPendingRewards5 = await staticBendWeth.getTotalClaimableRewards()
+      const claimedRewards5 = await bend.balanceOf(userSigner._address)
+      const bendStatic5 = await bend.balanceOf(staticBendWeth.address)
+
+      await waitForTx(await staticBendWeth.collectAndUpdateRewards())
+      const pendingRewards6 = await staticBendWeth.getClaimableRewards(userSigner._address)
+
+      // Checks
+      expect(pendingRewards2).to.be.gt(pendingRewards1)
+      expect(pendingRewards3).to.be.gt(pendingRewards2)
+      expect(pendingRewards4).to.be.gt(pendingRewards3)
+      expect(totPendingRewards4).to.be.gte(pendingRewards4)
+      expect(pendingRewards5).to.be.eq(0) // User "sacrifice" excess rewards to save on gas-costs
+      expect(pendingRewards6).to.be.eq(0)
+      expect(claimedRewards4).to.be.eq(0)
+
+      // Expect the user to have withdrawn everything.
+      expect(claimedRewards5).to.be.eq(bendStatic4)
+      expect(bendStatic5).to.be.eq(0)
+      expect(totPendingRewards5).to.be.gt(0)
+    })
+
+    it('Check getters', async () => {
+      const amountToDeposit = utils.parseEther('5')
+
+      const accRewardsPerTokenPre = await staticBendWeth.getAccRewardsPerToken()
+      const lifetimeRewardsClaimedPre = await staticBendWeth.getLifetimeRewardsClaimed()
+      const lifetimeRewards = await staticBendWeth.getLifetimeRewards()
+      const lastRewardBlock = await staticBendWeth.getLastRewardBlock()
+
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
+
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
+
+      const staticBalance = await staticBendWeth.balanceOf(userSigner._address)
+      const dynamicBalance = await staticBendWeth.dynamicBalanceOf(userSigner._address)
+
+      const dynamicBalanceFromStatic = await staticBendWeth.staticToDynamicAmount(staticBalance)
+      const staticBalanceFromDynamic = await staticBendWeth.dynamicToStaticAmount(dynamicBalance)
+
+      expect(staticBalance).to.be.eq(staticBalanceFromDynamic)
+      expect(dynamicBalance).to.be.eq(dynamicBalanceFromStatic)
+
+      await staticBendWeth.collectAndUpdateRewards()
+
+      expect(await staticBendWeth.getAccRewardsPerToken()).to.be.gt(accRewardsPerTokenPre)
+      expect(await staticBendWeth.getLifetimeRewardsClaimed()).to.be.gt(lifetimeRewardsClaimedPre)
+      expect(await staticBendWeth.getLifetimeRewards()).to.be.gt(lifetimeRewards)
+      expect(await staticBendWeth.getLastRewardBlock()).to.be.gt(lastRewardBlock)
+    })
 
-  //   it('Multiple deposits in one block (Breaks if GasReport enabled)', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
+    it('Multiple deposits in one block (Breaks if GasReport enabled)', async () => {
+      const amountToDeposit = utils.parseEther('5')
 
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
 
-  //     await hre.network.provider.send('evm_setAutomine', [false])
+      await hre.network.provider.send('evm_setAutomine', [false])
 
-  //     // Depositing
-  //     const a = await staticBendWeth.deposit(
-  //       userSigner._address,
-  //       amountToDeposit,
-  //       0,
-  //       true,
-  //       defaultTxParams
-  //     )
+      // Depositing
+      const a = await staticBendWeth.deposit(
+        userSigner._address,
+        amountToDeposit,
+        0,
+        true,
+        defaultTxParams
+      )
 
-  //     // Depositing
-  //     const b = await staticBendWeth.deposit(
-  //       userSigner._address,
-  //       amountToDeposit,
-  //       0,
-  //       true,
-  //       defaultTxParams
-  //     )
+      // Depositing
+      const b = await staticBendWeth.deposit(
+        userSigner._address,
+        amountToDeposit,
+        0,
+        true,
+        defaultTxParams
+      )
 
-  //     await hre.network.provider.send('evm_mine', [])
+      await hre.network.provider.send('evm_mine', [])
 
-  //     const aReceipt = await hre.network.provider.send('eth_getTransactionReceipt', [a.hash])
-  //     const bReceipt = await hre.network.provider.send('eth_getTransactionReceipt', [b.hash])
+      const aReceipt = await hre.network.provider.send('eth_getTransactionReceipt', [a.hash])
+      const bReceipt = await hre.network.provider.send('eth_getTransactionReceipt', [b.hash])
 
-  //     const aGas = BigNumber.from(aReceipt['gasUsed'])
-  //     const bGas = BigNumber.from(bReceipt['gasUsed'])
+      const aGas = BigNumber.from(aReceipt['gasUsed'])
+      const bGas = BigNumber.from(bReceipt['gasUsed'])
 
-  //     expect(aGas).to.be.gt(300000)
-  //     expect(bGas).to.be.lt(250000)
+      expect(aGas).to.be.gt(300000)
+      expect(bGas).to.be.lt(250000)
 
-  //     await hre.network.provider.send('evm_setAutomine', [true])
-  //   })
+      await hre.network.provider.send('evm_setAutomine', [true])
+    })
 
-  //   it('Multiple collectAndUpdate in one block (Breaks if GasReport enabled)', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
+    it('Multiple collectAndUpdate in one block (Breaks if GasReport enabled)', async () => {
+      const amountToDeposit = utils.parseEther('5')
 
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
 
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
 
-  //     await hre.network.provider.send('evm_setAutomine', [false])
+      await hre.network.provider.send('evm_setAutomine', [false])
 
-  //     const a = await staticBendWeth.collectAndUpdateRewards()
-  //     const b = await staticBendWeth.collectAndUpdateRewards()
+      const a = await staticBendWeth.collectAndUpdateRewards()
+      const b = await staticBendWeth.collectAndUpdateRewards()
 
-  //     await hre.network.provider.send('evm_mine', [])
+      await hre.network.provider.send('evm_mine', [])
 
-  //     const aReceipt = await hre.network.provider.send('eth_getTransactionReceipt', [a.hash])
-  //     const bReceipt = await hre.network.provider.send('eth_getTransactionReceipt', [b.hash])
+      const aReceipt = await hre.network.provider.send('eth_getTransactionReceipt', [a.hash])
+      const bReceipt = await hre.network.provider.send('eth_getTransactionReceipt', [b.hash])
 
-  //     const aGas = BigNumber.from(aReceipt['gasUsed'])
-  //     const bGas = BigNumber.from(bReceipt['gasUsed'])
+      const aGas = BigNumber.from(aReceipt['gasUsed'])
+      const bGas = BigNumber.from(bReceipt['gasUsed'])
 
-  //     expect(aGas).to.be.gt(350000)
-  //     expect(bGas).to.be.lt(100000)
+      expect(aGas).to.be.gt(200000)
+      expect(bGas).to.be.lt(100000)
 
-  //     await hre.network.provider.send('evm_setAutomine', [true])
-  //   })
+      await hre.network.provider.send('evm_setAutomine', [true])
+    })
 
-  //   it('Update and claim', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
+    it('Update and claim', async () => {
+      const amountToDeposit = utils.parseEther('5')
 
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
 
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
 
-  //     const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
 
-  //     const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     await waitForTx(await staticBendWeth.collectAndUpdateRewards())
+      await waitForTx(await staticBendWeth.collectAndUpdateRewards())
 
-  //     const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const claimedRewards3 = await bend.balanceOf(userSigner._address)
+      const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const claimedRewards3 = await bend.balanceOf(userSigner._address)
 
-  //     await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(true))
+      await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(true))
 
-  //     const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const claimedRewards4 = await bend.balanceOf(userSigner._address)
+      const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const claimedRewards4 = await bend.balanceOf(userSigner._address)
 
-  //     expect(pendingRewards1).to.be.eq(0)
-  //     expect(pendingRewards2).to.be.gt(pendingRewards1)
-  //     expect(pendingRewards3).to.be.gt(pendingRewards2)
-  //     expect(pendingRewards4).to.be.eq(0)
+      expect(pendingRewards1).to.be.eq(0)
+      expect(pendingRewards2).to.be.gt(pendingRewards1)
+      expect(pendingRewards3).to.be.gt(pendingRewards2)
+      expect(pendingRewards4).to.be.eq(0)
 
-  //     expect(claimedRewards3).to.be.eq(0)
-  //     expect(claimedRewards4).to.be.gt(pendingRewards3)
-  //   })
+      expect(claimedRewards3).to.be.eq(0)
+      expect(claimedRewards4).to.be.gt(pendingRewards3)
+    })
 
-  //   it('Withdraw to other user', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
-  //     const amountToWithdraw = MAX_UINT256
+    it('Withdraw to other user', async () => {
+      const amountToDeposit = utils.parseEther('5')
+      const amountToWithdraw = MAX_UINT256
 
-  //     const recipient = user2Signer._address
+      const recipient = user2Signer._address
 
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
 
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
 
-  //     const userPendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const recipientPendingRewards1 = await staticBendWeth.getClaimableRewards(recipient)
+      const userPendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const recipientPendingRewards1 = await staticBendWeth.getClaimableRewards(recipient)
 
-  //     // Withdrawing all
-  //     await waitForTx(
-  //       await staticBendWeth.withdraw(recipient, amountToWithdraw, true, defaultTxParams)
-  //     )
+      // Withdrawing all
+      await waitForTx(
+        await staticBendWeth.withdraw(recipient, amountToWithdraw, true, defaultTxParams)
+      )
 
-  //     const userPendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const recipientPendingRewards2 = await staticBendWeth.getClaimableRewards(recipient)
+      const userPendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const recipientPendingRewards2 = await staticBendWeth.getClaimableRewards(recipient)
 
-  //     // Check that the recipient have gotten the rewards
-  //     expect(userPendingRewards2).to.be.gt(userPendingRewards1)
-  //     expect(recipientPendingRewards1).to.be.eq(0)
-  //     expect(recipientPendingRewards2).to.be.eq(0)
-  //   })
+      // Check that the recipient have gotten the rewards
+      expect(userPendingRewards2).to.be.gt(userPendingRewards1)
+      expect(recipientPendingRewards1).to.be.eq(0)
+      expect(recipientPendingRewards2).to.be.eq(0)
+    })
 
-  //   it('Deposit, Wait, Withdraw, claim?', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
-  //     const amountToWithdraw = MAX_UINT256
+    it('Deposit, Wait, Withdraw, claim?', async () => {
+      const amountToDeposit = utils.parseEther('5')
+      const amountToWithdraw = MAX_UINT256
 
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
 
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
 
-  //     const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     await advanceTime(60 * 60)
+      await advanceTime(60 * 60)
 
-  //     const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     // Withdrawing all.
-  //     await waitForTx(
-  //       await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
-  //     )
+      // Withdrawing all.
+      await waitForTx(
+        await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
+      )
 
-  //     // How will my pending look now
-  //     const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      // How will my pending look now
+      const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(true))
+      await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(true))
 
-  //     const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const userBalance4 = await bend.balanceOf(userSigner._address)
+      const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const userBalance4 = await bend.balanceOf(userSigner._address)
 
-  //     expect(pendingRewards1).to.be.eq(0)
-  //     expect(pendingRewards2).to.be.gt(pendingRewards1)
-  //     expect(pendingRewards3).to.be.gt(pendingRewards2)
-  //     expect(pendingRewards4).to.be.eq(0)
-  //     expect(userBalance4).to.be.eq(pendingRewards3)
-  //   })
+      expect(pendingRewards1).to.be.eq(0)
+      expect(pendingRewards2).to.be.gt(pendingRewards1)
+      expect(pendingRewards3).to.be.gt(pendingRewards2)
+      expect(pendingRewards4).to.be.eq(0)
+      expect(userBalance4).to.be.eq(pendingRewards3)
+    })
 
-  //   it('Deposit, Wait, Withdraw, claim to other user', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
-  //     const amountToWithdraw = MAX_UINT256
+    it('Deposit, Wait, Withdraw, claim to other user', async () => {
+      const amountToDeposit = utils.parseEther('5')
+      const amountToWithdraw = MAX_UINT256
 
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
 
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
 
-  //     const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     await advanceTime(60 * 60)
+      await advanceTime(60 * 60)
 
-  //     const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     // Withdrawing all.
-  //     await waitForTx(
-  //       await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
-  //     )
+      // Withdrawing all.
+      await waitForTx(
+        await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
+      )
 
-  //     // How will my pending look now
-  //     const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      // How will my pending look now
+      const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     const userBalance3 = await bend.balanceOf(userSigner._address)
-  //     await staticBendWeth.connect(user2Signer).claimRewards(userSigner._address, true)
-  //     const userBalance4 = await bend.balanceOf(userSigner._address)
+      const userBalance3 = await bend.balanceOf(userSigner._address)
+      await staticBendWeth.connect(user2Signer).claimRewards(userSigner._address, true)
+      const userBalance4 = await bend.balanceOf(userSigner._address)
 
-  //     await waitForTx(
-  //       await staticBendWeth.connect(userSigner).claimRewards(user2Signer._address, true)
-  //     )
+      await waitForTx(
+        await staticBendWeth.connect(userSigner).claimRewards(user2Signer._address, true)
+      )
 
-  //     const pendingRewards5 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const user2Balance5 = await bend.balanceOf(user2Signer._address)
+      const pendingRewards5 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const user2Balance5 = await bend.balanceOf(user2Signer._address)
 
-  //     expect(pendingRewards1).to.be.eq(0)
-  //     expect(pendingRewards2).to.be.gt(pendingRewards1)
-  //     expect(pendingRewards3).to.be.gt(pendingRewards2)
-  //     expect(userBalance3).to.be.eq(userBalance4)
-  //     expect(pendingRewards5).to.be.eq(0)
-  //     expect(user2Balance5).to.be.eq(pendingRewards3)
-  //   })
+      expect(pendingRewards1).to.be.eq(0)
+      expect(pendingRewards2).to.be.gt(pendingRewards1)
+      expect(pendingRewards3).to.be.gt(pendingRewards2)
+      expect(userBalance3).to.be.eq(userBalance4)
+      expect(pendingRewards5).to.be.eq(0)
+      expect(user2Balance5).to.be.eq(pendingRewards3)
+    })
 
-  //   it('Deposit, Wait, collectAndUpdate, Withdraw, claim?', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
-  //     const amountToWithdraw = MAX_UINT256
+    it('Deposit, Wait, collectAndUpdate, Withdraw, claim?', async () => {
+      const amountToDeposit = utils.parseEther('5')
+      const amountToWithdraw = MAX_UINT256
 
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
 
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
 
-  //     const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     await advanceTime(60 * 60)
-  //     await waitForTx(await staticBendWeth.collectAndUpdateRewards())
+      await advanceTime(60 * 60)
+      await waitForTx(await staticBendWeth.collectAndUpdateRewards())
 
-  //     const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     // Withdrawing all.
-  //     await waitForTx(
-  //       await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
-  //     )
+      // Withdrawing all.
+      await waitForTx(
+        await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
+      )
 
-  //     const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(true))
+      await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(true))
 
-  //     const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const userBalance4 = await bend.balanceOf(userSigner._address)
+      const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const userBalance4 = await bend.balanceOf(userSigner._address)
 
-  //     expect(pendingRewards1).to.be.eq(0)
-  //     expect(pendingRewards2).to.be.gt(pendingRewards1)
-  //     expect(pendingRewards3).to.be.gt(pendingRewards2)
-  //     expect(pendingRewards4).to.be.eq(0)
-  //     expect(userBalance4).to.be.eq(pendingRewards3)
-  //   })
+      expect(pendingRewards1).to.be.eq(0)
+      expect(pendingRewards2).to.be.gt(pendingRewards1)
+      expect(pendingRewards3).to.be.gt(pendingRewards2)
+      expect(pendingRewards4).to.be.eq(0)
+      expect(userBalance4).to.be.eq(pendingRewards3)
+    })
 
-  //   it('Throw away as much as possible: Deposit, collectAndUpdate, wait, Withdraw, claim', async () => {
-  //     const amountToDeposit = utils.parseEther('5')
-  //     const amountToWithdraw = MAX_UINT256
+    it('Throw away as much as possible: Deposit, collectAndUpdate, wait, Withdraw, claim', async () => {
+      const amountToDeposit = utils.parseEther('5')
+      const amountToWithdraw = MAX_UINT256
 
-  //     // Just preparation
-  //     await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
-  //     await waitForTx(
-  //       await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
-  //     )
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticBendWeth.address, amountToDeposit.mul(2), defaultTxParams)
+      )
 
-  //     // Depositing
-  //     await waitForTx(
-  //       await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
-  //     )
+      // Depositing
+      await waitForTx(
+        await staticBendWeth.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
 
-  //     const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards1 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     await waitForTx(await staticBendWeth.collectAndUpdateRewards())
-  //     await advanceTime(60 * 60)
+      await waitForTx(await staticBendWeth.collectAndUpdateRewards())
+      await advanceTime(60 * 60)
 
-  //     const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const pendingRewards2 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
-  //     // Withdrawing all.
-  //     await waitForTx(
-  //       await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
-  //     )
+      // Withdrawing all.
+      await waitForTx(
+        await staticBendWeth.withdraw(userSigner._address, amountToWithdraw, true, defaultTxParams)
+      )
 
-  //     // How will my pending look now
-  //     const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const unclaimedRewards3 = await staticBendWeth.getUnclaimedRewards(userSigner._address)
+      // How will my pending look now
+      const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const unclaimedRewards3 = await staticBendWeth.getUnclaimedRewards(userSigner._address)
 
-  //     await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(false))
+      await waitForTx(await staticBendWeth.connect(userSigner).claimRewardsToSelf(false))
 
-  //     const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
-  //     const userBalance4 = await bend.balanceOf(userSigner._address)
-  //     const totClaimable4 = await staticBendWeth.getTotalClaimableRewards()
-  //     const unclaimedRewards4 = await staticBendWeth.getUnclaimedRewards(userSigner._address)
+      const pendingRewards4 = await staticBendWeth.getClaimableRewards(userSigner._address)
+      const userBalance4 = await bend.balanceOf(userSigner._address)
+      const totClaimable4 = await staticBendWeth.getTotalClaimableRewards()
+      const unclaimedRewards4 = await staticBendWeth.getUnclaimedRewards(userSigner._address)
 
-  //     expect(pendingRewards1).to.be.eq(0)
-  //     expect(pendingRewards2).to.be.gt(0)
-  //     expect(pendingRewards3).to.be.gt(pendingRewards2)
-  //     expect(pendingRewards4).to.be.eq(0)
-  //     expect(userBalance4).to.be.gt(0)
-  //     expect(userBalance4).to.be.lt(unclaimedRewards3)
-  //     expect(totClaimable4).to.be.gt(0)
-  //     expect(totClaimable4).to.be.gt(userBalance4)
-  //     expect(unclaimedRewards4).to.be.eq(0)
-  //   })
-  // })
+      expect(pendingRewards1).to.be.eq(0)
+      expect(pendingRewards2).to.be.gt(0)
+      expect(pendingRewards3).to.be.gt(pendingRewards2)
+      expect(pendingRewards4).to.be.eq(0)
+      expect(userBalance4).to.be.gt(0)
+      expect(userBalance4).to.be.lt(unclaimedRewards3)
+      expect(totClaimable4).to.be.gt(0)
+      expect(totClaimable4).to.be.gt(userBalance4)
+      expect(unclaimedRewards4).to.be.eq(0)
+    })
+  })
 
   it('Multiple users deposit WETH on staticBendWETH, wait 1 hour, update rewards, one user transfer, then claim and update rewards.', async () => {
     // In this case, the recipient should have approx 1.5 the rewards of the others.
