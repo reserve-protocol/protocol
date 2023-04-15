@@ -8,11 +8,11 @@ import "./IBancorNetworkInfo.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @title BNTokenFiatCollateral
- * @notice Collateral plugin for a Bancor V3 pool with fiat collateral, like USDC or USDT
+ * @title BNTokenSelfReferentialCollateral
+ * @notice Collateral plugin for a Bancor V3 pool with self referential collateral, like wstETH
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
-contract BNTokenFiatCollateral is AppreciatingFiatCollateral {
+contract BNTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -39,6 +39,31 @@ contract BNTokenFiatCollateral is AppreciatingFiatCollateral {
         bancor_token = IERC20(config.erc20);
         underlying_token = _underlying_token;
         reference_decimals = config.erc20.decimals();
+    }
+    
+    /// Can revert, used by other contract functions in order to catch errors
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
+    /// @return pegPrice {target/ref}
+    function tryPrice()
+        external
+        view
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
+    {
+        // {UoA/tok} = {UoA/ref} * {ref/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
+        uint192 err = p.mul(oracleError, CEIL);
+
+        low = p - err;
+        high = p + err;
+        // assert(low <= high); obviously true just by inspection
+
+        pegPrice = targetPerRef();
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
