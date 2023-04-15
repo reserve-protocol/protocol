@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumberish } from 'ethers'
 import { ethers } from 'hardhat'
-import { IERC20Metadata, IMaplePool } from '../../../../typechain'
+import { IERC20Metadata, IPoolToken } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { getResetFork } from '../helpers'
@@ -10,27 +10,23 @@ import { FORK_BLOCK } from './constants'
 
 export const resetFork = getResetFork(FORK_BLOCK)
 
-export const mintMaplePoolToken = async (underlying: IERC20Metadata, holder: string, mToken: IMaplePool, amount: BigNumberish, recipient: string) => {
+export const transferBnToken = async (holder: string, bnToken: IERC20Metadata, amount: BigNumberish, recipient: string) => {
     await whileImpersonating(holder, async (signer: SignerWithAddress) => {
-        const _balance = await underlying.balanceOf(signer.address)
-        const _assets = await mToken.convertToAssets(amount) // the aim is to get "amount" number of shares by depositing assets
-        await underlying.connect(signer).approve(mToken.address, _balance)
-        await mToken.connect(signer).deposit(_assets, recipient)
+        await bnToken.connect(signer).transfer(recipient, amount)
     })
 }
+export const getExpectedPriceFactory = (collection: string) => {
+    const _getExpectedPrice = async (ctx: CollateralFixtureContext) => {
+        const _collection = await ethers.getContractAt('IPoolCollection', collection)
+        const _refPerTok = await _collection.underlyingToPoolToken(
+            await (ctx.tok as IPoolToken).reserveToken(),
+            fp('1'))
+        const _decimals = await ctx.chainlinkFeed.decimals()
+        const _targetPerRef = await ctx.chainlinkFeed.latestRoundData()
 
-export const transferMaplePoolToken = async (holder: string, mToken: IMaplePool, amount: BigNumberish, recipient: string) => {
-    await whileImpersonating(holder, async (signer: SignerWithAddress) => {
-        await mToken.connect(signer).transfer(recipient, amount)
-    })
-}
-
-export const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
-    const _refPerTok = await (ctx.tok as IMaplePool).convertToAssets(fp('1'))
-    const _decimals = await ctx.chainlinkFeed.decimals()
-    const _targetPerRef = await ctx.chainlinkFeed.latestRoundData()
-
-    return _targetPerRef.answer.mul(bn(10).pow(18 - _decimals)).mul(_refPerTok).div(fp('1'))
+        return _targetPerRef.answer.mul(bn(10).pow(18 - _decimals)).mul(_refPerTok).div(fp('1'))
+    }
+    return _getExpectedPrice
 }
 
 export const increaseTargetPerRef = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
@@ -46,28 +42,28 @@ export const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecre
 }
 
 // {ref/tok} = totalAssets / totalSupply
-// so we directly transfer underlying assets to the pool to increase {ref/tok}
-export const increaseRefPerTokFactory = (underlying: string, holder: string) => {
+// transfering underlying tokens does not update the staked data on the pool (in the pool collection)
+// the trick is to tamper the totalSupply instead
+export const increaseRefPerTokFactory = (recipient: string) => {
     const _increaseRefPerTok = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
-        const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)
-        await whileImpersonating(holder, async (signer: SignerWithAddress) => {
-            const _balance = await _underlying.balanceOf(ctx.tok.address) // pool balance
-            const _amount = _balance.mul(pctIncrease).div(100)
-            await _underlying.connect(signer).transfer(ctx.tok.address, _amount)
+        await whileImpersonating(ctx.tok.address, async (signer: SignerWithAddress) => {
+            const _shares = await ctx.tok.totalSupply()
+            const _amount = _shares.mul(pctIncrease).div(bn(100).add(pctIncrease))
+            await ctx.tok.connect(signer).transfer(recipient, _amount)
         })
     }
     return _increaseRefPerTok
 }
 
 // {ref/tok} = totalAssets / totalSupply
-// so we directly transfer underlying assets from the pool to reduce {ref/tok}
-export const reduceRefPerTokFactory = (underlying: string, recipient: string) => {
+// transfering underlying tokens does not update the staked data on the pool (in the pool collection)
+// the trick is to tamper the totalSupply instead
+export const reduceRefPerTokFactory = (holder: string) => {
     const _reduceRefPerTok = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
-        const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)
-        await whileImpersonating(ctx.tok.address, async (signer: SignerWithAddress) => {
-            const _balance = await _underlying.balanceOf(ctx.tok.address) // pool balance
-            const _amount = _balance.mul(pctDecrease).div(100)
-            await _underlying.connect(signer).transfer(recipient, _amount)
+        await whileImpersonating(holder, async (signer: SignerWithAddress) => {
+            const _shares = await ctx.tok.totalSupply()
+            const _amount = _shares.mul(pctDecrease).div(bn(100).sub(pctDecrease))
+            await ctx.tok.connect(signer).transfer(ctx.tok.address, _amount)
         })
     }
     return _reduceRefPerTok

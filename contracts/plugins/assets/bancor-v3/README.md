@@ -226,7 +226,7 @@ I had to use `NODE_OPTIONS` to pass parameters from Yarn to Node.
 
 ### Context
 
-- `FORK_BLOCK = 16964294`
+- `FORK_BLOCK = 17052000`
 
 ### List Of Unit Tests
 
