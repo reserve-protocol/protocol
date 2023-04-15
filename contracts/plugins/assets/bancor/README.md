@@ -1,5 +1,7 @@
 Submission Documentation
 
+Twitter: MatthewJurenka, TG: mjurenka, Discord: #7618, 
+
 This submission mirrors the Compound V2 family of plugins to allow support
 for all pools on Bancor v2. As such the collateral token, reference unit,
 and target unit would change depending on the desired pool that is desired.
