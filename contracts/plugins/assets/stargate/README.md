@@ -27,4 +27,5 @@ If a default does occur, this plugin will be disabled following the same rules
 and logic as for cTokens.
 
 Please note that this submission includes complete tests, and works for all decimals
-of LP tokens.
+of LP tokens. Note that they also use the existing S* vault tokens, which allows
+for more easy integration with other DeFi protocols.
