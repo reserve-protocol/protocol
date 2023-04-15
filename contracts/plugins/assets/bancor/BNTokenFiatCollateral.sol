@@ -23,8 +23,9 @@ contract BNTokenFiatCollateral is AppreciatingFiatCollateral {
     uint8 public immutable reference_decimals;
 
     /// @param config Configuration of this collateral. config.erc20 must be the pool token, i.e. bnUSDC
-    /// @param _underlying_token {1} The token that backs the pool token, i.e. USDC
-    /// @param revenue_hiding {2} A value like 1e-6 that represents the maximum refPerTok to hide
+    /// @param _network_info {1} The address to the deployed BancorNetworkInfo contract
+    /// @param _underlying_token {2} The token that backs the pool token, i.e. USDC
+    /// @param revenue_hiding {3} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(
         CollateralConfig memory config,
         address _network_info,
