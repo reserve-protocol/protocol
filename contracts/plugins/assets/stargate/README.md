@@ -1,5 +1,7 @@
 Submission Documentation
 
+Twitter: MatthewJurenka, TG: mjurenka, Discord: fronts#7618,
+
 This plugin provides support for the USDC, USDT, and ETH pools for
 https://stargate.finance/. This plugin would also work for other LP tokens outside
 the requirements of the bounty. StarTokenFiatCollateral.sol supports USDC and USDT,
