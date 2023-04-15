@@ -8,7 +8,7 @@ It supports instant, low-cost trading, as well as Single-Sided Liquidity Provisi
 
 Participants in the liquidity pools deposit assets (like ETH) and receive BN tokens (like bnETH) in return.
 
-Bancor more than a hundred of liquidity pools, which cover new and old tokens, stables and derivatives alike.
+Bancor has more than a hundred liquidity pools, which cover new and old tokens alike.
 
 ## Pool Accounting
 
@@ -20,105 +20,96 @@ Examples of fiat tokens:
 | :------: | :---: | :---: | :---: |
 |  bnUSDc  | USDC  |  USD  |  USD  |
 |  bnDAI   | DAI   |  USD  |  USD  |
+|  bnLINK  | LINK  |  USD  |  USD  |
+|  bnBNT   | BNT   |  USD  |  USD  |
 
-And non-fiat tokens:
+And self-referential tokens:
 
-| `tok`    | `ref` | `tgt` | `UoA` |
-| :------: | :---: | :---: | :---: |
-|  bnETH   | ETH   |  ETH  |  USD  |
+| `tok`     | `ref`  | `tgt` | `UoA` |
+| :-------: | :----: | :---: | :---: |
+|  bnETH    | ETH    |  ETH  |  USD  |
 
-There are many more tokens in the Bancor protocol, and these contracts can be used for any.
+There are many more tokens in the Bancor protocol, and these collateral contracts can be used for any.
 
 ### Exchange Rate Calculation (refPerTok)
 
 Bancor has a decent documentation, very practical.
 However the "how-to" guides don't say much on the internal mechanics...
 
-The pool contracts provide the [`poolTokenToUnderlying`][bancor-code-pool-contract-pooltokentounderlying] view, which computes:
+The pool contracts provide the [`poolTokenToUnderlying`][bancor-code-pooltokentounderlying] view, which computes:
 
 $$\begin{align}
-exchangeRate = \frac{totalAssets}{totalSupply}
+baseTokenAmount = \frac{poolTokenAmount * stakedBalance}{poolTokenSupply}
 \end{align}$$
 
-Where the `exchangeRate` is actually `refPerTok`.
+So asking to convert `1e18` pool tokens results in `baseTokenAmount` formated as a rate in fixed point.
 
-The `totalAssets` take the accrued interests and past losses into account.
+The `stakedBalance` take the accrued trading fees and flashloan interests into account.
+Deposit and withdraw don't affect the rate.
 
-The value of the LP tokens accrues every block with the interests collected from loans on the liquidity gathered.
+So the `refPerTok` is expected to increase over time.
 
 ### Price Calculation
 
 Like any other collateral, the price is `{uoa/target} * {target/ref} * {ref/tok}`.
 
-For the USDC pool:
+Among the many Bancor pools, there are fiat, self-referential and non-fiat tokens.
+Which means either `{uoa/target} = 1` or `{target/ref} = 1` or both require an oracle.
 
+For example, in the USDC pool:
+
+- `{ref/tok}` is computed as explained in the previous section
 - `{target/ref} = {USD/USDC}` is retrieved via the [USDC to USD Chainlink oracle][chainlink-feed-usdc-to-usd]
 - `{uoa/target} = 1` does not need any processing
-
-While the wETH pool has:
-
-- `{target/ref} = {ETH/wETH} = 1` is set on contract creation
-- `{uoa/target} = {USD/ETH}` uses the [ETH to USD Chainlink oracle][chainlink-feed-eth-to-usd]
 
 ### Conditions of Default
 
 Defaults of the collateral happen when `refPerTok` decreases below the allowed dropped set for "revenue hiding".
 
-And this happens iff `convertToAssets` from the ERC4626 decreases.
-
-As detailed in [appendix section](#appendix-exchange-rate-break-down) this can only be triggered by loan default.
-This section also explains why the collateral does not default on loan impairment.
-
-### Fees
-
-[conversionFee](https://github.com/bancorprotocol/docs/blob/master/guides/querying-a-pool-contract.md)
+The  detailed in [appendix section](#appendix-exchange-rate-break-down).
 
 ### Rewards
+
+Bancor hands out BNT rewards to incentivize new liquidity providers.
+
+Only a few pools are eligible: the collateral first checks whether a reward program exists before claiming rewards. 
 
 ## Deployment
 
 ### Scripts
 
-The deployment of the Maple Pool collaterals can be automated with a script.
+The deployment of the Bancor pool collaterals can be automated with a script.
 
-An example is given for the [USDC pool][reserve-collateral-usdc-deployment-script].
+An example is given for the [USDC pool][reserve-collateral-deployment-script].
 
 ### Parameters
+
+For example, the USDC pool collateral can be deployed with:
 
 ```solidity
 struct CollateralConfig {
     uint48 priceTimeout; // 604800 {s} (1 week)
     AggregatorV3Interface chainlinkFeed; // "0x8fffffd4afb6115b954bd326cbe7b4ba576818f6" {USDC/USD}
     uint192 oracleError; // 0.0025 {1}
-    IERC20Metadata erc20; // "0xd3cd37a7299B963bbc69592e5Ba933388f70dc88"
+    IERC20Metadata erc20; // "0xAd7bEc56506D181F994ec380b1BA34fb3FbfBaD3" USDC pool
     uint192 maxTradeVolume; // 1e6 {UoA}
     uint48 oracleTimeout; // 86400 {s} (24h)
     bytes32 targetName; // bytes32 representation of "USD"
     uint192 defaultThreshold; // 0.05 {1}
     uint48 delayUntilDefault; // 86400 {s} (24h)
 }
+IPoolCollection public poolCollection; // "0xB67d563287D12B1F41579cB687b04988Ad564C6C"
+IStandardRewards public standardRewards; // "0xb0B958398ABB0b5DB4ce4d7598Fb868f5A00f372"
 uint192 revenueHiding; // 1e-6 allowed drop, as a ratio of the refPerTok 
 ```
 
-For the wETH pool:
+The `PoolCollection` and `StandardRewards` contract addresses can be found:
 
-```solidity
-struct CollateralConfig {
-    uint48 priceTimeout; // 604800 {s} (1 week)
-    AggregatorV3Interface chainlinkFeed; // "0x0000000000000000000000000000000000000001" {ETH/wETH} does not require an oracle
-    uint192 oracleError; // 0.005 {1} which is actually the error for the {USD/ETH} oracle here
-    IERC20Metadata erc20; // "0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3"
-    uint192 maxTradeVolume; // 1e6 {UoA}
-    uint48 oracleTimeout; // 3600 {s} (1h)
-    bytes32 targetName; // bytes32 representation of  "ETH"
-    uint192 defaultThreshold; // 0.15 {1}
-    uint48 delayUntilDefault; // 86400 {s} (24h)
-}
-AggregatorV3Interface uoaPerTargetChainlinkFeed; // "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
-uint48 uoaPerTargetOracleTimeout; // 3600 {s} (1h)
-uint192 revenueHiding; // 1e-6 allowed drop, as a ratio of the refPerTok
-bool constantTargetPerRef; // true ({target/ref} does not call an external feed)
-```
+- in [the docs][bancor-docs-addresses]
+- or by querying [the bancor network contract][bancor-network-contract]
+
+Supposedly, there may-be several contract instances and the second path allows to find the one matching a given pool.
+However, at the time of writing (2023-04-15), there is only one `PoolCollection` and one `StandardRewards`.
 
 ## Implementation
 
@@ -126,25 +117,32 @@ bool constantTargetPerRef; // true ({target/ref} does not call an external feed)
 
 Solidity code for the fiat collateral plugin can be found in [`BnTokenFiatCollateral.sol`][reserve-collateral-fiat-contract].
 
-The non-fiat pools -like ETH- rely on [`BnTokenNonFiatCollateral.sol`][reserve-collateral-non-fiat-contract].
-
-The PoolCollection address changes from time to time. To identify the latest address
+The [non-fiat][[reserve-collateral-non-fiat-contract]] & [self-referential][] collaterals are built on top.
 
 ### Internal Dependencies
 
 This implementation relies on a number of auxiliary contracts:
 
-#### [IBnToken.sol][reserve-collateral-maple-interface]
+#### [IPoolToken.sol][reserve-collateral-pool-token-interface]
 
-Used to interact with both permissionless pools.
+Used to interact with Bancor pools.
 
-### [IPoolCollection][]
+### [IPoolCollection][reserve-collateral-pool-collection-interface]
 
-bla
+This contract processes the exchange rate from the pool token to the underlying.
 
-#### [BnTokenMock.sol][reserve-collateral-maple-mock]
+### [IStandardRewards][reserve-collateral-standard-rewards-interface]
 
-Allows to manipulate the exchange rate on the pools to test the behavior of the collateral.
+Allows to interact with programs and claims rewards.
+
+### [ContractRegistry][reserve-collateral-contract-registry]
+
+The PoolCollection address may change from time to time:
+this registry indexes Bancor contracts and allows to update the addresses.
+
+#### [BnTokenMock.sol][reserve-collateral-Bancor-mock]
+
+Can manipulate the exchange rate on the pools to test the behavior of the collateral.
 
 #### [AppreciatingFiatCollateral.sol][reserve-collateral-parent-contract]
 
@@ -152,27 +150,38 @@ Implements the revenue hiding and the refreshing logic on top of all the common 
 
 ## Relevant External Contracts
 
-### Maven11 Permissionless Pool Contracts
+### Bancor Protocol
 
-| Contract  | Address | Commit Hash |
-| --------- | ------- | ----------- |
-| USDC Pool | [`0xd3cd37a7299B963bbc69592e5Ba933388f70dc88`](https://etherscan.io/address/0xd3cd37a7299B963bbc69592e5Ba933388f70dc88) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
-| wETH Pool | [`0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3`](https://etherscan.io/address/0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3) | [`pool-v2       @ v1.0.0`](https://github.com/maple-labs/pool-v2/releases/tag/v1.0.0)       |
+| Contract          | Address |
+| ----------------- | ------- |
+| Bancor Network    | [`0xeEF417e1D5CC832e619ae18D2F140De2999dD4fB`](https://etherscan.io/address/0xeEF417e1D5CC832e619ae18D2F140De2999dD4fB) |
+| Pool Collection   | [`0xB67d563287D12B1F41579cB687b04988Ad564C6C`](https://etherscan.io/address/0xB67d563287D12B1F41579cB687b04988Ad564C6C) |
+| Standard Rewards  | [`0xb0B958398ABB0b5DB4ce4d7598Fb868f5A00f372`](https://etherscan.io/address/0xb0B958398ABB0b5DB4ce4d7598Fb868f5A00f372) |
+
+All the listed contracts are proxies, except the pool collection.
+It may change and needs to be checked / updated regularly.
+
+### Pool Contracts
+
+| Contract  | Address |
+| --------- | ------- |
+| BNT Pool  | [`0xAB05Cf7C6c3a288cd36326e4f7b8600e7268E344`](https://etherscan.io/address/0xAB05Cf7C6c3a288cd36326e4f7b8600e7268E344) |
+
+The BNT pool holds the network tokens (from rewards) in exchange for bnBNT.
+This is accomplished by staking the rewards (disabled by default).
 
 ### Oracle Contracts
 
 | Contract | Address |
 | -------- | ------- |
-| PriceOracleUSDC         | [`0x5DC5E14be1280E747cD036c089C96744EBF064E7`](https://etherscan.io/address/0x5DC5E14be1280E747cD036c089C96744EBF064E7) |
-| ChainLinkAggregatorUSDC | [`0x8fffffd4afb6115b954bd326cbe7b4ba576818f6`](https://etherscan.io/address/0x8fffffd4afb6115b954bd326cbe7b4ba576818f6) |
-| ChainLinkAggregatorWETH | [`0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419`](https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419) |
+| ChainLinkAggregatorBNT  | [`0x1e6cf0d433de4fe882a437abc654f58e1e78548c`](https://etherscan.io/address/0x1e6cf0d433de4fe882a437abc654f58e1e78548c) |
+| ChainLinkAggregatorLINK | [`0x2c1d072e956affc0d435cb7ac38ef18d24d9127c`](https://etherscan.io/address/0x2c1d072e956affc0d435cb7ac38ef18d24d9127c) |
 
 ### ERC-20 Contracts
 
 | Contract | Address |
 | -------- | ------- |
-| USDC  | [`0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48`](https://etherscan.io/address/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48) |
-| WETH9 | [`0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2`](https://etherscan.io/address/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2) |
+| BNT      | [`0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C`](https://etherscan.io/address/0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C) |
 
 ## Tests
 
@@ -189,41 +198,42 @@ I had to use `NODE_OPTIONS` to pass parameters from Yarn to Node.
 
 ### Context
 
-- `FORK_BLOCK = 16964294` (the pools were created at `16162536` and `16162554`)
+- `FORK_BLOCK = 16964294`
 
 ### List Of Unit Tests
 
 Most of the tests come from [the collateral test suite][reserve-collateral-parent-test-script].
 
-The Maple contracts are plugged into this testing suite by implementing the absract factories in [this script][reserve-collateral-test-script].
+The Bancor contracts are plugged into this testing suite by implementing the absract factories in [this script][reserve-collateral-test-script].
 
 ## Appendix: Exchange Rate Break-Down
 
 Judging from historic data on the blockchain, the `{ref/tok}` can move up as-well as down:
 
-USDC Pool                                  | WETH Pool
+USDC Pool                                  | BNT Pool
 :-----------------------------------------:|:------------------------------------------:
-![][reserve-collateral-plot-usdc-overview] | ![][reserve-collateral-plot-weth-overview]
+![][reserve-collateral-plot-usdc-overview] | ![][reserve-collateral-plot-bnt-overview]
 
 [chainlink-feed-usdc-to-usd]: https://etherscan.io/address/0x8fffffd4afb6115b954bd326cbe7b4ba576818f6
 [bancor-app-pools-list]: https://app.bancor.network/earn
-[bancor-code-pool-contract]: https://github.com/maple-labs/pool-v2/blob/main/contracts/Pool.sol
-[bancor-code-pool-contract-pooltokentounderlying]: https://github.com/bancorprotocol/contracts-v3/blob/dev/contracts/pools/PoolCollection.sol#L468
+[bancor-network-contract]: https://etherscan.io/address/0xeEF417e1D5CC832e619ae18D2F140De2999dD4fB#readProxyContract
+[bancor-code-pool-contract]: https://github.com/Bancor-labs/pool-v2/blob/main/contracts/Pool.sol
+[bancor-code-pooltokentounderlying]: https://github.com/bancorprotocol/contracts-v3/blob/dev/contracts/pools/PoolCollection.sol#L468
+[bancor-docs-addresses]: https://docs.bancor.network/developer-guides/contracts
 [bancor-docs-overview]: https://docs.bancor.network/about-bancor-network/bancor-v3
 [bancor-docs-pools]: https://docs.bancor.network/about-bancor-network/faqs/liquidity-pools
+[reserve-collateral-contract-registry]: ./vendor/ContractRegistry.sol
 [reserve-collateral-fiat-contract]: ./BnTokenFiatCollateral.sol
 [reserve-collateral-non-fiat-contract]: ./BnTokenNonFiatCollateral.sol
-[reserve-collateral-maple-interface]: ./vendor/IBnToken.sol
-[reserve-collateral-maple-mock]: ../../mocks/BnTokenMock.sol
+[reserve-collateral-self-referential-contract]: ./BnTokenSelfReferentialCollateral.sol
+[reserve-collateral-pool-collection-interface]: ./vendor/IPoolCollection.sol
+[reserve-collateral-pool-token-interface]: ./vendor/IPoolToken.sol
+[reserve-collateral-pool-token-mock]: ../../mocks/BnTokenMock.sol
+[reserve-collateral-standard-rewards-interface]: ./vendor/IStandardRewards.sol
 [reserve-collateral-parent-contract]: ../AppreciatingFiatCollateral.sol
 [reserve-collateral-parent-test-script]: ../../../../test/plugins/individual-collateral/collateralTests.ts
+[reserve-collateral-plot-bnt-overview]: ../../../../.github/assets/images/ref-per-tok_weth-pool_overview.png
 [reserve-collateral-plot-usdc-overview]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_overview.png
-[reserve-collateral-plot-weth-overview]: ../../../../.github/assets/images/ref-per-tok_weth-pool_overview.png
-[reserve-collateral-plot-usdc-zoom-unrealized-loss]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-unrealized-loss.png
-[reserve-collateral-plot-weth-zoom-unrealized-loss]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-unrealized-loss.png
-[reserve-collateral-plot-usdc-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-normal-operation.png
-[reserve-collateral-plot-weth-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-normal-operation.png
 [reserve-collateral-pull-request]: https://github.com/reserve-protocol/protocol/pull/757
 [reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/bancor-v3/BnTokenFiatCollateral.test.ts
-[reserve-collateral-usdc-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_usdc_collateral.ts
-[reserve-collateral-weth-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_weth_collateral.ts
+[reserve-collateral-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_bancorv3_bntoken_collateral.ts
