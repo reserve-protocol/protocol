@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { FixLib, shiftl_toFix, CEIL } from "contracts/libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "contracts/plugins/assets/OracleLib.sol";
-import { CollateralConfig, BnTokenFiatCollateral } from "contracts/plugins/assets/maple-v2/BnTokenFiatCollateral.sol";
+import { CollateralConfig, BnTokenFiatCollateral } from "contracts/plugins/assets/bancor-v3/BnTokenFiatCollateral.sol";
 import { IPoolCollection } from "contracts/plugins/assets/bancor-v3/vendor/IPoolCollection.sol";
 import { IStandardRewards } from "contracts/plugins/assets/bancor-v3/vendor/IStandardRewards.sol";
 

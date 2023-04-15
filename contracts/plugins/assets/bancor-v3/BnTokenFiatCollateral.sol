@@ -50,9 +50,10 @@ contract BnTokenFiatCollateral is AppreciatingFiatCollateral {
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
+    /// @dev does not take the withdrawing fees into account on purpose, see README
     function _underlyingRefPerTok() internal view override returns (uint192) {
         uint256 rate = poolCollection.poolTokenToUnderlying(
-            IPoolToken(erc20).reserveToken(), // pools are indexed by their underlying token
+            IPoolToken(address(erc20)).reserveToken(), // pools are indexed by their underlying token
             uint256(1e18));
         return shiftl_toFix(rate, -18); // convert to uint192 and actually keep the same value
     }
@@ -60,11 +61,13 @@ contract BnTokenFiatCollateral is AppreciatingFiatCollateral {
     /// Bancor pools hand out BNT rewards
     /// Only pools selected by the DAO benefit from rewards
     function claimRewards() external virtual override(Asset, IRewardable) {
-        uint256 claimed = 0 // not all pools are eligible for rewards
-        uint256 id = standardRewards.latestProgramId(IPoolToken(erc20).reserveToken());
+        uint256 claimed = 0; // not all pools are eligible for rewards
+        uint256 id = standardRewards.latestProgramId(IPoolToken(address(erc20)).reserveToken());
         // bool isActive = standardRewards.isProgramActive(id);
         if (id > 0) {
-            claimed = standardRewards.claimRewards([id]);
+            uint256[] memory ids = new uint256[](1);
+            ids[0] = id;
+            claimed = standardRewards.claimRewards(ids);
         }
         emit RewardsClaimed(IERC20(0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C), claimed); // BNT token address
     }
