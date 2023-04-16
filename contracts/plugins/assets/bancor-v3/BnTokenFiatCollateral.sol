@@ -63,7 +63,6 @@ contract BnTokenFiatCollateral is AppreciatingFiatCollateral {
     function claimRewards() external virtual override(Asset, IRewardable) {
         uint256 claimed = 0; // not all pools are eligible for rewards
         uint256 id = standardRewards.latestProgramId(IPoolToken(address(erc20)).reserveToken());
-        // bool isActive = standardRewards.isProgramActive(id);
         if (id > 0) {
             uint256[] memory ids = new uint256[](1);
             ids[0] = id;

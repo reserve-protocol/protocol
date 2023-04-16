@@ -18,7 +18,7 @@ export const transferBnToken = async (holder: string, bnToken: IERC20Metadata, a
 export const getExpectedPriceFactory = (collection: string) => {
     const _getExpectedPrice = async (ctx: CollateralFixtureContext) => {
         const _collection = await ethers.getContractAt('IPoolCollection', collection)
-        const _refPerTok = await _collection.underlyingToPoolToken(
+        const _refPerTok = await _collection.poolTokenToUnderlying(
             await (ctx.tok as IPoolToken).reserveToken(),
             fp('1'))
         const _decimals = await ctx.chainlinkFeed.decimals()
@@ -43,13 +43,13 @@ export const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecre
 
 // {ref/tok} = totalAssets / totalSupply
 // transfering underlying tokens does not update the staked data on the pool (in the pool collection)
-// the trick is to tamper the totalSupply instead
-export const increaseRefPerTokFactory = (recipient: string) => {
+// the trick is to tamper with the totalSupply instead
+export const increaseRefPerTokFactory = (holder: string) => {
     const _increaseRefPerTok = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
-        await whileImpersonating(ctx.tok.address, async (signer: SignerWithAddress) => {
-            const _shares = await ctx.tok.totalSupply()
-            const _amount = _shares.mul(pctIncrease).div(bn(100).add(pctIncrease))
-            await ctx.tok.connect(signer).transfer(recipient, _amount)
+        const _shares = await ctx.tok.totalSupply()
+        const _amount = _shares.mul(pctIncrease).div(bn(100).add(pctIncrease))
+        await whileImpersonating(holder, async (signer: SignerWithAddress) => {
+            await (ctx.tok as IPoolToken).connect(signer).burn(_amount)
         })
     }
     return _increaseRefPerTok
@@ -57,13 +57,14 @@ export const increaseRefPerTokFactory = (recipient: string) => {
 
 // {ref/tok} = totalAssets / totalSupply
 // transfering underlying tokens does not update the staked data on the pool (in the pool collection)
-// the trick is to tamper the totalSupply instead
-export const reduceRefPerTokFactory = (holder: string) => {
+// the trick is to tamper with the totalSupply instead
+export const reduceRefPerTokFactory = (holder: string, collection: string) => {
     const _reduceRefPerTok = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
-        await whileImpersonating(holder, async (signer: SignerWithAddress) => {
-            const _shares = await ctx.tok.totalSupply()
-            const _amount = _shares.mul(pctDecrease).div(bn(100).sub(pctDecrease))
-            await ctx.tok.connect(signer).transfer(ctx.tok.address, _amount)
+        const _shares = await ctx.tok.totalSupply()
+        const _amount = _shares.mul(pctDecrease).div(bn(100).sub(pctDecrease))
+        // the pool collection is actually the owner of the pool token
+        await whileImpersonating(collection, async (signer: SignerWithAddress) => {
+            await (ctx.tok as IPoolToken).connect(signer).mint(holder, _amount)
         })
     }
     return _reduceRefPerTok
