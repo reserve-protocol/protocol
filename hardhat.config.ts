@@ -12,13 +12,16 @@ import 'solidity-coverage'
 import { useEnv } from '#/utils/env'
 import { HardhatUserConfig } from 'hardhat/types'
 import forkBlockNumber from '#/test/integration/fork-block-numbers'
+import { isHexString } from 'ethers/lib/utils'
 
 // eslint-disable-next-line node/no-missing-require
 require('#/tasks')
 
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
-const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
+const PRIVATE_KEY = useEnv('PRIVATE_KEY')
+const MNEMONIC =
+  useEnv('MNEMONIC') ?? PRIVATE_KEY ?? 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
@@ -53,18 +56,23 @@ const config: HardhatUserConfig = {
     goerli: {
       chainId: 5,
       url: GOERLI_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
+      accounts: isHexString(PRIVATE_KEY)
+        ? [PRIVATE_KEY]
+        : {
+            mnemonic: MNEMONIC,
+          },
     },
     mainnet: {
       chainId: 1,
       url: MAINNET_RPC_URL,
-      accounts: {
-        mnemonic: MNEMONIC,
-      },
-      // gasPrice: 30_000_000_000,
-      gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
+
+      accounts: isHexString(PRIVATE_KEY)
+        ? [PRIVATE_KEY]
+        : {
+            mnemonic: MNEMONIC,
+          },
+      // gasPrice: 10_000_000_000,
+      gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes
     },
   },
   solidity: {

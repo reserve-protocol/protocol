@@ -31,6 +31,9 @@ interface ICToken is IERC20Metadata {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function redeem(uint256 redeemTokens) external returns (uint256);
+
+    /// @return The address of the comptroller
+    function comptroller() external view returns (address);
 }
 
 interface IComptroller {
@@ -39,4 +42,7 @@ interface IComptroller {
 
     /// @return The address for COMP token
     function getCompAddress() external view returns (address);
+
+    /// @return Returns if minting is active or paused for the underlying asset
+    function mintGuardianPaused(address token) external view returns (bool);
 }

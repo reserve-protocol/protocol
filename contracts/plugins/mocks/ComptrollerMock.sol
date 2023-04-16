@@ -31,4 +31,8 @@ contract ComptrollerMock is IComptroller {
     function getCompAddress() external view returns (address) {
         return address(compToken);
     }
+
+    function mintGuardianPaused(address guardian) external view returns (bool) {
+        return false;
+    }
 }

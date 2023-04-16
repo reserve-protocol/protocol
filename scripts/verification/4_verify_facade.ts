@@ -43,6 +43,20 @@ async function main() {
     [],
     'contracts/facade/FacadeAct.sol:FacadeAct'
   )
+  /** ******************** Verify Zapper ****************************************/
+  await verifyContract(
+    chainId,
+    '0xfa81b1a2f31786bfa680a9B603c63F25A2F9296b',
+    [],
+    'contracts/facade/Zapper.sol:Zapper'
+  )
+
+  await verifyContract(
+    chainId,
+    '0x7fA27033835d48ea32feB34Ab7a66d05bf38DE11',
+    [],
+    'contracts/facade/Zapper.sol:ZapperExecutor'
+  )
 }
 
 main().catch((error) => {

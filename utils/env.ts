@@ -19,6 +19,7 @@ type IEnvVars =
   | 'JOBS'
   | 'EXTREME'
   | 'SUBGRAPH_URL'
+  | 'PRIVATE_KEY'
 
 export function useEnv(key: IEnvVars | IEnvVars[], _default = ''): string {
   if (typeof key === 'string') {

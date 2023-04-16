@@ -17,5 +17,5 @@
   },
   "exclude": ["./dist/**/*", "./node_modules/**/*"],
   "include": ["./test", "./tasks/**/*", "./common", "./scripts", "./typechain/**/*"],
-  "files": ["./hardhat.config.ts"]
+  "files": ["./hardhat.config.ts", "scripts/zapper/1inch-utils.ts", "scripts/zapper/types.ts", "scripts/zapper/zap-to-eUSD.ts"]
 }

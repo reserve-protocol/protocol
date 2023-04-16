@@ -73,13 +73,15 @@ interface INetworkConfig {
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+
+  PERMIT2?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
   default: {
     name: 'hardhat',
     tokens: {},
-    chainlinkFeeds: {},
+    chainlinkFeeds: {}
   },
   // Config used for Mainnet forking -- Mirrors mainnet
   '31337': {
@@ -125,7 +127,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
-      cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3'
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -148,7 +150,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       CRV: '0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f',
       stETHETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
-      rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
+      rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0' // rETH/ETH
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
@@ -156,16 +158,16 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
-    EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe'
   },
   '3': {
     name: 'ropsten',
     tokens: {
       USDC: '0x07865c6e87b9f70255377e024ace6630c1eaa37f',
-      RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
+      RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70'
     },
     chainlinkFeeds: {},
-    COMPTROLLER: '0xcfa7b0e37f5AC60f3ae25226F5e39ec59AD26152',
+    COMPTROLLER: '0xcfa7b0e37f5AC60f3ae25226F5e39ec59AD26152'
   },
   '1': {
     name: 'mainnet',
@@ -209,7 +211,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
-      cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
+      cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3'
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -232,12 +234,13 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       CRV: '0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f',
       stETHETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
-      rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
+      rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0' // rETH/ETH
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    PERMIT2: '0x000000000022d473030f116ddee9f6b43ac78ba3'
   },
   '5': {
     name: 'goerli',
@@ -271,7 +274,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WETH: '0xB5B58F0a853132EA8cB614cb17095dE87AF3E98b',
       WBTC: '0x528FdEd7CC39209ed67B4edA11937A9ABe1f6249',
       EURT: '0xD6da5A7ADE2a906d9992612752A339E3485dB508',
-      RSR: '0xB58b5530332D2E9e15bfd1f2525E6fD84e830307',
+      RSR: '0xB58b5530332D2E9e15bfd1f2525E6fD84e830307'
     },
     chainlinkFeeds: {
       ETH: '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e', // canonical chainlink
@@ -289,12 +292,12 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       FRAX: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
       WBTC: '0xe52CE9436F2D4D4B744720aAEEfD9C6dbFC00b34',
       EURT: '0x68aA66BCde901c741C5EF07314875434E51E5D30',
-      EUR: '0x12336777de46b9a6Edd7176E532810149C787bcD',
+      EUR: '0x12336777de46b9a6Edd7176E532810149C787bcD'
     },
     AAVE_LENDING_POOL: '0x3e9E33B84C1cD9037be16AA45A0B296ae5F185AD', // mock
     GNOSIS_EASY_AUCTION: '0x1fbab40c338e2e7243da945820ba680c92ef8281', // canonical
-    COMPTROLLER: '0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b', // canonical
-  },
+    COMPTROLLER: '0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b' // canonical
+  }
 }
 
 export const getNetworkConfig = (chainId: string) => {
