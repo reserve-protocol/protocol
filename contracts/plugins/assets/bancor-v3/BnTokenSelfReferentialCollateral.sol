@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import { FixLib, shiftl_toFix, CEIL } from "contracts/libraries/Fixed.sol";
-import { AggregatorV3Interface, OracleLib } from "contracts/plugins/assets/OracleLib.sol";
-import { CollateralConfig, BnTokenFiatCollateral } from "contracts/plugins/assets/bancor-v3/BnTokenFiatCollateral.sol";
-import { IPoolCollection } from "contracts/plugins/assets/bancor-v3/vendor/IPoolCollection.sol";
-import { IStandardRewards } from "contracts/plugins/assets/bancor-v3/vendor/IStandardRewards.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/plugins/assets/OracleLib.sol";
+import "contracts/plugins/assets/bancor-v3/BnTokenFiatCollateral.sol";
+import "contracts/plugins/assets/bancor-v3/vendor/IPoolCollection.sol";
+import "contracts/plugins/assets/bancor-v3/vendor/IStandardRewards.sol";
 
 /**
  * @title BnTokenSelfReferentialCollateral
@@ -21,6 +21,7 @@ contract BnTokenSelfReferentialCollateral is BnTokenFiatCollateral {
 
     // The Bancor v3 tokens have the same number of decimals than their underlying
 
+    // solhint-disable no-empty-blocks
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param poolCollection_ The address of the collection corresponding to the pool
     /// @param standardRewards_ The address of the collection corresponding to the pool
@@ -32,11 +33,22 @@ contract BnTokenSelfReferentialCollateral is BnTokenFiatCollateral {
         uint192 revenueHiding
     ) BnTokenFiatCollateral(config, poolCollection_, standardRewards_, revenueHiding) {}
 
+    // solhint-enable no-empty-blocks
+
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref}
-    function tryPrice() external view override returns (uint192 low, uint192 high, uint192 pegPrice) {
+    function tryPrice()
+        external
+        view
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
+    {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
         uint192 err = p.mul(oracleError, CEIL);

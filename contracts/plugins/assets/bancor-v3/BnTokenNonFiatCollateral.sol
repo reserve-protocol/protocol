@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import { FixLib, shiftl_toFix, CEIL } from "contracts/libraries/Fixed.sol";
-import { AggregatorV3Interface, OracleLib } from "contracts/plugins/assets/OracleLib.sol";
-import { CollateralConfig, BnTokenFiatCollateral } from "contracts/plugins/assets/bancor-v3/BnTokenFiatCollateral.sol";
-import { IPoolCollection } from "contracts/plugins/assets/bancor-v3/vendor/IPoolCollection.sol";
-import { IStandardRewards } from "contracts/plugins/assets/bancor-v3/vendor/IStandardRewards.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/plugins/assets/OracleLib.sol";
+import "contracts/plugins/assets/bancor-v3/BnTokenFiatCollateral.sol";
+import "contracts/plugins/assets/bancor-v3/vendor/IPoolCollection.sol";
+import "contracts/plugins/assets/bancor-v3/vendor/IStandardRewards.sol";
 
 /**
  * @title BnTokenNonFiatCollateral
@@ -48,7 +48,16 @@ contract BnTokenNonFiatCollateral is BnTokenFiatCollateral {
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref}
-    function tryPrice() external view override returns (uint192 low, uint192 high, uint192 pegPrice) {
+    function tryPrice()
+        external
+        view
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
+    {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}

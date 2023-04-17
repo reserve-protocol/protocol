@@ -35,7 +35,7 @@ interface IStandardRewards {
     function isProgramPaused(uint256 id) external view returns (bool);
 
     /**
-     * @dev returns the ID of the latest program for a given pool (or 0 if no program is currently set)
+     * @dev returns the ID of the latest program for a given pool (or 0 if there's no program)
      */
     function latestProgramId(address pool) external view returns (uint256);
 

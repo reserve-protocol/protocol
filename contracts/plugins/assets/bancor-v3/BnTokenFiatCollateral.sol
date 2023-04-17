@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import { FixLib, shiftl_toFix } from "contracts/libraries/Fixed.sol";
-import { AggregatorV3Interface, OracleLib } from "contracts/plugins/assets/OracleLib.sol";
-import { IERC20, IRewardable, Asset, CollateralConfig, AppreciatingFiatCollateral } from "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
-import { IPoolToken } from "contracts/plugins/assets/bancor-v3/vendor/IPoolToken.sol";
-import { IPoolCollection } from "contracts/plugins/assets/bancor-v3/vendor/IPoolCollection.sol";
-import { IStandardRewards } from "contracts/plugins/assets/bancor-v3/vendor/IStandardRewards.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/plugins/assets/OracleLib.sol";
+import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
+import "contracts/plugins/assets/bancor-v3/vendor/IPoolToken.sol";
+import "contracts/plugins/assets/bancor-v3/vendor/IPoolCollection.sol";
+import "contracts/plugins/assets/bancor-v3/vendor/IStandardRewards.sol";
 
 /**
  * @title BnTokenFiatCollateral
@@ -53,8 +53,9 @@ contract BnTokenFiatCollateral is AppreciatingFiatCollateral {
     /// @dev does not take the withdrawing fees into account on purpose, see README
     function _underlyingRefPerTok() internal view override returns (uint192) {
         uint256 rate = poolCollection.poolTokenToUnderlying(
-            IPoolToken(address(erc20)).reserveToken(), // pools are indexed by their underlying token
-            uint256(1e18));
+            IPoolToken(address(erc20)).reserveToken(), // pools are indexed by their underlying
+            uint256(1e18)
+        );
         return shiftl_toFix(rate, -18); // convert to uint192 and actually keep the same value
     }
 
@@ -68,6 +69,6 @@ contract BnTokenFiatCollateral is AppreciatingFiatCollateral {
             ids[0] = id;
             claimed = standardRewards.claimRewards(ids);
         }
-        emit RewardsClaimed(IERC20(0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C), claimed); // BNT token address
+        emit RewardsClaimed(IERC20(0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C), claimed); // BNT
     }
 }

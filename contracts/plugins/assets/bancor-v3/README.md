@@ -108,12 +108,6 @@ The [rewards come in two forms][bancor-docs-rewards-comparison]:
 
 ## Deployment
 
-### Scripts
-
-The deployment of the Bancor pool collaterals can be automated with a script.
-
-An example is given for the [USDC pool][reserve-collateral-deployment-script].
-
 ### Parameters
 
 For example, the USDC pool collateral can be deployed with:
@@ -293,7 +287,6 @@ USDC Pool                                  | ETH Pool
 [reserve-collateral-self-referential-contract]: ./BnTokenSelfReferentialCollateral.sol
 [reserve-collateral-pool-collection-interface]: ./vendor/IPoolCollection.sol
 [reserve-collateral-pool-token-interface]: ./vendor/IPoolToken.sol
-[reserve-collateral-pool-token-mock]: ../../mocks/BnTokenMock.sol
 [reserve-collateral-standard-rewards-interface]: ./vendor/IStandardRewards.sol
 [reserve-collateral-parent-contract]: ../AppreciatingFiatCollateral.sol
 [reserve-collateral-parent-test-script]: ../../../../test/plugins/individual-collateral/collateralTests.ts
