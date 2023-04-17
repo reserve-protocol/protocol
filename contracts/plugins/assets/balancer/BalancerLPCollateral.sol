@@ -11,37 +11,28 @@ import "./interfaces/BPool.sol";
 import "../FiatCollateral.sol";
 
 struct BalancerCollateralConfig {
+    // bitmap of which tokens are fiat:
+    // e.g if the bit representation of tokenIsFiat is:
+    // 00...001 -> token0 is pegged to UoA
+    // 00...010 -> token1 is pegged to UoA
+    // 00...011 -> both of them are pegged to UoA;
     uint256 tokenIsFiat;
-    uint48 priceTimeout; // {s} The number of seconds over which saved prices decay
     bytes32 poolId; // balancer pool id
-    AggregatorV3Interface token0ChainlinkFeed; 
-    AggregatorV3Interface token1ChainlinkFeed; 
-    ILiquidityGaugeFactory gaugeFactory;
-    IBalancerMinter balancerMinter;
-    uint192 oracleError; // {1} The % the oracle feed can be off by
-    BPool erc20; // The ERC20 of the collateral token
-    uint192 maxTradeVolume; // {UoA} The max trade volume, in UoA
-    uint48 oracleTimeout; // {s} The number of seconds until a oracle value becomes invalid
-    bytes32 targetName; // The bytes32 representation of the target name
-    uint192 defaultThreshold; // {1} A value like 0.05 that represents a deviation tolerance
-    // set defaultThreshold to zero to create SelfReferentialCollateral
-    uint48 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
+    AggregatorV3Interface token0ChainlinkFeed; // token0 feed
+    AggregatorV3Interface token1ChainlinkFeed; // token0 feed
+    ILiquidityGaugeFactory gaugeFactory; // address of balancer's gauge factory
+    IBalancerMinter balancerMinter; // bal minter address
 }
 
 /**
  * @title BalancerLPCollateral
- * Parent class for all collateral. Can be extended to support appreciating collateral
+ * Parent plugin for most Balancer LP Tokens
  *
  * For: {tok} != {ref}, {ref} != {target}, {target} == {UoA}
  * Can be easily extended by (optionally) re-implementing:
  *   - tryPrice()
- *   - refPerTok()
  *   - targetPerRef()
  *   - claimRewards()
- * If you have appreciating collateral, then you should use AppreciatingFiatCollateral or
- * override refresh() yourself.
- *
- * Can intentionally disable default checks by setting config.defaultThreshold to 0
  */
 contract BalancerLPCollateral is FiatCollateral {
     using FixLib for uint192;
@@ -72,44 +63,39 @@ contract BalancerLPCollateral is FiatCollateral {
     uint256 tokenIsFiat;
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
+
+    /// @dev config Unused members: chainlinkFeed, oracleError 
+    /// @dev config.erc20 should be a BPool
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(BalancerCollateralConfig memory config)
-        FiatCollateral(
-            CollateralConfig(
-                config.priceTimeout,
-                config.token0ChainlinkFeed,
-                config.oracleError,
-                IERC20Metadata(address(config.erc20)),
-                config.maxTradeVolume,
-                config.oracleTimeout,
-                config.targetName,
-                config.defaultThreshold,
-                config.delayUntilDefault
-            )
-        )
+    constructor(CollateralConfig memory config, BalancerCollateralConfig memory balConfig)
+        FiatCollateral(config)
     {
-        require(address(config.token1ChainlinkFeed) != address(0), "missing token1 chainlink feed");
+        require(address(balConfig.token1ChainlinkFeed) != address(0), "missing token1 chainlink feed");
+        require(address(balConfig.token0ChainlinkFeed) != address(0), "missing token0 chainlink feed");
         require(address(config.erc20) != address(0), "missing balancer pool");
         // scope out var to prevent stack depth error
         {
-            IVault balancerVault_ = config.erc20.getVault();
-            balancerVault = balancerVault_;
+            require(address(config.erc20) != address(0), "missing balancer pool");
+            BPool balancerPool_ = BPool(address(config.erc20)); // TODO: is this needed? Isn't it handled by the base class's constructor?
+            IVault balancerVault_ = balancerPool_.getVault();
             require(address(balancerVault_) != address(0), "missing balancer vault");
+            balancerPool = balancerPool_;
+            balancerVault = balancerVault_;
         }
         {
-            require(address(config.gaugeFactory) != address(0), "missing gaugeFactory");
-            address gauge_ = config.gaugeFactory.getPoolGauge(address(erc20));
+            require(address(balConfig.gaugeFactory) != address(0), "missing gaugeFactory");
+            address gauge_ = balConfig.gaugeFactory.getPoolGauge(address(erc20));
             require(gauge_ != address(0), "missing gauge");
             gauge = gauge_;
         }
-        require(address(config.balancerMinter) != address(0), "missing balancer minter");
-        balancerMinter = config.balancerMinter;
+        require(address(balConfig.balancerMinter) != address(0), "missing balancer minter");
+        balancerMinter = balConfig.balancerMinter;
         {
             IERC20 balancerToken_ = balancerMinter.getBalancerToken();
             require(address(balancerToken_) != address(0), "missing balancer token");
             balancerToken = balancerToken_;
         }
-        require(config.tokenIsFiat <= 3 && config.tokenIsFiat >= 0, "invalid tokenIsFiat bitmap");
+        require(balConfig.tokenIsFiat <= 3 && balConfig.tokenIsFiat >= 0, "invalid tokenIsFiat bitmap");
         require(config.targetName != bytes32(0), "targetName missing");
         if (config.defaultThreshold > 0) {
             require(config.delayUntilDefault > 0, "delayUntilDefault zero");
@@ -117,12 +103,11 @@ contract BalancerLPCollateral is FiatCollateral {
         require(config.delayUntilDefault <= 1209600, "delayUntilDefault too long");
 
         // {target/ref} = {target/ref} * {1}
-        tokenIsFiat = config.tokenIsFiat;
-        balancerPool = config.erc20; // TODO: is this needed? Isn't it handled by the base class's constructor?
-        poolId = config.poolId;
+        tokenIsFiat = balConfig.tokenIsFiat;
+        poolId = balConfig.poolId;
         prevReferencePrice = refPerTok();
-        token0ChainlinkFeed = config.token0ChainlinkFeed;
-        token1ChainlinkFeed = config.token1ChainlinkFeed;
+        token0ChainlinkFeed = balConfig.token0ChainlinkFeed;
+        token1ChainlinkFeed = balConfig.token1ChainlinkFeed;
     }
 
     function isTokenFiat(uint256 indexFromRight) public view returns (bool) {
@@ -239,7 +224,7 @@ contract BalancerLPCollateral is FiatCollateral {
         return rate;
     }
 
-    // Claim balancer token rewards - only works for certain pools
+    // Claim balancer token rewards (this cannot be tested - see ./README.md)
     /// @dev Use delegatecall
     function claimRewards() external override(Asset, IRewardable) {
         uint256 balOldBal = balancerToken.balanceOf(address(this));

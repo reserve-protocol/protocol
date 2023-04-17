@@ -52,27 +52,34 @@ $$ \tau \text{ and is price drift default threshold} $$
 
 ### 1.4 Deployment and Configuration
 
-Deploy [BalancerLPCollateral.sol](./BalancerLPCollateral.sol) with construct args:
-```
-uint256 tokenisFiat_, 
-// bitmap of which tokens are fiat:
-// e.g if the bit representation of tokenisFiat is:
-// 00...001 -> token0 is pegged to UoA
-// 00...010 -> token1 is pegged to UoA
-// 00...011 -> both of them are pegged to UoA;
+Deploy [BalancerLPCollateral.sol](./BalancerLPCollateral.sol) with constructor args:
+```solidity
+{ // struct CollateralConfig 
+    uint48 priceTimeout; // {s} The number of seconds over which saved prices decay
+    AggregatorV3Interface chainlinkFeed; // unused but cannot be zero
+    uint192 oracleError; // unused but cannot be zero
+    BPool erc20; // The ERC20 of the collateral token
+    uint192 maxTradeVolume; // {UoA} The max trade volume, in UoA
+    uint48 oracleTimeout; // {s} The number of seconds until a oracle value becomes invalid
+    bytes32 targetName; // The bytes32 representation of the target name
+    uint192 defaultThreshold; // {1} A value like 0.05 that represents a deviation tolerance
+    // set defaultThreshold to zero to create SelfReferentialCollateral
+    uint48 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
+},
+{ // struct BalancerCollateralConfig 
+    // bitmap of which tokens are fiat:
+    // e.g if the bit representation of tokenIsFiat is:
+    // 00...001 -> token0 is pegged to UoA
+    // 00...010 -> token1 is pegged to UoA
+    // 00...011 -> both of them are pegged to UoA;
+    uint256 tokenIsFiat;
+    bytes32 poolId; // balancer pool id
+    AggregatorV3Interface token0ChainlinkFeed; // token0 feed
+    AggregatorV3Interface token1ChainlinkFeed; // token0 feed
+    ILiquidityGaugeFactory gaugeFactory; // address of balancer's gauge factory
+    IBalancerMinter balancerMinter; // bal minter address
+}
 
-uint48 priceTimeout; // The number of seconds over which saved prices decay
-bytes32 poolId; // balancer pool id
-AggregatorV3Interface token0chainlinkFeed_, // chainlink feed for {uoa/token0}
-AggregatorV3Interface token1chainlinkFeed_, // chainlink feed for {uoa/token1}
-
-uint192 oracleError; // The % the oracle feed can be off by
-IERC20Metadata erc20_, // address of LP token
-uint192 maxTradeVolume_, // max trade volume - default
-uint48 oracleTimeout_, // oracle price request timeout - default
-bytes32 targetName_, // FSV2SQRT{token0 symbol}{token1 symbol}
-uint192 defaultThreshold_, // maximum price drift from peg (%) - default
-uint256 delayUntilDefault_, // time till status goes from IFFY to DISABLED
 ```
 
 ## 2.0 Testing

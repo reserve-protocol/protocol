@@ -7,7 +7,7 @@ interface ICurrencies {
 }
 
 export interface ITokens {
-  BWETHDAI?: string,
+  BWETHDAI?: string
   DAI?: string
   USDC?: string
   USDT?: string

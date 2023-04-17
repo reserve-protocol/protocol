@@ -1,9 +1,9 @@
 // import collateralTests from '../collateralTests'
-import { CollateralFixtureContext, CollateralOpts, CollateralStatus, MintCollateralFunc } from '../pluginTestTypes'
-import { resetFork, mintRETH, getBWethDaiPool, mintBWETHDAI, transferWETH } from './helpers'
+import { CollateralFixtureContext, CollateralOpts, CollateralStatus } from '../pluginTestTypes'
+import { resetFork, getBWethDaiPool, mintBWETHDAI } from './helpers'
 import hre, { ethers } from 'hardhat'
 import { expect } from 'chai'
-import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
+import { ContractFactory, BigNumberish } from 'ethers'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -11,12 +11,11 @@ import {
   BalancerLPCollateral,
   WETH9,
   InvalidMockV3Aggregator,
-  IERC20Metadata,
   IVault,
   BPool,
 } from '../../../../typechain'
-import { ZERO, bn, fp } from '../../../../common/numbers'
-import { MAX_UINT192, MAX_UINT256, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
+import { bn, fp } from '../../../../common/numbers'
+import { MAX_UINT192, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import {
@@ -33,7 +32,6 @@ import {
   ETH_USD_PRICE_FEED,
   DAI_USD_PRICE_FEED,
   WETH_WHALE,
-  BWETHDAI_WHALE,
   DAI_WHALE,
   GAUGE_FACTORY,
   BALANCER_MINTER,
@@ -43,7 +41,7 @@ import { whileImpersonating } from '#/test/utils/impersonation'
 import { useEnv } from '#/utils/env'
 import { getChainId } from '#/common/blockchain-utils'
 import { networkConfig } from '#/common/configuration'
-import { advanceBlocks, advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '#/test/utils/time'
+import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '#/test/utils/time'
 
 /*
   Define interfaces
@@ -77,12 +75,13 @@ export const defaultBalancerLPCollateralOpts: BalancerLPCollateralOpts = {
   erc20: BWETHDAI,
   priceTimeout: PRICE_TIMEOUT,
   poolId: BWETHDAIPOOLID,
+  chainlinkFeed: DAI_USD_PRICE_FEED, // unused but cannot be zero
   token0ChainlinkFeed: DAI_USD_PRICE_FEED,
   token1ChainlinkFeed: ETH_USD_PRICE_FEED,
   gaugeFactory: GAUGE_FACTORY,
   balancerMinter: BALANCER_MINTER,
   oracleTimeout: ORACLE_TIMEOUT,
-  oracleError: ORACLE_ERROR,
+  oracleError: ORACLE_ERROR, // unused but cannot be zero
   maxTradeVolume: MAX_TRADE_VOL,
   targetName: ethers.utils.formatBytes32String('BWETHDAI'),
   defaultThreshold: DEFAULT_THRESHOLD,
@@ -115,20 +114,23 @@ export const deployCollateral = async (
 
   const collateral = <BalancerLPCollateral>await BalancerLPCollateralFactory.deploy(
     {
-      tokenIsFiat: opts.tokenIsFiat,
       priceTimeout: opts.priceTimeout,
-      poolId: opts.poolId,
-      token0ChainlinkFeed: opts.token0ChainlinkFeed,
-      token1ChainlinkFeed: opts.token1ChainlinkFeed,
-      gaugeFactory: opts.gaugeFactory,
-      balancerMinter: opts.balancerMinter,
       oracleError: opts.oracleError,
+      chainlinkFeed: opts.chainlinkFeed,
       erc20: opts.erc20,
       maxTradeVolume: opts.maxTradeVolume,
       oracleTimeout: opts.oracleTimeout,
       targetName: opts.targetName,
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
+    },
+    {
+      tokenIsFiat: opts.tokenIsFiat,
+      poolId: opts.poolId,
+      token0ChainlinkFeed: opts.token0ChainlinkFeed,
+      token1ChainlinkFeed: opts.token1ChainlinkFeed,
+      gaugeFactory: opts.gaugeFactory,
+      balancerMinter: opts.balancerMinter,
     },
     { gasLimit: 2000000000 }
   )
@@ -226,7 +228,7 @@ const collateralSpecificConstructorTests = () => {
         token0ChainlinkFeed: ZERO_ADDRESS,
         token1ChainlinkFeed: ETH_USD_PRICE_FEED,
       })
-    ).to.be.revertedWith('missing chainlink feed')
+    ).to.be.revertedWith('missing token0 chainlink feed')
 
     await expect(
       deployCollateral({
@@ -257,7 +259,7 @@ describeFork(`Collateral: BWETHDAI`, () => {
 
     it('does not allow missing chainlink feed', async () => {
       await expect(
-        deployCollateral({ token0ChainlinkFeed: ethers.constants.AddressZero })
+        deployCollateral({ chainlinkFeed: ethers.constants.AddressZero })
       ).to.be.revertedWith('missing chainlink feed')
     })
 
@@ -322,7 +324,7 @@ describeFork(`Collateral: BWETHDAI`, () => {
       ;[, alice] = await ethers.getSigners()
       ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
       let tok
-      ;({ chainlinkFeed, collateral, daiFeed, wethFeed, tok, weth, dai, bal} = ctx)
+      ;({ chainlinkFeed, collateral, daiFeed, wethFeed, tok, weth, dai } = ctx)
       bwethdai = tok
       await hre.network.provider.request({
         method: 'hardhat_impersonateAccount',
