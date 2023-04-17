@@ -7,13 +7,9 @@ interface IBaseRewardPool {
     // STATE CHANGING FUNCTIONS
     //
 
-    function stake(uint256 _amount) external returns (bool);
+    function deposit(uint256 amount, address receiver) external returns (uint256);
 
-    function stakeAll() external returns (bool);
-
-    function stakeFor(address _for, uint256 _amount) external returns (bool);
-
-    function withdraw(uint256 amount, bool claim) external returns (bool);
+    function withdraw(uint256 amount, address receiver) external returns (uint256);
 
     function withdrawAll(bool claim) external;
 

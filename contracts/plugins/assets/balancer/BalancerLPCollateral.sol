@@ -72,19 +72,18 @@ contract BalancerLPCollateral is FiatCollateral {
     {
         require(address(balConfig.token1ChainlinkFeed) != address(0), "missing token1 chainlink feed");
         require(address(balConfig.token0ChainlinkFeed) != address(0), "missing token0 chainlink feed");
-        require(address(config.erc20) != address(0), "missing balancer pool");
         // scope out var to prevent stack depth error
         {
-            require(address(config.erc20) != address(0), "missing balancer pool");
-            BPool balancerPool_ = BPool(address(config.erc20)); // TODO: is this needed? Isn't it handled by the base class's constructor?
-            IVault balancerVault_ = balancerPool_.getVault();
+            BPool token = BPool(address(config.erc20));
+            IVault balancerVault_ = IVault(token.getVault());
             require(address(balancerVault_) != address(0), "missing balancer vault");
-            balancerPool = balancerPool_;
+            (address balancerPool_,) = balancerVault_.getPool(token.getPoolId());
+            balancerPool = BPool(balancerPool_);
             balancerVault = balancerVault_;
         }
         {
             require(address(balConfig.gaugeFactory) != address(0), "missing gaugeFactory");
-            address gauge_ = balConfig.gaugeFactory.getPoolGauge(address(erc20));
+            address gauge_ = balConfig.gaugeFactory.getPoolGauge(address(balancerPool));
             require(gauge_ != address(0), "missing gauge");
             gauge = gauge_;
         }
@@ -226,7 +225,7 @@ contract BalancerLPCollateral is FiatCollateral {
 
     // Claim balancer token rewards (this cannot be tested - see ./README.md)
     /// @dev Use delegatecall
-    function claimRewards() external override(Asset, IRewardable) {
+    function claimRewards() external virtual override(Asset, IRewardable) {
         uint256 balOldBal = balancerToken.balanceOf(address(this));
         balancerMinter.mint_for(gauge, address(this));
         emit RewardsClaimed(balancerToken, balancerToken.balanceOf(address(this)) - balOldBal);

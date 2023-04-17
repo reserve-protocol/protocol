@@ -1,6 +1,6 @@
-# Balancer LP Token Collateral Plugin - Documentation
+# Balancer LP Token Collateral Plugins - Documentation
 ### Author: [Shr1ftyy](https://github.com/Shr1ftyy)
-## 1.0 Balancer Liquidity Pool (LP) Token Plugin
+## 1.0 Balancer Liquidity Pool (LP) Token Plugins
 
 ### 1.1 Introduction 
 
@@ -50,7 +50,10 @@ $$ \tau \text{ and is price drift default threshold} $$
 - **Hard default**: 
   - $\text{refPerTok} _{t} \lt \text{refPerTok} _{t-1}$
 
-### 1.4 Deployment and Configuration
+### 1.4 Aura Staked Balancer Plugins
+In order to [claim rewards from Aura](https://docs.aura.finance/aura/what-is-aura/for-liquidity-providers), the user has to stake their Balancer LP Tokens into a [wrapper](./AuraStakingWrapper.sol) since the user does not receive a receipt representing their share of the reward pool that can be used as collateral here.
+
+### 1.5 Deployment and Configuration
 
 Deploy [BalancerLPCollateral.sol](./BalancerLPCollateral.sol) with constructor args:
 ```solidity
@@ -79,9 +82,41 @@ Deploy [BalancerLPCollateral.sol](./BalancerLPCollateral.sol) with constructor a
     ILiquidityGaugeFactory gaugeFactory; // address of balancer's gauge factory
     IBalancerMinter balancerMinter; // bal minter address
 }
-
+```
+Deploy [AuraStakedBalancerLPCollateral.sol](./AuraStakedBalancerLPCollateral.sol) with constructor args:
+```solidity
+{ // struct CollateralConfig 
+    uint48 priceTimeout; // {s} The number of seconds over which saved prices decay
+    AggregatorV3Interface chainlinkFeed; // unused but cannot be zero
+    uint192 oracleError; // unused but cannot be zero
+    BPool erc20; // The ERC20 of the collateral token
+    uint192 maxTradeVolume; // {UoA} The max trade volume, in UoA
+    uint48 oracleTimeout; // {s} The number of seconds until a oracle value becomes invalid
+    bytes32 targetName; // The bytes32 representation of the target name
+    uint192 defaultThreshold; // {1} A value like 0.05 that represents a deviation tolerance
+    // set defaultThreshold to zero to create SelfReferentialCollateral
+    uint48 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
+},
+{ // struct BalancerCollateralConfig 
+    // bitmap of which tokens are fiat:
+    // e.g if the bit representation of tokenIsFiat is:
+    // 00...001 -> token0 is pegged to UoA
+    // 00...010 -> token1 is pegged to UoA
+    // 00...011 -> both of them are pegged to UoA;
+    uint256 tokenIsFiat;
+    bytes32 poolId; // balancer pool id
+    AggregatorV3Interface token0ChainlinkFeed; // token0 feed
+    AggregatorV3Interface token1ChainlinkFeed; // token0 feed
+    ILiquidityGaugeFactory gaugeFactory; // address of balancer's gauge factory
+    IBalancerMinter balancerMinter; // bal minter address
+},
+{
+    IERC20 aura; // balancer token
+    IERC20 bal; // balancer token
+    IBaseRewardPool baseRewardPool; // base reward pool - to get rewards from
+}
 ```
 
 ## 2.0 Testing
 The unit tests for these plugins are [BalancerLPCollateral.test.ts](/test/plugins/individual-collateral/balancer/BalancerCollateralTestSuite.test.ts) and run at mainnet block `17031699` which is set in [constants.ts](/test/plugins/individual-collateral/balancer/constants.ts). \
-**NOTE**: The `claimRewards()` function cannot be tested, since Balancer calculates BAL distributions to LPs off-chain, and transfers are only accounted for through this off-chain mechanism ([see here for more information on how this is done](https://github.com/balancer/bal-mining-scripts/))
+**NOTE**: The `claimRewards()` for function for both plugins cannot be tested, since Balancer calculates BAL distributions to LPs off-chain, and transfers are only accounted for through this off-chain mechanism ([see here for more information on how this is done](https://github.com/balancer/bal-mining-scripts/))

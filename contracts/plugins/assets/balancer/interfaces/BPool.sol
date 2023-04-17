@@ -14,4 +14,5 @@ interface BPool {
     function decimals() external view returns (uint8);
 
     function getVault() external view returns (IVault);
+    function getPoolId() external view returns (bytes32);
 }

@@ -1,6 +1,25 @@
 import { bn, fp } from '../../../../common/numbers'
 import { networkConfig } from '../../../../common/configuration'
 
+import { CollateralOpts } from '../pluginTestTypes'
+import { BigNumberish } from 'ethers'
+
+// interfaces
+export interface BalancerLPCollateralOpts extends CollateralOpts {
+  tokenIsFiat?: BigNumberish
+  token0ChainlinkFeed?: string
+  token1ChainlinkFeed?: string
+  poolId?: string
+  gaugeFactory?: string
+  balancerMinter?: string
+}
+
+export interface AuraStakedBalancerLPCollateralOpts extends BalancerLPCollateralOpts {
+  aura?: string // balancer token
+  bal?: string // balancer token
+  baseRewardPool?: string // base reward pool - to get rewards from
+}
+
 // Mainnet Addresses
 export const RSR = networkConfig['31337'].tokens.RSR as string
 export const ETH_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.ETH as string
@@ -9,6 +28,8 @@ export const BWETHDAI = networkConfig['31337'].tokens.BWETHDAI as string
 export const GAUGE_FACTORY = '0x4E7bBd911cf1EFa442BC1b2e9Ea01ffE785412EC'
 export const BALANCER_MINTER = '0x239e55F427D44C3cc793f49bFB507ebe76638a2b'
 export const BAL = '0xba100000625a3754423978a60c9317c58a424e3D'
+export const AURA = '0xc0c293ce456ff0ed870add98a0828dd4d2903dbf'
+export const REWARD_POOL = '0xeD1527FD069465711490bCb3bAfa49AC3F3aF197' // auraB-60WETH-40DAI-vault
 export const BWETHDAIPOOLID = '0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a'
 export const WETH = networkConfig['31337'].tokens.WETH as string
 export const DAI = networkConfig['31337'].tokens.DAI as string
