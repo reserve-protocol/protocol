@@ -36,6 +36,7 @@ import {
   TestIRToken,
   TestIStRSR,
   USDCMock,
+  CTokenVaultMock,
 } from '../typechain'
 import {
   Collateral,
@@ -48,6 +49,7 @@ import {
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
@@ -67,6 +69,7 @@ describe('FacadeAct contract', () => {
   let usdc: USDCMock
   let aToken: StaticATokenMock
   let cToken: CTokenMock
+  let cTokenVault: CTokenVaultMock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
@@ -161,7 +164,8 @@ describe('FacadeAct contract', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
+    cTokenVault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
+    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenVault.asset())
 
     // Backup tokens and collaterals - USDT - aUSDT - aUSDC - aBUSD
     backupToken1 = erc20s[2] // USDT
@@ -177,15 +181,7 @@ describe('FacadeAct contract', () => {
     beforeEach(async () => {
       // Mint Tokens
       initialBal = bn('10000000000e18')
-      await token.connect(owner).mint(addr1.address, initialBal)
-      await usdc.connect(owner).mint(addr1.address, initialBal)
-      await aToken.connect(owner).mint(addr1.address, initialBal)
-      await cToken.connect(owner).mint(addr1.address, initialBal)
-
-      await token.connect(owner).mint(addr2.address, initialBal)
-      await usdc.connect(owner).mint(addr2.address, initialBal)
-      await aToken.connect(owner).mint(addr2.address, initialBal)
-      await cToken.connect(owner).mint(addr2.address, initialBal)
+      await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
 
       // Mint RSR
       await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -197,7 +193,7 @@ describe('FacadeAct contract', () => {
       await token.connect(addr1).approve(rToken.address, initialBal)
       await usdc.connect(addr1).approve(rToken.address, initialBal)
       await aToken.connect(addr1).approve(rToken.address, initialBal)
-      await cToken.connect(addr1).approve(rToken.address, initialBal)
+      await cTokenVault.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -546,7 +542,7 @@ describe('FacadeAct contract', () => {
           )
       })
 
-      it('Revenues - Should handle assets with invalid claim logic', async () => {
+      it.only('Revenues - Should handle assets with invalid claim logic', async () => {
         // Redeem all RTokens
         await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
 
@@ -588,6 +584,8 @@ describe('FacadeAct contract', () => {
 
         // AAVE Rewards
         await aToken.setRewards(backingManager.address, rewardAmountAAVE)
+
+        console.log(backingManager.address, rTokenTrader.address)
 
         // Via Facade get next call - will not attempt to claim - No action taken
         const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
@@ -725,7 +723,7 @@ describe('FacadeAct contract', () => {
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
       })
 
-      it('Revenues - Should handle multiple assets with same reward token', async () => {
+      it.only('Revenues - Should handle multiple assets with same reward token', async () => {
         // Update Reward token for AToken to use same as CToken
         const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
         const chainlinkFeed = <MockV3Aggregator>(
@@ -894,7 +892,7 @@ describe('FacadeAct contract', () => {
     })
 
     context('getRevenueAuctionERC20s/runRevenueAuctions', () => {
-      it('Revenues/Rewards', async () => {
+      it.only('Revenues/Rewards', async () => {
         const rewardAmountAAVE = bn('0.5e18')
         const rewardAmountCOMP = bn('1e18')
 

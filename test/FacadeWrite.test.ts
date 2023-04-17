@@ -49,6 +49,7 @@ import {
   TestIRToken,
   TimelockController,
   USDCMock,
+  CTokenVaultMock,
 } from '../typechain'
 import {
   Collateral,
@@ -78,6 +79,7 @@ describe('FacadeWrite contract', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let cToken: CTokenMock
+  let cTokenVault: CTokenVaultMock
   let basket: Collateral[]
 
   // Aave / Comp
@@ -140,7 +142,8 @@ describe('FacadeWrite contract', () => {
 
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
+    cTokenVault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
+    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenVault.asset())
 
     // Deploy DFacadeWriteLib lib
     const facadeWriteLib = await (await ethers.getContractFactory('FacadeWriteLib')).deploy()
@@ -575,7 +578,7 @@ describe('FacadeWrite contract', () => {
           // Check new state - backing updated
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
           tokens = await facade.basketTokens(rToken.address)
-          expect(tokens).to.eql([token.address, cToken.address])
+          expect(tokens).to.eql([token.address, cTokenVault.address])
         })
 
         it('Should setup roles correctly', async () => {

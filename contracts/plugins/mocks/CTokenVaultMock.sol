@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "../../vendor/solmate/ERC20Solmate.sol";
 import "../assets/compoundv2/CTokenVault.sol";
 import "../assets/compoundv2/ICToken.sol";
+import "./CTokenMock.sol";
 
 contract CTokenVaultMock is CTokenVault {
     constructor(
@@ -13,6 +14,12 @@ contract CTokenVaultMock is CTokenVault {
         ERC20Solmate _rewardToken,
         IComptroller _comptroller
     ) CTokenVault(_asset, _name, _symbol, _rewardToken, _comptroller) {}
+
+
+    function setExchangeRate(uint192 fiatcoinRedemptionRate) external {
+        CTokenMock(address(asset)).setExchangeRate(fiatcoinRedemptionRate);
+    }
+
 
     function burn(address sender, uint256 amount) external {
         _burn(sender, amount);
