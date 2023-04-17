@@ -130,7 +130,7 @@ uint192 revenueHiding; // 1e-6 allowed drop, as a ratio of the refPerTok
 Solidity code for the fiat collateral plugin can be found in [`MaplePoolFiatCollateral.sol`][reserve-collateral-fiat-contract].
 This script is used for the USDC pool.
 
-The wETH pool relies on [`MaplePoolSelfReferentialCollateral.sol`][reserve-collateral-non-fiat-contract].
+The wETH pool relies on [`MaplePoolSelfReferentialCollateral.sol`][reserve-collateral-self-ref-contract].
 
 ### Internal Dependencies
 
@@ -407,7 +407,7 @@ Only the loan default leads to a diminution of the total assets as the outstandi
 [maple-docs-overview]: https://maplefinance.gitbook.io/maple/technical-resources/protocol-overview
 [maple-docs-pools]: https://maplefinance.gitbook.io/maple/technical-resources/pools/pools
 [reserve-collateral-fiat-contract]: ./MaplePoolFiatCollateral.sol
-[reserve-collateral-non-fiat-contract]: ./MaplePoolSelfReferentialCollateral.sol
+[reserve-collateral-self-ref-contract]: ./MaplePoolSelfReferentialCollateral.sol
 [reserve-collateral-maple-interface]: ./vendor/IMaplePool.sol
 [reserve-collateral-maple-mock]: ../../mocks/MaplePoolMock.sol
 [reserve-collateral-parent-contract]: ../AppreciatingFiatCollateral.sol

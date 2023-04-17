@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumberish } from 'ethers'
 import { ethers } from 'hardhat'
-import { IERC20Metadata, IMaplePool } from '../../../../typechain'
+import { IMaplePool } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { getResetFork } from '../helpers'
@@ -10,12 +10,14 @@ import { FORK_BLOCK } from './constants'
 
 export const resetFork = getResetFork(FORK_BLOCK)
 
-export const mintMaplePoolToken = async (underlying: IERC20Metadata, holder: string, mToken: IMaplePool, amount: BigNumberish, recipient: string) => {
+export const mintMaplePoolToken = async (underlying: string, holder: string, mToken: string, amount: BigNumberish, recipient: string) => {
+    const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)
+    const _pool = await ethers.getContractAt('IMaplePool', mToken)
+    const _balance = await _underlying.balanceOf(holder)
+    const _assets = await _pool.convertToAssets(amount) // the aim is to get "amount" number of shares by depositing assets
     await whileImpersonating(holder, async (signer: SignerWithAddress) => {
-        const _balance = await underlying.balanceOf(signer.address)
-        const _assets = await mToken.convertToAssets(amount) // the aim is to get "amount" number of shares by depositing assets
-        await underlying.connect(signer).approve(mToken.address, _balance)
-        await mToken.connect(signer).deposit(_assets, recipient)
+        await _underlying.connect(signer).approve(mToken, _balance)
+        await _pool.connect(signer).deposit(_assets, recipient)
     })
 }
 
@@ -50,7 +52,8 @@ export const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecre
 export const increaseRefPerTokFactory = (underlying: string, holder: string) => {
     const _increaseRefPerTok = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
         const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)
-        const _balance = await _underlying.balanceOf(ctx.tok.address) // pool balance
+        const _manager = await ethers.getContractAt('IPoolManager', await (ctx.tok as IMaplePool).manager())
+        const _balance = await _manager.totalAssets()
         const _amount = _balance.mul(pctIncrease).div(100)
         await whileImpersonating(holder, async (signer: SignerWithAddress) => {
             await _underlying.connect(signer).transfer(ctx.tok.address, _amount)
@@ -61,13 +64,18 @@ export const increaseRefPerTokFactory = (underlying: string, holder: string) => 
 
 // {ref/tok} = totalAssets / totalSupply
 // so we directly transfer underlying assets from the pool to reduce {ref/tok}
-export const reduceRefPerTokFactory = (underlying: string, recipient: string) => {
+export const reduceRefPerTokFactory = (underlying: string, holder: string) => {
     const _reduceRefPerTok = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
         const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)
-        const _balance = await _underlying.balanceOf(ctx.tok.address) // pool balance
+        const _manager = await ethers.getContractAt('IPoolManager', await (ctx.tok as IMaplePool).manager())
+        const _balance = await _manager.totalAssets()
         const _amount = _balance.mul(pctDecrease).div(100)
+        // deposit first to prevent the pool from running out of underlying tokens
+        // most underlying tokens are lent, so the pool is relatively poor
+        mintMaplePoolToken(underlying, holder, ctx.tok.address, _amount.mul(10), holder)
+        // then move the underlying tokens out of the pool
         await whileImpersonating(ctx.tok.address, async (signer: SignerWithAddress) => {
-            await _underlying.connect(signer).transfer(recipient, _amount)
+            await _underlying.connect(signer).transfer(holder, _amount)
         })
     }
     return _reduceRefPerTok
