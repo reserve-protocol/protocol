@@ -379,36 +379,40 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade if paused', async () => {
-        await main.connect(owner).pause()
-        await expect(rsrTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+        await main.connect(owner).pauseTrading()
+        await expect(rsrTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith(
+          'frozen or trading paused'
+        )
       })
 
       it('Should not trade if frozen', async () => {
         await main.connect(owner).freezeShort()
-        await expect(rTokenTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+        await expect(rTokenTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith(
+          'frozen or trading paused'
+        )
       })
 
       it('Should not claim rewards if paused', async () => {
-        await main.connect(owner).pause()
-        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('paused or frozen')
+        await main.connect(owner).pauseTrading()
+        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('frozen or trading paused')
       })
 
       it('Should not claim rewards if frozen', async () => {
         await main.connect(owner).freezeShort()
-        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('paused or frozen')
+        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('frozen or trading paused')
       })
 
       it('Should not claim single rewards if paused', async () => {
-        await main.connect(owner).pause()
+        await main.connect(owner).pauseTrading()
         await expect(rTokenTrader.claimRewardsSingle(token2.address)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
 
       it('Should not claim single rewards if frozen', async () => {
         await main.connect(owner).freezeShort()
         await expect(rTokenTrader.claimRewardsSingle(token2.address)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
 
@@ -421,13 +425,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not settle trade if paused', async () => {
-        await main.connect(owner).pause()
-        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+        await main.connect(owner).pauseTrading()
+        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith(
+          'frozen or trading paused'
+        )
       })
 
       it('Should not settle trade if frozen', async () => {
         await main.connect(owner).freezeShort()
-        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith(
+          'frozen or trading paused'
+        )
       })
 
       it('Should still launch revenue auction if IFFY', async () => {
@@ -1608,18 +1616,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should not distribute if paused or frozen', async () => {
         const distAmount: BigNumber = bn('100e18')
 
-        await main.connect(owner).pause()
+        await main.connect(owner).pauseTrading()
 
         await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
 
-        await main.connect(owner).unpause()
+        await main.connect(owner).unpauseTrading()
 
         await main.connect(owner).freezeShort()
 
         await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
 

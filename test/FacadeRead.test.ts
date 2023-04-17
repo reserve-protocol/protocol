@@ -400,7 +400,7 @@ describe('FacadeRead contract', () => {
     })
 
     it('Should return basketBreakdown correctly for paused token', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).pauseTrading()
       await expectValidBasketBreakdown(rToken)
     })
 
@@ -419,7 +419,7 @@ describe('FacadeRead contract', () => {
       )
       // set price of dai to 0
       await chainlinkFeed.updateAnswer(0)
-      await main.connect(owner).pause()
+      await main.connect(owner).pauseTrading()
       const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
       expect(erc20s.length).to.equal(4)
       expect(breakdown.length).to.equal(4)

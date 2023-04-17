@@ -371,8 +371,10 @@ describe('FacadeWrite contract', () => {
         expect(await main.hasRole(LONG_FREEZER, facadeWrite.address)).to.equal(true)
         expect(await main.hasRole(PAUSER, facadeWrite.address)).to.equal(true)
         expect(await main.frozen()).to.equal(false)
-        expect(await main.paused()).to.equal(true)
-        expect(await main.pausedOrFrozen()).to.equal(true)
+        expect(await main.tradingPaused()).to.equal(true)
+        expect(await main.tradingPausedOrFrozen()).to.equal(true)
+        expect(await main.issuancePaused()).to.equal(true)
+        expect(await main.issuancePausedOrFrozen()).to.equal(true)
 
         // RToken
         expect(await assetRegistry.toAsset(rToken.address)).to.equal(rTokenAsset.address)
@@ -517,7 +519,8 @@ describe('FacadeWrite contract', () => {
 
         it('Should register Basket correctly', async () => {
           // Unpause
-          await main.connect(owner).unpause()
+          await main.connect(owner).unpauseTrading()
+          await main.connect(owner).unpauseIssuance()
 
           // Basket
           expect(await basketHandler.fullyCollateralized()).to.equal(true)
@@ -595,8 +598,10 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
-          expect(await main.paused()).to.equal(true)
-          expect(await main.pausedOrFrozen()).to.equal(true)
+          expect(await main.tradingPaused()).to.equal(true)
+          expect(await main.tradingPausedOrFrozen()).to.equal(true)
+          expect(await main.issuancePaused()).to.equal(true)
+          expect(await main.issuancePausedOrFrozen()).to.equal(true)
         })
 
         it('Should not allow to complete setup again if already complete', async () => {
@@ -659,8 +664,10 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
-          expect(await main.paused()).to.equal(false)
-          expect(await main.pausedOrFrozen()).to.equal(false)
+          expect(await main.tradingPaused()).to.equal(false)
+          expect(await main.tradingPausedOrFrozen()).to.equal(false)
+          expect(await main.issuancePaused()).to.equal(false)
+          expect(await main.issuancePausedOrFrozen()).to.equal(false)
         })
       })
 
@@ -717,8 +724,10 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
-          expect(await main.paused()).to.equal(true)
-          expect(await main.pausedOrFrozen()).to.equal(true)
+          expect(await main.tradingPaused()).to.equal(true)
+          expect(await main.tradingPausedOrFrozen()).to.equal(true)
+          expect(await main.issuancePaused()).to.equal(true)
+          expect(await main.issuancePausedOrFrozen()).to.equal(true)
         })
 
         it('Should deploy Governor correctly', async () => {
@@ -792,8 +801,10 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
-          expect(await main.paused()).to.equal(false)
-          expect(await main.pausedOrFrozen()).to.equal(false)
+          expect(await main.tradingPaused()).to.equal(false)
+          expect(await main.tradingPausedOrFrozen()).to.equal(false)
+          expect(await main.issuancePaused()).to.equal(false)
+          expect(await main.issuancePausedOrFrozen()).to.equal(false)
         })
       })
     })

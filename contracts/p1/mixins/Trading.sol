@@ -54,7 +54,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:interaction (only reads or writes trades, and is marked `nonReentrant`)
     // checks:
-    //   !paused, !frozen
+    //   !paused (trading), !frozen
     //   trade[sell].canSettle()
     // actions:
     //   trade[sell].settle()
@@ -63,7 +63,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) external notPausedOrFrozen nonReentrant {
+    function settleTrade(IERC20 sell) external notTradingPausedOrFrozen nonReentrant {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -79,7 +79,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Claim all rewards
     /// Collective Action
     /// @custom:interaction CEI
-    function claimRewards() external notPausedOrFrozen {
+    function claimRewards() external notTradingPausedOrFrozen {
         RewardableLibP1.claimRewards(main.assetRegistry());
     }
 
@@ -87,7 +87,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Collective Action
     /// @param erc20 The ERC20 to claimRewards on
     /// @custom:interaction CEI
-    function claimRewardsSingle(IERC20 erc20) external notPausedOrFrozen {
+    function claimRewardsSingle(IERC20 erc20) external notTradingPausedOrFrozen {
         RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
     }
 

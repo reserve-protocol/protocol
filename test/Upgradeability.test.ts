@@ -390,9 +390,11 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(mainV2.address).to.equal(main.address)
 
       // Check state is preserved
-      expect(await mainV2.paused()).to.equal(false)
+      expect(await mainV2.tradingPaused()).to.equal(false)
+      expect(await mainV2.issuancePaused()).to.equal(false)
       expect(await mainV2.frozen()).to.equal(false)
-      expect(await mainV2.pausedOrFrozen()).to.equal(false)
+      expect(await mainV2.tradingPausedOrFrozen()).to.equal(false)
+      expect(await mainV2.issuancePausedOrFrozen()).to.equal(false)
       expect(await mainV2.hasRole(OWNER, owner.address)).to.equal(true)
       expect(await mainV2.hasRole(OWNER, main.address)).to.equal(false)
       expect(await mainV2.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)

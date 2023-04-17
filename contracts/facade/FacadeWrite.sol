@@ -111,7 +111,8 @@ contract FacadeWrite is IFacadeWrite {
         }
 
         // Pause until setupGovernance
-        main.pause();
+        main.pauseTrading();
+        main.pauseIssuance();
 
         // Setup deployer as owner to complete next step - do not renounce roles yet
         main.grantRole(OWNER, msg.sender);
@@ -189,7 +190,8 @@ contract FacadeWrite is IFacadeWrite {
 
         // Unpause if required
         if (unpause) {
-            main.unpause();
+            main.unpauseTrading();
+            main.unpauseIssuance();
         }
 
         // Transfer Ownership and renounce roles
