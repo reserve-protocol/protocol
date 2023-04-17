@@ -171,28 +171,28 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     // === Pausing ===
     // checks: caller has PAUSER
     // effects: tradingPaused' = true
-    function tradingPause() external onlyRole(PAUSER) {
+    function pauseTrading() external onlyRole(PAUSER) {
         emit TradingPausedSet(tradingPaused, true);
         tradingPaused = true;
     }
 
     // checks: caller has PAUSER
     // effects: tradingPaused' = false
-    function tradingUnpause() external onlyRole(PAUSER) {
+    function unpauseTrading() external onlyRole(PAUSER) {
         emit TradingPausedSet(tradingPaused, false);
         tradingPaused = false;
     }
 
     // checks: caller has PAUSER
     // effects: issuancePaused' = true
-    function issuancePause() external onlyRole(PAUSER) {
+    function pauseIssuance() external onlyRole(PAUSER) {
         emit IssuancePausedSet(issuancePaused, true);
         issuancePaused = true;
     }
 
     // checks: caller has PAUSER
     // effects: issuancePaused' = false
-    function issuanceUnpause() external onlyRole(PAUSER) {
+    function unpauseIssuance() external onlyRole(PAUSER) {
         emit IssuancePausedSet(issuancePaused, false);
         issuancePaused = false;
     }

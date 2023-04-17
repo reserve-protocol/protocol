@@ -519,8 +519,8 @@ describe('FacadeWrite contract', () => {
 
         it('Should register Basket correctly', async () => {
           // Unpause
-          await main.connect(owner).tradingUnpause()
-          await main.connect(owner).issuanceUnpause()
+          await main.connect(owner).unpauseTrading()
+          await main.connect(owner).unpauseIssuance()
 
           // Basket
           expect(await basketHandler.fullyCollateralized()).to.equal(true)

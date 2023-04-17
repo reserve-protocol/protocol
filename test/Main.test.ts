@@ -540,8 +540,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.issuancePausedOrFrozen()).to.equal(false)
 
       // Pause with PAUSER
-      await main.connect(addr1).tradingPause()
-      await main.connect(addr1).issuancePause()
+      await main.connect(addr1).pauseTrading()
+      await main.connect(addr1).pauseIssuance()
 
       // Check if Paused, should not lose PAUSER
       expect(await main.tradingPaused()).to.equal(true)
@@ -550,15 +550,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
 
       // Unpause
-      await main.connect(addr1).tradingUnpause()
-      await main.connect(addr1).issuanceUnpause()
+      await main.connect(addr1).unpauseTrading()
+      await main.connect(addr1).unpauseIssuance()
 
       expect(await main.tradingPaused()).to.equal(false)
       expect(await main.issuancePaused()).to.equal(false)
 
       // OWNER should still be able to Pause
-      await main.connect(owner).tradingPause()
-      await main.connect(owner).issuancePause()
+      await main.connect(owner).pauseTrading()
+      await main.connect(owner).pauseIssuance()
 
       // Check if Paused
       expect(await main.tradingPausedOrFrozen()).to.equal(true)
@@ -568,16 +568,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to Pause/Unpause if not PAUSER or OWNER', async () => {
-      await expect(main.connect(other).tradingPause()).to.be.reverted
-      await expect(main.connect(other).issuancePause()).to.be.reverted
+      await expect(main.connect(other).pauseTrading()).to.be.reverted
+      await expect(main.connect(other).pauseIssuance()).to.be.reverted
 
       // Check no changes
       expect(await main.tradingPaused()).to.equal(false)
       expect(await main.issuancePaused()).to.equal(false)
 
       // Attempt to unpause
-      await expect(main.connect(other).tradingUnpause()).to.be.reverted
-      await expect(main.connect(other).issuanceUnpause()).to.be.reverted
+      await expect(main.connect(other).unpauseTrading()).to.be.reverted
+      await expect(main.connect(other).unpauseIssuance()).to.be.reverted
 
       // Check no changes
       expect(await main.tradingPaused()).to.equal(false)
@@ -1047,8 +1047,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should grant allowances when paused', async () => {
-      await main.connect(owner).tradingPause()
-      await main.connect(owner).issuancePause()
+      await main.connect(owner).pauseTrading()
+      await main.connect(owner).pauseIssuance()
       await expect(backingManager.grantRTokenAllowance(ZERO_ADDRESS)).to.be.revertedWith(
         'erc20 unregistered'
       )
@@ -1796,7 +1796,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to refresh basket if not OWNER when paused', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
       await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
         'basket unrefreshable'
       )
@@ -1810,7 +1810,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to poke when paused', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
       await expect(main.connect(other).poke()).to.be.revertedWith('frozen or trading paused')
     })
 
@@ -1832,7 +1832,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should allow to call refresh Basket if OWNER and paused - No changes', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
       // Switch basket - No backup nor default
       await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
@@ -1849,7 +1849,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Not updated so basket last changed is not set
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      await main.connect(owner).tradingUnpause()
+      await main.connect(owner).unpauseTrading()
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 

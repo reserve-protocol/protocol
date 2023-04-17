@@ -800,7 +800,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade if paused', async () => {
-        await main.connect(owner).tradingPause()
+        await main.connect(owner).pauseTrading()
         await expect(backingManager.manageTokens([])).to.be.revertedWith('frozen or trading paused')
         await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
           'frozen or trading paused'

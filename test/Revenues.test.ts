@@ -379,7 +379,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade if paused', async () => {
-        await main.connect(owner).tradingPause()
+        await main.connect(owner).pauseTrading()
         await expect(rsrTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith(
           'frozen or trading paused'
         )
@@ -393,7 +393,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not claim rewards if paused', async () => {
-        await main.connect(owner).tradingPause()
+        await main.connect(owner).pauseTrading()
         await expect(rTokenTrader.claimRewards()).to.be.revertedWith('frozen or trading paused')
       })
 
@@ -403,7 +403,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not claim single rewards if paused', async () => {
-        await main.connect(owner).tradingPause()
+        await main.connect(owner).pauseTrading()
         await expect(rTokenTrader.claimRewardsSingle(token2.address)).to.be.revertedWith(
           'frozen or trading paused'
         )
@@ -425,7 +425,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not settle trade if paused', async () => {
-        await main.connect(owner).tradingPause()
+        await main.connect(owner).pauseTrading()
         await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith(
           'frozen or trading paused'
         )
@@ -1616,13 +1616,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should not distribute if paused or frozen', async () => {
         const distAmount: BigNumber = bn('100e18')
 
-        await main.connect(owner).tradingPause()
+        await main.connect(owner).pauseTrading()
 
         await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
           'frozen or trading paused'
         )
 
-        await main.connect(owner).tradingUnpause()
+        await main.connect(owner).unpauseTrading()
 
         await main.connect(owner).freezeShort()
 

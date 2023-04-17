@@ -301,7 +301,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const issueAmount: BigNumber = bn('10e18')
 
       // Pause Main
-      await main.connect(owner).issuancePause()
+      await main.connect(owner).pauseIssuance()
 
       // Try to issue
       await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
@@ -1028,8 +1028,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should redeem if paused #fast', async function () {
-        await main.connect(owner).tradingPause()
-        await main.connect(owner).issuancePause()
+        await main.connect(owner).pauseTrading()
+        await main.connect(owner).pauseIssuance()
         await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
         expect(await rToken.totalSupply()).to.equal(0)
       })
@@ -1491,7 +1491,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not mint if paused', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
 
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
@@ -1529,7 +1529,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(issueAmount)
 
       // Pause Main
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
 
       // Try to set baskets needed
       await whileImpersonating(backingManager.address, async (bhSigner) => {
@@ -1874,7 +1874,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('should not monetize while paused', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
       await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith(
         'frozen or trading paused'
       )

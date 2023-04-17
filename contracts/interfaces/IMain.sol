@@ -102,13 +102,13 @@ interface IAuth is IAccessControlUpgradeable {
     // onlyRole(OWNER)
     function unfreeze() external;
 
-    function tradingPause() external;
+    function pauseTrading() external;
 
-    function tradingUnpause() external;
+    function unpauseTrading() external;
 
-    function issuancePause() external;
+    function pauseIssuance() external;
 
-    function issuanceUnpause() external;
+    function unpauseIssuance() external;
 }
 
 interface IComponentRegistry {

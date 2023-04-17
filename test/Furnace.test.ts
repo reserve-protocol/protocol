@@ -180,7 +180,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not melt if paused #fast', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
       await expect(furnace.connect(addr1).melt()).to.be.revertedWith('frozen or trading paused')
     })
 

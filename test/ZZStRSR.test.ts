@@ -387,8 +387,8 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       const amount: BigNumber = bn('1000e18')
 
       // Pause Main
-      await main.connect(owner).tradingPause()
-      await main.connect(owner).issuancePause()
+      await main.connect(owner).pauseTrading()
+      await main.connect(owner).pauseIssuance()
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -486,7 +486,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not unstake if paused', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
       await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('frozen or trading paused')
     })
 
@@ -672,7 +672,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay)
 
         // Pause Main
-        await main.connect(owner).tradingPause()
+        await main.connect(owner).pauseTrading()
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
@@ -680,7 +680,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
         )
 
         // If unpaused should withdraw OK
-        await main.connect(owner).tradingUnpause()
+        await main.connect(owner).unpauseTrading()
 
         // Withdraw
         await stRSR.connect(addr1).withdraw(addr1.address, 1)
@@ -1239,7 +1239,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Rewards should not be handed out when paused but staking should still work', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
       await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
 
       // Stake
@@ -1424,7 +1424,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to remove RSR if paused', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith(
           'frozen or trading paused'

@@ -274,7 +274,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     })
 
     it('Should not allow to open trade if paused', async () => {
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
 
       // Attempt to open trade
       const tradeRequest: ITradeRequest = {
@@ -373,13 +373,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // Check not disabled
       expect(await broker.disabled()).to.equal(false)
 
-      await main.connect(owner).tradingPause()
+      await main.connect(owner).pauseTrading()
 
       await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
         'frozen or trading paused'
       )
 
-      await main.connect(owner).tradingUnpause()
+      await main.connect(owner).unpauseTrading()
 
       await main.connect(owner).freezeShort()
 
