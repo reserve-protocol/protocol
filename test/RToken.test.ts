@@ -33,6 +33,7 @@ import {
   TestIMain,
   TestIRToken,
   USDCMock,
+  CTokenVaultMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -55,6 +56,7 @@ import {
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const BLOCKS_PER_HOUR = bn(300)
 
@@ -76,6 +78,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
+  let token3Vault: CTokenVaultMock
   let tokens: ERC20Mock[]
 
   let collateral0: Collateral
@@ -124,19 +127,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
-    tokens = [token0, token1, token2, token3]
+    token3Vault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await token3Vault.asset())
+    tokens = [token0, token1, token2, token3Vault]
 
     // Mint initial balances
     initialBal = fp('1e7') // 10x the issuance throttle amount
-    await Promise.all(
-      tokens.map((t) =>
-        Promise.all([
-          t.connect(owner).mint(addr1.address, initialBal),
-          t.connect(owner).mint(addr2.address, initialBal),
-        ])
-      )
-    )
+    await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
   })
 
   describe('Deployment #fast', () => {
@@ -364,7 +361,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Issue under limit, ensure correct number of baskets is set and we do not overflow
-      await Promise.all(tokens.map((t) => t.mint(addr1.address, MAX_THROTTLE_AMT_RATE)))
+      await mintCollaterals(owner, [addr1], MAX_THROTTLE_AMT_RATE, basket)
       await Promise.all(
         tokens.map((t) => t.connect(addr1).approve(rToken.address, MAX_THROTTLE_AMT_RATE))
       )
@@ -414,7 +411,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token0.connect(other).approve(rToken.address, issueAmount)
       await token1.connect(other).approve(rToken.address, issueAmount)
       await token2.connect(other).approve(rToken.address, issueAmount)
-      await token3.connect(other).approve(rToken.address, issueAmount)
+      await token3Vault.connect(other).approve(rToken.address, issueAmount)
 
       await expect(rToken.connect(other).issue(issueAmount)).to.be.revertedWith(
         'ERC20: transfer amount exceeds balance'
@@ -1053,9 +1050,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
 
         // Burn the rest
-        await token3
+        await token3Vault
           .connect(owner)
-          .burn(backingManager.address, await token3.balanceOf(backingManager.address))
+          .burn(backingManager.address, await token3Vault.balanceOf(backingManager.address))
 
         // Now it should revert
         await expect(
@@ -1106,7 +1103,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
         expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
-        expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token3Vault.balanceOf(addr1.address)).to.equal(initialBal)
       })
 
       it('Should redeem prorata when refPerTok() is 0 #fast', async function () {
@@ -1121,7 +1118,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token0.balanceOf(addr1.address)).to.be.equal(initialBal)
         expect(await token1.balanceOf(addr1.address)).to.be.equal(initialBal)
         expect(await token2.balanceOf(addr1.address)).to.be.equal(initialBal)
-        expect(await token3.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token3Vault.balanceOf(addr1.address)).to.be.equal(initialBal)
       })
 
       it('Should transfer full balance if de-valuation #fast', async function () {
@@ -1135,7 +1132,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
         expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
-        expect(await token3.balanceOf(addr1.address)).to.equal(
+        expect(await token3Vault.balanceOf(addr1.address)).to.equal(
           initialBal.sub(issueAmount.div(bn('1e10')).div(4).mul(50)) // decimal shift + quarter of basket + cToken
         )
       })
@@ -1236,7 +1233,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await token0.mint(addr1.address, throttles.amtRate)
           await token1.mint(addr1.address, throttles.amtRate)
           await token2.mint(addr1.address, throttles.amtRate)
-          await token3.mint(addr1.address, throttles.amtRate)
+          await token3Vault.mint(addr1.address, throttles.amtRate)
 
           // Provide approvals
           await Promise.all(
@@ -1425,7 +1422,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     beforeEach(async () => {
       // Issue some RTokens
-      await Promise.all(tokens.map((t) => t.connect(owner).mint(addr1.address, initialBal)))
+      await mintCollaterals(owner, [addr1], issueAmount, basket)
 
       // Approvals
       await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
@@ -1857,32 +1854,34 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   describe('monetizeDonations #fast', () => {
     const donationAmt = fp('100')
     beforeEach(async () => {
-      await token3.mint(rToken.address, donationAmt)
-      expect(await token3.balanceOf(rToken.address)).to.equal(donationAmt)
+      await token3.connect(owner).mint(owner.address, donationAmt)
+      await token3.connect(owner).approve(token3Vault.address, donationAmt)
+      await token3Vault.connect(owner).mint(donationAmt, rToken.address)
+      expect(await token3Vault.balanceOf(rToken.address)).to.equal(donationAmt)
     })
 
     it('should require erc20 is registered', async () => {
       await assetRegistry.connect(owner).unregister(collateral3.address)
-      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith(
+      await expect(rToken.monetizeDonations(token3Vault.address)).to.be.revertedWith(
         'erc20 unregistered'
       )
     })
 
     it('should not monetize while paused', async () => {
       await main.connect(owner).pause()
-      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('paused or frozen')
+      await expect(rToken.monetizeDonations(token3Vault.address)).to.be.revertedWith('paused or frozen')
     })
 
     it('should not monetize while frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('paused or frozen')
+      await expect(rToken.monetizeDonations(token3Vault.address)).to.be.revertedWith('paused or frozen')
     })
 
     it('should monetize registered erc20s', async () => {
-      const backingManagerBalBefore = await token3.balanceOf(backingManager.address)
-      await expect(rToken.monetizeDonations(token3.address)).to.emit(token3, 'Transfer')
-      expect(await token3.balanceOf(rToken.address)).to.equal(0)
-      const backingManagerBalAfter = await token3.balanceOf(backingManager.address)
+      const backingManagerBalBefore = await token3Vault.balanceOf(backingManager.address)
+      await expect(rToken.monetizeDonations(token3Vault.address)).to.emit(token3Vault, 'Transfer')
+      expect(await token3Vault.balanceOf(rToken.address)).to.equal(0)
+      const backingManagerBalAfter = await token3Vault.balanceOf(backingManager.address)
       expect(backingManagerBalAfter.sub(backingManagerBalBefore)).to.equal(donationAmt)
     })
   })
@@ -1899,7 +1898,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token0.connect(addr1).approve(rToken.address, issueAmount)
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
-      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token3Vault.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       // Give RToken balance at ERC1271Mock
@@ -2144,7 +2143,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token3Vault.connect(addr1).approve(rToken.address, initialBal)
     })
 
     it('Transfer', async () => {
