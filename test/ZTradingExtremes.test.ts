@@ -26,6 +26,7 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   StaticATokenMock,
+  CTokenVaultMock,
 } from '../typechain'
 import { advanceTime } from './utils/time'
 import {
@@ -77,6 +78,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
   let ERC20Mock: ContractFactory
   let ATokenMockFactory: ContractFactory
   let CTokenMockFactory: ContractFactory
+  let CTokenVaultMockFactory: ContractFactory
   let ATokenCollateralFactory: ContractFactory
   let CTokenCollateralFactory: ContractFactory
 
@@ -111,6 +113,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
     CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
+    CTokenVaultMockFactory = await ethers.getContractFactory('CTokenVaultMock')
     ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
@@ -170,6 +173,16 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     )
     await erc20.setExchangeRate(fp('1'))
 
+    const erc20Vault: CTokenVaultMock = <CTokenVaultMock>(
+      await CTokenVaultMockFactory.deploy(
+        erc20.address,
+        `CTokenVault_NAME:${index}`,
+        `CTokenVault_SYM:${index}`,
+        compToken.address,
+        compoundMock.address
+      )
+    )
+
     const chainlinkFeed = <MockV3Aggregator>(
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
@@ -178,7 +191,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkFeed.address,
         oracleError: ORACLE_ERROR,
-        erc20: erc20.address,
+        erc20: erc20Vault.address,
         maxTradeVolume: MAX_UOA,
         oracleTimeout: MAX_ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
