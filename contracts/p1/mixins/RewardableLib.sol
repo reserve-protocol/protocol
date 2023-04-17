@@ -38,6 +38,6 @@ library RewardableLibP1 {
     function claimRewardsSingle(IAsset asset) internal {
         // empty try/catch because not every erc20 will be wrapped & have a claimRewards func
         // solhint-disable-next-line
-        try IRewardable(address(asset)).claimRewards() {} catch {}
+        try IRewardable(address(asset.erc20())).claimRewards() {} catch {}
     }
 }

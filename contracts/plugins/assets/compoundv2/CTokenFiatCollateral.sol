@@ -58,6 +58,7 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @dev delegatecall
     function claimRewards() external virtual override(Asset, IRewardable) {
+        // TODO: delete this
         IRewardable(address(erc20)).claimRewards();
     }
 }

@@ -51,13 +51,13 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
             delta = endingBal - initialBal;
             rewardsPerShare += ((delta) * one) / totalSupply;
         }
-        emit RewardsClaimed(IERC20(address(rewardToken)), delta);
     }
 
     function _claimAssetRewards() internal virtual;
 
     function _claimAccountRewards(address account) internal {
         uint256 claimableRewards = accumulatedRewards[account] - claimedRewards[account];
+        emit RewardsClaimed(IERC20(address(rewardToken)), claimableRewards);
         if (claimableRewards == 0) return;
         claimedRewards[account] = accumulatedRewards[account];
         rewardToken.safeTransfer(account, claimableRewards);
