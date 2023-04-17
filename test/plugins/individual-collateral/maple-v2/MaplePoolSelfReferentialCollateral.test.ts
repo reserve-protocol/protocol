@@ -4,9 +4,8 @@ import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MockV3Aggregator, MockV3Aggregator__factory, TestICollateral, IMaplePool, MaplePoolMock } from '../../../../typechain'
-import { ONE_ADDRESS } from '../../../../common/constants'
 import { bn, fp } from '../../../../common/numbers'
-import { CollateralStatus, CollateralOpts, CollateralFixtureContext, DeployCollateralFunc, MakeCollateralFixtureFunc, MintCollateralFunc } from '../pluginTestTypes'
+import { CollateralStatus, CollateralOpts, CollateralFixtureContext } from '../pluginTestTypes'
 import { resetFork, transferMaplePoolToken, getExpectedPrice, increaseTargetPerRef, reduceTargetPerRef, increaseRefPerTokFactory, reduceRefPerTokFactory } from './helpers'
 import {
     MAPLE_WETH_POOL,
@@ -29,7 +28,7 @@ const defaultCollateralOpts: CollateralOpts = {
     erc20: MAPLE_WETH_POOL,
     targetName: ethers.utils.formatBytes32String('ETH'),
     priceTimeout: PRICE_TIMEOUT,
-    chainlinkFeed: ETH_TO_USD_PRICE_FEED, // meant for {target/ref} ({ETH/wETH} = 1 here) but used for {uoa/target} ({USD/ETH}); gives the right price in getExpectedPrice
+    chainlinkFeed: ETH_TO_USD_PRICE_FEED, // meant for {target/ref} ({ETH/wETH} = 1 here) but used for {uoa/target} ({USD/ETH})
     oracleTimeout: ORACLE_TIMEOUT,
     oracleError: ETH_TO_USD_PRICE_ERROR,
     maxTradeVolume: MAX_TRADE_VOL,
@@ -40,7 +39,7 @@ const defaultCollateralOpts: CollateralOpts = {
 
 // Generic constants
 
-type Fixture<T> = (...args: any[]) => Promise<T>
+type Fixture<T> = () => Promise<T>
 
 const emptyFn = () => {return}
 
@@ -49,9 +48,9 @@ const emptyFn = () => {return}
 const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
     const _opts = { ...defaultCollateralOpts, ...opts }
 
-    const _MaplePoolNonFiatCollateralFactory: ContractFactory = await ethers.getContractFactory('MaplePoolNonFiatCollateral')
+    const _MaplePoolSelfReferentialCollateralFactory: ContractFactory = await ethers.getContractFactory('MaplePoolSelfReferentialCollateral')
 
-    const _collateral = <TestICollateral>await _MaplePoolNonFiatCollateralFactory.deploy(
+    const _collateral = <TestICollateral>await _MaplePoolSelfReferentialCollateralFactory.deploy(
         {
             erc20: _opts.erc20,
             targetName: _opts.targetName,
@@ -63,10 +62,7 @@ const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollate
             defaultThreshold: _opts.defaultThreshold,
             delayUntilDefault: _opts.delayUntilDefault,
         },
-        _opts.chainlinkFeed, // {UOA/target} oracle, given for {target/ref} too because getExpectedPrice uses this feed
-        _opts.oracleTimeout,
         _opts.revenueHiding,
-        true, // constant {target/ref} = {ETH/wETH} = 1 (FIX_ONE)
         { gasLimit: 2000000000 }
     )
     await _collateral.deployed()

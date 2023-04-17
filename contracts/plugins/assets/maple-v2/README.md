@@ -72,6 +72,13 @@ And this happens iff `convertToAssets` from the ERC4626 decreases.
 As detailed in [appendix section](#appendix-exchange-rate-break-down) this can only be triggered by loan default.
 This section also explains why the collateral does not default on loan impairment.
 
+### Rewards
+
+Maple pools don't hand out rewards to liquidity providers.
+
+The MPL rewards advertised on the website are discontinued.
+They were a temporary incentive and the interfaces have been removed from the contracts.
+
 ## Deployment
 
 ### Scripts
@@ -113,10 +120,7 @@ struct CollateralConfig {
     uint192 defaultThreshold; // 0.15 {1}
     uint48 delayUntilDefault; // 86400 {s} (24h)
 }
-AggregatorV3Interface uoaPerTargetChainlinkFeed; // "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
-uint48 uoaPerTargetOracleTimeout; // 3600 {s} (1h)
 uint192 revenueHiding; // 1e-6 allowed drop, as a ratio of the refPerTok
-bool constantTargetPerRef; // true ({target/ref} does not call an external feed)
 ```
 
 ## Implementation
@@ -126,7 +130,7 @@ bool constantTargetPerRef; // true ({target/ref} does not call an external feed)
 Solidity code for the fiat collateral plugin can be found in [`MaplePoolFiatCollateral.sol`][reserve-collateral-fiat-contract].
 This script is used for the USDC pool.
 
-The wETH pool relies on [`MaplePoolNonFiatCollateral.sol`][reserve-collateral-non-fiat-contract].
+The wETH pool relies on [`MaplePoolSelfReferentialCollateral.sol`][reserve-collateral-non-fiat-contract].
 
 ### Internal Dependencies
 
@@ -183,13 +187,34 @@ I had to use `NODE_OPTIONS` to pass parameters from Yarn to Node.
 
 ### Context
 
-- `FORK_BLOCK = 16964294` (the pools were created at `16162536` and `16162554`)
+The collateral needs to interact with a number of contracts of the Maple protocol.
+
+The addresses of these contracts and the deployment parameters are defined in a [separate script][reserve-collateral-test-context].
+
+Especially, the tests use `FORK_BLOCK = 16964294`:
+the pools were created at `16162536` and `16162554`, and tests will fail if run on older blocks.
 
 ### List Of Unit Tests
 
 Most of the tests come from [the collateral test suite][reserve-collateral-parent-test-script].
 
 The Maple contracts are plugged into this testing suite by implementing the absract factories in [this script][reserve-collateral-test-script].
+
+The test suite has an [extra script][reserve-collateral-plot-script] to plot `refPerTok` over historical data.
+
+### Tampering With RefPerTok
+
+The test fixture is using the actual pool token / collection contracts.
+This means that the `refPerTok` cannot be changed at will.
+
+Both deposit and withdraw keep the rate intact: they modify both `totalAssets` and `totalSupply` according to the rate.
+
+The trick is to modify only `totalAssets`, the quantity of underlying assets in the pool.
+This can be done by simply transfering the underlying tokens in & out of the pool.
+
+The ratio of underlying tokens to move is the same as the ratio of increase / decrease on the `refPerTok`.
+
+This operation and other utilities are definied in the [`helpers.ts`][reserve-collateral-test-utilities] script.
 
 ## Appendix: Exchange Rate Break-Down
 
@@ -382,11 +407,12 @@ Only the loan default leads to a diminution of the total assets as the outstandi
 [maple-docs-overview]: https://maplefinance.gitbook.io/maple/technical-resources/protocol-overview
 [maple-docs-pools]: https://maplefinance.gitbook.io/maple/technical-resources/pools/pools
 [reserve-collateral-fiat-contract]: ./MaplePoolFiatCollateral.sol
-[reserve-collateral-non-fiat-contract]: ./MaplePoolNonFiatCollateral.sol
+[reserve-collateral-non-fiat-contract]: ./MaplePoolSelfReferentialCollateral.sol
 [reserve-collateral-maple-interface]: ./vendor/IMaplePool.sol
 [reserve-collateral-maple-mock]: ../../mocks/MaplePoolMock.sol
 [reserve-collateral-parent-contract]: ../AppreciatingFiatCollateral.sol
 [reserve-collateral-parent-test-script]: ../../../../test/plugins/individual-collateral/collateralTests.ts
+[reserve-collateral-plot-script]: ../../../../test/plugins/individual-collateral/maple-v2/plot.ts
 [reserve-collateral-plot-usdc-overview]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_overview.png
 [reserve-collateral-plot-weth-overview]: ../../../../.github/assets/images/ref-per-tok_weth-pool_overview.png
 [reserve-collateral-plot-usdc-zoom-unrealized-loss]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-unrealized-loss.png
@@ -394,6 +420,8 @@ Only the loan default leads to a diminution of the total assets as the outstandi
 [reserve-collateral-plot-usdc-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-normal-operation.png
 [reserve-collateral-plot-weth-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-normal-operation.png
 [reserve-collateral-pull-request]: https://github.com/reserve-protocol/protocol/pull/757
+[reserve-collateral-test-context]: ../../../../test/plugins/individual-collateral/maple-v2/constants.ts
 [reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/maple-v2/MaplePoolFiatCollateral.test.ts
+[reserve-collateral-test-utilities]: ../../../../test/plugins/individual-collateral/maple-v2/helpers.ts
 [reserve-collateral-usdc-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_usdc_collateral.ts
 [reserve-collateral-weth-deployment-script]: ../../../../scripts/deployment/phase2-assets/collaterals/deploy_maple_pool_weth_collateral.ts

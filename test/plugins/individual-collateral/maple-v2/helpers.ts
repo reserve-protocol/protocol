@@ -50,9 +50,9 @@ export const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecre
 export const increaseRefPerTokFactory = (underlying: string, holder: string) => {
     const _increaseRefPerTok = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
         const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)
+        const _balance = await _underlying.balanceOf(ctx.tok.address) // pool balance
+        const _amount = _balance.mul(pctIncrease).div(100)
         await whileImpersonating(holder, async (signer: SignerWithAddress) => {
-            const _balance = await _underlying.balanceOf(ctx.tok.address) // pool balance
-            const _amount = _balance.mul(pctIncrease).div(100)
             await _underlying.connect(signer).transfer(ctx.tok.address, _amount)
         })
     }
@@ -64,9 +64,9 @@ export const increaseRefPerTokFactory = (underlying: string, holder: string) => 
 export const reduceRefPerTokFactory = (underlying: string, recipient: string) => {
     const _reduceRefPerTok = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
         const _underlying = await ethers.getContractAt('IERC20Metadata', underlying)
+        const _balance = await _underlying.balanceOf(ctx.tok.address) // pool balance
+        const _amount = _balance.mul(pctDecrease).div(100)
         await whileImpersonating(ctx.tok.address, async (signer: SignerWithAddress) => {
-            const _balance = await _underlying.balanceOf(ctx.tok.address) // pool balance
-            const _amount = _balance.mul(pctDecrease).div(100)
             await _underlying.connect(signer).transfer(recipient, _amount)
         })
     }
