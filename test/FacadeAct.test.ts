@@ -36,7 +36,7 @@ import {
   TestIRToken,
   TestIStRSR,
   USDCMock,
-  CTokenVaultMock,
+  CTokenVaultMock2,
 } from '../typechain'
 import {
   Collateral,
@@ -68,8 +68,7 @@ describe('FacadeAct contract', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenMock
-  let cTokenVault: CTokenVaultMock
+  let cToken: CTokenVaultMock2
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
@@ -164,8 +163,7 @@ describe('FacadeAct contract', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cTokenVault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenVault.asset())
+    cToken = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await cTokenAsset.erc20())
 
     // Backup tokens and collaterals - USDT - aUSDT - aUSDC - aBUSD
     backupToken1 = erc20s[2] // USDT
@@ -193,7 +191,7 @@ describe('FacadeAct contract', () => {
       await token.connect(addr1).approve(rToken.address, initialBal)
       await usdc.connect(addr1).approve(rToken.address, initialBal)
       await aToken.connect(addr1).approve(rToken.address, initialBal)
-      await cTokenVault.connect(addr1).approve(rToken.address, initialBal)
+      await cToken.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -585,8 +583,6 @@ describe('FacadeAct contract', () => {
         // AAVE Rewards
         await aToken.setRewards(backingManager.address, rewardAmountAAVE)
 
-        console.log(backingManager.address, rTokenTrader.address)
-
         // Via Facade get next call - will not attempt to claim - No action taken
         const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
         expect(addr).to.equal(ZERO_ADDRESS)
@@ -892,7 +888,7 @@ describe('FacadeAct contract', () => {
     })
 
     context('getRevenueAuctionERC20s/runRevenueAuctions', () => {
-      it.only('Revenues/Rewards', async () => {
+      it('Revenues/Rewards', async () => {
         const rewardAmountAAVE = bn('0.5e18')
         const rewardAmountCOMP = bn('1e18')
 

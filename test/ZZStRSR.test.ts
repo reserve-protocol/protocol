@@ -21,7 +21,7 @@ import {
   TestIMain,
   TestIRToken,
   TestIStRSR,
-  CTokenVaultMock,
+  CTokenVaultMock2,
 } from '../typechain'
 import { IConfig, MAX_RATIO, MAX_UNSTAKING_DELAY } from '../common/configuration'
 import { CollateralStatus, MAX_UINT256, ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
@@ -78,8 +78,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let token2: StaticATokenMock
-  let token3Vault: CTokenVaultMock
-  let token3: CTokenMock
+  let token3: CTokenVaultMock2
   let collateral0: Collateral
   let collateral1: Collateral
   let collateral2: Collateral
@@ -177,8 +176,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3Vault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await token3Vault.asset())
+    token3 = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
   })
 
   describe('Deployment #fast', () => {
@@ -728,15 +726,12 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
         await token1.connect(owner).mint(addr1.address, initialBal)
         await token2.connect(owner).mint(addr1.address, initialBal)
         await token3.connect(owner).mint(addr1.address, initialBal)
-        await token3.connect(addr1).approve(token3Vault.address, initialBal)
-        await token3Vault.connect(addr1).mint(initialBal, addr1.address)
-        
 
         // Approvals
         await token0.connect(addr1).approve(rToken.address, initialBal)
         await token1.connect(addr1).approve(rToken.address, initialBal)
         await token2.connect(addr1).approve(rToken.address, initialBal)
-        await token3Vault.connect(addr1).approve(rToken.address, initialBal)
+        await token3.connect(addr1).approve(rToken.address, initialBal)
         
 
         // Issue tokens

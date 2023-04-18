@@ -22,6 +22,8 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
     uint8 public immutable referenceERC20Decimals;
 
+    ICToken public immutable cToken;
+
     IComptroller public immutable comptroller;
 
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
@@ -32,8 +34,8 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
         IComptroller comptroller_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(address(comptroller_) != address(0), "comptroller missing");
-        ICToken asset = ICToken(address(IERC4626(address(config.erc20)).asset()));
-        referenceERC20Decimals = IERC20Metadata(asset.underlying()).decimals();
+        cToken = ICToken(address(IERC4626(address(config.erc20)).asset()));
+        referenceERC20Decimals = IERC20Metadata(cToken.underlying()).decimals();
         comptroller = comptroller_;
     }
 
@@ -42,7 +44,7 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     function refresh() public virtual override {
         // == Refresh ==
         // Update the Compound Protocol
-        ICToken(address(erc20)).exchangeRateCurrent();
+        cToken.exchangeRateCurrent();
 
         // Intentional and correct for the super call to be last!
         super.refresh(); // already handles all necessary default checks
@@ -50,7 +52,7 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        uint256 rate = ICToken(address(erc20)).exchangeRateStored();
+        uint256 rate = cToken.exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
         return shiftl_toFix(rate, shiftLeft);
     }

@@ -1,6 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { CTokenMock } from "@typechain/CTokenMock"
-import { CTokenVaultMock } from "@typechain/CTokenVaultMock"
+import { CTokenVaultMock2 } from "@typechain/CTokenVaultMock2"
 import { ERC20Mock } from "@typechain/ERC20Mock"
 import { StaticATokenMock } from "@typechain/StaticATokenMock"
 import { USDCMock } from "@typechain/USDCMock"
@@ -15,8 +14,7 @@ export const mintCollaterals = async (owner: SignerWithAddress, recipients: Sign
   let token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await basket[2].erc20())
   )
-  let token3Vault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await basket[3].erc20())
-  let token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await token3Vault.asset())
+  let token3 = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await basket[3].erc20())
   
   for (const recipient of recipients) {
       await token0.connect(owner).mint(recipient.address, amount)
@@ -25,9 +23,6 @@ export const mintCollaterals = async (owner: SignerWithAddress, recipients: Sign
 
       await token2.connect(owner).mint(recipient.address, amount)
 
-      const cTokenAmount = amount
-      await token3.connect(owner).mint(recipient.address, cTokenAmount)
-      await token3.connect(recipient).approve(token3Vault.address, cTokenAmount)
-      await token3Vault.connect(recipient).mint(cTokenAmount, recipient.address)
+      await token3.connect(owner).mint(recipient.address, amount)
   }
 }

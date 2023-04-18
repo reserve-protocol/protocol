@@ -19,7 +19,7 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenVaultMock,
+  CTokenVaultMock2,
   ERC20Mock,
   FacadeTest,
   GnosisMock,
@@ -91,8 +91,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3Vault: CTokenVaultMock
-  let token3: CTokenMock
+  let token3: CTokenVaultMock2
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
@@ -187,8 +186,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3Vault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await token3Vault.asset())
+    token3 = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -367,7 +365,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token0.connect(addr1).approve(rToken.address, initialBal)
         await token1.connect(addr1).approve(rToken.address, initialBal)
         await token2.connect(addr1).approve(rToken.address, initialBal)
-        await token3Vault.connect(addr1).approve(rToken.address, initialBal)
+        await token3.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
         await rToken.connect(addr1).issue(issueAmount)
@@ -463,12 +461,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await trade.worstCasePrice()).to.be.gte(fp('0.775'))
       })
 
-      it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
+      it.only('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('0.8e18')
 
         // COMP Rewards
-        await compoundMock.setRewards(token3Vault.address, rewardAmountCOMP)
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
@@ -480,7 +478,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
             emitted: true,
@@ -642,7 +640,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -717,7 +715,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -806,7 +804,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -874,7 +872,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Can also claim through Facade
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -1034,7 +1032,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -1239,7 +1237,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -1437,7 +1435,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -1704,7 +1702,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -1762,7 +1760,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -1822,7 +1820,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -1951,7 +1949,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Claim rewards
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -2003,7 +2001,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -2059,7 +2057,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -2200,7 +2198,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(rsrTrader.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -2241,7 +2239,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Claim and sweep rewards
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: token3Vault,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
@@ -2276,12 +2274,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Setup new basket with ATokens and CTokens
         await basketHandler
           .connect(owner)
-          .setPrimeBasket([token2.address, token3Vault.address], [fp('0.5'), fp('0.5')])
+          .setPrimeBasket([token2.address, token3.address], [fp('0.5'), fp('0.5')])
         await basketHandler.connect(owner).refreshBasket()
 
         // Provide approvals
         await token2.connect(addr1).approve(rToken.address, initialBal)
-        await token3Vault.connect(addr1).approve(rToken.address, initialBal)
+        await token3.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
         await rToken.connect(addr1).issue(issueAmount)
@@ -2444,7 +2442,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it('Should handle slight increase in collateral correctly - full cycle', async () => {
+      it.only('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Check Price and Assets value
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
@@ -2630,7 +2628,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           backingManager.manageTokens([
             token1.address,
             token2.address,
-            token3Vault.address,
+            token3.address,
             token2.address,
           ])
         ).to.be.revertedWith('duplicate tokens')
@@ -2639,13 +2637,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           backingManager.manageTokens([
             token1.address,
             token2.address,
-            token3Vault.address,
-            token3Vault.address,
+            token3.address,
+            token3.address,
           ])
         ).to.be.revertedWith('duplicate tokens')
 
         // Remove duplicates, should work
-        await expect(backingManager.manageTokens([token1.address, token2.address, token3Vault.address]))
+        await expect(backingManager.manageTokens([token1.address, token2.address, token3.address]))
           .to.not.be.reverted
       })
 
@@ -2676,7 +2674,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           backingManager.manageTokensSortedOrder([
             token1.address,
             token2.address,
-            token3Vault.address,
+            token3.address,
             token2.address,
           ])
         ).to.be.revertedWith('duplicate/unsorted tokens')
@@ -2685,13 +2683,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           backingManager.manageTokensSortedOrder([
             token1.address,
             token2.address,
-            token3Vault.address,
-            token3Vault.address,
+            token3.address,
+            token3.address,
           ])
         ).to.be.revertedWith('duplicate/unsorted tokens')
 
         // Remove duplicates but unsort
-        const sorted = [token1.address, token2.address, token3Vault.address].sort((a, b) => {
+        const sorted = [token1.address, token2.address, token3.address].sort((a, b) => {
           const x = BigNumber.from(a)
           const y = BigNumber.from(b)
           if (x.lt(y)) return -1
@@ -3086,7 +3084,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Setup new basket with ATokens and CTokens
         await basketHandler
           .connect(owner)
-          .setPrimeBasket([token2.address, token3Vault.address], [fp('0.5'), fp('0.5')])
+          .setPrimeBasket([token2.address, token3.address], [fp('0.5'), fp('0.5')])
         await basketHandler.connect(owner).refreshBasket()
 
         // Mint some RSR
@@ -3106,9 +3104,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         const mintAmt = bn('10000e18')
         await token2.connect(owner).mint(backingManager.address, mintAmt)
-        await token3.connect(owner).mint(owner.address, mintAmt)
-        await token3.connect(owner).approve(token3Vault.address, mintAmt)
-        await token3Vault.connect(owner).mint(mintAmt, backingManager.address)
+        await token3.connect(owner).mint(backingManager.address, mintAmt)
 
         await expect(backingManager.manageTokens([])).revertedWith('BU rate out of range')
       })
@@ -3127,7 +3123,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3Vault.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -3150,7 +3146,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rewardAmountAAVE = bn('0.6e18')
 
       // COMP Rewards
-      await compoundMock.setRewards(token3Vault.address, rewardAmountCOMP)
+      await compoundMock.setRewards(token3.address, rewardAmountCOMP)
       await compoundMock.setRewards(rsrTrader.address, rewardAmountCOMP)
       await compoundMock.setRewards(rTokenTrader.address, rewardAmountCOMP)
       await compoundMock.setRewards(rToken.address, rewardAmountCOMP)
@@ -3200,7 +3196,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rewardAmountCOMP = bn('2e18')
 
       // COMP Rewards
-      await compoundMock.setRewards(token3Vault.address, rewardAmountCOMP)
+      await compoundMock.setRewards(token3.address, rewardAmountCOMP)
 
       // Collect revenue
       // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)

@@ -6,8 +6,7 @@ import hre, { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
 import {
-  CTokenMock,
-  CTokenVaultMock,
+  CTokenVaultMock2,
   ERC20Mock,
   StaticATokenMock,
   TestIFurnace,
@@ -53,8 +52,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let token2: StaticATokenMock
-  let token3Vault: CTokenVaultMock
-  let token3: CTokenMock
+  let token3: CTokenVaultMock2
 
   let collateral0: Collateral
   let collateral1: Collateral
@@ -87,7 +85,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3Vault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    token3 = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
 
     // Mint Tokens
     await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
@@ -161,12 +159,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3Vault.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
 
       await token0.connect(addr2).approve(rToken.address, initialBal)
       await token1.connect(addr2).approve(rToken.address, initialBal)
       await token2.connect(addr2).approve(rToken.address, initialBal)
-      await token3Vault.connect(addr2).approve(rToken.address, initialBal)
+      await token3.connect(addr2).approve(rToken.address, initialBal)
 
       // Issue tokens
       const issueAmount: BigNumber = bn('100e18')
@@ -445,7 +443,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       return furnace
     }
 
-    it('Should not revert at extremes', async () => {
+    it.only('Should not revert at extremes', async () => {
       const ratios = [fp('1'), fp('0'), fp('0.000001069671574938')]
 
       const bals = [fp('1e18'), fp('0'), bn('1e9')]
@@ -479,12 +477,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3Vault.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
 
       await token0.connect(addr2).approve(rToken.address, initialBal)
       await token1.connect(addr2).approve(rToken.address, initialBal)
       await token2.connect(addr2).approve(rToken.address, initialBal)
-      await token3Vault.connect(addr2).approve(rToken.address, initialBal)
+      await token3.connect(addr2).approve(rToken.address, initialBal)
 
       // Issue tokens
       const issueAmount: BigNumber = bn('100e18')

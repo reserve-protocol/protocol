@@ -12,7 +12,7 @@ import {
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
   CTokenMock,
-  CTokenVaultMock,
+  CTokenVaultMock2,
   CTokenSelfReferentialCollateral,
   ERC20Mock,
   EURFiatCollateral,
@@ -64,8 +64,7 @@ describe('Collateral contracts', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cTokenMock: CTokenMock
-  let cTokenVault: CTokenVaultMock
+  let cToken: CTokenVaultMock2
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
 
@@ -126,21 +125,18 @@ describe('Collateral contracts', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenCollateral.erc20())
     )
-    cTokenVault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await cTokenCollateral.erc20())
-    cTokenMock = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenVault.asset())
+    cToken = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await cTokenCollateral.erc20())
 
     await token.connect(owner).mint(owner.address, amt)
     await usdc.connect(owner).mint(owner.address, amt.div(bn('1e12')))
     await aToken.connect(owner).mint(owner.address, amt)
-    await cTokenMock.connect(owner).mint(owner.address, amt.div(bn('1e10')).mul(50))
-    await cTokenMock.connect(owner).approve(cTokenVault.address, amt.div(bn('1e10')).mul(50))
-    await cTokenVault.connect(owner).mint(amt.div(bn('1e10')).mul(50), owner.address)
+    await cToken.connect(owner).mint(owner.address, amt.div(bn('1e10')).mul(50))
 
     // Issue RToken to enable RToken.price
     await token.connect(owner).approve(rToken.address, amt)
     await usdc.connect(owner).approve(rToken.address, amt.div(bn('1e12')))
     await aToken.connect(owner).approve(rToken.address, amt)
-    await cTokenVault.connect(owner).approve(rToken.address, amt.div(bn('1e10')).mul(50))
+    await cToken.connect(owner).approve(rToken.address, amt.div(bn('1e10')).mul(50))
     await rToken.connect(owner).issue(amt)
 
     // Factories
@@ -217,8 +213,8 @@ describe('Collateral contracts', () => {
       // CToken
       expect(await cTokenCollateral.isCollateral()).to.equal(true)
       expect(await cTokenCollateral.referenceERC20Decimals()).to.equal(18)
-      expect(await cTokenCollateral.erc20()).to.equal(cTokenVault.address)
-      expect(await cTokenVault.decimals()).to.equal(8)
+      expect(await cTokenCollateral.erc20()).to.equal(cToken.address)
+      expect(await cToken.decimals()).to.equal(8)
       expect(await cTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT48)
@@ -235,7 +231,7 @@ describe('Collateral contracts', () => {
       )
       await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
       await expect(cTokenCollateral.claimRewards())
-        .to.emit(cTokenVault, 'RewardsClaimed')
+        .to.emit(cToken, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
     })
   })
@@ -297,7 +293,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
-            erc20: cTokenVault.address,
+            erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -350,7 +346,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
-            erc20: cTokenVault.address,
+            erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -404,7 +400,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: bn('0'),
-            erc20: cTokenVault.address,
+            erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -458,7 +454,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: fp('1'),
-            erc20: cTokenVault.address,
+            erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -498,7 +494,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
-            erc20: cTokenVault.address,
+            erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -519,7 +515,7 @@ describe('Collateral contracts', () => {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await cTokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
-            erc20: cTokenVault.address,
+            erc20: cToken.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
@@ -584,7 +580,7 @@ describe('Collateral contracts', () => {
 
       // Increase rate for Ctoken and AToken to double
       await aToken.setExchangeRate(fp(2))
-      await cTokenMock.setExchangeRate(fp(2))
+      await cToken.setExchangeRate(fp(2))
 
       // Check prices doubled
       await assetRegistry.refresh()
@@ -893,7 +889,7 @@ describe('Collateral contracts', () => {
 
       // Decrease rate for AToken and CToken, will disable collateral immediately
       await aToken.setExchangeRate(fp('0.99'))
-      await cTokenMock.setExchangeRate(fp('0.95'))
+      await cToken.setExchangeRate(fp('0.95'))
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await expect(tokenCollateral.refresh()).to.not.emit(
@@ -1046,7 +1042,7 @@ describe('Collateral contracts', () => {
       // Set COMP and AAVE rewards for Main
       const rewardAmountCOMP: BigNumber = bn('100e18')
       const rewardAmountAAVE: BigNumber = bn('20e18')
-      await compoundMock.setRewards(cTokenVault.address, rewardAmountCOMP)
+      await compoundMock.setRewards(cToken.address, rewardAmountCOMP)
       await aToken.setRewards(backingManager.address, rewardAmountAAVE)
 
       // Check funds not yet swept
@@ -1311,8 +1307,7 @@ describe('Collateral contracts', () => {
     let CTokenNonFiatFactory: ContractFactory
     let cTokenNonFiatCollateral: CTokenNonFiatCollateral
     let nonFiatToken: ERC20Mock
-    let cNonFiatToken: CTokenMock
-    let cNonFiatTokenVault: CTokenVaultMock
+    let cNonFiatTokenVault: CTokenVaultMock2
     let targetUnitOracle: MockV3Aggregator
     let referenceUnitOracle: MockV3Aggregator
 
@@ -1328,13 +1323,9 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // 1 WBTC/BTC
       )
       // cToken
-      cNonFiatToken = await (
-        await ethers.getContractFactory('CTokenMock')
-      ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address)
-
       cNonFiatTokenVault = await (
-        await ethers.getContractFactory('CTokenVaultMock')
-      ).deploy(cNonFiatToken.address, 'cWBTC Token', 'cWBTC', compToken.address, compoundMock.address)
+        await ethers.getContractFactory('CTokenVaultMock2')
+      ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address, compToken.address, compoundMock.address)
 
       CTokenNonFiatFactory = await ethers.getContractFactory('CTokenNonFiatCollateral')
 
@@ -1358,9 +1349,7 @@ describe('Collateral contracts', () => {
       await cTokenNonFiatCollateral.refresh()
 
       // Mint some tokens
-      await cNonFiatToken.connect(owner).mint(owner.address, amt.div(bn('1e10')))
-      await cNonFiatToken.connect(owner).approve(cNonFiatTokenVault.address, amt.div(bn('1e10')))
-      await cNonFiatTokenVault.connect(owner).mint(amt.div(bn('1e10')), owner.address)
+      await cNonFiatTokenVault.connect(owner).mint(owner.address, amt.div(bn('1e10')))
     })
 
     it('Should not allow missing delayUntilDefault', async () => {
@@ -1786,7 +1775,7 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
 
-      // cTokenVault Self Ref
+      // cToken Self Ref
       cSelfRefToken = await (
         await ethers.getContractFactory('CTokenMock')
       ).deploy('cETH Token', 'cETH', selfRefToken.address)
@@ -2282,7 +2271,7 @@ describe('Collateral contracts', () => {
     it('Force Updates - Hard Default - ATokens/CTokens', async function () {
       // Decrease rate for AToken and CToken, will disable collateral immediately
       await aToken.setExchangeRate(fp('0.99'))
-      await cTokenMock.setExchangeRate(fp('0.95'))
+      await cToken.setExchangeRate(fp('0.95'))
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await snapshotGasCost(aTokenCollateral.refresh())

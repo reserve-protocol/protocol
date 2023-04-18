@@ -11,7 +11,7 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenMock,
+  CTokenVaultMock2,
   ERC20Mock,
   FacadeTest,
   FiatCollateral,
@@ -25,8 +25,7 @@ import {
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
-  StaticATokenMock,
-  CTokenVaultMock,
+  StaticATokenMock
 } from '../typechain'
 import { advanceTime } from './utils/time'
 import {
@@ -77,8 +76,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
   let ERC20Mock: ContractFactory
   let ATokenMockFactory: ContractFactory
-  let CTokenMockFactory: ContractFactory
-  let CTokenVaultMockFactory: ContractFactory
+  let CTokenVaultMockFactory2: ContractFactory
   let ATokenCollateralFactory: ContractFactory
   let CTokenCollateralFactory: ContractFactory
 
@@ -112,8 +110,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-    CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
-    CTokenVaultMockFactory = await ethers.getContractFactory('CTokenVaultMock')
+    CTokenVaultMockFactory2 = await ethers.getContractFactory('CTokenVaultMock2')
     ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
@@ -160,28 +157,20 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     return erc20
   }
 
-  const prepCToken = async (index: number): Promise<CTokenVaultMock> => {
+  const prepCToken = async (index: number): Promise<CTokenVaultMock2> => {
     const underlying: ERC20Mock = <ERC20Mock>(
       await ERC20Mock.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`)
     )
-    const erc20: CTokenMock = <CTokenMock>(
-      await CTokenMockFactory.deploy(
+    const erc20: CTokenVaultMock2 = <CTokenVaultMock2>(
+      await CTokenVaultMockFactory2.deploy(
         `CToken_NAME:${index}`,
         `CToken_SYM:${index}`,
-        underlying.address
-      )
-    )
-    await erc20.setExchangeRate(fp('1'))
-
-    const erc20Vault: CTokenVaultMock = <CTokenVaultMock>(
-      await CTokenVaultMockFactory.deploy(
-        erc20.address,
-        `CTokenVault_NAME:${index}`,
-        `CTokenVault_SYM:${index}`,
+        underlying.address,
         compToken.address,
         compoundMock.address
       )
     )
+    await erc20.setExchangeRate(fp('1'))
 
     const chainlinkFeed = <MockV3Aggregator>(
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
@@ -191,7 +180,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkFeed.address,
         oracleError: ORACLE_ERROR,
-        erc20: erc20Vault.address,
+        erc20: erc20.address,
         maxTradeVolume: MAX_UOA,
         oracleTimeout: MAX_ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -202,7 +191,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       compoundMock.address
     )
     await assetRegistry.connect(owner).register(collateral.address)
-    return erc20Vault
+    return erc20
   }
 
   const setupTrading = async (stRSRCut: BigNumber) => {
@@ -335,22 +324,11 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       const targetAmts = []
       for (let i = 0; i < basketSize; i++) {
         expect(collateralDecimals == 8 || collateralDecimals == 18).to.equal(true)
-        if (collateralDecimals == 8) {
-          const token = await prepCToken(i)
-          primeBasket.push(token)
-          targetAmts.push(divCeil(primeWeight, bn(basketSize))) // might sum to slightly over, is ok
-          const underlying = await ethers.getContractAt('ERC20Mock', await token.asset())
-          await underlying.connect(owner).mint(addr1.address, MAX_UINT256)
-          await underlying.connect(addr1).approve(token.address, MAX_UINT256)
-          await token.connect(addr1).mint(MAX_UINT256, addr1.address)
-          await token.connect(addr1).approve(rToken.address, MAX_UINT256)
-        } else {
-          const token = await prepAToken(i)
-          primeBasket.push(token)
-          targetAmts.push(divCeil(primeWeight, bn(basketSize))) // might sum to slightly over, is ok
-          await token.connect(owner).mint(addr1.address, MAX_UINT256)
-          await token.connect(addr1).approve(rToken.address, MAX_UINT256)
-        }
+        const token = collateralDecimals == 8 ? await prepCToken(i) : await prepAToken(i)
+        primeBasket.push(token)
+        targetAmts.push(divCeil(primeWeight, bn(basketSize))) // might sum to slightly over, is ok
+        await token.connect(owner).mint(addr1.address, MAX_UINT256)
+        await token.connect(addr1).approve(rToken.address, MAX_UINT256)
       }
 
       // Setup basket
@@ -479,23 +457,15 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       for (let i = 0; i < basketSize; i++) {
         expect(numRewardTokens == 1 || numRewardTokens == 2).to.equal(true)
         let token
-        if (numRewardTokens == 1 || i % 2 == 0) {
+        if (numRewardTokens == 1) {
           token = await prepCToken(i)
-          primeBasket.push(token)
-          targetAmts.push(fp('1').div(basketSize))
-          const underlying = await ethers.getContractAt('ERC20Mock', await token.asset())
-          await underlying.connect(owner).mint(addr1.address, MAX_UINT256)
-          await underlying.connect(addr1).approve(token.address, MAX_UINT256)
-          await token.connect(addr1).mint(MAX_UINT256, addr1.address)
-          await token.connect(addr1).approve(rToken.address, MAX_UINT256)
         } else {
-          token = await prepAToken(i)
-          primeBasket.push(token)
-          targetAmts.push(fp('1').div(basketSize))
-          await token.connect(owner).mint(addr1.address, MAX_UINT256)
-          await token.connect(addr1).approve(rToken.address, MAX_UINT256)
+          token = i % 2 == 0 ? await prepCToken(i) : await prepAToken(i)
         }
-
+        primeBasket.push(token)
+        targetAmts.push(fp('1').div(basketSize))
+        await token.connect(owner).mint(addr1.address, MAX_UINT256)
+        await token.connect(addr1).approve(rToken.address, MAX_UINT256)
       }
 
       // Setup basket
@@ -649,25 +619,13 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
       const primeBasket = []
       const targetAmts = []
-
       for (let i = 0; i < basketSize; i++) {
         expect(collateralDecimals == 8 || collateralDecimals == 18).to.equal(true)
-        if (collateralDecimals == 8) {
-          const token = await prepCToken(i)
-          primeBasket.push(token)
-          targetAmts.push(divCeil(primeWeight, bn(basketSize))) // might sum to slightly over, is ok
-          const underlying = await ethers.getContractAt('ERC20Mock', await token.asset())
-          await underlying.connect(owner).mint(addr1.address, MAX_UINT256)
-          await underlying.connect(addr1).approve(token.address, MAX_UINT256)
-          await token.connect(addr1).mint(MAX_UINT256, addr1.address)
-          await token.connect(addr1).approve(rToken.address, MAX_UINT256)
-        } else {
-          const token = await prepAToken(i)
-          primeBasket.push(token)
-          targetAmts.push(divCeil(primeWeight, bn(basketSize))) // might sum to slightly over, is ok
-          await token.connect(owner).mint(addr1.address, MAX_UINT256)
-          await token.connect(addr1).approve(rToken.address, MAX_UINT256)
-        }
+        const token = collateralDecimals == 8 ? await prepCToken(i) : await prepAToken(i)
+        primeBasket.push(token)
+        targetAmts.push(primeWeight.div(basketSize).add(1))
+        await token.connect(owner).mint(addr1.address, MAX_UINT256)
+        await token.connect(addr1).approve(rToken.address, MAX_UINT256)
       }
 
       // Setup basket

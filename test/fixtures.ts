@@ -16,7 +16,7 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenSelfReferentialCollateral,
-  CTokenMock,
+  CTokenVaultMock2,
   ERC20Mock,
   DeployerP0,
   DeployerP1,
@@ -166,7 +166,7 @@ async function collateralFixture(
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
   const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-  const CTokenVaultMockFactory: ContractFactory = await ethers.getContractFactory('CTokenVaultMock')
+  const CTokenVaultMock2Factory: ContractFactory = await ethers.getContractFactory('CTokenVaultMock2')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
@@ -241,19 +241,16 @@ async function collateralFixture(
     referenceERC20: ERC20Mock,
     chainlinkAddr: string,
     compToken: ERC20Mock
-  ): Promise<[CTokenVaultMock, CTokenFiatCollateral]> => {
-    const erc20: CTokenMock = <CTokenMock>(
-      await CTokenMockFactory.deploy(symbol + ' Token', symbol, referenceERC20.address)
-    )
-    const wrapper: CTokenVaultMock = <CTokenVaultMock>(
-      await CTokenVaultMockFactory.deploy( erc20.address, symbol + ' Vault', symbol, compToken.address, comptroller.address)
+  ): Promise<[CTokenVaultMock2, CTokenFiatCollateral]> => {
+    const erc20: CTokenVaultMock2 = <CTokenVaultMock2>(
+      await CTokenVaultMock2Factory.deploy(symbol + ' Token', symbol, referenceERC20.address, compToken.address, comptroller.address)
     )
     const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkAddr,
         oracleError: ORACLE_ERROR,
-        erc20: wrapper.address,
+        erc20: erc20.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -264,7 +261,7 @@ async function collateralFixture(
       comptroller.address
     )
     await coll.refresh()
-    return [wrapper, coll]
+    return [erc20, coll]
   }
   const makeATokenCollateral = async (
     symbol: string,

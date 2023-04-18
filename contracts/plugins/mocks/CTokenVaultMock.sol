@@ -15,6 +15,10 @@ contract CTokenVaultMock is CTokenVault {
         IComptroller _comptroller
     ) CTokenVault(_asset, _name, _symbol, _rewardToken, _comptroller) {}
 
+    function mint(address recipient, uint256 amount) external {
+        mint(amount, recipient);
+    }
+
 
     function setExchangeRate(uint192 fiatcoinRedemptionRate) external {
         CTokenMock(address(asset)).setExchangeRate(fiatcoinRedemptionRate);
