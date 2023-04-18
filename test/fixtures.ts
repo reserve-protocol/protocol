@@ -54,7 +54,6 @@ import {
   NonFiatCollateral,
   FacadeMonitor,
   ZeroDecimalMock,
-  CTokenVaultMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
@@ -165,8 +164,9 @@ async function collateralFixture(
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
-  const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-  const CTokenVaultMock2Factory: ContractFactory = await ethers.getContractFactory('CTokenVaultMock2')
+  const CTokenVaultMock2Factory: ContractFactory = await ethers.getContractFactory(
+    'CTokenVaultMock2'
+  )
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
@@ -243,7 +243,13 @@ async function collateralFixture(
     compToken: ERC20Mock
   ): Promise<[CTokenVaultMock2, CTokenFiatCollateral]> => {
     const erc20: CTokenVaultMock2 = <CTokenVaultMock2>(
-      await CTokenVaultMock2Factory.deploy(symbol + ' Token', symbol, referenceERC20.address, compToken.address, comptroller.address)
+      await CTokenVaultMock2Factory.deploy(
+        symbol + ' Token',
+        symbol,
+        referenceERC20.address,
+        compToken.address,
+        comptroller.address
+      )
     )
     const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
@@ -298,8 +304,18 @@ async function collateralFixture(
   const usdt = await makeVanillaCollateral('USDT')
   const busd = await makeVanillaCollateral('BUSD')
   const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed(), compToken)
-  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0], await usdc[1].chainlinkFeed(), compToken)
-  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0], await usdt[1].chainlinkFeed(), compToken)
+  const cusdc = await makeCTokenCollateral(
+    'cUSDC',
+    usdc[0],
+    await usdc[1].chainlinkFeed(),
+    compToken
+  )
+  const cusdt = await makeCTokenCollateral(
+    'cUSDT',
+    usdt[0],
+    await usdt[1].chainlinkFeed(),
+    compToken
+  )
   const adai = await makeATokenCollateral('aDAI', dai[0], await dai[1].chainlinkFeed(), aaveToken)
   const ausdc = await makeATokenCollateral(
     'aUSDC',

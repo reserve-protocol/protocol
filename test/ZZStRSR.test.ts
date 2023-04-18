@@ -9,7 +9,6 @@ import { setOraclePrice } from './utils/oracles'
 import { bn, fp, near, shortString } from '../common/numbers'
 import { expectEvents } from '../common/events'
 import {
-  CTokenMock,
   ERC20Mock,
   ERC1271Mock,
   FacadeRead,
@@ -176,7 +175,9 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    token3 = <CTokenVaultMock2>(
+      await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    )
   })
 
   describe('Deployment #fast', () => {
@@ -733,7 +734,6 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
         await token1.connect(addr1).approve(rToken.address, initialBal)
         await token2.connect(addr1).approve(rToken.address, initialBal)
         await token3.connect(addr1).approve(rToken.address, initialBal)
-        
 
         // Issue tokens
         const issueAmount: BigNumber = bn('100e18')

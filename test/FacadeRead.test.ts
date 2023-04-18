@@ -19,7 +19,6 @@ import {
   TestIStRSR,
   TestIRToken,
   USDCMock,
-  CTokenMock,
 } from '../typechain'
 import {
   Collateral,
@@ -43,7 +42,6 @@ describe('FacadeRead contract', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenMock
   let cTokenVault: CTokenVaultMock
   let rsr: ERC20Mock
   let basket: Collateral[]
@@ -82,8 +80,9 @@ describe('FacadeRead contract', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cTokenVault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenVault.asset())
+    cTokenVault = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
+    )
   })
 
   describe('Views', () => {

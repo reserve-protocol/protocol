@@ -25,7 +25,7 @@ import {
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
-  StaticATokenMock
+  StaticATokenMock,
 } from '../typechain'
 import { advanceTime } from './utils/time'
 import {

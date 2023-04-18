@@ -11,7 +11,6 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
-  CTokenMock,
   CTokenVaultMock2,
   CTokenSelfReferentialCollateral,
   ERC20Mock,
@@ -125,7 +124,9 @@ describe('Collateral contracts', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenCollateral.erc20())
     )
-    cToken = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await cTokenCollateral.erc20())
+    cToken = <CTokenVaultMock2>(
+      await ethers.getContractAt('CTokenVaultMock2', await cTokenCollateral.erc20())
+    )
 
     await token.connect(owner).mint(owner.address, amt)
     await usdc.connect(owner).mint(owner.address, amt.div(bn('1e12')))
@@ -714,21 +715,21 @@ describe('Collateral contracts', () => {
       const UnpricedAppreciatingFactory = await ethers.getContractFactory(
         'UnpricedAppreciatingFiatCollateralMock'
       )
-      const unpricedAppFiatCollateral: UnpricedAppreciatingFiatCollateralMock = <UnpricedAppreciatingFiatCollateralMock>(
-        await UnpricedAppreciatingFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: await aTokenCollateral.chainlinkFeed(), // reuse - mock
-            oracleError: ORACLE_ERROR,
-            erc20: aToken.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: DEFAULT_THRESHOLD,
-            delayUntilDefault: DELAY_UNTIL_DEFAULT,
-          },
-          REVENUE_HIDING
-        )
+      const unpricedAppFiatCollateral: UnpricedAppreciatingFiatCollateralMock = <
+        UnpricedAppreciatingFiatCollateralMock
+      >await UnpricedAppreciatingFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await aTokenCollateral.chainlinkFeed(), // reuse - mock
+          oracleError: ORACLE_ERROR,
+          erc20: aToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        },
+        REVENUE_HIDING
       )
 
       // Save prices
@@ -1325,7 +1326,13 @@ describe('Collateral contracts', () => {
       // cToken
       cNonFiatTokenVault = await (
         await ethers.getContractFactory('CTokenVaultMock2')
-      ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address, compToken.address, compoundMock.address)
+      ).deploy(
+        'cWBTC Token',
+        'cWBTC',
+        nonFiatToken.address,
+        compToken.address,
+        compoundMock.address
+      )
 
       CTokenNonFiatFactory = await ethers.getContractFactory('CTokenNonFiatCollateral')
 

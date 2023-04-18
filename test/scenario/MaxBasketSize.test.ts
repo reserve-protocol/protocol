@@ -36,7 +36,6 @@ import { CollateralStatus } from '../../common/constants'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
 import { expectPrice, setOraclePrice } from '../utils/oracles'
-import { expectEvents } from '../../common/events'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -214,7 +213,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   const makeCToken = async (tokenName: string): Promise<CTokenVaultMock2> => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-    const CTokenVaultMock2Factory: ContractFactory = await ethers.getContractFactory('CTokenVaultMock2')
+    const CTokenVaultMock2Factory: ContractFactory = await ethers.getContractFactory(
+      'CTokenVaultMock2'
+    )
     const CTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     )
@@ -224,7 +225,13 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     )
 
     const ctoken: CTokenVaultMock2 = <CTokenVaultMock2>(
-      await CTokenVaultMock2Factory.deploy('c' + tokenName, `${'c' + tokenName} symbol`, erc20.address, compToken.address, compoundMock.address)
+      await CTokenVaultMock2Factory.deploy(
+        'c' + tokenName,
+        `${'c' + tokenName} symbol`,
+        erc20.address,
+        compToken.address,
+        compoundMock.address
+      )
     )
 
     const chainlinkFeed = <MockV3Aggregator>(

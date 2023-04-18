@@ -114,7 +114,9 @@ describe('Assets contracts #fast', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    cToken = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    cToken = <CTokenVaultMock2>(
+      await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    )
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)

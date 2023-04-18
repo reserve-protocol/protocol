@@ -537,7 +537,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Check funds were transferred
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
-      
+
       // Check balances - Fewer aTokens should have been sent to the user
       const newBalanceAddr1aDai: BigNumber = await staticAToken.balanceOf(addr1.address)
 

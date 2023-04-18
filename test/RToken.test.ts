@@ -18,7 +18,6 @@ import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   ATokenFiatCollateral,
   CTokenFiatCollateral,
-  CTokenMock,
   ERC20Mock,
   ERC1271Mock,
   FacadeTest,
@@ -126,7 +125,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    token3 = <CTokenVaultMock2>(
+      await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    )
     tokens = [token0, token1, token2, token3]
 
     // Mint initial balances

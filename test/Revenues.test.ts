@@ -24,7 +24,6 @@ import {
   FacadeTest,
   GnosisMock,
   IAssetRegistry,
-  InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
@@ -39,7 +38,6 @@ import {
   TestIStRSR,
   USDCMock,
   FiatCollateral,
-  CTokenMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -53,7 +51,6 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
-  REVENUE_HIDING,
 } from './fixtures'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { expectTrade, getTrade } from './utils/trades'
@@ -62,8 +59,6 @@ import { mintCollaterals } from './utils/tokens'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
-
-const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -75,7 +70,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let rsr: ERC20Mock
   let rsrAsset: Asset
   let compToken: ERC20Mock
-  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveAsset: Asset
@@ -147,7 +141,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rsr,
       rsrAsset,
       compToken,
-      compAsset,
       aaveAsset,
       aaveToken,
       compoundMock,
@@ -186,13 +179,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    token3 = <CTokenVaultMock2>(
+      await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    )
 
     // Mint initial balances
     initialBal = bn('1000000e18')
     await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
   })
-  
+
   describe('Deployment', () => {
     it('Should setup RevenueTraders correctly', async () => {
       expect(await rsrTrader.main()).to.equal(main.address)
@@ -360,7 +355,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       beforeEach(async function () {
         issueAmount = bn('100000e18')
-        
+
         // Provide approvals
         await token0.connect(addr1).approve(rToken.address, initialBal)
         await token1.connect(addr1).approve(rToken.address, initialBal)

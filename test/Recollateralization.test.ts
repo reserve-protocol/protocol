@@ -164,8 +164,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
-    token3Vault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await basket[3].erc20())
-    token3 = <CTokenMock> await ethers.getContractAt('CTokenMock', await token3Vault.asset())
+    token3Vault = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await basket[3].erc20())
+    )
+    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await token3Vault.asset())
 
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
@@ -3466,7 +3468,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Running auctions will trigger recollateralization - All balance will be redeemed
         const sellAmt0: BigNumber = await token0.balanceOf(backingManager.address)
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
-        const sellAmt3: BigNumber = (await token3Vault.balanceOf(backingManager.address)).mul(pow10(10)) // convert to 18 decimals for simplification
+        const sellAmt3: BigNumber = (await token3Vault.balanceOf(backingManager.address)).mul(
+          pow10(10)
+        ) // convert to 18 decimals for simplification
         const minBuyAmt0 = await toMinBuyAmt(sellAmt0, fp('0.8'), fp('1'))
 
         // Run auctions - Will start with token0
@@ -4030,7 +4034,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [anyValue, token3Vault.address, token0.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
+            args: [
+              anyValue,
+              token3Vault.address,
+              token0.address,
+              toBNDecimals(sellAmt3, 8),
+              minBuyAmt3,
+            ],
             emitted: true,
           },
           {
@@ -4146,7 +4156,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Running auctions will trigger recollateralization - All balance will be redeemed
         const sellAmt0: BigNumber = await token0.balanceOf(backingManager.address)
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
-        const sellAmt3: BigNumber = (await token3Vault.balanceOf(backingManager.address)).mul(pow10(10)) // convert to 18 decimals for simplification
+        const sellAmt3: BigNumber = (await token3Vault.balanceOf(backingManager.address)).mul(
+          pow10(10)
+        ) // convert to 18 decimals for simplification
 
         // Run auctions - will start with token0 and backuptoken1
         const minBuyAmt = await toMinBuyAmt(sellAmt0, fp('0.5'), fp('1'))

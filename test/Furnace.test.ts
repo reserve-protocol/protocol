@@ -85,7 +85,9 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    token3 = <CTokenVaultMock2>(
+      await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    )
 
     // Mint Tokens
     await mintCollaterals(owner, [addr1, addr2], initialBal, basket)

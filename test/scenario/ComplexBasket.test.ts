@@ -308,7 +308,15 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     collateral.push(<Collateral>await ethers.getContractAt('NonFiatCollateral', wBTCCollateral))
 
     // 6. CTokenNonFiatCollateral cWBTCVault against BTC
-    cWBTCVault = <CTokenVaultMock2>await CToken.deploy('cWBTCVault Token', 'cWBTCVault', wbtc.address, compToken.address, compoundMock.address)
+    cWBTCVault = <CTokenVaultMock2>(
+      await CToken.deploy(
+        'cWBTCVault Token',
+        'cWBTCVault',
+        wbtc.address,
+        compToken.address,
+        compoundMock.address
+      )
+    )
     const { collateral: cWBTCVaultCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
       priceTimeout: PRICE_TIMEOUT.toString(),
       referenceUnitFeed: referenceUnitFeed.address,
@@ -357,7 +365,15 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // 8. CTokenSelfReferentialCollateral cETHVault against ETH
     // Give higher maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-    cETHVault = <CTokenVaultMock2>await CToken.deploy('cETHVault Token', 'cETHVault', weth.address, compToken.address, compoundMock.address)
+    cETHVault = <CTokenVaultMock2>(
+      await CToken.deploy(
+        'cETHVault Token',
+        'cETHVault',
+        weth.address,
+        compToken.address,
+        compoundMock.address
+      )
+    )
     const { collateral: cETHVaultCollateral } = await hre.run(
       'deploy-ctoken-selfreferential-collateral',
       {
@@ -905,7 +921,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       point5Pct(sellAmt2.add(sellAmtRToken2))
     )
 
-    expect(await cUSDTokenVault.balanceOf(rsrTrader.address)).to.equal(expectedToTrader2.sub(sellAmt2))
+    expect(await cUSDTokenVault.balanceOf(rsrTrader.address)).to.equal(
+      expectedToTrader2.sub(sellAmt2)
+    )
     expect(await cUSDTokenVault.balanceOf(rTokenTrader.address)).to.equal(
       expectedToFurnace2.sub(sellAmtRToken2)
     )
@@ -1228,7 +1246,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: rTokenTrader,
         name: 'TradeSettled',
-        args: [anyValue, cETHVault.address, rToken.address, auctionSellAmtRToken7, auctionbuyAmtRToken7],
+        args: [
+          anyValue,
+          cETHVault.address,
+          rToken.address,
+          auctionSellAmtRToken7,
+          auctionbuyAmtRToken7,
+        ],
         emitted: true,
       },
       {
@@ -1588,7 +1612,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [anyValue, cETHVault.address, weth.address, withinQuad(sellAmt), withinQuad(minBuyAmt)],
+        args: [
+          anyValue,
+          cETHVault.address,
+          weth.address,
+          withinQuad(sellAmt),
+          withinQuad(minBuyAmt),
+        ],
         emitted: true,
       },
     ])

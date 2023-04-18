@@ -19,7 +19,6 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenMock,
   ERC20Mock,
   FacadeAct,
   IFacadeRead,
@@ -163,7 +162,9 @@ describe('FacadeAct contract', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cToken = <CTokenVaultMock2>await ethers.getContractAt('CTokenVaultMock2', await cTokenAsset.erc20())
+    cToken = <CTokenVaultMock2>(
+      await ethers.getContractAt('CTokenVaultMock2', await cTokenAsset.erc20())
+    )
 
     // Backup tokens and collaterals - USDT - aUSDT - aUSDC - aBUSD
     backupToken1 = erc20s[2] // USDT

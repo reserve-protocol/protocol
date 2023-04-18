@@ -28,7 +28,6 @@ import snapshotGasCost from './utils/snapshotGasCost'
 import {
   Asset,
   CTokenFiatCollateral,
-  CTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -78,7 +77,6 @@ describe('FacadeWrite contract', () => {
   // Tokens
   let token: ERC20Mock
   let usdc: USDCMock
-  let cToken: CTokenMock
   let cTokenVault: CTokenVaultMock
   let basket: Collateral[]
 
@@ -142,8 +140,9 @@ describe('FacadeWrite contract', () => {
 
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
-    cTokenVault = <CTokenVaultMock>await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenVault.asset())
+    cTokenVault = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
+    )
 
     // Deploy DFacadeWriteLib lib
     const facadeWriteLib = await (await ethers.getContractFactory('FacadeWriteLib')).deploy()
