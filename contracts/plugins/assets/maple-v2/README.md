@@ -111,7 +111,7 @@ For the wETH pool:
 ```solidity
 struct CollateralConfig {
     uint48 priceTimeout; // 604800 {s} (1 week)
-    AggregatorV3Interface chainlinkFeed; // "0x0000000000000000000000000000000000000001" {ETH/wETH} does not require an oracle
+    AggregatorV3Interface chainlinkFeed; // "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419" {USD/ETH}, ie {uoa/target}
     uint192 oracleError; // 0.005 {1} which is actually the error for the {USD/ETH} oracle here
     IERC20Metadata erc20; // "0xFfF9A1CAf78b2e5b0A49355a8637EA78b43fB6c3"
     uint192 maxTradeVolume; // 1e6 {UoA}
@@ -136,13 +136,15 @@ The wETH pool relies on [`MaplePoolSelfReferentialCollateral.sol`][reserve-colla
 
 This implementation relies on a number of auxiliary contracts:
 
-#### [IMaplePool.sol][reserve-collateral-maple-interface]
+#### [IMaplePool.sol][reserve-collateral-pool-interface]
 
 Used to interact with both permissionless pools.
 
-#### [MaplePoolMock.sol][reserve-collateral-maple-mock]
+#### [IPoolManager.sol][reserve-collateral-pool-manager-interface]
 
-Allows to manipulate the exchange rate on the pools to test the behavior of the collateral.
+Retrieve the total number of underlying assets, both in the pool and lent to third parties.
+
+This balance is then tampered in the tests to increase / decrease the `refPerTok`.
 
 #### [AppreciatingFiatCollateral.sol][reserve-collateral-parent-contract]
 
@@ -191,8 +193,8 @@ The collateral needs to interact with a number of contracts of the Maple protoco
 
 The addresses of these contracts and the deployment parameters are defined in a [separate script][reserve-collateral-test-context].
 
-Especially, the tests use `FORK_BLOCK = 16964294`:
-the pools were created at `16162536` and `16162554`, and tests will fail if run on older blocks.
+Especially, the tests use `FORK_BLOCK = 16964294`.
+The pools were created at `16162536` and `16162554`, and tests will fail if run on older blocks.
 
 ### List Of Unit Tests
 
@@ -408,17 +410,17 @@ Only the loan default leads to a diminution of the total assets as the outstandi
 [maple-docs-pools]: https://maplefinance.gitbook.io/maple/technical-resources/pools/pools
 [reserve-collateral-fiat-contract]: ./MaplePoolFiatCollateral.sol
 [reserve-collateral-self-ref-contract]: ./MaplePoolSelfReferentialCollateral.sol
-[reserve-collateral-maple-interface]: ./vendor/IMaplePool.sol
-[reserve-collateral-maple-mock]: ../../mocks/MaplePoolMock.sol
+[reserve-collateral-pool-interface]: ./vendor/IMaplePool.sol
+[reserve-collateral-pool-manager-interface]: ./vendor/IPoolManager.sol
 [reserve-collateral-parent-contract]: ../AppreciatingFiatCollateral.sol
 [reserve-collateral-parent-test-script]: ../../../../test/plugins/individual-collateral/collateralTests.ts
 [reserve-collateral-plot-script]: ../../../../test/plugins/individual-collateral/maple-v2/plot.ts
-[reserve-collateral-plot-usdc-overview]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_overview.png
-[reserve-collateral-plot-weth-overview]: ../../../../.github/assets/images/ref-per-tok_weth-pool_overview.png
-[reserve-collateral-plot-usdc-zoom-unrealized-loss]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-unrealized-loss.png
-[reserve-collateral-plot-weth-zoom-unrealized-loss]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-unrealized-loss.png
-[reserve-collateral-plot-usdc-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_usdc-pool_zoom-normal-operation.png
-[reserve-collateral-plot-weth-zoom-normal-operation]: ../../../../.github/assets/images/ref-per-tok_weth-pool_zoom-normal-operation.png
+[reserve-collateral-plot-usdc-overview]: ../../../../.github/assets/images/maple-v2/ref-per-tok_usdc-pool_overview.png
+[reserve-collateral-plot-weth-overview]: ../../../../.github/assets/images/maple-v2/ref-per-tok_weth-pool_overview.png
+[reserve-collateral-plot-usdc-zoom-unrealized-loss]: ../../../../.github/assets/images/maple-v2/ref-per-tok_usdc-pool_zoom-unrealized-loss.png
+[reserve-collateral-plot-weth-zoom-unrealized-loss]: ../../../../.github/assets/images/maple-v2/ref-per-tok_weth-pool_zoom-unrealized-loss.png
+[reserve-collateral-plot-usdc-zoom-normal-operation]: ../../../../.github/assets/images/maple-v2/ref-per-tok_usdc-pool_zoom-normal-operation.png
+[reserve-collateral-plot-weth-zoom-normal-operation]: ../../../../.github/assets/images/maple-v2/ref-per-tok_weth-pool_zoom-normal-operation.png
 [reserve-collateral-pull-request]: https://github.com/reserve-protocol/protocol/pull/757
 [reserve-collateral-test-context]: ../../../../test/plugins/individual-collateral/maple-v2/constants.ts
 [reserve-collateral-test-script]: ../../../../test/plugins/individual-collateral/maple-v2/MaplePoolFiatCollateral.test.ts
