@@ -238,7 +238,7 @@ const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = asyn
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.wcusdcV3, user, amount, recipient)
+  await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.tok, user, amount, recipient)
 }
 
 const reduceTargetPerRef = async (

@@ -50,10 +50,6 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     function claimRewards() external override(Asset, IRewardable) {
         // TODO: delete this
         IRewardable(address(erc20)).claimRewards();
-
-        // uint256 oldBal = rewardERC20.balanceOf(address(this));
-        // ICusdcV3Wrapper(address(erc20)).claimTo(address(this), address(this));
-        // emit RewardsClaimed(rewardERC20, rewardERC20.balanceOf(address(this)) - oldBal);
     }
 
     function _underlyingRefPerTok() internal view virtual override returns (uint192) {

@@ -127,7 +127,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       amtRate: fp('1e6'), // 1M RToken
       pctRate: fp('0.05'), // 5%
     },
-    warmupPeriod: bn('60')
+    warmupPeriod: bn('60'),
   }
 
   const defaultThreshold = fp('0.01') // 1%

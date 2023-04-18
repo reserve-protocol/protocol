@@ -8,7 +8,6 @@ import {
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
-  CTokenMock,
   CTokenVault,
   CTokenVaultMock2,
   ICToken,
@@ -112,7 +111,7 @@ all.forEach((curr: FTokenEnumeration) => {
     delayUntilDefault: DELAY_UNTIL_DEFAULT,
     comptroller: config.FLUX_FINANCE_COMPTROLLER,
     revenueHiding: 0,
-    erc20IsVault: false
+    erc20IsVault: false,
   }
 
   const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
@@ -122,15 +121,15 @@ all.forEach((curr: FTokenEnumeration) => {
 
     if (erc20Address && erc20Address != ZERO_ADDRESS && erc20Address == curr.fToken) {
       const erc20 = await ethers.getContractAt('ERC20Mock', opts.erc20!)
-      const CTokenVaultFactory: ContractFactory = await ethers.getContractFactory(
-        'CTokenVault'
-      )
-      const fTokenVault = <CTokenVault>await CTokenVaultFactory.deploy(
-        opts.erc20,
-        await erc20.name(),
-        await erc20.symbol(),
-        ZERO_ADDRESS,
-        opts.comptroller!
+      const CTokenVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenVault')
+      const fTokenVault = <CTokenVault>(
+        await CTokenVaultFactory.deploy(
+          opts.erc20,
+          await erc20.name(),
+          await erc20.symbol(),
+          ZERO_ADDRESS,
+          opts.comptroller!
+        )
       )
       erc20Address = fTokenVault.address
     }
@@ -181,7 +180,7 @@ all.forEach((curr: FTokenEnumeration) => {
       collateralOpts.chainlinkFeed = chainlinkFeed.address
 
       const collateral = await deployCollateral(collateralOpts)
-      const erc20 = await ethers.getContractAt('CTokenVault', await collateral.erc20() as string) // the fToken
+      const erc20 = await ethers.getContractAt('CTokenVault', (await collateral.erc20()) as string) // the fToken
 
       return {
         alice,
@@ -207,18 +206,24 @@ all.forEach((curr: FTokenEnumeration) => {
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     const FTokenMockFactory = await ethers.getContractFactory('CTokenMock')
-    const underlyingFToken = await FTokenMockFactory.deploy('Mock FToken', 'Mock Ftk', curr.underlying)
+    const underlyingFToken = await FTokenMockFactory.deploy(
+      'Mock FToken',
+      'Mock Ftk',
+      curr.underlying
+    )
 
     const CTokenVaultMock2Factory: ContractFactory = await ethers.getContractFactory(
       'CTokenVaultMock2'
     )
 
-    const fTokenVault = <CTokenVaultMock2>await CTokenVaultMock2Factory.deploy(
-      await underlyingFToken.name(),
-      await underlyingFToken.symbol(),
-      underlyingFToken.address,
-      ZERO_ADDRESS,
-      collateralOpts.comptroller!
+    const fTokenVault = <CTokenVaultMock2>(
+      await CTokenVaultMock2Factory.deploy(
+        await underlyingFToken.name(),
+        await underlyingFToken.symbol(),
+        underlyingFToken.address,
+        ZERO_ADDRESS,
+        collateralOpts.comptroller!
+      )
     )
 
     collateralOpts.erc20IsVault = true
