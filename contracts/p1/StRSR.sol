@@ -238,7 +238,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Begins a delayed unstaking for `amount` StRSR
     /// @param stakeAmount {qStRSR}
     // checks:
-    //   not paused or frozen
+    //   not paused (trading) or frozen
     //   0 < stakeAmount <= bal[caller]
     //
     // effects:
@@ -253,7 +253,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     //   A draft for (totalDrafts' - totalDrafts) drafts
     //   is freshly appended to the caller's draft record.
-    function unstake(uint256 stakeAmount) external notPausedOrFrozen {
+    function unstake(uint256 stakeAmount) external notTradingPausedOrFrozen {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
@@ -283,7 +283,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // checks:
     //   RToken is fully collateralized and the basket is sound.
-    //   The system is not paused or frozen.
+    //   The system is not paused (trading) or frozen.
     //   endId <= r.right
     //   r.queue[endId - 1].availableAt <= now
     //
@@ -296,7 +296,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // actions:
     //   rsr.transfer(account, rsrOut)
-    function withdraw(address account, uint256 endId) external notPausedOrFrozen {
+    function withdraw(address account, uint256 endId) external notTradingPausedOrFrozen {
         // == Refresh ==
         assetRegistry.refresh();
 
@@ -335,7 +335,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         IERC20Upgradeable(address(rsr)).safeTransfer(account, rsrAmount);
     }
 
-    function cancelUnstake(uint256 endId) external notPausedOrFrozen {
+    function cancelUnstake(uint256 endId) external notTradingPausedOrFrozen {
         address account = _msgSender();
 
         // We specifically allow unstaking when under collateralized
@@ -388,7 +388,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // checks:
     //   0 < rsrAmount <= rsr.balanceOf(this)
-    //   not paused or frozen
+    //   not paused (trading) or frozen
     //   caller is backingManager
     //
     // effects, in two phases. Phase 1: (from x to x')
@@ -415,7 +415,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // other properties:
     //   seized >= rsrAmount, which should be a logical consequence of the above effects
 
-    function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
+    function seizeRSR(uint256 rsrAmount) external notTradingPausedOrFrozen {
         require(_msgSender() == address(backingManager), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
 

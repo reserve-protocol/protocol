@@ -30,7 +30,7 @@ contract FurnaceP0 is ComponentP0, IFurnace {
 
     /// Performs any melting that has vested since last call.
     /// @custom:refresher
-    function melt() public notPausedOrFrozen {
+    function melt() public notTradingPausedOrFrozen {
         if (uint48(block.timestamp) < uint64(lastPayout) + PERIOD) return;
 
         // # of whole periods that have passed since lastPayout

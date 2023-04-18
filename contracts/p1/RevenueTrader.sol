@@ -38,7 +38,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// @dev Intended to be used with multicall
     /// @custom:interaction CEI
     // let bal = this contract's balance of erc20
-    // checks: !paused, !frozen
+    // checks: !paused (trading), !frozen
     // does nothing if erc20 == addr(0) or bal == 0
     //
     // If erc20 is tokenToBuy:
@@ -50,7 +50,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //   actions:
     //     tryTrade(prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
-    function manageToken(IERC20 erc20) external notPausedOrFrozen {
+    function manageToken(IERC20 erc20) external notTradingPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 
         uint256 bal = erc20.balanceOf(address(this));

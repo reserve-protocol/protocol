@@ -80,7 +80,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction
     // checks: the addresses in `erc20s` are unique
     // effect: _manageTokens(erc20s)
-    function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
+    function manageTokens(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
         // Token list must not contain duplicates
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
         _manageTokens(erc20s);
@@ -92,7 +92,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction
     // checks: the addresses in `erc20s` are unique (and sorted)
     // effect: _manageTokens(erc20s)
-    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notPausedOrFrozen {
+    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
         // Token list must not contain duplicates
         require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate/unsorted tokens");
         _manageTokens(erc20s);

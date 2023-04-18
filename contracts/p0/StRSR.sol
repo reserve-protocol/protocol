@@ -155,7 +155,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param stakeAmount {qStRSR}
     /// @custom:interaction
-    function unstake(uint256 stakeAmount) external notPausedOrFrozen {
+    function unstake(uint256 stakeAmount) external notTradingPausedOrFrozen {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
@@ -186,7 +186,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
     /// @custom:interaction
-    function withdraw(address account, uint256 endId) external notPausedOrFrozen {
+    function withdraw(address account, uint256 endId) external notTradingPausedOrFrozen {
         // Call state keepers
         main.poke();
 
@@ -218,7 +218,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         main.rsr().safeTransfer(account, total);
     }
 
-    function cancelUnstake(uint256 endId) external notPausedOrFrozen {
+    function cancelUnstake(uint256 endId) external notTradingPausedOrFrozen {
         address account = _msgSender();
 
         // IBasketHandler bh = main.basketHandler();
@@ -271,7 +271,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR will _not_ be smaller than rsrAmount.
     /// @custom:protected
-    function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
+    function seizeRSR(uint256 rsrAmount) external notTradingPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         main.poke();
