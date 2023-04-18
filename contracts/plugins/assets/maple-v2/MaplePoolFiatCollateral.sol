@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import { FixLib, shiftl_toFix } from "contracts/libraries/Fixed.sol";
-import { AggregatorV3Interface, OracleLib } from "contracts/plugins/assets/OracleLib.sol";
-import { IRewardable, Asset, CollateralConfig, AppreciatingFiatCollateral } from "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
-import { IMaplePool } from "contracts/plugins/assets/maple-v2/vendor/IMaplePool.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/plugins/assets/OracleLib.sol";
+import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
+import "contracts/plugins/assets/maple-v2/vendor/IMaplePool.sol";
 
 /**
  * @title MaplePoolFiatCollateral
@@ -22,9 +22,12 @@ contract MaplePoolFiatCollateral is AppreciatingFiatCollateral {
     // The underlying tokens may have 18 (wETH) or 6 (USDC) decimals
     // The Maple v2 tokens have the same number of decimals than their underlying
 
+    // solhint-disable no-empty-blocks
     /// @param config.chainlinkFeed Feed units: {UoA/ref} = {target/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    constructor(CollateralConfig memory config, uint192 revenueHiding) AppreciatingFiatCollateral(config, revenueHiding) {}
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
+    {}
 
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
@@ -38,8 +41,8 @@ contract MaplePoolFiatCollateral is AppreciatingFiatCollateral {
         return shiftl_toFix(rate, -18); // convert to uint192 and actually keep the same value
     }
 
+    // solhint-disable no-empty-blocks
     /// Maple pools don't hand out rewards for LP tokens
-    /// All the returns (from loan interests) are added to the LP, thus increasing the value of all the shares
-    /// The MPL rewards are discontinued; they were a temporary incentive 
+    /// The MPL rewards are discontinued; they were a temporary incentive
     function claimRewards() external virtual override(Asset, IRewardable) {}
 }

@@ -15,5 +15,4 @@ interface IPoolManager {
      *  @dev    Returns the amount unrealized losses.
      */
     function unrealizedLosses() external view returns (uint256 unrealizedLosses_);
-
 }
