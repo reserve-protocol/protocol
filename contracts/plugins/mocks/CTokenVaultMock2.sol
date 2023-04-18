@@ -32,6 +32,14 @@ contract CTokenVaultMock2 is ERC20Mock, IRewardable {
         return 8;
     }
 
+    function exchangeRateCurrent() external returns (uint256) {
+        return asset.exchangeRateCurrent();
+    }
+
+    function exchangeRateStored() external view returns (uint256) {
+        return asset.exchangeRateStored();
+    }
+
     function claimRewards() external {
         uint256 oldBal = comp.balanceOf(msg.sender);
         comptroller.claimComp(msg.sender);
