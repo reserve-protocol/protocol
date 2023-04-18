@@ -14,7 +14,7 @@ abstract contract RewardableP0 is ComponentP0, IRewardableComponent {
 
     /// Claim all rewards
     /// Collective Action
-    function claimRewards() external notPausedOrFrozen {
+    function claimRewards() external notTradingPausedOrFrozen {
         IAssetRegistry reg = main.assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
 
@@ -29,7 +29,7 @@ abstract contract RewardableP0 is ComponentP0, IRewardableComponent {
     /// Collective Action
     /// @param erc20 The ERC20 to claimRewards on
     /// @custom:interaction CEI
-    function claimRewardsSingle(IERC20 erc20) external notPausedOrFrozen {
+    function claimRewardsSingle(IERC20 erc20) external notTradingPausedOrFrozen {
         // empty try/catch because not every erc20 will be wrapped & have a claimRewards func
         // solhint-disable-next-line
         try IRewardable(address(erc20)).claimRewards() {} catch {}

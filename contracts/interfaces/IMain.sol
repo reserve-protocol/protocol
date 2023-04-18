@@ -61,18 +61,26 @@ interface IAuth is IAccessControlUpgradeable {
     /// @param newDuration The new long freeze duration
     event LongFreezeDurationSet(uint48 indexed oldDuration, uint48 indexed newDuration);
 
-    /// Emitted when the system is paused or unpaused
-    /// @param oldVal The old value of `paused`
-    /// @param newVal The new value of `paused`
-    event PausedSet(bool indexed oldVal, bool indexed newVal);
+    /// Emitted when the system is paused or unpaused for trading
+    /// @param oldVal The old value of `tradingPaused`
+    /// @param newVal The new value of `tradingPaused`
+    event TradingPausedSet(bool indexed oldVal, bool indexed newVal);
+
+    /// Emitted when the system is paused or unpaused for issuance
+    /// @param oldVal The old value of `issuancePaused`
+    /// @param newVal The new value of `issuancePaused`
+    event IssuancePausedSet(bool indexed oldVal, bool indexed newVal);
 
     /**
-     * Paused: Disable everything except for OWNER actions, RToken.redeem, StRSR.stake,
-     * and StRSR.payoutRewards
+     * Trading Paused: Disable everything except for OWNER actions, RToken.issue, RToken.redeem,
+     * StRSR.stake, and StRSR.payoutRewards
+     * Issuance Paused: Disable RToken.issue
      * Frozen: Disable everything except for OWNER actions + StRSR.stake (for governance)
      */
 
-    function pausedOrFrozen() external view returns (bool);
+    function tradingPausedOrFrozen() external view returns (bool);
+
+    function issuancePausedOrFrozen() external view returns (bool);
 
     function frozen() external view returns (bool);
 
@@ -94,9 +102,13 @@ interface IAuth is IAccessControlUpgradeable {
     // onlyRole(OWNER)
     function unfreeze() external;
 
-    function pause() external;
+    function pauseTrading() external;
 
-    function unpause() external;
+    function unpauseTrading() external;
+
+    function pauseIssuance() external;
+
+    function unpauseIssuance() external;
 }
 
 interface IComponentRegistry {
@@ -177,5 +189,7 @@ interface TestIMain is IMain {
 
     function longFreezes(address account) external view returns (uint256);
 
-    function paused() external view returns (bool);
+    function tradingPaused() external view returns (bool);
+
+    function issuancePaused() external view returns (bool);
 }

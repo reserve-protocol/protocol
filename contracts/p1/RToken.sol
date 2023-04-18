@@ -118,7 +118,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function issueTo(address recipient, uint256 amount)
         public
-        notPausedOrFrozen
+        notIssuancePausedOrFrozen
         exchangeRateIsValidAfter
     {
         require(amount > 0, "Cannot issue zero");
@@ -299,7 +299,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   but it is fully covered for `mint` (limitations of coverage plugin)
     function mint(address recipient, uint256 amtRToken)
         external
-        notPausedOrFrozen
+        notTradingPausedOrFrozen
         exchangeRateIsValidAfter
     {
         require(_msgSender() == address(backingManager), "not backing manager");
@@ -308,7 +308,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
-    // checks: not paused or frozen
+    // checks: not trading paused or frozen
     // effects:
     //   bal'[caller] = bal[caller] - amtRToken
     //   totalSupply' = totalSupply - amtRToken
@@ -324,7 +324,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    // checks: unpaused; unfrozen; caller is backingManager
+    // checks: trading unpaused; unfrozen; caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
     //
     // untestable:
@@ -332,7 +332,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   but it is fully covered for `setBasketsNeeded` (limitations of coverage plugin)
     function setBasketsNeeded(uint192 basketsNeeded_)
         external
-        notPausedOrFrozen
+        notTradingPausedOrFrozen
         exchangeRateIsValidAfter
     {
         require(_msgSender() == address(backingManager), "not backing manager");
@@ -342,7 +342,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Sends all token balance of erc20 (if it is registered) to the BackingManager
     /// @custom:interaction
-    function monetizeDonations(IERC20 erc20) external notPausedOrFrozen {
+    function monetizeDonations(IERC20 erc20) external notTradingPausedOrFrozen {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         IERC20Upgradeable(address(erc20)).safeTransfer(
             address(backingManager),
