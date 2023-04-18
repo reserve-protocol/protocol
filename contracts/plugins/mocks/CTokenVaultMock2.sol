@@ -6,7 +6,6 @@ import "../assets/compoundv2/CTokenVault.sol";
 import "../assets/compoundv2/ICToken.sol";
 import "./CTokenMock.sol";
 
-
 contract CTokenVaultMock2 is ERC20Mock, IRewardable {
     ERC20Mock public comp;
     CTokenMock public asset;

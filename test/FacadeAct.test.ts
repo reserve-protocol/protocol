@@ -720,7 +720,7 @@ describe('FacadeAct contract', () => {
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
       })
 
-      it.only('Revenues - Should handle multiple assets with same reward token', async () => {
+      it('Revenues - Should handle multiple assets with same reward token', async () => {
         // Update Reward token for AToken to use same as CToken
         const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
         const chainlinkFeed = <MockV3Aggregator>(
