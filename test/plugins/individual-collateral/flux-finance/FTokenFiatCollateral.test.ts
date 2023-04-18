@@ -9,6 +9,8 @@ import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
   CTokenMock,
+  CTokenVault,
+  CTokenVaultMock2,
   ICToken,
   MockV3Aggregator,
   MockV3Aggregator__factory,
@@ -55,6 +57,7 @@ interface FTokenEnumeration {
 interface FTokenCollateralOpts extends CollateralOpts {
   comptroller?: string
   revenueHiding?: BigNumberish
+  erc20IsVault?: boolean
 }
 
 // ====
@@ -109,10 +112,28 @@ all.forEach((curr: FTokenEnumeration) => {
     delayUntilDefault: DELAY_UNTIL_DEFAULT,
     comptroller: config.FLUX_FINANCE_COMPTROLLER,
     revenueHiding: 0,
+    erc20IsVault: false
   }
 
   const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
     opts = { ...defaultCollateralOpts, ...opts }
+
+    let erc20Address = opts.erc20
+
+    if (erc20Address && erc20Address != ZERO_ADDRESS && erc20Address == curr.fToken) {
+      const erc20 = await ethers.getContractAt('ERC20Mock', opts.erc20!)
+      const CTokenVaultFactory: ContractFactory = await ethers.getContractFactory(
+        'CTokenVault'
+      )
+      const fTokenVault = <CTokenVault>await CTokenVaultFactory.deploy(
+        opts.erc20,
+        await erc20.name(),
+        await erc20.symbol(),
+        ZERO_ADDRESS,
+        opts.comptroller!
+      )
+      erc20Address = fTokenVault.address
+    }
 
     const FTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
@@ -120,7 +141,7 @@ all.forEach((curr: FTokenEnumeration) => {
 
     const collateral = <TestICollateral>await FTokenCollateralFactory.deploy(
       {
-        erc20: opts.erc20,
+        erc20: erc20Address,
         targetName: opts.targetName,
         priceTimeout: opts.priceTimeout,
         chainlinkFeed: opts.chainlinkFeed,
@@ -160,7 +181,7 @@ all.forEach((curr: FTokenEnumeration) => {
       collateralOpts.chainlinkFeed = chainlinkFeed.address
 
       const collateral = await deployCollateral(collateralOpts)
-      const erc20 = await ethers.getContractAt('ICToken', collateralOpts.erc20 as string) // the fToken
+      const erc20 = await ethers.getContractAt('CTokenVault', await collateral.erc20() as string) // the fToken
 
       return {
         alice,
@@ -186,15 +207,29 @@ all.forEach((curr: FTokenEnumeration) => {
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     const FTokenMockFactory = await ethers.getContractFactory('CTokenMock')
-    const erc20 = await FTokenMockFactory.deploy('Mock FToken', 'Mock Ftk', curr.underlying)
-    collateralOpts.erc20 = erc20.address
+    const underlyingFToken = await FTokenMockFactory.deploy('Mock FToken', 'Mock Ftk', curr.underlying)
+
+    const CTokenVaultMock2Factory: ContractFactory = await ethers.getContractFactory(
+      'CTokenVaultMock2'
+    )
+
+    const fTokenVault = <CTokenVaultMock2>await CTokenVaultMock2Factory.deploy(
+      await underlyingFToken.name(),
+      await underlyingFToken.symbol(),
+      underlyingFToken.address,
+      ZERO_ADDRESS,
+      collateralOpts.comptroller!
+    )
+
+    collateralOpts.erc20IsVault = true
+    collateralOpts.erc20 = fTokenVault.address
 
     const collateral = await deployCollateral(collateralOpts)
 
     return {
       collateral,
       chainlinkFeed,
-      tok: erc20,
+      tok: fTokenVault,
     }
   }
 
@@ -208,9 +243,10 @@ all.forEach((curr: FTokenEnumeration) => {
     user: SignerWithAddress,
     recipient: string
   ) => {
-    const tok = ctx.tok as ICToken
-    const underlying = await ethers.getContractAt('IERC20Metadata', await tok.underlying())
-    await mintFToken(underlying, curr.holderUnderlying, tok, amount, recipient)
+    const tok = ctx.tok as CTokenVault
+    const fToken = await ethers.getContractAt('ICToken', await tok.asset())
+    const underlying = await ethers.getContractAt('IERC20Metadata', await fToken.underlying())
+    await mintFToken(underlying, curr.holderUnderlying, fToken, tok, amount, recipient)
   }
 
   const increaseRefPerTok = async (ctx: CollateralFixtureContext) => {
@@ -232,21 +268,21 @@ all.forEach((curr: FTokenEnumeration) => {
 
       const rate = fp('2')
       const rateAsRefPerTok = rate.div(50)
-      await (tok as CTokenMock).setExchangeRate(rate) // above current
+      await (tok as CTokenVaultMock2).setExchangeRate(rate) // above current
       await collateral.refresh()
       const before = await collateral.refPerTok()
       expect(before).to.equal(rateAsRefPerTok.mul(fp('0.99')).div(fp('1')))
       expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Should be SOUND if drops just under 1%
-      await (tok as CTokenMock).setExchangeRate(rate.mul(fp('0.99001')).div(fp('1')))
+      await (tok as CTokenVaultMock2).setExchangeRate(rate.mul(fp('0.99001')).div(fp('1')))
       await collateral.refresh()
       let after = await collateral.refPerTok()
       expect(before).to.eq(after)
       expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Should be DISABLED if drops just over 1%
-      await (tok as CTokenMock).setExchangeRate(before.mul(fp('0.98999')).div(fp('1')))
+      await (tok as CTokenVaultMock2).setExchangeRate(before.mul(fp('0.98999')).div(fp('1')))
       await collateral.refresh()
       after = await collateral.refPerTok()
       expect(before).to.be.gt(after)
