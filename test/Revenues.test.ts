@@ -461,7 +461,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await trade.worstCasePrice()).to.be.gte(fp('0.775'))
       })
 
-      it.only('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
+      it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
         // Set COMP tokens as reward
         rewardAmountCOMP = bn('0.8e18')
 
@@ -484,7 +484,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             emitted: true,
           },
           {
-            contract: aaveToken,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
             emitted: true,

@@ -424,7 +424,14 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await furnace.connect(owner).setRatio(ratio)
 
       const max256 = bn(2).pow(256).sub(1)
-      await mintCollaterals(owner, [addr1, addr2], max256, basket)
+      await token0.connect(owner).mint(addr1.address, max256)
+      await token1.connect(owner).mint(addr1.address, max256)
+      await token2.connect(owner).mint(addr1.address, max256)
+      await token3.connect(owner).mint(addr1.address, max256)
+      await token0.connect(addr1).approve(rToken.address, max256)
+      await token1.connect(addr1).approve(rToken.address, max256)
+      await token2.connect(addr1).approve(rToken.address, max256)
+      await token3.connect(addr1).approve(rToken.address, max256)
 
       // Set up larger throttles
       const throttle = { amtRate: bal.lt(fp('1')) ? fp('1') : bal, pctRate: 0 }
@@ -443,7 +450,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       return furnace
     }
 
-    it.only('Should not revert at extremes', async () => {
+    it('Should not revert at extremes', async () => {
       const ratios = [fp('1'), fp('0'), fp('0.000001069671574938')]
 
       const bals = [fp('1e18'), fp('0'), bn('1e9')]
