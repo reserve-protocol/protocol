@@ -134,6 +134,14 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         _delegate(signer, delegatee);
     }
 
+    /// Stakes an RSR `amount` on the corresponding RToken and delegates
+    /// votes from the sender to `delegatee` or self
+    function stakeAndDelegate(uint256 rsrAmount, address delegatee) public {
+        stake(rsrAmount);
+        address actualDelegatee = (delegatee == address(0) ? _msgSender() : delegatee);
+        _delegate(_msgSender(), actualDelegatee);
+    }
+
     function _mint(address account, uint256 amount) internal override {
         super._mint(account, amount);
         _writeCheckpoint(_totalSupplyCheckpoints[era], _add, amount);
