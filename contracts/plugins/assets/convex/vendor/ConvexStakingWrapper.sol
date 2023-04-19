@@ -92,6 +92,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     );
     event Withdrawn(address indexed _user, uint256 _amount, bool _unwrapped);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
 
     constructor() public ERC20("StakedConvexToken", "stkCvx") {}
 
@@ -402,6 +403,14 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
             }
         }
         return claimable;
+    }
+
+    function claimRewards() external {
+        uint256 cvxOldBal = IERC20(cvx).balanceOf(msg.sender);
+        uint256 crvOldBal = IERC20(crv).balanceOf(msg.sender);
+        _checkpointAndClaim([address(msg.sender), address(msg.sender)]);
+        emit RewardsClaimed(IERC20(cvx), IERC20(cvx).balanceOf(msg.sender) - cvxOldBal);
+        emit RewardsClaimed(IERC20(crv), IERC20(crv).balanceOf(msg.sender) - crvOldBal);
     }
 
     function getReward(address _account) external {
