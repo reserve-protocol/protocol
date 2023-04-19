@@ -7,8 +7,8 @@ import "../interfaces/IAsset.sol";
 import "../interfaces/IBackingManager.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
+import "../libraries/DutchAuctionLib.sol";
 import "../libraries/Fixed.sol";
-import "./mixins/SwapLib.sol";
 import "./mixins/RecollateralizationLib.sol";
 import "./mixins/Trading.sol";
 
@@ -19,6 +19,7 @@ import "./mixins/Trading.sol";
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BackingManagerP1 is TradingP1, IBackingManager {
+    using DutchAuctionLib for DutchAuction;
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
@@ -33,19 +34,20 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     IRevenueTrader private rTokenTrader;
     uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = FIX_ONE; // {1} 100%
-    uint192 public constant MAX_TRADE_COOLDOWN = 86400; // {s} 24hr
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
-    uint48 public tradeCooldown; // {s} number of seconds between any type of trade
-    uint48 public whenNextTrade; // {s} block timestamp at which can next trade
 
-    // TODO check storage slots
+    // === Added in 3.0.0 ===
+
+    uint48 private tradeEnd; // {s} timestamp of the end of the last trade
+
+    // keys: {s} dutch auction end times
+    mapping(uint48 => DutchAuction) private dutchAuctions;
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY
     // backingBuffer <= MAX_BACKING_BUFFER
-    // tradeCooldown <= MAX_TRADE_COOLDOWN
     // ... and the *much* more complicated temporal properties for _manageTokens()
 
     function init(
@@ -54,11 +56,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_,
         uint192 minTradeVolume_,
-        uint192 swapPricepoint_,
-        uint48 tradeCooldown_
+        uint48 dutchAuctionLength_
     ) external initializer {
         __Component_init(main_);
-        __Trading_init(main_, maxTradeSlippage_, minTradeVolume_, swapPricepoint_);
+        __Trading_init(main_, maxTradeSlippage_, minTradeVolume_, dutchAuctionLength_);
 
         assetRegistry = main_.assetRegistry();
         basketHandler = main_.basketHandler();
@@ -71,7 +72,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
-        setTradeCooldown(tradeCooldown_);
+    }
+
+    /// Settle a single trade
+    /// @custom:interaction
+    function settleTrade(IERC20 sell) public override(ITrading, TradingP1) {
+        // Super-call handles all paused/frozen checks
+        tradeEnd = uint48(block.timestamp);
+        super.settleTrade(sell); // has interactions, so must go second
     }
 
     /// Give RToken max allowance over the registered token `erc20`
@@ -116,7 +124,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // == Refresh ==
         assetRegistry.refresh();
 
-        requireReadyToTrade();
+        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
+        require(basketHandler.isReady(), "basket not ready");
+        require(
+            block.timestamp >= basketHandler.timestamp() + tradingDelay + dutchAuctionLength,
+            "batch auction waiting"
+        );
+        require(!dutchAuctionOngoing(), "dutch auction ongoing");
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
         uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
@@ -150,66 +164,119 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                     if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
                 }
 
-                ITrade trade = openTrade(req);
-                whenNextTrade = trade.endTime() + tradeCooldown;
+                openTrade(req);
             } else {
                 // Haircut time
                 compromiseBasketsNeeded(basketsHeld.bottom, basketsNeeded);
-                whenNextTrade = uint48(block.timestamp) + tradeCooldown;
-                // this isn't a trade technically, but seems like it should reset the cooldown too
             }
         }
     }
 
-    /// Maintain the overall backing policy in an atomic swap with the caller
-    /// Supports both exactInput and exactOutput swap methods
-    /// @dev Caller must have granted tokenIn allowances for up to maxAmountIn
-    /// @param tokenIn The input token, the one the caller provides
-    /// @param tokenOut The output token, the one the protocol provides
-    /// @param minAmountOut {qTokenOut} The minimum amount the swapper wants in output tokens
-    /// @param maxAmountIn {qTokenIn} The most the swapper is willing to pay in input tokens
-    /// @return s The actual swap performed
-    /// @custom:interaction
+    /// Maintain the overall backing policy in an atomic swap via a dutch auction
+    /// @dev Caller must have granted tokenIn allowances for required tokenIn bal
+    /// @dev To get required tokenIn bal, use ethers.callstatic and look at the swap's buyAmount
+    /// @param tokenIn The ERC20 token provided by the caller
+    /// @param tokenOut The ERC20 token being purchased by the caller
+    /// @param amountOut {qTokenOut} The exact quantity of tokenOut being purchased
+    /// @return The exact Swap performed
+    /// @custom:interaction RCEI
     function swap(
         IERC20 tokenIn,
         IERC20 tokenOut,
-        uint256 maxAmountIn,
-        uint256 minAmountOut
-    ) external notPausedOrFrozen returns (Swap memory s) {
+        uint256 amountOut
+    ) external returns (Swap memory) {
         // == Refresh ==
         assetRegistry.refresh();
+        // should melt() here too; TODO when we add to manageTokens()
 
-        // Get precise Swap
-        s = getSwap();
-        whenNextTrade = uint48(block.timestamp) + tradeCooldown;
+        // === Checks + Effects ===
 
-        // Require the calculated swap is better than the passed-in swap
-        require(s.sell == tokenOut && s.buy == tokenIn, "swap tokens changed");
-        require(s.sellAmount >= minAmountOut, "output amount fell");
-        require(s.buyAmount <= maxAmountIn, "input amount increased");
+        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
+        require(basketHandler.isReady(), "basket not ready");
+        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
 
-        // Seize RSR if needed
-        if (s.sell == rsr) {
-            uint256 bal = s.sell.balanceOf(address(this));
-            if (s.sellAmount > bal) stRSR.seizeRSR(s.sellAmount - bal);
-        }
+        DutchAuction storage auction = ensureDutchAuction();
+        // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
 
-        executeSwap(s);
+        require(auction.buy.erc20() == tokenIn, "buy token mismatch");
+        require(auction.sell.erc20() == tokenOut, "sell token mismatch");
+
+        // {buyTok}
+        uint192 bidBuyAmt = shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()));
+
+        // === Interactions ===
+
+        // Complete bid + swap
+        return auction.bid(divuu(block.timestamp - tradeEnd, dutchAuctionLength), bidBuyAmt);
     }
 
-    /// @return The next Swap, without refreshing the assetRegistry
-    function getSwap() public view returns (Swap memory) {
-        requireReadyToTrade();
+    /// To be used via callstatic
+    /// Should be idempotent if accidentally called
+    /// @custom:static-call
+    function getSwap() external returns (Swap memory s) {
+        // == Refresh ==
+        assetRegistry.refresh();
+        // should melt() here too; TODO when we add to manageTokens()
 
-        // TradeRequest from manageTokens()
+        // === Checks + Effects ===
+
+        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
+        require(basketHandler.isReady(), "basket not ready");
+        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
+
+        DutchAuction storage auction = ensureDutchAuction();
+        // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
+
+        // {buyTok/sellTok}
+        uint192 price = DutchAuctionLib.currentPrice(
+            divuu(block.timestamp - tradeEnd, dutchAuctionLength),
+            auction.middlePrice,
+            auction.lowPrice
+        );
+
+        // {buyTok} = {sellTok} * {buyTok/sellTok}
+        uint192 buyAmount = auction.sellAmount.mul(price, CEIL);
+
+        s = Swap(
+            auction.sell.erc20(),
+            auction.buy.erc20(),
+            auction.sellAmount.shiftl_toUint(int8(auction.sell.erc20Decimals()), FLOOR),
+            buyAmount.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
+        );
+    }
+
+    // === Private ===
+
+    /// Ensures a dutch auction exists and returns it, or reverts
+    /// After returning, endTrade is > block.timestamp
+    function ensureDutchAuction() private returns (DutchAuction storage auction) {
+        require(dutchAuctionOngoing(), "no dutch auction ongoing");
+
+        auction = dutchAuctions[tradeEnd];
+        if (tradeEnd > block.timestamp) {
+            return auction;
+        }
+        // else: virtual ongoing auction; ie tradeEnd <= block.timestamp by dutchAuctionLength
+
+        // Same TradeRequest from manageTokens()
         (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
             .prepareRecollateralizationTrade(this, basketHandler.basketsHeldBy(address(this)));
 
         require(doTrade, "swap not available");
-        return SwapLib.prepareSwap(req, swapPricepoint, SwapLib.SwapVariant.CALCULATE_SELL_AMOUNT);
-    }
 
-    // === Private ===
+        // Seize RSR if needed
+        if (req.sell.erc20() == rsr) {
+            uint256 bal = rsr.balanceOf(address(this));
+            if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
+        }
+
+        // {sellTok}
+        uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
+
+        // at this point: the auction is virtual, make it real and advance the tradeEnd
+        tradeEnd += dutchAuctionLength;
+        auction.setupAuction(req.sell, req.buy, sellAmount);
+    }
 
     /// Send excess assets to the RSR and RToken traders
     /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
@@ -312,12 +379,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         rToken.setBasketsNeeded(basketsHeldBottom);
     }
 
-    /// Require all the pre-conditions to trading of any kind
-    function requireReadyToTrade() private view {
-        require(tradesOpen == 0, "trade open");
-        require(basketHandler.isReady(), "basket not ready");
-        require(block.timestamp >= whenNextTrade, "cooling down");
-        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
+    /// A dutch auction can be ongoing in two ways:
+    ///   - virtually (tradeEnd is in the past by dutchAuctionLength); or
+    ///   - concretely (tradeEnd is in future by dutchAuctionLength)
+    /// @return If a dutch auction is ongoing
+    function dutchAuctionOngoing() private view returns (bool) {
+        // A dutch auction is ongoing iff tradeEnd is within dutchAuctionLength in either direction
+        //   - if it's earlier, then the auction is virtual
+        //   - if it's later, then the auction exists in storage already
+        return
+            tradeEnd < block.timestamp + dutchAuctionLength &&
+            tradeEnd + dutchAuctionLength > block.timestamp;
     }
 
     // === Governance Setters ===
@@ -334,13 +406,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(val <= MAX_BACKING_BUFFER, "invalid backingBuffer");
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
-    }
-
-    /// @custom:governance
-    function setTradeCooldown(uint48 val) public governance {
-        require(val <= MAX_TRADE_COOLDOWN, "invalid tradeCooldown");
-        emit TradeCooldownSet(tradeCooldown, val);
-        tradeCooldown = val;
     }
 
     /**

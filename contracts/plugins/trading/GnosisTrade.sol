@@ -82,7 +82,7 @@ contract GnosisTrade is ITrade {
         IBroker broker_,
         address origin_,
         IGnosis gnosis_,
-        uint48 auctionLength,
+        uint48 batchAuctionLength,
         TradeRequest calldata req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sellAmount <= type(uint96).max, "sellAmount too large");
@@ -100,7 +100,7 @@ contract GnosisTrade is ITrade {
         broker = broker_;
         origin = origin_;
         gnosis = gnosis_;
-        endTime = uint48(block.timestamp) + auctionLength;
+        endTime = uint48(block.timestamp) + batchAuctionLength;
 
         // {buyTok/sellTok}
         worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(

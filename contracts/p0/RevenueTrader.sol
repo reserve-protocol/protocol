@@ -5,28 +5,44 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/IAssetRegistry.sol";
+import "../libraries/DutchAuctionLib.sol";
 import "./mixins/Trading.sol";
 import "./mixins/TradingLib.sol";
 
 /// Trader Component that converts all asset balances at its address to a
 /// single target asset and sends this asset to the Distributor.
 contract RevenueTraderP0 is TradingP0, IRevenueTrader {
+    using DutchAuctionLib for DutchAuction;
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
     IERC20 public tokenToBuy;
+
+    // mapping from sell tokens to timestamp of last trade in that token
+    mapping(IERC20 => uint48) private tradeEnds; // {s} timestamp of the end of the last trade
+
+    // outer keys: sell token
+    // inner keys: dutch auction end times {s}
+    mapping(IERC20 => mapping(uint48 => DutchAuction)) private dutchAuctions;
 
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
         uint192 maxTradeSlippage_,
         uint192 minTradeVolume_,
-        uint192 swapPricepoint_
+        uint48 dutchAuctionLength_
     ) public initializer {
         require(address(tokenToBuy_) != address(0), "invalid token address");
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_, minTradeVolume_, swapPricepoint_);
+        __Trading_init(maxTradeSlippage_, minTradeVolume_, dutchAuctionLength_);
         tokenToBuy = tokenToBuy_;
+    }
+
+    /// Settle a single trade
+    /// @custom:interaction
+    function settleTrade(IERC20 sell) public override(ITrading, TradingP0) {
+        tradeEnds[sell] = uint48(block.timestamp);
+        super.settleTrade(sell); // has interactions, so must go second
     }
 
     /// Processes a single token; unpermissioned
@@ -75,46 +91,112 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         }
     }
 
-    /// Perform a swap for the tokenToBuy
-    /// @dev Caller must have granted tokenIn allowances
-    /// @param tokenIn The input token, the one the caller provides
-    /// @param tokenOut The output token, the one the protocol provides
-    /// @param minAmountOut {qTokenOut} The minimum amount the swapper wants out
-    /// @param maxAmountIn {qTokenIn} The most the swapper is willing to pay
-    /// @return s The actual swap performed
-    /// @custom:interaction
+    /// Executes an atomic swap for revenue via a dutch auction
+    /// @dev Caller must have granted tokenIn allowances for required tokenIn bal
+    /// @dev To get required tokenIn bal, use ethers.callstatic and look at the swap's buyAmount
+    /// @param tokenIn The ERC20 token provided by the caller
+    /// @param tokenOut The ERC20 token being purchased by the caller
+    /// @param amountOut {qTokenOut} The exact quantity of tokenOut being purchased
+    /// @return The exact Swap performed
+    /// @custom:interaction RCEI
     function swap(
         IERC20 tokenIn,
         IERC20 tokenOut,
-        uint256 maxAmountIn,
-        uint256 minAmountOut
-    ) external notPausedOrFrozen returns (Swap memory s) {
+        uint256 amountOut
+    ) external returns (Swap memory) {
         // == Refresh ==
         main.assetRegistry().refresh();
+        // should melt() here too; TODO when we add to manageToken()
 
-        require(tokenIn == tokenToBuy, "wrong tokenIn");
+        // === Checks + Effects ===
 
-        s = getSwap(tokenOut);
+        DutchAuction storage auction = ensureDutchAuction(tokenOut);
+        // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
 
-        // Require the calculated swap is better than the passed-in swap
-        require(s.sell == tokenOut && s.buy == tokenIn, "swap tokens changed");
-        require(s.sellAmount >= minAmountOut, "output amount fell");
-        require(s.buyAmount <= maxAmountIn, "input amount increased");
+        require(auction.buy.erc20() == tokenIn, "buy token mismatch");
+        require(auction.sell.erc20() == tokenOut, "sell token mismatch");
 
-        executeSwap(s);
+        // {buyTok}
+        uint192 bidBuyAmt = shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()));
+
+        // === Interactions ===
+
+        // Complete bid + swap
+        return
+            auction.bid(
+                divuu(block.timestamp - tradeEnds[tokenOut], dutchAuctionLength),
+                bidBuyAmt
+            );
     }
 
-    /// @param sell The token the protocol is selling
-    /// @return The next Swap, without refreshing the assetRegistry
-    function getSwap(IERC20 sell) public view returns (Swap memory) {
-        IAsset sellAsset = main.assetRegistry().toAsset(sell);
-        TradeRequest memory req = TradeRequest(
-            sellAsset,
-            main.assetRegistry().toAsset(tokenToBuy),
-            sellAsset.bal(address(this)),
-            0 // unused, will be overwritten
+    /// To be used via callstatic
+    /// Should not change the dutch auction logic if accidentally called
+    /// @dev To be iterated over by a Facade using the assetRegistry.erc20s()
+    /// @custom:static-call
+    function getSwap(IERC20 tokenOut) external returns (Swap memory s) {
+        // == Refresh ==
+        main.assetRegistry().refresh();
+        // should melt() here too; TODO when we add to manageToken()
+
+        // === Checks + Effects ===
+
+        uint48 tradeEnd = tradeEnds[tokenOut];
+        DutchAuction storage auction = ensureDutchAuction(tokenOut);
+        // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
+
+        // {buyTok/sellTok}
+        uint192 price = DutchAuctionLib.currentPrice(
+            divuu(block.timestamp - tradeEnd, dutchAuctionLength),
+            auction.middlePrice,
+            auction.lowPrice
         );
 
-        return TradingLibP0.prepareSwap(req, swapPricepoint, SwapVariant.CALCULATE_BUY_AMOUNT);
+        // {buyTok} = {sellTok} * {buyTok/sellTok}
+        uint192 buyAmount = auction.sellAmount.mul(price, CEIL);
+
+        s = Swap(
+            auction.sell.erc20(),
+            auction.buy.erc20(),
+            auction.sellAmount.shiftl_toUint(int8(auction.sell.erc20Decimals()), FLOOR),
+            buyAmount.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
+        );
+    }
+
+    // === Private ===
+
+    /// Ensures a dutch auction exists and returns it, or reverts
+    /// After returning, endTrade is > block.timestamp
+    function ensureDutchAuction(IERC20 sell) private returns (DutchAuction storage auction) {
+        require(dutchAuctionOngoing(sell), "no dutch auction ongoing");
+        uint48 tradeEnd = tradeEnds[sell];
+
+        auction = dutchAuctions[sell][tradeEnd];
+        if (tradeEnd > block.timestamp) {
+            return auction;
+        }
+        // else: virtual ongoing auction; ie tradeEnd <= block.timestamp by dutchAuctionLength
+
+        IAsset sellAsset = main.assetRegistry().toAsset(sell);
+        IAsset buyAsset = main.assetRegistry().toAsset(tokenToBuy);
+
+        // {sellTok}
+        uint192 sellAmount = sellAsset.bal(address(this));
+
+        // at this point: the auction is virtual, make it real and advance the tradeEnd
+        tradeEnds[sell] = tradeEnd + dutchAuctionLength;
+        auction.setupAuction(sellAsset, buyAsset, sellAmount);
+    }
+
+    /// A dutch auction can be ongoing in two ways:
+    ///   - virtually (tradeEnd is in the past by dutchAuctionLength); or
+    ///   - concretely (tradeEnd is in future by dutchAuctionLength)
+    /// @return If a dutch auction is ongoing for the sell token
+    function dutchAuctionOngoing(IERC20 sell) private view returns (bool) {
+        // A dutch auction is ongoing iff tradeEnds[sell] is within dutchAuctionLength in either direction
+        //   - if it's earlier, then the auction is virtual
+        //   - if it's later, then the auction exists in storage already
+        return
+            tradeEnds[sell] < block.timestamp + dutchAuctionLength &&
+            tradeEnds[sell] + dutchAuctionLength > block.timestamp;
     }
 }

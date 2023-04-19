@@ -33,8 +33,8 @@ contract BrokerP1 is ComponentP1, IBroker {
     // The Gnosis contract to init each trade with. Governance parameter.
     IGnosis public gnosis;
 
-    // {s} the length of an auction. Governance parameter.
-    uint48 public auctionLength;
+    // {s} the length of a Gnosis EasyAuction (batch) auction. Governance parameter.
+    uint48 public batchAuctionLength;
 
     // Whether trading is disabled.
     // Initially false. Settable by OWNER. A trade clone can set it to true via reportViolation()
@@ -51,7 +51,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         IMain main_,
         IGnosis gnosis_,
         ITrade tradeImplementation_,
-        uint48 auctionLength_
+        uint48 batchAuctionLength_
     ) external initializer {
         __Component_init(main_);
 
@@ -61,7 +61,7 @@ contract BrokerP1 is ComponentP1, IBroker {
 
         setGnosis(gnosis_);
         setTradeImplementation(tradeImplementation_);
-        setAuctionLength(auctionLength_);
+        setBatchAuctionLength(batchAuctionLength_);
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract
@@ -107,7 +107,7 @@ contract BrokerP1 is ComponentP1, IBroker {
             req.sellAmount
         );
 
-        trade.init(this, caller, gnosis, auctionLength, req);
+        trade.init(this, caller, gnosis, batchAuctionLength, req);
         return trade;
     }
 
@@ -143,13 +143,13 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     /// @custom:governance
-    function setAuctionLength(uint48 newAuctionLength) public governance {
+    function setBatchAuctionLength(uint48 newAuctionLength) public governance {
         require(
             newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
-            "invalid auctionLength"
+            "invalid batchAuctionLength"
         );
-        emit AuctionLengthSet(auctionLength, newAuctionLength);
-        auctionLength = newAuctionLength;
+        emit BatchAuctionLengthSet(batchAuctionLength, newAuctionLength);
+        batchAuctionLength = newAuctionLength;
     }
 
     /// @custom:governance

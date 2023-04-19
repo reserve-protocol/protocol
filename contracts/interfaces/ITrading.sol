@@ -5,16 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../libraries/Fixed.sol";
 import "./IAsset.sol";
 import "./IComponent.sol";
-import "./ITrade.sol";
 import "./IRewardable.sol";
-
-/// A simple atomic swap
-struct Swap {
-    IERC20 sell;
-    IERC20 buy;
-    uint256 sellAmount; // {qSellTok}
-    uint256 buyAmount; // {qBuyTok}
-}
+import "./ITrade.sol";
 
 /**
  * @title ITrading
@@ -23,20 +15,7 @@ struct Swap {
 interface ITrading is IComponent, IRewardableComponent {
     event MaxTradeSlippageSet(uint192 indexed oldVal, uint192 indexed newVal);
     event MinTradeVolumeSet(uint192 indexed oldVal, uint192 indexed newVal);
-    event SwapPricepointSet(uint192 indexed oldVal, uint192 indexed newVal);
-    event TradeCooldownSet(uint48 indexed oldVal, uint48 indexed newVal);
-
-    // Emitted when an atomic swap is performed
-    /// @param sell The ERC20 the protocol is selling
-    /// @param buy The ERC20 the protocol is buying
-    /// @param sellAmount {qSellTok} The quantity of the sell token
-    /// @param buyAmount {qSellTok} The quantity of the buy token
-    event SwapCompleted(
-        IERC20 indexed sell,
-        IERC20 indexed buy,
-        uint256 sellAmount,
-        uint256 buyAmount
-    );
+    event DutchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
 
     /// Emitted when a trade is started
     /// @param trade The one-time-use trade contract that was just deployed
@@ -67,7 +46,7 @@ interface ITrading is IComponent, IRewardableComponent {
     );
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
-    /// @custom:refresher
+    /// @custom:interaction
     function settleTrade(IERC20 sell) external;
 
     /// @return {%} The maximum trade slippage acceptable
@@ -75,9 +54,6 @@ interface ITrading is IComponent, IRewardableComponent {
 
     /// @return {UoA} The minimum trade volume in UoA, applies to all assets
     function minTradeVolume() external view returns (uint192);
-
-    /// @return {1} The swapPricepoint
-    function swapPricepoint() external view returns (uint192);
 
     /// @return The ongoing trade for a sell token, or the zero address
     function trades(IERC20 sell) external view returns (ITrade);
@@ -99,10 +75,4 @@ interface TestITrading is ITrading {
 
     /// @custom:governance
     function setMinTradeVolume(uint192 val) external;
-
-    /// @custom:governance
-    function setSwapPricepoint(uint192 val) external;
-
-    /// @custom:governance
-    function setTradeCooldown(uint192 val) external;
 }

@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IBroker.sol";
 import "./IComponent.sol";
+import "./ISwapper.sol";
 import "./ITrading.sol";
 
 /**
@@ -17,7 +18,7 @@ import "./ITrading.sol";
  *   latter requires a sorted array, and executes in O(n) rather than O(n^2) time. In the
  *   vast majority of cases we expect the the O(n^2) function to be acceptable.
  */
-interface IBackingManager is IComponent, ITrading {
+interface IBackingManager is IComponent, ITrading, ISwapper {
     /// Emitted when the trading delay is changed
     /// @param oldVal The old trading delay
     /// @param newVal The new trading delay
@@ -35,8 +36,7 @@ interface IBackingManager is IComponent, ITrading {
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_,
         uint192 minTradeVolume_,
-        uint192 atomicTradingBias_,
-        uint48 tradeCooldown_
+        uint48 dutchAuctionLength_
     ) external;
 
     // Give RToken max allowance over a registered token
@@ -54,25 +54,6 @@ interface IBackingManager is IComponent, ITrading {
     /// @dev Performs a uniqueness check on the erc20s list in O(n)
     /// @custom:interaction
     function manageTokensSortedOrder(IERC20[] memory erc20s) external;
-
-    /// Maintain the overall backing policy in an atomic swap with the caller
-    /// Supports both exactInput and exactOutput swap methods
-    /// @dev Caller must have granted tokenIn allowances for up to maxAmountIn
-    /// @param tokenIn The input token, the one the caller provides
-    /// @param tokenOut The output token, the one the protocol provides
-    /// @param minAmountOut {qTokenOut} The minimum amount the swapper wants in output tokens
-    /// @param maxAmountIn {qTokenIn} The most the swapper is willing to pay in input tokens
-    /// @return The actual swap performed
-    /// @custom:interaction
-    function swap(
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 maxAmountIn,
-        uint256 minAmountOut
-    ) external returns (Swap memory);
-
-    /// @return The next Swap, without refreshing the assetRegistry
-    function getSwap() external view returns (Swap memory);
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

@@ -179,8 +179,7 @@ contract DeployerP1 is IDeployer, Versioned {
             params.backingBuffer,
             params.maxTradeSlippage,
             params.minTradeVolume,
-            params.swapPricepoint,
-            params.tradeCooldown
+            params.dutchAuctionLength
         );
 
         // Init Basket Handler
@@ -192,14 +191,14 @@ contract DeployerP1 is IDeployer, Versioned {
             rsr,
             params.maxTradeSlippage,
             params.minTradeVolume,
-            params.swapPricepoint
+            params.dutchAuctionLength
         );
         components.rTokenTrader.init(
             main,
             IERC20(address(rToken)),
             params.maxTradeSlippage,
             params.minTradeVolume,
-            params.swapPricepoint
+            params.dutchAuctionLength
         );
 
         // Init Distributor
@@ -208,7 +207,7 @@ contract DeployerP1 is IDeployer, Versioned {
         // Init Furnace
         components.furnace.init(main, params.rewardRatio);
 
-        components.broker.init(main, gnosis, implementations.trade, params.auctionLength);
+        components.broker.init(main, gnosis, implementations.trade, params.batchAuctionLength);
 
         // Init StRSR
         {

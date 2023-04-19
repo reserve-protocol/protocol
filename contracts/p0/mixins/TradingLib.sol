@@ -8,9 +8,9 @@ import "../../interfaces/IBackingManager.sol";
 import "../../interfaces/IMain.sol";
 import "../../libraries/Fixed.sol";
 
-enum SwapVariant {
-    CALCULATE_BUY_AMOUNT,
-    CALCULATE_SELL_AMOUNT
+enum DependentVariable {
+    BUY_AMOUNT,
+    SELL_AMOUNT
 }
 
 /**
@@ -29,14 +29,14 @@ library TradingLibP0 {
     using TradingLibP0 for TradeInfo;
     using TradingLibP0 for IBackingManager;
 
-    /// @dev One of the TradeRequest amounts will be overwritten depending on the SwapVariant
+    /// @dev One of the TradeRequest amounts will be overwritten depending on the DependentVariable
     /// @param req The TradeRequest
     /// @param pricepoint {1} the percentile price to choose among the lowest and highest possible
     /// @param variant Determines whether the buy amount or sell amount will be overwritten
     function prepareSwap(
         TradeRequest memory req,
         uint192 pricepoint,
-        SwapVariant variant
+        DependentVariable variant
     ) internal view returns (Swap memory s) {
         // Only swap SOUND/Asset <-> SOUND/Asset
         require(
@@ -61,7 +61,7 @@ library TradingLibP0 {
         uint192 price = worstPrice + (bestPrice - worstPrice).mul(pricepoint, ROUND);
         s = Swap(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
 
-        if (variant == SwapVariant.CALCULATE_SELL_AMOUNT) {
+        if (variant == DependentVariable.SELL_AMOUNT) {
             // {buyTok}
             uint192 buyAmount = shiftl_toFix(req.minBuyAmount, -int8(req.buy.erc20Decimals()));
 
@@ -71,7 +71,7 @@ library TradingLibP0 {
                 CEIL
             );
         } else {
-            // must be SwapVariant.CALCULATE_BUY_AMOUNT
+            // must be DependentVariable.BUY_AMOUNT
 
             // {sellTok}
             uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));

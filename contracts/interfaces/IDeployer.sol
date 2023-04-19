@@ -40,9 +40,8 @@ struct DeploymentParams {
     //
     // === BackingManager ===
     uint48 tradingDelay; // {s} how long to wait until starting auctions after switching basket
-    uint48 auctionLength; // {s} the length of an auction
-    uint48 tradeCooldown; // {s} min seconds between end of a trade and start of a new one
-    uint192 swapPricepoint; // {1} the percentile price to use inside a swap; 50% for even prices
+    uint48 dutchAuctionLength; // {s} the length of a dutch auction
+    uint48 batchAuctionLength; // {s} the length of a Gnosis EasyAuction (batch) auction
     uint192 backingBuffer; // {1} how much extra backing collateral to keep
     uint192 maxTradeSlippage; // {1} max slippage acceptable in an auction
     //

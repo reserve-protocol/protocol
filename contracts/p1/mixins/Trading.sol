@@ -19,7 +19,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     uint192 public constant MAX_TRADE_VOLUME = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {1}
-    uint192 public constant MAX_SWAP_PRICEPOINT = 1e18; // {1}
+    uint48 public constant MAX_DUTCH_AUCTION_LENGTH = 86400; // {s} 24h
 
     // Peer contracts, immutable after init()
     IBroker private broker;
@@ -32,14 +32,11 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     uint192 public maxTradeSlippage; // {1}
 
     uint192 public minTradeVolume; // {UoA}
-    // minTradeVolume should have been in BackingManager, but it's too late to move now
 
     // === Added in 3.0.0 ===
 
-    // 0% = the lowest price estimate: a discount to the user of oracleError on each side
-    // 50% = use the midpoint of the lowest and highest price estimates
-    // 100% = the highest price estimate: a premium for the protocol of oracleError on each side
-    uint192 public swapPricepoint; // {1} the percentile price to use within a swap
+    // {s} the length of the implicit falling-price dutch auction
+    uint48 public dutchAuctionLength;
 
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
@@ -54,12 +51,12 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IMain main_,
         uint192 maxTradeSlippage_,
         uint192 minTradeVolume_,
-        uint192 swapPricepoint_
+        uint48 dutchAuctionLength_
     ) internal onlyInitializing {
         broker = main_.broker();
         setMaxTradeSlippage(maxTradeSlippage_);
         setMinTradeVolume(minTradeVolume_);
-        setSwapPricepoint(swapPricepoint_);
+        setDutchAuctionLength(dutchAuctionLength_);
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
@@ -74,7 +71,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) external notTradingPausedOrFrozen nonReentrant {
+    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen nonReentrant {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -119,8 +116,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
     // this contract that changes state this function refers to.
     // slither-disable-next-line reentrancy-vulnerabilities-1
-    /// @return The opened trade
-    function openTrade(TradeRequest memory req) internal nonReentrant returns (ITrade) {
+    function openTrade(TradeRequest memory req) internal nonReentrant {
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
@@ -131,30 +127,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         trades[sell] = trade;
         tradesOpen++;
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
-        return trade;
-    }
-
-    /// Performs an atomic swap with the caller for exactly the provided Swap amounts
-    function executeSwap(Swap memory s) internal nonReentrant {
-        assert(
-            address(s.sell) != address(0) &&
-                address(s.buy) != address(0) &&
-                s.buyAmount != 0 &&
-                s.sellAmount != 0
-        );
-
-        uint256 sellBal = s.sell.balanceOf(address(this));
-        uint256 buyBal = s.buy.balanceOf(address(this));
-
-        // Transfer tokens in
-        s.buy.safeTransferFrom(_msgSender(), address(this), s.buyAmount);
-        assert(s.buy.balanceOf(address(this)) - buyBal == s.buyAmount);
-
-        // Transfer tokens out
-        s.sell.safeTransfer(_msgSender(), s.sellAmount);
-        assert(sellBal - s.sell.balanceOf(address(this)) == s.sellAmount);
-
-        emit SwapCompleted(s.sell, s.buy, s.sellAmount, s.buyAmount);
     }
 
     // === Setters ===
@@ -166,7 +138,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         maxTradeSlippage = val;
     }
 
-    // Only BackingManager actually uses this param
     /// @custom:governance
     function setMinTradeVolume(uint192 val) public governance {
         require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
@@ -175,10 +146,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     }
 
     /// @custom:governance
-    function setSwapPricepoint(uint192 val) public governance {
-        require(val <= MAX_SWAP_PRICEPOINT, "invalid swapPricepoint");
-        emit SwapPricepointSet(swapPricepoint, val);
-        swapPricepoint = val;
+    function setDutchAuctionLength(uint48 val) public governance {
+        require(val <= MAX_DUTCH_AUCTION_LENGTH, "invalid dutchAuctionLength");
+        emit DutchAuctionLengthSet(dutchAuctionLength, val);
+        dutchAuctionLength = val;
     }
 
     // === FixLib Helper ===

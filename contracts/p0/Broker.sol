@@ -31,7 +31,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     mapping(address => bool) private trades;
 
-    uint48 public auctionLength; // {s} the length of an auction
+    uint48 public batchAuctionLength; // {s} the length of a batch auction
 
     bool public disabled;
 
@@ -39,12 +39,12 @@ contract BrokerP0 is ComponentP0, IBroker {
         IMain main_,
         IGnosis gnosis_,
         ITrade tradeImplementation_, // Added for Interface compatibility with P1
-        uint48 auctionLength_
+        uint48 batchAuctionLength_
     ) public initializer {
         __Component_init(main_);
         setGnosis(gnosis_);
         setTradeImplementation(tradeImplementation_);
-        setAuctionLength(auctionLength_);
+        setBatchAuctionLength(batchAuctionLength_);
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract
@@ -71,7 +71,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
         req.sell.erc20().safeTransferFrom(caller, address(trade), req.sellAmount);
 
-        trade.init(this, caller, gnosis, auctionLength, req);
+        trade.init(this, caller, gnosis, batchAuctionLength, req);
         return trade;
     }
 
@@ -125,13 +125,13 @@ contract BrokerP0 is ComponentP0, IBroker {
     }
 
     /// @custom:governance
-    function setAuctionLength(uint48 newAuctionLength) public governance {
+    function setBatchAuctionLength(uint48 newAuctionLength) public governance {
         require(
             newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
-            "invalid auctionLength"
+            "invalid batchAuctionLength"
         );
-        emit AuctionLengthSet(auctionLength, newAuctionLength);
-        auctionLength = newAuctionLength;
+        emit BatchAuctionLengthSet(batchAuctionLength, newAuctionLength);
+        batchAuctionLength = newAuctionLength;
     }
 
     /// @custom:governance
