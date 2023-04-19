@@ -48,7 +48,7 @@ contract CometStorage {
     mapping(address => mapping(address => bool)) public isAllowed;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
-    mapping(address => uint) public userNonce;
+    mapping(address => uint256) public userNonce;
 
     /// @notice Mapping of users to base principal and other basic data
     mapping(address => UserBasic) public userBasic;

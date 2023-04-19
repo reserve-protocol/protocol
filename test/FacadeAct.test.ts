@@ -25,7 +25,6 @@ import {
   FiatCollateral,
   GnosisMock,
   IAssetRegistry,
-  InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   StaticATokenMock,
   TestIBackingManager,

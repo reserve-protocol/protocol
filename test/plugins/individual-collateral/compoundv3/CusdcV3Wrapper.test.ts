@@ -517,10 +517,7 @@ describeFork('Wrapped CUSDCv3', () => {
       await advanceTime(1000)
       await enableRewardsAccrual(cusdcV3)
 
-      await expect(wcusdcV3.connect(bob).claimRewards()).to.emit(
-        wcusdcV3,
-        'RewardsClaimed'
-      )
+      await expect(wcusdcV3.connect(bob).claimRewards()).to.emit(wcusdcV3, 'RewardsClaimed')
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
     })
 

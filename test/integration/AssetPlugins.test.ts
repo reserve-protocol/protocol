@@ -232,13 +232,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       usdp = <ERC20Mock>erc20s[4] // USDP
       tusd = <ERC20Mock>erc20s[5] // TUSD
       cDaiVault = <CTokenVault>erc20s[6] // cDAI
-      cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiVault.asset())  // cDAI
+      cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiVault.asset()) // cDAI
       cUsdcVault = <CTokenVault>erc20s[7] // cUSDC
-      cUsdc = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdcVault.asset())  // cUSDC
+      cUsdc = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdcVault.asset()) // cUSDC
       cUsdtVault = <CTokenVault>erc20s[8] // cUSDT
-      cUsdt = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdtVault.asset())  // cUSDT
+      cUsdt = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdtVault.asset()) // cUSDT
       cUsdpVault = <CTokenVault>erc20s[9] // cUSDT
-      cUsdp = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdpVault.asset())  // cUSDT
+      cUsdp = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdpVault.asset()) // cUSDT
       stataDai = <StaticATokenLM>erc20s[10] // static aDAI
       stataUsdc = <StaticATokenLM>erc20s[11] // static aUSDC
       stataUsdt = <StaticATokenLM>erc20s[12] // static aUSDT
@@ -246,10 +246,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       stataUsdp = <StaticATokenLM>erc20s[14] // static aUSDP
       wbtc = <ERC20Mock>erc20s[15] // wBTC
       cWBTCVault = <CTokenVault>erc20s[16] // cWBTC
-      cWBTC = <CTokenMock>await ethers.getContractAt('CTokenMock', await cWBTCVault.asset())  // cWBTC
+      cWBTC = <CTokenMock>await ethers.getContractAt('CTokenMock', await cWBTCVault.asset()) // cWBTC
       weth = <ERC20Mock>erc20s[17] // wETH
       cETHVault = <CTokenVault>erc20s[18] // cETH
-      cETH = <CTokenMock>await ethers.getContractAt('CTokenMock', await cETHVault.asset())  // cETH
+      cETH = <CTokenMock>await ethers.getContractAt('CTokenMock', await cETHVault.asset()) // cETH
       eurt = <ERC20Mock>erc20s[19] // eurt
 
       // Get plain aTokens
@@ -344,8 +344,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await cWBTC
           .connect(cwbtcSigner)
           .transfer(addr1.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
-        await cWBTC.connect(addr1).approve(cWBTCVault.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
-        await cWBTCVault.connect(addr1).mint(toBNDecimals(initialBalBtcEth, 8).mul(1000), addr1.address)
+        await cWBTC
+          .connect(addr1)
+          .approve(cWBTCVault.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
+        await cWBTCVault
+          .connect(addr1)
+          .mint(toBNDecimals(initialBalBtcEth, 8).mul(1000), addr1.address)
       })
 
       // WETH
@@ -358,8 +362,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await cETH
           .connect(cethSigner)
           .transfer(addr1.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
-        await cETH.connect(addr1).approve(cETHVault.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
-        await cETHVault.connect(addr1).mint(toBNDecimals(initialBalBtcEth, 8).mul(1000), addr1.address)
+        await cETH
+          .connect(addr1)
+          .approve(cETHVault.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
+        await cETHVault
+          .connect(addr1)
+          .mint(toBNDecimals(initialBalBtcEth, 8).mul(1000), addr1.address)
       })
 
       //EURT
@@ -575,7 +583,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await expect(ctkInf.cTokenCollateral.claimRewards())
           .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
           .withArgs(compToken.address, 0)
-        
+
         await expect(ctkInf.cTokenVault.claimRewards())
           .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
           .withArgs(compToken.address, 0)
@@ -1742,7 +1750,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
       const initialBalAToken = initialBal.mul(9321).div(10000)
       expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
-      expect(await cDaiVault.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 8).mul(100))
+      expect(await cDaiVault.balanceOf(addr1.address)).to.equal(
+        toBNDecimals(initialBal, 8).mul(100)
+      )
 
       // Provide approvals
       await dai.connect(addr1).approve(rToken.address, issueAmount)
@@ -1765,7 +1775,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1')
       )
       const requiredCTokens: BigNumber = bn('227116e8') // approx 227K needed (~5K, 50% of basket) - Price: ~0.022
-      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(requiredCTokens, bn(1e8))
+      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
+        requiredCTokens,
+        bn(1e8)
+      )
 
       // Balances for user
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
@@ -1984,7 +1997,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('219.64'), // ~= 260 usd in value
         fp('0.01')
       )
-      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(bn(75331e8), bn('5e7')) // ~= 2481 usd in value
+      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
+        bn(75331e8),
+        bn('5e7')
+      ) // ~= 2481 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
@@ -2066,9 +2082,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         // Approve all balances for user
         await wbtc.connect(addr1).approve(rToken.address, await wbtc.balanceOf(addr1.address))
-        await cWBTCVault.connect(addr1).approve(rToken.address, await cWBTCVault.balanceOf(addr1.address))
+        await cWBTCVault
+          .connect(addr1)
+          .approve(rToken.address, await cWBTCVault.balanceOf(addr1.address))
         await weth.connect(addr1).approve(rToken.address, await weth.balanceOf(addr1.address))
-        await cETHVault.connect(addr1).approve(rToken.address, await cETHVault.balanceOf(addr1.address))
+        await cETHVault
+          .connect(addr1)
+          .approve(rToken.address, await cETHVault.balanceOf(addr1.address))
         await eurt.connect(addr1).approve(rToken.address, await eurt.balanceOf(addr1.address))
       })
 
@@ -2448,7 +2468,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       stataDai = <StaticATokenLM>(
         await ethers.getContractAt('StaticATokenLM', await aDaiCollateral.erc20())
       )
-      cDaiVault = <CTokenVault>await ethers.getContractAt('CTokenVault', await cDaiCollateral.erc20())
+      cDaiVault = <CTokenVault>(
+        await ethers.getContractAt('CTokenVault', await cDaiCollateral.erc20())
+      )
       cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiVault.asset())
 
       // Get plain aToken
