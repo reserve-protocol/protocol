@@ -253,7 +253,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       const newBroker: BrokerP1 = <BrokerP1>await upgrades.deployProxy(
         BrokerFactory,
-        [main.address, gnosis.address, trade.address, config.auctionLength],
+        [main.address, gnosis.address, trade.address, config.batchAuctionLength],
         {
           initializer: 'init',
           kind: 'uups',
@@ -262,7 +262,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       await newBroker.deployed()
 
       expect(await newBroker.gnosis()).to.equal(gnosis.address)
-      expect(await newBroker.auctionLength()).to.equal(config.auctionLength)
+      expect(await newBroker.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await newBroker.disabled()).to.equal(false)
       expect(await newBroker.main()).to.equal(main.address)
     })
@@ -519,7 +519,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       // Check state is preserved
       expect(await brokerV2.gnosis()).to.equal(gnosis.address)
-      expect(await brokerV2.auctionLength()).to.equal(config.auctionLength)
+      expect(await brokerV2.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await brokerV2.disabled()).to.equal(false)
       expect(await brokerV2.main()).to.equal(main.address)
 

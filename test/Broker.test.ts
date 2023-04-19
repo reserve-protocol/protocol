@@ -94,7 +94,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   describe('Deployment', () => {
     it('Should setup Broker correctly', async () => {
       expect(await broker.gnosis()).to.equal(gnosis.address)
-      expect(await broker.auctionLength()).to.equal(config.auctionLength)
+      expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await broker.disabled()).to.equal(false)
       expect(await broker.main()).to.equal(main.address)
     })
@@ -184,42 +184,42 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.tradeImplementation()).to.equal(mock.address)
     })
 
-    it('Should allow to update auctionLength if Owner', async () => {
+    it('Should allow to update batchAuctionLength if Owner', async () => {
       const newValue: BigNumber = bn('360')
 
       // Check existing value
-      expect(await broker.auctionLength()).to.equal(config.auctionLength)
+      expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
 
       // If not owner cannot update
-      await expect(broker.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
+      await expect(broker.connect(other).setBatchAuctionLength(newValue)).to.be.revertedWith(
         'governance only'
       )
 
       // Check value did not change
-      expect(await broker.auctionLength()).to.equal(config.auctionLength)
+      expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
 
       // Update with owner
-      await expect(broker.connect(owner).setAuctionLength(newValue))
+      await expect(broker.connect(owner).setBatchAuctionLength(newValue))
         .to.emit(broker, 'AuctionLengthSet')
-        .withArgs(config.auctionLength, newValue)
+        .withArgs(config.batchAuctionLength, newValue)
 
       // Check value was updated
-      expect(await broker.auctionLength()).to.equal(newValue)
+      expect(await broker.batchAuctionLength()).to.equal(newValue)
     })
 
-    it('Should perform validations on auctionLength', async () => {
+    it('Should perform validations on batchAuctionLength', async () => {
       let invalidValue: BigNumber = bn(0)
 
       // Attempt to update
-      await expect(broker.connect(owner).setAuctionLength(invalidValue)).to.be.revertedWith(
-        'invalid auctionLength'
+      await expect(broker.connect(owner).setBatchAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid batchAuctionLength'
       )
 
       invalidValue = bn(MAX_AUCTION_LENGTH + 1)
 
       // Attempt to update
-      await expect(broker.connect(owner).setAuctionLength(invalidValue)).to.be.revertedWith(
-        'invalid auctionLength'
+      await expect(broker.connect(owner).setBatchAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid batchAuctionLength'
       )
     })
 
@@ -418,7 +418,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -433,7 +433,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.buy()).to.equal(token1.address)
       expect(await trade.initBal()).to.equal(amount)
       expect(await trade.endTime()).to.equal(
-        (await getLatestBlockTimestamp()) + Number(config.auctionLength)
+        (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength)
       )
       expect(await trade.worstCasePrice()).to.equal(bn('0'))
       expect(await trade.canSettle()).to.equal(false)
@@ -444,7 +444,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await trade.broker(),
           await trade.origin(),
           await trade.gnosis(),
-          await broker.auctionLength(),
+          await broker.batchAuctionLength(),
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
@@ -475,7 +475,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -490,7 +490,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.buy()).to.equal(tokenZ.address)
       expect(await trade.initBal()).to.equal(amount)
       expect(await trade.endTime()).to.equal(
-        (await getLatestBlockTimestamp()) + Number(config.auctionLength)
+        (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength)
       )
       expect(await trade.worstCasePrice()).to.equal(bn('0'))
       expect(await trade.canSettle()).to.equal(false)
@@ -530,7 +530,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           reentrantGnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
@@ -563,7 +563,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('sellAmount too large')
@@ -578,7 +578,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('minBuyAmount too large')
@@ -595,7 +595,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('initBal too large')
@@ -625,7 +625,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('unfunded trade')
@@ -662,7 +662,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -672,7 +672,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.canSettle()).to.equal(false)
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Check status - can be settled now
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
@@ -723,13 +723,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           reentrantGnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Attempt Settle trade
       await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -763,7 +763,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -773,7 +773,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.canSettle()).to.equal(false)
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Check status - can be settled now
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
@@ -843,7 +843,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -858,7 +858,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       )
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Settle trade
       await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -947,7 +947,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       )
@@ -960,12 +960,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         broker.address,
         backingManager.address,
         gnosis.address,
-        config.auctionLength,
+        config.batchAuctionLength,
         tradeRequest
       )
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Settle trade
       await whileImpersonating(backingManager.address, async (bmSigner) => {

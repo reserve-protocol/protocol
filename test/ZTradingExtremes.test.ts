@@ -277,7 +277,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       }
 
       // Advance time till auction ends
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
     }
   }
 
@@ -575,7 +575,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         }
 
         // Advance time till auction ends
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
         uncollateralized = !(await basketHandler.fullyCollateralized())
       }
 

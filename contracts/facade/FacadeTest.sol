@@ -50,10 +50,10 @@ contract FacadeTest is IFacadeTest {
             }
         }
 
-        main.backingManager().manageTokens(erc20s);
+        try main.backingManager().manageTokens(erc20s) {} catch {}
         for (uint256 i = 0; i < erc20s.length; i++) {
-            rsrTrader.manageToken(erc20s[i]);
-            rTokenTrader.manageToken(erc20s[i]);
+            try rsrTrader.manageToken(erc20s[i]) {} catch {}
+            try rTokenTrader.manageToken(erc20s[i]) {} catch {}
         }
     }
 

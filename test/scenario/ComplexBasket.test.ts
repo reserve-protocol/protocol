@@ -603,7 +603,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(rsrTrader, {
       sell: compToken.address,
       buy: rsr.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('0'),
     })
 
@@ -611,7 +611,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmount)
 
     //  Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Perform Mock Bids for RSR and RToken (addr1 has balance)
     await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -855,7 +855,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(rsrTrader, {
       sell: cUSDToken.address,
       buy: rsr.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('0'),
     })
 
@@ -870,7 +870,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(rTokenTrader, {
       sell: cUSDToken.address,
       buy: rToken.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('1'),
     })
 
@@ -911,7 +911,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     )
 
     // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Mock auctions
     await rsr.connect(addr1).approve(gnosis.address, auctionbuyAmt2)
@@ -1017,7 +1017,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(rsrTrader, {
       sell: cWBTC.address,
       buy: rsr.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('6'),
     })
 
@@ -1032,7 +1032,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(rTokenTrader, {
       sell: cWBTC.address,
       buy: rToken.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('7'),
     })
 
@@ -1054,7 +1054,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     )
 
     // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Mock auctions
     await rsr.connect(addr1).approve(gnosis.address, auctionbuyAmt5)
@@ -1164,7 +1164,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(rsrTrader, {
       sell: cETH.address,
       buy: rsr.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('10'),
     })
 
@@ -1179,7 +1179,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(rTokenTrader, {
       sell: cETH.address,
       buy: rToken.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('11'),
     })
 
@@ -1201,7 +1201,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     )
 
     // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Mock auctions
     await rsr.connect(addr1).approve(gnosis.address, auctionbuyAmt7)
@@ -1366,7 +1366,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(backingManager, {
       sell: cWBTC.address,
       buy: wbtc.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('0'),
     })
 
@@ -1381,7 +1381,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await cWBTC.balanceOf(backingManager.address)).to.equal(bn(0))
 
     // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Mock auction - Get 80% of value
     // 1600 cWTBC -> 80% = 1280 cWBTC @ 400 = 512K = 25 BTC
@@ -1441,7 +1441,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(backingManager, {
       sell: rsr.address,
       buy: wbtc.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('1'),
     })
 
@@ -1456,7 +1456,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await rsr.balanceOf(gnosis.address)).to.be.closeTo(sellAmtRSR, point5Pct(sellAmtRSR))
 
     // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Mock auction - Get all tokens
     await wbtc.connect(addr1).approve(gnosis.address, auctionBuyAmtRSR)
@@ -1599,7 +1599,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(backingManager, {
       sell: cETH.address,
       buy: weth.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('0'),
     })
 
@@ -1617,7 +1617,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     )
 
     // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Mock auction - Get 8.2K ETH
     const auctionbuyAmt = fp('8200')
@@ -1664,7 +1664,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(backingManager, {
       sell: cETH.address,
       buy: weth.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('1'),
     })
 
@@ -1685,7 +1685,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await cETH.balanceOf(backingManager.address)).to.equal(bn(0))
 
     // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Mock auction
     // 438,000 cETH  @ 12 = 5.25 M = approx 4255 ETH - Get 4400 WETH
@@ -1759,7 +1759,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(backingManager, {
       sell: rsr.address,
       buy: weth.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('2'),
     })
 
@@ -1771,7 +1771,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(auctionBuyAmtRSR1).to.be.closeTo(buyAmtBidRSR1, point5Pct(buyAmtBidRSR1))
 
     // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Mock auction - Get 8500 WETH tokens
     // const auctionbuyAmtRSR1 = fp('8500')
@@ -1843,7 +1843,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await expectTrade(backingManager, {
       sell: rsr.address,
       buy: weth.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
+      endTime: auctionTimestamp + Number(config.batchAuctionLength),
       externalId: bn('3'),
     })
 
@@ -1855,7 +1855,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(auctionBuyAmtRSR2).to.be.closeTo(buyAmtRSR2, point5Pct(buyAmtRSR2))
 
     // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
+    await advanceTime(config.batchAuctionLength.add(100).toString())
 
     // Mock auction - Get all tokens
     await weth.connect(addr1).approve(gnosis.address, auctionBuyAmtRSR2)

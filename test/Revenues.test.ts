@@ -20,6 +20,7 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
+  DutchAuctionLib,
   ERC20Mock,
   FacadeTest,
   GnosisMock,
@@ -78,6 +79,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let aaveToken: ERC20Mock
 
   // Trading
+  let dutchAuctionLib: DutchAuctionLib
   let gnosis: GnosisMock
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
@@ -160,6 +162,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       stRSR,
       broker,
       gnosis,
+      dutchAuctionLib,
       facadeTest,
       rsrTrader,
       rTokenTrader,
@@ -220,11 +223,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const newTrader = <TestIRevenueTrader>await RevenueTraderFactory.deploy()
 
         await expect(
-          newTrader.init(main.address, ZERO_ADDRESS, bn('100'), config.minTradeVolume)
+          newTrader.init(
+            main.address,
+            ZERO_ADDRESS,
+            bn('100'),
+            config.minTradeVolume,
+            config.dutchAuctionLength
+          )
         ).to.be.revertedWith('invalid token address')
       } else if (IMPLEMENTATION == Implementation.P1) {
         const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
-          'RevenueTraderP1'
+          'RevenueTraderP1',
+          { libraries: { DutchAuctionLib: dutchAuctionLib.address } }
         )
 
         const newTrader = <TestIRevenueTrader>await upgrades.deployProxy(RevenueTraderFactory, [], {
@@ -233,7 +243,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         await expect(
-          newTrader.init(main.address, ZERO_ADDRESS, bn('100'), config.minTradeVolume)
+          newTrader.init(
+            main.address,
+            ZERO_ADDRESS,
+            bn('100'),
+            config.minTradeVolume,
+            config.dutchAuctionLength
+          )
         ).to.be.revertedWith('invalid token address')
       }
     })
@@ -535,7 +551,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -543,7 +559,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -564,7 +580,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(rTokenTrader.settleTrade(aaveToken.address)).to.not.emit
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -930,7 +946,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: aaveToken.address,
           buy: rsr.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -938,7 +954,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -946,7 +962,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -1089,7 +1105,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1120,7 +1136,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions
         const remainderSellAmt = rewardAmountCOMP.sub(sellAmt)
@@ -1156,7 +1172,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -1173,7 +1189,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1291,7 +1307,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1312,7 +1328,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Another call will create a new auction and close existing
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1347,7 +1363,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -1360,7 +1376,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1495,7 +1511,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1503,12 +1519,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
         // Advance time till auctions ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -1575,7 +1591,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Run final auction until all funds are converted
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)
@@ -1880,7 +1896,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: aaveToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1888,12 +1904,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         // In order to force deactivation we provide an amount below minBuyAmt, this will represent for our tests an invalid behavior although in a real scenario would retrigger auction
@@ -2119,7 +2135,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2127,7 +2143,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2135,7 +2151,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
 
         // Advance time till auctions ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2420,7 +2436,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2428,7 +2444,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2440,7 +2456,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2580,7 +2596,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2588,7 +2604,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2603,7 +2619,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2838,7 +2854,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: rToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2851,7 +2867,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         //  End current auction - will not start new one
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3025,7 +3041,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: rToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -3033,7 +3049,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -3041,7 +3057,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
         })
 
@@ -3069,7 +3085,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         //  Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should start a new one with same amount
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3275,7 +3291,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(rTokenTrader.manageToken(compToken.address))
 
       // Advance time till auctions ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Perform Mock Bids for RSR and RToken (addr1 has balance)
       await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -3307,7 +3323,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       // Run final auction until all funds are converted
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Perform Mock Bids for RSR and RToken (addr1 has balance)
       await rsr.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)

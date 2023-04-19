@@ -342,7 +342,7 @@ describe('FacadeAct contract', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Confirm auctionsSettleable returns trade
         const settleable = await facade.auctionsSettleable(backingManager.address)
@@ -441,7 +441,7 @@ describe('FacadeAct contract', () => {
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -678,7 +678,7 @@ describe('FacadeAct contract', () => {
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -924,7 +924,7 @@ describe('FacadeAct contract', () => {
         expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Now both should be settleable
         const rTokenSettleable = await facade.auctionsSettleable(rTokenTrader.address)

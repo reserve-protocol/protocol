@@ -419,7 +419,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await expectTrade(backingManager, {
         sell: firstDefaultedToken.address,
         buy: backing[0],
-        endTime: auctionTimestamp + Number(config.auctionLength),
+        endTime: auctionTimestamp + Number(config.batchAuctionLength),
         externalId: bn('0'),
       })
     })
@@ -557,7 +557,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await expectTrade(backingManager, {
         sell: firstDefaultedToken.address,
         buy: backing[0],
-        endTime: auctionTimestamp + Number(config.auctionLength),
+        endTime: auctionTimestamp + Number(config.batchAuctionLength),
         externalId: bn('0'),
       })
     })

@@ -158,7 +158,7 @@ The minimum sized trade that can be performed, in terms of the unit of account.
 
 Setting this too high will result in auctions happening infrequently or the RToken taking a haircut when it cannot be sure it has enough staked RSR to succeed in rebalancing at par.
 
-Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `auctionLength` seconds.
+Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `batchAuctionLength` seconds.
 
 This variable should NOT be interpreted to mean that auction sizes above this value will necessarily clear. It could be the case that gas frictions are so high that auctions launched at this size are not worthy of bids.
 
@@ -217,7 +217,7 @@ The warmup period is how many seconds should pass after the basket regained the 
 Default value: `900` = 15 minutes
 Mainnet reasonable range: 0 to 604800
 
-### `auctionLength`
+### `batchAuctionLength`
 
 Dimension: `{seconds}`
 

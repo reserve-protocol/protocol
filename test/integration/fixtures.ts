@@ -617,7 +617,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     unstakingDelay: bn('1209600'), // 2 weeks
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
-    auctionLength: bn('900'), // 15 minutes
+    batchAuctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     issuanceThrottle: {

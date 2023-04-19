@@ -74,7 +74,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         if (address(trades[erc20]) != address(0)) return;
 
         uint256 bal = erc20.balanceOf(address(this));
-        if (bal == 0) return;
+        require(bal > 0, "zero balance");
 
         if (erc20 == tokenToBuy) {
             // == Interactions then return ==

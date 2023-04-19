@@ -317,9 +317,10 @@ export interface IConfig {
   unstakingDelay: BigNumber
   warmupPeriod: BigNumber
   tradingDelay: BigNumber
-  auctionLength: BigNumber
+  batchAuctionLength: BigNumber
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
+  dutchAuctionLength: BigNumber
   issuanceThrottle: ThrottleParams
   redemptionThrottle: ThrottleParams
 }
