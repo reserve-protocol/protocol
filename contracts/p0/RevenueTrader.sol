@@ -18,9 +18,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
     IERC20 public tokenToBuy;
 
-    // mapping from sell tokens to timestamp of last trade in that token
-    mapping(IERC20 => uint48) private tradeEnds; // {s} timestamp of the end of the last trade
-
     // outer keys: sell token
     // inner keys: dutch auction end times {s}
     mapping(IERC20 => mapping(uint48 => DutchAuction)) private dutchAuctions;
@@ -38,11 +35,12 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         tokenToBuy = tokenToBuy_;
     }
 
-    /// Settle a single trade
-    /// @custom:interaction
-    function settleTrade(IERC20 sell) public override(ITrading, TradingP0) {
-        tradeEnds[sell] = uint48(block.timestamp);
-        super.settleTrade(sell); // has interactions, so must go second
+    /// Starts dutch auctions from the current block, unless they are already ongoing
+    /// Callable only by BackingManager
+    /// @custom:refresher
+    function startDutchAuctions() public {
+        require(_msgSender() == address(main.backingManager()), "backing manager only");
+        if (tradeEnd <= block.timestamp) tradeEnd = uint48(block.timestamp) + dutchAuctionLength;
     }
 
     /// Processes a single token; unpermissioned
@@ -110,8 +108,8 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         // === Checks + Effects ===
 
-        DutchAuction storage auction = ensureDutchAuction(tokenOut);
-        // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
+        DutchAuction storage auction = ensureDutchAuctionIsSetup(tokenOut);
+        // after: tradeEnd > block.timestamp
 
         require(auction.buy.erc20() == tokenIn, "buy token mismatch");
         require(auction.sell.erc20() == tokenOut, "sell token mismatch");
@@ -122,11 +120,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         // === Interactions ===
 
         // Complete bid + swap
-        return
-            auction.bid(
-                divuu(block.timestamp - tradeEnds[tokenOut], dutchAuctionLength),
-                bidBuyAmt
-            );
+        return auction.bid(divuu(block.timestamp - tradeEnd, dutchAuctionLength), bidBuyAmt);
     }
 
     /// To be used via callstatic
@@ -140,9 +134,8 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         // === Checks + Effects ===
 
-        uint48 tradeEnd = tradeEnds[tokenOut];
-        DutchAuction storage auction = ensureDutchAuction(tokenOut);
-        // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
+        DutchAuction storage auction = ensureDutchAuctionIsSetup(tokenOut);
+        // after: tradeEnd > block.timestamp
 
         // {buyTok/sellTok}
         uint192 price = DutchAuctionLib.currentPrice(
@@ -164,14 +157,13 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
     // === Private ===
 
-    /// Ensures a dutch auction exists and returns it, or reverts
-    /// After returning, endTrade is > block.timestamp
-    function ensureDutchAuction(IERC20 sell) private returns (DutchAuction storage auction) {
-        require(dutchAuctionOngoing(sell), "no dutch auction ongoing");
-        uint48 tradeEnd = tradeEnds[sell];
+    /// Returns a dutch auction from storage or reverts
+    /// Post-condition: endTrade is > block.timestamp
+    function ensureDutchAuctionIsSetup(IERC20 sell) private returns (DutchAuction storage auction) {
+        require(inDutchAuctionWindow(), "no dutch auction ongoing");
 
         auction = dutchAuctions[sell][tradeEnd];
-        if (tradeEnd > block.timestamp) {
+        if (address(auction.sell) != address(0) || address(auction.buy) != address(0)) {
             return auction;
         }
         // else: virtual ongoing auction; ie tradeEnd <= block.timestamp by dutchAuctionLength
@@ -183,20 +175,12 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         uint192 sellAmount = sellAsset.bal(address(this));
 
         // at this point: the auction is virtual, make it real and advance the tradeEnd
-        tradeEnds[sell] = tradeEnd + dutchAuctionLength;
+        if (tradeEnd <= block.timestamp) tradeEnd += dutchAuctionLength;
+        auction = dutchAuctions[sell][tradeEnd];
         auction.setupAuction(sellAsset, buyAsset, sellAmount);
-    }
 
-    /// A dutch auction can be ongoing in two ways:
-    ///   - virtually (tradeEnd is in the past by dutchAuctionLength); or
-    ///   - concretely (tradeEnd is in future by dutchAuctionLength)
-    /// @return If a dutch auction is ongoing for the sell token
-    function dutchAuctionOngoing(IERC20 sell) private view returns (bool) {
-        // A dutch auction is ongoing iff tradeEnds[sell] is within dutchAuctionLength (+ or -)
-        //   - if it's earlier, then the auction is virtual
-        //   - if it's later, then the auction exists in storage already
-        return
-            tradeEnds[sell] < block.timestamp + dutchAuctionLength &&
-            tradeEnds[sell] + dutchAuctionLength > block.timestamp;
+        // Should be in the future by 1 dutchAuctionLength
+        assert(tradeEnd > block.timestamp);
+        assert(tradeEnd <= block.timestamp + dutchAuctionLength);
     }
 }

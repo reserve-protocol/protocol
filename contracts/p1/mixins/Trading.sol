@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
+import "../../libraries/DutchAuctionLib.sol";
 import "../../interfaces/ITrade.sol";
 import "../../interfaces/ITrading.sol";
 import "../../libraries/Fixed.sol";
@@ -14,6 +15,7 @@ import "./RewardableLib.sol";
 /// Abstract trading mixin for all Traders: BackingManager + RevenueTrader
 /// @dev See docs/security for discussion of Multicall safety
 abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeable, ITrading {
+    using DutchAuctionLib for DutchAuction;
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
@@ -37,6 +39,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     // {s} the length of the implicit falling-price dutch auction
     uint48 public dutchAuctionLength;
+
+    // At the start of a tx, tradeEnd can be:
+    //   1. more than dutchAuctionLength away => No dutch auction ongoing
+    //   2. within dutchAuctionLength in the past => Virtual dutch auction ongoing
+    //   3. within dutchAuctionLength in the future => Existing dutch auction ongoing
+    // A "virtual" dutch auction is one that is not yet reflected in storage
+    // [X, Y): inclusive on the left-bound and exclusive on the right-bound
+    uint48 internal tradeEnd; // {s} timestamp of the end of the last trade (batch OR dutch)
 
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
@@ -76,6 +86,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
 
+        tradeEnd = uint48(block.timestamp); // start any virtual auctions
         delete trades[sell];
         tradesOpen--;
 
@@ -129,6 +140,19 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
+    /// A dutch auction can be ongoing in two ways:
+    ///   - virtually (tradeEnd is in the past by dutchAuctionLength); or
+    ///   - concretely (tradeEnd is in future by dutchAuctionLength)
+    /// @return If a dutch auction is ongoing
+    function inDutchAuctionWindow() internal view returns (bool) {
+        // A dutch auction is ongoing iff tradeEnd is within dutchAuctionLength in either direction
+        //   - if it's earlier, then the auction is virtual
+        //   - if it's later, then the auction exists in storage already
+        return
+            tradeEnd <= block.timestamp + dutchAuctionLength &&
+            tradeEnd + dutchAuctionLength > block.timestamp;
+    }
+
     // === Setters ===
 
     /// @custom:governance
@@ -168,5 +192,5 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[45] private __gap;
 }

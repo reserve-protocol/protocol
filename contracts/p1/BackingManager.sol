@@ -40,13 +40,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // === Added in 3.0.0 ===
 
-    uint48 private tradeEnd; // {s} timestamp of the end of the last trade (batch OR dutch)
-    // At the start of a tx, tradeEnd can be:
-    //   1. more than dutchAuctionLength away => No dutch auction ongoing
-    //   2. within dutchAuctionLength in the past => Virtual dutch auction ongoing
-    //   3. within dutchAuctionLength in the future => Existing dutch auction ongoing
-    // A "virtual" dutch auction is one that is not yet reflected in storage
-
     // keys: {s} auction end time
     mapping(uint48 => DutchAuction) private dutchAuctions;
 
@@ -79,14 +72,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         setBackingBuffer(backingBuffer_);
     }
 
-    /// Settle a single trade
-    /// @custom:interaction
-    function settleTrade(IERC20 sell) public override(ITrading, TradingP1) {
-        // Super-call handles all paused/frozen checks
-        tradeEnd = uint48(block.timestamp);
-        super.settleTrade(sell); // handles paused/frozen checks; also nonReentrant
-    }
-
     /// Give RToken max allowance over the registered token `erc20`
     /// @custom:interaction CEI
     // checks: erc20 in assetRegistry
@@ -108,9 +93,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
         // == Refresh ==
         assetRegistry.refresh();
+        // TODO melt
 
         requireReadyToTrade(dutchAuctionLength);
-        require(!dutchAuctionOngoing(), "dutch auction ongoing");
+        require(!inDutchAuctionWindow(), "dutch auction ongoing");
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
         uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
@@ -172,8 +158,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // === Checks + Effects ===
 
         requireReadyToTrade(0);
-        DutchAuction storage auction = ensureDutchAuction();
-        // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
+        DutchAuction storage auction = setupDutchAuction();
+        // after: tradeEnd > block.timestamp
 
         require(auction.buy.erc20() == tokenIn, "buy token mismatch");
         require(auction.sell.erc20() == tokenOut, "sell token mismatch");
@@ -198,8 +184,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // === Checks + Effects ===
 
         requireReadyToTrade(0);
-        DutchAuction storage auction = ensureDutchAuction();
-        // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
+        DutchAuction storage auction = setupDutchAuction();
+        // after: tradeEnd > block.timestamp
 
         // {buyTok/sellTok}
         uint192 price = DutchAuctionLib.currentPrice(
@@ -221,10 +207,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // === Private ===
 
-    /// Ensures a dutch auction exists and returns it, or reverts
-    /// After returning, endTrade is > block.timestamp
-    function ensureDutchAuction() private returns (DutchAuction storage auction) {
-        require(dutchAuctionOngoing(), "no dutch auction ongoing");
+    /// Returns a dutch auction from storage or reverts
+    /// Post-condition: endTrade is > block.timestamp
+    function setupDutchAuction() private returns (DutchAuction storage auction) {
+        require(inDutchAuctionWindow(), "no dutch auction ongoing");
 
         auction = dutchAuctions[tradeEnd];
         if (tradeEnd > block.timestamp) {
@@ -243,12 +229,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             uint256 bal = rsr.balanceOf(address(this));
             if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
         }
-
         // {sellTok}
         uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
 
         // at this point: the auction is virtual, make it real and advance the tradeEnd
         tradeEnd += dutchAuctionLength;
+        auction = dutchAuctions[tradeEnd];
         auction.setupAuction(req.sell, req.buy, sellAmount);
     }
 
@@ -335,6 +321,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         }
 
         // == Interactions ==
+
+        // Start revenue dutch auctions
+        rTokenTrader.startDutchAuctions();
+        rsrTrader.startDutchAuctions();
+
         for (uint256 i = 0; i < length; ++i) {
             IERC20 erc20 = IERC20(address(erc20s[i]));
             if (toRToken[i] > 0) erc20.safeTransfer(address(rTokenTrader), toRToken[i]);
@@ -351,19 +342,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
         assert(tradesOpen == 0 && basketsHeldBottom < basketsNeeded);
         rToken.setBasketsNeeded(basketsHeldBottom);
-    }
-
-    /// A dutch auction can be ongoing in two ways:
-    ///   - virtually (tradeEnd is in the past by dutchAuctionLength); or
-    ///   - concretely (tradeEnd is in future by dutchAuctionLength)
-    /// @return If a dutch auction is ongoing
-    function dutchAuctionOngoing() private view returns (bool) {
-        // A dutch auction is ongoing iff tradeEnd is within dutchAuctionLength in either direction
-        //   - if it's earlier, then the auction is virtual
-        //   - if it's later, then the auction exists in storage already
-        return
-            tradeEnd < block.timestamp + dutchAuctionLength &&
-            tradeEnd + dutchAuctionLength > block.timestamp;
     }
 
     /// Just a contract-size saver
@@ -398,5 +376,5 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[40] private __gap;
+    uint256[41] private __gap;
 }
