@@ -102,9 +102,9 @@ library DutchAuctionLib {
 
     // ===
 
-    uint192 constant TWENTY_PERCENT = 2e17; // {1}
-    uint192 constant FIFTY_PERCENT = 5e17; // {1}
-    uint192 constant EIGHTY_PERCENT = 8e17; // {1}
+    uint192 private constant TWENTY_PERCENT = 2e17; // {1}
+    uint192 private constant FIFTY_PERCENT = 5e17; // {1}
+    uint192 private constant EIGHTY_PERCENT = 8e17; // {1}
 
     /// Price Curve:
     ///   - 1.5 * middlePrice down to the middlePrice for first 20% of auction

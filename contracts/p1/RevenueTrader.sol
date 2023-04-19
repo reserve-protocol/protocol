@@ -214,7 +214,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     ///   - concretely (tradeEnd is in future by dutchAuctionLength)
     /// @return If a dutch auction is ongoing for the sell token
     function dutchAuctionOngoing(IERC20 sell) private view returns (bool) {
-        // A dutch auction is ongoing iff tradeEnds[sell] is within dutchAuctionLength in either direction
+        // A dutch auction is ongoing iff tradeEnds[sell] is within dutchAuctionLength (+ or -)
         //   - if it's earlier, then the auction is virtual
         //   - if it's later, then the auction exists in storage already
         return

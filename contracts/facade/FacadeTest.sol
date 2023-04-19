@@ -50,11 +50,14 @@ contract FacadeTest is IFacadeTest {
             }
         }
 
+        // solhint-disable no-empty-blocks
+
         try main.backingManager().manageTokens(erc20s) {} catch {}
         for (uint256 i = 0; i < erc20s.length; i++) {
             try rsrTrader.manageToken(erc20s[i]) {} catch {}
             try rTokenTrader.manageToken(erc20s[i]) {} catch {}
         }
+        // solhint-enable no-empty-blocks
     }
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
