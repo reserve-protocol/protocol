@@ -581,6 +581,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       if (REPORT_GAS) {
         await snapshotGasCost(backingManager.claimRewards())
       } else {
+        await backingManager.claimRewards()
         // await expectEvents(backingManager.claimRewards(), [
         //   {
         //     contract: cRewarded,
