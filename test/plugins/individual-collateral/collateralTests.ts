@@ -298,7 +298,10 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         itHasRevenueHiding('does revenue hiding correctly', async () => {
-          ctx.collateral = await deployCollateral({ revenueHiding: fp('0.01') })
+          ctx.collateral = await deployCollateral({
+            erc20: ctx.tok.address,
+            revenueHiding: fp('0.01')
+          })
 
           // Should remain SOUND after a 1% decrease
           await reduceRefPerTok(ctx, 1) // 1% decrease
