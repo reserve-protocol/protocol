@@ -445,8 +445,10 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
       it('claims rewards (plugin)', async () => {
         const amount = bn('20000').mul(bn(10).pow(await ctx.tok.decimals()))
         await mintCollateralTo(ctx, amount, alice, collateral.address)
+
         await advanceBlocks(1000)
         await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+        
         const crvBefore = await crv.balanceOf(collateral.address)
         const cvxBefore = await cvx.balanceOf(collateral.address)
         await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
@@ -459,8 +461,10 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
       it('claims rewards (wrapper)', async () => {
         const amount = bn('20000').mul(bn(10).pow(await ctx.tok.decimals()))
         await mintCollateralTo(ctx, amount, alice, alice.address)
+        
         await advanceBlocks(1000)
         await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+        
         const crvBefore = await crv.balanceOf(alice.address)
         const cvxBefore = await cvx.balanceOf(alice.address)
         await expect(ctx.w3Pool.connect(alice).claimRewards()).to.emit(ctx.w3Pool, 'RewardsClaimed')
