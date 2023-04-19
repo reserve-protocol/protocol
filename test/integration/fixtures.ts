@@ -21,6 +21,7 @@ import {
   DeployerP0,
   DeployerP1,
   DistributorP1,
+  DutchAuctionLib,
   EasyAuction,
   ERC20Mock,
   EURFiatCollateral,
@@ -620,6 +621,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     batchAuctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
+    dutchAuctionLength: bn('0'), // 0
     issuanceThrottle: {
       amtRate: fp('1e6'), // 1M RToken
       pctRate: fp('0.05'), // 5%
@@ -650,6 +652,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     await TradingLibFactory.deploy()
   )
 
+  // Deploy DutchAuctionLib external library
+  const DutchAuctionLibFactory: ContractFactory = await ethers.getContractFactory('DutchAuctionLib')
+  const dutchAuctionLib: DutchAuctionLib = <DutchAuctionLib>await DutchAuctionLibFactory.deploy()
+
   // Deploy RSR Asset
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
   const rsrAsset: Asset = <Asset>(
@@ -666,7 +672,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-    libraries: { TradingLibP0: tradingLib.address },
+    libraries: { TradingLibP0: tradingLib.address, DutchAuctionLib: dutchAuctionLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(rsr.address, easyAuction.address, rsrAsset.address)
@@ -685,6 +691,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
       {
         libraries: {
           RecollateralizationLibP1: tradingLib.address,
+          DutchAuctionLib: dutchAuctionLib.address,
         },
       }
     )
@@ -698,7 +705,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
     const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
 
-    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1')
+    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
+      'RevenueTraderP1',
+      { libraries: { DutchAuctionLib: dutchAuctionLib.address } }
+    )
     const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')

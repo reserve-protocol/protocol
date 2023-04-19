@@ -174,7 +174,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check Gnosis
       expect(await rsr.balanceOf(easyAuction.address)).to.equal(sellAmt)
-      await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.manageTokens([])).to.be.revertedWith('trade open')
 
       // Auction should not be able to be settled
       await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
@@ -596,7 +596,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check Gnosis
       expect(await token0.balanceOf(easyAuction.address)).to.equal(issueAmount)
-      await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.manageTokens([])).to.be.revertedWith('trade open')
 
       // Auction should not be able to be settled
       await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
@@ -694,7 +694,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check Gnosis
       expect(await token0.balanceOf(easyAuction.address)).to.be.closeTo(issueAmount, 1)
-      await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.manageTokens([])).to.be.revertedWith('trade open')
 
       // Auction should not be able to be settled
       await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
