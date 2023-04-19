@@ -217,7 +217,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       if (IMPLEMENTATION == Implementation.P0) {
         // Create RevenueTrader Factory
         const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
-          'RevenueTraderP0'
+          'RevenueTraderP0',
+          { libraries: { DutchAuctionLib: dutchAuctionLib.address } }
         )
 
         const newTrader = <TestIRevenueTrader>await RevenueTraderFactory.deploy()

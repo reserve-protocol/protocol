@@ -9,6 +9,7 @@ import { bn } from '../common/numbers'
 import {
   Asset,
   ERC20Mock,
+  DutchAuctionLib,
   FacadeRead,
   GnosisMock,
   IAssetRegistry,
@@ -49,6 +50,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let gnosis: GnosisMock
   let broker: TestIBroker
   let facade: FacadeRead
+  let dutchAuctionLib: DutchAuctionLib
 
   // Core contracts
   let rToken: TestIRToken
@@ -75,7 +77,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
 
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-        libraries: { TradingLibP0: tradingLib.address },
+        libraries: { TradingLibP0: tradingLib.address, DutchAuctionLib: dutchAuctionLib.address },
       })
       return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset)
     } else if (IMPLEMENTATION == Implementation.P1) {
@@ -108,6 +110,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       stRSR,
       broker,
       gnosis,
+      dutchAuctionLib,
       facade,
       rsrTrader,
       rTokenTrader,
