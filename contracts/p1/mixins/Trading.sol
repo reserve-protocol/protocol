@@ -11,7 +11,7 @@ import "../../libraries/Fixed.sol";
 import "./Component.sol";
 import "./RewardableLib.sol";
 
-/// Abstract trading mixin for all Traders, to be paired with TradingLib
+/// Abstract trading mixin for all Traders: BackingManager + RevenueTrader
 /// @dev See docs/security for discussion of Multicall safety
 abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeable, ITrading {
     using FixLib for uint192;
@@ -168,5 +168,5 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[45] private __gap;
+    uint256[46] private __gap;
 }

@@ -362,11 +362,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Just a contract-size saver
-    function requireReadyToTrade(uint48 delay) private view {
+    /// @param additionalDelay {s} An additional delay to be included in basket timestamp check
+    function requireReadyToTrade(uint48 additionalDelay) private view {
         require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
         require(basketHandler.isReady(), "basket not ready");
         require(
-            block.timestamp >= basketHandler.timestamp() + tradingDelay + delay,
+            block.timestamp >= basketHandler.timestamp() + tradingDelay + additionalDelay,
             "waiting to trade"
         );
     }
