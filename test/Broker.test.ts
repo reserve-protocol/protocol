@@ -200,7 +200,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Update with owner
       await expect(broker.connect(owner).setBatchAuctionLength(newValue))
-        .to.emit(broker, 'AuctionLengthSet')
+        .to.emit(broker, 'BatchAuctionLengthSet')
         .withArgs(config.batchAuctionLength, newValue)
 
       // Check value was updated

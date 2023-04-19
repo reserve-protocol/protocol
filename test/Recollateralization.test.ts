@@ -802,25 +802,16 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       it('Should not trade if paused', async () => {
         await main.connect(owner).pauseTrading()
         await expect(backingManager.manageTokens([])).to.be.revertedWith('frozen or trading paused')
-        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
-          'frozen or trading paused'
-        )
       })
 
       it('Should not trade if frozen', async () => {
         await main.connect(owner).freezeShort()
         await expect(backingManager.manageTokens([])).to.be.revertedWith('frozen or trading paused')
-        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
-          'frozen or trading paused'
-        )
       })
 
       it('Should not trade if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
         await expect(backingManager.manageTokens([])).to.be.revertedWith('basket not ready')
-        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
-          'basket not ready'
-        )
       })
 
       it('Should not trade during warmup period', async () => {
@@ -830,9 +821,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await basketHandler.connect(owner).setWarmupPeriod(warmupPeriod)
 
         await expect(backingManager.manageTokens([])).to.be.revertedWith('basket not ready')
-        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
-          'basket not ready'
-        )
       })
 
       it('Should not apply warmup period when moving from SOUND -> SOUND', async () => {
@@ -946,7 +934,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         // Attempt to trigger before trading delay - Should revert
-        await expect(backingManager.manageTokens([])).to.be.revertedWith('batch auction waiting')
+        await expect(backingManager.manageTokens([])).to.be.revertedWith('waiting to trade')
 
         // Advance time post trading delay
         await advanceTime(newDelay + 1)

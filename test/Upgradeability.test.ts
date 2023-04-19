@@ -18,6 +18,7 @@ import {
   BrokerP1V2,
   DistributorP1,
   DistributorP1V2,
+  DutchAuctionLib,
   ERC20Mock,
   FurnaceP1,
   FurnaceP1V2,
@@ -61,6 +62,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   // Market / Facade
   let gnosis: GnosisMock
   let broker: TestIBroker
+  let dutchAuctionLib: DutchAuctionLib
 
   // Core contracts
   let rToken: TestIRToken
@@ -113,6 +115,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       furnace,
       stRSR,
       broker,
+      dutchAuctionLib,
       gnosis,
       rsrTrader,
       rTokenTrader,
@@ -128,10 +131,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     MainFactory = await ethers.getContractFactory('MainP1')
     RTokenFactory = await ethers.getContractFactory('RTokenP1')
     FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
-    RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1')
+    RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1', {
+      libraries: { DutchAuctionLib: dutchAuctionLib.address },
+    })
     BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1', {
       libraries: {
         RecollateralizationLibP1: tradingLib.address,
+        DutchAuctionLib: dutchAuctionLib.address,
       },
     })
     AssetRegistryFactory = await ethers.getContractFactory('AssetRegistryP1')
@@ -219,6 +225,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
           config.backingBuffer,
           config.maxTradeSlippage,
           config.minTradeVolume,
+          config.dutchAuctionLength,
         ],
         {
           initializer: 'init',
@@ -303,7 +310,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - RevenueTrader', async () => {
       const newRevenueTrader: RevenueTraderP1 = <RevenueTraderP1>await upgrades.deployProxy(
         RevenueTraderFactory,
-        [main.address, rsr.address, config.maxTradeSlippage, config.minTradeVolume],
+        [
+          main.address,
+          rsr.address,
+          config.maxTradeSlippage,
+          config.minTradeVolume,
+          config.dutchAuctionLength,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
@@ -456,6 +469,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           libraries: {
             RecollateralizationLibP1: tradingLib.address,
+            DutchAuctionLib: dutchAuctionLib.address,
           },
         }
       )
@@ -583,7 +597,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should upgrade correctly - RevenueTrader', async () => {
       // Upgrading
       const RevTraderV2Factory: ContractFactory = await ethers.getContractFactory(
-        'RevenueTraderP1V2'
+        'RevenueTraderP1V2',
+        { libraries: { DutchAuctionLib: dutchAuctionLib.address } }
       )
       const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
         rsrTrader.address,

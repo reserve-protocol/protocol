@@ -350,7 +350,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           config.tradingDelay,
           config.backingBuffer,
           config.maxTradeSlippage,
-          config.minTradeVolume
+          config.minTradeVolume,
+          config.dutchAuctionLength
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
@@ -366,7 +367,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - RSR Trader
       await expect(
-        rsrTrader.init(main.address, rsr.address, config.maxTradeSlippage, config.minTradeVolume)
+        rsrTrader.init(
+          main.address,
+          rsr.address,
+          config.maxTradeSlippage,
+          config.minTradeVolume,
+          config.dutchAuctionLength
+        )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - RToken Trader
@@ -375,7 +382,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           main.address,
           rToken.address,
           config.maxTradeSlippage,
-          config.minTradeVolume
+          config.minTradeVolume,
+          config.dutchAuctionLength
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 

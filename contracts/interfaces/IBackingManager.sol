@@ -48,12 +48,6 @@ interface IBackingManager is IComponent, ITrading, ISwapper {
     /// @dev Performs a uniqueness check on the erc20s list in O(n^2)
     /// @custom:interaction
     function manageTokens(IERC20[] memory erc20s) external;
-
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @dev Tokens must be in sorted order!
-    /// @dev Performs a uniqueness check on the erc20s list in O(n)
-    /// @custom:interaction
-    function manageTokensSortedOrder(IERC20[] memory erc20s) external;
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

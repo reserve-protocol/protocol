@@ -374,7 +374,7 @@ contract FacadeAct is IFacadeAct {
         if (tradesOpen != 0) return false;
 
         // Try to launch auctions
-        bm.manageTokensSortedOrder(new IERC20[](0));
+        bm.manageTokens(new IERC20[](0));
         return bm.tradesOpen() > 0;
     }
 

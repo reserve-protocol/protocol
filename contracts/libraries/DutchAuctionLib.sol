@@ -27,10 +27,6 @@ library DutchAuctionLib {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    uint192 constant TWENTY_PERCENT = 2e17; // {1}
-    uint192 constant FIFTY_PERCENT = 5e17; // {1}
-    uint192 constant EIGHTY_PERCENT = 8e17; // {1}
-
     /// Starts an auction in the provided storage struct
     /// @param auction Expected to be empty; will be overwritten
     /// @param sell The asset being sold by the protocol
@@ -42,7 +38,7 @@ library DutchAuctionLib {
         IAsset buy,
         uint192 sellAmount
     ) external {
-        require(address(sell) != address(0) && address(buy) != address(0), "auction already setup");
+        require(address(sell) != address(0) || address(buy) != address(0), "auction already setup");
         // 0 for the sellAmount should be handled correctly
 
         auction.sell = sell;
@@ -103,6 +99,12 @@ library DutchAuctionLib {
         swap.sell.safeTransfer(msg.sender, swap.sellAmount);
         assert(sellBal - swap.sell.balanceOf(address(this)) == swap.sellAmount);
     }
+
+    // ===
+
+    uint192 constant TWENTY_PERCENT = 2e17; // {1}
+    uint192 constant FIFTY_PERCENT = 5e17; // {1}
+    uint192 constant EIGHTY_PERCENT = 8e17; // {1}
 
     /// Price Curve:
     ///   - 1.5 * middlePrice down to the middlePrice for first 20% of auction

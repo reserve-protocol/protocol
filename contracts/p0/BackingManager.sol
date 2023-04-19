@@ -50,8 +50,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// Settle a single trade
     /// @custom:interaction
     function settleTrade(IERC20 sell) public override(ITrading, TradingP0) {
+        // Super-call handles all paused/frozen checks
+        super.settleTrade(sell); // handles paused/frozen checks
         tradeEnd = uint48(block.timestamp);
-        super.settleTrade(sell); // has interactions, so must go second
     }
 
     // Give RToken max allowance over a registered token
@@ -68,20 +69,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     function manageTokens(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
         // Token list must not contain duplicates
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
-        _manageTokens(erc20s);
-    }
 
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @dev Tokens must be in sorted order!
-    /// @dev Performs a uniqueness check on the erc20s list in O(n)
-    /// @custom:interaction
-    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
-        // Token list must not contain duplicates
-        require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate/unsorted tokens");
-        _manageTokens(erc20s);
-    }
-
-    function _manageTokens(IERC20[] calldata erc20s) private {
         // Call keepers before
         main.poke();
 
@@ -90,12 +78,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(basketHandler.isReady(), "basket not ready");
         require(
             block.timestamp >= basketHandler.timestamp() + tradingDelay + dutchAuctionLength,
-            "batch auction waiting"
+            "waiting to trade"
         );
         require(!dutchAuctionOngoing(), "dutch auction ongoing");
 
         uint48 basketTimestamp = basketHandler.timestamp();
-        require(block.timestamp >= basketTimestamp + tradingDelay, "trading delayed");
+        require(block.timestamp >= basketTimestamp + tradingDelay, "waiting to trade");
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
 
@@ -161,7 +149,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(main.basketHandler().isReady(), "basket not ready");
         require(
             block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
-            "trading delayed"
+            "waiting to trade"
         );
 
         DutchAuction storage auction = ensureDutchAuction();
@@ -193,7 +181,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(main.basketHandler().isReady(), "basket not ready");
         require(
             block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
-            "trading delayed"
+            "waiting to trade"
         );
 
         DutchAuction storage auction = ensureDutchAuction();

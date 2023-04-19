@@ -79,7 +79,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function settleTrade(IERC20 sell) public override(ITrading, TradingP1) {
         // Super-call handles all paused/frozen checks
         tradeEnd = uint48(block.timestamp);
-        super.settleTrade(sell); // has interactions, so must go second
+        super.settleTrade(sell); // handles paused/frozen checks; also nonReentrant
     }
 
     /// Give RToken max allowance over the registered token `erc20`
@@ -101,35 +101,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function manageTokens(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
         // Token list must not contain duplicates
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
-        _manageTokens(erc20s);
-    }
-
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @dev Tokens must be in sorted order!
-    /// @dev Performs a uniqueness check on the erc20s list in O(n)
-    /// @custom:interaction
-    // checks: the addresses in `erc20s` are unique (and sorted)
-    // effect: _manageTokens(erc20s)
-    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
-        // Token list must not contain duplicates
-        require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate/unsorted tokens");
-        _manageTokens(erc20s);
-    }
-
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @custom:interaction RCEI
-    // only called internally, from manageTokens*, so erc20s has no duplicates unique
-    // (but not necessarily all registered or valid!)
-    function _manageTokens(IERC20[] calldata erc20s) private {
         // == Refresh ==
         assetRegistry.refresh();
 
-        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
-        require(basketHandler.isReady(), "basket not ready");
-        require(
-            block.timestamp >= basketHandler.timestamp() + tradingDelay + dutchAuctionLength,
-            "batch auction waiting"
-        );
+        requireReadyToTrade(dutchAuctionLength);
         require(!dutchAuctionOngoing(), "dutch auction ongoing");
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
@@ -191,10 +166,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // === Checks + Effects ===
 
-        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
-        require(basketHandler.isReady(), "basket not ready");
-        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
-
+        requireReadyToTrade(0);
         DutchAuction storage auction = ensureDutchAuction();
         // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
 
@@ -220,10 +192,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // === Checks + Effects ===
 
-        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
-        require(basketHandler.isReady(), "basket not ready");
-        require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
-
+        requireReadyToTrade(0);
         DutchAuction storage auction = ensureDutchAuction();
         // after dutchAuction(), we _know_ that tradeEnd > block.timestamp
 
@@ -390,6 +359,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         return
             tradeEnd < block.timestamp + dutchAuctionLength &&
             tradeEnd + dutchAuctionLength > block.timestamp;
+    }
+
+    /// Just a contract-size saver
+    function requireReadyToTrade(uint48 delay) private view {
+        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
+        require(basketHandler.isReady(), "basket not ready");
+        require(
+            block.timestamp >= basketHandler.timestamp() + tradingDelay + delay,
+            "waiting to trade"
+        );
     }
 
     // === Governance Setters ===
