@@ -13,6 +13,7 @@ import {
   DeployerP0,
   DeployerP1,
   DistributorP1,
+  DutchAuctionLib,
   ERC20Mock,
   FacadeRead,
   FacadeAct,
@@ -95,6 +96,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     await TradingLibFactory.deploy()
   )
 
+  // Deploy DutchAuctionLib external library
+  const DutchAuctionLibFactory: ContractFactory = await ethers.getContractFactory('DutchAuctionLib')
+  const dutchAuctionLib: DutchAuctionLib = <DutchAuctionLib>await DutchAuctionLibFactory.deploy()
+
   // Deploy FacadeWriteLib external library
   const facadeWriteLib = await (await ethers.getContractFactory('FacadeWriteLib')).deploy()
 
@@ -111,7 +116,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-    libraries: { TradingLibP0: tradingLib.address },
+    libraries: { TradingLibP0: tradingLib.address, DutchAuctionLib: dutchAuctionLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address)
@@ -130,6 +135,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
       {
         libraries: {
           RecollateralizationLibP1: tradingLib.address,
+          DutchAuctionLib: dutchAuctionLib.address,
         },
       }
     )
@@ -143,7 +149,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
     const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
 
-    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1')
+    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
+      'RevenueTraderP1',
+      { libraries: { DutchAuctionLib: dutchAuctionLib.address } }
+    )
     const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')

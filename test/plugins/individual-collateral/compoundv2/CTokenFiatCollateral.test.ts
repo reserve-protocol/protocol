@@ -116,6 +116,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     batchAuctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
+    dutchAuctionLength: bn('0'), // 0s
     issuanceThrottle: {
       amtRate: fp('1e6'), // 1M RToken
       pctRate: fp('0.05'), // 5%
