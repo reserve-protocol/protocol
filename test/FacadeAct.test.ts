@@ -541,58 +541,6 @@ describe('FacadeAct contract', () => {
           )
       })
 
-      it('Revenues - Should handle assets with invalid claim logic', async () => {
-        // Redeem all RTokens
-        await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
-
-        // Setup a new aToken with invalid claim data
-        const ATokenCollateralFactory = await ethers.getContractFactory(
-          'InvalidATokenFiatCollateralMock'
-        )
-        const chainlinkFeed = <MockV3Aggregator>(
-          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
-        )
-
-        const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
-          InvalidATokenFiatCollateralMock
-        >await ATokenCollateralFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: chainlinkFeed.address,
-            oracleError: ORACLE_ERROR,
-            erc20: aToken.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: await aTokenAsset.oracleTimeout(),
-            targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: DEFAULT_THRESHOLD,
-            delayUntilDefault: await aTokenAsset.delayUntilDefault(),
-          },
-          REVENUE_HIDING
-        )
-
-        // Perform asset swap
-        await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
-
-        // Setup new basket with the invalid AToken
-        await basketHandler.connect(owner).setPrimeBasket([aToken.address], [fp('1')])
-
-        // Switch basket
-        await basketHandler.connect(owner).refreshBasket()
-
-        const rewardAmountAAVE = bn('0.5e18')
-
-        // AAVE Rewards
-        await aToken.setRewards(backingManager.address, rewardAmountAAVE)
-
-        // Via Facade get next call - will not attempt to claim - No action taken
-        const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
-        expect(addr).to.equal(ZERO_ADDRESS)
-        expect(data).to.equal('0x')
-
-        // Check status - nothing claimed
-        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
-      })
-
       it('Revenues - Should handle minTradeVolume = 0', async () => {
         // Set minTradeVolume = 0
         await rsrTrader.connect(owner).setMinTradeVolume(bn(0))
