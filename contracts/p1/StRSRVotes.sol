@@ -139,11 +139,14 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     function stakeAndDelegate(uint256 rsrAmount, address delegatee) external {
         stake(rsrAmount);
         address msgSender = _msgSender();
+        address currentDelegate = delegates(msgSender);
 
-        // Delegate if a specific delegatee is provided or if no delegate yet
-        if (delegatee != address(0) || delegates(msgSender) == address(0)) {
-            address newDelegatee = (delegatee == address(0) ? msgSender : delegatee);
-            _delegate(msgSender, newDelegatee);
+        if (delegatee == address(0) && currentDelegate == address(0)) {
+            // Delegate to self if no delegate defined and no delegatee provided
+            _delegate(msgSender, msgSender);
+        } else if (delegatee != address(0) && currentDelegate != delegatee) {
+            // Delegate to delegatee if provided and different than current delegate
+            _delegate(msgSender, delegatee);
         }
     }
 
