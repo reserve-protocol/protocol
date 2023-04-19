@@ -162,7 +162,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       )
       expect(await eurt.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await eurt.balanceOf(rsrTrader.address)).to.equal(0)
-      await expect(rTokenTrader.manageToken(eurt.address)).to.not.emit(rTokenTrader, 'TradeStarted')
+      await expect(rTokenTrader.manageToken(eurt.address)).to.be.revertedWith('zero balance')
       await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
 
       // RTokenTrader should be selling token0 and buying RToken
@@ -170,7 +170,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       expect(await trade.sell()).to.equal(token0.address)
       expect(await trade.buy()).to.equal(rToken.address)
 
-      await expect(rsrTrader.manageToken(eurt.address)).to.not.emit(rsrTrader, 'TradeStarted')
+      await expect(rsrTrader.manageToken(eurt.address)).to.be.revertedWith('zero balance')
       await expect(rsrTrader.manageToken(token0.address)).to.emit(rsrTrader, 'TradeStarted')
 
       // RSRTrader should be selling token0 and buying RToken
