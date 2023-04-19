@@ -472,7 +472,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
 
         await advanceBlocks(1000)
         await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
-        
+
         const crvBefore = await crv.balanceOf(alice.address)
         const cvxBefore = await cvx.balanceOf(alice.address)
         await expect(ctx.wPool.connect(alice).claimRewards()).to.emit(ctx.wPool, 'RewardsClaimed')

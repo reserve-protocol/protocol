@@ -494,7 +494,7 @@ describeFork(`Collateral: Convex - Volatile`, () => {
 
         await advanceBlocks(1000)
         await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
-        
+
         const crvBefore = await crv.balanceOf(alice.address)
         const cvxBefore = await cvx.balanceOf(alice.address)
         await expect(ctx.w3Pool.connect(alice).claimRewards()).to.emit(ctx.w3Pool, 'RewardsClaimed')
