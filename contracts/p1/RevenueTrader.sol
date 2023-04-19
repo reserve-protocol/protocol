@@ -26,9 +26,14 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
     // mapping from sell tokens to timestamp of last trade in that token
     mapping(IERC20 => uint48) private tradeEnds; // {s} timestamp of the end of the last trade
+    // At the start of a tx, tradeEnds[X] can be:
+    //   1. more than dutchAuctionLength away => No dutch auction for X ongoing
+    //   2. within dutchAuctionLength in the past => Virtual dutch auction for X ongoing
+    //   3. within dutchAuctionLength in the future => Existing dutch auction for X ongoing
+    // A "virtual" dutch auction is one that is not yet reflected in storage
 
-    // outer keys: sell token
     // inner keys: dutch auction end times {s}
+    // outer keys: sell token
     mapping(IERC20 => mapping(uint48 => DutchAuction)) private dutchAuctions;
 
     function init(

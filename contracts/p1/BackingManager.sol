@@ -40,9 +40,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // === Added in 3.0.0 ===
 
-    uint48 private tradeEnd; // {s} timestamp of the end of the last trade
+    uint48 private tradeEnd; // {s} timestamp of the end of the last trade (batch OR dutch)
+    // At the start of a tx, tradeEnd can be:
+    //   1. more than dutchAuctionLength away => No dutch auction ongoing
+    //   2. within dutchAuctionLength in the past => Virtual dutch auction ongoing
+    //   3. within dutchAuctionLength in the future => Existing dutch auction ongoing
+    // A "virtual" dutch auction is one that is not yet reflected in storage
 
-    // keys: {s} dutch auction end times
+    // keys: {s} auction end time
     mapping(uint48 => DutchAuction) private dutchAuctions;
 
     // ==== Invariants ====
