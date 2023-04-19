@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import "./IComponent.sol";
 import "./ITrading.sol";
+import "./ISwapper.sol";
 
 /**
  * @title IRevenueTrader
@@ -24,6 +25,11 @@ interface IRevenueTrader is IComponent, ITrading {
     /// @dev Intended to be used with multicall
     /// @custom:interaction
     function manageToken(IERC20 sell) external;
+
+    /// Get ongoing dutch auctions by sell token, if one exists
+    /// To be used via callstatic -- see ISwapper.swap()
+    /// @custom:static-call
+    function getSwap(IERC20 tokenOut) external returns (Swap memory s);
 }
 
 // solhint-disable-next-line no-empty-blocks
