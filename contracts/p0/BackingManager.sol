@@ -179,7 +179,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         // {buyTok/sellTok}
         uint192 price = DutchAuctionLib.currentPrice(
-            divuu(block.timestamp - tradeEnd, dutchAuctionLength),
+            divuu(block.timestamp + dutchAuctionLength - tradeEnd, dutchAuctionLength),
             auction.middlePrice,
             auction.lowPrice
         );
@@ -298,8 +298,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
 
         // Start revenue dutch auctions
-        main.rTokenTrader().startDutchAuctions();
-        main.rsrTrader().startDutchAuctions();
+        main.rTokenTrader().processRevenue();
+        main.rsrTrader().processRevenue();
     }
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting

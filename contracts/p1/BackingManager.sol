@@ -189,7 +189,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // {buyTok/sellTok}
         uint192 price = DutchAuctionLib.currentPrice(
-            divuu(block.timestamp - tradeEnd, dutchAuctionLength),
+            divuu(block.timestamp + dutchAuctionLength - tradeEnd, dutchAuctionLength),
             auction.middlePrice,
             auction.lowPrice
         );
@@ -323,8 +323,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // == Interactions ==
 
         // Start revenue dutch auctions
-        rTokenTrader.startDutchAuctions();
-        rsrTrader.startDutchAuctions();
+        rTokenTrader.processRevenue();
+        rsrTrader.processRevenue();
 
         for (uint256 i = 0; i < length; ++i) {
             IERC20 erc20 = IERC20(address(erc20s[i]));

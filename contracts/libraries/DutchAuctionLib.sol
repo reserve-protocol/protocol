@@ -119,21 +119,19 @@ library DutchAuctionLib {
         uint192 lowPrice
     ) public pure returns (uint192) {
         assert(progression <= FIX_ONE);
-        assert(middlePrice >= lowPrice);
+        assert(lowPrice <= middlePrice);
 
-        // Override prices in the 20 percentile case
         if (progression < TWENTY_PERCENT) {
-            // using the avgPrice here is tempting but a bad idea, because it would require
-            // making an assumption about the tightness of the price band.
+            // Fast decay -- 20 percentile case
 
-            // Fast decay
+            // highPrice is 1.5x middlePrice
             uint192 highPrice = middlePrice + middlePrice.mul(FIFTY_PERCENT);
-            progression = progression.div(TWENTY_PERCENT);
-            return highPrice - (highPrice - middlePrice).mul(FIX_ONE - progression);
+            return highPrice - (highPrice - middlePrice).mulDiv(progression, TWENTY_PERCENT);
         } else {
             // Slow decay -- 80 percentile case
-            progression = (progression - TWENTY_PERCENT).div(EIGHTY_PERCENT);
-            return middlePrice - (middlePrice - lowPrice).mul(FIX_ONE - progression);
+            return
+                middlePrice -
+                (middlePrice - lowPrice).mulDiv(progression - TWENTY_PERCENT, EIGHTY_PERCENT);
         }
     }
 }

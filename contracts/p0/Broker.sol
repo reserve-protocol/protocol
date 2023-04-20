@@ -22,7 +22,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     // The fraction of the supply of the bidding token that is the min bid size in case of default
     uint192 public constant MIN_BID_SHARE_OF_TOTAL_SUPPLY = 1e9; // (1} = 1e-7%
-    uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
+    uint48 public constant MAX_BATCH_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
 
     // Added for interface compatibility with P1
     ITrade public tradeImplementation;
@@ -127,7 +127,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @custom:governance
     function setBatchAuctionLength(uint48 newAuctionLength) public governance {
         require(
-            newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
+            newAuctionLength > 0 && newAuctionLength <= MAX_BATCH_AUCTION_LENGTH,
             "invalid batchAuctionLength"
         );
         emit BatchAuctionLengthSet(batchAuctionLength, newAuctionLength);

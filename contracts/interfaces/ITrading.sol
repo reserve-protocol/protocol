@@ -55,6 +55,9 @@ interface ITrading is IComponent, IRewardableComponent {
     /// @return {UoA} The minimum trade volume in UoA, applies to all assets
     function minTradeVolume() external view returns (uint192);
 
+    /// @return {s} The length of a dutch auction in the trader
+    function dutchAuctionLength() external view returns (uint48);
+
     /// @return The ongoing trade for a sell token, or the zero address
     function trades(IERC20 sell) external view returns (ITrade);
 
@@ -75,4 +78,7 @@ interface TestITrading is ITrading {
 
     /// @custom:governance
     function setMinTradeVolume(uint192 val) external;
+
+    /// @custom:governance
+    function setDutchAuctionLength(uint48 val) external;
 }

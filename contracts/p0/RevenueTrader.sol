@@ -38,7 +38,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// Starts dutch auctions from the current block, unless they are already ongoing
     /// Callable only by BackingManager
     /// @custom:refresher
-    function startDutchAuctions() public {
+    function processRevenue() public {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         if (tradeEnd <= block.timestamp) tradeEnd = uint48(block.timestamp) + dutchAuctionLength;
     }
@@ -144,7 +144,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         // {buyTok/sellTok}
         uint192 price = DutchAuctionLib.currentPrice(
-            divuu(block.timestamp - tradeEnd, dutchAuctionLength),
+            divuu(block.timestamp + dutchAuctionLength - tradeEnd, dutchAuctionLength),
             auction.middlePrice,
             auction.lowPrice
         );
