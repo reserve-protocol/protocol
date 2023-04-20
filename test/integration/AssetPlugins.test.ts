@@ -1192,8 +1192,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        REVENUE_HIDING,
-        compoundMock.address
+        REVENUE_HIDING
       )
       // CTokens - Collateral with no price info should revert
       await expect(nonpriceCtokenCollateral.price()).to.be.reverted
@@ -1217,8 +1216,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           defaultThreshold,
           delayUntilDefault,
         },
-        REVENUE_HIDING,
-        compoundMock.address
+        REVENUE_HIDING
       )
       await zeropriceCtokenCollateral.refresh()
 
@@ -1413,8 +1411,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           },
           NO_PRICE_DATA_FEED,
           MAX_ORACLE_TIMEOUT,
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       )
 
@@ -1443,8 +1440,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           },
           mockChainlinkFeed.address,
           MAX_ORACLE_TIMEOUT,
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       )
       await zeropriceCtokenNonFiatCollateral.refresh()
@@ -1554,8 +1550,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           delayUntilDefault,
         },
         REVENUE_HIDING,
-        await weth.decimals(),
-        compoundMock.address
+        await weth.decimals()
       )
 
       // CTokens - Collateral with no price info should revert
@@ -1585,8 +1580,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           delayUntilDefault,
         },
         REVENUE_HIDING,
-        await weth.decimals(),
-        compoundMock.address
+        await weth.decimals()
       )
       await zeroPriceCtokenSelfReferentialCollateral.refresh()
 

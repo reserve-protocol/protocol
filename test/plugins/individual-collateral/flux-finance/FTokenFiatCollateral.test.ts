@@ -148,7 +148,6 @@ all.forEach((curr: FTokenEnumeration) => {
         delayUntilDefault: opts.delayUntilDefault,
       },
       opts.revenueHiding,
-      opts.comptroller,
       { gasLimit: 2000000000 }
     )
     await collateral.deployed()
@@ -215,12 +214,19 @@ all.forEach((curr: FTokenEnumeration) => {
       'CTokenVaultMock'
     )
 
+    let compAddress = ZERO_ADDRESS
+    try {
+      compAddress = await comptroller.getCompAddress()
+    } catch {
+
+    }
+
     const fTokenVault = <CTokenVaultMock>(
       await CTokenVaultMockFactory.deploy(
         await underlyingFToken.name(),
         await underlyingFToken.symbol(),
         underlyingFToken.address,
-        (await comptroller.getCompAddress()) || ZERO_ADDRESS,
+        compAddress,
         collateralOpts.comptroller!
       )
     )

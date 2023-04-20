@@ -149,8 +149,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       },
       targetUnitOracle.address,
       ORACLE_TIMEOUT,
-      REVENUE_HIDING,
-      compoundMock.address
+      REVENUE_HIDING
     )
 
     // Backup

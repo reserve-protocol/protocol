@@ -138,8 +138,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       REVENUE_HIDING,
-      await weth.decimals(),
-      compoundMock.address
+      await weth.decimals()
     )
 
     // Backup
