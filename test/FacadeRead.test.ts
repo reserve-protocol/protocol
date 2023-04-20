@@ -7,7 +7,7 @@ import { bn, fp } from '../common/numbers'
 import { setOraclePrice } from './utils/oracles'
 import {
   Asset,
-  CTokenVaultMock2,
+  CTokenVaultMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -42,7 +42,7 @@ describe('FacadeRead contract', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cTokenVault: CTokenVaultMock2
+  let cTokenVault: CTokenVaultMock
   let rsr: ERC20Mock
   let basket: Collateral[]
 
@@ -80,8 +80,8 @@ describe('FacadeRead contract', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cTokenVault = <CTokenVaultMock2>(
-      await ethers.getContractAt('CTokenVaultMock2', await cTokenAsset.erc20())
+    cTokenVault = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
     )
   })
 

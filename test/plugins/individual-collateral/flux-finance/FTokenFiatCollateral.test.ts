@@ -9,7 +9,7 @@ import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
   CTokenVault,
-  CTokenVaultMock2,
+  CTokenVaultMock,
   ICToken,
   MockV3Aggregator,
   MockV3Aggregator__factory,
@@ -118,7 +118,6 @@ all.forEach((curr: FTokenEnumeration) => {
     opts = { ...defaultCollateralOpts, ...opts }
 
     let erc20Address = opts.erc20
-    const comptroller = await ethers.getContractAt('ComptrollerMock', opts.comptroller!)
 
     if (erc20Address && erc20Address != ZERO_ADDRESS && erc20Address == curr.fToken) {
       const erc20 = await ethers.getContractAt('ERC20Mock', opts.erc20!)
@@ -214,12 +213,12 @@ all.forEach((curr: FTokenEnumeration) => {
       curr.underlying
     )
 
-    const CTokenVaultMock2Factory: ContractFactory = await ethers.getContractFactory(
-      'CTokenVaultMock2'
+    const CTokenVaultMockFactory: ContractFactory = await ethers.getContractFactory(
+      'CTokenVaultMock'
     )
 
-    const fTokenVault = <CTokenVaultMock2>(
-      await CTokenVaultMock2Factory.deploy(
+    const fTokenVault = <CTokenVaultMock>(
+      await CTokenVaultMockFactory.deploy(
         await underlyingFToken.name(),
         await underlyingFToken.symbol(),
         underlyingFToken.address,
@@ -275,21 +274,21 @@ all.forEach((curr: FTokenEnumeration) => {
 
       const rate = fp('2')
       const rateAsRefPerTok = rate.div(50)
-      await (tok as CTokenVaultMock2).setExchangeRate(rate) // above current
+      await (tok as CTokenVaultMock).setExchangeRate(rate) // above current
       await collateral.refresh()
       const before = await collateral.refPerTok()
       expect(before).to.equal(rateAsRefPerTok.mul(fp('0.99')).div(fp('1')))
       expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Should be SOUND if drops just under 1%
-      await (tok as CTokenVaultMock2).setExchangeRate(rate.mul(fp('0.99001')).div(fp('1')))
+      await (tok as CTokenVaultMock).setExchangeRate(rate.mul(fp('0.99001')).div(fp('1')))
       await collateral.refresh()
       let after = await collateral.refPerTok()
       expect(before).to.eq(after)
       expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Should be DISABLED if drops just over 1%
-      await (tok as CTokenVaultMock2).setExchangeRate(before.mul(fp('0.98999')).div(fp('1')))
+      await (tok as CTokenVaultMock).setExchangeRate(before.mul(fp('0.98999')).div(fp('1')))
       await collateral.refresh()
       after = await collateral.refPerTok()
       expect(before).to.be.gt(after)

@@ -49,7 +49,6 @@ import {
 } from '../../../../typechain'
 import { useEnv } from '#/utils/env'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
-import { getLatestBlockNumber } from '#/utils/time'
 
 // Setup test environment
 const setup = async (blockNumber: number) => {

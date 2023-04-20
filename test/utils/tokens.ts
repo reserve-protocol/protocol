@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { CTokenVaultMock2 } from '@typechain/CTokenVaultMock2'
+import { CTokenVaultMock } from '@typechain/CTokenVaultMock'
 import { ERC20Mock } from '@typechain/ERC20Mock'
 import { StaticATokenMock } from '@typechain/StaticATokenMock'
 import { USDCMock } from '@typechain/USDCMock'
@@ -18,8 +18,8 @@ export const mintCollaterals = async (
   const token2 = <StaticATokenMock>(
     await ethers.getContractAt('StaticATokenMock', await basket[2].erc20())
   )
-  const token3 = <CTokenVaultMock2>(
-    await ethers.getContractAt('CTokenVaultMock2', await basket[3].erc20())
+  const token3 = <CTokenVaultMock>(
+    await ethers.getContractAt('CTokenVaultMock', await basket[3].erc20())
   )
 
   for (const recipient of recipients) {

@@ -34,7 +34,7 @@ import {
   TestIRToken,
   TestIStRSR,
   USDCMock,
-  CTokenVaultMock2,
+  CTokenVaultMock,
 } from '../typechain'
 import {
   Collateral,
@@ -66,7 +66,7 @@ describe('FacadeAct contract', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenVaultMock2
+  let cToken: CTokenVaultMock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
@@ -161,8 +161,8 @@ describe('FacadeAct contract', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cToken = <CTokenVaultMock2>(
-      await ethers.getContractAt('CTokenVaultMock2', await cTokenAsset.erc20())
+    cToken = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
     )
 
     // Backup tokens and collaterals - USDT - aUSDT - aUSDC - aBUSD

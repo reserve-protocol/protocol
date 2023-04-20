@@ -32,7 +32,7 @@ import {
   TestIMain,
   TestIRToken,
   USDCMock,
-  CTokenVaultMock2,
+  CTokenVaultMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -76,7 +76,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenVaultMock2
+  let token3: CTokenVaultMock
   let tokens: ERC20Mock[]
 
   let collateral0: Collateral
@@ -125,8 +125,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock2>(
-      await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    token3 = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
     )
     tokens = [token0, token1, token2, token3]
 

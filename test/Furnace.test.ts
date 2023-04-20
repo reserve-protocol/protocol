@@ -6,7 +6,7 @@ import hre, { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
 import {
-  CTokenVaultMock2,
+  CTokenVaultMock,
   ERC20Mock,
   StaticATokenMock,
   TestIFurnace,
@@ -52,7 +52,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let token2: StaticATokenMock
-  let token3: CTokenVaultMock2
+  let token3: CTokenVaultMock
 
   let collateral0: Collateral
   let collateral1: Collateral
@@ -85,8 +85,8 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock2>(
-      await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    token3 = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
     )
 
     // Mint Tokens

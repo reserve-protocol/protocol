@@ -20,7 +20,7 @@ import {
   TestIMain,
   TestIRToken,
   TestIStRSR,
-  CTokenVaultMock2,
+  CTokenVaultMock,
 } from '../typechain'
 import { IConfig, MAX_RATIO, MAX_UNSTAKING_DELAY } from '../common/configuration'
 import { CollateralStatus, MAX_UINT256, ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
@@ -77,7 +77,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let token2: StaticATokenMock
-  let token3: CTokenVaultMock2
+  let token3: CTokenVaultMock
   let collateral0: Collateral
   let collateral1: Collateral
   let collateral2: Collateral
@@ -175,8 +175,8 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock2>(
-      await ethers.getContractAt('CTokenVaultMock2', await collateral3.erc20())
+    token3 = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
     )
   })
 

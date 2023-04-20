@@ -11,7 +11,7 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenVaultMock2,
+  CTokenVaultMock,
   ERC20Mock,
   FacadeTest,
   FiatCollateral,
@@ -76,7 +76,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
   let ERC20Mock: ContractFactory
   let ATokenMockFactory: ContractFactory
-  let CTokenVaultMockFactory2: ContractFactory
+  let CTokenVaultMockFactory: ContractFactory
   let ATokenCollateralFactory: ContractFactory
   let CTokenCollateralFactory: ContractFactory
 
@@ -110,7 +110,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-    CTokenVaultMockFactory2 = await ethers.getContractFactory('CTokenVaultMock2')
+    CTokenVaultMockFactory = await ethers.getContractFactory('CTokenVaultMock')
     ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
@@ -157,12 +157,12 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     return erc20
   }
 
-  const prepCToken = async (index: number): Promise<CTokenVaultMock2> => {
+  const prepCToken = async (index: number): Promise<CTokenVaultMock> => {
     const underlying: ERC20Mock = <ERC20Mock>(
       await ERC20Mock.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`)
     )
-    const erc20: CTokenVaultMock2 = <CTokenVaultMock2>(
-      await CTokenVaultMockFactory2.deploy(
+    const erc20: CTokenVaultMock = <CTokenVaultMock>(
+      await CTokenVaultMockFactory.deploy(
         `CToken_NAME:${index}`,
         `CToken_SYM:${index}`,
         underlying.address,

@@ -32,7 +32,7 @@ import {
   Asset,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
-  CTokenVaultMock2,
+  CTokenVaultMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -108,7 +108,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenVaultMock2
+  let token3: CTokenVaultMock
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
@@ -169,7 +169,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
-    token3 = <CTokenVaultMock2>erc20s[collateral.indexOf(basket[3])]
+    token3 = <CTokenVaultMock>erc20s[collateral.indexOf(basket[3])]
 
     collateral0 = <FiatCollateral>basket[0]
     collateral1 = <FiatCollateral>basket[1]
