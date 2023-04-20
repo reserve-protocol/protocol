@@ -4,12 +4,12 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../interfaces/IAsset.sol";
 import "../../libraries/Fixed.sol";
-import "./FiatCollateral.sol";
+import "./Collateral.sol";
 import "./Asset.sol";
 import "./OracleLib.sol";
 
 /**
- * @title AppreciatingFiatCollateral
+ * @title AppreciatingCollateral
  * Collateral that may need revenue hiding to become truly "up only"
  *
  * For: {tok} != {ref}, {ref} != {target}, {target} == {UoA}
@@ -24,7 +24,7 @@ import "./OracleLib.sol";
  * Can intentionally disable default checks by setting config.defaultThreshold to 0
  * Can intentionally do no revenue hiding by setting revenueHiding to 0
  */
-abstract contract AppreciatingFiatCollateral is FiatCollateral {
+abstract contract AppreciatingCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -36,7 +36,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    constructor(CollateralConfig memory config, uint192 revenueHiding) FiatCollateral(config) {
+    constructor(CollateralConfig memory config, uint192 revenueHiding) Collateral(config) {
         require(revenueHiding < FIX_ONE, "revenueHiding out of range");
         revenueShowing = FIX_ONE.minus(revenueHiding);
     }
@@ -59,16 +59,10 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
             uint192 pegPrice
         )
     {
-        // {target/ref} = {UoA/ref} / {UoA/target} (1)
-        pegPrice = chainlinkFeed.price(oracleTimeout);
-
-        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
-        uint192 p = pegPrice.mul(_underlyingRefPerTok());
-        uint192 err = p.mul(oracleError, CEIL);
-
-        low = p - err;
-        high = p + err;
-        // assert(low <= high); obviously true just by inspection
+        uint192 _strictRefPerTok = _underlyingRefPerTok()
+        (low, high, pegPrice) = super.tryPrice();
+        low = low.mul(_strictRefPerTok);
+        high = high.mul(_strictRefPerTok);
     }
 
     /// Should not revert

@@ -11,11 +11,13 @@ uint48 constant MAX_DELAY_UNTIL_DEFAULT = 1209600; // {s} 2 weeks
 
 struct CollateralConfig {
     uint48 priceTimeout; // {s} The number of seconds over which saved prices decay
-    AggregatorV3Interface chainlinkFeed; // Feed units: {target/ref}
+    AggregatorV3Interface uoaPerTargetOracle; // Feed units: {UoA/ref}
+    AggregatorV3Interface uoaPerRefOracle; // Feed units: {UoA/ref}
     uint192 oracleError; // {1} The % the oracle feed can be off by
     IERC20Metadata erc20; // The ERC20 of the collateral token
     uint192 maxTradeVolume; // {UoA} The max trade volume, in UoA
-    uint48 oracleTimeout; // {s} The number of seconds until a oracle value becomes invalid
+    uint48 uoaPerTargetOracleTimeout; // {s} The number of seconds until a oracle value becomes invalid
+    uint48 uoaPerRefOracleTimeout; // {s} The number of seconds until a oracle value becomes invalid
     bytes32 targetName; // The bytes32 representation of the target name
     uint192 defaultThreshold; // {1} A value like 0.05 that represents a deviation tolerance
     // set defaultThreshold to zero to create SelfReferentialCollateral
@@ -23,7 +25,7 @@ struct CollateralConfig {
 }
 
 /**
- * @title FiatCollateral
+ * @title Collateral
  * Parent class for all collateral. Can be extended to support appreciating collateral
  *
  * For: {tok} == {ref}, {ref} != {target}, {target} == {UoA}
@@ -32,14 +34,17 @@ struct CollateralConfig {
  *   - refPerTok()
  *   - targetPerRef()
  *   - claimRewards()
- * If you have appreciating collateral, then you should use AppreciatingFiatCollateral or
+ * If you have appreciating collateral, then you should use AppreciatingCollateral or
  * override refresh() yourself.
  *
  * Can intentionally disable default checks by setting config.defaultThreshold to 0
  */
-contract FiatCollateral is ICollateral, Asset {
+contract Collateral is ICollateral, Asset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
+
+    AggregatorV3Interface public immutable uoaPerTargetOracle; // {UoA/ref}
+    uint48 public immutable uoaPerTargetOracleTimeout; // {s}
 
     // Default Status:
     // _whenDefault == NEVER: no risk of default (initial value)
@@ -58,18 +63,21 @@ contract FiatCollateral is ICollateral, Asset {
 
     uint192 public immutable pegTop; // {target/ref} The top of the peg
 
-    /// @param config.chainlinkFeed Feed units: {UoA/ref}
+    /// @param config.uoaPerRefOracle Feed units: {UoA/ref}
     constructor(CollateralConfig memory config)
         Asset(
             config.priceTimeout,
-            config.chainlinkFeed,
+            config.uoaPerRefOracle,
             config.oracleError,
             config.erc20,
             config.maxTradeVolume,
-            config.oracleTimeout
+            config.uoaPerRefOracleTimeout
         )
     {
         require(config.targetName != bytes32(0), "targetName missing");
+        if(address(config.uoaPerTargetOracle) != address(0)) {
+            require(uoaPerTargetOracleTimeout_ > 0, "uoaPerTargetOracleTimeout zero");
+        }
         if (config.defaultThreshold > 0) {
             require(config.delayUntilDefault > 0, "delayUntilDefault zero");
         }
@@ -105,15 +113,31 @@ contract FiatCollateral is ICollateral, Asset {
             uint192 pegPrice
         )
     {
-        // {target/ref} = {UoA/ref} / {UoA/target} (1)
-        pegPrice = chainlinkFeed.price(oracleTimeout);
+        // {UoA/target}
+        uint192 _uoaPerTarget = uoaPerTarget()
+        if (address(uoaPerTargetOracle) != address(0)) {
+            _uoaPerTarget = uoaPerTargetOracle.price(uoaPerTargetOracleTimeout);
+        }
 
-        // {target/ref} = {target/ref} * {1}
-        uint192 err = pegPrice.mul(oracleError, CEIL);
+        // {UoA/ref} = {UoA/target} * {target/ref}
+        uint192 _uoaPerRef = _uoaPerTarget.mul(targetPerRef())
+        if (address(uoaPerRefOracle) != address(0)) {
+            _uoaPerRef = uoaPerRefOracle.price(uoaPerRefOracleTimeout); // {UoA/ref}
+        }
 
-        low = pegPrice - err;
-        high = pegPrice + err;
-        // assert(low <= high); obviously true just by inspection
+        if (_uoaPerTarget == 0) {
+            return (0, FIX_MAX, 0);
+        } else {
+            // this oracleError is already the combined total oracle error
+            uint192 err = _uoaPerRef.mul(oracleError, CEIL);
+
+            // assert(low <= high); obviously true just by inspection
+            low = _uoaPerRef - err;
+            high = _uoaPerRef + err;
+
+            // {target/ref} = {UoA/ref} / {UoA/target}
+            pegPrice = _uoaPerRef.div(_uoaPerTarget);
+        }
     }
 
     /// Should not revert
@@ -208,6 +232,11 @@ contract FiatCollateral is ICollateral, Asset {
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() public view virtual returns (uint192) {
+        return FIX_ONE;
+    }
+
+    /// @return {uoa/target} Quantity of whole account units per whole target unit
+    function uoaPerTarget() public view virtual returns (uint192) {
         return FIX_ONE;
     }
 

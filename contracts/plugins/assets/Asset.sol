@@ -10,7 +10,7 @@ contract Asset is IAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    AggregatorV3Interface public immutable chainlinkFeed; // {UoA/tok}
+    AggregatorV3Interface public immutable uoaPerRefOracle; // {UoA/ref}
 
     IERC20Metadata public immutable erc20;
 
@@ -18,7 +18,7 @@ contract Asset is IAsset {
 
     uint192 public immutable override maxTradeVolume; // {UoA}
 
-    uint48 public immutable oracleTimeout; // {s}
+    uint48 public immutable uoaPerRefOracleTimeout; // {s}
 
     uint192 public immutable oracleError; // {1}
 
@@ -33,31 +33,32 @@ contract Asset is IAsset {
     uint48 public lastSave; // {s} The timestamp when prices were last saved
 
     /// @param priceTimeout_ {s} The number of seconds over which savedHighPrice decays to 0
-    /// @param chainlinkFeed_ Feed units: {UoA/tok}
+    /// @param uoaPerRefOracle_ Feed units: {UoA/tok}
     /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
-    /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
+    /// @param uoaPerRefOracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
         uint48 priceTimeout_,
-        AggregatorV3Interface chainlinkFeed_,
+        AggregatorV3Interface uoaPerRefOracle_,
         uint192 oracleError_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
-        uint48 oracleTimeout_
+        uint48 uoaPerRefOracleTimeout_
     ) {
         require(priceTimeout_ > 0, "price timeout zero");
-        require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(oracleError_ > 0 && oracleError_ < FIX_ONE, "oracle error out of range");
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
-        require(oracleTimeout_ > 0, "oracleTimeout zero");
+        if(address(uoaPerRefOracle_) != address(0)) {
+            require(uoaPerRefOracleTimeout_ > 0, "uoaPerRefOracleTimeout zero");
+        }
         priceTimeout = priceTimeout_;
-        chainlinkFeed = chainlinkFeed_;
+        uoaPerRefOracle = uoaPerRefOracle_;
         oracleError = oracleError_;
         erc20 = erc20_;
         erc20Decimals = erc20.decimals();
         maxTradeVolume = maxTradeVolume_;
-        oracleTimeout = oracleTimeout_;
+        uoaPerRefOracleTimeout = uoaPerRefOracleTimeout_;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -76,7 +77,7 @@ contract Asset is IAsset {
             uint192
         )
     {
-        uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
+        uint192 p = uoaPerRefOracle.price(uoaPerRefOracleTimeout); // {UoA/tok}
         uint192 err = p.mul(oracleError, CEIL);
         // assert(low <= high); obviously true just by inspection
         return (p - err, p + err, 0);
