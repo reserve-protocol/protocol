@@ -49,11 +49,8 @@ interface IBackingManager is IComponent, ITrading, ISwapper {
     /// @custom:interaction
     function manageTokens(IERC20[] memory erc20s) external;
 
-    /// Get ongoing dutch auction, if one exists
-    /// To be used via callstatic -- see ISwapper.swap()
-    /// @return The auction as a single Swap
-    /// @custom:static-call
-    function dutchAuction() external returns (Swap memory);
+    /// @return The ongoing auction as a Swap
+    function getDutchAuctionQuote() external view returns (Swap memory);
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

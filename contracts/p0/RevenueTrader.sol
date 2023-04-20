@@ -38,8 +38,10 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// Starts dutch auctions from the current block, unless they are already ongoing
     /// Callable only by BackingManager
     /// @custom:refresher
-    function processRevenue() public {
+    function processRevenue() external {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
+
+        // safely reset tradeEnd
         if (tradeEnd + dutchAuctionLength <= block.timestamp) {
             tradeEnd = uint48(block.timestamp - 1); // this allows first bid to happen this block
         }
@@ -99,7 +101,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
     /// Executes an atomic swap for revenue via a dutch auction
     /// @dev Caller must have granted tokenIn allowances for required tokenIn bal
-    /// @dev To get required tokenIn bal, use ethers.callstatic and look at the swap's buyAmount
     /// @param tokenIn The ERC20 token provided by the caller
     /// @param tokenOut The ERC20 token being purchased by the caller
     /// @param amountOut {qTokenOut} The exact quantity of tokenOut being purchased
@@ -113,41 +114,71 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         // == Refresh ==
         main.assetRegistry().refresh();
         // should melt() here too; TODO when we add to manageToken()
-        return executeSwap(ensureDutchAuctionExists(tokenOut), tokenIn, tokenOut, amountOut);
-    }
 
-    /// To be used via callstatic
-    /// Should be idempotent if accidentally called
-    /// @dev Can be iterated over by a Facade using the assetRegistry.erc20s()
-    /// @return The auction as a single Swap
-    /// @custom:static-call
-    function dutchAuction(IERC20 tokenOut) external notTradingPausedOrFrozen returns (Swap memory) {
-        return getAuctionSwap(ensureDutchAuctionExists(tokenOut));
-    }
+        require(address(trades[tokenOut]) == address(0), "nonatomic trade ongoing");
+        require(tokenOut != tokenToBuy, "will not sell tokenToBuy");
 
-    // === Private ===
-
-    /// Returns a dutch auction from storage or reverts
-    /// Post-condition: tradeEnd is > block.timestamp
-    function ensureDutchAuctionExists(IERC20 sell) private returns (DutchAuction storage auction) {
-        require(address(trades[sell]) == address(0), "nonatomic trade ongoing");
-        require(sell != tokenToBuy, "will not sell tokenToBuy");
-
-        auction = dutchAuctions[sell][tradeEnd];
+        // executeSwap if storage auction already exists
+        DutchAuction storage auction = dutchAuctions[tokenOut][tradeEnd];
         if (address(auction.sell) != address(0) || address(auction.buy) != address(0)) {
-            return auction;
+            return executeSwap(auction, tokenIn, tokenOut, amountOut);
         }
 
-        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
+        // === Checks/Effects ===
 
-        tradeEnd += dutchAuctionLength;
-        auction = dutchAuctions[sell][tradeEnd];
+        require(
+            block.timestamp < tradeEnd + dutchAuctionLength &&
+                block.timestamp + dutchAuctionLength > tradeEnd,
+            "no dutch auction ongoing"
+        );
 
-        IAsset sellAsset = main.assetRegistry().toAsset(sell);
+        if (tradeEnd <= block.timestamp) tradeEnd += dutchAuctionLength;
+        IAsset sellAsset = main.assetRegistry().toAsset(tokenOut);
 
         // {sellTok}
         uint192 sellAmount = sellAsset.bal(address(this));
         require(sellAmount > 0, "zero balance");
-        auction.setupAuction(sellAsset, main.assetRegistry().toAsset(tokenToBuy), sellAmount);
+        dutchAuctions[tokenOut][tradeEnd] = DutchAuctionLib.makeAuction(
+            sellAsset,
+            main.assetRegistry().toAsset(tokenToBuy),
+            sellAmount
+        );
+
+        // === Interactions ===
+
+        return executeSwap(dutchAuctions[tokenOut][tradeEnd], tokenIn, tokenOut, amountOut);
+    }
+
+    /// @return The ongoing auction as a Swap
+    function getDutchAuctionQuote(IERC20 tokenOut)
+        external
+        view
+        notTradingPausedOrFrozen
+        returns (Swap memory)
+    {
+        require(address(trades[tokenOut]) == address(0), "nonatomic trade ongoing");
+        require(tokenOut != tokenToBuy, "will not sell tokenToBuy");
+
+        DutchAuction storage auction = dutchAuctions[tokenOut][tradeEnd];
+        if (address(auction.sell) != address(0) || address(auction.buy) != address(0)) {
+            return auction.toSwap(progression());
+        }
+
+        require(
+            block.timestamp < tradeEnd + dutchAuctionLength &&
+                block.timestamp + dutchAuctionLength > tradeEnd,
+            "no dutch auction ongoing"
+        );
+        IAsset sellAsset = main.assetRegistry().toAsset(tokenOut);
+
+        // {sellTok}
+        uint192 sellAmount = sellAsset.bal(address(this));
+        require(sellAmount > 0, "zero balance");
+        DutchAuction memory memAuction = DutchAuctionLib.makeAuction(
+            sellAsset,
+            main.assetRegistry().toAsset(tokenToBuy),
+            sellAmount
+        );
+        return memAuction.toSwap(progression());
     }
 }

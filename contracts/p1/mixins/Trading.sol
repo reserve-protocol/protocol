@@ -80,14 +80,18 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen nonReentrant {
+    function settleTrade(IERC20 sell) external virtual notTradingPausedOrFrozen nonReentrant {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
 
-        tradeEnd = uint48(block.timestamp); // start any virtual auctions
         delete trades[sell];
         tradesOpen--;
+
+        // safely reset tradeEnd
+        if (tradeEnd + dutchAuctionLength <= block.timestamp) {
+            tradeEnd = uint48(block.timestamp - 1); // this allows first bid to happen this block
+        }
 
         // == Interactions ==
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
@@ -152,57 +156,49 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20 tokenOut,
         uint256 amountOut
     ) internal returns (Swap memory) {
-        require(auction.buy.erc20() == tokenIn, "buy token mismatch");
-        require(auction.sell.erc20() == tokenOut, "sell token mismatch");
-
-        // Execute
-        return
-            auction.bid(
-                divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength),
-                shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()))
-            );
-    }
-
-    /// To be used via callstatic
-    /// Should be idempotent if accidentally called
-    /// @custom:static-call
-    function getAuctionSwap(DutchAuction storage auction) internal view returns (Swap memory) {
-        // {buyTok/sellTok}
-        uint192 price = DutchAuctionLib.currentPrice(
-            auction,
-            divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength)
+        require(
+            auction.buy.erc20() == tokenIn && auction.sell.erc20() == tokenOut,
+            "ERC20 mismatch"
         );
 
-        // {buyTok} = {sellTok} * {buyTok/sellTok}
-        uint192 buyAmount = auction.sellAmount.mul(price, CEIL);
-
+        // Complete bid + execute swap
         return
-            Swap(
-                auction.sell.erc20(),
-                auction.buy.erc20(),
-                auction.sellAmount.shiftl_toUint(int8(auction.sell.erc20Decimals()), FLOOR),
-                buyAmount.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
-            );
+            auction.bid(progression(), shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals())));
     }
+
+    /// @return {1} The % progression of the auction
+    function progression() internal view returns (uint192) {
+        return divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength);
+    }
+
+    // solhint-disable no-empty-blocks
+    // contract-size saver: trades off contract size against execution cost
+
+    function requireGovernance() internal view governance {}
+
+    // solhint-enable no-empty-blocks
 
     // === Setters ===
 
     /// @custom:governance
-    function setMaxTradeSlippage(uint192 val) public governance {
+    function setMaxTradeSlippage(uint192 val) public {
+        requireGovernance();
         require(val < MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
     /// @custom:governance
-    function setMinTradeVolume(uint192 val) public governance {
+    function setMinTradeVolume(uint192 val) public {
+        requireGovernance();
         require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;
     }
 
     /// @custom:governance
-    function setDutchAuctionLength(uint48 val) public governance {
+    function setDutchAuctionLength(uint48 val) public {
+        requireGovernance();
         require(val <= MAX_DUTCH_AUCTION_LENGTH, "invalid dutchAuctionLength");
         emit DutchAuctionLengthSet(dutchAuctionLength, val);
         dutchAuctionLength = val;

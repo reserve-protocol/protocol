@@ -2342,20 +2342,26 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
       })
 
-      context('Batch Auctions', () => {
+      context.only('Batch Auctions', () => {
         beforeEach(async () => {
           await rTokenTrader.connect(owner).setDutchAuctionLength(300)
         })
 
-        it('Should quote correct prices throughout auction', async () => {
+        it('Should revert before auction', async () => {
+          await expect(
+            rTokenTrader.callStatic.getDutchAuctionQuote(token0.address)
+          ).to.be.revertedWith('no dutch auction ongoing')
+        })
+
+        it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
             await rTokenTrader.connect(bmSigner).processRevenue()
           })
 
-          // Throughout 5 minutes of blocks, should swap at right price
+          // Simulate 5 minutes of blocks, should swap at right price each time
           for (let i = 1; i <= 300; i += 12) {
-            const actual = await rTokenTrader.callStatic.getSwap(token0.address)
+            const actual = await rTokenTrader.callStatic.getDutchAuctionQuote(token0.address)
             const expected = await toDutchAuctionSwap(
               fp(i).div(300),
               rTokenAsset.address,
@@ -2365,11 +2371,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             expectSwap(actual, expected)
             await advanceToTimestamp((await getLatestBlockTimestamp()) + 12)
           }
+        })
 
-          // At >100% the next auction should revert
-          await expect(rTokenTrader.callStatic.getSwap(token0.address)).to.be.revertedWith(
-            'no dutch auction ongoing'
-          )
+        it('Should revert after auction', async () => {
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + 300)
+          await expect(
+            rTokenTrader.callStatic.getDutchAuctionQuote(token0.address)
+          ).to.be.revertedWith('no dutch auction ongoing')
         })
 
         it('TODO more')

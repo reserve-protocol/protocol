@@ -140,30 +140,72 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Maintain the overall backing policy in an atomic swap via a dutch auction
     /// @dev Caller must have granted tokenIn allowances for required tokenIn bal
-    /// @dev To get required tokenIn bal, use ethers.callstatic and look at the swap's buyAmount
     /// @param tokenIn The ERC20 token provided by the caller
     /// @param tokenOut The ERC20 token being purchased by the caller
     /// @param amountOut {qTokenOut} The exact quantity of tokenOut being purchased
-    /// @return The exact Swap performed
+    /// @return s The exact Swap performed
     /// @custom:interaction RCEI
     function swap(
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 amountOut
-    ) external returns (Swap memory) {
+    ) external returns (Swap memory s) {
         // == Refresh ==
         assetRegistry.refresh();
         // should melt() here too; TODO when we add to manageTokens()
-        return executeSwap(ensureDutchAuctionExists(), tokenIn, tokenOut, amountOut);
+
+        requireCanTrade(0);
+
+        // executeSwap if storage auction already exists
+        if (tradeEnd > block.timestamp) {
+            return executeSwap(dutchAuctions[tradeEnd], tokenIn, tokenOut, amountOut);
+        }
+
+        // === Checks/Effects ===
+
+        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
+        tradeEnd += dutchAuctionLength;
+
+        // Same TradeRequest from manageTokens()
+        (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
+            .prepareRecollateralizationTrade(this, basketHandler.basketsHeldBy(address(this)));
+        require(doTrade, "swap not available");
+
+        dutchAuctions[tradeEnd] = DutchAuctionLib.makeAuction(
+            req.sell,
+            req.buy,
+            shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()))
+        );
+
+        // === Interactions ===
+
+        // Seize RSR if needed
+        if (req.sell.erc20() == rsr) {
+            uint256 bal = rsr.balanceOf(address(this));
+            if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
+        }
+        s = executeSwap(dutchAuctions[tradeEnd], tokenIn, tokenOut, amountOut);
     }
 
-    /// To be used via callstatic
-    /// Should be idempotent if accidentally called
-    /// @return The auction as a single Swap
-    /// @custom:static-call
-    function dutchAuction() external returns (Swap memory) {
-        // TODO can we make this a view?
-        return getAuctionSwap(ensureDutchAuctionExists());
+    /// @return The ongoing auction as a Swap
+    function getDutchAuctionQuote() external view returns (Swap memory) {
+        requireCanTrade(0);
+
+        if (tradeEnd > block.timestamp) {
+            return dutchAuctions[tradeEnd].toSwap(progression());
+        }
+
+        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
+
+        // Same TradeRequest from manageTokens()
+        (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
+            .prepareRecollateralizationTrade(this, basketHandler.basketsHeldBy(address(this)));
+
+        require(doTrade, "swap not available");
+
+        // {sellTok}
+        uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
+        return DutchAuctionLib.makeAuction(req.sell, req.buy, sellAmount).toSwap(progression());
     }
 
     // === Private ===
@@ -175,38 +217,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(
             block.timestamp >= basketHandler.timestamp() + tradingDelay + additionalDelay,
             "waiting to trade"
-        );
-    }
-
-    /// Returns a dutch auction from storage or reverts
-    /// Post-condition: tradeEnd is > block.timestamp
-    function ensureDutchAuctionExists() private returns (DutchAuction storage auction) {
-        requireCanTrade(0);
-
-        auction = dutchAuctions[tradeEnd];
-        if (tradeEnd > block.timestamp) {
-            return auction;
-        }
-
-        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
-
-        // Same TradeRequest from manageTokens()
-        (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
-            .prepareRecollateralizationTrade(this, basketHandler.basketsHeldBy(address(this)));
-
-        require(doTrade, "swap not available");
-
-        // Seize RSR if needed
-        if (req.sell.erc20() == rsr) {
-            uint256 bal = rsr.balanceOf(address(this));
-            if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
-        }
-
-        tradeEnd += dutchAuctionLength;
-        dutchAuctions[tradeEnd].setupAuction(
-            req.sell,
-            req.buy,
-            shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()))
         );
     }
 
@@ -319,14 +329,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // === Governance Setters ===
 
     /// @custom:governance
-    function setTradingDelay(uint48 val) public governance {
+    function setTradingDelay(uint48 val) public {
+        requireGovernance();
         require(val <= MAX_TRADING_DELAY, "invalid tradingDelay");
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;
     }
 
     /// @custom:governance
-    function setBackingBuffer(uint192 val) public governance {
+    function setBackingBuffer(uint192 val) public {
+        requireGovernance();
         require(val <= MAX_BACKING_BUFFER, "invalid backingBuffer");
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;

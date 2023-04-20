@@ -56,14 +56,18 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen {
+    function settleTrade(IERC20 sell) external virtual notTradingPausedOrFrozen {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
 
-        tradeEnd = uint48(block.timestamp); // start any virtual auctions
         delete trades[sell];
         tradesOpen--;
+
+        // safely reset tradeEnd
+        if (tradeEnd + dutchAuctionLength <= block.timestamp) {
+            tradeEnd = uint48(block.timestamp - 1); // this allows first bid to happen this block
+        }
 
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
         emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
@@ -104,39 +108,22 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         IERC20 tokenOut,
         uint256 amountOut
     ) internal returns (Swap memory) {
-        require(auction.buy.erc20() == tokenIn, "buy token mismatch");
-        require(auction.sell.erc20() == tokenOut, "sell token mismatch");
-
-        // {s}
-        uint48 elapsed = uint48(block.timestamp) + dutchAuctionLength - tradeEnd;
+        require(
+            auction.buy.erc20() == tokenIn && auction.sell.erc20() == tokenOut,
+            "ERC20 mismatch"
+        );
 
         // {buyTok}
         uint192 bidBuyAmt = shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()));
 
-        // Complete bid + swap
-        return auction.bid(divuu(elapsed, dutchAuctionLength), bidBuyAmt);
+        // Complete bid + execute swap
+        return auction.bid(progression(), bidBuyAmt);
     }
 
-    /// To be used via callstatic
-    /// Should be idempotent if accidentally called
-    /// @custom:static-call
-    function getAuctionSwap(DutchAuction storage auction) internal view returns (Swap memory) {
-        // {s}
-        uint48 elapsed = uint48(block.timestamp) + dutchAuctionLength - tradeEnd;
-
-        // {buyTok/sellTok}
-        uint192 price = DutchAuctionLib.currentPrice(auction, divuu(elapsed, dutchAuctionLength));
-
-        // {buyTok} = {sellTok} * {buyTok/sellTok}
-        uint192 buyAmount = auction.sellAmount.mul(price, CEIL);
-
-        return
-            Swap(
-                auction.sell.erc20(),
-                auction.buy.erc20(),
-                auction.sellAmount.shiftl_toUint(int8(auction.sell.erc20Decimals()), FLOOR),
-                buyAmount.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
-            );
+    /// @return p {1} The % progression of the auction
+    function progression() internal view returns (uint192 p) {
+        p = divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength);
+        assert(p <= FIX_ONE);
     }
 
     // === Setters ===

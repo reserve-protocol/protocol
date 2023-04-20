@@ -132,22 +132,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // == Refresh ==
         main.assetRegistry().refresh();
         // should melt() here too; TODO when we add to manageTokens()
-        return executeSwap(ensureDutchAuctionExists(), tokenIn, tokenOut, amountOut);
-    }
 
-    /// To be used via callstatic
-    /// Should be idempotent if accidentally called
-    /// @return The auction as a single Swap
-    /// @custom:static-call
-    function dutchAuction() external notTradingPausedOrFrozen returns (Swap memory) {
-        return getAuctionSwap(ensureDutchAuctionExists());
-    }
-
-    // === Private ===
-
-    /// Returns a dutch auction from storage or reverts
-    /// Post-condition: tradeEnd is > block.timestamp
-    function ensureDutchAuctionExists() private returns (DutchAuction storage auction) {
         require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
         require(main.basketHandler().isReady(), "basket not ready");
         require(
@@ -155,9 +140,48 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             "waiting to trade"
         );
 
-        auction = dutchAuctions[tradeEnd];
+        // if storage auction already exists
         if (tradeEnd > block.timestamp) {
-            return auction;
+            return executeSwap(dutchAuctions[tradeEnd], tokenIn, tokenOut, amountOut);
+        }
+
+        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
+        tradeEnd += dutchAuctionLength;
+
+        assert(tradeEnd > block.timestamp);
+        assert(tradeEnd <= block.timestamp + dutchAuctionLength);
+
+        // Same TradeRequest from manageTokens()
+        BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
+        (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareRecollateralizationTrade(
+            this,
+            basketsHeld
+        );
+        require(doTrade, "swap not available");
+
+        // Seize RSR if needed
+        if (req.sell.erc20() == main.rsr()) {
+            uint256 bal = main.rsr().balanceOf(address(this));
+            if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
+        }
+
+        // {sellTok}
+        uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
+        dutchAuctions[tradeEnd] = DutchAuctionLib.makeAuction(req.sell, req.buy, sellAmount);
+        return executeSwap(dutchAuctions[tradeEnd], tokenIn, tokenOut, amountOut);
+    }
+
+    /// @return The ongoing auction as a Swap
+    function getDutchAuctionQuote() external view returns (Swap memory) {
+        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
+        require(main.basketHandler().isReady(), "basket not ready");
+        require(
+            block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
+            "waiting to trade"
+        );
+
+        if (tradeEnd > block.timestamp) {
+            return dutchAuctions[tradeEnd].toSwap(progression());
         }
 
         require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
@@ -169,25 +193,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             this,
             basketsHeld
         );
-
         require(doTrade, "swap not available");
-
-        tradeEnd += dutchAuctionLength;
-
-        // Should be in the future by 1 dutchAuctionLength
-        assert(tradeEnd > block.timestamp);
-        assert(tradeEnd <= block.timestamp + dutchAuctionLength);
-
-        // Seize RSR if needed
-        if (req.sell.erc20() == main.rsr()) {
-            uint256 bal = main.rsr().balanceOf(address(this));
-            if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
-        }
 
         // {sellTok}
         uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
-        dutchAuctions[tradeEnd].setupAuction(req.sell, req.buy, sellAmount);
+        return DutchAuctionLib.makeAuction(req.sell, req.buy, sellAmount).toSwap(progression());
     }
+
+    // === Private ===
 
     /// Send excess assets to the RSR and RToken traders
     /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
