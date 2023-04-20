@@ -8,6 +8,7 @@ import {
   MAX_TRADING_DELAY,
   MAX_TRADE_SLIPPAGE,
   MAX_BACKING_BUFFER,
+  MAX_BATCH_AUCTION_LENGTH,
   MAX_TARGET_AMT,
   MAX_MIN_TRADE_VOLUME,
   MIN_WARMUP_PERIOD,
@@ -906,6 +907,32 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Configuration/State #fast', () => {
+    it('Should allow to update dutchAuctionLength if OWNER and perform validations', async () => {
+      const newValue: BigNumber = bn('300') // 5 minutes
+
+      // Check existing value
+      expect(await backingManager.dutchAuctionLength()).to.equal(config.dutchAuctionLength)
+
+      // If not owner cannot update
+      await expect(backingManager.connect(other).setDutchAuctionLength(newValue)).to.be.reverted
+
+      // Check value did not change
+      expect(await backingManager.dutchAuctionLength()).to.equal(config.dutchAuctionLength)
+
+      // Update with owner
+      await expect(backingManager.connect(owner).setDutchAuctionLength(newValue))
+        .to.emit(backingManager, 'DutchAuctionLengthSet')
+        .withArgs(config.dutchAuctionLength, newValue)
+
+      // Check value was updated
+      expect(await backingManager.dutchAuctionLength()).to.equal(newValue)
+
+      // Cannot update with value > max
+      await expect(
+        backingManager.connect(owner).setDutchAuctionLength(MAX_BATCH_AUCTION_LENGTH + 1)
+      ).to.be.revertedWith('invalid dutchAuctionLength')
+    })
+
     it('Should allow to update warmupPeriod if OWNER and perform validations', async () => {
       const newValue: BigNumber = bn('360')
 

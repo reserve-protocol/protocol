@@ -56,7 +56,7 @@ import {
   REVENUE_HIDING,
 } from './fixtures'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
-import { expectTrade, getTrade } from './utils/trades'
+import { expectTrade, getTrade, toDutchAuctionSwap, expectSwap } from './utils/trades'
 import { useEnv } from '#/utils/env'
 
 const describeGas =
@@ -2340,6 +2340,30 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check status - nothing claimed
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+      })
+
+      context('Batch Auctions', () => {
+        beforeEach(async () => {
+          await rTokenTrader.connect(owner).setDutchAuctionLength(300)
+        })
+
+        it.only('Should quote swap equal to full auction', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await whileImpersonating(backingManager.address, async (bmSigner) => {
+            await rTokenTrader.connect(bmSigner).processRevenue()
+          })
+          const actual = await rTokenTrader.callStatic.getSwap(token0.address)
+          const expected = await toDutchAuctionSwap(
+            fp('0'),
+            rTokenAsset.address,
+            collateral0.address,
+            issueAmount
+          )
+
+          expectSwap(actual, expected)
+        })
+
+        it('TODO more')
       })
     })
 

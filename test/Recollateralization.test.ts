@@ -4631,6 +4631,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           sellAmt2.div(2).add(buyAmt4).add(sellAmtRebalance).add(minBuyAmt5).add(sellAmtRebalance2)
         )
       })
+
+      context('with Dutch Auctions', () => {
+        // it('sets ')
+      })
     })
   })
 

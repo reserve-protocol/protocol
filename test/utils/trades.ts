@@ -2,7 +2,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { TestITrading, GnosisTrade } from '../../typechain'
-import { fp, divCeil } from '../../common/numbers'
+import { bn, fp, divCeil } from '../../common/numbers'
 
 export const expectTrade = async (trader: TestITrading, auctionInfo: Partial<ITradeInfo>) => {
   if (!auctionInfo.sell) throw new Error('Must provide sell token to find trade')
@@ -72,4 +72,43 @@ export const toMinBuyAmt = (
     .mul(lowSellPrice) // (b)
 
   return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+}
+
+export interface Swap {
+  sell: string
+  buy: string
+  sellAmount: BigNumber
+  buyAmount: BigNumber
+}
+
+export const toDutchAuctionSwap = async (
+  progression: BigNumber,
+  assetInAddr: string,
+  assetOutAddr: string,
+  outAmount: BigNumber
+): Promise<Swap> => {
+  const assetIn = await ethers.getContractAt('IAsset', assetInAddr)
+  const assetOut = await ethers.getContractAt('IAsset', assetOutAddr)
+  const [sellLow, sellHigh] = await assetOut.price() // {UoA/sellTok}
+  const [buyLow, buyHigh] = await assetIn.price() // {UoA/buyTok}
+  const lowPrice = sellLow.mul(fp('1')).div(buyHigh)
+  const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
+  const highPrice = middlePrice.add(divCeil(middlePrice, bn('2'))) // 50% above middlePrice
+
+  const price = progression.lt(fp('0.2'))
+    ? highPrice.sub(highPrice.sub(middlePrice).mul(progression).div(fp('0.2')))
+    : middlePrice.sub(middlePrice.sub(lowPrice).mul(progression.sub(fp('0.2')).div(fp('0.8'))))
+
+  return {
+    sell: await assetOut.erc20(),
+    buy: await assetIn.erc20(),
+    sellAmount: outAmount,
+    buyAmount: divCeil(outAmount.mul(price), fp('1')),
+  }
+}
+export const expectSwap = (one: Swap, two: Swap) => {
+  expect(one.sell).to.equal(two.sell)
+  expect(one.buy).to.equal(two.buy)
+  expect(one.sellAmount).to.equal(two.sellAmount)
+  expect(one.buyAmount).to.equal(two.buyAmount)
 }

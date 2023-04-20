@@ -4,7 +4,7 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
-import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
+import { IConfig, MAX_BATCH_AUCTION_LENGTH } from '../common/configuration'
 import { MAX_UINT96, TradeStatus, ZERO_ADDRESS } from '../common/constants'
 import { bn, toBNDecimals } from '../common/numbers'
 import {
@@ -215,7 +215,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         'invalid batchAuctionLength'
       )
 
-      invalidValue = bn(MAX_AUCTION_LENGTH + 1)
+      invalidValue = bn(MAX_BATCH_AUCTION_LENGTH + 1)
 
       // Attempt to update
       await expect(broker.connect(owner).setBatchAuctionLength(invalidValue)).to.be.revertedWith(
