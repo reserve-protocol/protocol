@@ -253,7 +253,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       revenueHiding: REVENUE_HIDING.toString(),
-      comptroller: compoundMock.address,
       noOutput: true,
     })
 
@@ -330,7 +329,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       revenueHiding: REVENUE_HIDING.toString(),
-      comptroller: compoundMock.address,
       noOutput: true,
     })
 
@@ -385,7 +383,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         revenueHiding: REVENUE_HIDING.toString(),
-        comptroller: compoundMock.address,
         referenceERC20Decimals: bn(18).toString(),
         noOutput: true,
       }

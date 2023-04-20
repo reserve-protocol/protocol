@@ -24,19 +24,13 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
     ICToken public immutable cToken;
 
-    IComptroller public immutable comptroller;
-
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    /// @param comptroller_ The CompoundFinance Comptroller
     constructor(
         CollateralConfig memory config,
-        uint192 revenueHiding,
-        IComptroller comptroller_
+        uint192 revenueHiding
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(comptroller_) != address(0), "comptroller missing");
         cToken = ICToken(address(IERC4626(address(config.erc20)).asset()));
         referenceERC20Decimals = IERC20Metadata(cToken.underlying()).decimals();
-        comptroller = comptroller_;
     }
 
     /// Refresh exchange rates and update default status.

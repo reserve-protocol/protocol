@@ -221,8 +221,7 @@ async function collateralFixture(
         defaultThreshold,
         delayUntilDefault,
       },
-      REVENUE_HIDING,
-      comptroller.address
+      REVENUE_HIDING
     )
     await coll.refresh()
     return [vault, coll]
@@ -319,8 +318,7 @@ async function collateralFixture(
       },
       targetUnitOracleAddr,
       ORACLE_TIMEOUT,
-      REVENUE_HIDING,
-      comptroller.address
+      REVENUE_HIDING
     )
     await coll.refresh()
     return [vault, coll]
@@ -376,8 +374,7 @@ async function collateralFixture(
           delayUntilDefault,
         },
         REVENUE_HIDING,
-        referenceERC20Decimals,
-        comptroller.address
+        referenceERC20Decimals
       )
     )
     await coll.refresh()

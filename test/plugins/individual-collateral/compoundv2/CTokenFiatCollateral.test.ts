@@ -213,8 +213,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         defaultThreshold,
         delayUntilDefault,
       },
-      REVENUE_HIDING,
-      comptroller.address
+      REVENUE_HIDING
     )
 
     // Setup balances for addr1 - Transfer from Mainnet holder
@@ -403,25 +402,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           ZERO_ADDRESS
         )
       ).to.be.revertedWith('missing erc20')
-
-      // Comptroller
-      await expect(
-        CTokenCollateralFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
-            oracleError: ORACLE_ERROR,
-            erc20: cDaiVault.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold,
-            delayUntilDefault,
-          },
-          REVENUE_HIDING,
-          ZERO_ADDRESS
-        )
-      ).to.be.revertedWith('comptroller missing')
     })
   })
 
@@ -646,8 +626,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           defaultThreshold,
           delayUntilDefault,
         },
-        REVENUE_HIDING,
-        comptroller.address
+        REVENUE_HIDING
       )
 
       // CTokens - Collateral with no price info should revert
@@ -672,8 +651,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           defaultThreshold,
           delayUntilDefault,
         },
-        REVENUE_HIDING,
-        comptroller.address
+        REVENUE_HIDING
       )
 
       await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
@@ -709,8 +687,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           defaultThreshold,
           delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
         },
-        REVENUE_HIDING,
-        comptroller.address
+        REVENUE_HIDING
       )
 
       // Check initial state
@@ -782,8 +759,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           defaultThreshold,
           delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
         },
-        REVENUE_HIDING,
-        comptroller.address
+        REVENUE_HIDING
       )
       await newCDaiCollateral.refresh()
 
@@ -825,8 +801,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             defaultThreshold,
             delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
           },
-          REVENUE_HIDING,
-          comptroller.address
+          REVENUE_HIDING
         )
       )
 

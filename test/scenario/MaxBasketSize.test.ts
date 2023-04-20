@@ -250,8 +250,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
-        REVENUE_HIDING,
-        compoundMock.address
+        REVENUE_HIDING
       )
     )
 

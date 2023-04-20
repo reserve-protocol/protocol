@@ -263,8 +263,7 @@ async function collateralFixture(
         defaultThreshold: defaultThreshold,
         delayUntilDefault: delayUntilDefault,
       },
-      REVENUE_HIDING,
-      comptroller.address
+      REVENUE_HIDING
     )
     await coll.refresh()
     return [erc20, coll]

@@ -13,7 +13,6 @@ task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
   .addParam('revenueHiding', 'Revenue Hiding')
-  .addParam('comptroller', 'Comptroller address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -33,8 +32,7 @@ task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
         defaultThreshold: params.defaultThreshold,
         delayUntilDefault: params.delayUntilDefault,
       },
-      params.revenueHiding,
-      params.comptroller
+      params.revenueHiding
     )
     await collateral.deployed()
 

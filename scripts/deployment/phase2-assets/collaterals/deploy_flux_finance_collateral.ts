@@ -62,8 +62,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   let collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdcCollateral)
   await (await collateral.refresh()).wait()
@@ -94,8 +93,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdtCollateral)
   await (await collateral.refresh()).wait()
@@ -126,8 +124,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fDaiCollateral)
   await collateral.refresh()
@@ -158,8 +155,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fFRAXCollateral)
   await collateral.refresh()

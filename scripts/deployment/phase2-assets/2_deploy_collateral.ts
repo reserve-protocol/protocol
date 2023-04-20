@@ -399,8 +399,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cDaiCollateral)
   await (await collateral.refresh()).wait()
@@ -431,8 +430,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdcCollateral)
   await (await collateral.refresh()).wait()
@@ -463,8 +461,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdtCollateral)
   await (await collateral.refresh()).wait()
@@ -495,8 +492,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdpCollateral)
   await (await collateral.refresh()).wait()
@@ -533,8 +529,7 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cWBTCCollateral)
   await (await collateral.refresh()).wait()
@@ -564,7 +559,6 @@ async function main() {
     oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].COMPTROLLER,
     referenceERC20Decimals: '18',
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cETHCollateral)

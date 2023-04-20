@@ -17,23 +17,17 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
 
     uint8 public immutable referenceERC20Decimals;
 
-    IComptroller public immutable comptroller;
-
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param referenceERC20Decimals_ The number of decimals in the reference token
-    /// @param comptroller_ The CompoundFinance Comptroller
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        uint8 referenceERC20Decimals_,
-        IComptroller comptroller_
+        uint8 referenceERC20Decimals_
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         require(config.defaultThreshold == 0, "default threshold not supported");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        require(address(comptroller_) != address(0), "comptroller missing");
         referenceERC20Decimals = referenceERC20Decimals_;
-        comptroller = comptroller_;
     }
 
     /// Can revert, used by other contract functions in order to catch errors

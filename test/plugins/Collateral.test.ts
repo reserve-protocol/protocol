@@ -301,8 +301,7 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
           },
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       ).to.be.revertedWith('delayUntilDefault zero')
     })
@@ -354,8 +353,7 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: MAX_DELAY_UNTIL_DEFAULT + 1,
           },
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       ).to.be.revertedWith('delayUntilDefault too long')
     })
@@ -408,8 +406,7 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: bn(0),
           },
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       ).to.be.revertedWith('oracle error out of range')
 
@@ -462,8 +459,7 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       ).to.be.revertedWith('oracle error out of range')
     })
@@ -502,31 +498,9 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
-          fp('1'),
-          compoundMock.address
+          fp('1')
         )
       ).to.be.revertedWith('revenueHiding out of range')
-    })
-
-    it('Should not allow missing comptroller - CTokens', async () => {
-      // CTokenFiatCollateral
-      await expect(
-        CTokenFiatCollateralFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: await cTokenCollateral.chainlinkFeed(),
-            oracleError: ORACLE_ERROR,
-            erc20: cToken.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: DEFAULT_THRESHOLD,
-            delayUntilDefault: DELAY_UNTIL_DEFAULT,
-          },
-          REVENUE_HIDING,
-          ZERO_ADDRESS
-        )
-      ).to.be.revertedWith('comptroller missing')
     })
   })
 
@@ -1021,8 +995,7 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: await cTokenCollateral.delayUntilDefault(),
           },
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       )
 
@@ -1350,8 +1323,7 @@ describe('Collateral contracts', () => {
         },
         targetUnitOracle.address,
         ORACLE_TIMEOUT,
-        REVENUE_HIDING,
-        compoundMock.address
+        REVENUE_HIDING
       )
       await cTokenNonFiatCollateral.refresh()
 
@@ -1375,8 +1347,7 @@ describe('Collateral contracts', () => {
           },
           targetUnitOracle.address,
           ORACLE_TIMEOUT,
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       ).to.be.revertedWith('delayUntilDefault zero')
     })
@@ -1397,8 +1368,7 @@ describe('Collateral contracts', () => {
           },
           targetUnitOracle.address,
           ORACLE_TIMEOUT,
-          fp('1'),
-          compoundMock.address
+          fp('1'
         )
       ).to.be.revertedWith('revenueHiding out of range')
     })
@@ -1419,8 +1389,7 @@ describe('Collateral contracts', () => {
           },
           targetUnitOracle.address,
           ORACLE_TIMEOUT,
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       ).to.be.revertedWith('missing chainlink feed')
     })
@@ -1441,8 +1410,7 @@ describe('Collateral contracts', () => {
           },
           ZERO_ADDRESS,
           ORACLE_TIMEOUT,
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       ).to.be.revertedWith('missing targetUnit feed')
     })
@@ -1463,32 +1431,9 @@ describe('Collateral contracts', () => {
           },
           targetUnitOracle.address,
           bn('0'),
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       ).to.be.revertedWith('targetUnitOracleTimeout zero')
-    })
-
-    it('Should not allow missing comptroller', async () => {
-      await expect(
-        CTokenNonFiatFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: referenceUnitOracle.address,
-            oracleError: ORACLE_ERROR,
-            erc20: cNonFiatTokenVault.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('BTC'),
-            defaultThreshold: DEFAULT_THRESHOLD,
-            delayUntilDefault: DELAY_UNTIL_DEFAULT,
-          },
-          targetUnitOracle.address,
-          ORACLE_TIMEOUT,
-          REVENUE_HIDING,
-          ZERO_ADDRESS
-        )
-      ).to.be.revertedWith('comptroller missing')
     })
 
     it('Should setup collateral correctly', async function () {
@@ -1591,8 +1536,7 @@ describe('Collateral contracts', () => {
           },
           targetUnitOracle.address,
           ORACLE_TIMEOUT,
-          REVENUE_HIDING,
-          compoundMock.address
+          REVENUE_HIDING
         )
       )
 
@@ -1621,8 +1565,7 @@ describe('Collateral contracts', () => {
         },
         invalidChainlinkFeed.address,
         ORACLE_TIMEOUT,
-        REVENUE_HIDING,
-        compoundMock.address
+        REVENUE_HIDING
       )
 
       // Reverting with no reason
@@ -1804,8 +1747,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           REVENUE_HIDING,
-          await selfRefToken.decimals(),
-          compoundMock.address
+          await selfRefToken.decimals()
         )
       )
       await cTokenSelfReferentialCollateral.refresh()
@@ -1829,8 +1771,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           fp('1'),
-          await selfRefToken.decimals(),
-          compoundMock.address
+          await selfRefToken.decimals()
         )
       ).to.be.revertedWith('revenueHiding out of range')
     })
@@ -1850,31 +1791,9 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           REVENUE_HIDING,
-          0,
-          compoundMock.address
+          0
         )
       ).to.be.revertedWith('referenceERC20Decimals missing')
-    })
-
-    it('Should not allow missing comptroller', async () => {
-      await expect(
-        CTokenSelfReferentialFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: chainlinkFeed.address,
-            oracleError: ORACLE_ERROR,
-            erc20: cSelfRefToken.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('ETH'),
-            defaultThreshold: bn(0),
-            delayUntilDefault: DELAY_UNTIL_DEFAULT,
-          },
-          REVENUE_HIDING,
-          await selfRefToken.decimals(),
-          ZERO_ADDRESS
-        )
-      ).to.be.revertedWith('comptroller missing')
     })
 
     it('Should not allow invalid defaultThreshold', async () => {
@@ -1892,8 +1811,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           REVENUE_HIDING,
-          0,
-          compoundMock.address
+          0
         )
       ).to.be.revertedWith('default threshold not supported')
     })
@@ -1979,8 +1897,7 @@ describe('Collateral contracts', () => {
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
           REVENUE_HIDING,
-          await selfRefToken.decimals(),
-          compoundMock.address
+          await selfRefToken.decimals()
         )
       )
 
