@@ -162,14 +162,17 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
 
         tradeEnd += dutchAuctionLength;
-        auction = dutchAuctions[sell][tradeEnd];
 
         IAsset sellAsset = assetRegistry.toAsset(sell);
 
         // {sellTok}
         uint192 sellAmount = sellAsset.bal(address(this));
         require(sellAmount > 0, "zero balance");
-        auction.setupAuction(sellAsset, assetRegistry.toAsset(tokenToBuy), sellAmount);
+        dutchAuctions[sell][tradeEnd].setupAuction(
+            sellAsset,
+            assetRegistry.toAsset(tokenToBuy),
+            sellAmount
+        );
     }
 
     /**

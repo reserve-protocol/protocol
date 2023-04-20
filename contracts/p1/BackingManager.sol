@@ -162,6 +162,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @return The auction as a single Swap
     /// @custom:static-call
     function dutchAuction() external returns (Swap memory) {
+        // TODO can we make this a view?
         return getAuctionSwap(ensureDutchAuctionExists());
     }
 
@@ -202,11 +203,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         }
 
         tradeEnd += dutchAuctionLength;
-        auction = dutchAuctions[tradeEnd];
-
-        // {sellTok}
-        uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
-        auction.setupAuction(req.sell, req.buy, sellAmount);
+        dutchAuctions[tradeEnd].setupAuction(
+            req.sell,
+            req.buy,
+            shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()))
+        );
     }
 
     /// Send excess assets to the RSR and RToken traders

@@ -173,7 +173,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(doTrade, "swap not available");
 
         tradeEnd += dutchAuctionLength;
-        auction = dutchAuctions[tradeEnd];
 
         // Should be in the future by 1 dutchAuctionLength
         assert(tradeEnd > block.timestamp);
@@ -187,7 +186,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         // {sellTok}
         uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
-        auction.setupAuction(req.sell, req.buy, sellAmount);
+        dutchAuctions[tradeEnd].setupAuction(req.sell, req.buy, sellAmount);
     }
 
     /// Send excess assets to the RSR and RToken traders
