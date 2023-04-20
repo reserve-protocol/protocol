@@ -132,21 +132,22 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // == Refresh ==
         main.assetRegistry().refresh();
         // should melt() here too; TODO when we add to manageTokens()
-        return executeSwap(ensureDutchAuctionIsSetup(), tokenIn, tokenOut, amountOut);
+        return executeSwap(ensureDutchAuctionExists(), tokenIn, tokenOut, amountOut);
     }
 
     /// To be used via callstatic
     /// Should be idempotent if accidentally called
+    /// @return The auction as a single Swap
     /// @custom:static-call
-    function dutchAuction() external notTradingPausedOrFrozen returns (Swap memory s) {
-        return getAuctionSwap(ensureDutchAuctionIsSetup());
+    function dutchAuction() external notTradingPausedOrFrozen returns (Swap memory) {
+        return getAuctionSwap(ensureDutchAuctionExists());
     }
 
     // === Private ===
 
     /// Returns a dutch auction from storage or reverts
     /// Post-condition: tradeEnd is > block.timestamp
-    function ensureDutchAuctionIsSetup() private returns (DutchAuction storage auction) {
+    function ensureDutchAuctionExists() private returns (DutchAuction storage auction) {
         require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
         require(main.basketHandler().isReady(), "basket not ready");
         require(

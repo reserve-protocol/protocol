@@ -34,9 +34,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     // At the start of a tx, tradeEnd can be:
     //   1. more than dutchAuctionLength away => No dutch auction ongoing
-    //   2. within dutchAuctionLength in the past => Virtual dutch auction ongoing
-    //   3. within dutchAuctionLength in the future => Existing dutch auction ongoing
-    // A "virtual" dutch auction is one that is not yet reflected in storage
+    //   2. within dutchAuctionLength in the past => Dutch auction with 0 bids ongoing
+    //   3. within dutchAuctionLength in the future => Dutch auction with 1+ bids ongoing
     // [X, Y): inclusive on the left-bound and exclusive on the right-bound
     uint48 internal tradeEnd; // {s} timestamp of the end of the last trade (batch OR dutch)
 
@@ -121,7 +120,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     /// To be used via callstatic
     /// Should be idempotent if accidentally called
     /// @custom:static-call
-    function getAuctionSwap(DutchAuction storage auction) internal view returns (Swap memory s) {
+    function getAuctionSwap(DutchAuction storage auction) internal view returns (Swap memory) {
         // {s}
         uint48 elapsed = uint48(block.timestamp) + dutchAuctionLength - tradeEnd;
 
@@ -131,12 +130,13 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         // {buyTok} = {sellTok} * {buyTok/sellTok}
         uint192 buyAmount = auction.sellAmount.mul(price, CEIL);
 
-        s = Swap(
-            auction.sell.erc20(),
-            auction.buy.erc20(),
-            auction.sellAmount.shiftl_toUint(int8(auction.sell.erc20Decimals()), FLOOR),
-            buyAmount.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
-        );
+        return
+            Swap(
+                auction.sell.erc20(),
+                auction.buy.erc20(),
+                auction.sellAmount.shiftl_toUint(int8(auction.sell.erc20Decimals()), FLOOR),
+                buyAmount.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
+            );
     }
 
     // === Setters ===

@@ -154,14 +154,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // == Refresh ==
         assetRegistry.refresh();
         // should melt() here too; TODO when we add to manageTokens()
-        return executeSwap(ensureDutchAuctionIsSetup(), tokenIn, tokenOut, amountOut);
+        return executeSwap(ensureDutchAuctionExists(), tokenIn, tokenOut, amountOut);
     }
 
     /// To be used via callstatic
     /// Should be idempotent if accidentally called
+    /// @return The auction as a single Swap
     /// @custom:static-call
-    function dutchAuction() external returns (Swap memory s) {
-        return getAuctionSwap(ensureDutchAuctionIsSetup());
+    function dutchAuction() external returns (Swap memory) {
+        return getAuctionSwap(ensureDutchAuctionExists());
     }
 
     // === Private ===
@@ -178,7 +179,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Returns a dutch auction from storage or reverts
     /// Post-condition: tradeEnd is > block.timestamp
-    function ensureDutchAuctionIsSetup() private returns (DutchAuction storage auction) {
+    function ensureDutchAuctionExists() private returns (DutchAuction storage auction) {
         requireCanTrade(0);
 
         auction = dutchAuctions[tradeEnd];

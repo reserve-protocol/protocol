@@ -32,11 +32,11 @@ interface ISwapper {
     /// @param tokenIn The ERC20 token provided by the caller
     /// @param tokenOut The ERC20 token being purchased by the caller
     /// @param amountOut {qTokenOut} The exact quantity of tokenOut being purchased
-    /// @param s The swap actually performed
+    /// @return The swap actually performed
     /// @custom:interaction
     function swap(
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 amountOut
-    ) external returns (Swap memory s);
+    ) external returns (Swap memory);
 }

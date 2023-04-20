@@ -33,8 +33,9 @@ interface IRevenueTrader is IComponent, ITrading {
 
     /// Get ongoing dutch auctions by sell token, if one exists
     /// To be used via callstatic -- see ISwapper.swap()
+    /// @return The auction as a single Swap
     /// @custom:static-call
-    function dutchAuction(IERC20 tokenOut) external returns (Swap memory s);
+    function dutchAuction(IERC20 tokenOut) external returns (Swap memory);
 }
 
 // solhint-disable-next-line no-empty-blocks

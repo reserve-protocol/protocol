@@ -51,8 +51,9 @@ interface IBackingManager is IComponent, ITrading, ISwapper {
 
     /// Get ongoing dutch auction, if one exists
     /// To be used via callstatic -- see ISwapper.swap()
+    /// @return The auction as a single Swap
     /// @custom:static-call
-    function dutchAuction() external returns (Swap memory s);
+    function dutchAuction() external returns (Swap memory);
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

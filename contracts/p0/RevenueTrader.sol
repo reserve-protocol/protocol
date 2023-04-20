@@ -113,26 +113,23 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         // == Refresh ==
         main.assetRegistry().refresh();
         // should melt() here too; TODO when we add to manageToken()
-        return executeSwap(ensureDutchAuctionIsSetup(tokenOut), tokenIn, tokenOut, amountOut);
+        return executeSwap(ensureDutchAuctionExists(tokenOut), tokenIn, tokenOut, amountOut);
     }
 
     /// To be used via callstatic
     /// Should be idempotent if accidentally called
     /// @dev Can be iterated over by a Facade using the assetRegistry.erc20s()
+    /// @return The auction as a single Swap
     /// @custom:static-call
-    function dutchAuction(IERC20 tokenOut)
-        external
-        notTradingPausedOrFrozen
-        returns (Swap memory s)
-    {
-        return getAuctionSwap(ensureDutchAuctionIsSetup(tokenOut));
+    function dutchAuction(IERC20 tokenOut) external notTradingPausedOrFrozen returns (Swap memory) {
+        return getAuctionSwap(ensureDutchAuctionExists(tokenOut));
     }
 
     // === Private ===
 
     /// Returns a dutch auction from storage or reverts
     /// Post-condition: tradeEnd is > block.timestamp
-    function ensureDutchAuctionIsSetup(IERC20 sell) private returns (DutchAuction storage auction) {
+    function ensureDutchAuctionExists(IERC20 sell) private returns (DutchAuction storage auction) {
         require(address(trades[sell]) == address(0), "nonatomic trade ongoing");
         require(sell != tokenToBuy, "will not sell tokenToBuy");
 
