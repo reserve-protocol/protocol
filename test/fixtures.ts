@@ -164,9 +164,7 @@ async function collateralFixture(
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
-  const CTokenVaultMockFactory: ContractFactory = await ethers.getContractFactory(
-    'CTokenVaultMock'
-  )
+  const CTokenVaultMockFactory: ContractFactory = await ethers.getContractFactory('CTokenVaultMock')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')

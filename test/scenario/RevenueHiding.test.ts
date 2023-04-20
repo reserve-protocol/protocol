@@ -9,7 +9,6 @@ import { CollateralStatus } from '../../common/constants'
 import {
   CTokenVaultMock,
   CTokenFiatCollateral,
-  ComptrollerMock,
   ERC20Mock,
   IAssetRegistry,
   SelfReferentialCollateral,
@@ -41,9 +40,6 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
 
   // Assets
   let collateral: Collateral[]
-
-  // Non-backing assets
-  let compoundMock: ComptrollerMock
 
   // Tokens and Assets
   let dai: ERC20Mock
@@ -96,7 +92,6 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     ;({
       rsr,
       stRSR,
-      compoundMock,
       erc20s,
       collateral,
       config,

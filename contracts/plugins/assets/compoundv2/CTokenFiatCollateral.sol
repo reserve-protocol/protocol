@@ -25,10 +25,9 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     ICToken public immutable cToken;
 
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    constructor(
-        CollateralConfig memory config,
-        uint192 revenueHiding
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
+    {
         cToken = ICToken(address(IERC4626(address(config.erc20)).asset()));
         referenceERC20Decimals = IERC20Metadata(cToken.underlying()).decimals();
     }

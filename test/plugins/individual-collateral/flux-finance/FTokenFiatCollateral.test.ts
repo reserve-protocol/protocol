@@ -109,7 +109,7 @@ all.forEach((curr: FTokenEnumeration) => {
     defaultThreshold: DEFAULT_THRESHOLD,
     delayUntilDefault: DELAY_UNTIL_DEFAULT,
     comptroller: config.FLUX_FINANCE_COMPTROLLER,
-    revenueHiding: 0
+    revenueHiding: 0,
   }
 
   const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
@@ -220,7 +220,7 @@ all.forEach((curr: FTokenEnumeration) => {
         await underlyingFToken.name(),
         await underlyingFToken.symbol(),
         underlyingFToken.address,
-        await comptroller.getCompAddress() || ZERO_ADDRESS,
+        (await comptroller.getCompAddress()) || ZERO_ADDRESS,
         collateralOpts.comptroller!
       )
     )
@@ -257,6 +257,7 @@ all.forEach((curr: FTokenEnumeration) => {
     await (ctx.tok as ICToken).exchangeRateCurrent()
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificConstructorTests = () => {}
 
   const collateralSpecificStatusTests = () => {

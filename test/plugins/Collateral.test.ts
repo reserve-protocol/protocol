@@ -1368,7 +1368,7 @@ describe('Collateral contracts', () => {
           },
           targetUnitOracle.address,
           ORACLE_TIMEOUT,
-          fp('1'
+          fp('1')
         )
       ).to.be.revertedWith('revenueHiding out of range')
     })
