@@ -70,10 +70,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             block.timestamp >= basketHandler.timestamp() + tradingDelay + dutchAuctionLength,
             "waiting to trade"
         );
-        require(
-            !virtualDutchAuctionOngoing() && tradeEnd <= block.timestamp,
-            "dutch auction ongoing"
-        );
+        require(tradeEnd + dutchAuctionLength <= block.timestamp, "dutch auction ongoing");
 
         uint48 basketTimestamp = basketHandler.timestamp();
         require(block.timestamp >= basketTimestamp + tradingDelay, "waiting to trade");
@@ -131,84 +128,38 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 amountOut
-    ) external returns (Swap memory) {
+    ) external notTradingPausedOrFrozen returns (Swap memory) {
         // == Refresh ==
         main.assetRegistry().refresh();
         // should melt() here too; TODO when we add to manageTokens()
-
-        // === Checks + Effects ===
-
-        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
-        require(main.basketHandler().isReady(), "basket not ready");
-        require(
-            block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
-            "waiting to trade"
-        );
-
-        DutchAuction storage auction = ensureDutchAuctionIsSetup();
-        // after: tradeEnd > block.timestamp
-
-        require(auction.buy.erc20() == tokenIn, "buy token mismatch");
-        require(auction.sell.erc20() == tokenOut, "sell token mismatch");
-
-        // {buyTok}
-        uint192 bidBuyAmt = shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()));
-
-        // === Interactions ===
-
-        // Complete bid + swap
-        return auction.bid(divuu(block.timestamp - tradeEnd, dutchAuctionLength), bidBuyAmt);
+        return executeSwap(ensureDutchAuctionIsSetup(), tokenIn, tokenOut, amountOut);
     }
 
     /// To be used via callstatic
-    /// Should not change the dutch auction logic if accidentally called
+    /// Should be idempotent if accidentally called
     /// @custom:static-call
-    function getSwap() external returns (Swap memory s) {
-        // == Refresh ==
-        main.assetRegistry().refresh();
-        // should melt() here too; TODO when we add to manageTokens()
-
-        // === Checks + Effects ===
-
-        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
-        require(main.basketHandler().isReady(), "basket not ready");
-        require(
-            block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
-            "waiting to trade"
-        );
-
-        DutchAuction storage auction = ensureDutchAuctionIsSetup();
-        // after: tradeEnd > block.timestamp
-
-        // {buyTok/sellTok}
-        uint192 price = DutchAuctionLib.currentPrice(
-            divuu(block.timestamp + dutchAuctionLength - tradeEnd, dutchAuctionLength),
-            auction.middlePrice,
-            auction.lowPrice
-        );
-
-        // {buyTok} = {sellTok} * {buyTok/sellTok}
-        uint192 buyAmount = auction.sellAmount.mul(price, CEIL);
-
-        s = Swap(
-            auction.sell.erc20(),
-            auction.buy.erc20(),
-            auction.sellAmount.shiftl_toUint(int8(auction.sell.erc20Decimals()), FLOOR),
-            buyAmount.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
-        );
+    function dutchAuction() external notTradingPausedOrFrozen returns (Swap memory s) {
+        return getAuctionSwap(ensureDutchAuctionIsSetup());
     }
 
     // === Private ===
 
     /// Returns a dutch auction from storage or reverts
-    /// Post-condition: endTrade is > block.timestamp
+    /// Post-condition: tradeEnd is > block.timestamp
     function ensureDutchAuctionIsSetup() private returns (DutchAuction storage auction) {
+        require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
+        require(main.basketHandler().isReady(), "basket not ready");
+        require(
+            block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
+            "waiting to trade"
+        );
+
         auction = dutchAuctions[tradeEnd];
         if (tradeEnd > block.timestamp) {
             return auction;
         }
 
-        require(virtualDutchAuctionOngoing(), "no dutch auction ongoing");
+        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
 
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
 
@@ -220,6 +171,13 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         require(doTrade, "swap not available");
 
+        tradeEnd += dutchAuctionLength;
+        auction = dutchAuctions[tradeEnd];
+
+        // Should be in the future by 1 dutchAuctionLength
+        assert(tradeEnd > block.timestamp);
+        assert(tradeEnd <= block.timestamp + dutchAuctionLength);
+
         // Seize RSR if needed
         if (req.sell.erc20() == main.rsr()) {
             uint256 bal = main.rsr().balanceOf(address(this));
@@ -228,15 +186,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         // {sellTok}
         uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
-
-        // at this point: the auction is virtual, make it real and advance the tradeEnd
-        tradeEnd += dutchAuctionLength;
-        auction = dutchAuctions[tradeEnd];
         auction.setupAuction(req.sell, req.buy, sellAmount);
-
-        // Should be in the future by 1 dutchAuctionLength
-        assert(tradeEnd > block.timestamp);
-        assert(tradeEnd <= block.timestamp + dutchAuctionLength);
     }
 
     /// Send excess assets to the RSR and RToken traders

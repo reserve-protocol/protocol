@@ -140,9 +140,49 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
-    /// @return If a dutch auction is ongoing virtually
-    function virtualDutchAuctionOngoing() internal view returns (bool) {
-        return block.timestamp > tradeEnd && block.timestamp < tradeEnd + dutchAuctionLength;
+    /// Execute a swap of tokenIn for tokenOut based on a dutch auction pricing model
+    /// @dev Caller must have granted tokenIn allowances for required tokenIn bal
+    /// @dev To get required tokenIn bal, use ethers.callstatic and look at the swap's buyAmount
+    /// @param tokenIn The ERC20 token provided by the caller
+    /// @param tokenOut The ERC20 token being purchased by the caller
+    /// @param amountOut {qTokenOut} The exact quantity of tokenOut being purchased
+    /// @return The exact Swap performed
+    function executeSwap(
+        DutchAuction storage auction,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountOut
+    ) internal returns (Swap memory) {
+        require(auction.buy.erc20() == tokenIn, "buy token mismatch");
+        require(auction.sell.erc20() == tokenOut, "sell token mismatch");
+
+        // Execute
+        return
+            auction.bid(
+                divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength),
+                shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()))
+            );
+    }
+
+    /// To be used via callstatic
+    /// Should be idempotent if accidentally called
+    /// @custom:static-call
+    function getAuctionSwap(DutchAuction storage auction) internal view returns (Swap memory s) {
+        // {buyTok/sellTok}
+        uint192 price = DutchAuctionLib.currentPrice(
+            auction,
+            divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength)
+        );
+
+        // {buyTok} = {sellTok} * {buyTok/sellTok}
+        uint192 buyAmount = auction.sellAmount.mul(price, CEIL);
+
+        s = Swap(
+            auction.sell.erc20(),
+            auction.buy.erc20(),
+            auction.sellAmount.shiftl_toUint(int8(auction.sell.erc20Decimals()), FLOOR),
+            buyAmount.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
+        );
     }
 
     // === Setters ===

@@ -15,6 +15,8 @@ v */
 interface IFacadeRead {
     // === Static Calls ===
 
+    // function getDutchAuction(IRToken rToken, )
+
     /// @return How many RToken `account` can issue given current holdings
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256);

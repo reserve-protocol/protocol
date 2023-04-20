@@ -75,7 +75,7 @@ library DutchAuctionLib {
         ); // it's okay for sellAmount to be 0
 
         // {buyTok/sellTok}
-        uint192 price = currentPrice(progression, auction.middlePrice, auction.lowPrice);
+        uint192 price = currentPrice(auction, progression);
 
         // {sellTok} = {buyTok} / {buyTok/sellTok}
         uint192 bidSellAmt = bidBuyAmt.div(price, FLOOR);
@@ -110,14 +110,15 @@ library DutchAuctionLib {
     ///   - 1.5 * middlePrice down to the middlePrice for first 20% of auction
     ///   - middlePrice down to lowPrice for the last 80% of auction
     /// @param progression {1} The fraction of the auction that has elapsed
-    /// @param middlePrice {buyTok/sellTok} Should be > lowPrice
-    /// @param lowPrice {buyTok/sellTok}
     /// @return {buyTok/sellTok} The price in the current block
-    function currentPrice(
-        uint192 progression,
-        uint192 middlePrice,
-        uint192 lowPrice
-    ) public pure returns (uint192) {
+    function currentPrice(DutchAuction storage auction, uint192 progression)
+        public
+        view
+        returns (uint192)
+    {
+        uint192 middlePrice = auction.middlePrice; // {buyTok/sellTok}
+        uint192 lowPrice = auction.lowPrice; // {buyTok/sellTok}
+
         assert(progression <= FIX_ONE);
         assert(lowPrice <= middlePrice);
 

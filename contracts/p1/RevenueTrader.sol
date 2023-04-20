@@ -49,7 +49,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     function processRevenue() public {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         if (tradeEnd + dutchAuctionLength <= block.timestamp) {
-            tradeEnd = uint48(block.timestamp - 1);
+            tradeEnd = uint48(block.timestamp - 1); // this allows first bid to happen this block
         }
     }
 
@@ -87,10 +87,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             return;
         }
 
-        require(
-            !virtualDutchAuctionOngoing() && tradeEnd <= block.timestamp,
-            "dutch auction ongoing"
-        );
+        require(tradeEnd + dutchAuctionLength <= block.timestamp, "dutch auction ongoing");
 
         IAsset sell = assetRegistry.toAsset(erc20);
         IAsset buy = assetRegistry.toAsset(tokenToBuy);
@@ -133,81 +130,48 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 amountOut
-    ) external returns (Swap memory) {
+    ) external notTradingPausedOrFrozen returns (Swap memory) {
         // == Refresh ==
         assetRegistry.refresh();
         // should melt() here too; TODO when we add to manageToken()
-
-        // === Checks + Effects ===
-
-        DutchAuction storage auction = ensureDutchAuctionIsSetup(tokenOut);
-        // after: tradeEnd > block.timestamp
-
-        require(auction.buy.erc20() == tokenIn, "buy token mismatch");
-        require(auction.sell.erc20() == tokenOut, "sell token mismatch");
-        require(tokenOut != tokenToBuy, "will not sell tokenToBuy");
-
-        // {buyTok}
-        uint192 bidBuyAmt = shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()));
-
-        // === Interactions ===
-
-        // Complete bid + swap
-        return auction.bid(divuu(block.timestamp - tradeEnd, dutchAuctionLength), bidBuyAmt);
+        return executeSwap(ensureDutchAuctionIsSetup(tokenOut), tokenIn, tokenOut, amountOut);
     }
 
     /// To be used via callstatic
     /// Should be idempotent if accidentally called
     /// @dev Can be iterated over by a Facade using the assetRegistry.erc20s()
     /// @custom:static-call
-    function getSwap(IERC20 tokenOut) external returns (Swap memory s) {
-        // == Refresh ==
-        assetRegistry.refresh();
-        // should melt() here too; TODO when we add to manageToken()
-
-        // === Checks + Effects ===
-
-        DutchAuction storage auction = ensureDutchAuctionIsSetup(tokenOut);
-        // after: tradeEnd > block.timestamp
-
-        // {buyTok/sellTok}
-        uint192 price = DutchAuctionLib.currentPrice(
-            divuu(block.timestamp + dutchAuctionLength - tradeEnd, dutchAuctionLength),
-            auction.middlePrice,
-            auction.lowPrice
-        );
-
-        // {buyTok} = {sellTok} * {buyTok/sellTok}
-        uint192 buyAmount = auction.sellAmount.mul(price, CEIL);
-
-        s = Swap(
-            auction.sell.erc20(),
-            auction.buy.erc20(),
-            auction.sellAmount.shiftl_toUint(int8(auction.sell.erc20Decimals()), FLOOR),
-            buyAmount.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
-        );
+    function dutchAuction(IERC20 tokenOut)
+        external
+        notTradingPausedOrFrozen
+        returns (Swap memory s)
+    {
+        return getAuctionSwap(ensureDutchAuctionIsSetup(tokenOut));
     }
 
     // === Private ===
 
     /// Returns a dutch auction from storage or reverts
-    /// Post-condition: endTrade is > block.timestamp
+    /// Post-condition: tradeEnd is > block.timestamp
     function ensureDutchAuctionIsSetup(IERC20 sell) private returns (DutchAuction storage auction) {
+        require(address(trades[sell]) == address(0), "nonatomic trade ongoing");
+        require(sell != tokenToBuy, "will not sell tokenToBuy");
+
         auction = dutchAuctions[sell][tradeEnd];
         if (address(auction.sell) != address(0) || address(auction.buy) != address(0)) {
             return auction;
         }
 
-        require(virtualDutchAuctionOngoing(), "no dutch auction ongoing");
+        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
+
+        tradeEnd += dutchAuctionLength;
+        auction = dutchAuctions[sell][tradeEnd];
 
         IAsset sellAsset = assetRegistry.toAsset(sell);
 
         // {sellTok}
         uint192 sellAmount = sellAsset.bal(address(this));
-
-        // at this point: the auction is virtual, make it real and advance the tradeEnd
-        if (tradeEnd <= block.timestamp) tradeEnd += dutchAuctionLength;
-        auction = dutchAuctions[sell][tradeEnd];
+        require(sellAmount > 0, "zero balance");
         auction.setupAuction(sellAsset, assetRegistry.toAsset(tokenToBuy), sellAmount);
     }
 
