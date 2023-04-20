@@ -208,7 +208,6 @@ async function collateralFixture(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
-      compAddress,
       comptroller.address
     )
     const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
@@ -306,7 +305,6 @@ async function collateralFixture(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
-      compAddress,
       comptroller.address
     )
     const coll = <CTokenNonFiatCollateral>await CTokenNonFiatCollateralFactory.deploy(
@@ -365,7 +363,6 @@ async function collateralFixture(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
-      compAddress,
       comptroller.address
     )
     const coll = <CTokenSelfReferentialCollateral>(

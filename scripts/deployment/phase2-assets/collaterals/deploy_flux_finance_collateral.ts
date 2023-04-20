@@ -49,7 +49,6 @@ async function main() {
     networkConfig[chainId].tokens.fUSDC!,
     `${await fUsdc.name()} Vault`,
     `${await fUsdc.symbol()}-VAULT`,
-    ZERO_ADDRESS,
     networkConfig[chainId].COMPTROLLER!
   )
 
@@ -82,7 +81,6 @@ async function main() {
     networkConfig[chainId].tokens.fUSDT!,
     `${await fUsdt.name()} Vault`,
     `${await fUsdt.symbol()}-VAULT`,
-    ZERO_ADDRESS,
     networkConfig[chainId].COMPTROLLER!
   )
 
@@ -115,7 +113,6 @@ async function main() {
     networkConfig[chainId].tokens.fDAI!,
     `${await fDai.name()} Vault`,
     `${await fDai.symbol()}-VAULT`,
-    ZERO_ADDRESS,
     networkConfig[chainId].COMPTROLLER!
   )
 
@@ -148,7 +145,6 @@ async function main() {
     networkConfig[chainId].tokens.fFRAX!,
     `${await fFrax.name()} Vault`,
     `${await fFrax.symbol()}-VAULT`,
-    ZERO_ADDRESS,
     networkConfig[chainId].COMPTROLLER!
   )
 

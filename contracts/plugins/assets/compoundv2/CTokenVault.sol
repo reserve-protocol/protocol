@@ -14,9 +14,8 @@ contract CTokenVault is RewardableERC20Vault {
         ERC20Solmate _asset,
         string memory _name,
         string memory _symbol,
-        ERC20Solmate _rewardToken,
         IComptroller _comptroller
-    ) RewardableERC20Vault(_asset, _name, _symbol, _rewardToken) {
+    ) RewardableERC20Vault(_asset, _name, _symbol, ERC20Solmate(_comptroller.getCompAddress())) {
         comptroller = _comptroller;
     }
 

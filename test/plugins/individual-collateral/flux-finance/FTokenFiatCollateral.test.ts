@@ -118,6 +118,7 @@ all.forEach((curr: FTokenEnumeration) => {
     opts = { ...defaultCollateralOpts, ...opts }
 
     let erc20Address = opts.erc20
+    const comptroller = await ethers.getContractAt('ComptrollerMock', opts.comptroller!)
 
     if (erc20Address && erc20Address != ZERO_ADDRESS && erc20Address == curr.fToken) {
       const erc20 = await ethers.getContractAt('ERC20Mock', opts.erc20!)
@@ -127,7 +128,6 @@ all.forEach((curr: FTokenEnumeration) => {
           opts.erc20,
           await erc20.name(),
           await erc20.symbol(),
-          ZERO_ADDRESS,
           opts.comptroller!
         )
       )
@@ -202,6 +202,8 @@ all.forEach((curr: FTokenEnumeration) => {
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
+    const comptroller = await ethers.getContractAt('ComptrollerMock', opts.comptroller!)
+
     const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
@@ -221,7 +223,7 @@ all.forEach((curr: FTokenEnumeration) => {
         await underlyingFToken.name(),
         await underlyingFToken.symbol(),
         underlyingFToken.address,
-        ZERO_ADDRESS,
+        await comptroller.getCompAddress(),
         collateralOpts.comptroller!
       )
     )
@@ -327,7 +329,7 @@ all.forEach((curr: FTokenEnumeration) => {
     reduceRefPerTok: emptyFn,
     increaseRefPerTok,
     getExpectedPrice,
-    itClaimsRewards: it.skip,
+    itClaimsRewards: it,
     itChecksTargetPerRefDefault: it.skip,
     itChecksRefPerTokDefault: it.skip,
     itChecksPriceChanges: it,

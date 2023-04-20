@@ -11,9 +11,8 @@ contract CTokenVaultMock is CTokenVault {
         ERC20Solmate _asset,
         string memory _name,
         string memory _symbol,
-        ERC20Solmate _rewardToken,
         IComptroller _comptroller
-    ) CTokenVault(_asset, _name, _symbol, _rewardToken, _comptroller) {}
+    ) CTokenVault(_asset, _name, _symbol, _comptroller) {}
 
     function mint(address recipient, uint256 amount) external {
         mint(amount, recipient);

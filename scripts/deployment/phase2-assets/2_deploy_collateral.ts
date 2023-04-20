@@ -386,7 +386,6 @@ async function main() {
     networkConfig[chainId].tokens.cDAI!,
     `${await cDai.name()} Vault`,
     `${await cDai.symbol()}-VAULT`,
-    networkConfig[chainId].tokens.COMP!,
     networkConfig[chainId].COMPTROLLER!
   )
 
@@ -419,7 +418,6 @@ async function main() {
     networkConfig[chainId].tokens.cUSDC!,
     `${await cUsdc.name()} Vault`,
     `${await cUsdc.symbol()}-VAULT`,
-    networkConfig[chainId].tokens.COMP!,
     networkConfig[chainId].COMPTROLLER!
   )
 
@@ -452,7 +450,6 @@ async function main() {
     networkConfig[chainId].tokens.cUSDT!,
     `${await cUsdt.name()} Vault`,
     `${await cUsdt.symbol()}-VAULT`,
-    networkConfig[chainId].tokens.COMP!,
     networkConfig[chainId].COMPTROLLER!
   )
 
@@ -485,7 +482,6 @@ async function main() {
     networkConfig[chainId].tokens.cUSDP!,
     `${await cUsdp.name()} Vault`,
     `${await cUsdp.symbol()}-VAULT`,
-    networkConfig[chainId].tokens.COMP!,
     networkConfig[chainId].COMPTROLLER!
   )
 
@@ -518,7 +514,6 @@ async function main() {
     networkConfig[chainId].tokens.cWBTC!,
     `${await cWBTC.name()} Vault`,
     `${await cWBTC.symbol()}-VAULT`,
-    networkConfig[chainId].tokens.COMP!,
     networkConfig[chainId].COMPTROLLER!
   )
 
@@ -557,7 +552,6 @@ async function main() {
     networkConfig[chainId].tokens.cETH!,
     `${await cETH.name()} Vault`,
     `${await cETH.symbol()}-VAULT`,
-    networkConfig[chainId].tokens.COMP!,
     networkConfig[chainId].COMPTROLLER!
   )
 

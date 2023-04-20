@@ -48,7 +48,7 @@ import {
   TestIRToken,
   TimelockController,
   USDCMock,
-  CTokenVaultMock,
+  CTokenVaultMock2,
 } from '../typechain'
 import {
   Collateral,
@@ -77,7 +77,7 @@ describe('FacadeWrite contract', () => {
   // Tokens
   let token: ERC20Mock
   let usdc: USDCMock
-  let cTokenVault: CTokenVaultMock
+  let cTokenVault: CTokenVaultMock2
   let basket: Collateral[]
 
   // Aave / Comp
@@ -140,8 +140,8 @@ describe('FacadeWrite contract', () => {
 
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
-    cTokenVault = <CTokenVaultMock>(
-      await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
+    cTokenVault = <CTokenVaultMock2>(
+      await ethers.getContractAt('CTokenVaultMock2', await cTokenAsset.erc20())
     )
 
     // Deploy DFacadeWriteLib lib

@@ -195,7 +195,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         cDai.address,
         'cDAI RToken Vault',
         'rv_cDAI',
-        compToken.address,
         comptroller.address
       )
     )
@@ -764,7 +763,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           cDaiMock.address,
           'cDAI Mock RToken Vault',
           'rv_mock_cDAI',
-          compToken.address,
           comptroller.address
         )
       )

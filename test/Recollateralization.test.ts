@@ -12,8 +12,7 @@ import {
   Asset,
   ATokenFiatCollateral,
   CTokenMock,
-  CTokenVaultMock,
-  CTokenVaultMock,
+  CTokenVaultMock2,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -73,7 +72,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3Vault: CTokenVaultMock
+  let token3Vault: CTokenVaultMock2
   let token3: CTokenMock
   let backupToken1: ERC20Mock
   let backupToken2: ERC20Mock
@@ -164,8 +163,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
-    token3Vault = <CTokenVaultMock>(
-      await ethers.getContractAt('CTokenVaultMock', await basket[3].erc20())
+    token3Vault = <CTokenVaultMock2>(
+      await ethers.getContractAt('CTokenVaultMock2', await basket[3].erc20())
     )
     token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await token3Vault.asset())
 
