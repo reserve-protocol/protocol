@@ -140,17 +140,9 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
-    /// A dutch auction can be ongoing in two ways:
-    ///   - virtually (tradeEnd is in the past by dutchAuctionLength); or
-    ///   - concretely (tradeEnd is in future by dutchAuctionLength)
-    /// @return If a dutch auction is ongoing
-    function inDutchAuctionWindow() internal view returns (bool) {
-        // A dutch auction is ongoing iff tradeEnd is within dutchAuctionLength in either direction
-        //   - if it's earlier, then the auction is virtual
-        //   - if it's later, then the auction exists in storage already
-        return
-            tradeEnd <= block.timestamp + dutchAuctionLength &&
-            tradeEnd + dutchAuctionLength > block.timestamp;
+    /// @return If a dutch auction is ongoing virtually
+    function virtualDutchAuctionOngoing() internal view returns (bool) {
+        return block.timestamp > tradeEnd && block.timestamp < tradeEnd + dutchAuctionLength;
     }
 
     // === Setters ===

@@ -96,7 +96,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // TODO melt
 
         requireReadyToTrade(dutchAuctionLength);
-        require(!inDutchAuctionWindow(), "dutch auction ongoing");
+        require(
+            !virtualDutchAuctionOngoing() && tradeEnd <= block.timestamp,
+            "dutch auction ongoing"
+        );
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
         uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
@@ -158,7 +161,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // === Checks + Effects ===
 
         requireReadyToTrade(0);
-        DutchAuction storage auction = setupDutchAuction();
+        DutchAuction storage auction = ensureDutchAuctionIsSetup();
         // after: tradeEnd > block.timestamp
 
         require(auction.buy.erc20() == tokenIn, "buy token mismatch");
@@ -184,7 +187,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // === Checks + Effects ===
 
         requireReadyToTrade(0);
-        DutchAuction storage auction = setupDutchAuction();
+        DutchAuction storage auction = ensureDutchAuctionIsSetup();
         // after: tradeEnd > block.timestamp
 
         // {buyTok/sellTok}
@@ -209,14 +212,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Returns a dutch auction from storage or reverts
     /// Post-condition: endTrade is > block.timestamp
-    function setupDutchAuction() private returns (DutchAuction storage auction) {
-        require(inDutchAuctionWindow(), "no dutch auction ongoing");
-
+    function ensureDutchAuctionIsSetup() private returns (DutchAuction storage auction) {
         auction = dutchAuctions[tradeEnd];
         if (tradeEnd > block.timestamp) {
             return auction;
         }
-        // else: virtual ongoing auction; ie tradeEnd <= block.timestamp by dutchAuctionLength
+
+        require(virtualDutchAuctionOngoing(), "no dutch auction ongoing");
 
         // Same TradeRequest from manageTokens()
         (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1

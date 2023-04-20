@@ -70,7 +70,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             block.timestamp >= basketHandler.timestamp() + tradingDelay + dutchAuctionLength,
             "waiting to trade"
         );
-        require(!inDutchAuctionWindow(), "dutch auction ongoing");
+        require(
+            !virtualDutchAuctionOngoing() && tradeEnd <= block.timestamp,
+            "dutch auction ongoing"
+        );
 
         uint48 basketTimestamp = basketHandler.timestamp();
         require(block.timestamp >= basketTimestamp + tradingDelay, "waiting to trade");
@@ -200,13 +203,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// Returns a dutch auction from storage or reverts
     /// Post-condition: endTrade is > block.timestamp
     function ensureDutchAuctionIsSetup() private returns (DutchAuction storage auction) {
-        require(inDutchAuctionWindow(), "no dutch auction ongoing");
-
         auction = dutchAuctions[tradeEnd];
         if (tradeEnd > block.timestamp) {
             return auction;
         }
-        // else: virtual ongoing auction; ie tradeEnd <= block.timestamp by dutchAuctionLength
+
+        require(virtualDutchAuctionOngoing(), "no dutch auction ongoing");
 
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
 

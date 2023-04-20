@@ -40,7 +40,9 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// @custom:refresher
     function processRevenue() public {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
-        if (tradeEnd <= block.timestamp) tradeEnd = uint48(block.timestamp) + dutchAuctionLength;
+        if (tradeEnd + dutchAuctionLength <= block.timestamp) {
+            tradeEnd = uint48(block.timestamp - 1);
+        }
     }
 
     /// Processes a single token; unpermissioned
@@ -62,6 +64,11 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             main.distributor().distribute(erc20, bal);
             return;
         }
+
+        require(
+            !virtualDutchAuctionOngoing() && tradeEnd <= block.timestamp,
+            "dutch auction ongoing"
+        );
 
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);
@@ -165,13 +172,12 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// Returns a dutch auction from storage or reverts
     /// Post-condition: endTrade is > block.timestamp
     function ensureDutchAuctionIsSetup(IERC20 sell) private returns (DutchAuction storage auction) {
-        require(inDutchAuctionWindow(), "no dutch auction ongoing");
-
         auction = dutchAuctions[sell][tradeEnd];
         if (address(auction.sell) != address(0) || address(auction.buy) != address(0)) {
             return auction;
         }
-        // else: virtual ongoing auction; ie tradeEnd <= block.timestamp by dutchAuctionLength
+
+        require(virtualDutchAuctionOngoing(), "no dutch auction ongoing");
 
         IAsset sellAsset = main.assetRegistry().toAsset(sell);
         IAsset buyAsset = main.assetRegistry().toAsset(tokenToBuy);

@@ -43,7 +43,7 @@ import {
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { advanceTime, getLatestBlockTimestamp, advanceToTimestamp } from './utils/time'
 import { withinQuad } from './utils/matchers'
 import {
   Collateral,
@@ -2347,20 +2347,29 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await rTokenTrader.connect(owner).setDutchAuctionLength(300)
         })
 
-        it.only('Should quote swap equal to full auction', async () => {
+        it('Should quote correct prices throughout auction', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
             await rTokenTrader.connect(bmSigner).processRevenue()
           })
-          const actual = await rTokenTrader.callStatic.getSwap(token0.address)
-          const expected = await toDutchAuctionSwap(
-            fp('0'),
-            rTokenAsset.address,
-            collateral0.address,
-            issueAmount
-          )
 
-          expectSwap(actual, expected)
+          // Throughout 5 minutes of blocks, should swap at right price
+          for (let i = 1; i <= 300; i += 12) {
+            const actual = await rTokenTrader.callStatic.getSwap(token0.address)
+            const expected = await toDutchAuctionSwap(
+              fp(i).div(300),
+              rTokenAsset.address,
+              collateral0.address,
+              issueAmount
+            )
+            expectSwap(actual, expected)
+            await advanceToTimestamp((await getLatestBlockTimestamp()) + 12)
+          }
+
+          // At >100% the next auction should revert
+          await expect(rTokenTrader.callStatic.getSwap(token0.address)).to.be.revertedWith(
+            'no dutch auction ongoing'
+          )
         })
 
         it('TODO more')
