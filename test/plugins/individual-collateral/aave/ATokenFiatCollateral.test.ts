@@ -49,6 +49,7 @@ import {
 } from '../../../../typechain'
 import { useEnv } from '#/utils/env'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
+import { getLatestBlockNumber } from '#/utils/time'
 
 // Setup test environment
 const setup = async (blockNumber: number) => {
@@ -67,7 +68,7 @@ const setup = async (blockNumber: number) => {
 }
 
 // Holder address in Mainnet
-const holderaDai = '0x07edE94cF6316F4809f2B725f5d79AD303fB4Dc8'
+const holderDai = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
@@ -218,14 +219,14 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Setup balances for addr1 - Transfer from Mainnet holder
     // aDAI
     initialBal = bn('2000000e18')
-    await whileImpersonating(holderaDai, async (cdaiSigner) => {
-      await aDai.connect(cdaiSigner).transfer(addr1.address, initialBal)
+    await whileImpersonating(holderDai, async (daiSigner) => {
+      await dai.connect(daiSigner).transfer(addr1.address, initialBal)
     })
 
-    const initialBalaDai = await aDai.balanceOf(addr1.address)
+    const initialBalDai = await dai.balanceOf(addr1.address)
 
-    await aDai.connect(addr1).approve(staticAToken.address, initialBalaDai)
-    await staticAToken.connect(addr1).deposit(addr1.address, initialBalaDai, 0, false)
+    await dai.connect(addr1).approve(staticAToken.address, initialBalDai)
+    await staticAToken.connect(addr1).deposit(addr1.address, initialBalDai, 0, true)
 
     // Set parameters
     const rTokenConfig: IRTokenConfig = {
@@ -293,7 +294,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await stkAaveAsset.erc20()).to.equal(stkAave.address)
       expect(await stkAaveAsset.erc20()).to.equal(networkConfig[chainId].tokens.stkAAVE)
       expect(await stkAave.decimals()).to.equal(18)
-      await expectPrice(stkAaveAsset.address, fp('78.17265000'), ORACLE_ERROR, true)
+      await expectPrice(stkAaveAsset.address, fp('169.05235423'), ORACLE_ERROR, true)
       await expect(stkAaveAsset.claimRewards()).to.not.emit(stkAaveAsset, 'RewardsClaimed')
       expect(await stkAaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -306,7 +307,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await aDaiErc20.decimals()).to.equal(18)
       expect(await staticAToken.decimals()).to.equal(18)
       expect(await aDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(refPerTok).to.be.closeTo(fp('1.0829'), fp('0.001'))
+      expect(refPerTok).to.be.closeTo(fp('1.066'), fp('0.001'))
       expect(await aDaiCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await aDaiCollateral.exposedReferencePrice()).to.equal(refPerTok)
 
@@ -446,7 +447,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         true,
         bn('1e5')
       )
-      expect(aDaiRefPerTok1).to.be.closeTo(fp('1.083'), fp('0.001'))
+      expect(aDaiRefPerTok1).to.be.closeTo(fp('1.066'), fp('0.001'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -484,7 +485,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         true,
         bn('1e5')
       )
-      expect(aDaiRefPerTok2).to.be.closeTo(fp('1.083'), fp('0.001'))
+      expect(aDaiRefPerTok2).to.be.closeTo(fp('1.066'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -521,7 +522,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         true,
         bn('1e5')
       )
-      expect(aDaiRefPerTok3).to.be.closeTo(fp('1.141'), fp('0.001'))
+      expect(aDaiRefPerTok3).to.be.closeTo(fp('1.217'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -543,17 +544,17 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const newBalanceAddr1aDai: BigNumber = await staticAToken.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1aDai.sub(balanceAddr1aDai)).to.be.closeTo(bn('8761.6e18'), fp('0.1'))
+      expect(newBalanceAddr1aDai.sub(balanceAddr1aDai)).to.be.closeTo(bn('8212.4e18'), fp('0.1'))
 
       // Check remainders in Backing Manager
       expect(await staticAToken.balanceOf(backingManager.address)).to.be.closeTo(
-        bn('472.5e18'),
+        bn('1165.8e18'),
         fp('0.1')
       )
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        bn('539.1e18'),
+        bn('1420.0e18'),
         fp('0.1')
       )
     })

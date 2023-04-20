@@ -458,6 +458,7 @@ contract StaticATokenLM is
         uint256 balance = balanceOf(onBehalfOf);
         uint256 reward = _getClaimableRewards(onBehalfOf, balance, false);
         uint256 totBal = REWARD_TOKEN.balanceOf(address(this));
+
         if (reward > totBal) {
             reward = totBal;
         }
