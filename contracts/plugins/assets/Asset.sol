@@ -68,7 +68,7 @@ contract Asset is IAsset {
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     function tryPrice()
-        external
+        public
         view
         virtual
         returns (

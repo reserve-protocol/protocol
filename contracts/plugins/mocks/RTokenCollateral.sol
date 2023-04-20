@@ -97,4 +97,9 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         // {target/ref} = {BU/rTok} = {BU} / {rTok}
         return IRToken(address(erc20)).basketsNeeded().div(_safeWrap(supply));
     }
+
+    /// @return {uoa/target} Quantity of whole account units per whole target unit
+    function uoaPerTarget() public view virtual returns (uint192) {
+        return FIX_ONE;
+    }
 }

@@ -112,7 +112,7 @@ interface ICollateral is IAsset {
     function targetPerRef() external view returns (uint192);
 
     /// @return {uoa/target} Quantity of whole account units per whole target unit
-    function uoaPerTarget() public view virtual returns (uint192);
+    function uoaPerTarget() external view returns (uint192);
 }
 
 // Used only in Testing. Strictly speaking a Collateral does not need to adhere to this interface

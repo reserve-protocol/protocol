@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../../../libraries/Fixed.sol";
-import "../AppreciatingFiatCollateral.sol";
+import "../AppreciatingCollateral.sol";
 import "../OracleLib.sol";
 import "./ICusdcV3Wrapper.sol";
 import "./vendor/IComet.sol";
@@ -18,7 +18,7 @@ import "./vendor/IComet.sol";
  * tar = USD
  * UoA = USD
  */
-contract CTokenV3Collateral is AppreciatingFiatCollateral {
+contract CTokenV3Collateral is AppreciatingCollateral {
     struct CometCollateralConfig {
         IERC20 rewardERC20;
         uint256 reservesThresholdIffy;
@@ -37,7 +37,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         CollateralConfig memory config,
         uint192 revenueHiding,
         uint256 reservesThresholdIffy_
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
+    ) AppreciatingCollateral(config, revenueHiding) {
         rewardERC20 = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         reservesThresholdIffy = reservesThresholdIffy_;

@@ -18,7 +18,7 @@ contract CvxVolatileCollateral is CvxStableCollateral {
     // this isn't saved by our parent classes, but we'll need to track it
     uint192 internal immutable _defaultThreshold; // {1}
 
-    /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
+    /// @dev config Unused members: uoaPerRefOracle, oracleError, uoaPerRefOracleTimeout
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,

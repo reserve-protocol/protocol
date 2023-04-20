@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
+import "contracts/plugins/assets/AppreciatingCollateral.sol";
 import "./vendor/IConvexStakingWrapper.sol";
 import "./PoolTokens.sol";
 
@@ -20,17 +20,17 @@ import "./PoolTokens.sol";
  * tar = USD
  * UoA = USD
  */
-contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
+contract CvxStableCollateral is AppreciatingCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
+    /// @dev config Unused members: uoaPerRefOracle, oracleError, uoaPerRefOracleTimeout
     /// @dev config.erc20 should be a IConvexStakingWrapper
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig
-    ) AppreciatingFiatCollateral(config, revenueHiding) PoolTokens(ptConfig) {
+    ) AppreciatingCollateral(config, revenueHiding) PoolTokens(ptConfig) {
         require(config.defaultThreshold > 0, "defaultThreshold zero");
     }
 
@@ -42,7 +42,7 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     /// @return high {UoA/tok} The high price estimate
     /// @return {target/ref} Unused. Always 0
     function tryPrice()
-        external
+        public
         view
         virtual
         override

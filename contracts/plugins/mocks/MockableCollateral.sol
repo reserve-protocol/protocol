@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../assets/aave/ATokenFiatCollateral.sol";
+import "../assets/aave/ATokenCollateral.sol";
 
-contract MockableCollateral is ATokenFiatCollateral {
+contract MockableCollateral is ATokenCollateral {
     using FixLib for uint192;
 
     uint192 private _targetPerRef;
 
     constructor(CollateralConfig memory config, uint192 revenueHiding)
-        ATokenFiatCollateral(config, revenueHiding)
+        ATokenCollateral(config, revenueHiding)
     {}
 
     function setTargetPerRef(uint192 val) external {

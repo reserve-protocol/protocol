@@ -30,8 +30,8 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
 
     uint192 public immutable pairedTokenPegTop; // {target/ref} pegTop but for paired token
 
-    /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
-    /// @dev config.chainlinkFeed/oracleError/oracleTimeout should be set for paired token
+    /// @param config.uoaPerRefOracle Feed units: {UoA/pairedTok}
+    /// @dev config.uoaPerRefOracle/oracleError/uoaPerRefOracleTimeout should be set for paired token
     /// @dev config.erc20 should be a IConvexStakingWrapper
     constructor(
         CollateralConfig memory config,
@@ -67,7 +67,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
-        external
+        public
         view
         virtual
         override
@@ -106,7 +106,7 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
     /// @return lowPaired {UoA/pairedTok} The low price estimate of the paired token
     /// @return highPaired {UoA/pairedTok} The high price estimate of the paired token
     function tryPairedPrice() public view virtual returns (uint192 lowPaired, uint192 highPaired) {
-        uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/pairedTok}
+        uint192 p = uoaPerRefOracle.price(uoaPerRefOracleTimeout); // {UoA/pairedTok}
         uint192 delta = p.mul(oracleError, CEIL);
         return (p - delta, p + delta);
     }

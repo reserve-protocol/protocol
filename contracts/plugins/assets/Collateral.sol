@@ -76,7 +76,7 @@ contract Collateral is ICollateral, Asset {
     {
         require(config.targetName != bytes32(0), "targetName missing");
         if(address(config.uoaPerTargetOracle) != address(0)) {
-            require(uoaPerTargetOracleTimeout_ > 0, "uoaPerTargetOracleTimeout zero");
+            require(config.uoaPerTargetOracleTimeout > 0, "uoaPerTargetOracleTimeout zero");
         }
         if (config.defaultThreshold > 0) {
             require(config.delayUntilDefault > 0, "delayUntilDefault zero");
@@ -85,6 +85,8 @@ contract Collateral is ICollateral, Asset {
 
         targetName = config.targetName;
         delayUntilDefault = config.delayUntilDefault;
+        uoaPerTargetOracle = config.uoaPerTargetOracle;
+        uoaPerTargetOracleTimeout = config.uoaPerTargetOracleTimeout;
 
         // Cache constants
         uint192 peg = targetPerRef(); // {target/ref}
@@ -103,7 +105,7 @@ contract Collateral is ICollateral, Asset {
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
-        external
+        public
         view
         virtual
         override
@@ -114,13 +116,13 @@ contract Collateral is ICollateral, Asset {
         )
     {
         // {UoA/target}
-        uint192 _uoaPerTarget = uoaPerTarget()
+        uint192 _uoaPerTarget = uoaPerTarget();
         if (address(uoaPerTargetOracle) != address(0)) {
             _uoaPerTarget = uoaPerTargetOracle.price(uoaPerTargetOracleTimeout);
         }
 
         // {UoA/ref} = {UoA/target} * {target/ref}
-        uint192 _uoaPerRef = _uoaPerTarget.mul(targetPerRef())
+        uint192 _uoaPerRef = _uoaPerTarget.mul(targetPerRef());
         if (address(uoaPerRefOracle) != address(0)) {
             _uoaPerRef = uoaPerRefOracle.price(uoaPerRefOracleTimeout); // {UoA/ref}
         }

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../assets/FiatCollateral.sol";
+import "../assets/Collateral.sol";
 
-contract InvalidFiatCollateral is FiatCollateral {
+contract InvalidCollateral is Collateral {
     using FixLib for uint192;
 
     bool public simplyRevert;
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+    constructor(CollateralConfig memory config) Collateral(config) {}
 
     // Mock price function, reverts with specific error or runs out of gas
     function price() public view virtual override(Asset, IAsset) returns (uint192, uint192) {

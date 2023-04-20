@@ -49,7 +49,7 @@ abstract contract AppreciatingCollateral is Collateral {
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
-        external
+        public
         view
         virtual
         override
@@ -59,7 +59,7 @@ abstract contract AppreciatingCollateral is Collateral {
             uint192 pegPrice
         )
     {
-        uint192 _strictRefPerTok = _underlyingRefPerTok()
+        uint192 _strictRefPerTok = _underlyingRefPerTok();
         (low, high, pegPrice) = super.tryPrice();
         low = low.mul(_strictRefPerTok);
         high = high.mul(_strictRefPerTok);

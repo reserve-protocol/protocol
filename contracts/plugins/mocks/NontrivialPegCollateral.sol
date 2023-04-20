@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../assets/FiatCollateral.sol";
+import "../assets/Collateral.sol";
 
-contract NontrivialPegCollateral0 is FiatCollateral {
+contract NontrivialPegCollateral0 is Collateral {
     uint192 private peg = FIX_ONE; // {target/ref}
 
-    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+    constructor(CollateralConfig memory config) Collateral(config) {}
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() public view virtual override returns (uint192) {
@@ -14,10 +14,10 @@ contract NontrivialPegCollateral0 is FiatCollateral {
     }
 }
 
-contract NontrivialPegCollateral1 is FiatCollateral {
+contract NontrivialPegCollateral1 is Collateral {
     uint192 private peg = FIX_ONE; // {target/ref}
 
-    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+    constructor(CollateralConfig memory config) Collateral(config) {}
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() public view virtual override returns (uint192) {
@@ -25,10 +25,10 @@ contract NontrivialPegCollateral1 is FiatCollateral {
     }
 }
 
-contract NontrivialPegCollateral2 is FiatCollateral {
+contract NontrivialPegCollateral2 is Collateral {
     uint192 private peg = FIX_ONE; // {target/ref}
 
-    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+    constructor(CollateralConfig memory config) Collateral(config) {}
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() public view virtual override returns (uint192) {
@@ -36,10 +36,10 @@ contract NontrivialPegCollateral2 is FiatCollateral {
     }
 }
 
-contract NontrivialPegCollateral3 is FiatCollateral {
+contract NontrivialPegCollateral3 is Collateral {
     uint192 private peg = FIX_ONE; // {target/ref}
 
-    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+    constructor(CollateralConfig memory config) Collateral(config) {}
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() public view virtual override returns (uint192) {

@@ -3,13 +3,13 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
-import "../assets/AppreciatingFiatCollateral.sol";
+import "../assets/AppreciatingCollateral.sol";
 
 /**
  * @title InvalidoRefPerTokCollateralMock
  * @notice Collateral mock plugin which allows to set refPerTok=0 or revert
  */
-contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
+contract InvalidRefPerTokCollateralMock is AppreciatingCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -19,7 +19,7 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
     // solhint-disable no-empty-blocks
 
     constructor(CollateralConfig memory config, uint192 revenueHiding)
-        AppreciatingFiatCollateral(config, revenueHiding)
+        AppreciatingCollateral(config, revenueHiding)
     {}
 
     // solhint-enable no-empty-blocks

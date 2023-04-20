@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../assets/FiatCollateral.sol";
+import "../assets/Collateral.sol";
 
-contract GasGuzzlingFiatCollateral is FiatCollateral {
+contract GasGuzzlingCollateral is Collateral {
     using FixLib for uint192;
 
     bool public revertRefPerTok;
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+    constructor(CollateralConfig memory config) Collateral(config) {}
 
     function refPerTok() public view virtual override returns (uint192) {
         if (revertRefPerTok) {

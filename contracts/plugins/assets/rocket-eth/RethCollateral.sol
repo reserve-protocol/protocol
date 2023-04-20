@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
-import "../AppreciatingFiatCollateral.sol";
+import "../AppreciatingCollateral.sol";
 import "../OracleLib.sol";
 import "./IReth.sol";
 
@@ -15,20 +15,20 @@ import "./IReth.sol";
  * tar = ETH
  * UoA = USD
  */
-contract RethCollateral is AppreciatingFiatCollateral {
+contract RethCollateral is AppreciatingCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     AggregatorV3Interface public immutable refPerTokChainlinkFeed;
     uint48 public immutable refPerTokChainlinkTimeout;
 
-    /// @param config.chainlinkFeed Feed units: {UoA/ref}
+    /// @param config.uoaPerRefOracle Feed units: {UoA/ref}
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
         AggregatorV3Interface _refPerTokChainlinkFeed,
         uint48 _refPerTokChainlinkTimeout
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
+    ) AppreciatingCollateral(config, revenueHiding) {
         require(address(_refPerTokChainlinkFeed) != address(0), "missing refPerTok feed");
         require(_refPerTokChainlinkTimeout != 0, "refPerTokChainlinkTimeout zero");
         refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
@@ -40,7 +40,7 @@ contract RethCollateral is AppreciatingFiatCollateral {
     /// @return high {UoA/tok} The high price estimate
     /// @return pegPrice {target/ref} The actual price observed in the peg
     function tryPrice()
-        external
+        public
         view
         override
         returns (
@@ -50,7 +50,7 @@ contract RethCollateral is AppreciatingFiatCollateral {
         )
     {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(
+        uint192 p = uoaPerRefOracle.price(uoaPerRefOracleTimeout).mul(
             refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout)
         );
         uint192 err = p.mul(oracleError, CEIL);

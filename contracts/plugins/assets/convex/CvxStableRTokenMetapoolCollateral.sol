@@ -18,8 +18,8 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
 
     IAssetRegistry internal immutable pairedAssetRegistry; // AssetRegistry of pairedToken
 
-    /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
-    /// @dev config.chainlinkFeed/oracleError/oracleTimeout are unused; set chainlinkFeed to 0x1
+    /// @param config.uoaPerRefOracle Feed units: {UoA/pairedTok}
+    /// @dev config.uoaPerRefOracle/oracleError/uoaPerRefOracleTimeout are unused; set uoaPerRefOracle to 0x0
     /// @dev config.erc20 should be a IConvexStakingWrapper
     constructor(
         CollateralConfig memory config,

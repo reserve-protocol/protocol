@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../assets/aave/ATokenFiatCollateral.sol";
+import "../assets/aave/ATokenCollateral.sol";
 
-contract BadCollateralPlugin is ATokenFiatCollateral {
+contract BadCollateralPlugin is ATokenCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -11,7 +11,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     bool public checkHardDefault = true; // defi invariant
 
     constructor(CollateralConfig memory config, uint192 revenueHiding)
-        ATokenFiatCollateral(config, revenueHiding)
+        ATokenCollateral(config, revenueHiding)
     {}
 
     function setSoftDefaultCheck(bool on) external {

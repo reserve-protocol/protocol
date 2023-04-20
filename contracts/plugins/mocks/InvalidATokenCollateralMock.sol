@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../assets/aave/ATokenFiatCollateral.sol";
+import "../assets/aave/ATokenCollateral.sol";
 
-contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
+contract InvalidATokenCollateralMock is ATokenCollateral {
     constructor(CollateralConfig memory config, uint192 revenueHiding)
-        ATokenFiatCollateral(config, revenueHiding)
+        ATokenCollateral(config, revenueHiding)
     {}
 
     /// Reverting claimRewards function
