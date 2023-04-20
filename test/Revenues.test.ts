@@ -2904,7 +2904,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           fp('1')
         )
 
-        //  Collect revenue and mint new tokens - Will also launch auctions
+        // Collect revenue and mint new tokens - Will also launch auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rToken,

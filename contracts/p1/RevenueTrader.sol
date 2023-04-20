@@ -68,7 +68,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //     openTrade(prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
     function manageToken(IERC20 erc20) external notTradingPausedOrFrozen {
-        require(tradesOpen == 0 && address(trades[erc20]) == address(0), "trade open");
+        require(address(trades[erc20]) == address(0), "trade open");
 
         // == Refresh ==
         assetRegistry.refresh();
@@ -140,6 +140,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         require(auction.buy.erc20() == tokenIn, "buy token mismatch");
         require(auction.sell.erc20() == tokenOut, "sell token mismatch");
+        require(tokenOut != tokenToBuy, "will not sell tokenToBuy");
 
         // {buyTok}
         uint192 bidBuyAmt = shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()));

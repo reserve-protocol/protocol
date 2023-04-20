@@ -47,7 +47,11 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// @dev Intended to be used with multicall
     /// @custom:interaction
     function manageToken(IERC20 erc20) external notTradingPausedOrFrozen {
-        if (address(trades[erc20]) != address(0)) return;
+        require(address(trades[erc20]) == address(0), "trade open");
+
+        // == Refresh ==
+        main.assetRegistry().refresh();
+        // TODO melt
 
         uint256 bal = erc20.balanceOf(address(this));
         require(bal > 0, "zero balance");
@@ -113,6 +117,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         require(auction.buy.erc20() == tokenIn, "buy token mismatch");
         require(auction.sell.erc20() == tokenOut, "sell token mismatch");
+        require(tokenOut != tokenToBuy, "will not sell tokenToBuy");
 
         // {buyTok}
         uint192 bidBuyAmt = shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()));
