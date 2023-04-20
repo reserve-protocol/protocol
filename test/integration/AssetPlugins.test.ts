@@ -24,7 +24,6 @@ import forkBlockNumber from './fork-block-numbers'
 import {
   Asset,
   ATokenFiatCollateral,
-  ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   CTokenNonFiatCollateral,
@@ -88,7 +87,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
   let compToken: ERC20Mock
   let compAsset: Asset
-  let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveAsset: Asset
 
@@ -209,7 +207,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         aaveToken,
         compAsset,
         aaveAsset,
-        compoundMock,
         erc20s,
         collateral,
         basket,
@@ -2440,7 +2437,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         aaveToken,
         compAsset,
         aaveAsset,
-        compoundMock,
         erc20s,
         collateral,
         basket,

@@ -198,12 +198,13 @@ all.forEach((curr: FTokenEnumeration) => {
       await ethers.getContractFactory('MockV3Aggregator')
     )
 
-    const comptroller = await ethers.getContractAt('ComptrollerMock', opts.comptroller!)
+    const comptroller = await ethers.getContractAt('ComptrollerMock', collateralOpts.comptroller!)
 
     const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
     const FTokenMockFactory = await ethers.getContractFactory('CTokenMock')
+
     const underlyingFToken = await FTokenMockFactory.deploy(
       'Mock FToken',
       'Mock Ftk',
@@ -217,9 +218,8 @@ all.forEach((curr: FTokenEnumeration) => {
     let compAddress = ZERO_ADDRESS
     try {
       compAddress = await comptroller.getCompAddress()
-    } catch {
-
-    }
+      // eslint-disable-next-line no-empty
+    } catch {}
 
     const fTokenVault = <CTokenVaultMock>(
       await CTokenVaultMockFactory.deploy(
