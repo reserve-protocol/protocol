@@ -398,8 +398,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             defaultThreshold,
             delayUntilDefault,
           },
-          REVENUE_HIDING,
-          ZERO_ADDRESS
+          REVENUE_HIDING
         )
       ).to.be.revertedWith('missing erc20')
     })

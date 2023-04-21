@@ -2,20 +2,20 @@
 pragma solidity ^0.8.17;
 
 import "../vaults/RewardableERC20Vault.sol";
-import "../../../vendor/solmate/ERC20Solmate.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./ICToken.sol";
 
 contract CTokenVault is RewardableERC20Vault {
-    using SafeTransferLib for ERC20Solmate;
+    using SafeERC20 for ERC20;
 
     IComptroller public immutable comptroller;
 
     constructor(
-        ERC20Solmate _asset,
+        ERC20 _asset,
         string memory _name,
         string memory _symbol,
         IComptroller _comptroller
-    ) RewardableERC20Vault(_asset, _name, _symbol, ERC20Solmate(_comptroller.getCompAddress())) {
+    ) RewardableERC20Vault(_asset, _name, _symbol, ERC20(_comptroller.getCompAddress())) {
         comptroller = _comptroller;
     }
 
@@ -24,10 +24,10 @@ contract CTokenVault is RewardableERC20Vault {
     }
 
     function exchangeRateCurrent() external returns (uint256) {
-        return ICToken(address(asset)).exchangeRateCurrent();
+        return ICToken(asset()).exchangeRateCurrent();
     }
 
     function exchangeRateStored() external view returns (uint256) {
-        return ICToken(address(asset)).exchangeRateStored();
+        return ICToken(asset()).exchangeRateStored();
     }
 }

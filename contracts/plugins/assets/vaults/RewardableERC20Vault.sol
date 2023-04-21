@@ -3,14 +3,14 @@ pragma solidity ^0.8.17;
 
 import "../../../interfaces/IRewardable.sol";
 import "../../../vendor/solmate/ERC4626Rewardable.sol";
-import "../../../vendor/solmate/ERC20Solmate.sol";
-import "../../../vendor/solmate/SafeTransferLib.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
-    using SafeTransferLib for ERC20Solmate;
+    using SafeERC20 for ERC20;
 
     uint256 public immutable one;
-    ERC20Solmate public immutable rewardToken;
+    ERC20 public immutable rewardToken;
 
     uint256 public rewardsPerShare;
     mapping(address => uint256) public lastRewardsPerShare;
@@ -18,18 +18,18 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
     mapping(address => uint256) public claimedRewards;
 
     constructor(
-        ERC20Solmate _asset,
+        ERC20 _asset,
         string memory _name,
         string memory _symbol,
-        ERC20Solmate _rewardToken
+        ERC20 _rewardToken
     ) ERC4626Rewardable(_asset, _name, _symbol) {
         rewardToken = _rewardToken;
-        one = 10**_asset.decimals();
+        one = 10**decimals();
     }
 
     function claimRewards() external {
         _claimAndSyncRewards();
-        _syncAccount(msg.sender, balanceOf[msg.sender]);
+        _syncAccount(msg.sender, balanceOf(msg.sender));
         _claimAccountRewards(msg.sender);
     }
 
@@ -44,12 +44,13 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
 
     function _claimAndSyncRewards() internal {
         uint256 delta;
-        if (totalSupply > 0) {
+        uint256 _totalSupply = totalSupply();
+        if (_totalSupply > 0) {
             uint256 initialBal = rewardToken.balanceOf(address(this));
             _claimAssetRewards();
             uint256 endingBal = rewardToken.balanceOf(address(this));
             delta = endingBal - initialBal;
-            rewardsPerShare += ((delta) * one) / totalSupply;
+            rewardsPerShare += ((delta) * one) / _totalSupply;
         }
     }
 
@@ -63,25 +64,21 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
         rewardToken.safeTransfer(account, claimableRewards);
     }
 
-    function totalAssets() public view virtual override returns (uint256) {
-        return totalSupply;
-    }
-
-    function beforeWithdraw(
+    function _beforeWithdraw(
         uint256,
         uint256,
         address owner
     ) internal virtual override {
         _claimAndSyncRewards();
-        _syncAccount(owner, balanceOf[owner]);
+        _syncAccount(owner, balanceOf(owner));
     }
 
-    function beforeDeposit(
+    function _beforeDeposit(
         uint256,
         uint256,
         address receiver
     ) internal virtual override {
         _claimAndSyncRewards();
-        _syncAccount(receiver, balanceOf[receiver]);
+        _syncAccount(receiver, balanceOf(receiver));
     }
 }

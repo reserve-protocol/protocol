@@ -23,7 +23,7 @@ interface RewardableERC20VaultFixture {
 }
 
 const getFixture = (
-  decimals: number,
+  assetDecimals: number,
   rewardDecimals: number
 ): Fixture<RewardableERC20VaultFixture> => {
   const fixture: Fixture<RewardableERC20VaultFixture> =
@@ -42,7 +42,7 @@ const getFixture = (
         await rewardableAssetFactory.deploy(
           'Rewarding Test Asset',
           'rewardTEST',
-          decimals,
+          assetDecimals,
           rewardToken.address
         )
       )
@@ -68,8 +68,15 @@ const getFixture = (
   return fixture
 }
 
-const runTests = (decimals: number, rewardDecimals: number) => {
+const toShares = (assets: BigNumber, assetDecimals: number, shareDecimals: number): BigNumber => {
+  return assets.mul(bn(10).pow(shareDecimals - assetDecimals))
+}
+
+const runTests = (assetDecimals: number, rewardDecimals: number) => {
   describe('RewardableERC20Vault', () => {
+    // Decimals
+    let shareDecimals: number
+
     // Assets
     let rewardableVault: RewardableERC20Vault
     let rewardableAsset: ERC20MockRewarding
@@ -79,11 +86,12 @@ const runTests = (decimals: number, rewardDecimals: number) => {
     let alice: Wallet
     let bob: Wallet
 
-    const initBalance = fp('10000').div(bn(10).pow(18 - decimals))
+    const initBalance = fp('10000').div(bn(10).pow(18 - assetDecimals))
     const rewardAmount = fp('200').div(bn(10).pow(18 - rewardDecimals))
-    const oneAsset = fp('1').div(bn(10).pow(18 - decimals))
+    let oneShare: BigNumber
+    let initShares: BigNumber
 
-    const fixture = getFixture(decimals, rewardDecimals)
+    const fixture = getFixture(assetDecimals, rewardDecimals)
 
     before('load wallets', async () => {
       ;[alice, bob] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -97,6 +105,10 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       await rewardableAsset.connect(alice).approve(rewardableVault.address, initBalance)
       await rewardableAsset.mint(bob.address, initBalance)
       await rewardableAsset.connect(bob).approve(rewardableVault.address, initBalance)
+
+      shareDecimals = await rewardableVault.decimals()
+      initShares = toShares(initBalance, assetDecimals, shareDecimals)
+      oneShare = bn('1').mul(bn(10).pow(shareDecimals))
     })
 
     describe('Deployment', () => {
@@ -127,7 +139,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       })
 
       it('alice shows correct balance', async () => {
-        expect(initBalance.mul(3).div(8)).equal(await rewardableVault.balanceOf(alice.address))
+        expect(initShares.mul(3).div(8)).equal(await rewardableVault.balanceOf(alice.address))
       })
 
       it('alice shows correct lastRewardsPerShare', async () => {
@@ -135,7 +147,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       })
 
       it('bob shows correct balance', async () => {
-        expect(initBalance.div(8)).equal(await rewardableVault.balanceOf(bob.address))
+        expect(initShares.div(8)).equal(await rewardableVault.balanceOf(bob.address))
       })
 
       it('bob shows correct lastRewardsPerShare', async () => {
@@ -144,7 +156,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
 
       it('rewardsPerShare is correct', async () => {
         // rewards / alice's deposit
-        expect(rewardsPerShare).equal(rewardAmount.mul(oneAsset).div(initBalance.div(4)))
+        expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
       })
     })
 
@@ -171,15 +183,15 @@ const runTests = (decimals: number, rewardDecimals: number) => {
 
       it('alice shows correct lastRewardsPerShare', async () => {
         // rewards / alice's deposit
-        expect(initRewardsPerShare).equal(rewardAmount.mul(oneAsset).div(initBalance.div(4)))
+        expect(initRewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
         expect(initRewardsPerShare).equal(await rewardableVault.lastRewardsPerShare(alice.address))
       })
 
       it('bob shows correct lastRewardsPerShare', async () => {
         const expectedRewardsPerShare = rewardAmount
-          .mul(oneAsset)
-          .div(initBalance.div(4))
-          .add(rewardAmount.mul(oneAsset).div(initBalance.div(2)))
+          .mul(oneShare)
+          .div(initShares.div(4))
+          .add(rewardAmount.mul(oneShare).div(initShares.div(2)))
         expect(rewardsPerShare).equal(expectedRewardsPerShare)
         expect(rewardsPerShare).equal(await rewardableVault.lastRewardsPerShare(bob.address))
       })
@@ -205,7 +217,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
 
       it('rewardsPerShare is correct', async () => {
         // rewards / alice's deposit
-        expect(rewardsPerShare).equal(rewardAmount.mul(oneAsset).div(initBalance.div(4)))
+        expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
       })
     })
 
@@ -234,7 +246,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
 
       it('rewardsPerShare is correct', async () => {
         // rewards / alice's deposit
-        expect(rewardsPerShare).equal(rewardAmount.mul(oneAsset).div(initBalance.div(4)))
+        expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
       })
     })
 
@@ -262,7 +274,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       })
 
       it('bob shows correct balance', async () => {
-        expect(initBalance.div(4)).equal(await rewardableVault.balanceOf(bob.address))
+        expect(initShares.div(4)).equal(await rewardableVault.balanceOf(bob.address))
       })
 
       it('bob shows correct lastRewardsPerShare', async () => {
@@ -271,7 +283,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
 
       it('rewardsPerShare is correct', async () => {
         // rewards / alice's deposit
-        expect(rewardsPerShare).equal(rewardAmount.mul(oneAsset).div(initBalance.div(4)))
+        expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
       })
     })
 
@@ -291,7 +303,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       })
 
       it('alice shows correct balance', async () => {
-        expect(initBalance.div(4)).equal(await rewardableVault.balanceOf(alice.address))
+        expect(initShares.div(4)).equal(await rewardableVault.balanceOf(alice.address))
       })
 
       it('alice has claimed rewards', async () => {
@@ -303,7 +315,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       })
 
       it('bob shows correct balance', async () => {
-        expect(initBalance.div(8)).equal(await rewardableVault.balanceOf(bob.address))
+        expect(initShares.div(8)).equal(await rewardableVault.balanceOf(bob.address))
       })
 
       it('bob shows correct lastRewardsPerShare', async () => {
@@ -312,7 +324,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
 
       it('rewardsPerShare is correct', async () => {
         // rewards / alice's deposit
-        expect(rewardsPerShare).equal(rewardAmount.mul(oneAsset).div(initBalance.div(4)))
+        expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)))
       })
     })
 
@@ -338,7 +350,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       })
 
       it('alice shows correct balance', async () => {
-        expect(initBalance.div(4)).equal(await rewardableVault.balanceOf(alice.address))
+        expect(initShares.div(4)).equal(await rewardableVault.balanceOf(alice.address))
       })
 
       it('alice has claimed rewards', async () => {
@@ -352,7 +364,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       })
 
       it('bob shows correct balance', async () => {
-        expect(initBalance.div(4)).equal(await rewardableVault.balanceOf(bob.address))
+        expect(initShares.div(4)).equal(await rewardableVault.balanceOf(bob.address))
       })
 
       it('bob shows correct lastRewardsPerShare', async () => {
@@ -366,9 +378,9 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       it('rewardsPerShare is correct', async () => {
         // (rewards / alice's deposit) + (rewards / (alice's deposit + bob's deposit))
         const expectedRewardsPerShare = rewardAmount
-          .mul(oneAsset)
-          .div(initBalance.div(4))
-          .add(rewardAmount.mul(oneAsset).div(initBalance.div(2)))
+          .mul(oneShare)
+          .div(initShares.div(4))
+          .add(rewardAmount.mul(oneShare).div(initShares.div(2)))
         expect(rewardsPerShare).equal(expectedRewardsPerShare)
       })
     })
@@ -394,7 +406,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       })
 
       it('alice shows correct balance', async () => {
-        expect(initBalance.div(4)).equal(await rewardableVault.balanceOf(alice.address))
+        expect(initShares.div(4)).equal(await rewardableVault.balanceOf(alice.address))
       })
 
       it('alice shows correct lastRewardsPerShare', async () => {
@@ -406,7 +418,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
       })
 
       it('bob shows correct balance', async () => {
-        expect(initBalance.div(4)).equal(await rewardableVault.balanceOf(bob.address))
+        expect(initShares.div(4)).equal(await rewardableVault.balanceOf(bob.address))
       })
 
       it('bob shows correct lastRewardsPerShare', async () => {
@@ -419,7 +431,7 @@ const runTests = (decimals: number, rewardDecimals: number) => {
 
       it('rewardsPerShare is correct', async () => {
         // (rewards / alice's deposit) + (rewards / bob's deposit)
-        expect(rewardsPerShare).equal(rewardAmount.mul(oneAsset).div(initBalance.div(4)).mul(2))
+        expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)).mul(2))
       })
     })
   })
@@ -429,7 +441,7 @@ const decimalSeeds = [6, 8, 18]
 const cases = cartesianProduct(decimalSeeds, decimalSeeds)
 // const cases = [[6, 6]]
 cases.forEach((params) => {
-  describe(`rewardableAsset decimals: ${params[0]} / reward decimals: ${params[1]}`, () => {
+  describe(`rewardableAsset assetDecimals: ${params[0]} / reward assetDecimals: ${params[1]}`, () => {
     runTests(params[0], params[1])
   })
 })
