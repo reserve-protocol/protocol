@@ -1744,7 +1744,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await cDaiVault.balanceOf(addr1.address)).to.equal(
         toBNDecimals(initialBal, 17).mul(100)
       )
-      
+
       // Provide approvals
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
