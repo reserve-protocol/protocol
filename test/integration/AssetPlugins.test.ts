@@ -321,7 +321,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await whileImpersonating(holderCDAI, async (cdaiSigner) => {
         await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
         await cDai.connect(addr1).approve(cDaiVault.address, toBNDecimals(initialBal, 8).mul(100))
-        await cDaiVault.connect(addr1).mint(toBNDecimals(initialBal, 8).mul(100), addr1.address)
+        await cDaiVault.connect(addr1).mint(toBNDecimals(initialBal, 17).mul(100), addr1.address)
       })
 
       // Setup balances for USDT
@@ -346,7 +346,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           .approve(cWBTCVault.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
         await cWBTCVault
           .connect(addr1)
-          .mint(toBNDecimals(initialBalBtcEth, 8).mul(1000), addr1.address)
+          .mint(toBNDecimals(initialBalBtcEth, 17).mul(1000), addr1.address)
       })
 
       // WETH
@@ -364,7 +364,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           .approve(cETHVault.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
         await cETHVault
           .connect(addr1)
-          .mint(toBNDecimals(initialBalBtcEth, 8).mul(1000), addr1.address)
+          .mint(toBNDecimals(initialBalBtcEth, 17).mul(1000), addr1.address)
       })
 
       //EURT
@@ -555,7 +555,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
         expect(await ctkInf.cTokenVault.asset()).to.equal(ctkInf.cTokenAddress)
         expect(await ctkInf.cToken.decimals()).to.equal(8)
-        expect(await ctkInf.cTokenVault.decimals()).to.equal(8)
+        expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
         expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
           ethers.utils.formatBytes32String('USD')
         )
@@ -814,7 +814,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
         expect(await ctkInf.cTokenVault.asset()).to.equal(ctkInf.cTokenAddress)
         expect(await ctkInf.cToken.decimals()).to.equal(8)
-        expect(await ctkInf.cTokenVault.decimals()).to.equal(8)
+        expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
         expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
           ethers.utils.formatBytes32String(ctkInf.targetName)
         )
@@ -941,7 +941,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
         expect(await ctkInf.cTokenVault.asset()).to.equal(ctkInf.cTokenAddress)
         expect(await ctkInf.cToken.decimals()).to.equal(8)
-        expect(await ctkInf.cTokenVault.decimals()).to.equal(8)
+        expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
         expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
           ethers.utils.formatBytes32String(ctkInf.targetName)
         )
@@ -1716,7 +1716,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const issueAmount: BigNumber = bn('10000e18')
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       await expectRTokenPrice(
@@ -1742,13 +1742,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const initialBalAToken = initialBal.mul(9321).div(10000)
       expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
       expect(await cDaiVault.balanceOf(addr1.address)).to.equal(
-        toBNDecimals(initialBal, 8).mul(100)
+        toBNDecimals(initialBal, 17).mul(100)
       )
 
       // Provide approvals
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
 
       // Check rToken balance
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -1768,7 +1768,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const requiredCTokens: BigNumber = bn('227116e8') // approx 227K needed (~5K, 50% of basket) - Price: ~0.022
       expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
         requiredCTokens,
-        bn(1e8)
+        bn('1e17')
       )
 
       // Balances for user
@@ -1778,8 +1778,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1.5')
       )
       expect(await cDaiVault.balanceOf(addr1.address)).to.be.closeTo(
-        toBNDecimals(initialBal, 8).mul(100).sub(requiredCTokens),
-        bn(1e8)
+        toBNDecimals(initialBal, 17).mul(100).sub(requiredCTokens),
+        bn(1e17)
       )
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -1811,7 +1811,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
       expect(await cDaiVault.balanceOf(addr1.address)).to.be.closeTo(
-        toBNDecimals(initialBal, 8).mul(100),
+        toBNDecimals(initialBal, 17).mul(100),
         bn('1e7')
       )
 
@@ -1829,7 +1829,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Provide approvals for issuances
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -1980,7 +1980,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Check received tokens represent ~10K in value at current prices
       expect(newBalanceAddr1Dai.sub(balanceAddr1Dai)).to.equal(issueAmount.div(4)) // = 2.5K (25% of basket)
       expect(newBalanceAddr1aDai.sub(balanceAddr1aDai)).to.be.closeTo(fp('2110.5'), fp('0.5')) // ~1.1873 * 2110.5  ~= 2.5K (25% of basket)
-      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('151785e8'), bn('5e7')) // ~0.03294 * 151785.3 ~= 5K (50% of basket)
+      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('151785e17'), bn('5e16')) // ~0.03294 * 151785.3 ~= 5K (50% of basket)
 
       // Check remainders in Backing Manager
       expect(await dai.balanceOf(backingManager.address)).to.equal(0)
@@ -1989,8 +1989,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('0.01')
       )
       expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
-        bn(75331e8),
-        bn('5e7')
+        bn('75331e17'),
+        bn('5e16')
       ) // ~= 2481 usd in value
 
       //  Check total asset value (remainder)
@@ -2024,7 +2024,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Provide approvals
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
 
       // Check rToken balance
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -2152,11 +2152,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         expect(await wbtc.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBalBtcEth, 8))
         expect(await cWBTCVault.balanceOf(addr1.address)).to.equal(
-          toBNDecimals(initialBalBtcEth, 8).mul(1000)
+          toBNDecimals(initialBalBtcEth, 17).mul(1000)
         )
         expect(await weth.balanceOf(addr1.address)).to.equal(initialBalBtcEth)
         expect(await cETHVault.balanceOf(addr1.address)).to.equal(
-          toBNDecimals(initialBalBtcEth, 8).mul(1000)
+          toBNDecimals(initialBalBtcEth, 17).mul(1000)
         )
         expect(await eurt.balanceOf(addr1.address)).to.equal(
           toBNDecimals(initialBalBtcEth, 6).mul(1000)
@@ -2168,13 +2168,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         // Check Balances after
         expect(await wbtc.balanceOf(backingManager.address)).to.equal(toBNDecimals(issueAmount, 8)) //1 full units
-        const requiredCWBTC: BigNumber = toBNDecimals(fp('49.85'), 8) // approx 49.5 cWBTC needed (~1 wbtc / 0.02006)
+        const requiredCWBTC: BigNumber = toBNDecimals(fp('49.85'), 17) // approx 49.5 cWBTC needed (~1 wbtc / 0.02006)
         expect(await cWBTCVault.balanceOf(backingManager.address)).to.be.closeTo(
           requiredCWBTC,
           point1Pct(requiredCWBTC)
         )
         expect(await weth.balanceOf(backingManager.address)).to.equal(issueAmount) //1 full units
-        const requiredCETH: BigNumber = toBNDecimals(fp('49.8'), 8) // approx 49.8 cETH needed (~1 weth / 0.02020)
+        const requiredCETH: BigNumber = toBNDecimals(fp('49.8'), 17) // approx 49.8 cETH needed (~1 weth / 0.02020)
         expect(await cETHVault.balanceOf(backingManager.address)).to.be.closeTo(
           requiredCETH,
           point1Pct(requiredCETH)
@@ -2185,13 +2185,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await wbtc.balanceOf(addr1.address)).to.equal(
           toBNDecimals(initialBalBtcEth.sub(issueAmount), 8)
         )
-        const expectedcWBTCBalance = toBNDecimals(initialBalBtcEth, 8).mul(1000).sub(requiredCWBTC)
+        const expectedcWBTCBalance = toBNDecimals(initialBalBtcEth, 17).mul(1000).sub(requiredCWBTC)
         expect(await cWBTCVault.balanceOf(addr1.address)).to.be.closeTo(
           expectedcWBTCBalance,
           point1Pct(expectedcWBTCBalance)
         )
         expect(await weth.balanceOf(addr1.address)).to.equal(initialBalBtcEth.sub(issueAmount))
-        const expectedcETHBalance = toBNDecimals(initialBalBtcEth, 8).mul(1000).sub(requiredCETH)
+        const expectedcETHBalance = toBNDecimals(initialBalBtcEth, 17).mul(1000).sub(requiredCETH)
         expect(await cWBTCVault.balanceOf(addr1.address)).to.be.closeTo(
           expectedcETHBalance,
           point1Pct(expectedcETHBalance)
@@ -2230,12 +2230,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Check funds returned to user
         expect(await wbtc.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBalBtcEth, 8))
         expect(await cWBTCVault.balanceOf(addr1.address)).to.be.closeTo(
-          toBNDecimals(initialBalBtcEth, 8).mul(1000),
+          toBNDecimals(initialBalBtcEth, 17).mul(1000),
           bn('10')
         )
         expect(await weth.balanceOf(addr1.address)).to.equal(initialBalBtcEth)
         expect(await cETHVault.balanceOf(addr1.address)).to.be.closeTo(
-          toBNDecimals(initialBalBtcEth, 8).mul(1000),
+          toBNDecimals(initialBalBtcEth, 17).mul(1000),
           bn('10')
         )
         expect(await eurt.balanceOf(addr1.address)).to.equal(
@@ -2485,7 +2485,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await whileImpersonating(holderCDAI, async (cdaiSigner) => {
         await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
         await cDai.connect(addr1).approve(cDaiVault.address, toBNDecimals(initialBal, 8).mul(100))
-        await cDaiVault.connect(addr1).mint(toBNDecimals(initialBal, 8).mul(100), addr1.address)
+        await cDaiVault.connect(addr1).mint(toBNDecimals(initialBal, 17).mul(100), addr1.address)
       })
     })
 
@@ -2519,7 +2519,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Provide approvals for issuances
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
