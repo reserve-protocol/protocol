@@ -312,23 +312,6 @@ Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 Default value: `5e16` = 5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
-### `swapPricepoint`
-
-Dimension: `{1}`
-
-The Swap Pricepoint is a percentage value that sets the swap price:
-
-- At 0% it uses the low sell price and high buy price
-- At <50% it swaps at a discount in the counterparty's favor
-- At 50% it swaps at market prices
-- At >50% it swaps at a premium in the protocol's favor
-- At 100% it uses the high sell price and low buy price
-
-Default value: `5e17` = 50%
-Mainnet reasonable range: 0 to 1e18
-
-It is recommended to use a value >50% in the BackingManager and <50% in the RevenueTraders.
-
 ### Governance Parameters
 
 Governance is 8 days end-to-end.
