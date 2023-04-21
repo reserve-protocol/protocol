@@ -1744,7 +1744,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await cDaiVault.balanceOf(addr1.address)).to.equal(
         toBNDecimals(initialBal, 17).mul(100)
       )
-
+      
       // Provide approvals
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
@@ -1765,7 +1765,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         issueAmtAToken,
         fp('1')
       )
-      const requiredCTokens: BigNumber = bn('227116e8') // approx 227K needed (~5K, 50% of basket) - Price: ~0.022
+      const requiredCTokens: BigNumber = bn('227116e17') // approx 227K needed (~5K, 50% of basket) - Price: ~0.022
       expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
         requiredCTokens,
         bn('1e17')
@@ -1779,7 +1779,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
       expect(await cDaiVault.balanceOf(addr1.address)).to.be.closeTo(
         toBNDecimals(initialBal, 17).mul(100).sub(requiredCTokens),
-        bn(1e17)
+        bn('1e17')
       )
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -1805,14 +1805,14 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Check balances after - Backing Manager is empty
       expect(await dai.balanceOf(backingManager.address)).to.equal(0)
       expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(bn(0), fp('0.01'))
-      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('1e6'))
+      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('1e15'))
 
       // Check funds returned to user
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
       expect(await cDaiVault.balanceOf(addr1.address)).to.be.closeTo(
         toBNDecimals(initialBal, 17).mul(100),
-        bn('1e7')
+        bn('1e16')
       )
 
       // Check asset value left
@@ -2222,21 +2222,21 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         // Check balances after - Backing Manager is empty
         expect(await wbtc.balanceOf(backingManager.address)).to.equal(0)
-        expect(await cWBTCVault.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('10'))
+        expect(await cWBTCVault.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('10e9'))
         expect(await weth.balanceOf(backingManager.address)).to.equal(0)
-        expect(await cETHVault.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('10'))
+        expect(await cETHVault.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('10e9'))
         expect(await eurt.balanceOf(backingManager.address)).to.equal(0)
 
         // Check funds returned to user
         expect(await wbtc.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBalBtcEth, 8))
         expect(await cWBTCVault.balanceOf(addr1.address)).to.be.closeTo(
           toBNDecimals(initialBalBtcEth, 17).mul(1000),
-          bn('10')
+          bn('10e9')
         )
         expect(await weth.balanceOf(addr1.address)).to.equal(initialBalBtcEth)
         expect(await cETHVault.balanceOf(addr1.address)).to.be.closeTo(
           toBNDecimals(initialBalBtcEth, 17).mul(1000),
-          bn('10')
+          bn('10e9')
         )
         expect(await eurt.balanceOf(addr1.address)).to.equal(
           toBNDecimals(initialBalBtcEth, 6).mul(1000)
