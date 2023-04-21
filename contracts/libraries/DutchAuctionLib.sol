@@ -80,11 +80,11 @@ library DutchAuctionLib {
     /// Actually bids in the auction, changing the saved struct
     /// @param auction The stored auction
     /// @param progression {1} The fraction of the auction that has elapsed
-    /// @param bidBuyAmt {buyTok}
+    /// @param bidSellAmt {sellTok}
     function bid(
         DutchAuction storage auction,
         uint192 progression,
-        uint192 bidBuyAmt
+        uint192 bidSellAmt
     ) external returns (Swap memory swap) {
         assert(
             address(auction.sell) != address(0) &&
@@ -96,8 +96,8 @@ library DutchAuctionLib {
         // {buyTok/sellTok}
         uint192 price = currentPrice(progression, auction.middlePrice, auction.lowPrice);
 
-        // {sellTok} = {buyTok} / {buyTok/sellTok}
-        uint192 bidSellAmt = bidBuyAmt.div(price, FLOOR);
+        // {buyTok} = {sellTok} * {buyTok/sellTok}
+        uint192 bidBuyAmt = bidSellAmt.mul(price, CEIL);
         auction.sellAmount -= bidSellAmt;
 
         // Finalize bidder's swap

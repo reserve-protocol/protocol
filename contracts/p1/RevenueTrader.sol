@@ -164,7 +164,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             assetRegistry.toAsset(tokenToBuy),
             sellAmount
         );
-
         return executeSwap(dutchAuctions[tokenOut][tradeEnd], tokenIn, tokenOut, amountOut);
     }
 

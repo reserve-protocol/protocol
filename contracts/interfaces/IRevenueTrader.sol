@@ -11,7 +11,7 @@ import "./ISwapper.sol";
  *   assets at its address for a single target asset. There are two runtime instances
  *   of the RevenueTrader, 1 for RToken and 1 for RSR.
  */
-interface IRevenueTrader is IComponent, ITrading {
+interface IRevenueTrader is IComponent, ITrading, ISwapper {
     // Initialization
     function init(
         IMain main_,
