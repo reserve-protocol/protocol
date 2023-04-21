@@ -179,7 +179,10 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         require(tokenOut != tokenToBuy, "will not sell tokenToBuy");
 
         DutchAuction storage auction = dutchAuctions[tokenOut][tradeEnd];
-        if (address(auction.sell) != address(0) || address(auction.buy) != address(0)) {
+        if (
+            block.timestamp < tradeEnd &&
+            (address(auction.sell) != address(0) || address(auction.buy) != address(0))
+        ) {
             return auction.toSwap(progression());
         }
 
@@ -193,10 +196,11 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         // {sellTok}
         uint192 sellAmount = sellAsset.bal(address(this));
         require(sellAmount > 0, "zero balance");
+        uint192 progressionExcess = block.timestamp < tradeEnd ? 0 : FIX_ONE; // {1}
         return
             DutchAuctionLib
                 .makeAuction(sellAsset, main.assetRegistry().toAsset(tokenToBuy), sellAmount)
-                .toSwap(progression());
+                .toSwap(progression() - progressionExcess);
     }
 
     /**

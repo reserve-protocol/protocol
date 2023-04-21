@@ -197,7 +197,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         // {sellTok}
         uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
-        return DutchAuctionLib.makeAuction(req.sell, req.buy, sellAmount).toSwap(progression());
+        return
+            DutchAuctionLib.makeAuction(req.sell, req.buy, sellAmount).toSwap(
+                progression() - FIX_ONE // tradeEnd will be 1 period in the future at swaptime
+            );
     }
 
     // === Private ===
