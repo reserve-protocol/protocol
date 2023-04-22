@@ -61,9 +61,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         require(bal > 0, "zero balance");
 
         if (erc20 == tokenToBuy) {
-            erc20.safeApprove(address(main.distributor()), 0);
-            erc20.safeApprove(address(main.distributor()), bal);
-            main.distributor().distribute(erc20, bal);
+            distributeTokenToBuy(bal);
             return;
         }
 
@@ -104,18 +102,19 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// @param tokenIn The ERC20 token provided by the caller
     /// @param tokenOut The ERC20 token being purchased by the caller
     /// @param amountOut {qTokenOut} The exact quantity of tokenOut being purchased
-    /// @return The exact Swap performed
+    /// @return s The exact Swap performed
     /// @custom:interaction RCEI
     function swap(
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 amountOut
-    ) external notTradingPausedOrFrozen returns (Swap memory) {
+    ) external notTradingPausedOrFrozen returns (Swap memory s) {
         // == Refresh ==
         main.assetRegistry().refresh();
         // should melt() here too; TODO when we add to manageToken()
 
         require(address(trades[tokenOut]) == address(0), "nonatomic trade ongoing");
+        require(tokenIn == tokenToBuy, "will only buy tokenToBuy");
         require(tokenOut != tokenToBuy, "will not sell tokenToBuy");
 
         // executeSwap if storage auction already exists
@@ -124,10 +123,8 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             tradeEnd > block.timestamp &&
             (address(auction.sell) != address(0) || address(auction.buy) != address(0))
         ) {
-            return executeSwap(auction, tokenIn, tokenOut, amountOut);
+            return executeSwap(auction, tokenToBuy, tokenOut, amountOut);
         }
-
-        // === Checks/Effects ===
 
         require(
             tradeEnd + dutchAuctionLength > block.timestamp &&
@@ -135,6 +132,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             "no dutch auction ongoing"
         );
 
+        // don't bump tradeEnd if it is already in the future
         if (tradeEnd <= block.timestamp) tradeEnd += dutchAuctionLength;
         IAsset sellAsset = main.assetRegistry().toAsset(tokenOut);
 
@@ -146,8 +144,8 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             sellAmount
         );
 
-        // === Interactions ===
-        return executeSwap(dutchAuctions[tokenOut][tradeEnd], tokenIn, tokenOut, amountOut);
+        s = executeSwap(dutchAuctions[tokenOut][tradeEnd], tokenToBuy, tokenOut, amountOut);
+        distributeTokenToBuy(tokenToBuy.balanceOf(address(this)));
     }
 
     /// @return The ongoing auction as a Swap
@@ -186,5 +184,14 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         );
         uint192 discount = tradeEnd > block.timestamp ? 0 : FIX_ONE;
         return memAuction.toSwap(progression() - discount);
+    }
+
+    // === Private ===
+
+    /// Forward an amount of tokenToBuy through the distributor
+    function distributeTokenToBuy(uint256 amount) private {
+        tokenToBuy.safeApprove(address(main.distributor()), 0);
+        tokenToBuy.safeApprove(address(main.distributor()), amount);
+        main.distributor().distribute(tokenToBuy, amount);
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IMain.sol";
@@ -15,7 +15,7 @@ import "./mixins/TradeLib.sol";
 contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     using DutchAuctionLib for DutchAuction;
     using FixLib for uint192;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     // Immutable after init()
     IERC20 public tokenToBuy;
@@ -82,10 +82,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         require(bal > 0, "zero balance");
 
         if (erc20 == tokenToBuy) {
-            // == Interactions then return ==
-            IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), 0);
-            IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), bal);
-            distributor.distribute(erc20, bal);
+            distributeTokenToBuy(bal);
             return;
         }
 
@@ -125,18 +122,19 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// @param tokenIn The ERC20 token provided by the caller
     /// @param tokenOut The ERC20 token being purchased by the caller
     /// @param amountOut {qTokenOut} The exact quantity of tokenOut being purchased
-    /// @return The exact Swap performed
+    /// @return s The exact Swap performed
     /// @custom:interaction RCEI
     function swap(
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 amountOut
-    ) external notTradingPausedOrFrozen returns (Swap memory) {
+    ) external notTradingPausedOrFrozen returns (Swap memory s) {
         // == Refresh ==
         assetRegistry.refresh();
         // should melt() here too; TODO when we add to manageToken()
 
         require(address(trades[tokenOut]) == address(0), "nonatomic trade ongoing");
+        require(tokenIn == tokenToBuy, "will only buy tokenToBuy");
         require(tokenOut != tokenToBuy, "will not sell tokenToBuy");
 
         // executeSwap if storage auction already exists
@@ -145,8 +143,10 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             tradeEnd > block.timestamp &&
             (address(auction.sell) != address(0) || address(auction.buy) != address(0))
         ) {
-            return executeSwap(auction, tokenIn, tokenOut, amountOut);
+            return executeSwap(auction, tokenToBuy, tokenOut, amountOut);
         }
+
+        // === Checks/Effects ===
 
         require(
             tradeEnd + dutchAuctionLength > block.timestamp &&
@@ -154,7 +154,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             "no dutch auction ongoing"
         );
 
-        // only bump tradeEnd if this is the first auction of the group
+        // don't bump tradeEnd if it is already in the future
         if (tradeEnd <= block.timestamp) tradeEnd += dutchAuctionLength;
 
         IAsset sellAsset = assetRegistry.toAsset(tokenOut);
@@ -166,7 +166,12 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             assetRegistry.toAsset(tokenToBuy),
             sellAmount
         );
-        return executeSwap(dutchAuctions[tokenOut][tradeEnd], tokenIn, tokenOut, amountOut);
+
+        uint256 balBeforeSwap = tokenToBuy.balanceOf(address(this)); // {qSellTok}
+
+        // === Interactions ===
+        s = executeSwap(dutchAuctions[tokenOut][tradeEnd], tokenToBuy, tokenOut, amountOut);
+        distributeTokenToBuy(balBeforeSwap + s.buyAmount);
     }
 
     /// @return The ongoing auction as a Swap
@@ -202,6 +207,15 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             DutchAuctionLib
                 .makeAuction(sellAsset, main.assetRegistry().toAsset(tokenToBuy), sellAmount)
                 .toSwap(progression() - (tradeEnd > block.timestamp ? 0 : FIX_ONE));
+    }
+
+    // === Private ===
+
+    /// Forward an amount of tokenToBuy through the distributor
+    function distributeTokenToBuy(uint256 amount) private {
+        tokenToBuy.safeApprove(address(distributor), 0);
+        tokenToBuy.safeApprove(address(distributor), amount);
+        distributor.distribute(tokenToBuy, amount);
     }
 
     /**
