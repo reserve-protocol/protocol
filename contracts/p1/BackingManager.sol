@@ -163,7 +163,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // === Checks/Effects ===
 
-        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
+        require(tradeEnd + dutchAuctionLength > block.timestamp, "no dutch auction ongoing");
         tradeEnd += dutchAuctionLength;
 
         // Same TradeRequest from manageTokens()
@@ -195,7 +195,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             return dutchAuctions[tradeEnd].toSwap(progression());
         }
 
-        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
+        require(tradeEnd + dutchAuctionLength > block.timestamp, "no dutch auction ongoing");
 
         // Same TradeRequest from manageTokens()
         (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1

@@ -27,6 +27,19 @@ library DutchAuctionLib {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
+    // Emitted when an atomic swap is performed
+    /// @dev Duplicate of ISwapper event
+    /// @param sell The ERC20 the protocol is selling
+    /// @param buy The ERC20 the protocol is buying
+    /// @param sellAmount {qSellTok} The quantity of the sell token
+    /// @param buyAmount {qSellTok} The quantity of the buy token
+    event SwapCompleted(
+        IERC20 indexed sell,
+        IERC20 indexed buy,
+        uint256 sellAmount,
+        uint256 buyAmount
+    );
+
     /// Creates an auction in the provided memory struct
     /// @param auction Expected to be empty; will be overwritten
     /// @param sell The asset being sold by the protocol
@@ -37,7 +50,7 @@ library DutchAuctionLib {
         IAsset buy,
         uint192 sellAmount
     ) external view returns (DutchAuction memory auction) {
-        require(address(sell) != address(0) || address(buy) != address(0), "auction already setup");
+        require(address(sell) != address(0) || address(buy) != address(0), "zero address token");
         // 0 for the sellAmount should be handled correctly
 
         auction.sell = sell;
@@ -108,10 +121,17 @@ library DutchAuctionLib {
             bidBuyAmt.shiftl_toUint(int8(auction.buy.erc20Decimals()), CEIL)
         );
 
+        require(swap.sellAmount > 0, "swap sellAmount 0");
+        require(swap.buyAmount > 0, "swap buyAmount 0");
+        emit SwapCompleted(swap.sell, swap.buy, swap.sellAmount, swap.buyAmount);
+
+        // === Interactions ===
+
         // Transfer tokens in
         uint256 buyBal = swap.buy.balanceOf(address(this));
         swap.buy.safeTransferFrom(msg.sender, address(this), swap.buyAmount);
         assert(swap.buy.balanceOf(address(this)) - buyBal == swap.buyAmount);
+        // TODO should we keep these asserts?
 
         // Transfer tokens out
         uint256 sellBal = swap.sell.balanceOf(address(this));

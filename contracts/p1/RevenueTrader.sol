@@ -141,12 +141,15 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         // executeSwap if storage auction already exists
         DutchAuction storage auction = dutchAuctions[tokenOut][tradeEnd];
-        if (address(auction.sell) != address(0) || address(auction.buy) != address(0)) {
+        if (
+            tradeEnd > block.timestamp &&
+            (address(auction.sell) != address(0) || address(auction.buy) != address(0))
+        ) {
             return executeSwap(auction, tokenIn, tokenOut, amountOut);
         }
 
         require(
-            block.timestamp < tradeEnd + dutchAuctionLength &&
+            tradeEnd + dutchAuctionLength > block.timestamp &&
                 block.timestamp + dutchAuctionLength > tradeEnd,
             "no dutch auction ongoing"
         );
@@ -158,7 +161,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         // {sellTok}
         uint192 sellAmount = sellAsset.bal(address(this));
-        require(sellAmount > 0, "zero balance");
         dutchAuctions[tokenOut][tradeEnd] = DutchAuctionLib.makeAuction(
             sellAsset,
             assetRegistry.toAsset(tokenToBuy),
@@ -179,14 +181,15 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         DutchAuction storage auction = dutchAuctions[tokenOut][tradeEnd];
         if (
-            block.timestamp < tradeEnd &&
+            // endTrade may be in the future without a storage auction because of another token
+            tradeEnd > block.timestamp &&
             (address(auction.sell) != address(0) || address(auction.buy) != address(0))
         ) {
             return auction.toSwap(progression());
         }
 
         require(
-            block.timestamp < tradeEnd + dutchAuctionLength &&
+            tradeEnd + dutchAuctionLength > block.timestamp &&
                 block.timestamp + dutchAuctionLength > tradeEnd,
             "no dutch auction ongoing"
         );
@@ -195,11 +198,10 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         // {sellTok}
         uint192 sellAmount = sellAsset.bal(address(this));
         require(sellAmount > 0, "zero balance");
-        uint192 progressionExcess = block.timestamp < tradeEnd ? 0 : FIX_ONE; // {1}
         return
             DutchAuctionLib
                 .makeAuction(sellAsset, main.assetRegistry().toAsset(tokenToBuy), sellAmount)
-                .toSwap(progression() - progressionExcess);
+                .toSwap(progression() - (tradeEnd > block.timestamp ? 0 : FIX_ONE));
     }
 
     /**

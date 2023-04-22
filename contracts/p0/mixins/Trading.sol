@@ -113,17 +113,16 @@ abstract contract TradingP0 is RewardableP0, ITrading {
             "ERC20 mismatch"
         );
 
-        // {buyTok}
-        uint192 bidBuyAmt = shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals()));
+        // {sellTok}
+        uint192 bidSellAmt = shiftl_toFix(amountOut, -int8(auction.sell.erc20Decimals()));
 
         // Complete bid + execute swap
-        return auction.bid(progression(), bidBuyAmt);
+        return auction.bid(progression(), bidSellAmt);
     }
 
-    /// @return p {1} The % progression of the auction
+    /// @return p {1} The % progression of the auction at a timestamp
     function progression() internal view returns (uint192 p) {
-        p = divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength);
-        assert(p <= FIX_ONE);
+        return divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength);
     }
 
     // === Setters ===

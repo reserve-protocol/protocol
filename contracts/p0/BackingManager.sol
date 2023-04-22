@@ -145,7 +145,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             return executeSwap(dutchAuctions[tradeEnd], tokenIn, tokenOut, amountOut);
         }
 
-        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
+        require(tradeEnd + dutchAuctionLength > block.timestamp, "no dutch auction ongoing");
         tradeEnd += dutchAuctionLength;
 
         assert(tradeEnd > block.timestamp);
@@ -184,7 +184,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             return dutchAuctions[tradeEnd].toSwap(progression());
         }
 
-        require(block.timestamp < tradeEnd + dutchAuctionLength, "no dutch auction ongoing");
+        require(tradeEnd + dutchAuctionLength > block.timestamp, "no dutch auction ongoing");
 
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
 

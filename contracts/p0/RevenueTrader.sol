@@ -120,14 +120,17 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         // executeSwap if storage auction already exists
         DutchAuction storage auction = dutchAuctions[tokenOut][tradeEnd];
-        if (address(auction.sell) != address(0) || address(auction.buy) != address(0)) {
+        if (
+            tradeEnd > block.timestamp &&
+            (address(auction.sell) != address(0) || address(auction.buy) != address(0))
+        ) {
             return executeSwap(auction, tokenIn, tokenOut, amountOut);
         }
 
         // === Checks/Effects ===
 
         require(
-            block.timestamp < tradeEnd + dutchAuctionLength &&
+            tradeEnd + dutchAuctionLength > block.timestamp &&
                 block.timestamp + dutchAuctionLength > tradeEnd,
             "no dutch auction ongoing"
         );
@@ -137,7 +140,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         // {sellTok}
         uint192 sellAmount = sellAsset.bal(address(this));
-        require(sellAmount > 0, "zero balance");
         dutchAuctions[tokenOut][tradeEnd] = DutchAuctionLib.makeAuction(
             sellAsset,
             main.assetRegistry().toAsset(tokenToBuy),
@@ -145,7 +147,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         );
 
         // === Interactions ===
-
         return executeSwap(dutchAuctions[tokenOut][tradeEnd], tokenIn, tokenOut, amountOut);
     }
 
@@ -161,14 +162,15 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         DutchAuction storage auction = dutchAuctions[tokenOut][tradeEnd];
         if (
-            (block.timestamp < tradeEnd && address(auction.sell) != address(0)) ||
-            address(auction.buy) != address(0)
+            // endTrade may be in the future without a storage auction because of another token
+            tradeEnd > block.timestamp &&
+            (address(auction.sell) != address(0) || address(auction.buy) != address(0))
         ) {
             return auction.toSwap(progression());
         }
 
         require(
-            block.timestamp < tradeEnd + dutchAuctionLength &&
+            tradeEnd + dutchAuctionLength > block.timestamp &&
                 block.timestamp + dutchAuctionLength > tradeEnd,
             "no dutch auction ongoing"
         );
@@ -182,7 +184,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             main.assetRegistry().toAsset(tokenToBuy),
             sellAmount
         );
-        uint192 progressionExcess = block.timestamp < tradeEnd ? 0 : FIX_ONE; // {1}
-        return memAuction.toSwap(progression() - progressionExcess);
+        uint192 discount = tradeEnd > block.timestamp ? 0 : FIX_ONE;
+        return memAuction.toSwap(progression() - discount);
     }
 }

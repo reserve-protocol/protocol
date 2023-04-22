@@ -163,7 +163,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
         // Complete bid + execute swap
         return
-            auction.bid(progression(), shiftl_toFix(amountOut, -int8(auction.buy.erc20Decimals())));
+            auction.bid(
+                progression(),
+                shiftl_toFix(amountOut, -int8(auction.sell.erc20Decimals()))
+            );
     }
 
     /// @return {1} The % progression of the auction
