@@ -266,8 +266,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
 
         // Start revenue dutch auctions
-        main.rTokenTrader().processRevenue();
-        main.rsrTrader().processRevenue();
+        main.rTokenTrader().refreshAuctions();
+        main.rsrTrader().refreshAuctions();
     }
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting

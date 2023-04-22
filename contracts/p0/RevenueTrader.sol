@@ -38,13 +38,19 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// Starts dutch auctions from the current block, unless they are already ongoing
     /// Callable only by BackingManager
     /// @custom:refresher
-    function processRevenue() external {
+    function refreshAuctions() external {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
 
         // safely reset tradeEnd
         if (tradeEnd + dutchAuctionLength <= block.timestamp) {
-            tradeEnd = uint48(block.timestamp - 1); // this allows first bid to happen this block
+            tradeEnd = uint48(block.timestamp); // allows first bid to happen this block
         }
+    }
+
+    /// Settle a single trade
+    function settleTrade(IERC20 sell) public override(ITrading, TradingP0) {
+        super.settleTrade(sell);
+        distributeTokenToBuy(tokenToBuy.balanceOf(address(this)));
     }
 
     /// Processes a single token; unpermissioned
@@ -132,12 +138,14 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             "no dutch auction ongoing"
         );
 
-        // don't bump tradeEnd if it is already in the future
+        // bump tradeEnd if it is in the past
         if (tradeEnd <= block.timestamp) tradeEnd += dutchAuctionLength;
         IAsset sellAsset = main.assetRegistry().toAsset(tokenOut);
 
         // {sellTok}
         uint192 sellAmount = sellAsset.bal(address(this));
+
+        // TODO should we respect minTradeVolume / maxTradeVolume?
         dutchAuctions[tokenOut][tradeEnd] = DutchAuctionLib.makeAuction(
             sellAsset,
             main.assetRegistry().toAsset(tokenToBuy),

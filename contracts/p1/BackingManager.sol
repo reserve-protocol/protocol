@@ -308,8 +308,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // == Interactions ==
 
         // Start revenue dutch auctions
-        rTokenTrader.processRevenue();
-        rsrTrader.processRevenue();
+        rTokenTrader.refreshAuctions();
+        rsrTrader.refreshAuctions();
 
         for (uint256 i = 0; i < length; ++i) {
             IERC20 erc20 = IERC20(address(erc20s[i]));

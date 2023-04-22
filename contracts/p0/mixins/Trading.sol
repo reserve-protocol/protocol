@@ -56,7 +56,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:interaction
-    function settleTrade(IERC20 sell) external virtual notTradingPausedOrFrozen {
+    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -66,7 +66,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
         // safely reset tradeEnd
         if (tradeEnd + dutchAuctionLength <= block.timestamp) {
-            tradeEnd = uint48(block.timestamp - 1); // this allows first bid to happen this block
+            tradeEnd = uint48(block.timestamp); // allows first bid to happen this block
         }
 
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();

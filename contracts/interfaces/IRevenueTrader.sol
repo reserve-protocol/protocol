@@ -24,7 +24,7 @@ interface IRevenueTrader is IComponent, ITrading, ISwapper {
     /// Starts dutch auctions from the current block, unless they are already ongoing
     /// Callable only by BackingManager
     /// @custom:refresher
-    function processRevenue() external;
+    function refreshAuctions() external;
 
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall

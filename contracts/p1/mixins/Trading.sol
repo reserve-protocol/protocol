@@ -80,7 +80,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) external virtual notTradingPausedOrFrozen nonReentrant {
+    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen nonReentrant {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -90,7 +90,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
         // safely reset tradeEnd
         if (tradeEnd + dutchAuctionLength <= block.timestamp) {
-            tradeEnd = uint48(block.timestamp - 1); // this allows first bid to happen this block
+            tradeEnd = uint48(block.timestamp); // allows first bid to happen this block
         }
 
         // == Interactions ==
