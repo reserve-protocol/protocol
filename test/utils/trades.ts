@@ -103,7 +103,14 @@ export const toDutchAuctionSwap = async (
           .mul(progression.sub(fp('0.2')))
           .div(fp('0.8'))
       )
-  console.log('percentage: ', progression, 'price: ', price)
+  console.log(
+    'progression: ',
+    progression,
+    'price: ',
+    price,
+    'buyAmount: ',
+    divCeil(outAmount.mul(price), fp('1'))
+  )
 
   return {
     sell: await assetOut.erc20(),
