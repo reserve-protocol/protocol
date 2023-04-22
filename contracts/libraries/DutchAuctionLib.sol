@@ -40,7 +40,7 @@ library DutchAuctionLib {
         uint256 buyAmount
     );
 
-    /// Populates an auction in the provided memory struct
+    /// Populates the largest possible auction in the provided memory struct
     /// @param auction Expected to be empty; will be overwritten
     /// @param sell The asset being sold by the protocol
     /// @param buy The asset being bought by the protocol
@@ -53,18 +53,20 @@ library DutchAuctionLib {
         require(address(sell) != address(0) || address(buy) != address(0), "zero address token");
         // 0 for the sellAmount should be handled correctly
 
-        auction.sell = sell;
-        auction.buy = buy;
-        auction.sellAmount = sellAmount;
-
         // Only start an auction with well-defined prices
-        // TODO
+        //
         // In the BackingManager this may end up recalculating the RToken price
-        // but since RToken shouldn't be traded very much by the BackingManager, leaving for now..
         (uint192 sellLow, uint192 sellHigh) = sell.price(); // {UoA/sellTok}
         (uint192 buyLow, uint192 buyHigh) = buy.price(); // {UoA/buyTok}
         require(sellLow > 0 && sellHigh < FIX_MAX, "bad sell pricing");
         require(buyLow > 0 && buyHigh < FIX_MAX, "bad buy pricing");
+
+        auction.sell = sell;
+        auction.buy = buy;
+        auction.sellAmount = fixMin(
+            sellAmount,
+            fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).div(sellHigh, FLOOR)
+        );
 
         auction.middlePrice = sellHigh.div(buyLow, CEIL); // the 1.5x price is the highPrice
         auction.lowPrice = sellLow.div(buyHigh, FLOOR);

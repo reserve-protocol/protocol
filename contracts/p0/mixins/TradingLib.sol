@@ -116,7 +116,7 @@ library TradingLibP0 {
         }
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, lotHigh); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, lotHigh); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
@@ -637,10 +637,18 @@ library TradingLibP0 {
         return size > 0 ? size : 1;
     }
 
-    /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
-    /// @return {tok} The max trade size for the asset in whole tokens
-    function maxTradeSize(IAsset asset, uint192 price) private view returns (uint192) {
-        uint192 size = price == 0 ? FIX_MAX : asset.maxTradeVolume().div(price, FLOOR);
+    /// Calculates the maximum trade size for a trade pair of tokens
+    /// @return {tok} The max trade size for the trade overall
+    function maxTradeSize(
+        IAsset sell,
+        IAsset buy,
+        uint192 price
+    ) private view returns (uint192) {
+        // untestable:
+        //       Price cannot be 0, it would've been filtered before in `prepareTradeSell`
+        uint192 size = price == 0
+            ? FIX_MAX
+            : fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).div(price, FLOOR);
         return size > 0 ? size : 1;
     }
 }
