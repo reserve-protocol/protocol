@@ -142,7 +142,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         // if storage auction already exists
         if (tradeEnd > block.timestamp) {
-            return executeSwap(dutchAuctions[tradeEnd], tokenIn, tokenOut, amountOut);
+            return executeSwap(dutchAuctions[tradeEnd], amountOut);
         }
 
         require(tradeEnd + dutchAuctionLength > block.timestamp, "no dutch auction ongoing");
@@ -157,7 +157,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             this,
             basketsHeld
         );
+
         require(doTrade, "swap not available");
+        require(tokenIn == req.buy.erc20() && tokenOut == req.sell.erc20(), "ERC20 swap expired");
 
         // Seize RSR if needed
         if (req.sell.erc20() == main.rsr()) {
@@ -168,7 +170,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // {sellTok}
         uint192 sellAmount = shiftl_toFix(req.sellAmount, -int8(req.sell.erc20Decimals()));
         dutchAuctions[tradeEnd] = DutchAuctionLib.makeAuction(req.sell, req.buy, sellAmount);
-        return executeSwap(dutchAuctions[tradeEnd], tokenIn, tokenOut, amountOut);
+        return executeSwap(dutchAuctions[tradeEnd], amountOut);
     }
 
     /// @return The ongoing auction as a Swap

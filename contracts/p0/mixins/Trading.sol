@@ -98,21 +98,12 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     /// Execute a swap of tokenIn for tokenOut based on a dutch auction pricing model
     /// @dev Caller must have granted tokenIn allowances for required tokenIn bal
     /// @dev To get required tokenIn bal, use ethers.callstatic and look at the swap's buyAmount
-    /// @param tokenIn The ERC20 token provided by the caller
-    /// @param tokenOut The ERC20 token being purchased by the caller
     /// @param amountOut {qTokenOut} The exact quantity of tokenOut being purchased
     /// @return The exact Swap performed
-    function executeSwap(
-        DutchAuction storage auction,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 amountOut
-    ) internal returns (Swap memory) {
-        require(
-            auction.buy.erc20() == tokenIn && auction.sell.erc20() == tokenOut,
-            "ERC20 mismatch"
-        );
-
+    function executeSwap(DutchAuction storage auction, uint256 amountOut)
+        internal
+        returns (Swap memory)
+    {
         // {sellTok}
         uint192 bidSellAmt = shiftl_toFix(amountOut, -int8(auction.sell.erc20Decimals()));
 
@@ -120,7 +111,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         return auction.bid(progression(), bidSellAmt);
     }
 
-    /// @return p {1} The % progression of the auction at a timestamp
+    /// @return p {1} The % progression of an ongoing dutch auction
     function progression() internal view returns (uint192 p) {
         return divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength);
     }

@@ -149,7 +149,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             tradeEnd > block.timestamp &&
             (address(auction.sell) != address(0) || address(auction.buy) != address(0))
         ) {
-            return executeSwap(auction, tokenToBuy, tokenOut, amountOut);
+            return executeSwap(auction, amountOut);
         }
 
         // === Checks/Effects ===
@@ -178,7 +178,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         uint256 balBeforeSwap = tokenToBuy.balanceOf(address(this)); // {qSellTok}
 
         // === Interactions ===
-        s = executeSwap(dutchAuctions[tokenOut][tradeEnd], tokenToBuy, tokenOut, amountOut);
+        s = executeSwap(dutchAuctions[tokenOut][tradeEnd], amountOut);
         distributeTokenToBuy(balBeforeSwap + s.buyAmount);
     }
 

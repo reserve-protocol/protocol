@@ -129,7 +129,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             tradeEnd > block.timestamp &&
             (address(auction.sell) != address(0) || address(auction.buy) != address(0))
         ) {
-            return executeSwap(auction, tokenToBuy, tokenOut, amountOut);
+            return executeSwap(auction, amountOut);
         }
 
         require(
@@ -152,7 +152,11 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             sellAmount
         );
 
-        s = executeSwap(dutchAuctions[tokenOut][tradeEnd], tokenToBuy, tokenOut, amountOut);
+        // {sellTok}
+        uint192 bidSellAmt = shiftl_toFix(amountOut, -int8(auction.sell.erc20Decimals()));
+
+        // Complete bid + execute swap
+        s = auction.bid(progression(), bidSellAmt);
         distributeTokenToBuy(tokenToBuy.balanceOf(address(this)));
     }
 
