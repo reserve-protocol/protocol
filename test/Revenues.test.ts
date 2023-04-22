@@ -2348,7 +2348,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should protect processRevenue()', async () => {
-          await expect(rTokenTrader.processRevenue()).to.be.revertedWith('backing manager only')
+          await expect(rTokenTrader.refreshAuctions()).to.be.revertedWith('backing manager only')
         })
 
         it('Should revert before auction', async () => {
@@ -2358,9 +2358,21 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should refuse to sell tokenToBuy', async () => {
+          await whileImpersonating(backingManager.address, async (bmSigner) => {
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
+          })
           await expect(
             rTokenTrader.connect(addr1).swap(rToken.address, rToken.address, 1)
           ).to.be.revertedWith('will not sell tokenToBuy')
+        })
+
+        it('Should only buy tokenToBuy', async () => {
+          await whileImpersonating(backingManager.address, async (bmSigner) => {
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
+          })
+          await expect(
+            rTokenTrader.connect(addr1).swap(token1.address, token0.address, 1)
+          ).to.be.revertedWith('will only buy tokenToBuy')
         })
 
         it('Should revert if trade ongoing', async () => {
@@ -2374,11 +2386,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
 
           // Simulate 5 minutes of blocks, should swap at right price each time
-          for (let i = 1; i <= 300; i += 12) {
+          for (let i = 0; i < 300; i += 12) {
             const actual = await rTokenTrader.callStatic.getDutchAuctionQuote(token0.address)
             const expected = await toDutchAuctionSwap(
               fp(i).div(300),
@@ -2403,7 +2415,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           const initToken0Bal = await token0.balanceOf(addr1.address)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
 
           // 15% progression
@@ -2413,7 +2425,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             collateral0.address,
             issueAmount.div(4)
           )
-          await advanceToTimestamp((await getLatestBlockTimestamp()) + 42)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + 43)
           await rToken.connect(addr1).approve(rTokenTrader.address, expected.buyAmount)
           await rTokenTrader.connect(addr1).swap(rToken.address, token0.address, issueAmount.div(4))
           expect(await token0.balanceOf(addr1.address)).to.equal(
@@ -2464,13 +2476,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         it('Should not be able to interrupt ongoing auction', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
-          await advanceToTimestamp((await getLatestBlockTimestamp()) + 148)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + 149)
 
           // Should not change tradeEnd
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
 
           // Should be at 50% progression price
@@ -2487,10 +2499,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         it('Should end auction at 100% progression', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
           await rTokenTrader.getDutchAuctionQuote(token0.address)
-          await advanceToTimestamp((await getLatestBlockTimestamp()) + 298) // 2 txs in this test
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + 299) // 2 txs in this test
           await expect(rTokenTrader.swap(rToken.address, token0.address, 1)).be.revertedWith(
             'no dutch auction ongoing'
           )
@@ -2499,7 +2511,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         it('Should be able to atomic swap full auction amount at end of auction', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
           const expected = await toDutchAuctionSwap(
             fp('299').div(300), // after all txs in this test, will be left at 299/300s
@@ -2508,7 +2520,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             issueAmount
           )
 
-          await advanceToTimestamp((await getLatestBlockTimestamp()) + 296) // 3 txs in this test
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + 297) // 3 txs in this test
           await rToken.connect(addr1).approve(rTokenTrader.address, expected.buyAmount)
           await expect(
             rTokenTrader.connect(addr1).swap(rToken.address, token0.address, expected.sellAmount)
@@ -2520,7 +2532,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         it('Should run another auction if bid in first auction', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
           await rToken.connect(addr1).approve(rTokenTrader.address, issueAmount)
           await expect(rTokenTrader.connect(addr1).swap(rToken.address, token0.address, 1))
@@ -2535,7 +2547,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         it('Should not run another auction if no bid in first auction', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
           await advanceToTimestamp((await getLatestBlockTimestamp()) + 300)
 
@@ -2549,7 +2561,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await token1.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
           await rToken.connect(addr1).approve(rTokenTrader.address, issueAmount)
 
@@ -2588,7 +2600,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           issueAmount = issueAmount.div(2)
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await whileImpersonating(backingManager.address, async (bmSigner) => {
-            await rTokenTrader.connect(bmSigner).processRevenue()
+            await rTokenTrader.connect(bmSigner).refreshAuctions()
           })
           await rToken.connect(addr1).approve(rTokenTrader.address, initialBal)
           await expect(
@@ -3447,6 +3459,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(backingManager.claimRewards())
       await snapshotGasCost(rsrTrader.claimRewards())
       await snapshotGasCost(rTokenTrader.claimRewards())
+    })
+
+    it('Dutch Auction Atomic Swaps', async () => {
+      await rTokenTrader.connect(owner).setDutchAuctionLength(300)
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await rTokenTrader.connect(bmSigner).refreshAuctions()
+      })
+      await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+      await rToken.connect(addr1).approve(rTokenTrader.address, issueAmount)
+      await snapshotGasCost(rTokenTrader.connect(addr1).swap(rToken.address, token0.address, 1))
     })
 
     it('Settle Trades / Manage Funds', async () => {
