@@ -47,6 +47,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // [X, Y): inclusive on the left-bound and exclusive on the right-bound
     uint48 internal tradeEnd; // {s} timestamp of the end of the last trade (batch OR dutch)
 
+    IFurnace internal furnace; // main.furnace() cache
+
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
     // trades[sell] != 0 iff trade[sell] has been opened and not yet settled
@@ -63,6 +65,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         uint48 dutchAuctionLength_
     ) internal onlyInitializing {
         broker = main_.broker();
+        furnace = main_.furnace();
         setMaxTradeSlippage(maxTradeSlippage_);
         setMinTradeVolume(minTradeVolume_);
         setDutchAuctionLength(dutchAuctionLength_);
@@ -80,7 +83,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen nonReentrant {
+    function settleTrade(IERC20 sell) public virtual nonReentrant {
+        requireNotTradingPausedOrFrozen();
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -101,7 +105,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Claim all rewards
     /// Collective Action
     /// @custom:interaction CEI
-    function claimRewards() external notTradingPausedOrFrozen {
+    function claimRewards() external {
+        requireNotTradingPausedOrFrozen();
         RewardableLibP1.claimRewards(main.assetRegistry());
     }
 
@@ -109,7 +114,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Collective Action
     /// @param erc20 The ERC20 to claimRewards on
     /// @custom:interaction CEI
-    function claimRewardsSingle(IERC20 erc20) external notTradingPausedOrFrozen {
+    function claimRewardsSingle(IERC20 erc20) external {
+        requireNotTradingPausedOrFrozen();
         RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
     }
 
@@ -170,6 +176,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     function requireGovernance() internal view governance {}
 
+    function requireNotTradingPausedOrFrozen() internal view notTradingPausedOrFrozen {}
+
     // solhint-enable no-empty-blocks
 
     // === Setters ===
@@ -196,6 +204,12 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         require(val <= MAX_DUTCH_AUCTION_LENGTH, "invalid dutchAuctionLength");
         emit DutchAuctionLengthSet(dutchAuctionLength, val);
         dutchAuctionLength = val;
+    }
+
+    /// Set the cached furnace variable
+    /// @dev RTokens upgrading to 3.0.0: all trading will revert until this is called
+    function cacheFurnace() public {
+        furnace = main.furnace();
     }
 
     // === FixLib Helper ===

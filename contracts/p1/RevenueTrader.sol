@@ -82,7 +82,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         // == Refresh ==
         assetRegistry.refresh();
-        // TODO melt
+        furnace.melt();
 
         uint256 bal = erc20.balanceOf(address(this));
         require(bal > 0, "zero balance");
@@ -137,7 +137,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     ) external notTradingPausedOrFrozen returns (Swap memory s) {
         // == Refresh ==
         assetRegistry.refresh();
-        // should melt() here too; TODO when we add to manageToken()
+        furnace.melt();
 
         require(address(trades[tokenOut]) == address(0), "nonatomic trade ongoing");
         require(tokenIn == tokenToBuy, "will only buy tokenToBuy");

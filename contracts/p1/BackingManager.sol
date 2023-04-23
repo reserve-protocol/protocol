@@ -93,7 +93,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
         // == Refresh ==
         assetRegistry.refresh();
-        // TODO melt
+        furnace.melt();
 
         requireCanTrade(dutchAuctionLength);
         require(tradeEnd + dutchAuctionLength <= block.timestamp, "dutch auction ongoing");
@@ -152,7 +152,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     ) external returns (Swap memory s) {
         // == Refresh ==
         assetRegistry.refresh();
-        // should melt() here too; TODO when we add to manageTokens()
+        furnace.melt();
 
         requireCanTrade(0);
 
@@ -220,7 +220,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // === Private ===
 
     /// Helps keep the contract under the size limit
-    function requireCanTrade(uint48 additionalDelay) private view notTradingPausedOrFrozen {
+    function requireCanTrade(uint48 additionalDelay) private view {
+        requireNotTradingPausedOrFrozen();
         require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
         require(basketHandler.isReady(), "basket not ready");
         require(

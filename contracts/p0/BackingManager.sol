@@ -131,7 +131,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     ) external notTradingPausedOrFrozen returns (Swap memory) {
         // == Refresh ==
         main.assetRegistry().refresh();
-        // should melt() here too; TODO when we add to manageTokens()
+        main.furnace().melt();
 
         require(tradesOpen == 0, "trade open"); // a dutch auction does not count as an open trade
         require(main.basketHandler().isReady(), "basket not ready");
