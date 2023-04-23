@@ -144,12 +144,12 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         // {sellTok}
         uint192 sellAmount = sellAsset.bal(address(this));
-
-        // TODO should we respect minTradeVolume / maxTradeVolume?
         dutchAuctions[tokenOut][tradeEnd] = DutchAuctionLib.makeAuction(
             sellAsset,
             main.assetRegistry().toAsset(tokenToBuy),
-            sellAmount
+            sellAmount,
+            minTradeVolume,
+            maxTradeSlippage
         );
 
         // {sellTok}
@@ -192,7 +192,9 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         DutchAuction memory memAuction = DutchAuctionLib.makeAuction(
             sellAsset,
             main.assetRegistry().toAsset(tokenToBuy),
-            sellAmount
+            sellAmount,
+            minTradeVolume,
+            maxTradeSlippage
         );
         uint192 discount = tradeEnd > block.timestamp ? 0 : FIX_ONE;
         return memAuction.toSwap(progression() - discount);

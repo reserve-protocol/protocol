@@ -85,23 +85,41 @@ export const toDutchAuctionSwap = async (
   progression: BigNumber,
   assetInAddr: string,
   assetOutAddr: string,
-  outAmount: BigNumber
+  outAmount: BigNumber,
+  minTradeVolume: BigNumber,
+  maxTradeSlippage: BigNumber
 ): Promise<Swap> => {
   const assetIn = await ethers.getContractAt('IAsset', assetInAddr)
   const assetOut = await ethers.getContractAt('IAsset', assetOutAddr)
   const [sellLow, sellHigh] = await assetOut.price() // {UoA/sellTok}
   const [buyLow, buyHigh] = await assetIn.price() // {UoA/buyTok}
-  const lowPrice = sellLow.mul(fp('1')).div(buyHigh)
+
+  const inMaxTradeVolume = await assetIn.maxTradeVolume()
+  let maxTradeVolume = await assetOut.maxTradeVolume()
+  if (inMaxTradeVolume.lt(maxTradeVolume)) maxTradeVolume = inMaxTradeVolume
+
+  const auctionVolume = outAmount.mul(sellHigh).div(fp('1'))
+  const slippage = maxTradeSlippage
+    .mul(
+      fp('1').sub(
+        auctionVolume.sub(minTradeVolume).mul(fp('1')).div(maxTradeVolume.sub(minTradeVolume))
+      )
+    )
+    .div(fp('1'))
+
+  console.log('slippage: ', slippage)
+
+  const lowPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
   const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
   const highPrice = middlePrice.add(divCeil(middlePrice, bn('2'))) // 50% above middlePrice
 
-  const price = progression.lt(fp('0.2'))
-    ? highPrice.sub(highPrice.sub(middlePrice).mul(progression).div(fp('0.2')))
+  const price = progression.lt(fp('0.15'))
+    ? highPrice.sub(highPrice.sub(middlePrice).mul(progression).div(fp('0.15')))
     : middlePrice.sub(
         middlePrice
           .sub(lowPrice)
-          .mul(progression.sub(fp('0.2')))
-          .div(fp('0.8'))
+          .mul(progression.sub(fp('0.15')))
+          .div(fp('0.85'))
       )
   console.log(
     'progression: ',

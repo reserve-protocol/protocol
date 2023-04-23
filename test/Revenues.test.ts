@@ -2396,7 +2396,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               fp(i).div(300),
               rTokenAsset.address,
               collateral0.address,
-              issueAmount
+              issueAmount,
+              config.minTradeVolume,
+              config.maxTradeSlippage
             )
             expectSwap(actual, expected)
             await advanceToTimestamp((await getLatestBlockTimestamp()) + 12)
@@ -2423,7 +2425,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('0.15'),
             rTokenAsset.address,
             collateral0.address,
-            issueAmount.div(4)
+            issueAmount.div(4),
+            config.minTradeVolume,
+            config.maxTradeSlippage
           )
           await advanceToTimestamp((await getLatestBlockTimestamp()) + 43)
           await rToken.connect(addr1).approve(rTokenTrader.address, expected.buyAmount)
@@ -2438,7 +2442,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('0.31'),
             rTokenAsset.address,
             collateral0.address,
-            issueAmount.div(4)
+            issueAmount.div(4),
+            config.minTradeVolume,
+            config.maxTradeSlippage
           )
           await rToken.connect(addr1).approve(rTokenTrader.address, expected.buyAmount)
           await rTokenTrader.connect(addr1).swap(rToken.address, token0.address, issueAmount.div(4))
@@ -2452,7 +2458,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('0.76'),
             rTokenAsset.address,
             collateral0.address,
-            issueAmount.div(4)
+            issueAmount.div(4),
+            config.minTradeVolume,
+            config.maxTradeSlippage
           )
           await rToken.connect(addr1).approve(rTokenTrader.address, expected.buyAmount)
           await rTokenTrader.connect(addr1).swap(rToken.address, token0.address, issueAmount.div(4))
@@ -2466,7 +2474,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('0.99'),
             rTokenAsset.address,
             collateral0.address,
-            issueAmount.div(4)
+            issueAmount.div(4),
+            config.minTradeVolume,
+            config.maxTradeSlippage
           )
           await rToken.connect(addr1).approve(rTokenTrader.address, expected.buyAmount)
           await rTokenTrader.connect(addr1).swap(rToken.address, token0.address, issueAmount.div(4))
@@ -2491,7 +2501,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('0.5'),
             rTokenAsset.address,
             collateral0.address,
-            issueAmount
+            issueAmount,
+            config.minTradeVolume,
+            config.maxTradeSlippage
           )
           expectSwap(actual, expected)
         })
@@ -2517,7 +2529,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('299').div(300), // after all txs in this test, will be left at 299/300s
             rTokenAsset.address,
             collateral0.address,
-            issueAmount
+            issueAmount,
+            config.minTradeVolume,
+            config.maxTradeSlippage
           )
 
           await advanceToTimestamp((await getLatestBlockTimestamp()) + 297) // 3 txs in this test

@@ -165,14 +165,12 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         IAsset sellAsset = assetRegistry.toAsset(tokenOut);
 
-        // {sellTok}
-        uint192 sellAmount = sellAsset.bal(address(this));
-
-        // TODO should we respect minTradeVolume / maxTradeVolume?
         dutchAuctions[tokenOut][tradeEnd] = DutchAuctionLib.makeAuction(
             sellAsset,
             assetRegistry.toAsset(tokenToBuy),
-            sellAmount
+            sellAsset.bal(address(this)),
+            minTradeVolume,
+            maxTradeSlippage
         );
 
         uint256 balBeforeSwap = tokenToBuy.balanceOf(address(this)); // {qSellTok}
@@ -213,7 +211,13 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         require(sellAmount > 0, "zero balance");
         return
             DutchAuctionLib
-                .makeAuction(sellAsset, main.assetRegistry().toAsset(tokenToBuy), sellAmount)
+                .makeAuction(
+                    sellAsset,
+                    main.assetRegistry().toAsset(tokenToBuy),
+                    sellAmount,
+                    minTradeVolume,
+                    maxTradeSlippage
+                )
                 .toSwap(progression() - (tradeEnd > block.timestamp ? 0 : FIX_ONE));
     }
 

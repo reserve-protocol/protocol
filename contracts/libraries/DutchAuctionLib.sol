@@ -18,9 +18,10 @@ struct DutchAuction {
 /**
  * @title DutchAuctionLib
  * @notice Implements a dutch auction via a piecewise falling-price mechansim.
- *   Over the first 20% of the auction the price falls from the ~150% pricepoint to the
- *   best price, as given by the price range. Over the last 80% of the auction it falls
- *   from the best price to the worst price.
+ *   Over the first 15% of the auction the price falls from the ~150% pricepoint to the
+ *   best price, as given by the price range. Over the last 85% of the auction it falls
+ *   from the best price to the worst price. The worst price is additionally discounted by
+ *   the maxTradeSlippage based on how far between minTradeVolume and maxTradeVolume the trade is.
  * @dev To use: Call makeAuction() to start the auction; then bid() any number of times
  */
 library DutchAuctionLib {
@@ -45,10 +46,14 @@ library DutchAuctionLib {
     /// @param sell The asset being sold by the protocol
     /// @param buy The asset being bought by the protocol
     /// @param sellAmount {sellTok} The amount to sell in the auction, in whole tokens
+    /// @param minTradeVolume {UoA} The mimimum amount to trade
+    /// @param maxTradeSlippage {1} An additional discount applied to the auction low price
     function makeAuction(
         IAsset sell,
         IAsset buy,
-        uint192 sellAmount
+        uint192 sellAmount,
+        uint192 minTradeVolume,
+        uint192 maxTradeSlippage
     ) external view returns (DutchAuction memory auction) {
         require(address(sell) != address(0) || address(buy) != address(0), "zero address token");
         // 0 for the sellAmount should be handled correctly
@@ -61,15 +66,27 @@ library DutchAuctionLib {
         require(sellLow > 0 && sellHigh < FIX_MAX, "bad sell pricing");
         require(buyLow > 0 && buyHigh < FIX_MAX, "bad buy pricing");
 
+        // {UoA}
+        uint192 maxTradeVolume = fixMin(sell.maxTradeVolume(), buy.maxTradeVolume());
+
         auction.sell = sell;
         auction.buy = buy;
-        auction.sellAmount = fixMin(
-            sellAmount,
-            fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).div(sellHigh, FLOOR)
+        auction.sellAmount = fixMin(sellAmount, maxTradeVolume.div(sellHigh, FLOOR));
+
+        // {UoA} = {sellTok} * {UoA/sellTok}
+        uint192 auctionVolume = auction.sellAmount.mul(sellHigh, FLOOR);
+        require(auctionVolume >= minTradeVolume, "auction too small");
+
+        // {1} = {1} * ({UoA} - {UoA}} / ({UoA} - {UoA})
+        uint192 slippage = maxTradeSlippage.mul(
+            FIX_ONE - divuu(auctionVolume - minTradeVolume, maxTradeVolume - minTradeVolume)
         );
 
-        auction.middlePrice = sellHigh.div(buyLow, CEIL); // the 1.5x price is the highPrice
-        auction.lowPrice = sellLow.div(buyHigh, FLOOR);
+        // {buyTok/sellTok} = {1} * {UoA/sellTok} / {UoA/buyTok}
+        auction.lowPrice = sellLow.mulDiv(FIX_ONE - slippage, buyHigh, FLOOR);
+        auction.middlePrice = sellHigh.div(buyLow, CEIL); // no additional slippage
+        // auction.highPrice = 1.5 * auction.middlePrice
+
         require(auction.lowPrice <= auction.middlePrice, "asset inverted pricing");
     }
 
@@ -146,9 +163,9 @@ library DutchAuctionLib {
 
     // === Private ===
 
-    uint192 private constant TWENTY_PERCENT = 2e17; // {1}
-    uint192 private constant FIFTY_PERCENT = 5e17; // {1}
-    uint192 private constant EIGHTY_PERCENT = 8e17; // {1}
+    uint192 private constant FIFTEEN_PERCENT = 15e16; // {1}
+    uint192 private constant FIFTY_PERCENT = 50e16; // {1}
+    uint192 private constant EIGHTY_FIVE_PERCENT = 85e16; // {1}
 
     /// Price Curve:
     ///   - 1.5 * middlePrice down to the middlePrice for first 20% of auction
@@ -165,17 +182,17 @@ library DutchAuctionLib {
         assert(progression <= FIX_ONE);
         assert(lowPrice <= middlePrice);
 
-        if (progression < TWENTY_PERCENT) {
-            // Fast decay -- 20 percentile case
+        if (progression < FIFTEEN_PERCENT) {
+            // Fast decay -- 15th percentile case
 
             // highPrice is 1.5x middlePrice
             uint192 highPrice = middlePrice + middlePrice.mul(FIFTY_PERCENT);
-            return highPrice - (highPrice - middlePrice).mulDiv(progression, TWENTY_PERCENT);
+            return highPrice - (highPrice - middlePrice).mulDiv(progression, FIFTEEN_PERCENT);
         } else {
-            // Slow decay -- 80 percentile case
+            // Slow decay -- 85th percentile case
             return
                 middlePrice -
-                (middlePrice - lowPrice).mulDiv(progression - TWENTY_PERCENT, EIGHTY_PERCENT);
+                (middlePrice - lowPrice).mulDiv(progression - FIFTEEN_PERCENT, EIGHTY_FIVE_PERCENT);
         }
     }
 }
