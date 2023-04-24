@@ -1490,13 +1490,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
     })
 
-    it('Should not mint if paused', async () => {
+    it('Should not mint if tradingPaused', async () => {
       await main.connect(owner).pauseTrading()
 
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
           'frozen or trading paused'
         )
+      })
+    })
+
+    it('Should mint if issuancePaused', async () => {
+      await main.connect(owner).pauseIssuance()
+
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await rToken.connect(signer).mint(addr1.address, bn('10e18'))
       })
     })
 

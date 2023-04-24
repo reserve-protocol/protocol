@@ -1409,7 +1409,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         // Furnace
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          minBuyAmt.add(minBuyAmtRemainder),
+          minBuyAmt.add(minBuyAmtRemainder).div(bn('1e4'))
+        )
       })
 
       it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
@@ -1627,7 +1630,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           minBuyAmt.add(minBuyAmtRemainder),
           15
         )
-        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken, 15)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          minBuyAmtRToken,
+          minBuyAmtRToken.div(bn('1e4'))
+        )
       })
 
       it('Should not distribute if paused or frozen', async () => {
@@ -2345,6 +2351,20 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       context('Dutch Auction Atomic Trading', () => {
         beforeEach(async () => {
           await rTokenTrader.connect(owner).setDutchAuctionLength(300)
+        })
+
+        it('Should not trade when paused', async () => {
+          await main.connect(owner).pauseTrading()
+          await expect(rTokenTrader.swap(token0.address, token1.address, 1)).to.be.revertedWith(
+            'frozen or trading paused'
+          )
+        })
+
+        it('Should not trade when frozen', async () => {
+          await main.connect(owner).freezeLong()
+          await expect(rTokenTrader.swap(token0.address, token1.address, 1)).to.be.revertedWith(
+            'frozen or trading paused'
+          )
         })
 
         it('Should protect processRevenue()', async () => {

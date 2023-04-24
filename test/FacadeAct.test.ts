@@ -492,9 +492,6 @@ describe('FacadeAct contract', () => {
         expect(addr).to.equal(ZERO_ADDRESS)
         expect(data).to.equal('0x')
 
-        // distribute Revenue from RToken trader
-        await rTokenTrader.manageToken(rToken.address)
-
         // Claim additional Revenue but only send to RSR (to trigger RSR trader directly)
         // Set f = 1
         await distributor

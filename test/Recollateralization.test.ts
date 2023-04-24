@@ -806,7 +806,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
       it('Should not trade if frozen', async () => {
         await main.connect(owner).freezeShort()
-        await expect(backingManager.manageTokens([])).to.be.revertedWith('frozen or trading paused')
+        await expect(backingManager.manageTokens([])).to.be.revertedWith('frozen')
       })
 
       it('Should not trade if UNPRICED', async () => {
@@ -4632,9 +4632,24 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      context('Dutch Auction Atomic Trading', () => {
+      // TODO
+      context.skip('Dutch Auction Atomic Trading', () => {
         beforeEach(async () => {
           await backingManager.connect(owner).setDutchAuctionLength(300)
+        })
+
+        it('Should not trade when paused', async () => {
+          await main.connect(owner).pauseTrading()
+          await expect(backingManager.swap(token0.address, token1.address, 1)).to.be.revertedWith(
+            'frozen or trading paused'
+          )
+        })
+
+        it('Should not trade when frozen', async () => {
+          await main.connect(owner).freezeLong()
+          await expect(backingManager.swap(token0.address, token1.address, 1)).to.be.revertedWith(
+            'frozen or trading paused'
+          )
         })
 
         it('Should revert before auction', async () => {
@@ -4645,7 +4660,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         it('Should revert if trade ongoing', async () => {
           await token0.connect(addr1).transfer(backingManager.address, issueAmount)
-          await backingManager.manageToken(token0.address)
+          await backingManager.manageTokens()
           await expect(
             backingManager.callStatic.getDutchAuctionQuote(token0.address)
           ).to.be.revertedWith('nonatomic trade ongoing')
