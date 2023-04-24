@@ -96,7 +96,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         furnace.melt();
 
         requireCanTrade(dutchAuctionLength);
-        require(tradeEnd + dutchAuctionLength <= block.timestamp, "dutch auction ongoing");
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
         uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
@@ -157,13 +156,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         requireCanTrade(0);
 
         // executeSwap if storage auction already exists
-        if (tradeEnd > block.timestamp) {
+        if (dutchAuctionExists()) {
             return executeSwap(dutchAuctions[tradeEnd], amountOut);
         }
 
         // === Checks/Effects ===
 
-        require(tradeEnd + dutchAuctionLength > block.timestamp, "no dutch auction ongoing");
+        require(dutchAuctionActive(), "no dutch auction ongoing");
         tradeEnd += dutchAuctionLength;
 
         // Same TradeRequest from manageTokens()
@@ -195,11 +194,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function getDutchAuctionQuote() external view returns (Swap memory) {
         requireCanTrade(0);
 
-        if (tradeEnd > block.timestamp) {
+        if (dutchAuctionExists()) {
             return dutchAuctions[tradeEnd].toSwap(progression());
         }
 
-        require(tradeEnd + dutchAuctionLength > block.timestamp, "no dutch auction ongoing");
+        require(dutchAuctionActive(), "no dutch auction ongoing");
 
         // Same TradeRequest from manageTokens()
         (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
@@ -218,6 +217,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     // === Private ===
+
+    /// @return If a dutch auction is active; may or may not exist in storage
+    function dutchAuctionActive() private view returns (bool) {
+        return tradeEnd + dutchAuctionLength > block.timestamp;
+    }
 
     /// Helps keep the contract under the size limit
     function requireCanTrade(uint48 additionalDelay) private view {

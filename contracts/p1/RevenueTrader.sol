@@ -145,20 +145,14 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         // executeSwap if storage auction already exists
         DutchAuction storage auction = dutchAuctions[tokenOut][tradeEnd];
-        if (
-            tradeEnd > block.timestamp &&
-            (address(auction.sell) != address(0) || address(auction.buy) != address(0))
-        ) {
+        // endTrade may be in the future without a storage auction because of another token
+        if (dutchAuctionExists() && address(auction.sell) != address(0)) {
             return executeSwap(auction, amountOut);
         }
 
         // === Checks/Effects ===
 
-        require(
-            tradeEnd + dutchAuctionLength > block.timestamp &&
-                block.timestamp + dutchAuctionLength > tradeEnd,
-            "no dutch auction ongoing"
-        );
+        require(dutchAuctionActive(), "no dutch auction ongoing");
 
         // bump tradeEnd if it is in the past
         if (tradeEnd <= block.timestamp) tradeEnd += dutchAuctionLength;
@@ -191,19 +185,12 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         require(tokenOut != tokenToBuy, "will not sell tokenToBuy");
 
         DutchAuction storage auction = dutchAuctions[tokenOut][tradeEnd];
-        if (
-            // endTrade may be in the future without a storage auction because of another token
-            tradeEnd > block.timestamp &&
-            (address(auction.sell) != address(0) || address(auction.buy) != address(0))
-        ) {
+        // endTrade may be in the future without a storage auction because of another token
+        if (dutchAuctionExists() && address(auction.sell) != address(0)) {
             return auction.toSwap(progression());
         }
 
-        require(
-            tradeEnd + dutchAuctionLength > block.timestamp &&
-                block.timestamp + dutchAuctionLength > tradeEnd,
-            "no dutch auction ongoing"
-        );
+        require(dutchAuctionActive(), "no dutch auction ongoing");
         IAsset sellAsset = assetRegistry.toAsset(tokenOut);
 
         // {sellTok}
@@ -228,6 +215,13 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         tokenToBuy.safeApprove(address(distributor), 0);
         tokenToBuy.safeApprove(address(distributor), amount);
         distributor.distribute(tokenToBuy, amount);
+    }
+
+    /// @return If a dutch auction is active; may or may not exist in storage
+    function dutchAuctionActive() private view returns (bool) {
+        return
+            tradeEnd + dutchAuctionLength > block.timestamp &&
+            block.timestamp + dutchAuctionLength >= tradeEnd;
     }
 
     /**

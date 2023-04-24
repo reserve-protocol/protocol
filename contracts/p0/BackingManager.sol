@@ -72,9 +72,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         );
         require(tradeEnd + dutchAuctionLength <= block.timestamp, "dutch auction ongoing");
 
-        uint48 basketTimestamp = basketHandler.timestamp();
-        require(block.timestamp >= basketTimestamp + tradingDelay, "waiting to trade");
-
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
 
         if (basketHandler.fullyCollateralized()) {
@@ -141,11 +138,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         );
 
         // if storage auction already exists
-        if (tradeEnd > block.timestamp) {
+        if (dutchAuctionExists()) {
             return executeSwap(dutchAuctions[tradeEnd], amountOut);
         }
 
-        require(tradeEnd + dutchAuctionLength > block.timestamp, "no dutch auction ongoing");
+        require(dutchAuctionActive(), "no dutch auction ongoing");
         tradeEnd += dutchAuctionLength;
 
         assert(tradeEnd > block.timestamp);
@@ -188,11 +185,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             "waiting to trade"
         );
 
-        if (tradeEnd > block.timestamp) {
+        if (dutchAuctionExists()) {
             return dutchAuctions[tradeEnd].toSwap(progression());
         }
 
-        require(tradeEnd + dutchAuctionLength > block.timestamp, "no dutch auction ongoing");
+        require(dutchAuctionActive(), "no dutch auction ongoing");
 
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
 
@@ -214,6 +211,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     // === Private ===
+
+    /// @return If a dutch auction is active; may or may not exist in storage
+    function dutchAuctionActive() private view returns (bool) {
+        return tradeEnd + dutchAuctionLength > block.timestamp;
+    }
 
     /// Send excess assets to the RSR and RToken traders
     /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager

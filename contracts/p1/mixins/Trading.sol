@@ -171,6 +171,11 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         return divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength);
     }
 
+    /// @return If the dutch auction exists in storage already
+    function dutchAuctionExists() internal view returns (bool) {
+        return tradeEnd > block.timestamp;
+    }
+
     // solhint-disable no-empty-blocks
     // contract-size saver: trades off contract size against execution cost
 

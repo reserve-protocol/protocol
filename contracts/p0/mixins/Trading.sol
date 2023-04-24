@@ -116,6 +116,11 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         return divuu(uint48(block.timestamp) + dutchAuctionLength - tradeEnd, dutchAuctionLength);
     }
 
+    /// @return If the dutch auction exists in storage already
+    function dutchAuctionExists() internal view returns (bool) {
+        return tradeEnd > block.timestamp;
+    }
+
     // === Setters ===
 
     /// @custom:governance
@@ -137,6 +142,9 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         require(val <= MAX_DUTCH_AUCTION_LENGTH, "invalid dutchAuctionLength");
         emit DutchAuctionLengthSet(dutchAuctionLength, val);
         dutchAuctionLength = val;
+
+        // Decreasing the dutchAuctionLength while an auction is ongoing can be used to
+        // cause there to be many auction lengths before tradeEnd.
     }
 
     // === FixLib Helper ===
