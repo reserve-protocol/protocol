@@ -42,12 +42,12 @@ library DutchAuctionLib {
     );
 
     /// Populates the largest possible auction in the provided memory struct
-    /// @param auction Expected to be empty; will be overwritten
     /// @param sell The asset being sold by the protocol
     /// @param buy The asset being bought by the protocol
     /// @param sellAmount {sellTok} The amount to sell in the auction, in whole tokens
     /// @param minTradeVolume {UoA} The mimimum amount to trade
     /// @param maxTradeSlippage {1} An additional discount applied to the auction low price
+    /// @return auction The prepared auction
     function makeAuction(
         IAsset sell,
         IAsset buy,
@@ -168,7 +168,7 @@ library DutchAuctionLib {
     uint192 private constant EIGHTY_FIVE_PERCENT = 85e16; // {1}
 
     /// Price Curve:
-    ///   - 1.5 * middlePrice down to the middlePrice for first 20% of auction
+    ///   - 1.5 * middlePrice down to the middlePrice for first 15% of auction
     ///   - middlePrice down to lowPrice for the last 80% of auction
     /// @param progression {1} The fraction of the auction that has elapsed
     /// @param middlePrice {buyTok/sellTok} The price in the middle (kink) of the curve
