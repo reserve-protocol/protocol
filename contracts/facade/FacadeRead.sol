@@ -172,7 +172,7 @@ contract FacadeRead is IFacadeRead {
 
     /// @return erc20s The registered ERC20s
     /// @return balances {qTok} The held balances of each ERC20 across all traders
-    /// @return balancesNeededByBackingManager {qTok} The needed balance of each ERC20 at the BackingManager
+    /// @return balancesNeededByBackingManager {qTok} does not account for backingBuffer
     /// @custom:static-call
     function balancesAcrossAllTraders(IRToken rToken)
         external
@@ -304,6 +304,7 @@ contract FacadeRead is IFacadeRead {
                 if (revenueTrader.tradesOpen() - tradesOpen > 0) {
                     canStart[i] = true;
                 }
+                // solhint-disable-next-line no-empty-blocks
             } catch {}
         }
     }
