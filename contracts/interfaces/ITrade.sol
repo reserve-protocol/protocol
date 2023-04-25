@@ -3,6 +3,14 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+enum TradeStatus {
+    NOT_STARTED, // before init()
+    OPEN, // after init() and before settle()
+    CLOSED, // after settle()
+    // === Intermediate-tx state ===
+    PENDING // during init() or settle() (reentrancy protection)
+}
+
 /**
  * Simple generalized trading interface for all Trade contracts to obey
  *

@@ -9,13 +9,6 @@ import "../../interfaces/IBroker.sol";
 import "../../interfaces/IGnosis.sol";
 import "../../interfaces/ITrade.sol";
 
-enum TradeStatus {
-    NOT_STARTED, // before init()
-    OPEN, // after init() and before settle()
-    CLOSED, // after settle()
-    PENDING // during init() or settle() (reentrancy protection)
-}
-
 // Modifications to this contract's state must only ever be made when status=PENDING!
 
 /// Trade contract against the Gnosis EasyAuction mechanism
