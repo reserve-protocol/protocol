@@ -7,6 +7,7 @@ import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
+import 'hardhat-storage-layout'
 import 'solidity-coverage'
 
 import { useEnv } from '#/utils/env'
