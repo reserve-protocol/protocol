@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../../fixtures'
-import { defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
+import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 import { getChainId } from '../../../../common/blockchain-utils'
 import forkBlockNumber from '../../../integration/fork-block-numbers'
 import {
@@ -141,9 +141,11 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let MockV3AggregatorFactory: ContractFactory
   let mockChainlinkFeed: MockV3Aggregator
 
+  let defaultFixture: Fixture<DefaultFixture>
+
   before(async () => {
     await setup(forkBlockNumber['adai-plugin'])
-
+    defaultFixture = await getDefaultFixture("atoken")
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -152,6 +154,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
+
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } = await loadFixture(
       defaultFixture
     ))
