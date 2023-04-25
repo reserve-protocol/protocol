@@ -119,7 +119,8 @@ export interface IEvent {
 }
 
 // Checks for multiple events when executing a transaction `tx`
-// This is required due to a limitation in Waffle when chaining multiple .to.emits
+// Historical context: when we were using Waffle it was limited in that it could not chain emits
+// TODO check to see if hardhat toolbox solved this
 export const expectEvents = async (tx: Promise<ContractTransaction>, events: Array<IEvent>) => {
   for (const evt of events) {
     if (evt.emitted) {

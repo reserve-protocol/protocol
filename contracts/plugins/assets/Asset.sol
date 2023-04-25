@@ -18,9 +18,9 @@ contract Asset is IAsset {
 
     uint192 public immutable override maxTradeVolume; // {UoA}
 
-    uint48 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
+    uint48 public immutable oracleTimeout; // {s}
 
-    uint192 public immutable oracleError; // {1} The max % deviation allowed by the oracle
+    uint192 public immutable oracleError; // {1}
 
     // === Lot price ===
 
@@ -64,8 +64,8 @@ contract Asset is IAsset {
     /// Should not return FIX_MAX for low
     /// Should only return FIX_MAX for high if low is 0
     /// @dev The third (unused) variable is only here for compatibility with Collateral
-    /// @param low {UoA/tok} The low price estimate
-    /// @param high {UoA/tok} The high price estimate
+    /// @return low {UoA/tok} The low price estimate
+    /// @return high {UoA/tok} The high price estimate
     function tryPrice()
         external
         view
@@ -77,8 +77,9 @@ contract Asset is IAsset {
         )
     {
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
-        uint192 delta = p.mul(oracleError);
-        return (p - delta, p + delta, 0);
+        uint192 err = p.mul(oracleError, CEIL);
+        // assert(low <= high); obviously true just by inspection
+        return (p - err, p + err, 0);
     }
 
     /// Should not revert
@@ -148,7 +149,7 @@ contract Asset is IAsset {
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
-    function bal(address account) external view returns (uint192) {
+    function bal(address account) external view virtual returns (uint192) {
         return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
     }
 

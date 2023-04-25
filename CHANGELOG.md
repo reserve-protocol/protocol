@@ -102,3 +102,62 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Add safety during asset degregistration to ensure it is always possible to unregister an infinite-looping asset
 - Fix `StRSR`/`RToken` EIP712 typehash to use release version instead of "1"
 - Add `FacadeRead.redeem(IRToken rToken, uint256 amount, uint48 basketNonce)` to return the expected redemption quantities on the basketNonce, or revert
+- Integrate with OZ 4.7.3 Governance (changes to `quorum()`/t`proposalThreshold()`)
+
+## 2.1.0
+
+#### Core protocol contracts
+
+- `BasketHandler`
+  - Bugfix for `getPrimeBasket()` view
+  - Minor change to `_price()` rounding
+  - Minor natspec improvement to `refreshBasket()`
+- `Broker`
+  - Fix `GnosisTrade` trade implemention to treat defensive rounding by EasyAuction correctly
+  - Add `setGnosis()` and `setTradeImplementation()` governance functions
+- `RToken`
+  - Minor gas optimization added to `redeemTo` to use saved `assetRegistry` variable
+- `StRSR`
+  - Expose RSR variables via `getDraftRSR()`, `getStakeRSR()`, and `getTotalDrafts()` views
+
+#### Facades
+
+- `FacadeRead`
+  - Extend `issue()` to return the estimated USD value of deposits as `depositsUoA`
+  - Add `traderBalances()`
+  - Add `auctionsSettleable()`
+  - Modify `backingOverview() to handle unpriced cases`
+- `FacadeAct`
+  - Add `canRunRecollateralizationAuctions()`
+  - Add `getRevenueAuctionERC20s()`
+  - Add `runRevenueAuctions()`
+
+#### Assets
+
+- Deploy CRV + CVX plugins
+
+#### Collateral
+
+Across all collateral, `tryPrice()` was updated to exclude revenueHiding considerations
+
+- Add `AnkrStakedEthCollateral` + tests + deployment/verification scripts for ankrETH
+- Add FluxFinance collateral tests + deployment/verification scripts for fUSDC, fUSDT, fDAI, and fFRAX
+- Add CompoundV3 `CTokenV3Collateral` + tests + deployment/verification scripts for cUSDCV3
+- Add Convex `CvxStableCollateral` + tests + deployment/verification scripts for 3Pool
+- Add Convex `CvxVolatileCollateral` + tests + deployment/verification scripts for Tricrypto
+- Add Convex `CvxStableMetapoolCollateral` + tests + deployment/verification scripts for MIM/3Pool
+- Add Convex `CvxStableRTokenMetapoolCollateral` + tests + deployment/verification scripts for eUSD/fraxBP
+- Add Frax `SFraxEthCollateral` + tests + deployment/verification scripts for sfrxETH
+- Add Lido `LidoStakedEthCollateral` + tests + deployment/verification scripts for wstETH
+- Add RocketPool `RethCollateral` + tests + deployment/verification scripts for rETH
+
+#### Testing
+
+- Add generic collateral testing suite at `test/plugins/individual-collateral/collateralTests.ts`
+- Add EasyAuction regression test for Broker false positive (observed during USDC de-peg)
+- Add EasyAuction extreme tests
+
+#### Documentation
+
+- Add `docs/plugin-addresses.md` as well as accompanying script for generation at `scripts/collateral-params.ts`
+- Add `docs/exhaustive-tests.md` to document running exhaustive tests on GCP

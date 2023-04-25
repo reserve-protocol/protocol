@@ -1,11 +1,9 @@
-import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
-
 import {
   AaveLendingPoolMock,
   Asset,
@@ -22,6 +20,7 @@ import {
   DeployerP0,
   DeployerP1,
   DistributorP1,
+  EasyAuction,
   ERC20Mock,
   EURFiatCollateral,
   FacadeRead,
@@ -33,7 +32,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   IERC20Metadata,
-  IGnosis,
   MainP1,
   NonFiatCollateral,
   RevenueTraderP1,
@@ -53,7 +51,6 @@ import {
   TestIStRSR,
   RecollateralizationLibP1,
 } from '../../typechain'
-
 import {
   Collateral,
   Implementation,
@@ -127,13 +124,15 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 }
 
 interface ModuleFixture {
-  gnosis: IGnosis
+  easyAuction: EasyAuction
 }
 
 async function gnosisFixture(): Promise<ModuleFixture> {
-  const EasyAuctionFactory: ContractFactory = await ethers.getContractFactory('EasyAuction')
-  const gnosis: IGnosis = <IGnosis>await EasyAuctionFactory.deploy()
-  return { gnosis: gnosis }
+  const chainId = await getChainId(hre)
+  const easyAuction: EasyAuction = <EasyAuction>(
+    await ethers.getContractAt('EasyAuction', networkConfig[chainId].GNOSIS_EASY_AUCTION || '')
+  )
+  return { easyAuction: easyAuction }
 }
 
 interface CollateralFixture {
@@ -588,12 +587,14 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   rTokenTrader: TestIRevenueTrader
 }
 
-export const defaultFixture: Fixture<DefaultFixture> = async function ([
-  owner,
-]): Promise<DefaultFixture> {
+type Fixture<T> = () => Promise<T>
+
+export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
+  const signers = await ethers.getSigners()
+  const owner = signers[0]
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
-  const { gnosis } = await gnosisFixture()
+  const { easyAuction } = await gnosisFixture()
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR
@@ -666,7 +667,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
-    await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address)
+    await DeployerFactory.deploy(rsr.address, easyAuction.address, rsrAsset.address)
   )
 
   if (IMPLEMENTATION == Implementation.P1) {
@@ -733,7 +734,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
     deployer = <DeployerP1>(
-      await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address, implementations)
+      await DeployerFactory.deploy(
+        rsr.address,
+        easyAuction.address,
+        rsrAsset.address,
+        implementations
+      )
     )
   }
 
@@ -864,7 +870,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     furnace,
     stRSR,
     broker,
-    gnosis,
+    easyAuction,
     facade,
     facadeAct,
     facadeTest,

@@ -1,19 +1,19 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`StRSRP1 contract Gas Reporting Stake 1`] = `151992`;
+exports[`StRSRP1 contract Gas Reporting Stake 1`] = `152014`;
 
-exports[`StRSRP1 contract Gas Reporting Stake 2`] = `147192`;
+exports[`StRSRP1 contract Gas Reporting Stake 2`] = `147214`;
 
-exports[`StRSRP1 contract Gas Reporting Transfer 1`] = `63267`;
+exports[`StRSRP1 contract Gas Reporting Transfer 1`] = `63289`;
 
-exports[`StRSRP1 contract Gas Reporting Transfer 2`] = `41367`;
+exports[`StRSRP1 contract Gas Reporting Transfer 2`] = `41389`;
 
-exports[`StRSRP1 contract Gas Reporting Transfer 3`] = `58479`;
+exports[`StRSRP1 contract Gas Reporting Transfer 3`] = `58501`;
 
-exports[`StRSRP1 contract Gas Reporting Unstake 1`] = `222510`;
+exports[`StRSRP1 contract Gas Reporting Unstake 1`] = `222532`;
 
-exports[`StRSRP1 contract Gas Reporting Unstake 2`] = `139659`;
+exports[`StRSRP1 contract Gas Reporting Unstake 2`] = `139681`;
 
-exports[`StRSRP1 contract Gas Reporting Withdraw 1`] = `501407`;
+exports[`StRSRP1 contract Gas Reporting Withdraw 1`] = `496786`;
 
-exports[`StRSRP1 contract Gas Reporting Withdraw 2`] = `472273`;
+exports[`StRSRP1 contract Gas Reporting Withdraw 2`] = `467652`;

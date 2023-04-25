@@ -47,8 +47,19 @@ interface IAsset is IRewardable {
     function maxTradeVolume() external view returns (uint192);
 }
 
+// Used only in Testing. Strictly speaking an Asset does not need to adhere to this interface
 interface TestIAsset is IAsset {
+    /// @return The address of the chainlink feed
     function chainlinkFeed() external view returns (AggregatorV3Interface);
+
+    /// {1} The max % deviation allowed by the oracle
+    function oracleError() external view returns (uint192);
+
+    /// @return {s} Seconds that an oracle value is considered valid
+    function oracleTimeout() external view returns (uint48);
+
+    /// @return {s} Seconds that the lotPrice should decay over, after stale price
+    function priceTimeout() external view returns (uint48);
 }
 
 /// CollateralStatus must obey a linear ordering. That is:
@@ -99,4 +110,13 @@ interface ICollateral is IAsset {
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() external view returns (uint192);
+}
+
+// Used only in Testing. Strictly speaking a Collateral does not need to adhere to this interface
+interface TestICollateral is TestIAsset, ICollateral {
+    /// @return The epoch timestamp when the collateral will default from IFFY to DISABLED
+    function whenDefault() external view returns (uint256);
+
+    /// @return The amount of time a collateral must be in IFFY status until being DISABLED
+    function delayUntilDefault() external view returns (uint48);
 }

@@ -85,7 +85,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         _manageTokens(erc20s);
     }
 
-    /// Mointain the overall backing policy; handout assets otherwise
+    /// Maintain the overall backing policy; handout assets otherwise
     /// @dev Tokens must be in sorted order!
     /// @dev Performs a uniqueness check on the erc20s list in O(n)
     /// @custom:interaction

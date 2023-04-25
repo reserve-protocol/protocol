@@ -83,7 +83,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         disabled = true;
     }
 
-    /// Switch the basket, only callable directly by governance
+    /// Switch the basket, only callable directly by governance or after a default
     /// @custom:interaction OR @custom:governance
     // checks: either caller has OWNER,
     //         or (basket is disabled after refresh and we're unpaused and unfrozen)
@@ -259,8 +259,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
-    /// @return low {UoA/BU} The lower end of the lot price estimate
-    /// @return high {UoA/BU} The upper end of the lot price estimate
+    /// @return low {UoA/BU} The lower end of the price estimate
+    /// @return high {UoA/BU} The upper end of the price estimate
     function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
         uint256 low256;
         uint256 high256;
@@ -274,63 +274,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 ? assetRegistry.toAsset(basket.erc20s[i]).lotPrice()
                 : assetRegistry.toAsset(basket.erc20s[i]).price();
 
-            low256 += safeMul(qty, lowP, RoundingMode.ROUND);
-            high256 += safeMul(qty, highP, RoundingMode.ROUND);
+            low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
+            high256 += qty.safeMul(highP, RoundingMode.CEIL);
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
         low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
         high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
-    }
-
-    /// Multiply two fixes, rounding up to FIX_MAX and down to 0
-    /// @param a First param to multiply
-    /// @param b Second param to multiply
-    function safeMul(
-        uint192 a,
-        uint192 b,
-        RoundingMode rounding
-    ) internal pure returns (uint192) {
-        // untestable:
-        //      a will never = 0 here because of the check in _price()
-        if (a == 0 || b == 0) return 0;
-        // untestable:
-        //      a = FIX_MAX iff b = 0
-        if (a == FIX_MAX || b == FIX_MAX) return FIX_MAX;
-
-        // return FIX_MAX instead of throwing overflow errors.
-        unchecked {
-            // p and mul *are* Fix values, so have 18 decimals (D18)
-            uint256 rawDelta = uint256(b) * a; // {D36} = {D18} * {D18}
-            // if we overflowed, then return FIX_MAX
-            if (rawDelta / b != a) return FIX_MAX;
-            uint256 shiftDelta = rawDelta;
-
-            // add in rounding
-            if (rounding == RoundingMode.ROUND) shiftDelta += (FIX_ONE / 2);
-            else if (rounding == RoundingMode.CEIL) shiftDelta += FIX_ONE - 1;
-
-            // untestable (here there be dragons):
-            // (below explanation is for the ROUND case, but it extends to the FLOOR/CEIL too)
-            //          A)  shiftDelta = rawDelta + (FIX_ONE / 2)
-            //      shiftDelta overflows if:
-            //          B)  shiftDelta = MAX_UINT256 - FIX_ONE/2 + 1
-            //              rawDelta + (FIX_ONE/2) = MAX_UINT256 - FIX_ONE/2 + 1
-            //              b * a = MAX_UINT256 - FIX_ONE + 1
-            //      therefore shiftDelta overflows if:
-            //          C)  b = (MAX_UINT256 - FIX_ONE + 1) / a
-            //      MAX_UINT256 ~= 1e77 , FIX_MAX ~= 6e57 (6e20 difference in magnitude)
-            //      a <= 1e21 (MAX_TARGET_AMT)
-            //      a must be between 1e19 & 1e20 in order for b in (C) to be uint192,
-            //      but a would have to be < 1e18 in order for (A) to overflow
-            if (shiftDelta < rawDelta) return FIX_MAX;
-
-            // return FIX_MAX if return result would truncate
-            if (shiftDelta / FIX_ONE > FIX_MAX) return FIX_MAX;
-
-            // return _div(rawDelta, FIX_ONE, rounding)
-            return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
-        }
     }
 
     /// Return the current issuance/redemption value of `amount` BUs
@@ -351,7 +301,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             erc20s[i] = address(basket.erc20s[i]);
 
             // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            quantities[i] = safeMul(quantity(basket.erc20s[i]), amount, rounding).shiftl_toUint(
+            quantities[i] = quantity(basket.erc20s[i]).safeMul(amount, rounding).shiftl_toUint(
                 int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
                 rounding
             );
@@ -638,7 +588,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint192[] memory targetAmts
         )
     {
-        erc20s = new IERC20[](basket.erc20s.length);
+        erc20s = new IERC20[](config.erc20s.length);
         targetNames = new bytes32[](erc20s.length);
         targetAmts = new uint192[](erc20s.length);
 

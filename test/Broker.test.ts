@@ -1,7 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, upgrades, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import { MAX_UINT96, TradeStatus, ZERO_ADDRESS } from '../common/constants'
 import { bn, toBNDecimals } from '../common/numbers'
@@ -18,13 +20,17 @@ import {
   ZeroDecimalMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
+import {
+  Collateral,
+  DefaultFixture,
+  defaultFixture,
+  Implementation,
+  IMPLEMENTATION,
+} from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -32,6 +38,7 @@ const describeGas =
 describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
+  let mock: SignerWithAddress
   let other: SignerWithAddress
 
   // Assets / Tokens
@@ -55,18 +62,11 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
   let basket: Collateral[]
   let collateral: Collateral[]
 
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
-
   beforeEach(async () => {
-    ;[owner, addr1, other] = await ethers.getSigners()
+    ;[owner, addr1, mock, other] = await ethers.getSigners()
     // Deploy fixture
     ;({
       basket,
@@ -78,7 +78,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       rsrTrader,
       rTokenTrader,
       collateral,
-    } = await loadFixture(defaultFixture))
+    } = <DefaultFixture>await loadFixture(defaultFixture))
 
     // Get assets
     ;[collateral0, collateral1, ,] = basket
@@ -123,6 +123,67 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   })
 
   describe('Configuration/State', () => {
+    it('Should allow to update Gnosis if Owner and perform validations', async () => {
+      // Check existing value
+      expect(await broker.gnosis()).to.equal(gnosis.address)
+
+      // If not owner cannot update
+      await expect(broker.connect(other).setGnosis(mock.address)).to.be.revertedWith(
+        'governance only'
+      )
+
+      // Check value did not change
+      expect(await broker.gnosis()).to.equal(gnosis.address)
+
+      // Attempt to update with Owner but zero address - not allowed
+      await expect(broker.connect(owner).setGnosis(ZERO_ADDRESS)).to.be.revertedWith(
+        'invalid Gnosis address'
+      )
+
+      // Update with owner
+      await expect(broker.connect(owner).setGnosis(mock.address))
+        .to.emit(broker, 'GnosisSet')
+        .withArgs(gnosis.address, mock.address)
+
+      // Check value was updated
+      expect(await broker.gnosis()).to.equal(mock.address)
+    })
+
+    it('Should allow to update Trade Implementation if Owner and perform validations', async () => {
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const tradeImpl: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Update to a trade implementation to use as baseline for tests
+      await expect(broker.connect(owner).setTradeImplementation(tradeImpl.address))
+        .to.emit(broker, 'TradeImplementationSet')
+        .withArgs(anyValue, tradeImpl.address)
+
+      // Check existing value
+      expect(await broker.tradeImplementation()).to.equal(tradeImpl.address)
+
+      // If not owner cannot update
+      await expect(broker.connect(other).setTradeImplementation(mock.address)).to.be.revertedWith(
+        'governance only'
+      )
+
+      // Check value did not change
+      expect(await broker.tradeImplementation()).to.equal(tradeImpl.address)
+
+      // Attempt to update with Owner but zero address - not allowed
+      await expect(broker.connect(owner).setTradeImplementation(ZERO_ADDRESS)).to.be.revertedWith(
+        'invalid Trade Implementation address'
+      )
+
+      // Update with owner
+      await expect(broker.connect(owner).setTradeImplementation(mock.address))
+        .to.emit(broker, 'TradeImplementationSet')
+        .withArgs(tradeImpl.address, mock.address)
+
+      // Check value was updated
+      expect(await broker.tradeImplementation()).to.equal(mock.address)
+    })
+
     it('Should allow to update auctionLength if Owner', async () => {
       const newValue: BigNumber = bn('360')
 

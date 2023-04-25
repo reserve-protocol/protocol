@@ -1,13 +1,13 @@
 import 'tsconfig-paths/register'
+import '@nomicfoundation/hardhat-toolbox'
+import '@nomicfoundation/hardhat-chai-matchers'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-etherscan'
-import '@nomiclabs/hardhat-waffle'
 import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
-import '@withtally/tally-publish-dao'
 
 import { useEnv } from '#/utils/env'
 import { HardhatUserConfig } from 'hardhat/types'
@@ -63,8 +63,8 @@ const config: HardhatUserConfig = {
       accounts: {
         mnemonic: MNEMONIC,
       },
-      // gasPrice: 10_000_000_000,
-      gasMultiplier: 1.01, // 1% buffer; seen failures on RToken deployment
+      // gasPrice: 30_000_000_000,
+      gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
   },
   solidity: {
@@ -82,12 +82,21 @@ const config: HardhatUserConfig = {
       },
       {
         version: '0.6.12',
+        settings,
       },
       {
         version: '0.4.25',
+        settings,
       },
     ],
+    overrides: {
+      'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
+        version: '0.6.12',
+        settings: { optimizer: { enabled: true, runs: 1 } }, // to fit ContexStakingWrapper
+      },
+    },
   },
+
   paths: {
     sources: src_dir,
   },

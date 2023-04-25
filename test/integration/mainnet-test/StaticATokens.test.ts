@@ -1,16 +1,14 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { BigNumber } from 'ethers'
+import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
-import { defaultFixture } from '../fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import forkBlockNumber from '../fork-block-numbers'
 import mainnetAddrs from '../../../scripts/addresses/mainnet-test/1-tmp-assets-collateral.json'
-
 import {
   ATokenFiatCollateral,
   ERC20Mock,
@@ -20,8 +18,6 @@ import {
   USDCMock,
 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 // Relevant addresses (Mainnet)
 const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
@@ -69,31 +65,27 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
   let initialBal: BigNumber
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   let chainId: number
 
-  describe.skip('Static ATokens', () => {
-    const setup = async (blockNumber: number) => {
-      // Use Mainnet fork
-      await hre.network.provider.request({
-        method: 'hardhat_reset',
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
-              blockNumber: blockNumber,
-            },
+  // Setup test environment
+  const setup = async (blockNumber: number) => {
+    // Use Mainnet fork
+    await hre.network.provider.request({
+      method: 'hardhat_reset',
+      params: [
+        {
+          forking: {
+            jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+            blockNumber: blockNumber,
           },
-        ],
-      })
-    }
+        },
+      ],
+    })
+  }
 
+  describe('Static ATokens', () => {
     before(async () => {
       await setup(forkBlockNumber['mainnet-deployment'])
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
 
       chainId = await getChainId(hre)
       if (!networkConfig[chainId]) {
@@ -103,7 +95,6 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
     beforeEach(async () => {
       ;[, , , addr1] = await ethers.getSigners()
-      await loadFixture(defaultFixture)
 
       // Get tokens
       dai = <ERC20Mock>(
@@ -112,10 +103,7 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
       // Get plain aTokens
       aDai = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aDAI || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
       )
 
       //  Get collaterals
@@ -171,30 +159,18 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
       // Get plain aTokens
       aDai = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aDAI || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
       )
       aUsdc = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aUSDC || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDC || '')
       )
 
       aUsdt = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aUSDT || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDT || '')
       )
 
       aBusd = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aBUSD || ''
-        )
+        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aBUSD || '')
       )
 
       // Set balance amount

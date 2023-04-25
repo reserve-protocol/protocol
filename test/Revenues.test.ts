@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, upgrades, waffle } from 'hardhat'
+import { ethers, upgrades } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
@@ -56,8 +57,6 @@ import {
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { expectTrade, getTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -113,9 +112,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let distributor: TestIDistributor
   let main: TestIMain
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   let AssetFactory: ContractFactory
 
   // Computes the minBuyAmt for a sellAmt at two prices
@@ -139,11 +135,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
@@ -443,9 +434,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Depeg one of the underlying tokens - Reducing price 30%
         await setOraclePrice(collateral0.address, bn('7e7'))
         await collateral0.refresh()
-
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), fp('1'))
+        const rtokenPrice = await basketHandler.price()
+        const realRtokenPrice = rtokenPrice.low.add(rtokenPrice.high).div(2)
+        const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), realRtokenPrice)
         await expect(rTokenTrader.manageToken(token0.address))
           .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(anyValue, token0.address, rToken.address, issueAmount, withinQuad(minBuyAmt))
@@ -1221,6 +1213,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await basketHandler.refreshBasket()
 
         // Set f = 0, avoid dropping tokens
+
         await expect(
           distributor
             .connect(owner)
@@ -1228,6 +1221,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(1), bn(0))
+
         await expect(
           distributor
             .connect(owner)
@@ -1267,6 +1261,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Run auctions
+
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rTokenTrader,
@@ -1294,7 +1289,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Calculate pending amount
         const sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt)
-        const minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+        const minBuyAmtRemainder: BigNumber = await toMinBuyAmt(sellAmtRemainder, fp('1'), fp('1'))
 
         // Check funds in Market and Trader
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(sellAmt)
@@ -1524,7 +1519,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Close auctions
         // Calculate pending amount
         const sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken)
-        const minBuyAmtRemainder: BigNumber = sellAmtRemainder.sub(sellAmtRemainder.div(100)) // due to trade slippage 1%
+        const minBuyAmtRemainder: BigNumber = await toMinBuyAmt(sellAmtRemainder, fp('1'), fp('1'))
 
         // Check funds in Market and Traders
         expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
@@ -2970,7 +2965,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
-              withinQuad(minBuyAmtRSRFromCollateral),
+              withinQuad(minBuyAmtRSRFromCollateral.mul(2)),
             ],
             emitted: true,
           },
@@ -2982,7 +2977,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
-              withinQuad(minBuyAmtRTokenFromCollateral),
+              withinQuad(minBuyAmtRTokenFromCollateral.mul(2)),
             ],
             emitted: true,
           },
@@ -3000,6 +2995,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(
           expectedToTraderFromRToken.sub(sellAmtFromRToken)
         )
+
         expect(await rToken.balanceOf(furnace.address)).to.equal(expectedToFurnaceFromRToken)
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(
           expectedToRSRTraderFromCollateral.sub(sellAmtRSRFromCollateral)

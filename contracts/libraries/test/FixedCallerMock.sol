@@ -15,14 +15,12 @@ contract FixedCallerMock {
     function shiftl_toFix_Rnd(uint256 x, int8 d, RoundingMode rnd) public pure returns (uint192 ) {
         return shiftl_toFix(x, d, rnd);
     }
-
     function divFix_(uint256 x, uint192  y) public pure returns (uint192 ) {
         return divFix(x, y);
     }
     function divuu_(uint256 x, uint256 y) public pure returns (uint256) {
         return divuu(x, y);
     }
-
     function fixMin_(uint192  x, uint192  y) public pure returns (uint192 ) {
         return fixMin(x, y);
     }
@@ -136,6 +134,10 @@ contract FixedCallerMock {
     function mulDivRnd(uint192  x, uint192  y, uint192  z, RoundingMode rnd) public pure returns (uint192 ) {
         return FixLib.mulDiv(x, y, z, rnd);
     }
+    // ============== safe* operations
+    function safeMul_(uint192 a, uint192 b, RoundingMode rnd) public pure returns (uint192) {
+        return FixLib.safeMul(a, b, rnd);
+    }
 
     // ================ wide muldiv operations
     function mulDiv256_(uint256 x, uint256 y, uint256 z) public pure returns (uint256) {
@@ -148,6 +150,7 @@ contract FixedCallerMock {
     function fullMul_(uint256 x, uint256 y) public pure returns (uint256 h, uint256 l) {
         return fullMul(x, y);
     }
+
 
 
 }

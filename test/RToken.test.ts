@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import hre, { ethers } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { IConfig, ThrottleParams, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
 import {
@@ -60,7 +61,8 @@ const BLOCKS_PER_HOUR = bn(300)
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
-const createFixtureLoader = waffle.createFixtureLoader
+const describeExtreme =
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
 
 describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -94,14 +96,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let furnace: TestIFurnace
-
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
@@ -1888,7 +1882,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  context(`Extreme Values`, () => {
+  describeExtreme(`Extreme Values ${SLOW ? 'slow mode' : 'fast mode'}`, () => {
     // makeColl: Deploy and register a new constant-price collateral
     async function makeColl(index: number | string): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
@@ -1984,8 +1978,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       }
 
       // Set up throttles
-      const issuanceThrottleParams = { amtRate: MAX_UINT256, pctRate: issuancePctAmt }
-      const redemptionThrottleParams = { amtRate: MAX_UINT256, pctRate: redemptionPctAmt }
+      const issuanceThrottleParams = { amtRate: bn('1e48'), pctRate: issuancePctAmt }
+      const redemptionThrottleParams = { amtRate: bn('1e48'), pctRate: redemptionPctAmt }
 
       await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
       await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
@@ -1993,13 +1987,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Issue the "initial" rtoken supply to owner
 
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
-      await rToken.connect(owner).issue(toIssue0)
-      expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
+      if (toIssue0.gt(0)) {
+        await rToken.connect(owner).issue(toIssue0)
+        expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
+      }
 
       // ==== Issue the toIssue supply to addr1
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(owner).issue(toIssue)
+      await rToken.connect(addr1).issue(toIssue)
       expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
 
       // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`

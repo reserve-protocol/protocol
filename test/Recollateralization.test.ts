@@ -1,8 +1,9 @@
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory } from 'ethers'
+import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus, MAX_UINT256 } from '../common/constants'
 import { expectEvents } from '../common/events'
@@ -44,8 +45,6 @@ import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
-
-const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -95,9 +94,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let main: TestIMain
 
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let wallet: Wallet
-
   interface IBackingInfo {
     tokens: string[]
     quantities: BigNumber[]
@@ -133,13 +129,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       .mul(fp('1').sub(await backingManager.maxTradeSlippage())) // (a)
       .mul(lowSellPrice) // (b)
 
-    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+    return divCeil(divCeil(product, highBuyPrice), BN_SCALE_FACTOR) // (c)
   }
-
-  before('create fixture loader', async () => {
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -3537,7 +3528,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         const t = await getTrade(backingManager, token1.address)
         const sellAmt4 = await t.initBal() // 6 decimals token
         const minBuyAmt4 = await toMinBuyAmt(
-          sellAmt4.mul(bn('1e12')), // because of decimals difference
+          sellAmt4.add(1).mul(bn('1e12')), // because of decimals difference
           fp('1'),
           fp('1')
         )
@@ -4543,6 +4534,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
+
+      // Send BackingManager with nonzero RToken balance to incur maximum gas costs
+      await rToken.connect(addr1).transfer(backingManager.address, 1000)
 
       // Mint some RSR
       await rsr.connect(owner).mint(addr1.address, initialBal)

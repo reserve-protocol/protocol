@@ -27,7 +27,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
+    uint48 public immutable delayUntilDefault; // {s} e.g 86400
 
     bool public priceable;
 
@@ -94,8 +94,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         uint256 supply = erc20.totalSupply();
         if (supply == 0) return FIX_ONE;
 
-        // downcast is safe; rToken supply fits in uint192
         // {target/ref} = {BU/rTok} = {BU} / {rTok}
-        return IRToken(address(erc20)).basketsNeeded().div(uint192(supply));
+        return IRToken(address(erc20)).basketsNeeded().div(_safeWrap(supply));
     }
 }
