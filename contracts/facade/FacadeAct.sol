@@ -354,7 +354,7 @@ contract FacadeAct is IFacadeAct {
 
     /// To use this, first call:
     ///   - FacadeRead.auctionsSettleable(revenueTrader)
-    ///   - revenueSurpluses(revenueTrader)
+    ///   - revenue(revenueTrader)
     /// If either arrays returned are non-empty, then can call this function.
     /// Logic:
     ///   For each ERC20 in `toSettle`:

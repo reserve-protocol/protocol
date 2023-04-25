@@ -407,7 +407,7 @@ describe('FacadeRead contract', () => {
       }
     })
 
-    it('Should return revenueSurpluses + chain into FacadeAct.runRevenueAuctions', async () => {
+    it('Should return revenue + chain into FacadeAct.runRevenueAuctions', async () => {
       const traders = [rTokenTrader, rsrTrader]
       for (let traderIndex = 0; traderIndex < traders.length; traderIndex++) {
         const trader = traders[traderIndex]
@@ -417,9 +417,10 @@ describe('FacadeRead contract', () => {
         const tokenSurplus = bn('0.5e18')
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
-        // revenueSurpluses
-        const [erc20s, canStart, surpluses, minTradeAmounts] =
-          await facade.callStatic.revenueSurpluses(trader.address)
+        // revenue
+        const [erc20s, canStart, surpluses, minTradeAmounts] = await facade.callStatic.revenue(
+          trader.address
+        )
         expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
 
         const erc20sToStart = []
