@@ -262,7 +262,7 @@ contract FacadeRead is IFacadeRead {
     /// @return surpluses {qTok} The surplus amount
     /// @return minTradeAmounts {qTok} The minimum amount worth trading
     /// @custom:static-call
-    function revenue(IRevenueTrader revenueTrader)
+    function revenueOverview(IRevenueTrader revenueTrader)
         external
         returns (
             IERC20[] memory erc20s,

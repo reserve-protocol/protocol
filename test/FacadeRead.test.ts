@@ -418,9 +418,8 @@ describe('FacadeRead contract', () => {
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
         // revenue
-        const [erc20s, canStart, surpluses, minTradeAmounts] = await facade.callStatic.revenue(
-          trader.address
-        )
+        const [erc20s, canStart, surpluses, minTradeAmounts] =
+          await facade.callStatic.revenueOverview(trader.address)
         expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
 
         const erc20sToStart = []
