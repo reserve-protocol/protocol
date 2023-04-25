@@ -68,7 +68,7 @@ export interface DefaultFixture extends RSRAndModuleFixture {
   govParams: IGovParams
 }
 
-export const getDefaultFixture = async function(salt: string) {
+export const getDefaultFixture = async function (salt: string) {
   const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
     const { rsr } = await rsrFixture()
     const { gnosis } = await gnosisFixture()
@@ -76,19 +76,19 @@ export const getDefaultFixture = async function(salt: string) {
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
-  
+
     // Deploy FacadeRead
     const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
     const facade = <FacadeRead>await FacadeReadFactory.deploy()
-  
+
     // Deploy FacadeAct
     const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
     const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
-  
+
     // Deploy FacadeTest
     const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
     const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
-  
+
     // Deploy TradingLib external library
     const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
       'RecollateralizationLibP1'
@@ -96,10 +96,10 @@ export const getDefaultFixture = async function(salt: string) {
     const tradingLib: RecollateralizationLibP1 = <RecollateralizationLibP1>(
       await TradingLibFactory.deploy()
     )
-  
+
     // Deploy FacadeWriteLib external library
     const facadeWriteLib = await (await ethers.getContractFactory('FacadeWriteLib')).deploy()
-  
+
     // Deploy RSR Asset
     const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
     const rsrAsset: Asset = <Asset>await AssetFactory.deploy(
@@ -110,7 +110,7 @@ export const getDefaultFixture = async function(salt: string) {
       fp('1e6'), // max trade volume
       ORACLE_TIMEOUT
     )
-  
+
     // Create Deployer
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
       libraries: { TradingLibP0: tradingLib.address },
@@ -118,15 +118,17 @@ export const getDefaultFixture = async function(salt: string) {
     let deployer: TestIDeployer = <DeployerP0>(
       await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address)
     )
-  
+
     if (IMPLEMENTATION == Implementation.P1) {
       // Deploy implementations
       const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
       const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
-  
-      const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
+
+      const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory(
+        'AssetRegistryP1'
+      )
       const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
-  
+
       const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
         'BackingManagerP1',
         {
@@ -135,34 +137,38 @@ export const getDefaultFixture = async function(salt: string) {
           },
         }
       )
-      const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
-  
+      const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>(
+        await BackingMgrImplFactory.deploy()
+      )
+
       const BskHandlerImplFactory: ContractFactory = await ethers.getContractFactory(
         'BasketHandlerP1'
       )
       const bskHndlrImpl: BasketHandlerP1 = <BasketHandlerP1>await BskHandlerImplFactory.deploy()
-  
+
       const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
       const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
-  
-      const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1')
+
+      const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
+        'RevenueTraderP1'
+      )
       const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
-  
+
       const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
       const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
-  
+
       const TradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
       const tradeImpl: GnosisTrade = <GnosisTrade>await TradeImplFactory.deploy()
-  
+
       const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
       const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
-  
+
       const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1')
       const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
-  
+
       const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
       const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
-  
+
       // Setup Implementation addresses
       const implementations: IImplementations = {
         main: mainImpl.address,
@@ -180,13 +186,13 @@ export const getDefaultFixture = async function(salt: string) {
           stRSR: stRSRImpl.address,
         },
       }
-  
+
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
       deployer = <DeployerP1>(
         await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address, implementations)
       )
     }
-  
+
     // Deploy Facade
     const FacadeWriteFactory: ContractFactory = await ethers.getContractFactory('FacadeWrite', {
       libraries: {
@@ -194,7 +200,7 @@ export const getDefaultFixture = async function(salt: string) {
       },
     })
     const facadeWrite = <FacadeWrite>await FacadeWriteFactory.deploy(deployer.address)
-  
+
     // Set default governance params - not used in tests
     const govParams: IGovParams = {
       votingDelay: bn(5), // 5 blocks
@@ -203,7 +209,7 @@ export const getDefaultFixture = async function(salt: string) {
       quorumPercent: bn(4), // 4%
       timelockDelay: bn(60 * 60 * 24), // 1 day
     }
-  
+
     return {
       salt,
       rsr,

@@ -145,7 +145,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   before(async () => {
     await setup(forkBlockNumber['adai-plugin'])
-    defaultFixture = await getDefaultFixture("atoken")
+    defaultFixture = await getDefaultFixture('atoken')
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -154,7 +154,6 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } = await loadFixture(
       defaultFixture
     ))

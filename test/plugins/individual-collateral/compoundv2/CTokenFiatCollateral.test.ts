@@ -145,7 +145,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   before(async () => {
     await setup(forkBlockNumber['asset-plugins'])
-    defaultFixture = await getDefaultFixture("ctoken")
+    defaultFixture = await getDefaultFixture('ctoken')
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
