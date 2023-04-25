@@ -2,24 +2,17 @@ import { task } from 'hardhat/config'
 import { networkConfig } from '../../common/configuration'
 import { getChainId } from '../../common/blockchain-utils'
 import { whileImpersonating } from '#/utils/impersonation'
-import { ContractFactory } from 'ethers'
 import { useEnv } from '#/utils/env'
 import { resetFork } from '#/utils/chain'
 import { bn, fp } from '#/common/numbers'
-import { Interface, LogDescription, formatEther, formatUnits } from 'ethers/lib/utils'
-import { FacadeTest } from '@typechain/FacadeTest'
-import { overrideOracle, pushOraclesForward } from './upgrade-checker-utils/oracles'
+import { formatEther, formatUnits } from 'ethers/lib/utils'
+import { pushOraclesForward } from './upgrade-checker-utils/oracles'
 import { recollateralize, redeemRTokens } from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
-import { runTrade } from './upgrade-checker-utils/trades'
 import runChecks2_1_0, { proposal_2_1_0 } from './upgrade-checker-utils/upgrades/2_1_0'
-import { passAndExecuteProposal, proposeUpgrade, stakeAndDelegateRsr } from './upgrade-checker-utils/governance'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { passAndExecuteProposal, proposeUpgrade } from './upgrade-checker-utils/governance'
 import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
-import { Proposal } from '#/utils/subgraph'
-import { CollateralStatus } from '#/common/constants'
-import { logToken } from './upgrade-checker-utils/logs'
 
 // run script for eUSD
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
@@ -94,13 +87,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const backingManager = await hre.ethers.getContractAt(
       'BackingManagerP1',
       await main.backingManager()
-    )
-    const FacadeTestFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeTest')
-    const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
-    const rsr = await hre.ethers.getContractAt('ERC20Mock', await main.rsr())
-    const assetRegistry = await hre.ethers.getContractAt(
-      'AssetRegistryP1',
-      await main.assetRegistry()
     )
 
     /*
@@ -200,12 +186,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       switch basket and recollateralize
 
     */
-    // const ar = await hre.ethers.getContractAt('AssetRegistryP1', await main.assetRegistry())
-    // const usdcCollatAddress = await ar.toColl(networkConfig['1'].tokens.USDC!)
-    // const usdcCollat = await hre.ethers.getContractAt('FiatCollateral', usdcCollatAddress)
-    // const oracle = await overrideOracle(hre, await usdcCollat.chainlinkFeed())
-    // await oracle.updateAnswer(bn('1e8'))
-
     await pushOraclesForward(hre, params.rtoken)
 
     const bas = await basketHandler.getPrimeBasket()
