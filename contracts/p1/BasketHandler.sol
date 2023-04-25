@@ -172,6 +172,20 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     // ===
 
+    // === Historical basket nonces ===
+    // Added in 3.0.0
+
+    // Nonce of the first reference basket from the current history
+    // A new historical record begins whenever the prime basket is changed
+    // There can be 0 to any number of reference baskets from the current history
+    uint48 private historicalNonce; // {nonce}
+    // TODO double-check historicalNonce fits in the Warmup Period slot
+
+    // The historical baskets by basket nonce; includes current basket
+    mapping(uint48 => Basket) private historicalBaskets;
+
+    // ===
+
     // ==== Invariants ====
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
