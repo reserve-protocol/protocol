@@ -51,12 +51,54 @@ interface IFacadeRead {
     /// @return uoaShares The proportion of the basket associated with each ERC20
     /// @return targets The bytes32 representations of the target unit associated with each ERC20
     /// @custom:static-call
-    function basketBreakdown(RTokenP1 rToken)
+    function basketBreakdown(IRToken rToken)
         external
         returns (
             address[] memory erc20s,
             uint192[] memory uoaShares,
             bytes32[] memory targets
+        );
+
+    /// @return erc20s The registered ERC20s
+    /// @return balances {qTok} The held balances of each ERC20 across all traders
+    /// @return balancesNeededByBackingManager {qTok} The needed balance of each ERC20 at the BackingManager
+    /// @custom:static-call
+    function balancesAcrossAllTraders(IRToken rToken)
+        external
+        returns (
+            IERC20[] memory erc20s,
+            uint256[] memory balances,
+            uint256[] memory balancesNeededByBackingManager
+        );
+
+    /// To use this, call via callStatic.
+    /// @return canStart true iff a recollateralization auction can be started
+    /// @return sell The sell token in the auction
+    /// @return buy The buy token in the auction
+    /// @return sellAmount {qSellTok} How much would be sold
+    /// @custom:static-call
+    function nextRecollateralizationAuction(IBackingManager bm)
+        external
+        returns (
+            bool canStart,
+            IERC20 sell,
+            IERC20 buy,
+            uint256 sellAmount
+        );
+
+    /// To use this, call via callStatic.
+    /// @return erc20s The ERC20s that have auctions that can be started
+    /// @return canStart If the ERC20 auction can be started
+    /// @return surpluses {qTok} The surplus amount
+    /// @return minTradeAmounts {qTok} The minimum amount worth trading
+    /// @custom:static-call
+    function revenueSurpluses(IRevenueTrader revenueTrader)
+        external
+        returns (
+            IERC20[] memory erc20s,
+            bool[] memory canStart,
+            uint256[] memory surpluses,
+            uint256[] memory minTradeAmounts
         );
 
     // === Views ===
@@ -80,7 +122,7 @@ interface IFacadeRead {
     /// @return erc20s The erc20s in the prime basket
     /// @return targetNames The bytes32 name identifier of the target unit, per ERC20
     /// @return targetAmts {target/BU} The amount of the target unit in the basket, per ERC20
-    function primeBasket(RTokenP1 rToken)
+    function primeBasket(IRToken rToken)
         external
         view
         returns (
@@ -93,7 +135,7 @@ interface IFacadeRead {
     /// @param targetName The name of the target unit to lookup the backup for
     /// @return erc20s The backup erc20s for the target unit, in order of most to least desirable
     /// @return max The maximum number of tokens from the array to use at a single time
-    function backupConfig(RTokenP1 rToken, bytes32 targetName)
+    function backupConfig(IRToken rToken, bytes32 targetName)
         external
         view
         returns (IERC20[] memory erc20s, uint256 max);
@@ -113,18 +155,6 @@ interface IFacadeRead {
         external
         view
         returns (uint192 backing, uint192 overCollateralization);
-
-    /// @return erc20s The registered ERC20s
-    /// @return balances {qTok} The held balances of each ERC20 at the trader
-    /// @return balancesNeeded {qTok} The needed balance of each ERC20 at the trader
-    function traderBalances(IRToken rToken, ITrading trader)
-        external
-        view
-        returns (
-            IERC20[] memory erc20s,
-            uint256[] memory balances,
-            uint256[] memory balancesNeeded
-        );
 
     /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
     /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset

@@ -13,6 +13,10 @@ interface ITrade {
 
     function buy() external view returns (IERC20Metadata);
 
+    /// The sell amount
+    /// @return {qSellTok}
+    function initBal() external view returns (uint256);
+
     /// @return The timestamp at which the trade is projected to become settle-able
     function endTime() external view returns (uint48);
 
