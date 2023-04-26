@@ -161,7 +161,6 @@ contract Asset is IAsset {
     // solhint-disable no-empty-blocks
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev Use delegatecall
     function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks

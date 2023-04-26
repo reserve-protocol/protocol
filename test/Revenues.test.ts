@@ -219,8 +219,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
 
         const newTrader = <TestIRevenueTrader>await upgrades.deployProxy(RevenueTraderFactory, [], {
-          kind: 'uups',
-          unsafeAllow: ['delegatecall'], // TradingLib
+          kind: 'uups'
         })
 
         await expect(

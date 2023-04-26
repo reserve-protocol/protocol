@@ -2,11 +2,11 @@
 pragma solidity ^0.8.17;
 
 import "../../../interfaces/IRewardable.sol";
-import "../../../vendor/solmate/ERC4626Rewardable.sol";
+import "../../../vendor/oz/ERC4626.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
+abstract contract RewardableERC20Vault is IRewardable, ERC4626 {
     using SafeERC20 for ERC20;
 
     uint256 public immutable one;
@@ -22,18 +22,20 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
         string memory _name,
         string memory _symbol,
         ERC20 _rewardToken
-    ) ERC4626Rewardable(_asset, _name, _symbol) {
+    ) ERC4626(_asset, _name, _symbol) {
         rewardToken = _rewardToken;
         one = 10**decimals();
     }
 
     function claimRewards() external {
         _claimAndSyncRewards();
-        _syncAccount(msg.sender, balanceOf(msg.sender));
+        _syncAccount(msg.sender);
         _claimAccountRewards(msg.sender);
     }
 
-    function _syncAccount(address account, uint256 shares) internal {
+    function _syncAccount(address account) internal {
+        if (account == address(0)) return;
+        uint256 shares = balanceOf(account);
         uint256 accountRewardsPershare = lastRewardsPerShare[account];
         if (rewardsPerShare == accountRewardsPershare) return;
         uint256 delta = rewardsPerShare - accountRewardsPershare;
@@ -64,21 +66,13 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626Rewardable {
         rewardToken.safeTransfer(account, claimableRewards);
     }
 
-    function _beforeWithdraw(
-        uint256,
-        uint256,
-        address owner
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
     ) internal virtual override {
         _claimAndSyncRewards();
-        _syncAccount(owner, balanceOf(owner));
-    }
-
-    function _beforeDeposit(
-        uint256,
-        uint256,
-        address receiver
-    ) internal virtual override {
-        _claimAndSyncRewards();
-        _syncAccount(receiver, balanceOf(receiver));
+        _syncAccount(from);
+        _syncAccount(to);
     }
 }

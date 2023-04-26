@@ -131,7 +131,6 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev Use delegatecall
     function claimRewards() external override(Asset, IRewardable) {
         IConvexStakingWrapper wrapper = IConvexStakingWrapper(address(erc20));
         IERC20 cvx = IERC20(wrapper.cvx());

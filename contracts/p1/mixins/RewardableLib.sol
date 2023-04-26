@@ -31,9 +31,6 @@ library RewardableLibP1 {
             // solhint-disable-next-line
             try IRewardable(address(registry.erc20s[i])).claimRewards() {} catch {}
         }
-        // weird solidity compiler bug
-        // requires something after the empty block so that the last try gets fired
-        emit Complete();
     }
 
     /// Claim rewards for a single ERC20

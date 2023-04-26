@@ -223,7 +223,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib (external)
+          unsafeAllow: ['external-library-linking'], // TradingLib (external)
         }
       )
       await newBackingMgr.deployed()
@@ -306,8 +306,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         [main.address, rsr.address, config.maxTradeSlippage, config.minTradeVolume],
         {
           initializer: 'init',
-          kind: 'uups',
-          unsafeAllow: ['delegatecall'], // Multicall
+          kind: 'uups'
         }
       )
       await newRevenueTrader.deployed()
@@ -463,7 +462,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         backingManager.address,
         BackingMgrV2Factory,
         {
-          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
+          unsafeAllow: ['external-library-linking'], // TradingLib
         }
       )
 
@@ -587,18 +586,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       )
       const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
         rsrTrader.address,
-        RevTraderV2Factory,
-        {
-          unsafeAllow: ['delegatecall'], // Multicall
-        }
+        RevTraderV2Factory
       )
 
       const rTokenTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
         rTokenTrader.address,
-        RevTraderV2Factory,
-        {
-          unsafeAllow: ['delegatecall'], // Multicall
-        }
+        RevTraderV2Factory
       )
 
       // Check addresses are maintained

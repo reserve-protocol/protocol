@@ -6,7 +6,7 @@ import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../../../interfaces/IRewardable.sol";
 import "./ICToken.sol";
-import "../../../vendor/solmate/IERC4626.sol";
+import "../../../vendor/oz/IERC4626.sol";
 
 /**
  * @title CTokenFiatCollateral
@@ -51,7 +51,6 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev delegatecall
     function claimRewards() external virtual override(Asset, IRewardable) {
         // TODO: delete this
         IRewardable(address(erc20)).claimRewards();

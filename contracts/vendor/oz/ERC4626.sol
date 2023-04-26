@@ -12,11 +12,12 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
  * @dev Implementation of the ERC4626 "Tokenized Vault Standard" as defined in
  * https://eips.ethereum.org/EIPS/eip-4626[EIP-4626].
  * copied from openzepplein-contracts/ERC4626.sol, commit hash 91df66c
- * augmented with rewardability
+ *
+ * augmented with hooks to enable rewardability.
  *
  * _Available since v4.7._
  */
-abstract contract ERC4626Rewardable is ERC20, IERC4626 {
+abstract contract ERC4626 is ERC20, IERC4626 {
     using Math for uint256;
 
     IERC20 private immutable _asset;
@@ -184,8 +185,6 @@ abstract contract ERC4626Rewardable is ERC20, IERC4626 {
      * @dev Deposit/mint common workflow.
      */
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual {
-        _beforeDeposit(assets, shares, receiver);
-
         // If _asset is ERC777, `transferFrom` can trigger a reentrancy BEFORE the transfer happens through the
         // `tokensToSend` hook. On the other hand, the `tokenReceived` hook, that is triggered after the transfer,
         // calls the vault, which is assumed not malicious.
@@ -213,8 +212,6 @@ abstract contract ERC4626Rewardable is ERC20, IERC4626 {
             _spendAllowance(owner, caller, shares);
         }
 
-        _beforeWithdraw(assets, shares, owner);
-
         // If _asset is ERC777, `transfer` can trigger a reentrancy AFTER the transfer happens through the
         // `tokensReceived` hook. On the other hand, the `tokensToSend` hook, that is triggered before the transfer,
         // calls the vault, which is assumed not malicious.
@@ -230,8 +227,4 @@ abstract contract ERC4626Rewardable is ERC20, IERC4626 {
     function _decimalsOffset() internal view virtual returns (uint8) {
         return 9;
     }
-
-    function _beforeDeposit(uint256 assets, uint256 shares, address receiver) internal virtual {}
-
-    function _beforeWithdraw(uint256 assets, uint256 shares, address owner) internal virtual {}
 }

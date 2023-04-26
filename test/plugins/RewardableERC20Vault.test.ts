@@ -392,13 +392,19 @@ const runTests = (assetDecimals: number, rewardDecimals: number) => {
       beforeEach(async () => {
         // alice deposit, accrue, and claim
         await rewardableVault.connect(alice).deposit(initBalance.div(4), alice.address)
+        // accrue
         await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+        // bob deposit
         await rewardableVault.connect(bob).deposit(initBalance.div(4), bob.address)
+        // alice withdraw all
         await rewardableVault
           .connect(alice)
           .withdraw(initBalance.div(4), alice.address, alice.address)
+        // accrue
         await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+        // alice re-deposit
         await rewardableVault.connect(alice).deposit(initBalance.div(4), alice.address)
+        // both claim
         await rewardableVault.connect(bob).claimRewards()
         await rewardableVault.connect(alice).claimRewards()
 
@@ -432,6 +438,52 @@ const runTests = (assetDecimals: number, rewardDecimals: number) => {
       it('rewardsPerShare is correct', async () => {
         // (rewards / alice's deposit) + (rewards / bob's deposit)
         expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)).mul(2))
+      })
+    })
+
+    describe('correctly updates rewards on transfer', () => {
+      let rewardsPerShare: BigNumber
+
+      beforeEach(async () => {
+        await rewardableVault.connect(alice).deposit(initBalance.div(4), alice.address)
+        await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+        await rewardableVault.connect(bob).deposit(initBalance.div(4), bob.address)
+        await rewardableVault.connect(alice).transfer(bob.address, initShares.div(4))
+        await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+        await rewardableVault.connect(alice).deposit(initBalance.div(4), alice.address)
+        await rewardableVault.connect(bob).claimRewards()
+        await rewardableVault.connect(alice).claimRewards()
+
+        rewardsPerShare = await rewardableVault.rewardsPerShare()
+      })
+
+      it('alice shows correct balance', async () => {
+        expect(initShares.div(4)).equal(await rewardableVault.balanceOf(alice.address))
+      })
+
+      it('alice shows correct lastRewardsPerShare', async () => {
+        expect(rewardsPerShare).equal(await rewardableVault.lastRewardsPerShare(alice.address))
+      })
+
+      it('alice has claimed rewards', async () => {
+        expect(rewardAmount).equal(await rewardToken.balanceOf(alice.address))
+      })
+
+      it('bob shows correct balance', async () => {
+        expect(initShares.div(2)).equal(await rewardableVault.balanceOf(bob.address))
+      })
+
+      it('bob shows correct lastRewardsPerShare', async () => {
+        expect(rewardsPerShare).equal(await rewardableVault.lastRewardsPerShare(bob.address))
+      })
+
+      it('bob has claimed rewards', async () => {
+        expect(rewardAmount).equal(await rewardToken.balanceOf(bob.address))
+      })
+
+      it('rewardsPerShare is correct', async () => {
+        // (rewards / alice's deposit) + (rewards / (alice's deposit + bob's deposit))
+        expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)).add(rewardAmount.mul(oneShare).div(initShares.div(2))))
       })
     })
   })
