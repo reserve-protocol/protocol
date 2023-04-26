@@ -56,7 +56,8 @@ export const validateImplementations = async (deployments: IDeployments) => {
   // Check implementations
   if (
     !deployments.implementations.main ||
-    !deployments.implementations.trade ||
+    !deployments.implementations.trading.gnosisTrade ||
+    !deployments.implementations.trading.dutchTrade ||
     !deployments.implementations.components.assetRegistry ||
     !deployments.implementations.components.backingManager ||
     !deployments.implementations.components.basketHandler ||
@@ -71,8 +72,10 @@ export const validateImplementations = async (deployments: IDeployments) => {
     throw new Error(`Missing deployed implementations in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.implementations.main))) {
     throw new Error(`Main implementation not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.implementations.trade))) {
-    throw new Error(`Trade implementation not found in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, deployments.implementations.trading.gnosisTrade))) {
+    throw new Error(`GnosisTrade implementation not found in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, deployments.implementations.trading.dutchTrade))) {
+    throw new Error(`DutchTrade implementation not found in network ${hre.network.name}`)
   } else if (!(await validComponents(deployments.implementations.components))) {
     throw new Error(`Component implementation(s) not found in network ${hre.network.name}`)
   }

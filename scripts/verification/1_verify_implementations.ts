@@ -28,12 +28,20 @@ async function main() {
     'contracts/p1/Main.sol:MainP1'
   )
 
-  // /** ******************** Verify Trade implementation ****************************************/
+  // /** ******************** Verify GnosisTrade implementation ****************************************/
   await verifyContract(
     chainId,
-    deployments.implementations.trade,
+    deployments.implementations.trading.gnosisTrade,
     [],
     'contracts/plugins/trading/GnosisTrade.sol:GnosisTrade'
+  )
+
+  // /** ******************** Verify DutchTrade implementation ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.implementations.trading.dutchTrade,
+    [],
+    'contracts/plugins/trading/DutchTrade.sol:DutchTrade'
   )
 
   /** ******************** Verify Components  ****************************************/

@@ -21,7 +21,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         rewardRatio: bn('1069671574938'), // approx. half life of 90 days
         unstakingDelay: bn('1209600'), // 2 weeks
         tradingDelay: bn('14400'), // (the delay _after_ default has been confirmed) 4 hours
-        auctionLength: bn('900'), // 15 minutes
+        batchAuctionLength: bn('900'), // 15 minutes
         backingBuffer: fp('0.0001'), // 0.01%
         maxTradeSlippage: fp('0.01'), // 1%
         shortFreeze: bn('259200'), // 3 days
@@ -58,7 +58,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         rewardRatio: bn('1069671574938'), // approx. half life of 90 days
         unstakingDelay: bn('1209600'), // 2 weeks
         tradingDelay: bn('14400'), // (the delay _after_ default has been confirmed) 4 hours
-        auctionLength: bn('900'), // 15 minutes
+        batchAuctionLength: bn('900'), // 15 minutes
         backingBuffer: fp('0.0001'), // 0.01%
         maxTradeSlippage: fp('0.01'), // 1%
         shortFreeze: bn('259200'), // 3 days
@@ -94,7 +94,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         rewardRatio: bn('1069671574938'), // approx. half life of 90 days
         unstakingDelay: bn('1209600'), // 2 weeks
         tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
-        auctionLength: bn('900'), // 15 minutes
+        batchAuctionLength: bn('900'), // 15 minutes
         backingBuffer: fp('0.0001'), // 0.01%
         maxTradeSlippage: fp('0.01'), // 1%
         shortFreeze: bn('259200'), // 3 days
