@@ -92,6 +92,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @custom:interaction (only reads or writes `trades`, and is marked `nonReentrant`)
     // checks:
     //   (not external, so we don't need auth or pause checks)
@@ -108,14 +109,15 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
     // this contract that changes state this function refers to.
     // slither-disable-next-line reentrancy-vulnerabilities-1
-    function tryTrade(TradeRequest memory req) internal nonReentrant {
+    function tryTrade(TradeRequest memory req, TradeKind kind) internal nonReentrant {
         /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
-        ITrade trade = broker.openTrade(req);
+
+        ITrade trade = broker.openTrade(req, kind);
 
         trades[sell] = trade;
         tradesOpen++;

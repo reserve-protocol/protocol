@@ -30,8 +30,9 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @custom:interaction
-    function manageToken(IERC20 erc20) external notTradingPausedOrFrozen {
+    function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 
         uint256 bal = erc20.balanceOf(address(this));
@@ -70,7 +71,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         );
 
         if (launch) {
-            tryTrade(req);
+            tryTrade(req, kind);
         }
     }
 }

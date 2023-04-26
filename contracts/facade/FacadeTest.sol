@@ -50,11 +50,14 @@ contract FacadeTest is IFacadeTest {
             }
         }
 
-        main.backingManager().manageTokens(erc20s);
+        // solhint-disable no-empty-blocks
+        try main.backingManager().rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
+        try main.backingManager().forwardRevenue(erc20s) {} catch {}
         for (uint256 i = 0; i < erc20s.length; i++) {
-            rsrTrader.manageToken(erc20s[i]);
-            rTokenTrader.manageToken(erc20s[i]);
+            try rsrTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
+            try rTokenTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
         }
+        // solhint-enable no-empty-blocks
     }
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager

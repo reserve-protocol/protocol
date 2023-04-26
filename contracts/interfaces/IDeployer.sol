@@ -40,7 +40,8 @@ struct DeploymentParams {
     //
     // === BackingManager ===
     uint48 tradingDelay; // {s} how long to wait until starting auctions after switching basket
-    uint48 auctionLength; // {s} the length of an auction
+    uint48 batchAuctionLength; // {s} the length of a Gnosis EasyAuction
+    uint48 dutchAuctionLength; // {s} the length of a falling-price dutch auction
     uint192 backingBuffer; // {1} how much extra backing collateral to keep
     uint192 maxTradeSlippage; // {1} max slippage acceptable in a trade
     //
@@ -56,7 +57,12 @@ struct DeploymentParams {
 struct Implementations {
     IMain main;
     Components components;
-    ITrade trade;
+    TradePlugins trading;
+}
+
+struct TradePlugins {
+    ITrade gnosisTrade;
+    ITrade dutchTrade;
 }
 
 /**

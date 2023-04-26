@@ -53,7 +53,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    function tryTrade(TradeRequest memory req) internal {
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    function tryTrade(TradeRequest memory req, TradeKind kind) internal {
         IBroker broker = main.broker();
         assert(address(trades[req.sell.erc20()]) == address(0));
         require(!broker.disabled(), "broker disabled");
@@ -61,7 +62,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         req.sell.erc20().safeApprove(address(broker), 0);
         req.sell.erc20().safeApprove(address(broker), req.sellAmount);
 
-        ITrade trade = broker.openTrade(req);
+        ITrade trade = broker.openTrade(req, kind);
 
         trades[req.sell.erc20()] = trade;
         tradesOpen++;

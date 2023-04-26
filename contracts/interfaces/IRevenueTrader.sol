@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
+import "./IBroker.sol";
 import "./IComponent.sol";
 import "./ITrading.sol";
 
@@ -21,8 +22,9 @@ interface IRevenueTrader is IComponent, ITrading {
 
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @custom:interaction
-    function manageToken(IERC20 sell) external;
+    function manageToken(IERC20 sell, TradeKind kind) external;
 }
 
 // solhint-disable-next-line no-empty-blocks

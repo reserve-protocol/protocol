@@ -50,7 +50,8 @@ contract DeployerP1 is IDeployer, Versioned {
                 address(gnosis_) != address(0) &&
                 address(rsrAsset_) != address(0) &&
                 address(implementations_.main) != address(0) &&
-                address(implementations_.trade) != address(0) &&
+                address(implementations_.trading.gnosisTrade) != address(0) &&
+                address(implementations_.trading.dutchTrade) != address(0) &&
                 address(implementations_.components.assetRegistry) != address(0) &&
                 address(implementations_.components.backingManager) != address(0) &&
                 address(implementations_.components.basketHandler) != address(0) &&
@@ -199,7 +200,14 @@ contract DeployerP1 is IDeployer, Versioned {
         // Init Furnace
         components.furnace.init(main, params.rewardRatio);
 
-        components.broker.init(main, gnosis, implementations.trade, params.auctionLength);
+        components.broker.init(
+            main,
+            gnosis,
+            implementations.trading.gnosisTrade,
+            params.batchAuctionLength,
+            implementations.trading.dutchTrade,
+            params.dutchAuctionLength
+        );
 
         // Init StRSR
         {

@@ -6,6 +6,11 @@ import "./IComponent.sol";
 import "./IGnosis.sol";
 import "./ITrade.sol";
 
+enum TradeKind {
+    DUTCH_AUCTION,
+    BATCH_AUCTION
+}
+
 /// The data format that describes a request for trade with the Broker
 struct TradeRequest {
     IAsset sell;
@@ -29,14 +34,16 @@ interface IBroker is IComponent {
     function init(
         IMain main_,
         IGnosis gnosis_,
-        ITrade tradeImplementation_,
-        uint48 auctionLength_
+        ITrade batchTradeImplemention_,
+        uint48 batchAuctionLength_,
+        ITrade dutchTradeImplemention_,
+        uint48 dutchAuctionLength_
     ) external;
 
     /// Request a trade from the broker
     /// @dev Requires setting an allowance in advance
     /// @custom:interaction
-    function openTrade(TradeRequest memory req) external returns (ITrade);
+    function openTrade(TradeRequest memory req, TradeKind kind) external returns (ITrade);
 
     /// Only callable by one of the trading contracts the broker deploys
     function reportViolation() external;
@@ -49,13 +56,13 @@ interface TestIBroker is IBroker {
 
     function tradeImplementation() external view returns (ITrade);
 
-    function auctionLength() external view returns (uint48);
+    function batchAuctionLength() external view returns (uint48);
 
     function setGnosis(IGnosis newGnosis) external;
 
     function setTradeImplementation(ITrade newTradeImplementation) external;
 
-    function setAuctionLength(uint48 newAuctionLength) external;
+    function setBatchAuctionLength(uint48 newAuctionLength) external;
 
     function setDisabled(bool disabled_) external;
 }

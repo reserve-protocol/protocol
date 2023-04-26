@@ -36,6 +36,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
     /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
     /// @dev Intended to be used with multicall
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @custom:interaction CEI
     // let bal = this contract's balance of erc20
     // checks: !paused (trading), !frozen
@@ -50,7 +51,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //   actions:
     //     tryTrade(prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
-    function manageToken(IERC20 erc20) external notTradingPausedOrFrozen {
+    function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 
         uint256 bal = erc20.balanceOf(address(this));
@@ -89,9 +90,15 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         );
 
         if (launch) {
-            tryTrade(req);
+            tryTrade(req, kind);
         }
     }
+
+    // // {UoA}
+    // uint192 maxTradeVolume = fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume());
+
+    // sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals()));
+    // sellAmount = fixMin(sellAmount, maxTradeVolume.div(sellHigh, FLOOR));
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

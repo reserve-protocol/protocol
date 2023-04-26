@@ -58,23 +58,19 @@ contract DutchTrade is ITrade {
         status = end;
     }
 
+    /// @param origin_ The Trader that originated the trade
     /// @param sell_ The asset being sold by the protocol
     /// @param buy_ The asset being bought by the protocol
-    /// @param sellAmount_ {sellTok} The amount to sell in the auction, in whole tokens
-    /// @param minTradeVolume_ {UoA} The mimimum amount to trade
-    /// @param maxTradeSlippage_ {1} An additional discount applied to the auction low price
-    /// @param auctionLength {1} An additional discount applied to the auction low price
+    /// @param sellAmount_ {qSellTok} The amount to sell in the auction, in token quanta
+    /// @param auctionLength {s} How many seconds the dutch auction should run for
     function init(
+        ITrading origin_,
         IAsset sell_,
         IAsset buy_,
-        uint192 sellAmount_,
-        uint192 minTradeVolume_,
-        uint192 maxTradeSlippage_,
+        uint256 sellAmount_,
         uint48 auctionLength
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(address(sell) != address(0) || address(buy) != address(0), "zero address token");
-
-        // uint256 sellAmountQ = sellAmount_.shiftl_toUint(int8(sell_.erc20Decimals()));
 
         // Only start an auction with well-defined prices
         //
@@ -84,24 +80,32 @@ contract DutchTrade is ITrade {
         require(sellLow > 0 && sellHigh < FIX_MAX, "bad sell pricing");
         require(buyLow > 0 && buyHigh < FIX_MAX, "bad buy pricing");
 
-        // {UoA}
-        uint192 maxTradeVolume = fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume());
-
-        origin = ITrading(msg.sender);
+        origin = origin_;
         sell = sell_.erc20();
         buy = buy_.erc20();
-        sellAmount = fixMin(sellAmount_, maxTradeVolume.div(sellHigh, FLOOR));
+        sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
         startTime = uint48(block.timestamp);
         endTime = uint48(block.timestamp) + auctionLength;
 
-        // {UoA} = {sellTok} * {UoA/sellTok}
-        uint192 auctionVolume = sellAmount.mul(sellHigh, FLOOR);
-        require(auctionVolume >= minTradeVolume_, "auction too small");
+        // {UoA}
+        uint192 maxTradeVolume = fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume());
+        uint192 minTradeVolume = origin.minTradeVolume();
 
-        // {1} = {1} * ({UoA} - {UoA}} / ({UoA} - {UoA})
-        uint192 slippage = maxTradeSlippage_.mul(
-            FIX_ONE - divuu(auctionVolume - minTradeVolume_, maxTradeVolume - minTradeVolume_)
-        );
+        // Apply sliding slippage from 0% at maxTradeVolume to maxTradeSlippage() at minTradeVolume
+        uint192 slippage = origin.maxTradeSlippage(); // {1}
+        if (minTradeVolume < maxTradeVolume) {
+            // {UoA} = {sellTok} * {UoA/sellTok}
+            uint192 auctionVolume = sellAmount.mul(sellHigh, FLOOR);
+
+            if (auctionVolume > minTradeVolume && auctionVolume <= maxTradeVolume) {
+                // {1} = {1} * ({UoA} - {UoA}} / ({UoA} - {UoA})
+                slippage = slippage.mul(
+                    FIX_ONE - divuu(auctionVolume - minTradeVolume, maxTradeVolume - minTradeVolume)
+                );
+            } else if (auctionVolume > maxTradeVolume) {
+                slippage = 0;
+            }
+        }
 
         // {buyTok/sellTok} = {1} * {UoA/sellTok} / {UoA/buyTok}
         lowPrice = sellLow.mulDiv(FIX_ONE - slippage, buyHigh, FLOOR);

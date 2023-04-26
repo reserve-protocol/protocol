@@ -19,7 +19,8 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     mapping(address => bool) private trades;
 
-    uint48 public auctionLength; // {s} the length of an auction
+    uint48 public batchAuctionLength; // {s} the length of a batch auction
+    uint48 public dutchAuctionLength; // {s} the length of a dutch auction
 
     bool public disabled = false;
 
@@ -27,15 +28,18 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
         IMain main_,
         IGnosis gnosis_,
         ITrade,
-        uint48 auctionLength_
+        uint48 batchAuctionLength_,
+        ITrade,
+        uint48 dutchAuctionLength_
     ) public initializer {
         __Component_init(main_);
         gnosis = gnosis_;
-        auctionLength = auctionLength_;
+        batchAuctionLength = batchAuctionLength_;
+        dutchAuctionLength = dutchAuctionLength_;
     }
 
     /// Invalid implementation - Reverts
-    function openTrade(TradeRequest memory req)
+    function openTrade(TradeRequest memory req, TradeKind)
         external
         view
         notTradingPausedOrFrozen
@@ -54,7 +58,11 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
-    function setAuctionLength(uint48 newAuctionLength) external governance {}
+    function setBatchAuctionLength(uint48 newAuctionLength) external governance {}
+
+    /// Dummy implementation
+    /* solhint-disable no-empty-blocks */
+    function setDutchAuctionLength(uint48 newAuctionLength) external governance {}
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
