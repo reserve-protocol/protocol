@@ -55,6 +55,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
+    /// @return trade The ITrade contract settled
     /// @custom:interaction (only reads or writes trades, and is marked `nonReentrant`)
     // checks:
     //   !paused (trading), !frozen
@@ -66,8 +67,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen nonReentrant {
-        ITrade trade = trades[sell];
+    function settleTrade(IERC20 sell)
+        public
+        virtual
+        notTradingPausedOrFrozen
+        nonReentrant
+        returns (ITrade trade)
+    {
+        trade = trades[sell];
         require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
 
@@ -121,14 +128,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
 
-        // Require at least 1 empty block between auctions of the same kind
-        // This gives space for someone to start one of the opposite kinds of auctions
-        if (kind == TradeKind.DUTCH_AUCTION) {
-            require(block.number > lastSettlement[TradeKind.DUTCH_AUCTION] + 1, "wait 1 block");
-        } else {
-            // kind == TradeKind.BATCH_AUCTION
-            require(block.number > lastSettlement[TradeKind.BATCH_AUCTION] + 1, "wait 1 block");
-        }
+        // // Require at least 1 empty block between auctions of the same kind
+        // // This gives space for someone to start one of the opposite kinds of auctions
+        // if (kind == TradeKind.DUTCH_AUCTION) {
+        //     require(block.number > lastSettlement[TradeKind.DUTCH_AUCTION] + 1, "wait 1 block");
+        // } else {
+        //     // kind == TradeKind.BATCH_AUCTION
+        //     require(block.number > lastSettlement[TradeKind.BATCH_AUCTION] + 1, "wait 1 block");
+        // }
 
         ITrade trade = broker.openTrade(req, kind);
         trades[sell] = trade;

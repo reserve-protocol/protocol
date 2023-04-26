@@ -29,13 +29,15 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     }
 
     /// Settle a single trade + distribute revenue
+    /// @return trade The ITrade contract settled
     /// @custom:interaction
     function settleTrade(IERC20 sell)
         public
         override(ITrading, TradingP0)
         notTradingPausedOrFrozen
+        returns (ITrade trade)
     {
-        super.settleTrade(sell);
+        trade = super.settleTrade(sell);
         distributeRevenue();
     }
 

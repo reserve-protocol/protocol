@@ -48,6 +48,27 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         erc20.safeApprove(address(main.rToken()), type(uint256).max);
     }
 
+    /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
+    /// @return trade The ITrade contract settled
+    /// @custom:interaction
+    function settleTrade(IERC20 sell)
+        public
+        override(ITrading, TradingP0)
+        notTradingPausedOrFrozen
+        returns (ITrade trade)
+    {
+        trade = super.settleTrade(sell); // the super call is nonReentrant
+
+        // if Dutch: optimistically open another trade
+        if (trade.kind() == TradeKind.DUTCH_AUCTION) {
+            try this.rebalance(TradeKind.DUTCH_AUCTION) {} catch (bytes memory errData) {
+                // prevent MEV searchers from providing less gas on purpose by reverting if OOG
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            }
+        }
+    }
+
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @custom:interaction RCEI

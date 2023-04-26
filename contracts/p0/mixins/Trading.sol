@@ -42,9 +42,15 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
+    /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen {
-        ITrade trade = trades[sell];
+    function settleTrade(IERC20 sell)
+        public
+        virtual
+        notTradingPausedOrFrozen
+        returns (ITrade trade)
+    {
+        trade = trades[sell];
         require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
 
@@ -65,14 +71,14 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         req.sell.erc20().safeApprove(address(broker), 0);
         req.sell.erc20().safeApprove(address(broker), req.sellAmount);
 
-        // Require at least 1 empty block between auctions of the same kind
-        // This gives space for someone to start one of the opposite kinds of auctions
-        if (kind == TradeKind.DUTCH_AUCTION) {
-            require(block.timestamp > lastSettlement[TradeKind.DUTCH_AUCTION] + 1, "wait 1 block");
-        } else {
-            // kind == TradeKind.BATCH_AUCTION
-            require(block.timestamp > lastSettlement[TradeKind.BATCH_AUCTION] + 1, "wait 1 block");
-        }
+        // // Require at least 1 empty block between auctions of the same kind
+        // // This gives space for someone to start one of the opposite kinds of auctions
+        // if (kind == TradeKind.DUTCH_AUCTION) {
+        //     require(block.timestamp > lastSettlement[TradeKind.DUTCH_AUCTION] + 1, "wait 1 block");
+        // } else {
+        //     // kind == TradeKind.BATCH_AUCTION
+        //     require(block.timestamp > lastSettlement[TradeKind.BATCH_AUCTION] + 1, "wait 1 block");
+        // }
 
         ITrade trade = broker.openTrade(req, kind);
         trades[req.sell.erc20()] = trade;
