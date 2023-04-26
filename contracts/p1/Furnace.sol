@@ -63,7 +63,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     // actions:
     //   rToken.melt(payoutAmount), paying payoutAmount to RToken holders
 
-    function melt() external notTradingPausedOrFrozen {
+    function melt() external notFrozen {
         if (uint48(block.timestamp) < uint64(lastPayout) + PERIOD) return;
 
         // # of whole periods that have passed since lastPayout

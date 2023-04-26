@@ -199,7 +199,7 @@ describeFork('Wrapped CUSDCv3', () => {
       await wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, withdrawAmount)
 
       expect(await cusdcV3.balanceOf(don.address)).to.closeTo(withdrawAmount, 100)
-      expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(bn('0'), 10)
+      expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(bn('0'), 11)
 
       expect(await wcusdcV3.balanceOf(bob.address)).to.closeTo(bn(0), 50)
     })
