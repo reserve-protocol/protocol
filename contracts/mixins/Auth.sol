@@ -41,6 +41,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // === Pausing ===
 
+    /// @custom:oz-renamed-from paused
     bool public tradingPaused;
     bool public issuancePaused;
 
