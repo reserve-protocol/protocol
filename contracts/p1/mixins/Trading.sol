@@ -33,7 +33,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     uint192 public minTradeVolume; // {UoA}
 
     // === 3.0.0 ===
-    mapping(TradeKind => uint48) public lastSettlement; // {block}
+    mapping(TradeKind => uint48) public lastEndTime; // {s} block timestamp
 
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
@@ -80,7 +80,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
         delete trades[sell];
         tradesOpen--;
-        lastSettlement[trade.kind()] = uint48(block.number);
 
         // == Interactions ==
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
@@ -131,18 +130,26 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         // Only start the next auction back-to-back if msgSender is self
         // TODO is there a better way to do this?
         if (_msgSender() != address(this)) {
-            // Require at least 1 empty block between auctions of the same kind
+            // Require more than 12s between auctions of the same kind
             // This gives space for someone to start one of the opposite kinds of auctions
             if (kind == TradeKind.DUTCH_AUCTION) {
-                require(block.number > lastSettlement[TradeKind.DUTCH_AUCTION] + 1, "wait 1 block");
+                require(
+                    block.timestamp > lastEndTime[TradeKind.DUTCH_AUCTION] + 12,
+                    "wait 1 block"
+                );
             } else {
                 // kind == TradeKind.BATCH_AUCTION
-                require(block.number > lastSettlement[TradeKind.BATCH_AUCTION] + 1, "wait 1 block");
+                require(
+                    block.timestamp > lastEndTime[TradeKind.BATCH_AUCTION] + 12,
+                    "wait 1 block"
+                );
             }
-            // TODO this prevents revenue auctions from being chained unless do it the same way as the BackingManager
         }
 
         ITrade trade = broker.openTrade(req, kind);
+        uint48 endTime = trade.endTime();
+        if (endTime > lastEndTime[kind]) lastEndTime[kind] = endTime;
+
         trades[sell] = trade;
         tradesOpen++;
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
