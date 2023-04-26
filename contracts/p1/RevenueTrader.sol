@@ -37,14 +37,12 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// Settle a single trade + distribute revenue
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell)
-        public
-        override(ITrading, TradingP1)
-        notTradingPausedOrFrozen
-        returns (ITrade trade)
-    {
-        trade = super.settleTrade(sell);
-        distributeRevenue();
+    function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
+        trade = super.settleTrade(sell); // modifiers: notTradingPausedOrFrozen nonReentrant
+        distributeTokenToBuy();
+
+        // no need to try to start another auction
+        // back-to-back revenue auctions for the same sell token are unlikely
     }
 
     /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
@@ -70,7 +68,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         if (erc20 == tokenToBuy) {
             // == Interactions then return ==
-            distributeRevenue();
+            distributeTokenToBuy();
             return;
         }
 
@@ -105,7 +103,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
     // === Private ===
 
-    function distributeRevenue() private {
+    function distributeTokenToBuy() private {
         uint256 bal = tokenToBuy.balanceOf(address(this));
         tokenToBuy.safeApprove(address(distributor), 0);
         tokenToBuy.safeApprove(address(distributor), bal);

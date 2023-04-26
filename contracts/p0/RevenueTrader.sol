@@ -38,7 +38,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         returns (ITrade trade)
     {
         trade = super.settleTrade(sell);
-        distributeRevenue();
+        distributeTokenToBuy();
     }
 
     /// Processes a single token; unpermissioned
@@ -50,7 +50,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
         if (erc20 == tokenToBuy) {
-            distributeRevenue();
+            distributeTokenToBuy();
             return;
         }
 
@@ -86,7 +86,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
     // === Private ===
 
-    function distributeRevenue() private {
+    function distributeTokenToBuy() private {
         uint256 bal = tokenToBuy.balanceOf(address(this));
         tokenToBuy.safeApprove(address(main.distributor()), 0);
         tokenToBuy.safeApprove(address(main.distributor()), bal);

@@ -138,16 +138,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         require(main.basketHandler().fullyCollateralized(), "undercollateralized");
 
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
-
-        // == Interaction (then return) ==
-        handoutExcessAssets(erc20s, basketsHeld.bottom);
-    }
-
-    // === Private ===
-
-    /// Send excess assets to the RSR and RToken traders
-    /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
-    function handoutExcessAssets(IERC20[] calldata erc20s, uint192 wholeBasketsHeld) private {
         assert(main.basketHandler().status() == CollateralStatus.SOUND);
 
         // Special-case RSR to forward to StRSR pool
@@ -161,18 +151,18 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         {
             IRToken rToken = main.rToken();
             needed = rToken.basketsNeeded(); // {BU}
-            if (wholeBasketsHeld.gt(needed)) {
+            if (basketsHeld.bottom.gt(needed)) {
                 int8 decimals = int8(rToken.decimals());
                 uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
 
                 // {BU} = {BU} - {BU}
-                uint192 extraBUs = wholeBasketsHeld.minus(needed);
+                uint192 extraBUs = basketsHeld.bottom.minus(needed);
 
                 // {qRTok: Fix} = {BU} * {qRTok / BU} (if needed == 0, conv rate is 1 qRTok/BU)
                 uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
 
                 rToken.mint(address(this), rTok);
-                rToken.setBasketsNeeded(wholeBasketsHeld);
+                rToken.setBasketsNeeded(basketsHeld.bottom);
             }
         }
 
@@ -192,15 +182,28 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20Decimals()));
                 uint256 tokensPerShare = delta / (totals.rTokenTotal + totals.rsrTotal);
 
+                // solhint-disable no-empty-blocks
                 {
                     uint256 toRSR = tokensPerShare * totals.rsrTotal;
-                    if (toRSR > 0) erc20s[i].safeTransfer(address(main.rsrTrader()), toRSR);
+                    if (toRSR > 0) {
+                        erc20s[i].safeTransfer(address(main.rsrTrader()), toRSR);
+                        try
+                            main.rsrTrader().manageToken(erc20s[i], TradeKind.DUTCH_AUCTION)
+                        {} catch {}
+                        // no need to revert during OOG because forwardRevenue() is already altruistic
+                    }
                 }
                 {
                     uint256 toRToken = tokensPerShare * totals.rTokenTotal;
-                    if (toRToken > 0)
+                    if (toRToken > 0) {
                         erc20s[i].safeTransfer(address(main.rTokenTrader()), toRToken);
+                        try
+                            main.rTokenTrader().manageToken(erc20s[i], TradeKind.DUTCH_AUCTION)
+                        {} catch {}
+                        // no need to revert during OOG because forwardRevenue() is already altruistic
+                    }
                 }
+                // solhint-enable no-empty-blocks
             }
         }
     }

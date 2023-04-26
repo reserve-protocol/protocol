@@ -161,16 +161,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(basketsHeld.bottom >= rToken.basketsNeeded(), "undercollateralized");
         // require(basketHandler.fullyCollateralized())
 
-        // == Interaction (then return) ==
-        handoutExcessAssets(erc20s, basketsHeld.bottom);
-    }
-
-    // === Private ===
-
-    /// Send excess assets to the RSR and RToken traders
-    /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
-    /// @custom:interaction CEI
-    function handoutExcessAssets(IERC20[] calldata erc20s, uint192 basketsHeldBottom) private {
         /**
          * Assumptions:
          *   - Fully collateralized. All collateral meet balance requirements.
@@ -202,25 +192,25 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         //   where rate(R) == R.basketsNeeded / R.totalSupply,
         //   rate(rToken') >== rate(rToken)
         //   (>== is "no less than, and nearly equal to")
-        //    and rToken'.basketsNeeded <= basketsHeldBottom
+        //    and rToken'.basketsNeeded <= basketsHeld.bottom
         // and rToken'.totalSupply is maximal satisfying this.
         uint192 needed; // {BU}
         {
             needed = rToken.basketsNeeded(); // {BU}
-            if (basketsHeldBottom.gt(needed)) {
+            if (basketsHeld.bottom.gt(needed)) {
                 // gas-optimization: RToken is known to have 18 decimals, the same as FixLib
                 uint192 totalSupply = _safeWrap(rToken.totalSupply()); // {rTok}
 
                 // {BU} = {BU} - {BU}
-                uint192 extraBUs = basketsHeldBottom.minus(needed);
+                uint192 extraBUs = basketsHeld.bottom.minus(needed);
 
                 // {rTok} = {BU} * {rTok / BU} (if needed == 0, conv rate is 1 rTok/BU)
                 uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
 
                 // gas-optimization: RToken is known to have 18 decimals, same as FixLib
                 rToken.mint(address(this), uint256(rTok));
-                rToken.setBasketsNeeded(basketsHeldBottom);
-                needed = basketsHeldBottom;
+                rToken.setBasketsNeeded(basketsHeld.bottom);
+                needed = basketsHeld.bottom;
             }
         }
 
@@ -255,8 +245,18 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // == Interactions ==
         for (uint256 i = 0; i < length; ++i) {
             IERC20Upgradeable erc20 = IERC20Upgradeable(address(erc20s[i]));
-            if (toRToken[i] > 0) erc20.safeTransfer(address(rTokenTrader), toRToken[i]);
-            if (toRSR[i] > 0) erc20.safeTransfer(address(rsrTrader), toRSR[i]);
+            if (toRToken[i] > 0) {
+                erc20.safeTransfer(address(rTokenTrader), toRToken[i]);
+                // solhint-disable-next-line no-empty-blocks
+                try rTokenTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
+                // no need to revert during OOG because forwardRevenue() is already altruistic
+            }
+            if (toRSR[i] > 0) {
+                erc20.safeTransfer(address(rsrTrader), toRSR[i]);
+                // solhint-disable-next-line no-empty-blocks
+                try rsrTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
+                // no need to revert during OOG because forwardRevenue() is already altruistic
+            }
         }
 
         // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)

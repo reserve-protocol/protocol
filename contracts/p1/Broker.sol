@@ -28,12 +28,14 @@ contract BrokerP1 is ComponentP1, IBroker {
     IRevenueTrader private rsrTrader;
     IRevenueTrader private rTokenTrader;
 
+    /// @custom:oz-renamed-from tradeImplementation
     // The Batch Auction Trade contract to clone on openTrade(). Governance parameter.
     ITrade public batchTradeImplementation;
 
     // The Gnosis contract to init batch auction trades with. Governance parameter.
     IGnosis public gnosis;
 
+    /// @custom:oz-renamed-from auctionLength
     // {s} the length of a Gnosis EasyAuction. Governance parameter.
     uint48 public batchAuctionLength;
 

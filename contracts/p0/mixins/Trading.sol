@@ -72,20 +72,15 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         req.sell.erc20().safeApprove(address(broker), req.sellAmount);
 
         // Only start the next auction back-to-back if msgSender is self
+        // TODO is there a better way to do this?
         if (_msgSender() != address(this)) {
             // Require at least 1 empty block between auctions of the same kind
             // This gives space for someone to start one of the opposite kinds of auctions
             if (kind == TradeKind.DUTCH_AUCTION) {
-                require(
-                    block.timestamp > lastSettlement[TradeKind.DUTCH_AUCTION] + 1,
-                    "wait 1 block"
-                );
+                require(block.number > lastSettlement[TradeKind.DUTCH_AUCTION] + 1, "wait 1 block");
             } else {
                 // kind == TradeKind.BATCH_AUCTION
-                require(
-                    block.timestamp > lastSettlement[TradeKind.BATCH_AUCTION] + 1,
-                    "wait 1 block"
-                );
+                require(block.number > lastSettlement[TradeKind.BATCH_AUCTION] + 1, "wait 1 block");
             }
         }
 

@@ -129,6 +129,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
 
         // Only start the next auction back-to-back if msgSender is self
+        // TODO is there a better way to do this?
         if (_msgSender() != address(this)) {
             // Require at least 1 empty block between auctions of the same kind
             // This gives space for someone to start one of the opposite kinds of auctions
@@ -138,6 +139,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
                 // kind == TradeKind.BATCH_AUCTION
                 require(block.number > lastSettlement[TradeKind.BATCH_AUCTION] + 1, "wait 1 block");
             }
+            // TODO this prevents revenue auctions from being chained unless do it the same way as the BackingManager
         }
 
         ITrade trade = broker.openTrade(req, kind);

@@ -73,7 +73,7 @@ contract DutchTrade is ITrade {
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(address(sell) != address(0) || address(buy) != address(0), "zero address token");
 
-        // Only start an auction with well-defined prices
+        // Only start dutch auctions under well-defined prices
         //
         // In the BackingManager this may end up recalculating the RToken price
         (uint192 sellLow, uint192 sellHigh) = sell_.price(); // {UoA/sellTok}
@@ -132,6 +132,7 @@ contract DutchTrade is ITrade {
         // the other candidate design is ditch the bid() function entirely and have them transfer
         // tokens directly into this contract followed by origin.settleTrade(), but I don't like
         // that pattern because it means humans cannot bid without a smart contract helper.
+        // also requires changing the function signature of settle() to accept the caller address
 
         // settle() via callback
         origin.settleTrade(sell);
