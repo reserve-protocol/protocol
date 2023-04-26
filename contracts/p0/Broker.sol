@@ -125,7 +125,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     function setBatchTradeImplementation(ITrade newTradeImplementation) public governance {
         require(
             address(newTradeImplementation) != address(0),
-            "invalid Trade Implementation address"
+            "invalid batchTradeImplementation address"
         );
 
         emit TradeImplementationSet(batchTradeImplementation, newTradeImplementation);
@@ -146,7 +146,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     function setDutchTradeImplementation(ITrade newTradeImplementation) public governance {
         require(
             address(newTradeImplementation) != address(0),
-            "invalid Trade Implementation address"
+            "invalid dutchTradeImplementation address"
         );
 
         emit TradeImplementationSet(dutchTradeImplementation, newTradeImplementation);

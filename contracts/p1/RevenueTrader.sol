@@ -45,6 +45,16 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         // back-to-back revenue auctions for the same sell token are unlikely
     }
 
+    /// Distribute tokenToBuy to its destinations
+    /// @dev Special-case of manageToken(tokenToBuy, *)
+    /// @custom:interaction
+    function distributeTokenToBuy() public {
+        uint256 bal = tokenToBuy.balanceOf(address(this));
+        tokenToBuy.safeApprove(address(distributor), 0);
+        tokenToBuy.safeApprove(address(distributor), bal);
+        distributor.distribute(tokenToBuy, bal);
+    }
+
     /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
     /// @dev Intended to be used with multicall
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
@@ -105,21 +115,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             tryTrade(kind, req);
         }
     }
-
-    // === Private ===
-
-    function distributeTokenToBuy() private {
-        uint256 bal = tokenToBuy.balanceOf(address(this));
-        tokenToBuy.safeApprove(address(distributor), 0);
-        tokenToBuy.safeApprove(address(distributor), bal);
-        distributor.distribute(tokenToBuy, bal);
-    }
-
-    // // {UoA}
-    // uint192 maxTradeVolume = fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume());
-
-    // sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals()));
-    // sellAmount = fixMin(sellAmount, maxTradeVolume.div(sellHigh, FLOOR));
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

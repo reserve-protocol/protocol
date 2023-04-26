@@ -44,6 +44,16 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         // back-to-back revenue auctions for the same sell token are unlikely
     }
 
+    /// Distribute tokenToBuy to its destinations
+    /// @dev Special-case of manageToken(tokenToBuy, *)
+    /// @custom:interaction
+    function distributeTokenToBuy() public {
+        uint256 bal = tokenToBuy.balanceOf(address(this));
+        tokenToBuy.safeApprove(address(main.distributor()), 0);
+        tokenToBuy.safeApprove(address(main.distributor()), bal);
+        main.distributor().distribute(tokenToBuy, bal);
+    }
+
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
@@ -91,14 +101,5 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         if (launch) {
             tryTrade(kind, req);
         }
-    }
-
-    // === Private ===
-
-    function distributeTokenToBuy() private {
-        uint256 bal = tokenToBuy.balanceOf(address(this));
-        tokenToBuy.safeApprove(address(main.distributor()), 0);
-        tokenToBuy.safeApprove(address(main.distributor()), bal);
-        main.distributor().distribute(tokenToBuy, bal);
     }
 }
