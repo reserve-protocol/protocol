@@ -39,6 +39,9 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     {
         trade = super.settleTrade(sell);
         distributeTokenToBuy();
+
+        // no need to try to start another auction
+        // back-to-back revenue auctions for the same sell token are unlikely
     }
 
     /// Processes a single token; unpermissioned
@@ -46,13 +49,19 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @custom:interaction
     function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
-        require(address(trades[erc20]) == address(0), "trade open");
-        require(erc20.balanceOf(address(this)) > 0, "0 balance");
-
         if (erc20 == tokenToBuy) {
             distributeTokenToBuy();
             return;
         }
+
+        // if open trade: settle or revert
+        if (address(trades[erc20]) != address(0)) {
+            settleTrade(erc20);
+        }
+
+        if (erc20.balanceOf(address(this)) == 0) return;
+
+        // Try to launch another auction
 
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);

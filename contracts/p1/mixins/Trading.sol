@@ -127,8 +127,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
 
-        // Only start the next auction back-to-back if msgSender is self
-        // Only time this happens is in BackingManager.settleTrade() -> BackingManager.rebalance()
+        // Only allow starting the next auction back-to-back if msgSender is self
+        // Only time this happens is BackingManager.settleTrade() -> BackingManager.rebalance()
         // TODO is there a better way to do this?
         if (_msgSender() != address(this)) {
             // Warning, Assumption: blocktime <= 12s

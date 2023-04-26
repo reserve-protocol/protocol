@@ -60,17 +60,22 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //
     // If erc20 is any other registered asset (checked):
     //   actions:
-    //     tryTrade(prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
+    //     tryTrade(kind, prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
     function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
-        require(address(trades[erc20]) == address(0), "trade open");
-        require(erc20.balanceOf(address(this)) > 0, "0 balance");
-
         if (erc20 == tokenToBuy) {
-            // == Interactions then return ==
             distributeTokenToBuy();
             return;
         }
+
+        // if open trade: settle or revert
+        if (address(trades[erc20]) != address(0)) {
+            settleTrade(erc20);
+        }
+
+        if (erc20.balanceOf(address(this)) == 0) return;
+
+        // Try to launch another auction
 
         IAsset sell = assetRegistry.toAsset(erc20);
         IAsset buy = assetRegistry.toAsset(tokenToBuy);
