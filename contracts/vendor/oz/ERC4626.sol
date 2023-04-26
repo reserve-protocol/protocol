@@ -58,7 +58,11 @@ abstract contract ERC4626 is ERC20, IERC4626 {
     /**
      * @dev Set the underlying asset contract. This must be an ERC20-compatible contract (ERC20 or ERC777).
      */
-    constructor(IERC20 asset_) {
+    constructor(
+        IERC20 asset_,
+        string memory _name,
+        string memory _symbol
+    ) ERC20(_name, _symbol) {
         (bool success, uint8 assetDecimals) = _tryGetAssetDecimals(asset_);
         _underlyingDecimals = success ? assetDecimals : 18;
         _asset = asset_;
