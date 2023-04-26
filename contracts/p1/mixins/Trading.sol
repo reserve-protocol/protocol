@@ -32,6 +32,9 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     uint192 public minTradeVolume; // {UoA}
 
+    // === 3.0.0 ===
+    mapping(TradeKind => uint48) public lastSettlement; // {block}
+
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
     // trades[sell] != 0 iff trade[sell] has been opened and not yet settled
@@ -63,13 +66,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) external notTradingPausedOrFrozen nonReentrant {
+    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen nonReentrant {
         ITrade trade = trades[sell];
-        if (address(trade) == address(0)) return;
+        require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
 
         delete trades[sell];
         tradesOpen--;
+        lastSettlement[trade.kind()] = uint48(block.number);
 
         // == Interactions ==
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
@@ -117,8 +121,16 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
 
-        ITrade trade = broker.openTrade(req, kind);
+        // Require at least 1 empty block between auctions of the same kind
+        // This gives space for someone to start one of the opposite kinds of auctions
+        if (kind == TradeKind.DUTCH_AUCTION) {
+            require(block.number > lastSettlement[TradeKind.DUTCH_AUCTION] + 1, "wait 1 block");
+        } else {
+            // kind == TradeKind.BATCH_AUCTION
+            require(block.number > lastSettlement[TradeKind.BATCH_AUCTION] + 1, "wait 1 block");
+        }
 
+        ITrade trade = broker.openTrade(req, kind);
         trades[sell] = trade;
         tradesOpen++;
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
@@ -156,5 +168,5 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[44] private __gap;
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/IAssetRegistry.sol";
@@ -13,7 +13,7 @@ import "./mixins/TradeLib.sol";
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     using FixLib for uint192;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     // Immutable after init()
     IERC20 public tokenToBuy;
@@ -34,6 +34,17 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         tokenToBuy = tokenToBuy_;
     }
 
+    /// Settle a single trade + distribute revenue
+    /// @custom:interaction
+    function settleTrade(IERC20 sell)
+        public
+        override(ITrading, TradingP1)
+        notTradingPausedOrFrozen
+    {
+        super.settleTrade(sell);
+        distributeRevenue();
+    }
+
     /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
     /// @dev Intended to be used with multicall
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
@@ -52,16 +63,12 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //     tryTrade(prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
     function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
-        if (address(trades[erc20]) != address(0)) return;
-
-        uint256 bal = erc20.balanceOf(address(this));
-        if (bal == 0) return;
+        require(address(trades[erc20]) == address(0), "trade open");
+        require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
         if (erc20 == tokenToBuy) {
             // == Interactions then return ==
-            IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), 0);
-            IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), bal);
-            distributor.distribute(erc20, bal);
+            distributeRevenue();
             return;
         }
 
@@ -92,6 +99,15 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         if (launch) {
             tryTrade(req, kind);
         }
+    }
+
+    // === Private ===
+
+    function distributeRevenue() private {
+        uint256 bal = tokenToBuy.balanceOf(address(this));
+        tokenToBuy.safeApprove(address(distributor), 0);
+        tokenToBuy.safeApprove(address(distributor), bal);
+        distributor.distribute(tokenToBuy, bal);
     }
 
     // // {UoA}

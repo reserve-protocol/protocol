@@ -19,15 +19,16 @@ uint192 constant EIGHTY_FIVE_PERCENT = 85e16; // {1}
  *   from the best price to the worst price. The worst price is additionally discounted by
  *   the maxTradeSlippage based on how far between minTradeVolume and maxTradeVolume the trade is.
  *
- * Flow for bidding:
+ * To bid:
  * - Call `bidAmount()` to check price at various timestamps
  * - Wait until desirable block is reached
- * - Provide approval for `buy` token in the correct amount
- * - Call `bid()`. Receive payment in sell tokens atomically
+ * - Provide approval of buy tokens and call bid(). Swap will be atomic
  */
 contract DutchTrade is ITrade {
     using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
+
+    TradeKind public constant kind = TradeKind.DUTCH_AUCTION;
 
     TradeStatus public status; // reentrancy protection
 
@@ -115,38 +116,6 @@ contract DutchTrade is ITrade {
         require(lowPrice <= middlePrice, "asset inverted pricing");
     }
 
-    /// Calculates how much buy token is needed to purchase the lot, at a particular timestamp
-    /// Price Curve:
-    ///   - 1.5 * middlePrice down to the middlePrice for first 15% of auction
-    ///   - middlePrice down to lowPrice for the last 80% of auction
-    /// @param timestamp {s} The block timestamp to get price for
-    /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
-    function bidAmount(uint48 timestamp) public view returns (uint256) {
-        require(timestamp < endTime, "auction over");
-
-        uint192 progression = divuu(uint48(block.timestamp) - startTime, endTime - startTime);
-        // assert(progression <= FIX_ONE);
-
-        // {buyTok/sellTok}
-        uint192 price;
-
-        if (progression < FIFTEEN_PERCENT) {
-            // Fast decay -- 15th percentile case
-
-            // highPrice is 1.5x middlePrice
-            uint192 highPrice = middlePrice + middlePrice.mul(FIFTY_PERCENT);
-            price = highPrice - (highPrice - middlePrice).mulDiv(progression, FIFTEEN_PERCENT);
-        } else {
-            // Slow decay -- 85th percentile case
-            price =
-                middlePrice -
-                (middlePrice - lowPrice).mulDiv(progression - FIFTEEN_PERCENT, EIGHTY_FIVE_PERCENT);
-        }
-
-        // {qBuyTok} = {sellTok} * {buyTok/sellTok}
-        return sellAmount.mul(price, CEIL).shiftl_toUint(int8(buy.decimals()), CEIL);
-    }
-
     /// Bid for the auction lot at the current price; settling atomically via a callback
     /// @dev Caller must have provided approval
     function bid() external {
@@ -158,14 +127,17 @@ contract DutchTrade is ITrade {
         // Transfer in buy tokens
         bidder = msg.sender;
         buy.safeTransferFrom(bidder, address(this), buyAmount);
-        // TODO examine reentrancy - should be okay
 
-        // Settle via callback
+        // TODO examine reentrancy - think it's probably ok
+        // the other candidate design is ditch the bid() function entirely and have them transfer
+        // tokens directly into this contract followed by origin.settleTrade(), but I don't like
+        // that pattern because it means humans cannot bid without a smart contract helper.
+
+        // settle() via callback
         origin.settleTrade(sell);
     }
 
     /// Settle the auction, emptying the contract of balances
-    /// @dev Buyer must have transferred buy tokens into the contract ahead of time
     function settle()
         external
         stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
@@ -201,5 +173,39 @@ contract DutchTrade is ITrade {
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
         return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp >= endTime);
+    }
+
+    // === Bid Helper ===
+
+    /// Calculates how much buy token is needed to purchase the lot, at a particular timestamp
+    /// Price Curve:
+    ///   - 1.5 * middlePrice down to the middlePrice for first 15% of auction
+    ///   - middlePrice down to lowPrice for the last 80% of auction
+    /// @param timestamp {s} The block timestamp to get price for
+    /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
+    function bidAmount(uint48 timestamp) public view returns (uint256) {
+        require(timestamp < endTime, "auction over");
+
+        uint192 progression = divuu(uint48(block.timestamp) - startTime, endTime - startTime);
+        // assert(progression <= FIX_ONE);
+
+        // {buyTok/sellTok}
+        uint192 price;
+
+        if (progression < FIFTEEN_PERCENT) {
+            // Fast decay -- 15th percentile case
+
+            // highPrice is 1.5x middlePrice
+            uint192 highPrice = middlePrice + middlePrice.mul(FIFTY_PERCENT);
+            price = highPrice - (highPrice - middlePrice).mulDiv(progression, FIFTEEN_PERCENT);
+        } else {
+            // Slow decay -- 85th percentile case
+            price =
+                middlePrice -
+                (middlePrice - lowPrice).mulDiv(progression - FIFTEEN_PERCENT, EIGHTY_FIVE_PERCENT);
+        }
+
+        // {qBuyTok} = {sellTok} * {buyTok/sellTok}
+        return sellAmount.mul(price, CEIL).shiftl_toUint(int8(buy.decimals()), CEIL);
     }
 }

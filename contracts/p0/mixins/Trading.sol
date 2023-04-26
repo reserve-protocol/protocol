@@ -26,6 +26,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     uint192 public minTradeVolume; // {UoA}
 
+    mapping(TradeKind => uint48) public lastSettlement; // {block}
+
     // untestable:
     //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
     //      This function is only called inside other `init` functions, each of which is wrapped
@@ -41,13 +43,14 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public notTradingPausedOrFrozen {
+    function settleTrade(IERC20 sell) public virtual notTradingPausedOrFrozen {
         ITrade trade = trades[sell];
-        if (address(trade) == address(0)) return;
+        require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
 
         delete trades[sell];
         tradesOpen--;
+        lastSettlement[trade.kind()] = uint48(block.number);
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
         emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
     }
@@ -62,8 +65,16 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         req.sell.erc20().safeApprove(address(broker), 0);
         req.sell.erc20().safeApprove(address(broker), req.sellAmount);
 
-        ITrade trade = broker.openTrade(req, kind);
+        // Require at least 1 empty block between auctions of the same kind
+        // This gives space for someone to start one of the opposite kinds of auctions
+        if (kind == TradeKind.DUTCH_AUCTION) {
+            require(block.timestamp > lastSettlement[TradeKind.DUTCH_AUCTION] + 1, "wait 1 block");
+        } else {
+            // kind == TradeKind.BATCH_AUCTION
+            require(block.timestamp > lastSettlement[TradeKind.BATCH_AUCTION] + 1, "wait 1 block");
+        }
 
+        ITrade trade = broker.openTrade(req, kind);
         trades[req.sell.erc20()] = trade;
         tradesOpen++;
         emit TradeStarted(

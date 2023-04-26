@@ -31,7 +31,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // The Batch Auction Trade contract to clone on openTrade(). Governance parameter.
     ITrade public batchTradeImplementation;
 
-    // The Gnosis contract to init each trade with. Governance parameter.
+    // The Gnosis contract to init batch auction trades with. Governance parameter.
     IGnosis public gnosis;
 
     // {s} the length of a Gnosis EasyAuction. Governance parameter.
@@ -183,7 +183,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // === Private ===
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
-        // In the future we'll have more sophisticated choice logic here, probably by trade size
+        require(batchAuctionLength > 0, "batchAuctionLength unset");
         GnosisTrade trade = GnosisTrade(address(batchTradeImplementation).clone());
         trades[address(trade)] = true;
 
@@ -208,6 +208,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     function newDutchAuction(TradeRequest memory req, ITrading caller) private returns (ITrade) {
+        require(dutchAuctionLength > 0, "dutchAuctionLength unset");
         DutchTrade trade = DutchTrade(address(dutchTradeImplementation).clone());
         trades[address(trade)] = true;
 

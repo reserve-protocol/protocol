@@ -166,6 +166,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     // === Private ===
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
+        require(batchAuctionLength > 0, "batchAuctionLength unset");
         GnosisTrade trade = new GnosisTrade();
         trades[address(trade)] = true;
 
@@ -178,7 +179,6 @@ contract BrokerP0 is ComponentP0, IBroker {
             req.minBuyAmount = mulDiv256(req.minBuyAmount, GNOSIS_MAX_TOKENS, maxQty, FLOOR);
         }
 
-        // == Interactions ==
         IERC20Metadata(address(req.sell.erc20())).safeTransferFrom(
             caller,
             address(trade),
@@ -190,10 +190,10 @@ contract BrokerP0 is ComponentP0, IBroker {
     }
 
     function newDutchAuction(TradeRequest memory req, ITrading caller) private returns (ITrade) {
+        require(dutchAuctionLength > 0, "dutchAuctionLength unset");
         DutchTrade trade = new DutchTrade();
         trades[address(trade)] = true;
 
-        // == Interactions ==
         IERC20Metadata(address(req.sell.erc20())).safeTransferFrom(
             address(caller),
             address(trade),
