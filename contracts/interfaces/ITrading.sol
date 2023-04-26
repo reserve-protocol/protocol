@@ -45,7 +45,8 @@ interface ITrading is IComponent, IRewardableComponent {
     );
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
-    /// @return The ITrade contract used
+    /// @param sell The sell token in the trade
+    /// @return The trade settled
     /// @custom:refresher
     function settleTrade(IERC20 sell) external returns (ITrade);
 

@@ -29,6 +29,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     }
 
     /// Settle a single trade + distribute revenue
+    /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
     function settleTrade(IERC20 sell)
@@ -39,9 +40,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     {
         trade = super.settleTrade(sell);
         distributeTokenToBuy();
-
-        // no need to try to start another auction
-        // back-to-back revenue auctions for the same sell token are unlikely
+        // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
 
     /// Distribute tokenToBuy to its destinations
@@ -64,14 +63,14 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             return;
         }
 
-        // if open trade: settle or revert
-        if (address(trades[erc20]) != address(0)) {
-            settleTrade(erc20);
-        }
+        // === Try to launch another auction ===
 
-        if (erc20.balanceOf(address(this)) == 0) return;
+        // refresh()
+        main.assetRegistry().refresh();
+        main.furnace().melt();
 
-        // Try to launch another auction
+        require(address(trades[erc20]) == address(0), "trade open");
+        require(erc20.balanceOf(address(this)) == 0, "0 balance");
 
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);

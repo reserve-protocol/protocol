@@ -19,6 +19,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     IERC20 public tokenToBuy;
     IAssetRegistry private assetRegistry;
     IDistributor private distributor;
+    IBackingManager private backingManager;
+    IFurnace private furnace;
 
     function init(
         IMain main_,
@@ -31,18 +33,18 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         __Trading_init(main_, maxTradeSlippage_, minTradeVolume_);
         assetRegistry = main_.assetRegistry();
         distributor = main_.distributor();
+        backingManager = main_.backingManager();
         tokenToBuy = tokenToBuy_;
     }
 
     /// Settle a single trade + distribute revenue
+    /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
     function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
-        trade = super.settleTrade(sell); // modifiers: notTradingPausedOrFrozen nonReentrant
+        trade = super.settleTrade(sell); // modifier: notTradingPausedOrFrozen
         distributeTokenToBuy();
-
-        // no need to try to start another auction
-        // back-to-back revenue auctions for the same sell token are unlikely
+        // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
 
     /// Distribute tokenToBuy to its destinations
@@ -78,14 +80,16 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             return;
         }
 
-        // if open trade: settle or revert
-        if (address(trades[erc20]) != address(0)) {
-            settleTrade(erc20);
+        // === Try to launch another auction ===
+
+        // refresh() if not called by BackingManager -- gas optimization
+        if (_msgSender() != address(backingManager)) {
+            assetRegistry.refresh();
+            furnace.melt();
         }
 
-        if (erc20.balanceOf(address(this)) == 0) return;
-
-        // Try to launch another auction
+        require(address(trades[erc20]) == address(0), "trade open");
+        require(erc20.balanceOf(address(this)) == 0, "0 balance");
 
         IAsset sell = assetRegistry.toAsset(erc20);
         IAsset buy = assetRegistry.toAsset(tokenToBuy);
@@ -116,10 +120,20 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         }
     }
 
+    /// Call after upgrade to >= 3.0.0
+    function cacheBackingManager() public {
+        backingManager = main.backingManager();
+    }
+
+    /// Call after upgrade to >= 3.0.0
+    function cacheFurnace() public {
+        furnace = main.furnace();
+    }
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[47] private __gap;
+    uint256[45] private __gap;
 }

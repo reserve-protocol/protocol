@@ -42,6 +42,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
+    /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
     function settleTrade(IERC20 sell)

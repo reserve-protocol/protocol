@@ -49,17 +49,13 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
+    /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell)
-        public
-        override(ITrading, TradingP0)
-        notTradingPausedOrFrozen
-        returns (ITrade trade)
-    {
-        trade = super.settleTrade(sell); // the super call is nonReentrant
+    function settleTrade(IERC20 sell) public override(ITrading, TradingP0) returns (ITrade trade) {
+        trade = super.settleTrade(sell);
 
-        // if the caller is the trade contract, try chaining with another rebalance()
+        // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
             // solhint-disable-next-line no-empty-blocks
             try this.rebalance(trade.KIND()) {} catch (bytes memory errData) {

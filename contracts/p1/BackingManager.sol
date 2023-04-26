@@ -81,12 +81,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
+    /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
     function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
-        trade = super.settleTrade(sell); // modifiers: notTradingPausedOrFrozen nonReentrant
+        trade = super.settleTrade(sell); // modifier: notTradingPausedOrFrozen
 
-        // if the caller is the trade contract, try chaining with another rebalance()
+        // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
             // solhint-disable-next-line no-empty-blocks
             try this.rebalance(trade.KIND()) {} catch (bytes memory errData) {
@@ -105,11 +106,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         assetRegistry.refresh();
         furnace.melt();
 
-        BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
-
         require(tradesOpen == 0, "trade open");
         require(basketHandler.isReady(), "basket not ready");
         require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
+
+        BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
         require(basketsHeld.bottom < rToken.basketsNeeded(), "already collateralized");
         // require(!basketHandler.fullyCollateralized())
 
@@ -296,5 +297,5 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[40] private __gap;
+    uint256[41] private __gap;
 }

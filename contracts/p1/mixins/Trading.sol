@@ -54,7 +54,23 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         setMinTradeVolume(minTradeVolume_);
     }
 
+    /// Claim all rewards
+    /// Collective Action
+    /// @custom:interaction CEI
+    function claimRewards() external notTradingPausedOrFrozen {
+        RewardableLibP1.claimRewards(main.assetRegistry());
+    }
+
+    /// Claim rewards for a single asset
+    /// Collective Action
+    /// @param erc20 The ERC20 to claimRewards on
+    /// @custom:interaction CEI
+    function claimRewardsSingle(IERC20 erc20) external notTradingPausedOrFrozen {
+        RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
+    }
+
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
+    /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction (only reads or writes trades, and is marked `nonReentrant`)
     // checks:
@@ -84,21 +100,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         // == Interactions ==
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
         emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
-    }
-
-    /// Claim all rewards
-    /// Collective Action
-    /// @custom:interaction CEI
-    function claimRewards() external notTradingPausedOrFrozen {
-        RewardableLibP1.claimRewards(main.assetRegistry());
-    }
-
-    /// Claim rewards for a single asset
-    /// Collective Action
-    /// @param erc20 The ERC20 to claimRewards on
-    /// @custom:interaction CEI
-    function claimRewardsSingle(IERC20 erc20) external notTradingPausedOrFrozen {
-        RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker

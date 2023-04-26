@@ -134,7 +134,7 @@ contract DutchTrade is ITrade {
         // that pattern because it means humans cannot bid without a smart contract helper.
         // also requires changing the function signature of settle() to accept the caller address
 
-        // settle() via callback
+        // settle() via callback; may also start a new Trade
         origin.settleTrade(sell);
     }
 
