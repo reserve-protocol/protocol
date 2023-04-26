@@ -136,7 +136,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
             }
 
-            tryTrade(req, kind);
+            tryTrade(kind, req);
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);

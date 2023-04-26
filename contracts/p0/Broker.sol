@@ -58,7 +58,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @dev Requires setting an allowance in advance
     /// @custom:protected
-    function openTrade(TradeRequest memory req, TradeKind kind)
+    function openTrade(TradeKind kind, TradeRequest memory req)
         external
         notTradingPausedOrFrozen
         returns (ITrade)

@@ -39,7 +39,7 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
     }
 
     /// Invalid implementation - Reverts
-    function openTrade(TradeRequest memory req, TradeKind)
+    function openTrade(TradeKind, TradeRequest memory req)
         external
         view
         notTradingPausedOrFrozen

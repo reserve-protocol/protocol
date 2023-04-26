@@ -80,7 +80,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         );
 
         if (launch) {
-            tryTrade(req, kind);
+            tryTrade(kind, req);
         }
     }
 

@@ -43,7 +43,7 @@ interface IBroker is IComponent {
     /// Request a trade from the broker
     /// @dev Requires setting an allowance in advance
     /// @custom:interaction
-    function openTrade(TradeRequest memory req, TradeKind kind) external returns (ITrade);
+    function openTrade(TradeKind kind, TradeRequest memory req) external returns (ITrade);
 
     /// Only callable by one of the trading contracts the broker deploys
     function reportViolation() external;

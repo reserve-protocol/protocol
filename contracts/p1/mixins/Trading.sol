@@ -119,7 +119,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
     // this contract that changes state this function refers to.
     // slither-disable-next-line reentrancy-vulnerabilities-1
-    function tryTrade(TradeRequest memory req, TradeKind kind) internal nonReentrant {
+    function tryTrade(TradeKind kind, TradeRequest memory req) internal nonReentrant {
         /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
@@ -128,9 +128,11 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
 
         // Only start the next auction back-to-back if msgSender is self
+        // Only time this happens is in BackingManager.settleTrade() -> BackingManager.rebalance()
         // TODO is there a better way to do this?
         if (_msgSender() != address(this)) {
-            // Require more than 12s between auctions of the same kind
+            // Warning, Assumption: blocktime <= 12s
+            // Require at least 1 block between auctions of the same kind
             // This gives space for someone to start one of the opposite kinds of auctions
             if (kind == TradeKind.DUTCH_AUCTION) {
                 require(
@@ -146,7 +148,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
             }
         }
 
-        ITrade trade = broker.openTrade(req, kind);
+        ITrade trade = broker.openTrade(kind, req);
         uint48 endTime = trade.endTime();
         if (endTime > lastEndTime[kind]) lastEndTime[kind] = endTime;
 

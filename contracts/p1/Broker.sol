@@ -92,7 +92,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // actions:
     //   Transfers req.sellAmount of req.sell.erc20 from caller to `trade`
     //   Calls trade.init() with appropriate parameters
-    function openTrade(TradeRequest memory req, TradeKind kind)
+    function openTrade(TradeKind kind, TradeRequest memory req)
         external
         notTradingPausedOrFrozen
         returns (ITrade)

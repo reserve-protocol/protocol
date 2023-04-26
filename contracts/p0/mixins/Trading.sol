@@ -62,7 +62,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    function tryTrade(TradeRequest memory req, TradeKind kind) internal {
+    function tryTrade(TradeKind kind, TradeRequest memory req) internal {
         IBroker broker = main.broker();
         assert(address(trades[req.sell.erc20()]) == address(0));
         require(!broker.disabled(), "broker disabled");
@@ -71,9 +71,11 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         req.sell.erc20().safeApprove(address(broker), req.sellAmount);
 
         // Only start the next auction back-to-back if msgSender is self
+        // Only time this happens is in BackingManager.settleTrade() -> BackingManager.rebalance()
         // TODO is there a better way to do this?
         if (_msgSender() != address(this)) {
-            // Require more than 12s between auctions of the same kind
+            // Warning, Assumption: blocktime <= 12s
+            // Require at least 1 block between auctions of the same kind
             // This gives space for someone to start one of the opposite kinds of auctions
             if (kind == TradeKind.DUTCH_AUCTION) {
                 require(
@@ -89,7 +91,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
             }
         }
 
-        ITrade trade = broker.openTrade(req, kind);
+        ITrade trade = broker.openTrade(kind, req);
         uint48 endTime = trade.endTime();
         if (endTime > lastEndTime[kind]) lastEndTime[kind] = endTime;
 
