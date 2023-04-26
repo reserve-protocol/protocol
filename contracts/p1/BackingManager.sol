@@ -84,11 +84,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @return trade The ITrade contract settled
     /// @custom:interaction
     function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
-        trade = super.settleTrade(sell); // the super call is nonReentrant and checks paused state
+        trade = super.settleTrade(sell); // modifiers: notTradingPausedOrFrozen nonReentrant
 
-        // if Dutch: optimistically open another trade
-        if (trade.kind() == TradeKind.DUTCH_AUCTION) {
-            try this.rebalance(TradeKind.DUTCH_AUCTION) {} catch (bytes memory errData) {
+        // if the caller is the trade contract, try chaining with another rebalance()
+        if (_msgSender() == address(trade)) {
+            try this.rebalance(trade.kind()) {} catch (bytes memory errData) {
                 // prevent MEV searchers from providing less gas on purpose by reverting if OOG
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
