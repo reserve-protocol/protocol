@@ -219,7 +219,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
 
         const newTrader = <TestIRevenueTrader>await upgrades.deployProxy(RevenueTraderFactory, [], {
-          kind: 'uups'
+          kind: 'uups',
         })
 
         await expect(

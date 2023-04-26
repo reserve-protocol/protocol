@@ -483,7 +483,12 @@ const runTests = (assetDecimals: number, rewardDecimals: number) => {
 
       it('rewardsPerShare is correct', async () => {
         // (rewards / alice's deposit) + (rewards / (alice's deposit + bob's deposit))
-        expect(rewardsPerShare).equal(rewardAmount.mul(oneShare).div(initShares.div(4)).add(rewardAmount.mul(oneShare).div(initShares.div(2))))
+        expect(rewardsPerShare).equal(
+          rewardAmount
+            .mul(oneShare)
+            .div(initShares.div(4))
+            .add(rewardAmount.mul(oneShare).div(initShares.div(2)))
+        )
       })
     })
   })

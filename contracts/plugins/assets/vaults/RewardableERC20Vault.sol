@@ -69,10 +69,14 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626 {
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 amount
+        uint256
     ) internal virtual override {
         _claimAndSyncRewards();
         _syncAccount(from);
         _syncAccount(to);
+    }
+
+    function _decimalsOffset() internal view virtual override returns (uint8) {
+        return 9;
     }
 }

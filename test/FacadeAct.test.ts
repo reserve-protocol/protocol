@@ -711,7 +711,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
-          gasLimit: bn('10000000') // weird hardhat-ethers bug
+          gasLimit: bn('10000000'), // weird hardhat-ethers bug
         })
 
         // Check status - rewards claimed for both collaterals

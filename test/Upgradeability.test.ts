@@ -306,7 +306,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         [main.address, rsr.address, config.maxTradeSlippage, config.minTradeVolume],
         {
           initializer: 'init',
-          kind: 'uups'
+          kind: 'uups',
         }
       )
       await newRevenueTrader.deployed()
@@ -584,14 +584,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       const RevTraderV2Factory: ContractFactory = await ethers.getContractFactory(
         'RevenueTraderP1V2'
       )
-      const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
-        rsrTrader.address,
-        RevTraderV2Factory
+      const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>(
+        await upgrades.upgradeProxy(rsrTrader.address, RevTraderV2Factory)
       )
 
-      const rTokenTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
-        rTokenTrader.address,
-        RevTraderV2Factory
+      const rTokenTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>(
+        await upgrades.upgradeProxy(rTokenTrader.address, RevTraderV2Factory)
       )
 
       // Check addresses are maintained
