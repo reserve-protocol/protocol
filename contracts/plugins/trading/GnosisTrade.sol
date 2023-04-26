@@ -17,7 +17,7 @@ contract GnosisTrade is ITrade {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // ==== Constants
-    TradeKind public constant kind = TradeKind.BATCH_AUCTION;
+    TradeKind public constant KIND = TradeKind.BATCH_AUCTION;
     uint256 public constant FEE_DENOMINATOR = 1000;
 
     // Upper bound for the max number of orders we're happy to have the auction clear in;

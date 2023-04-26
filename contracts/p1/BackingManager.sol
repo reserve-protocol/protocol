@@ -88,7 +88,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // if the caller is the trade contract, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
-            try this.rebalance(trade.kind()) {} catch (bytes memory errData) {
+            // solhint-disable-next-line no-empty-blocks
+            try this.rebalance(trade.KIND()) {} catch (bytes memory errData) {
                 // prevent MEV searchers from providing less gas on purpose by reverting if OOG
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -249,13 +250,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 erc20.safeTransfer(address(rTokenTrader), toRToken[i]);
                 // solhint-disable-next-line no-empty-blocks
                 try rTokenTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
-                // no need to revert during OOG because forwardRevenue() is already altruistic
+                // no need to revert during OOG because caller is already altruistic
             }
             if (toRSR[i] > 0) {
                 erc20.safeTransfer(address(rsrTrader), toRSR[i]);
                 // solhint-disable-next-line no-empty-blocks
                 try rsrTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
-                // no need to revert during OOG because forwardRevenue() is already altruistic
+                // no need to revert during OOG because caller is already altruistic
             }
         }
 

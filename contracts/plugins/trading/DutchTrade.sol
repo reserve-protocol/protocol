@@ -28,7 +28,7 @@ contract DutchTrade is ITrade {
     using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
 
-    TradeKind public constant kind = TradeKind.DUTCH_AUCTION;
+    TradeKind public constant KIND = TradeKind.DUTCH_AUCTION;
 
     TradeStatus public status; // reentrancy protection
 
@@ -144,7 +144,7 @@ contract DutchTrade is ITrade {
         stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
-        require(msg.sender == address(origin), "only origin can settle"); // via origin.settleTrade()
+        require(msg.sender == address(origin), "only origin can settle"); // origin.settleTrade()
 
         // Received bid
         if (bidder != address(0)) {

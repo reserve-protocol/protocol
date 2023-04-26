@@ -35,5 +35,6 @@ interface ITrade {
     function canSettle() external view returns (bool);
 
     /// @return TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    function kind() external view returns (TradeKind);
+    // solhint-disable-next-line func-name-mixedcase
+    function KIND() external view returns (TradeKind);
 }
