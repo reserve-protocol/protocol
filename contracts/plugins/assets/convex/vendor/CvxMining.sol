@@ -14,7 +14,7 @@ interface ICvx {
 library CvxMining {
     ICvx public constant cvx = ICvx(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
-    function ConvertCrvToCvx(uint256 _amount) external view returns (uint256) {
+    function ConvertCrvToCvx(uint256 _amount) internal view returns (uint256) {
         uint256 supply = cvx.totalSupply();
         uint256 reductionPerCliff = cvx.reductionPerCliff();
         uint256 totalCliffs = cvx.totalCliffs();
