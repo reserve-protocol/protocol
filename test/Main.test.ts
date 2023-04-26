@@ -1809,14 +1809,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
     })
 
-    it('Should not allow to poke when paused', async () => {
+    it('Should allow to poke when trading paused', async () => {
       await main.connect(owner).pauseTrading()
-      await expect(main.connect(other).poke()).to.be.revertedWith('frozen or trading paused')
+      await main.connect(other).poke()
+    })
+
+    it('Should allow to poke when issuance paused', async () => {
+      await main.connect(owner).pauseIssuance()
+      await main.connect(other).poke()
     })
 
     it('Should not allow to poke when frozen', async () => {
       await main.connect(owner).freezeForever()
-      await expect(main.connect(other).poke()).to.be.revertedWith('frozen or trading paused')
+      await expect(main.connect(other).poke()).to.be.revertedWith('frozen')
     })
 
     it('Should not allow to refresh basket if not OWNER when unfrozen and unpaused', async () => {
