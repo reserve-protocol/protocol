@@ -9,6 +9,11 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
  * Usage: if (canSettle()) settle()
  */
 interface ITrade {
+    /// Complete the trade and transfer tokens back to the origin trader
+    /// @return soldAmt {qSellTok} The quantity of tokens sold
+    /// @return boughtAmt {qBuyTok} The quantity of tokens bought
+    function settle() external returns (uint256 soldAmt, uint256 boughtAmt);
+
     function sell() external view returns (IERC20Metadata);
 
     function buy() external view returns (IERC20Metadata);
@@ -20,8 +25,6 @@ interface ITrade {
     /// @dev Should be guaranteed to be true eventually as an invariant
     function canSettle() external view returns (bool);
 
-    /// Complete the trade and transfer tokens back to the origin trader
-    /// @return soldAmt {qSellTok} The quantity of tokens sold
-    /// @return boughtAmt {qBuyTok} The quantity of tokens bought
-    function settle() external returns (uint256 soldAmt, uint256 boughtAmt);
+    /// @return {qSellTok}
+    function initBal() external view returns (uint256);
 }
