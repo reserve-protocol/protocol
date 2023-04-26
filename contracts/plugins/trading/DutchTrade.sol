@@ -184,6 +184,7 @@ contract DutchTrade is ITrade {
     /// @param timestamp {s} The block timestamp to get price for
     /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
     function bidAmount(uint48 timestamp) public view returns (uint256) {
+        require(timestamp > startTime, "cannot bid block auction was created");
         require(timestamp < endTime, "auction over");
 
         uint192 progression = divuu(uint48(block.timestamp) - startTime, endTime - startTime);
