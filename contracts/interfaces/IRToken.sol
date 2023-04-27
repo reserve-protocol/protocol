@@ -79,14 +79,14 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     function issueTo(address recipient, uint256 amount) external;
 
     /// Redeem RToken for basket collateral
-    /// @dev Reverts if partial redemption
+    /// @dev Use customRedemption to restrict min token amounts received
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
     function redeem(uint256 amount, uint48 basketNonce) external;
 
     /// Redeem RToken for basket collateral to a particular recipient
-    /// @dev Reverts if partial redemption
+    /// @dev Use customRedemption to restrict min token amounts received
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonce The nonce of the basket the redemption should be from; else reverts

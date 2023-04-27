@@ -444,7 +444,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Return the current issuance/redemption value of `amount` BUs
-    /// @dev Subset of logic with quoteHistoricalRedemption; more gas efficient for 1 basketNonce
+    /// @dev Subset of logic with quoteHistoricalRedemption; more gas efficient for current nonce
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs

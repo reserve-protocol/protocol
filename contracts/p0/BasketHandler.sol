@@ -731,8 +731,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         // Update the basket if it's not disabled
         if (!disabled) {
-            basket.setFrom(newBasket);
             nonce += 1;
+            basket.setFrom(newBasket);
+            historicalBaskets[nonce].setFrom(_newBasket);
             timestamp = uint48(block.timestamp);
         }
 
