@@ -78,18 +78,10 @@ abstract contract TradingP0 is RewardableP0, ITrading {
             // Warning, Assumption: blocktime <= 12s
             // Require at least 1 block between auctions of the same kind
             // This gives space for someone to start one of the opposite kinds of auctions
-            if (kind == TradeKind.DUTCH_AUCTION) {
-                require(
-                    block.timestamp > lastEndTime[TradeKind.DUTCH_AUCTION] + 12,
-                    "wait 1 block"
-                );
-            } else {
-                // kind == TradeKind.BATCH_AUCTION
-                require(
-                    block.timestamp > lastEndTime[TradeKind.BATCH_AUCTION] + 12,
-                    "wait 1 block"
-                );
-            }
+            uint48 lastEnd = lastEndTime[
+                kind == TradeKind.DUTCH_AUCTION ? TradeKind.BATCH_AUCTION : TradeKind.DUTCH_AUCTION
+            ];
+            require(block.timestamp > lastEnd, "wait 1 block");
         }
 
         ITrade trade = broker.openTrade(kind, req);
