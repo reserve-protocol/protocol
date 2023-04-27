@@ -32,6 +32,7 @@ export interface Proposal {
   values: Array<BigNumber>
   calldatas: Array<string>
   description: string
+  proposalId?: string
 }
 
 export const getProposalDetails = async (proposalId: string): Promise<Proposal> => {
