@@ -332,7 +332,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // {tok/BU} = {ref/BU} / {ref/tok}.  0-division averted by condition above.
             uint192 q = basket.refAmts[basket.erc20s[i]].div(refPerTok, CEIL);
             // q > 0 because q = (n).div(_, CEIL) and n > 0
-
             // {BU} = {tok} / {tok/BU}
             uint192 inBUs = coll.bal(account).div(q);
             baskets.bottom = fixMin(baskets.bottom, inBUs);

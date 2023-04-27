@@ -201,7 +201,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
                 // {rTok} = {BU} * {rTok / BU} (if needed == 0, conv rate is 1 rTok/BU)
                 uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
-
                 // gas-optimization: RToken is known to have 18 decimals, same as FixLib
                 rToken.mint(address(this), uint256(rTok));
                 rToken.setBasketsNeeded(basketsHeldBottom);

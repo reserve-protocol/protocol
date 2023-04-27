@@ -3,10 +3,10 @@ import { ethers } from 'hardhat'
 import { Wallet, Signer, BigNumber } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
-import { fp } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { whileImpersonating } from '../utils/impersonation'
 import { CollateralStatus, RoundingMode, TradeStatus } from '../../common/constants'
-import { advanceTime } from '../utils/time'
+import { advanceBlocks, advanceTime } from '../utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
@@ -1300,4 +1300,14 @@ describe('The Chaos Operations scenario', () => {
     expect(rTokBalAfter).to.equal(0)
     expect(bmBalAFter).to.equal(bmBalBefore.add(rTokBalBefore).add(amt))
   })
+
+  // it.only('does not allow rtoken rates to fall', async () => {
+  //   await advanceTime(2)
+  //   await advanceBlocks(376)
+  //   await scenario.connect(alice).issueTo(bn('3'), bn('0'))
+  //   await scenario.connect(alice).swapRegisteredAsset(bn('0'), bn('2931387367511778903507664448100344197073717920680885052632909040772'), bn('0'), bn('28160365735525868814080538303451678144713499979525835012245729939'), bn('0'), bn('9162468231347710210253343401769384326093180527477684595995854308'))
+  //   await scenario.connect(alice).refreshBasket()
+  //   await scenario.connect(alice).manageBackingTokens()
+  //   expect(await scenario.echidna_ratesNeverFall()).equal(true)
+  // })
 })

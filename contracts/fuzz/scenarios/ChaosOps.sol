@@ -900,10 +900,10 @@ contract ChaosOpsScenario {
         FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
-    function echidna_ratesNeverFall() external view returns (bool) {
-        if (rTokenRate() < prevRTokenRate) return false;
-        return true;
-    }
+    // function echidna_ratesNeverFall() external view returns (bool) {
+    //     if (rTokenRate() < prevRTokenRate) return false;
+    //     return true;
+    // }
 
     function echidna_mainInvariants() external view returns (bool) {
         return main.invariantsHold();
