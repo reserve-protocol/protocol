@@ -266,6 +266,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             config.targetNames[erc20s[i]] = names[i];
         }
 
+        historicalNonce = nonce + 1; // set historicalNonce to the next nonce
         emit PrimeBasketSet(erc20s, targetAmts, names);
     }
 
@@ -733,7 +734,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         if (!disabled) {
             nonce += 1;
             basket.setFrom(newBasket);
-            historicalBaskets[nonce].setFrom(_newBasket);
+            historicalBaskets[nonce].setFrom(newBasket);
             timestamp = uint48(block.timestamp);
         }
 
