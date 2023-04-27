@@ -128,7 +128,7 @@ contract BrokerP0 is ComponentP0, IBroker {
             "invalid batchTradeImplementation address"
         );
 
-        emit TradeImplementationSet(batchTradeImplementation, newTradeImplementation);
+        emit BatchTradeImplementationSet(batchTradeImplementation, newTradeImplementation);
         batchTradeImplementation = newTradeImplementation;
     }
 
@@ -138,7 +138,7 @@ contract BrokerP0 is ComponentP0, IBroker {
             newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
             "invalid batchAuctionLength"
         );
-        emit AuctionLengthSet(batchAuctionLength, newAuctionLength);
+        emit BatchAuctionLengthSet(batchAuctionLength, newAuctionLength);
         batchAuctionLength = newAuctionLength;
     }
 
@@ -149,7 +149,7 @@ contract BrokerP0 is ComponentP0, IBroker {
             "invalid dutchTradeImplementation address"
         );
 
-        emit TradeImplementationSet(dutchTradeImplementation, newTradeImplementation);
+        emit DutchTradeImplementationSet(dutchTradeImplementation, newTradeImplementation);
         dutchTradeImplementation = newTradeImplementation;
     }
 
@@ -159,7 +159,7 @@ contract BrokerP0 is ComponentP0, IBroker {
             newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
             "invalid dutchAuctionLength"
         );
-        emit AuctionLengthSet(dutchAuctionLength, newAuctionLength);
+        emit DutchAuctionLengthSet(dutchAuctionLength, newAuctionLength);
         dutchAuctionLength = newAuctionLength;
     }
 
