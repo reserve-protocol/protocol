@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IBackingManager.sol";
@@ -19,7 +19,7 @@ import "./mixins/RecollateralizationLib.sol";
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     // Cache of peer components
     IAssetRegistry private assetRegistry;
@@ -76,8 +76,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function grantRTokenAllowance(IERC20 erc20) external notFrozen {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
-        IERC20Upgradeable(address(erc20)).safeApprove(address(main.rToken()), 0);
-        IERC20Upgradeable(address(erc20)).safeApprove(address(main.rToken()), type(uint256).max);
+        IERC20(address(erc20)).safeApprove(address(main.rToken()), 0);
+        IERC20(address(erc20)).safeApprove(address(main.rToken()), type(uint256).max);
     }
 
     /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
@@ -176,17 +176,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
          *   2. Using whatever balances of collateral are there, fast-issue all RToken possible.
          *      (in detail: mint RToken and set basketsNeeded so that the BU/rtok exchange rate is
          *       roughly constant, and strictly does not decrease,
-         *   3. Handout all surplus asset balances (including collateral and RToken) to the
-         *      RSR and RToken traders according to the distribution totals.
+         *   3. Handout all RToken held above the backingBuffer portion of the supply, and all
+         *      non-RToken surplus asset balances to the RSR and
+         *      RToken traders according to the distribution totals.
          */
 
         // Forward any RSR held to StRSR pool; RSR should never be sold for RToken yield
         if (rsr.balanceOf(address(this)) > 0) {
             // For CEI, this is an interaction "within our system" even though RSR is already live
-            IERC20Upgradeable(address(rsr)).safeTransfer(
-                address(stRSR),
-                rsr.balanceOf(address(this))
-            );
+            IERC20(address(rsr)).safeTransfer(address(stRSR), rsr.balanceOf(address(this)));
         }
 
         // Mint revenue RToken and update `basketsNeeded`
@@ -196,24 +194,25 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         //   (>== is "no less than, and nearly equal to")
         //    and rToken'.basketsNeeded <= basketsHeld.bottom
         // and rToken'.totalSupply is maximal satisfying this.
-        uint192 needed; // {BU}
-        {
-            needed = rToken.basketsNeeded(); // {BU}
-            if (basketsHeld.bottom.gt(needed)) {
-                // gas-optimization: RToken is known to have 18 decimals, the same as FixLib
-                uint192 totalSupply = _safeWrap(rToken.totalSupply()); // {rTok}
+        uint192 rTokenBuffer; // {rTok}
+        uint192 needed = rToken.basketsNeeded(); // {BU}
+        if (basketsHeld.bottom.gt(needed)) {
+            // gas-optimization: RToken is known to have 18 decimals, the same as FixLib
+            uint192 totalSupply = _safeWrap(rToken.totalSupply()); // {rTok}
 
-                // {BU} = {BU} - {BU}
-                uint192 extraBUs = basketsHeld.bottom.minus(needed);
+            // {BU} = {BU} - {BU}
+            uint192 extraBUs = basketsHeld.bottom.minus(needed);
 
-                // {rTok} = {BU} * {rTok / BU} (if needed == 0, conv rate is 1 rTok/BU)
-                uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
+            // {rTok} = {BU} * {rTok / BU} (if needed == 0, conv rate is 1 rTok/BU)
+            uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
 
-                // gas-optimization: RToken is known to have 18 decimals, same as FixLib
-                rToken.mint(address(this), uint256(rTok));
-                rToken.setBasketsNeeded(basketsHeld.bottom);
-                needed = basketsHeld.bottom;
-            }
+            // gas-optimization: RToken is known to have 18 decimals, same as FixLib
+            rToken.mint(address(this), uint256(rTok));
+            rToken.setBasketsNeeded(basketsHeld.bottom);
+            needed = basketsHeld.bottom;
+
+            // {rTok} = {1} * ({rTok} + {rTok})
+            rTokenBuffer = backingBuffer.mul(totalSupply + rTok);
         }
 
         // At this point, even though basketsNeeded may have changed:
@@ -223,7 +222,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // Keep a small buffer of individual collateral; "excess" assets are beyond the buffer.
         needed = needed.mul(FIX_ONE.plus(backingBuffer));
 
-        // Handout excess assets above what is needed, including any recently minted RToken
+        // Calculate all balances above the backingBuffer:
+        //  - rToken balances above the rTokenBuffer
+        //  - non-RToken balances above the backingBuffer
         uint256 length = erc20s.length;
         RevenueTotals memory totals = distributor.totals();
         uint256[] memory toRSR = new uint256[](length);
@@ -231,10 +232,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assetRegistry.toAsset(erc20s[i]);
 
-            uint192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
-            if (asset.bal(address(this)).gt(req)) {
+            // {tok} = {BU} * {tok/BU}
+            uint192 req = erc20s[i] != IERC20(address(rToken))
+                ? needed.mul(basketHandler.quantity(erc20s[i]), CEIL)
+                : rTokenBuffer;
+
+            uint192 bal = asset.bal(address(this));
+            if (bal.gt(req)) {
                 // delta: {qTok}, the excess quantity of this asset that we hold
-                uint256 delta = asset.bal(address(this)).minus(req).shiftl_toUint(
+                uint256 delta = bal.minus(req).shiftl_toUint(
                     int8(IERC20Metadata(address(erc20s[i])).decimals())
                 );
                 // no div-by-0: Distributor guarantees (totals.rTokenTotal + totals.rsrTotal) > 0
@@ -246,7 +252,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // == Interactions ==
         for (uint256 i = 0; i < length; ++i) {
-            IERC20Upgradeable erc20 = IERC20Upgradeable(address(erc20s[i]));
+            if (erc20s[i] == IERC20(address(rToken))) continue;
+            IERC20 erc20 = IERC20(address(erc20s[i]));
             if (toRToken[i] > 0) {
                 erc20.safeTransfer(address(rTokenTrader), toRToken[i]);
                 // solhint-disable-next-line no-empty-blocks

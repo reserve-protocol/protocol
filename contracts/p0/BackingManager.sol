@@ -163,7 +163,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             }
         }
 
-        // Keep a small surplus of individual collateral
+        // BackingBuffer for non-RTokens
         needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer));
 
         // Handout excess assets above what is needed, including any newly minted RToken
@@ -173,6 +173,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
             uint192 bal = asset.bal(address(this)); // {tok}
             uint192 req = needed.mul(main.basketHandler().quantity(erc20s[i]), CEIL);
+            if (address(erc20s[i]) == address(main.rToken())) {
+                req = backingBuffer.mul(_safeWrap(main.rToken().totalSupply()));
+            }
 
             if (bal.gt(req)) {
                 // delta: {qTok}
