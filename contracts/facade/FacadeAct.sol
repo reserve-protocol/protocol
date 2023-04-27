@@ -92,10 +92,10 @@ contract FacadeAct is IFacadeAct {
             ) {
                 // try: backingManager.manageTokens([])
 
-                try cache.bm.rebalance(TradeKind.DUTCH_AUCTION) {
+                try cache.bm.rebalance(TradeKind.BATCH_AUCTION) {
                     return (
                         address(cache.bm),
-                        abi.encodeWithSelector(cache.bm.rebalance.selector, TradeKind.DUTCH_AUCTION)
+                        abi.encodeWithSelector(cache.bm.rebalance.selector, TradeKind.BATCH_AUCTION)
                     );
                 } catch {}
             } else {
@@ -137,7 +137,7 @@ contract FacadeAct is IFacadeAct {
 
                     // rTokenTrader: check if we can start any trades
                     uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
-                    try cache.rTokenTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {
+                    try cache.rTokenTrader.manageToken(erc20s[i], TradeKind.BATCH_AUCTION) {
                         if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
                             // A trade started; do cache.rTokenTrader.manageToken
                             return (
@@ -145,7 +145,7 @@ contract FacadeAct is IFacadeAct {
                                 abi.encodeWithSelector(
                                     cache.rTokenTrader.manageToken.selector,
                                     erc20s[i],
-                                    TradeKind.DUTCH_AUCTION
+                                    TradeKind.BATCH_AUCTION
                                 )
                             );
                         }
@@ -153,7 +153,7 @@ contract FacadeAct is IFacadeAct {
 
                     // rsrTrader: check if we can start any trades
                     tradesOpen = cache.rsrTrader.tradesOpen();
-                    try cache.rsrTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {
+                    try cache.rsrTrader.manageToken(erc20s[i], TradeKind.BATCH_AUCTION) {
                         if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
                             // A trade started; do cache.rsrTrader.manageToken
                             return (
@@ -161,7 +161,7 @@ contract FacadeAct is IFacadeAct {
                                 abi.encodeWithSelector(
                                     cache.rsrTrader.manageToken.selector,
                                     erc20s[i],
-                                    TradeKind.DUTCH_AUCTION
+                                    TradeKind.BATCH_AUCTION
                                 )
                             );
                         }
@@ -187,7 +187,7 @@ contract FacadeAct is IFacadeAct {
                                     try
                                         cache.rTokenTrader.manageToken(
                                             erc20s[i],
-                                            TradeKind.DUTCH_AUCTION
+                                            TradeKind.BATCH_AUCTION
                                         )
                                     {
                                         if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
@@ -216,7 +216,7 @@ contract FacadeAct is IFacadeAct {
                                     try
                                         cache.rsrTrader.manageToken(
                                             erc20s[i],
-                                            TradeKind.DUTCH_AUCTION
+                                            TradeKind.BATCH_AUCTION
                                         )
                                     {
                                         if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
@@ -242,15 +242,14 @@ contract FacadeAct is IFacadeAct {
                         {
                             IAsset rTokenAsset = cache.reg.toAsset(IERC20(address(rToken)));
                             (uint192 lotLow, ) = rTokenAsset.lotPrice();
-
                             if (
-                                rTokenAsset.bal(address(cache.rTokenTrader)) >
+                                rTokenAsset.bal(address(cache.rTokenTrader)) >=
                                 minTradeSize(cache.rTokenTrader.minTradeVolume(), lotLow)
                             ) {
                                 try
                                     cache.rTokenTrader.manageToken(
                                         IERC20(address(rToken)),
-                                        TradeKind.DUTCH_AUCTION
+                                        TradeKind.BATCH_AUCTION
                                     )
                                 {
                                     address[] memory oneERC20 = new address[](1);
@@ -272,7 +271,7 @@ contract FacadeAct is IFacadeAct {
                             (uint192 lotLow, ) = rsrAsset.lotPrice();
 
                             if (
-                                rsrAsset.bal(address(cache.stRSR)) - initialStRSRBal >
+                                rsrAsset.bal(address(cache.stRSR)) - initialStRSRBal >=
                                 minTradeSize(cache.rsrTrader.minTradeVolume(), lotLow)
                             ) {
                                 IERC20[] memory empty = new IERC20[](0);
@@ -391,7 +390,7 @@ contract FacadeAct is IFacadeAct {
 
         // Try to launch auctions
         // solhint-disable-next-line no-empty-blocks
-        try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {
+        try bm.rebalance(TradeKind.BATCH_AUCTION) {} catch {
             return false;
         }
         return bm.tradesOpen() > 0;
@@ -421,7 +420,7 @@ contract FacadeAct is IFacadeAct {
 
             uint256 tradesOpen = revenueTrader.tradesOpen();
 
-            try revenueTrader.manageToken(reg.erc20s[i], TradeKind.DUTCH_AUCTION) {
+            try revenueTrader.manageToken(reg.erc20s[i], TradeKind.BATCH_AUCTION) {
                 if (revenueTrader.tradesOpen() - tradesOpen > 0) {
                     unfiltered[num] = reg.erc20s[i];
                     ++num;
@@ -461,7 +460,7 @@ contract FacadeAct is IFacadeAct {
 
         // Start auctions
         for (uint256 i = 0; i < toStart.length; ++i) {
-            revenueTrader.manageToken(toStart[i], TradeKind.DUTCH_AUCTION);
+            revenueTrader.manageToken(toStart[i], TradeKind.BATCH_AUCTION);
         }
     }
 }

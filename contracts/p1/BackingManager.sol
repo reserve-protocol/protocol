@@ -194,7 +194,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         //   (>== is "no less than, and nearly equal to")
         //    and rToken'.basketsNeeded <= basketsHeld.bottom
         // and rToken'.totalSupply is maximal satisfying this.
-        uint192 rTokenBuffer; // {rTok}
         uint192 needed = rToken.basketsNeeded(); // {BU}
         if (basketsHeld.bottom.gt(needed)) {
             // gas-optimization: RToken is known to have 18 decimals, the same as FixLib
@@ -210,9 +209,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             rToken.mint(address(this), uint256(rTok));
             rToken.setBasketsNeeded(basketsHeld.bottom);
             needed = basketsHeld.bottom;
-
-            // {rTok} = {1} * ({rTok} + {rTok})
-            rTokenBuffer = backingBuffer.mul(totalSupply + rTok);
         }
 
         // At this point, even though basketsNeeded may have changed:
@@ -235,14 +231,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             // {tok} = {BU} * {tok/BU}
             uint192 req = erc20s[i] != IERC20(address(rToken))
                 ? needed.mul(basketHandler.quantity(erc20s[i]), CEIL)
-                : rTokenBuffer;
+                : backingBuffer.mul(_safeWrap(rToken.totalSupply()));
 
             uint192 bal = asset.bal(address(this));
             if (bal.gt(req)) {
                 // delta: {qTok}, the excess quantity of this asset that we hold
-                uint256 delta = bal.minus(req).shiftl_toUint(
-                    int8(IERC20Metadata(address(erc20s[i])).decimals())
-                );
+                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20Decimals()));
+
                 // no div-by-0: Distributor guarantees (totals.rTokenTotal + totals.rsrTotal) > 0
                 // initial division is intentional here! We'd rather save the dust than be unfair
                 toRSR[i] = (delta / (totals.rTokenTotal + totals.rsrTotal)) * totals.rsrTotal;
@@ -252,20 +247,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // == Interactions ==
         for (uint256 i = 0; i < length; ++i) {
-            if (erc20s[i] == IERC20(address(rToken))) continue;
-            IERC20 erc20 = IERC20(address(erc20s[i]));
-            if (toRToken[i] > 0) {
-                erc20.safeTransfer(address(rTokenTrader), toRToken[i]);
-                // solhint-disable-next-line no-empty-blocks
-                try rTokenTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
-                // no need to revert during OOG because caller is already altruistic
-            }
-            if (toRSR[i] > 0) {
-                erc20.safeTransfer(address(rsrTrader), toRSR[i]);
-                // solhint-disable-next-line no-empty-blocks
-                try rsrTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
-                // no need to revert during OOG because caller is already altruistic
-            }
+            if (toRToken[i] > 0) erc20s[i].safeTransfer(address(rTokenTrader), toRToken[i]);
+            if (toRSR[i] > 0) erc20s[i].safeTransfer(address(rsrTrader), toRSR[i]);
         }
 
         // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)

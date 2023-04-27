@@ -182,28 +182,16 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20Decimals()));
                 uint256 tokensPerShare = delta / (totals.rTokenTotal + totals.rsrTotal);
 
-                // solhint-disable no-empty-blocks
                 {
                     uint256 toRSR = tokensPerShare * totals.rsrTotal;
-                    if (toRSR > 0) {
-                        erc20s[i].safeTransfer(address(main.rsrTrader()), toRSR);
-                        try
-                            main.rsrTrader().manageToken(erc20s[i], TradeKind.DUTCH_AUCTION)
-                        {} catch {}
-                        // no need to revert during OOG because caller is already altruistic
-                    }
+                    if (toRSR > 0) erc20s[i].safeTransfer(address(main.rsrTrader()), toRSR);
                 }
                 {
                     uint256 toRToken = tokensPerShare * totals.rTokenTotal;
                     if (toRToken > 0) {
                         erc20s[i].safeTransfer(address(main.rTokenTrader()), toRToken);
-                        try
-                            main.rTokenTrader().manageToken(erc20s[i], TradeKind.DUTCH_AUCTION)
-                        {} catch {}
-                        // no need to revert during OOG because caller is already altruistic
                     }
                 }
-                // solhint-enable no-empty-blocks
             }
         }
     }
