@@ -31,10 +31,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         require(address(tokenToBuy_) != address(0), "invalid token address");
         __Component_init(main_);
         __Trading_init(main_, maxTradeSlippage_, minTradeVolume_);
-        assetRegistry = main_.assetRegistry();
-        distributor = main_.distributor();
-        backingManager = main_.backingManager();
         tokenToBuy = tokenToBuy_;
+        cacheComponents();
     }
 
     /// Settle a single trade + distribute revenue
@@ -89,7 +87,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         }
 
         require(address(trades[erc20]) == address(0), "trade open");
-        require(erc20.balanceOf(address(this)) == 0, "0 balance");
+        require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
         IAsset sell = assetRegistry.toAsset(erc20);
         IAsset buy = assetRegistry.toAsset(tokenToBuy);
@@ -121,12 +119,10 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     }
 
     /// Call after upgrade to >= 3.0.0
-    function cacheBackingManager() public {
+    function cacheComponents() public {
+        assetRegistry = main.assetRegistry();
+        distributor = main.distributor();
         backingManager = main.backingManager();
-    }
-
-    /// Call after upgrade to >= 3.0.0
-    function cacheFurnace() public {
         furnace = main.furnace();
     }
 

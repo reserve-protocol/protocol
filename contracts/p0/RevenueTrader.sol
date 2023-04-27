@@ -70,7 +70,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         main.furnace().melt();
 
         require(address(trades[erc20]) == address(0), "trade open");
-        require(erc20.balanceOf(address(this)) == 0, "0 balance");
+        require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);

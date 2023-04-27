@@ -51,11 +51,11 @@ contract FacadeTest is IFacadeTest {
         }
 
         // solhint-disable no-empty-blocks
-        try main.backingManager().rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
+        try main.backingManager().rebalance(TradeKind.BATCH_AUCTION) {} catch {}
         try main.backingManager().forwardRevenue(erc20s) {} catch {}
         for (uint256 i = 0; i < erc20s.length; i++) {
-            try rsrTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
-            try rTokenTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
+            try rsrTrader.manageToken(erc20s[i], TradeKind.BATCH_AUCTION) {} catch {}
+            try rTokenTrader.manageToken(erc20s[i], TradeKind.BATCH_AUCTION) {} catch {}
         }
         // solhint-enable no-empty-blocks
     }

@@ -203,4 +203,10 @@ contract BrokerP0 is ComponentP0, IBroker {
         trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength);
         return trade;
     }
+
+    /// @custom:governance
+    function setDisabled(bool disabled_) external governance {
+        emit DisabledSet(disabled, disabled_);
+        disabled = disabled_;
+    }
 }
