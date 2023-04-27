@@ -63,9 +63,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             return;
         }
 
-        // === Try to launch another auction ===
-
-        // refresh()
         main.assetRegistry().refresh();
         main.furnace().melt();
 

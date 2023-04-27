@@ -21,6 +21,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     IDistributor private distributor;
     IBackingManager private backingManager;
     IFurnace private furnace;
+    IRToken private rToken;
 
     function init(
         IMain main_,
@@ -58,7 +59,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
     /// @dev Intended to be used with multicall
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    /// @custom:interaction CEI
+    /// @custom:interaction RCEI
     // let bal = this contract's balance of erc20
     // checks: !paused (trading), !frozen
     // does nothing if erc20 == addr(0) or bal == 0
@@ -78,19 +79,26 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             return;
         }
 
-        // === Try to launch another auction ===
+        IAsset sell = assetRegistry.toAsset(erc20);
+        IAsset buy = assetRegistry.toAsset(tokenToBuy);
 
-        // refresh() if not called by BackingManager -- gas optimization
+        // === Refresh ===
+        // do not need to refresh when caller is BackingManager
         if (_msgSender() != address(backingManager)) {
-            assetRegistry.refresh();
-            furnace.melt();
+            if (erc20 == IERC20(address(rToken)) || tokenToBuy == IERC20(address(rToken))) {
+                // if either token is the RToken, refresh everything
+                assetRegistry.refresh();
+                furnace.melt();
+            } else {
+                // otherwise, refresh just buy + sell
+                sell.refresh();
+                buy.refresh();
+            }
         }
 
         require(address(trades[erc20]) == address(0), "trade open");
         require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
-        IAsset sell = assetRegistry.toAsset(erc20);
-        IAsset buy = assetRegistry.toAsset(tokenToBuy);
         (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
         (, uint192 buyPrice) = buy.price(); // {UoA/tok}
 
@@ -124,6 +132,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         distributor = main.distributor();
         backingManager = main.backingManager();
         furnace = main.furnace();
+        rToken = main.rToken();
     }
 
     /**
@@ -131,5 +140,5 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[45] private __gap;
+    uint256[44] private __gap;
 }
