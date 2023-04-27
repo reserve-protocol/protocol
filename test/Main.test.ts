@@ -108,10 +108,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
+  let backupToken1: ERC20Mock
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
+  let backupCollateral1: FiatCollateral
   let erc20s: ERC20Mock[]
   let basketsNeededAmts: BigNumber[]
 
@@ -169,6 +171,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
+
+    backupToken1 = erc20s[2] // USDT
+    backupCollateral1 = <FiatCollateral>collateral[2]
 
     collateral0 = <FiatCollateral>basket[0]
     collateral1 = <FiatCollateral>basket[1]
@@ -1720,6 +1725,58 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(basketHandler, 'PrimeBasketSet')
         .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+    })
+
+    describe('Historical Redemptions', () => {
+      const issueAmount = fp('10000')
+      let usdcChainlink: MockV3Aggregator
+      
+      beforeEach(async () => {
+        usdcChainlink = await ethers.getContractAt('MockV3Aggregator', await collateral1.chainlinkFeed())
+
+        // register backups
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
+
+        // issue rTokens
+        await token0.connect(addr1).approve(rToken.address, issueAmount)
+        await token1.connect(addr1).approve(rToken.address, issueAmount)
+        await token2.connect(addr1).approve(rToken.address, issueAmount)
+        await token3.connect(addr1).approve(rToken.address, issueAmount)
+        await rToken.connect(addr1).issue(issueAmount)
+      })
+
+      it('Should correctly quote a historical redemption (simple)', async () => {
+        // default usdc & refresh basket to use backup collateral
+        await usdcChainlink.updateAnswer(bn('0.8e8'))
+        await basketHandler.refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+  
+        const quote = await basketHandler.quoteHistoricalRedemption([1, 2], [fp('0.5'), fp('0.5')], fp('10000'))
+
+        const expectedTokens = [token0.address, token1.address, token2.address, token3.address, backupToken1.address]
+        const expectedQuantities = [
+          fp('0.25').mul(issueAmount).div(await collateral0.refPerTok()).div(bn(`1e${18 - (await token0.decimals())}`)),
+          fp('0.125').mul(issueAmount).div(await collateral1.refPerTok()).div(bn(`1e${18 - (await token1.decimals())}`)),
+          fp('0.25').mul(issueAmount).div(await collateral2.refPerTok()).div(bn(`1e${18 - (await token2.decimals())}`)),
+          fp('0.25').mul(issueAmount).div(await collateral3.refPerTok()).div(bn(`1e${18 - (await token3.decimals())}`)),
+          fp('0.125').mul(issueAmount).div(await backupCollateral1.refPerTok()).div(bn(`1e${18 - (await backupToken1.decimals())}`)),
+        ]
+        expect(quote.erc20s[0]).equal(expectedTokens[0])
+        expect(quote.erc20s[1]).equal(expectedTokens[1])
+        expect(quote.erc20s[2]).equal(expectedTokens[2])
+        expect(quote.erc20s[3]).equal(expectedTokens[3])
+        expect(quote.erc20s[4]).equal(expectedTokens[4])
+        expect(quote.quantities[0]).equal(expectedQuantities[0])
+        expect(quote.quantities[1]).equal(expectedQuantities[1])
+        expect(quote.quantities[2]).equal(expectedQuantities[2])
+        expect(quote.quantities[3]).equal(expectedQuantities[3])
+        expect(quote.quantities[4]).equal(expectedQuantities[4])
+      })
     })
 
     it('Should return (FIX_ZERO, FIX_MAX) for basketsHeldBy(<any account>) if the basket is empty', async () => {

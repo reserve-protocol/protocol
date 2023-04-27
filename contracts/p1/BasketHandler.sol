@@ -161,10 +161,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // === Historical basket nonces ===
     // Added in 3.0.0
 
-    // Nonce of the first reference basket from the current history
+    // Nonce of the first reference basket from the current prime basket history
     // A new historical record begins whenever the prime basket is changed
     // There can be 0 to any number of reference baskets from the current history
-    uint48 private historicalNonce; // {nonce}
+    uint48 private primeNonce; // {nonce}
 
     // The historical baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private historicalBaskets;
@@ -293,7 +293,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             config.targetNames[erc20s[i]] = names[i];
         }
 
-        historicalNonce = nonce + 1; // set historicalNonce to the next nonce
+        primeNonce = nonce + 1; // set primeNonce to the next nonce
         emit PrimeBasketSet(erc20s, targetAmts, names);
     }
 
@@ -485,8 +485,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint192[] memory portions,
         uint192 amount
     ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
-        // directly after upgrade the historicalNonce will be 0, which is not a valid value
-        require(historicalNonce > 0, "historicalNonce uninitialized");
+        // directly after upgrade the primeNonce will be 0, which is not a valid value
+        require(primeNonce > 0, "primeNonce uninitialized");
         require(basketNonces.length == portions.length, "portions does not mirror basketNonces");
 
         // Confirm portions sum to FIX_ONE
@@ -504,11 +504,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         // Calculate the linear combination basket
         for (uint48 i = 0; i < basketNonces.length; ++i) {
             require(
-                basketNonces[i] >= historicalNonce && basketNonces[i] <= nonce,
+                basketNonces[i] >= primeNonce && basketNonces[i] <= nonce,
                 "invalid basketNonce"
             ); // will always revert directly after setPrimeBasket()
-            Basket storage b = historicalBaskets[i];
-
+            Basket storage b = historicalBaskets[basketNonces[i]];
             // Add-in refAmts contribution from historical basket
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
                 IERC20 erc20 = b.erc20s[j];
@@ -524,15 +523,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 }
 
                 // Add new ERC20 entry if not found
+                uint192 amt = portions[i].mul(b.refAmts[erc20], FLOOR);
                 if (erc20Index == type(uint256).max) {
                     erc20sAll[len] = erc20;
 
                     // {ref} = {1} * {ref}
-                    refAmtsAll[len] = portions[j].mul(b.refAmts[erc20], FLOOR);
+                    refAmtsAll[len] = amt;
                     ++len;
                 } else {
                     // {ref} = {1} * {ref}
-                    refAmtsAll[erc20Index] += portions[j].mul(b.refAmts[erc20], FLOOR);
+                    refAmtsAll[erc20Index] += amt;
                 }
             }
         }
