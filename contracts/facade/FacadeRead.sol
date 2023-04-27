@@ -221,7 +221,8 @@ contract FacadeRead is IFacadeRead {
 
     /// @return tokens The ERC20s backing the RToken
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens) {
-        (tokens, ) = rToken.main().basketHandler().quote(FIX_ONE, RoundingMode.FLOOR);
+        IBasketHandler bh = rToken.main().basketHandler();
+        (tokens, ) = bh.quote(FIX_ONE, RoundingMode.FLOOR);
     }
 
     /// Returns the backup configuration for a given targetName
@@ -250,6 +251,7 @@ contract FacadeRead is IFacadeRead {
         view
         returns (uint192 backing, uint192 overCollateralization)
     {
+        IBasketHandler bh = rToken.main().basketHandler();
         uint256 supply = rToken.totalSupply();
         if (supply == 0) return (0, 0);
 
@@ -257,10 +259,10 @@ contract FacadeRead is IFacadeRead {
         uint192 uoaNeeded; // {UoA}
         uint192 uoaHeldInBaskets; // {UoA}
         {
-            (address[] memory basketERC20s, uint256[] memory quantities) = rToken
-                .main()
-                .basketHandler()
-                .quote(basketsNeeded, FLOOR);
+            (address[] memory basketERC20s, uint256[] memory quantities) = bh.quote(
+                basketsNeeded,
+                FLOOR
+            );
 
             IAssetRegistry reg = rToken.main().assetRegistry();
             IBackingManager bm = rToken.main().backingManager();

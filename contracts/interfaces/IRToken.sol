@@ -79,12 +79,14 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     function issueTo(address recipient, uint256 amount) external;
 
     /// Redeem RToken for basket collateral
+    /// @dev Reverts if partial redemption
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
     function redeem(uint256 amount, uint48 basketNonce) external;
 
     /// Redeem RToken for basket collateral to a particular recipient
+    /// @dev Reverts if partial redemption
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
@@ -96,16 +98,21 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     ) external;
 
     /// Redeem RToken for a linear combination of historical baskets, to a particular recipient
+    /// @dev Allows partial redemptions up to the minAmounts
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonces An array of basket nonces to do redemption from
     /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
+    /// @param minERC20s An array of ERC20 addresses to require minAmounts for
+    /// @param minAmounts {qTok} The minimum ERC20 quantities the caller should receive
     /// @custom:interaction
-    function historicalRedeemTo(
+    function customRedemption(
         address recipient,
         uint256 amount,
         uint48[] memory basketNonces,
-        uint192[] memory portions
+        uint192[] memory portions,
+        IERC20[] memory minERC20s,
+        uint256[] memory minAmounts
     ) external;
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager

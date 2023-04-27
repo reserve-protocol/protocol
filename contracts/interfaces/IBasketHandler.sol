@@ -120,13 +120,12 @@ interface IBasketHandler is IComponent {
         returns (address[] memory erc20s, uint256[] memory quantities);
 
     /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
-    /// Requires `portions` sums to FIX_ONE
+    /// Checks `portions` sum to FIX_ONE
     /// @param basketNonces An array of basket nonces to do redemption from
     /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
-    // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
     function quoteHistoricalRedemption(
         uint48[] memory basketNonces,
         uint192[] memory portions,

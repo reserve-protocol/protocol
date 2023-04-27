@@ -139,12 +139,43 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// Redeem RToken for basket collateral to a particular recipient
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
+    /// @param basketNonce The nonce of the basket the redemption should be from
     /// @custom:interaction
     function redeemTo(
         address recipient,
         uint256 amount,
         uint48 basketNonce
+    ) public {
+        uint48[] memory basketNonces = new uint48[](1);
+        basketNonces[0] = basketNonce;
+        uint192[] memory portions = new uint192[](1);
+        portions[0] = FIX_ONE;
+
+        customRedemption(
+            recipient,
+            amount,
+            basketNonces,
+            portions,
+            new IERC20[](0),
+            new uint256[](0)
+        );
+    }
+
+    /// Redeem RToken for basket collateral to a particular recipient
+    /// @param recipient The address to receive the backing collateral tokens
+    /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
+    /// @param basketNonces An array of basket nonces to do redemption from
+    /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
+    /// @param minERC20s An array of ERC20 addresses to require minAmounts for
+    /// @param minAmounts {qTok} The minimum ERC20 quantities the caller should receive
+    /// @custom:interaction
+    function customRedemption(
+        address recipient,
+        uint256 amount,
+        uint48[] memory basketNonces,
+        uint192[] memory portions,
+        IERC20[] memory minERC20s,
+        uint256[] memory minAmounts
     ) public notFrozen exchangeRateIsValidAfter {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
@@ -166,38 +197,72 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         assert(basketsRedeemed.lte(basketsNeeded));
         emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
 
-        require(main.basketHandler().nonce() == basketNonce, "non-current basket nonce");
-        (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
-            basketsRedeemed,
-            FLOOR
-        );
+        address[] memory erc20s;
+        uint256[] memory amounts;
+        if (basketNonces.length == 1 && main.basketHandler().nonce() == basketNonces[0]) {
+            // Current-basket redemption
+
+            require(portions.length == 1, "portions does not mirror basketNonces");
+            (erc20s, amounts) = main.basketHandler().quote(basketsRedeemed, FLOOR);
+        } else {
+            // Historical basket redemption
+
+            // BasketHandler will handle the require that portions sum to FIX_ZERO
+            (erc20s, amounts) = main.basketHandler().quoteHistoricalRedemption(
+                basketNonces,
+                portions,
+                basketsRedeemed
+            );
+        }
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(basketsRedeemed));
         basketsNeeded = basketsNeeded.minus(basketsRedeemed);
 
-        // ==== Send back collateral tokens ====
-        IBackingManager backingMgr = main.backingManager();
+        // === Save initial recipient balances ===
 
-        bool allZero = true;
-        // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr)); // {qTok}
+        uint256[] memory initialMinERC20Balances = new uint256[](minERC20s.length);
+        for (uint256 i = 0; i < minERC20s.length; ++i) {
+            initialMinERC20Balances[i] = minERC20s[i].balanceOf(recipient);
+        }
 
-            // {qTok} = {qTok} * {qRTok} / {qRTok}
-            uint256 prorata = mulDiv256(bal, amount, totalSupply()); // FLOOR
-            if (prorata < amounts[i]) amounts[i] = prorata;
+        // ==== Prorate redemption + send out balances ====
+        {
+            bool allZero = true;
+            // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(
+                    address(main.backingManager())
+                ); // {qTok}
 
-            // Send withdrawal
-            if (amounts[i] > 0) {
-                IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), recipient, amounts[i]);
-                allZero = false;
+                // {qTok} = {qTok} * {qRTok} / {qRTok}
+                uint256 prorata = mulDiv256(bal, amount, totalSupply()); // FLOOR
+                if (prorata < amounts[i]) amounts[i] = prorata;
+
+                // Send withdrawal
+                if (amounts[i] > 0) {
+                    IERC20(erc20s[i]).safeTransferFrom(
+                        address(main.backingManager()),
+                        recipient,
+                        amounts[i]
+                    );
+                    allZero = false;
+                }
             }
+            if (allZero) revert("empty redemption");
         }
 
         // Accept and burn RToken, reverts if not enough balance
         _burn(_msgSender(), amount);
 
-        if (allZero) revert("empty redemption");
+        // === Post-checks ===
+
+        // Check post-balances
+        for (uint256 i = 0; i < minERC20s.length; ++i) {
+            require(
+                minERC20s[i].balanceOf(recipient) - initialMinERC20Balances[i] >= minAmounts[i],
+                "redemption below minimum"
+            );
+        }
     }
 
     // ===

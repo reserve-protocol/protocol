@@ -22,9 +22,7 @@ const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test 
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
-const settings = useEnv('NO_OPT')
-  ? { outputSelection: { '*': { '*': ['storage'] } } }
-  : { outputSelection: { '*': { '*': ['storage'] } }, optimizer: { enabled: true, runs: 200 } }
+const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',

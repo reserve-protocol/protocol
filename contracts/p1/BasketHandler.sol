@@ -165,21 +165,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // A new historical record begins whenever the prime basket is changed
     // There can be 0 to any number of reference baskets from the current history
     uint48 private historicalNonce; // {nonce}
-    // TODO double-check historicalNonce fits in the Warmup Period slot
-
-    // The historical baskets by basket nonce; includes current basket
-    mapping(uint48 => Basket) private historicalBaskets;
-
-    // ===
-
-    // === Historical basket nonces ===
-    // Added in 3.0.0
-
-    // Nonce of the first reference basket from the current history
-    // A new historical record begins whenever the prime basket is changed
-    // There can be 0 to any number of reference baskets from the current history
-    uint48 private historicalNonce; // {nonce}
-    // TODO double-check historicalNonce fits in the Warmup Period slot
 
     // The historical baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private historicalBaskets;
@@ -375,7 +360,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
-        try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
+        try assetRegistry.toColl(erc20) returns (ICollateral coll) {
             return _quantity(erc20, coll);
         } catch {
             return FIX_ZERO;
@@ -459,6 +444,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Return the current issuance/redemption value of `amount` BUs
+    /// @dev Subset of logic with quoteHistoricalRedemption; more gas efficient for 1 basketNonce
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
@@ -474,17 +460,20 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         for (uint256 i = 0; i < length; ++i) {
             erc20s[i] = address(basket.erc20s[i]);
+            ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
 
             // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-            quantities[i] = quantity(basket.erc20s[i]).safeMul(amount, rounding).shiftl_toUint(
-                int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
-                rounding
-            );
+            quantities[i] = _quantity(basket.erc20s[i], coll)
+                .safeMul(amount, rounding)
+                .shiftl_toUint(
+                    int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
+                    rounding
+                );
         }
     }
 
     /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
-    /// Requires `portions` sums to FIX_ONE
+    /// Checks `portions` sum to FIX_ONE
     /// @param basketNonces An array of basket nonces to do redemption from
     /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
     /// @param amount {BU}
@@ -496,10 +485,19 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint192[] memory portions,
         uint192 amount
     ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
+        // directly after upgrade the historicalNonce will be 0, which is not a valid value
+        require(historicalNonce > 0, "historicalNonce uninitialized");
         require(basketNonces.length == portions.length, "portions does not mirror basketNonces");
-        uint256 lenAll = assetRegistry.size();
-        IERC20[] memory erc20sAll = new IERC20[](lenAll);
-        uint192[] memory refAmtsAll = new uint192[](lenAll);
+
+        // Confirm portions sum to FIX_ONE
+        {
+            uint256 portionsSum;
+            for (uint256 i = 0; i < portions.length; ++i) portionsSum += portions[i];
+            require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
+        }
+
+        IERC20[] memory erc20sAll = new IERC20[](assetRegistry.size());
+        uint192[] memory refAmtsAll = new uint192[](erc20sAll.length);
 
         uint256 len; // length of return arrays
 
@@ -544,9 +542,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // Calculate quantities
         for (uint256 i = 0; i < len; ++i) {
-            IERC20Metadata erc20 = IERC20Metadata(address(erc20sAll[i]));
-            erc20s[i] = address(erc20);
-            IAsset asset = assetRegistry.toAsset(erc20);
+            erc20s[i] = address(erc20sAll[i]);
+            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
             if (!asset.isCollateral()) continue; // skip token if no longer registered
 
             // prevent div-by-zero
@@ -555,10 +552,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // {tok} = {BU} * {ref/BU} / {ref/tok}
             quantities[i] = amount.mulDiv(refAmtsAll[i], refPerTok, FLOOR).shiftl_toUint(
-                int8(erc20.decimals()),
+                int8(asset.erc20Decimals()),
                 FLOOR
             );
-            // slightly more penalizing than its sibling calculation that uses through _quantity()
+            // marginally more penalizing than its sibling calculation that uses _quantity()
             // because does not intermediately CEIL as part of the division
         }
     }

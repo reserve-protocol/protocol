@@ -140,6 +140,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     uint48 private lastStatusTimestamp;
     CollateralStatus private lastStatus;
 
+    // Nonce of the first reference basket from the current history
+    // A new historical record begins whenever the prime basket is changed
+    // There can be 0 to any number of reference baskets from the current history
+    uint48 private historicalNonce; // {nonce}
+
+    // The historical baskets by basket nonce; includes current basket
+    mapping(uint48 => Basket) private historicalBaskets;
+
     // ==== Invariants ====
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
@@ -427,6 +435,94 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
                 rounding
             );
+        }
+    }
+
+    /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
+    /// Checks `portions` sum to FIX_ONE
+    /// @param basketNonces An array of basket nonces to do redemption from
+    /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
+    /// @param amount {BU}
+    /// @return erc20s The backing collateral erc20s
+    /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
+    // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
+    function quoteHistoricalRedemption(
+        uint48[] memory basketNonces,
+        uint192[] memory portions,
+        uint192 amount
+    ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
+        // directly after upgrade the historicalNonce will be 0, which is not a valid value
+        require(historicalNonce > 0, "historicalNonce uninitialized");
+        require(basketNonces.length == portions.length, "portions does not mirror basketNonces");
+
+        // Confirm portions sum to FIX_ONE
+        {
+            uint256 portionsSum;
+            for (uint256 i = 0; i < portions.length; ++i) portionsSum += portions[i];
+            require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
+        }
+
+        IERC20[] memory erc20sAll = new IERC20[](main.assetRegistry().size());
+        uint192[] memory refAmtsAll = new uint192[](erc20sAll.length);
+
+        uint256 len; // length of return arrays
+
+        // Calculate the linear combination basket
+        for (uint48 i = 0; i < basketNonces.length; ++i) {
+            require(
+                basketNonces[i] >= historicalNonce && basketNonces[i] <= nonce,
+                "invalid basketNonce"
+            ); // will always revert directly after setPrimeBasket()
+            Basket storage b = historicalBaskets[i];
+
+            // Add-in refAmts contribution from historical basket
+            for (uint256 j = 0; j < b.erc20s.length; ++j) {
+                IERC20 erc20 = b.erc20s[j];
+                if (address(erc20) == address(0)) continue;
+
+                // Ugly search through erc20sAll
+                uint256 erc20Index = type(uint256).max;
+                for (uint256 k = 0; k < len; ++k) {
+                    if (erc20 == erc20sAll[k]) {
+                        erc20Index = k;
+                        continue;
+                    }
+                }
+
+                // Add new ERC20 entry if not found
+                if (erc20Index == type(uint256).max) {
+                    erc20sAll[len] = erc20;
+
+                    // {ref} = {1} * {ref}
+                    refAmtsAll[len] = portions[j].mul(b.refAmts[erc20], FLOOR);
+                    ++len;
+                } else {
+                    // {ref} = {1} * {ref}
+                    refAmtsAll[erc20Index] += portions[j].mul(b.refAmts[erc20], FLOOR);
+                }
+            }
+        }
+
+        erc20s = new address[](len);
+        quantities = new uint256[](len);
+
+        // Calculate quantities
+        for (uint256 i = 0; i < len; ++i) {
+            erc20s[i] = address(erc20sAll[i]);
+            IAsset asset = main.assetRegistry().toAsset(IERC20(erc20s[i]));
+            if (!asset.isCollateral()) continue; // skip token if no longer registered
+
+            // prevent div-by-zero
+            uint192 refPerTok = ICollateral(address(asset)).refPerTok();
+            if (refPerTok == 0) continue; // quantities[i] = 0;
+
+            // {tok} = {BU} * {ref/BU} / {ref/tok}
+            quantities[i] = amount.mulDiv(refAmtsAll[i], refPerTok, FLOOR).shiftl_toUint(
+                int8(asset.erc20Decimals()),
+                FLOOR
+            );
+            // marginally more penalizing than its sibling calculation that uses _quantity()
+            // because does not intermediately CEIL as part of the division
         }
     }
 
