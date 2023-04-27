@@ -124,7 +124,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     // cETH
     cETH = await (
       await ethers.getContractFactory('CTokenVaultMock')
-    ).deploy('cWBTC Token', 'cWBTC', weth.address, compToken.address, compoundMock.address)
+    ).deploy('cETH Token', 'cETH', weth.address, compToken.address, compoundMock.address)
 
     cETHCollateral = await (
       await ethers.getContractFactory('CTokenSelfReferentialCollateral')

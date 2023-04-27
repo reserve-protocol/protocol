@@ -36,6 +36,7 @@ import { CollateralStatus } from '../../common/constants'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
 import { expectPrice, setOraclePrice } from '../utils/oracles'
+import { expectEvents } from '#/common/events'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -581,20 +582,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         await snapshotGasCost(backingManager.claimRewards())
       } else {
         await backingManager.claimRewards()
-        // await expectEvents(backingManager.claimRewards(), [
-        //   {
-        //     contract: cRewarded,
-        //     name: 'RewardsClaimed',
-        //     args: [compToken.address, anyValue],
-        //     emitted: true,
-        //   },
-        //   {
-        //     contract: aRewarded,
-        //     name: 'RewardsClaimed',
-        //     args: [aaveToken.address, anyValue],
-        //     emitted: true,
-        //   },
-        // ])
       }
 
       // Check balances after
