@@ -135,7 +135,9 @@ contract DutchTrade is ITrade {
         // also requires changing the function signature of settle() to accept the caller address
 
         // settle() via callback; may also start a new Trade
+        assert(status == TradeStatus.OPEN);
         origin.settleTrade(sell);
+        assert(status == TradeStatus.CLOSED);
     }
 
     /// Settle the auction, emptying the contract of balances
