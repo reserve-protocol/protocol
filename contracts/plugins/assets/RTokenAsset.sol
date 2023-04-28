@@ -5,10 +5,11 @@ import "../../p1/mixins/RecollateralizationLib.sol";
 import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
 import "./Asset.sol";
+import "./VersionedAsset.sol";
 
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
-contract RTokenAsset is IAsset {
+contract RTokenAsset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
