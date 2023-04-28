@@ -121,9 +121,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             maxTradeSlippage
         );
 
-        if (launch) {
-            tryTrade(kind, req);
-        }
+        require(launch, "trade not worth launching");
+        tryTrade(kind, req);
     }
 
     /// Call after upgrade to >= 3.0.0

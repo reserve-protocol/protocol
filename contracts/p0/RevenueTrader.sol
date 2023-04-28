@@ -94,8 +94,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             maxTradeSlippage
         );
 
-        if (launch) {
-            tryTrade(kind, req);
-        }
+        require(launch, "trade not worth launching");
+        tryTrade(kind, req);
     }
 }

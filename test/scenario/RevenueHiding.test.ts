@@ -5,7 +5,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp, divCeil } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
   CTokenMock,
   CTokenFiatCollateral,
@@ -257,9 +257,15 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     it('auction should be launched at low price ignoring revenueHiding', async () => {
       // Double exchange rate and launch auctions
       await cDAI.setExchangeRate(fp('2')) // double rate
-      await backingManager.manageTokens([cDAI.address]) // transfers tokens to Traders
-      await expect(rTokenTrader.manageToken(cDAI.address)).to.emit(rTokenTrader, 'TradeStarted')
-      await expect(rsrTrader.manageToken(cDAI.address)).to.emit(rsrTrader, 'TradeStarted')
+      await backingManager.forwardRevenue([cDAI.address]) // transfers tokens to Traders
+      await expect(rTokenTrader.manageToken(cDAI.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rTokenTrader,
+        'TradeStarted'
+      )
+      await expect(rsrTrader.manageToken(cDAI.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rsrTrader,
+        'TradeStarted'
+      )
 
       // Auctions launched should be at discounted low price
       const t = await getTrade(rsrTrader, cDAI.address)
