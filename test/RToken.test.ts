@@ -1087,7 +1087,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Should fail if revertOnPartialRedemption is true
         await expect(
           rToken.connect(addr1).redeem(issueAmount.div(2), 1 + (await basketHandler.nonce()))
-        ).to.be.revertedWith('non-current basket nonce')
+        ).to.be.revertedWith('invalid basketNonce')
       })
 
       it('Should prorate redemption if basket is DISABLED from fallen refPerTok() #fast', async function () {
@@ -1112,18 +1112,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
       })
 
-      it('Should not interact with unregistered collateral while DISABLED #fast', async function () {
+      it('Should not redeem() unregistered collateral #fast', async function () {
         // Unregister collateral2
         await assetRegistry.connect(owner).unregister(collateral2.address)
 
         await expect(
           rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
-        ).to.emit(rToken, 'Redemption')
-        expect(await rToken.totalSupply()).to.equal(0)
-        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
-        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
-        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
-        expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+        ).revertedWith('erc20 unregistered')
       })
 
       it('Should redeem prorata when refPerTok() is 0 #fast', async function () {
@@ -1139,22 +1134,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token1.balanceOf(addr1.address)).to.be.equal(initialBal)
         expect(await token2.balanceOf(addr1.address)).to.be.equal(initialBal)
         expect(await token3.balanceOf(addr1.address)).to.be.equal(initialBal)
-      })
-
-      it('Should transfer full balance if de-valuation #fast', async function () {
-        // Unregister collateral3
-        await assetRegistry.connect(owner).unregister(collateral3.address)
-
-        await expect(
-          rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
-        ).to.emit(rToken, 'Redemption')
-        expect(await rToken.totalSupply()).to.equal(0)
-        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
-        expect(await token1.balanceOf(addr1.address)).to.equal(initialBal)
-        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
-        expect(await token3.balanceOf(addr1.address)).to.equal(
-          initialBal.sub(issueAmount.div(bn('1e10')).div(4).mul(50)) // decimal shift + quarter of basket + cToken
-        )
       })
 
       it('Should not overflow BU exchange rate above 1e9 on redeem', async function () {
