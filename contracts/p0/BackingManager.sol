@@ -144,7 +144,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
 
         // Mint revenue RToken
-        uint192 needed; // {BU}
+        uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
         {
             IRToken rToken = main.rToken();
             needed = rToken.basketsNeeded(); // {BU}
@@ -163,9 +163,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             }
         }
 
-        // BackingBuffer for non-RTokens
-        needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer));
-
         // Handout excess assets above what is needed, including any newly minted RToken
         RevenueTotals memory totals = main.distributor().totals();
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -173,9 +170,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
             uint192 bal = asset.bal(address(this)); // {tok}
             uint192 req = needed.mul(main.basketHandler().quantity(erc20s[i]), CEIL);
-            if (address(erc20s[i]) == address(main.rToken())) {
-                req = backingBuffer.mul(_safeWrap(main.rToken().totalSupply()));
-            }
 
             if (bal.gt(req)) {
                 // delta: {qTok}

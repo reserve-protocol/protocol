@@ -194,7 +194,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         //   (>== is "no less than, and nearly equal to")
         //    and rToken'.basketsNeeded <= basketsHeld.bottom
         // and rToken'.totalSupply is maximal satisfying this.
-        uint192 needed = rToken.basketsNeeded(); // {BU}
+
+        // Keep backingBuffer worth of collateral before recognizing revenue
+        uint192 needed = rToken.basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
+
         if (basketsHeld.bottom.gt(needed)) {
             // gas-optimization: RToken is known to have 18 decimals, the same as FixLib
             uint192 totalSupply = _safeWrap(rToken.totalSupply()); // {rTok}
@@ -215,12 +218,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // - We're fully collateralized
         // - The BU exchange rate {BU/rTok} did not decrease
 
-        // Keep a small buffer of individual collateral; "excess" assets are beyond the buffer.
-        needed = needed.mul(FIX_ONE.plus(backingBuffer));
+        // Handout surplus assets + newly minted RToken
 
-        // Calculate all balances above the backingBuffer:
-        //  - rToken balances above the rTokenBuffer
-        //  - non-RToken balances above the backingBuffer
         uint256 length = erc20s.length;
         RevenueTotals memory totals = distributor.totals();
         uint256[] memory toRSR = new uint256[](length);
@@ -229,11 +228,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             IAsset asset = assetRegistry.toAsset(erc20s[i]);
 
             // {tok} = {BU} * {tok/BU}
-            uint192 req = erc20s[i] != IERC20(address(rToken))
-                ? needed.mul(basketHandler.quantity(erc20s[i]), CEIL)
-                : backingBuffer.mul(_safeWrap(rToken.totalSupply()), CEIL);
-
+            uint192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
             uint192 bal = asset.bal(address(this));
+
             if (bal.gt(req)) {
                 // delta: {qTok}, the excess quantity of this asset that we hold
                 uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20Decimals()));
