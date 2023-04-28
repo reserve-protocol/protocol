@@ -11,6 +11,7 @@ import {
   STRSR_DEST,
   ZERO_ADDRESS,
   CollateralStatus,
+  TradeKind,
 } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, fp, near } from '../common/numbers'
@@ -380,16 +381,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should not trade if paused', async () => {
         await main.connect(owner).pauseTrading()
-        await expect(rsrTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith(
-          'frozen or trading paused'
-        )
+        await expect(
+          rsrTrader.manageToken(ZERO_ADDRESS, TradeKind.BATCH_AUCTION)
+        ).to.be.revertedWith('frozen or trading paused')
       })
 
       it('Should not trade if frozen', async () => {
         await main.connect(owner).freezeShort()
-        await expect(rTokenTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith(
-          'frozen or trading paused'
-        )
+        await expect(
+          rTokenTrader.manageToken(ZERO_ADDRESS, TradeKind.BATCH_AUCTION)
+        ).to.be.revertedWith('frozen or trading paused')
       })
 
       it('Should not claim rewards if paused', async () => {
@@ -446,7 +447,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const rtokenPrice = await basketHandler.price()
         const realRtokenPrice = rtokenPrice.low.add(rtokenPrice.high).div(2)
         const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), realRtokenPrice)
-        await expect(rTokenTrader.manageToken(token0.address))
+        await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION))
           .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(anyValue, token0.address, rToken.address, issueAmount, withinQuad(minBuyAmt))
       })
@@ -454,9 +455,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should not launch revenue auction if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(rsr.address)).to.be.revertedWith(
-          'buy asset price unknown'
-        )
+        await expect(
+          rTokenTrader.manageToken(rsr.address, TradeKind.BATCH_AUCTION)
+        ).to.be.revertedWith('buy asset price unknown')
       })
 
       it('Should launch revenue auction if DISABLED with nonzero minBuyAmount', async () => {
@@ -465,7 +466,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await advanceTime((await collateral0.delayUntilDefault()).toString())
         expect(await collateral0.status()).to.equal(CollateralStatus.DISABLED)
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
+        await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+          rTokenTrader,
+          'TradeStarted'
+        )
 
         // Trade should have extremely nonzero worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
@@ -535,7 +539,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -543,7 +547,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -564,7 +568,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(rTokenTrader.settleTrade(aaveToken.address)).to.not.emit
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -930,7 +934,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: aaveToken.address,
           buy: rsr.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -938,7 +942,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -946,7 +950,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -1089,7 +1093,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1120,7 +1124,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions
         const remainderSellAmt = rewardAmountCOMP.sub(sellAmt)
@@ -1156,7 +1160,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -1173,7 +1177,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1291,7 +1295,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1312,7 +1316,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Another call will create a new auction and close existing
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1347,7 +1351,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -1360,7 +1364,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1392,7 +1396,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         // Furnace
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          minBuyAmt.add(minBuyAmtRemainder),
+          minBuyAmt.add(minBuyAmtRemainder).div(bn('1e4')) // melting
+        )
       })
 
       it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
@@ -1495,7 +1502,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1503,12 +1510,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
         // Advance time till auctions ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -1575,7 +1582,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Run final auction until all funds are converted
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)
@@ -1610,7 +1617,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           minBuyAmt.add(minBuyAmtRemainder),
           15
         )
-        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken, 15)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          minBuyAmtRToken,
+          minBuyAmtRToken.div(bn('1e4')) // melting
+        )
       })
 
       it('Should not distribute if paused or frozen', async () => {
@@ -1798,7 +1808,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Handout COMP tokens to Traders
-        await backingManager.manageTokens([compToken.address])
+        await backingManager.forwardRevenue([compToken.address])
 
         // Check funds sent to traders
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
@@ -1808,9 +1818,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await setOraclePrice(rsrAsset.address, bn('0'))
 
         // Should revert
-        await expect(rsrTrader.manageToken(compToken.address)).to.be.revertedWith(
-          'buy asset price unknown'
-        )
+        await expect(
+          rsrTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION)
+        ).to.be.revertedWith('buy asset price unknown')
 
         // Funds still in Trader
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
@@ -1880,7 +1890,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: aaveToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1888,12 +1898,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         // In order to force deactivation we provide an amount below minBuyAmt, this will represent for our tests an invalid behavior although in a real scenario would retrigger auction
@@ -1991,11 +2001,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
 
         // Attempt to run auctions
-        await backingManager.manageTokens([aaveToken.address])
-        await expect(rsrTrader.manageToken(aaveToken.address)).to.be.revertedWith('broker disabled')
-        await expect(rTokenTrader.manageToken(aaveToken.address)).to.be.revertedWith(
-          'broker disabled'
-        )
+        await backingManager.forwardRevenue([aaveToken.address])
+        await expect(
+          rsrTrader.manageToken(aaveToken.address, TradeKind.BATCH_AUCTION)
+        ).to.be.revertedWith('broker disabled')
+        await expect(
+          rTokenTrader.manageToken(aaveToken.address, TradeKind.BATCH_AUCTION)
+        ).to.be.revertedWith('broker disabled')
 
         // Check funds - remain in traders
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -2119,7 +2131,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2127,7 +2139,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2135,7 +2147,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
 
         // Advance time till auctions ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2420,7 +2432,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2428,7 +2440,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2440,7 +2452,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2580,7 +2592,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2588,7 +2600,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2603,7 +2615,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2669,11 +2681,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token2.setExchangeRate(fp('1.2'))
 
         await expect(
-          backingManager.manageTokens([token2.address, token2.address])
+          backingManager.forwardRevenue([token2.address, token2.address])
         ).to.be.revertedWith('duplicate tokens')
 
         await expect(
-          backingManager.manageTokens([
+          backingManager.forwardRevenue([
             token2.address,
             token2.address,
             token2.address,
@@ -2682,11 +2694,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('duplicate tokens')
 
         await expect(
-          backingManager.manageTokens([token2.address, token1.address, token2.address])
+          backingManager.forwardRevenue([token2.address, token1.address, token2.address])
         ).to.be.revertedWith('duplicate tokens')
 
         await expect(
-          backingManager.manageTokens([
+          backingManager.forwardRevenue([
             token1.address,
             token2.address,
             token3.address,
@@ -2695,7 +2707,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('duplicate tokens')
 
         await expect(
-          backingManager.manageTokens([
+          backingManager.forwardRevenue([
             token1.address,
             token2.address,
             token3.address,
@@ -2704,66 +2716,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('duplicate tokens')
 
         // Remove duplicates, should work
-        await expect(backingManager.manageTokens([token1.address, token2.address, token3.address]))
-          .to.not.be.reverted
-      })
-
-      it('Should not overspend if backingManager.manageTokensSortedOrder() is called with duplicate tokens', async () => {
-        expect(await basketHandler.fullyCollateralized()).to.be.true
-
-        // Change redemption rate for AToken and CToken to double
-        await token2.setExchangeRate(fp('1.2'))
-
         await expect(
-          backingManager.manageTokensSortedOrder([token2.address, token2.address])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        await expect(
-          backingManager.manageTokensSortedOrder([
-            token2.address,
-            token2.address,
-            token2.address,
-            token2.address,
-          ])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        await expect(
-          backingManager.manageTokensSortedOrder([token2.address, token1.address, token2.address])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        await expect(
-          backingManager.manageTokensSortedOrder([
-            token1.address,
-            token2.address,
-            token3.address,
-            token2.address,
-          ])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        await expect(
-          backingManager.manageTokensSortedOrder([
-            token1.address,
-            token2.address,
-            token3.address,
-            token3.address,
-          ])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        // Remove duplicates but unsort
-        const sorted = [token1.address, token2.address, token3.address].sort((a, b) => {
-          const x = BigNumber.from(a)
-          const y = BigNumber.from(b)
-          if (x.lt(y)) return -1
-          if (x.gt(y)) return 1
-          return 0
-        })
-        const unsorted = [sorted[2], sorted[0], sorted[1]]
-        await expect(backingManager.manageTokensSortedOrder(unsorted)).to.be.revertedWith(
-          'duplicate/unsorted tokens'
-        )
-
-        // Remove duplicates and sort, should work
-        await expect(backingManager.manageTokensSortedOrder(sorted)).to.not.be.reverted
+          backingManager.forwardRevenue([token1.address, token2.address, token3.address])
+        ).to.not.be.reverted
       })
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
@@ -2838,7 +2793,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: rToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2851,7 +2806,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         //  End current auction - will not start new one
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3025,7 +2980,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: rToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -3033,7 +2988,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -3041,7 +2996,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
         })
 
@@ -3069,7 +3024,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         //  Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should start a new one with same amount
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3167,7 +3122,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token2.connect(owner).mint(backingManager.address, mintAmt)
         await token3.connect(owner).mint(backingManager.address, mintAmt)
 
-        await expect(backingManager.manageTokens([])).revertedWith('BU rate out of range')
+        await expect(backingManager.forwardRevenue([])).revertedWith('BU rate out of range')
       })
     })
   })
@@ -3270,12 +3225,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await backingManager.claimRewards()
 
       // Manage Funds
-      await backingManager.manageTokens([compToken.address])
-      await snapshotGasCost(rsrTrader.manageToken(compToken.address))
-      await snapshotGasCost(rTokenTrader.manageToken(compToken.address))
+      await backingManager.forwardRevenue([compToken.address])
+      await snapshotGasCost(rsrTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION))
+      await snapshotGasCost(rTokenTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION))
 
       // Advance time till auctions ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Perform Mock Bids for RSR and RToken (addr1 has balance)
       await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -3302,12 +3257,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(rTokenTrader.settleTrade(compToken.address))
 
       // Manage Funds
-      await snapshotGasCost(rsrTrader.manageToken(compToken.address))
-      await snapshotGasCost(rTokenTrader.manageToken(compToken.address))
+      await snapshotGasCost(rsrTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION))
+      await snapshotGasCost(rTokenTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION))
 
       // Run final auction until all funds are converted
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Perform Mock Bids for RSR and RToken (addr1 has balance)
       await rsr.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)

@@ -5,9 +5,10 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
-import { MAX_UINT96, TradeStatus, ZERO_ADDRESS } from '../common/constants'
+import { MAX_UINT96, TradeKind, TradeStatus, ZERO_ADDRESS, ONE_ADDRESS } from '../common/constants'
 import { bn, toBNDecimals } from '../common/numbers'
 import {
+  DutchTrade,
   ERC20Mock,
   GnosisMock,
   GnosisMockReentrant,
@@ -94,7 +95,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   describe('Deployment', () => {
     it('Should setup Broker correctly', async () => {
       expect(await broker.gnosis()).to.equal(gnosis.address)
-      expect(await broker.auctionLength()).to.equal(config.auctionLength)
+      expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await broker.disabled()).to.equal(false)
       expect(await broker.main()).to.equal(main.address)
     })
@@ -114,11 +115,28 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       }
 
       await expect(
-        newBroker.init(main.address, ZERO_ADDRESS, ZERO_ADDRESS, bn('100'))
+        newBroker.init(main.address, ZERO_ADDRESS, ZERO_ADDRESS, bn('100'), ZERO_ADDRESS, bn('100'))
       ).to.be.revertedWith('invalid Gnosis address')
       await expect(
-        newBroker.init(main.address, gnosis.address, ZERO_ADDRESS, bn('100'))
-      ).to.be.revertedWith('invalid Trade Implementation address')
+        newBroker.init(
+          main.address,
+          gnosis.address,
+          ZERO_ADDRESS,
+          bn('100'),
+          ZERO_ADDRESS,
+          bn('100')
+        )
+      ).to.be.revertedWith('invalid batchTradeImplementation address')
+      await expect(
+        newBroker.init(
+          main.address,
+          gnosis.address,
+          ONE_ADDRESS,
+          bn('100'),
+          ZERO_ADDRESS,
+          bn('100')
+        )
+      ).to.be.revertedWith('invalid dutchTradeImplementation address')
     })
   })
 
@@ -149,77 +167,151 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.gnosis()).to.equal(mock.address)
     })
 
-    it('Should allow to update Trade Implementation if Owner and perform validations', async () => {
+    it('Should allow to update BatchTrade Implementation if Owner and perform validations', async () => {
       // Create a Trade
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
       const tradeImpl: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
 
       // Update to a trade implementation to use as baseline for tests
-      await expect(broker.connect(owner).setTradeImplementation(tradeImpl.address))
-        .to.emit(broker, 'TradeImplementationSet')
+      await expect(broker.connect(owner).setBatchTradeImplementation(tradeImpl.address))
+        .to.emit(broker, 'BatchTradeImplementationSet')
         .withArgs(anyValue, tradeImpl.address)
 
       // Check existing value
-      expect(await broker.tradeImplementation()).to.equal(tradeImpl.address)
+      expect(await broker.batchTradeImplementation()).to.equal(tradeImpl.address)
 
       // If not owner cannot update
-      await expect(broker.connect(other).setTradeImplementation(mock.address)).to.be.revertedWith(
-        'governance only'
-      )
+      await expect(
+        broker.connect(other).setBatchTradeImplementation(mock.address)
+      ).to.be.revertedWith('governance only')
 
       // Check value did not change
-      expect(await broker.tradeImplementation()).to.equal(tradeImpl.address)
+      expect(await broker.batchTradeImplementation()).to.equal(tradeImpl.address)
 
       // Attempt to update with Owner but zero address - not allowed
-      await expect(broker.connect(owner).setTradeImplementation(ZERO_ADDRESS)).to.be.revertedWith(
-        'invalid Trade Implementation address'
-      )
+      await expect(
+        broker.connect(owner).setBatchTradeImplementation(ZERO_ADDRESS)
+      ).to.be.revertedWith('invalid batchTradeImplementation address')
 
       // Update with owner
-      await expect(broker.connect(owner).setTradeImplementation(mock.address))
-        .to.emit(broker, 'TradeImplementationSet')
+      await expect(broker.connect(owner).setBatchTradeImplementation(mock.address))
+        .to.emit(broker, 'BatchTradeImplementationSet')
         .withArgs(tradeImpl.address, mock.address)
 
       // Check value was updated
-      expect(await broker.tradeImplementation()).to.equal(mock.address)
+      expect(await broker.batchTradeImplementation()).to.equal(mock.address)
     })
 
-    it('Should allow to update auctionLength if Owner', async () => {
+    it('Should allow to update DutchTrade Implementation if Owner and perform validations', async () => {
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
+      const tradeImpl: DutchTrade = <DutchTrade>await TradeFactory.deploy()
+
+      // Update to a trade implementation to use as baseline for tests
+      await expect(broker.connect(owner).setDutchTradeImplementation(tradeImpl.address))
+        .to.emit(broker, 'DutchTradeImplementationSet')
+        .withArgs(anyValue, tradeImpl.address)
+
+      // Check existing value
+      expect(await broker.dutchTradeImplementation()).to.equal(tradeImpl.address)
+
+      // If not owner cannot update
+      await expect(
+        broker.connect(other).setDutchTradeImplementation(mock.address)
+      ).to.be.revertedWith('governance only')
+
+      // Check value did not change
+      expect(await broker.dutchTradeImplementation()).to.equal(tradeImpl.address)
+
+      // Attempt to update with Owner but zero address - not allowed
+      await expect(
+        broker.connect(owner).setDutchTradeImplementation(ZERO_ADDRESS)
+      ).to.be.revertedWith('invalid dutchTradeImplementation address')
+
+      // Update with owner
+      await expect(broker.connect(owner).setDutchTradeImplementation(mock.address))
+        .to.emit(broker, 'DutchTradeImplementationSet')
+        .withArgs(tradeImpl.address, mock.address)
+
+      // Check value was updated
+      expect(await broker.dutchTradeImplementation()).to.equal(mock.address)
+    })
+
+    it('Should allow to update batchAuctionLength if Owner', async () => {
       const newValue: BigNumber = bn('360')
 
       // Check existing value
-      expect(await broker.auctionLength()).to.equal(config.auctionLength)
+      expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
 
       // If not owner cannot update
-      await expect(broker.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
+      await expect(broker.connect(other).setBatchAuctionLength(newValue)).to.be.revertedWith(
         'governance only'
       )
 
       // Check value did not change
-      expect(await broker.auctionLength()).to.equal(config.auctionLength)
+      expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
 
       // Update with owner
-      await expect(broker.connect(owner).setAuctionLength(newValue))
-        .to.emit(broker, 'AuctionLengthSet')
-        .withArgs(config.auctionLength, newValue)
+      await expect(broker.connect(owner).setBatchAuctionLength(newValue))
+        .to.emit(broker, 'BatchAuctionLengthSet')
+        .withArgs(config.batchAuctionLength, newValue)
 
       // Check value was updated
-      expect(await broker.auctionLength()).to.equal(newValue)
+      expect(await broker.batchAuctionLength()).to.equal(newValue)
     })
 
-    it('Should perform validations on auctionLength', async () => {
+    it('Should allow to update dutchAuctionLength if Owner', async () => {
+      const newValue: BigNumber = bn('360')
+
+      // Check existing value
+      expect(await broker.dutchAuctionLength()).to.equal(config.dutchAuctionLength)
+
+      // If not owner cannot update
+      await expect(broker.connect(other).setDutchAuctionLength(newValue)).to.be.revertedWith(
+        'governance only'
+      )
+
+      // Check value did not change
+      expect(await broker.dutchAuctionLength()).to.equal(config.dutchAuctionLength)
+
+      // Update with owner
+      await expect(broker.connect(owner).setDutchAuctionLength(newValue))
+        .to.emit(broker, 'DutchAuctionLengthSet')
+        .withArgs(config.dutchAuctionLength, newValue)
+
+      // Check value was updated
+      expect(await broker.dutchAuctionLength()).to.equal(newValue)
+    })
+
+    it('Should perform validations on batchAuctionLength', async () => {
       let invalidValue: BigNumber = bn(0)
 
       // Attempt to update
-      await expect(broker.connect(owner).setAuctionLength(invalidValue)).to.be.revertedWith(
-        'invalid auctionLength'
+      await expect(broker.connect(owner).setBatchAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid batchAuctionLength'
       )
 
       invalidValue = bn(MAX_AUCTION_LENGTH + 1)
 
       // Attempt to update
-      await expect(broker.connect(owner).setAuctionLength(invalidValue)).to.be.revertedWith(
-        'invalid auctionLength'
+      await expect(broker.connect(owner).setBatchAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid batchAuctionLength'
+      )
+    })
+
+    it('Should perform validations on dutchAuctionLength', async () => {
+      let invalidValue: BigNumber = bn(0)
+
+      // Attempt to update
+      await expect(broker.connect(owner).setDutchAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid dutchAuctionLength'
+      )
+
+      invalidValue = bn(MAX_AUCTION_LENGTH + 1)
+
+      // Attempt to update
+      await expect(broker.connect(owner).setDutchAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid dutchAuctionLength'
       )
     })
 
@@ -267,13 +359,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       }
 
       await whileImpersonating(backingManager.address, async (bmSigner) => {
-        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
-          'broker disabled'
-        )
+        await expect(
+          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
+        ).to.be.revertedWith('broker disabled')
       })
     })
 
-    it('Should not allow to open trade if paused', async () => {
+    it('Should not allow to open trade if trading paused', async () => {
       await main.connect(owner).pauseTrading()
 
       // Attempt to open trade
@@ -285,9 +377,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       }
 
       await whileImpersonating(backingManager.address, async (bmSigner) => {
-        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
-          'frozen or trading paused'
-        )
+        await expect(
+          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
+        ).to.be.revertedWith('frozen or trading paused')
       })
     })
 
@@ -303,9 +395,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       }
 
       await whileImpersonating(backingManager.address, async (bmSigner) => {
-        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
-          'frozen or trading paused'
-        )
+        await expect(
+          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
+        ).to.be.revertedWith('frozen or trading paused')
       })
     })
 
@@ -327,25 +419,30 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Attempt to open trade from non-trader
       await token0.connect(addr1).approve(broker.address, amount)
-      await expect(broker.connect(addr1).openTrade(tradeRequest)).to.be.revertedWith('only traders')
+      await expect(
+        broker.connect(addr1).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
+      ).to.be.revertedWith('only traders')
 
       // Open from traders - Should work
       // Backing Manager
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await token0.connect(bmSigner).approve(broker.address, amount)
-        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.not.be.reverted
+        await expect(broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)).to
+          .not.be.reverted
       })
 
       // RSR Trader
       await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
         await token0.connect(rsrSigner).approve(broker.address, amount)
-        await expect(broker.connect(rsrSigner).openTrade(tradeRequest)).to.not.be.reverted
+        await expect(broker.connect(rsrSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)).to
+          .not.be.reverted
       })
 
       // RToken Trader
       await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
         await token0.connect(rtokSigner).approve(broker.address, amount)
-        await expect(broker.connect(rtokSigner).openTrade(tradeRequest)).to.not.be.reverted
+        await expect(broker.connect(rtokSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)).to
+          .not.be.reverted
       })
     })
 
@@ -418,7 +515,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -433,7 +530,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.buy()).to.equal(token1.address)
       expect(await trade.initBal()).to.equal(amount)
       expect(await trade.endTime()).to.equal(
-        (await getLatestBlockTimestamp()) + Number(config.auctionLength)
+        (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength)
       )
       expect(await trade.worstCasePrice()).to.equal(bn('0'))
       expect(await trade.canSettle()).to.equal(false)
@@ -444,7 +541,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await trade.broker(),
           await trade.origin(),
           await trade.gnosis(),
-          await broker.auctionLength(),
+          await broker.batchAuctionLength(),
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
@@ -475,7 +572,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -490,7 +587,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.buy()).to.equal(tokenZ.address)
       expect(await trade.initBal()).to.equal(amount)
       expect(await trade.endTime()).to.equal(
-        (await getLatestBlockTimestamp()) + Number(config.auctionLength)
+        (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength)
       )
       expect(await trade.worstCasePrice()).to.equal(bn('0'))
       expect(await trade.canSettle()).to.equal(false)
@@ -530,7 +627,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           reentrantGnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
@@ -563,7 +660,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('sellAmount too large')
@@ -578,7 +675,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('minBuyAmount too large')
@@ -595,7 +692,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('initBal too large')
@@ -625,7 +722,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.be.revertedWith('unfunded trade')
@@ -662,7 +759,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -672,7 +769,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.canSettle()).to.equal(false)
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Check status - can be settled now
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
@@ -723,13 +820,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           reentrantGnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Attempt Settle trade
       await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -763,7 +860,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -773,7 +870,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.canSettle()).to.equal(false)
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Check status - can be settled now
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
@@ -843,7 +940,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -858,7 +955,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       )
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Settle trade
       await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -923,19 +1020,25 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // Backing Manager
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await token0.connect(bmSigner).approve(broker.address, amount)
-        await snapshotGasCost(broker.connect(bmSigner).openTrade(tradeRequest))
+        await snapshotGasCost(
+          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
+        )
       })
 
       // RSR Trader
       await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
         await token0.connect(rsrSigner).approve(broker.address, amount)
-        await snapshotGasCost(broker.connect(rsrSigner).openTrade(tradeRequest))
+        await snapshotGasCost(
+          broker.connect(rsrSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
+        )
       })
 
       // RToken Trader
       await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
         await token0.connect(rtokSigner).approve(broker.address, amount)
-        await snapshotGasCost(broker.connect(rtokSigner).openTrade(tradeRequest))
+        await snapshotGasCost(
+          broker.connect(rtokSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
+        )
       })
     })
 
@@ -947,7 +1050,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           broker.address,
           backingManager.address,
           gnosis.address,
-          config.auctionLength,
+          config.batchAuctionLength,
           tradeRequest
         )
       )
@@ -960,12 +1063,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         broker.address,
         backingManager.address,
         gnosis.address,
-        config.auctionLength,
+        config.batchAuctionLength,
         tradeRequest
       )
 
       // Advance time till trade can be settled
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Settle trade
       await whileImpersonating(backingManager.address, async (bmSigner) => {

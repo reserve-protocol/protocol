@@ -33,6 +33,7 @@ import {
   ATokenFiatCollateral,
   CTokenFiatCollateral,
   CTokenMock,
+  DutchTrade,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -385,10 +386,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
 
       // Attempt to reinitialize - Broker
-      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const GnosisTradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy()
+      const DutchTradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
+      const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeFactory.deploy()
       await expect(
-        broker.init(main.address, gnosis.address, trade.address, config.auctionLength)
+        broker.init(
+          main.address,
+          gnosis.address,
+          gnosisTrade.address,
+          config.batchAuctionLength,
+          dutchTrade.address,
+          config.dutchAuctionLength
+        )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - RToken

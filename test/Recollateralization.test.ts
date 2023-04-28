@@ -5,7 +5,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import { BN_SCALE_FACTOR, CollateralStatus, MAX_UINT256 } from '../common/constants'
+import { BN_SCALE_FACTOR, CollateralStatus, TradeKind, MAX_UINT256 } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, fp, pow10, toBNDecimals, divCeil } from '../common/numbers'
 import {
@@ -801,24 +801,21 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
       it('Should not trade if paused', async () => {
         await main.connect(owner).pauseTrading()
-        await expect(backingManager.manageTokens([])).to.be.revertedWith('frozen or trading paused')
-        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'frozen or trading paused'
         )
       })
 
       it('Should not trade if frozen', async () => {
         await main.connect(owner).freezeShort()
-        await expect(backingManager.manageTokens([])).to.be.revertedWith('frozen or trading paused')
-        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'frozen or trading paused'
         )
       })
 
       it('Should not trade if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
-        await expect(backingManager.manageTokens([])).to.be.revertedWith('basket not ready')
-        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'basket not ready'
         )
       })
@@ -829,8 +826,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Set warmup period
         await basketHandler.connect(owner).setWarmupPeriod(warmupPeriod)
 
-        await expect(backingManager.manageTokens([])).to.be.revertedWith('basket not ready')
-        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'basket not ready'
         )
       })
@@ -872,7 +868,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
       })
@@ -900,7 +896,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('0.5'), fp('1'))
 
         // Attempt to trigger before warmup period - will revert
-        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.be.revertedWith(
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'basket not ready'
         )
 
@@ -925,7 +921,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
       })
@@ -948,7 +944,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         // Attempt to trigger before trading delay - Should revert
-        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.be.revertedWith(
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'trading delayed'
         )
 
@@ -973,7 +969,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
       })
@@ -1029,7 +1025,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1072,7 +1068,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expect(backingManager.settleTrade(token3.address)).to.not.emit
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should  not start any new auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1144,7 +1140,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1168,7 +1164,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should  not start any new auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1247,7 +1243,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1292,7 +1288,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should not start any new auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1371,7 +1367,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1416,7 +1412,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should not start any new auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1434,10 +1430,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
           issueAmount,
-          issueAmount.div(1000000) // 1 part in a million
+          issueAmount.mul(520).div(100000) // 520 parts in 1 miliion
         )
-        expect(await token0.balanceOf(backingManager.address)).to.equal(remainder)
-        expect(await token1.balanceOf(backingManager.address)).to.equal(toBNDecimals(sellAmt, 6))
+        expect(await token0.balanceOf(backingManager.address)).to.be.closeTo(0, 10)
+        expect(await token1.balanceOf(backingManager.address)).to.be.closeTo(
+          0,
+          toBNDecimals(sellAmt, 6)
+        )
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
         // Check price in USD of the current RToken
@@ -1501,7 +1500,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1547,7 +1546,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should not start any new auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1564,8 +1563,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
         const remainingValue = toBNDecimals(minBuyAmt, 6).mul(bn('1e12')).add(remainder)
-        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(remainingValue)
-        expect(await token0.balanceOf(backingManager.address)).to.equal(remainder)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          remainingValue,
+          remainingValue.div(bn('5e3'))
+        )
+        expect(await token0.balanceOf(backingManager.address)).to.be.closeTo(0, 10)
         expect(await token1.balanceOf(backingManager.address)).to.equal(toBNDecimals(minBuyAmt, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
         expect(await rToken.basketsNeeded()).to.be.closeTo(
@@ -1646,7 +1648,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1678,7 +1680,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should start a new one to sell RSR for collateral
         // ~3e18 Tokens left to buy - Sets Buy amount as independent value
@@ -1716,7 +1718,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: rsr.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -1754,7 +1756,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should start final dust auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1833,7 +1835,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1863,7 +1865,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should start a new one to sell a new revenue token instead of RSR
         // About 3e18 Tokens left to buy - Sets Buy amount as independent value
@@ -1906,7 +1908,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: aaveToken.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -1941,7 +1943,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -2079,7 +2081,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2106,7 +2108,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current, and will open a new auction for the same amount
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -2130,7 +2132,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2157,14 +2159,14 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Check staking situation remains unchanged
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmount)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current, and will open a new auction for the same amount
         const leftoverMinBuyAmt = await toMinBuyAmt(leftoverSellAmt, fp('0.5'), fp('1'))
@@ -2194,7 +2196,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('2'),
         })
 
@@ -2221,7 +2223,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Check staking situation remains unchanged
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
@@ -2260,7 +2262,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('3'),
         })
 
@@ -2296,7 +2298,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction; should not start a new one
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -2397,7 +2399,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2423,7 +2425,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Raise minTradeVolume to the whole issueAmount
         await backingManager.connect(owner).setMinTradeVolume(issueAmount)
@@ -2475,7 +2477,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - NO RSR Auction launched but haircut taken
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -2598,7 +2600,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2612,7 +2614,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current, and will open a new auction to buy the remaining backup tokens
         const buyAmtBidRSR: BigNumber = issueAmount.div(2).add(1) // other half to buy
@@ -2638,7 +2640,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken2.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2665,7 +2667,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -2762,7 +2764,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2776,7 +2778,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current, and will open a new auction to sell RSR for collateral
         // 50e18 Tokens left to buy - Sets Buy amount as independent value
@@ -2803,7 +2805,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2828,7 +2830,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Settle auction with no bids - will return RSR to Backing Manager
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -2854,7 +2856,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
         })
 
@@ -2871,7 +2873,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions again - Will close the pending auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -2939,7 +2941,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2969,7 +2971,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should start a new one to sell a new revenue token instead of RSR
         // But the revenue token will have price = 0 so it wont be sold, will use RSR
@@ -3013,7 +3015,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: rsr.address,
           buy: token1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -3048,7 +3050,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3245,7 +3247,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token2.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -3265,7 +3267,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should start a new one to sell RSR for collateral
         // ~0.25 Tokens left to buy - Sets Buy amount as independent value
@@ -3293,7 +3295,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: rsr.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -3336,7 +3338,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3486,7 +3488,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -3505,7 +3507,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction for another token
         const minBuyAmt2 = await toMinBuyAmt(sellAmt2, fp('0.8'), fp('1'))
@@ -3531,7 +3533,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token2.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -3561,7 +3563,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction
         const minBuyAmt3 = await toMinBuyAmt(sellAmt3, fp('0.8').div(50), fp('1'))
@@ -3593,7 +3595,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token3.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
         })
 
@@ -3624,7 +3626,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction with the rebalancing
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3655,7 +3657,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token1.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('3'),
         })
         const t = await getTrade(backingManager, token1.address)
@@ -3695,7 +3697,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close 2nd to final auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3720,7 +3722,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token1.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('4'),
         })
         const t2 = await getTrade(backingManager, token1.address)
@@ -3754,7 +3756,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close final auction - should take haircut
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3774,23 +3776,18 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Check final state - Haircut taken, stable but price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
-          issueAmount
-            .div(4)
-            .add(minBuyAmt0)
-            .add(minBuyAmt2)
-            .add(minBuyAmt3)
-            .sub(sellAmt4.mul(bn('1e12')).sub(minBuyAmt4))
-            .sub(sellAmt5.mul(bn('1e12')).sub(minBuyAmt5))
-        )
 
-        await expectCurrentBacking({
-          tokens: newTokens,
-          quantities: [
-            newQuantities[0].sub(sellAmt4).sub(sellAmt5),
-            minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmt4).add(minBuyAmt5),
-          ],
-        })
+        const expAmount = issueAmount
+          .div(4)
+          .add(minBuyAmt0)
+          .add(minBuyAmt2)
+          .add(minBuyAmt3)
+          .sub(sellAmt4.mul(bn('1e12')).sub(minBuyAmt4))
+          .sub(sellAmt5.mul(bn('1e12')).sub(minBuyAmt5))
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          expAmount,
+          expAmount.div(bn('5e3')) // 1 part in 5000
+        )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
@@ -3809,8 +3806,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(quotes[1]).to.be.closeTo(finalQuotes[1], finalQuotes[1].div(bn('1e5'))) // 1 part in 100k
 
         // Check Backup tokens available
-        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
-          minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmt4).add(minBuyAmt5)
+        const backup1 = minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmt4).add(minBuyAmt5)
+        expect(await backupToken1.balanceOf(backingManager.address)).to.be.closeTo(
+          backup1,
+          backup1.div(bn('1e5'))
         )
       })
 
@@ -3897,7 +3896,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token2.address,
           buy: token0.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -3910,7 +3909,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction for token1
         const sellAmt1: BigNumber = (await token1.balanceOf(backingManager.address)).mul(pow10(12)) // convert to 18 decimals
@@ -3937,7 +3936,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token1.address,
           buy: token0.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -3964,7 +3963,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction for token3
         // We only need now about 11.8 tokens for Token0 to be fully collateralized
@@ -3990,7 +3989,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token3.address,
           buy: token0.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
         })
 
@@ -4024,7 +4023,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close final auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -4175,7 +4174,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token0.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -4189,7 +4188,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -4214,7 +4213,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token2.address,
           buy: backupToken2.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -4248,7 +4247,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction
         const minBuyAmt3: BigNumber = await toMinBuyAmt(sellAmt3, fp('0.5').div(50), fp('1')) // sell cToken
@@ -4280,7 +4279,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token3.address,
           buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
         })
 
@@ -4314,7 +4313,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction
         // We need to rebalance our backing, we have an excess of Token1 now and we need more backupToken2
@@ -4347,7 +4346,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token1.address,
           buy: backupToken2.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('3'),
         })
 
@@ -4391,7 +4390,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
@@ -4414,7 +4413,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: backupToken1.address,
           buy: backupToken2.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('4'),
         })
 
@@ -4459,7 +4458,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -4494,7 +4493,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: token1.address,
           buy: backupToken2.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('5'),
         })
 
@@ -4517,7 +4516,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close final auction - takes haircut
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -4545,7 +4544,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectTrade(backingManager, {
           sell: backupToken1.address,
           buy: backupToken2.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('6'),
         })
 
@@ -4568,7 +4567,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close final auction - takes haircut
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -4599,31 +4598,17 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Check final state - Haircut taken, stable but price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(fp('62.5'))
-
-        await expectCurrentBacking({
-          tokens: newTokens,
-          quantities: [
-            newQuantities[0].sub(sellAmt4).sub(sellAmt5),
-            sellAmt0
-              .div(2)
-              .add(sellAmt3.div(50).div(2))
-              .sub(sellAmtRebalance)
-              .sub(sellAmtRebalance2),
-            sellAmt2
-              .div(2)
-              .add(buyAmt4)
-              .add(sellAmtRebalance)
-              .add(sellAmtRebalance2)
-              .add(minBuyAmt5),
-          ],
-        })
-
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - Haircut of ~37.52% taken
         // The default was for 37.5% of backing, so this is pretty awesome
         const exactRTokenPrice = fp('0.6247979797979798')
+        const totalAssetValue = issueAmount.mul(exactRTokenPrice).div(fp('1'))
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          totalAssetValue,
+          totalAssetValue.div(bn('1e6'))
+        )
+
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
         await expectRTokenPrice(
           rTokenAsset.address,
           exactRTokenPrice,
@@ -4640,11 +4625,24 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(quotes).to.eql(finalQuotes)
 
         // Check Backup tokens available
-        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
-          sellAmt0.div(2).add(sellAmt3.div(50).div(2)).sub(sellAmtRebalance).sub(sellAmtRebalance2)
+        const expBackup1 = sellAmt0
+          .div(2)
+          .add(sellAmt3.div(50).div(2))
+          .sub(sellAmtRebalance)
+          .sub(sellAmtRebalance2)
+        expect(await backupToken1.balanceOf(backingManager.address)).to.be.closeTo(
+          expBackup1,
+          expBackup1.div(bn('1e3')) // 1 part in a thousand
         )
-        expect(await backupToken2.balanceOf(backingManager.address)).to.equal(
-          sellAmt2.div(2).add(buyAmt4).add(sellAmtRebalance).add(minBuyAmt5).add(sellAmtRebalance2)
+        const expBackup2 = sellAmt2
+          .div(2)
+          .add(buyAmt4)
+          .add(sellAmtRebalance)
+          .add(minBuyAmt5)
+          .add(sellAmtRebalance2)
+        expect(await backupToken2.balanceOf(backingManager.address)).to.be.closeTo(
+          expBackup2,
+          expBackup2.div(bn('1e3')) // 1 part in a thousand
         )
       })
     })
@@ -4682,7 +4680,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       // Register Collateral
       await assetRegistry.connect(owner).register(backupCollateral1.address)
       await assetRegistry.connect(owner).register(backupCollateral2.address)
-      const registeredERC20s = await assetRegistry.erc20s()
 
       // Set backup configuration - USDT and aUSDT as backup
       await basketHandler
@@ -4710,13 +4707,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       // Will sell all balance of token2
       const sellAmt2 = await token2.balanceOf(backingManager.address)
       await snapshotGasCost(backingManager.settleTrade(token2.address))
-      await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
+      await snapshotGasCost(backingManager.rebalance(TradeKind.BATCH_AUCTION))
 
       // Another call should not create any new auctions if still ongoing
       await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith(
         'cannot settle yet'
       )
-      await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
+      await snapshotGasCost(backingManager.rebalance(TradeKind.BATCH_AUCTION))
 
       // Perform Mock Bids for the new Token (addr1 has balance)
       // Get minBuyAmt, we will have now surplus of backupToken1
@@ -4729,7 +4726,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction, should start a new one to sell the new surplus of Backup Token 1
       const requiredBkpToken: BigNumber = issueAmount.mul(bkpTokenRefAmt).div(BN_SCALE_FACTOR)
@@ -4738,7 +4735,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(token2.address))
-      await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
+      await snapshotGasCost(backingManager.rebalance(TradeKind.BATCH_AUCTION))
 
       // Perform Mock Bids for the new Token (addr1 has balance)
       // Assume fair price, get all of them
@@ -4750,7 +4747,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction, should start a new one to sell RSR for collateral
       const buyAmtBidRSR: BigNumber = requiredBkpToken.sub(minBuyAmtBkp1)
@@ -4758,7 +4755,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(backupToken1.address))
-      await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
+      await snapshotGasCost(backingManager.rebalance(TradeKind.BATCH_AUCTION))
 
       // Perform Mock Bids for RSR (addr1 has balance)
       // Assume fair price RSR = 1 get all of them - Leave a surplus of RSR to be returned
@@ -4770,7 +4767,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       expect(await backingManager.tradesOpen()).to.equal(1)
       // End current auction

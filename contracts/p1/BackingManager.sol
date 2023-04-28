@@ -34,7 +34,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     uint192 public constant MAX_BACKING_BUFFER = FIX_ONE; // {1} 100%
 
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
-    uint192 public backingBuffer; // {%} how much extra backing collateral to keep
+    uint192 public backingBuffer; // {1} how much extra backing collateral to keep
 
     // === 3.0.0 ===
     IFurnace private furnace;
@@ -231,7 +231,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             // {tok} = {BU} * {tok/BU}
             uint192 req = erc20s[i] != IERC20(address(rToken))
                 ? needed.mul(basketHandler.quantity(erc20s[i]), CEIL)
-                : backingBuffer.mul(_safeWrap(rToken.totalSupply()));
+                : backingBuffer.mul(_safeWrap(rToken.totalSupply()), CEIL);
 
             uint192 bal = asset.bal(address(this));
             if (bal.gt(req)) {
@@ -258,6 +258,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager
     function compromiseBasketsNeeded(uint192 basketsHeldBottom) private {
         // assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
+        assert(tradesOpen == 0);
         rToken.setBasketsNeeded(basketsHeldBottom);
     }
 

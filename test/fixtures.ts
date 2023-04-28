@@ -20,6 +20,7 @@ import {
   ERC20Mock,
   DeployerP0,
   DeployerP1,
+  DutchTrade,
   FacadeRead,
   FacadeAct,
   FacadeTest,
@@ -412,7 +413,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     unstakingDelay: bn('1209600'), // 2 weeks
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
-    auctionLength: bn('900'), // 15 minutes
+    batchAuctionLength: bn('900'), // 15 minutes
+    dutchAuctionLength: bn('600'), // 10 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     issuanceThrottle: {
@@ -515,8 +517,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
     const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
-    const TradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-    const tradeImpl: GnosisTrade = <GnosisTrade>await TradeImplFactory.deploy()
+    const GnosisTradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+    const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeImplFactory.deploy()
+
+    const DutchTradeImplFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
+    const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeImplFactory.deploy()
 
     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
@@ -542,7 +547,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
         rsrTrader: revTraderImpl.address,
         rTokenTrader: revTraderImpl.address,
       },
-      trade: tradeImpl.address,
+      trading: {
+        gnosisTrade: gnosisTrade.address,
+        dutchTrade: dutchTrade.address,
+      },
     }
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
