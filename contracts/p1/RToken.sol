@@ -9,7 +9,7 @@ import "../libraries/Fixed.sol";
 import "../libraries/Throttle.sol";
 import "../vendor/ERC20PermitUpgradeable.sol";
 import "./mixins/Component.sol";
-
+import "hardhat/console.sol";
 /**
  * @title RTokenP1
  * An ERC20 with an elastic supply and governable exchange rate to basket units.
@@ -339,8 +339,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // Check post-balances
         for (uint256 i = 0; i < minERC20s.length; ++i) {
+            uint256 bal = minERC20s[i].balanceOf(recipient);
             require(
-                minERC20s[i].balanceOf(recipient) - initialMinERC20Balances[i] >= minAmounts[i],
+                bal - initialMinERC20Balances[i] >= minAmounts[i],
                 "redemption below minimum"
             );
         }

@@ -142,8 +142,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     // Nonce of the first reference basket from the current history
     // A new historical record begins whenever the prime basket is changed
-    // There can be 0 to any number of reference baskets from the current history
-    uint48 private historicalNonce; // {nonce}
+    // There can be 0 to any number of reference baskets from the current prime basket history
+    uint48 private primeNonce; // {nonce}
 
     // The historical baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private historicalBaskets;
@@ -266,7 +266,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             config.targetNames[erc20s[i]] = names[i];
         }
 
-        historicalNonce = nonce + 1; // set historicalNonce to the next nonce
+        primeNonce = nonce + 1; // set primeNonce to the next nonce
         emit PrimeBasketSet(erc20s, targetAmts, names);
     }
 
@@ -452,8 +452,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192[] memory portions,
         uint192 amount
     ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
-        // directly after upgrade the historicalNonce will be 0, which is not a valid value
-        require(historicalNonce > 0, "historicalNonce uninitialized");
+        // directly after upgrade the primeNonce will be 0, which is not a valid value
+        require(primeNonce > 0, "primeNonce uninitialized");
         require(basketNonces.length == portions.length, "portions does not mirror basketNonces");
 
         // Confirm portions sum to FIX_ONE
@@ -471,10 +471,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         // Calculate the linear combination basket
         for (uint48 i = 0; i < basketNonces.length; ++i) {
             require(
-                basketNonces[i] >= historicalNonce && basketNonces[i] <= nonce,
+                basketNonces[i] >= primeNonce && basketNonces[i] <= nonce,
                 "invalid basketNonce"
             ); // will always revert directly after setPrimeBasket()
-            Basket storage b = historicalBaskets[i];
+            Basket storage b = historicalBaskets[basketNonces[i]];
 
             // Add-in refAmts contribution from historical basket
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
