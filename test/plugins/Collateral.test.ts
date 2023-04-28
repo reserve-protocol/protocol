@@ -7,7 +7,6 @@ import { IConfig, MAX_DELAY_UNTIL_DEFAULT } from '../../common/configuration'
 import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AppreciatingFiatCollateral,
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -27,6 +26,7 @@ import {
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
+  UnpricedAppreciatingFiatCollateralMock,
   USDCMock,
   WETH9,
 } from '../../typechain'
@@ -713,21 +713,21 @@ describe('Collateral contracts', () => {
       const UnpricedAppreciatingFactory = await ethers.getContractFactory(
         'UnpricedAppreciatingFiatCollateralMock'
       )
-      const unpricedAppFiatCollateral: AppreciatingFiatCollateral = <AppreciatingFiatCollateral>(
-        await UnpricedAppreciatingFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: await aTokenCollateral.chainlinkFeed(), // reuse - mock
-            oracleError: ORACLE_ERROR,
-            erc20: aToken.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: DEFAULT_THRESHOLD,
-            delayUntilDefault: DELAY_UNTIL_DEFAULT,
-          },
-          REVENUE_HIDING
-        )
+      const unpricedAppFiatCollateral: UnpricedAppreciatingFiatCollateralMock = <
+        UnpricedAppreciatingFiatCollateralMock
+      >await UnpricedAppreciatingFactory.deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await aTokenCollateral.chainlinkFeed(), // reuse - mock
+          oracleError: ORACLE_ERROR,
+          erc20: aToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        },
+        REVENUE_HIDING
       )
 
       // Save prices
