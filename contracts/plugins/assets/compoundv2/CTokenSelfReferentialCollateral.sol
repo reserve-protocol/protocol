@@ -74,8 +74,8 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external virtual override(Asset, IRewardable) {
-        // TODO: delete this
         IRewardable(address(erc20)).claimRewards();
     }
 }

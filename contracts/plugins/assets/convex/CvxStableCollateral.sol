@@ -131,15 +131,9 @@ contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external override(Asset, IRewardable) {
-        IConvexStakingWrapper wrapper = IConvexStakingWrapper(address(erc20));
-        IERC20 cvx = IERC20(wrapper.cvx());
-        IERC20 crv = IERC20(wrapper.crv());
-        uint256 cvxOldBal = cvx.balanceOf(address(this));
-        uint256 crvOldBal = crv.balanceOf(address(this));
-        wrapper.getReward(address(this));
-        emit RewardsClaimed(cvx, cvx.balanceOf(address(this)) - cvxOldBal);
-        emit RewardsClaimed(crv, crv.balanceOf(address(this)) - crvOldBal);
+        IRewardable(address(erc20)).claimRewards();
     }
 
     // === Internal ===
