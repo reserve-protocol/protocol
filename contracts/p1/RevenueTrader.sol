@@ -83,7 +83,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         IAsset buy = assetRegistry.toAsset(tokenToBuy);
 
         // === Refresh ===
-        // do not need to refresh when caller is BackingManager
+        // do not need to refresh when caller is BackingManager.forwardRevenue()
         if (_msgSender() != address(backingManager)) {
             if (erc20 == IERC20(address(rToken)) || tokenToBuy == IERC20(address(rToken))) {
                 // if either token is the RToken, refresh everything

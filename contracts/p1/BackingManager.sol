@@ -38,6 +38,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // === 3.0.0 ===
     IFurnace private furnace;
+    mapping(TradeKind => uint48) private tradeEnd; // {s} The last endTime() of an auction of each kind
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
@@ -106,6 +107,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         assetRegistry.refresh();
         furnace.melt();
 
+        // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
+        // Assumption: chain has <= 12s blocktimes
+        require(
+            _msgSender() == address(this) || tradeEnd[kind] < block.timestamp + 12,
+            "wait 1 block"
+        );
+
         require(tradesOpen == 0, "trade open");
         require(basketHandler.isReady(), "basket not ready");
         require(block.timestamp >= basketHandler.timestamp() + tradingDelay, "trading delayed");
@@ -138,7 +146,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
             }
 
-            tryTrade(kind, req);
+            // Execute Trade
+            ITrade trade = tryTrade(kind, req);
+            tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);
@@ -285,5 +295,5 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[41] private __gap;
+    uint256[39] private __gap;
 }

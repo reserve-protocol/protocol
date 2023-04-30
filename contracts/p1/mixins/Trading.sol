@@ -32,9 +32,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     uint192 public minTradeVolume; // {UoA}
 
-    // === 3.0.0 ===
-    mapping(TradeKind => uint48) public lastEndTime; // {s} block timestamp
-
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
     // trades[sell] != 0 iff trade[sell] has been opened and not yet settled
@@ -104,6 +101,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    /// @return trade The trade contract created
     /// @custom:interaction (only reads or writes `trades`, and is marked `nonReentrant`)
     // checks:
     //   (not external, so we don't need auth or pause checks)
@@ -120,7 +118,11 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
     // this contract that changes state this function refers to.
     // slither-disable-next-line reentrancy-vulnerabilities-1
-    function tryTrade(TradeKind kind, TradeRequest memory req) internal nonReentrant {
+    function tryTrade(TradeKind kind, TradeRequest memory req)
+        internal
+        nonReentrant
+        returns (ITrade trade)
+    {
         /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
@@ -128,28 +130,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
 
-        // Only allow starting the next auction back-to-back if msgSender is self
-        // Only time this happens is BackingManager.settleTrade() -> BackingManager.rebalance()
-        // TODO is there a better way to do this?
-        if (_msgSender() != address(this)) {
-            // Warning, Assumption: blocktime <= 12s
-            // Require at least 1 block between auctions of the same kind
-            // This gives space for someone to start one of the opposite kinds of auctions
-            require(
-                block.timestamp >
-                    lastEndTime[
-                        kind == TradeKind.DUTCH_AUCTION
-                            ? TradeKind.BATCH_AUCTION
-                            : TradeKind.DUTCH_AUCTION
-                    ],
-                "wait 1 block"
-            );
-        }
-
-        ITrade trade = broker.openTrade(kind, req);
-        uint48 endTime = trade.endTime();
-        if (endTime > lastEndTime[kind]) lastEndTime[kind] = endTime;
-
+        trade = broker.openTrade(kind, req);
         trades[sell] = trade;
         tradesOpen++;
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
@@ -187,5 +168,5 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[45] private __gap;
+    uint256[46] private __gap;
 }

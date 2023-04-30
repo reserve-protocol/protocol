@@ -26,8 +26,6 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     uint192 public minTradeVolume; // {UoA}
 
-    mapping(TradeKind => uint48) public lastEndTime; // {s} block timestamp
-
     // untestable:
     //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
     //      This function is only called inside other `init` functions, each of which is wrapped
@@ -63,7 +61,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    function tryTrade(TradeKind kind, TradeRequest memory req) internal {
+    /// @return trade The trade contract created
+    function tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
         IBroker broker = main.broker();
         assert(address(trades[req.sell.erc20()]) == address(0));
         require(!broker.disabled(), "broker disabled");
@@ -71,23 +70,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         req.sell.erc20().safeApprove(address(broker), 0);
         req.sell.erc20().safeApprove(address(broker), req.sellAmount);
 
-        // Only allow starting the next auction back-to-back if msgSender is self
-        // Only time this happens is BackingManager.settleTrade() -> BackingManager.rebalance()
-        // TODO is there a better way to do this?
-        if (_msgSender() != address(this)) {
-            // Warning, Assumption: blocktime <= 12s
-            // Require at least 1 block between auctions of the same kind
-            // This gives space for someone to start one of the opposite kinds of auctions
-            uint48 lastEnd = lastEndTime[
-                kind == TradeKind.DUTCH_AUCTION ? TradeKind.BATCH_AUCTION : TradeKind.DUTCH_AUCTION
-            ];
-            require(block.timestamp > lastEnd, "wait 1 block");
-        }
-
-        ITrade trade = broker.openTrade(kind, req);
-        uint48 endTime = trade.endTime();
-        if (endTime > lastEndTime[kind]) lastEndTime[kind] = endTime;
-
+        trade = broker.openTrade(kind, req);
         trades[req.sell.erc20()] = trade;
         tradesOpen++;
         emit TradeStarted(

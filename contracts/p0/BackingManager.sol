@@ -26,6 +26,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
+    mapping(TradeKind => uint48) private tradeEnd; // {s} The last endTime() of an auction of each kind
+
     function init(
         IMain main_,
         uint48 tradingDelay_,
@@ -74,6 +76,13 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         main.assetRegistry().refresh();
         main.furnace().melt();
 
+        // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
+        // Assumption: chain has <= 12s blocktimes
+        require(
+            _msgSender() == address(this) || tradeEnd[kind] < block.timestamp + 12,
+            "wait 1 block"
+        );
+
         require(tradesOpen == 0, "trade open");
         require(main.basketHandler().isReady(), "basket not ready");
         require(
@@ -109,7 +118,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
             }
 
-            tryTrade(kind, req);
+            // Execute Trade
+            ITrade trade = tryTrade(kind, req);
+            tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);

@@ -71,7 +71,7 @@ contract DutchTrade is ITrade {
         uint256 sellAmount_,
         uint48 auctionLength
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
-        require(address(sell) != address(0) || address(buy) != address(0), "zero address token");
+        assert(address(sell_) != address(0) && address(buy_) != address(0)); // misuse of contract
 
         // Only start dutch auctions under well-defined prices
         //
@@ -118,15 +118,16 @@ contract DutchTrade is ITrade {
 
     /// Bid for the auction lot at the current price; settling atomically via a callback
     /// @dev Caller must have provided approval
-    function bid() external {
+    /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
+    function bid() external returns (uint256 amountIn) {
         require(bidder == address(0), "bid received");
 
         // {qBuyTok}
-        uint256 buyAmount = bidAmount(uint48(block.timestamp));
+        amountIn = bidAmount(uint48(block.timestamp));
 
         // Transfer in buy tokens
         bidder = msg.sender;
-        buy.safeTransferFrom(bidder, address(this), buyAmount);
+        buy.safeTransferFrom(bidder, address(this), amountIn);
 
         // TODO examine reentrancy - think it's probably ok
         // the other candidate design is ditch the bid() function entirely and have them transfer
@@ -141,6 +142,8 @@ contract DutchTrade is ITrade {
     }
 
     /// Settle the auction, emptying the contract of balances
+    /// @return soldAmt {qSellTok} Token quantity sold by the protocol
+    /// @return boughtAmt {qBuyTok} Token quantity purchased by the protocol
     function settle()
         external
         stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
@@ -155,13 +158,13 @@ contract DutchTrade is ITrade {
             require(block.timestamp >= endTime, "auction not over");
         }
 
-        // {qBuyTok}
-        uint256 boughtAmount = buy.balanceOf(address(this));
+        uint256 sellBal = sell.balanceOf(address(this));
+        soldAmt = sellAmount > sellBal ? sellAmount - sellBal : 0;
+        boughtAmt = buy.balanceOf(address(this));
 
         // Transfer balances back to origin
-        buy.safeTransfer(address(origin), boughtAmount);
-        sell.safeTransfer(address(origin), sell.balanceOf(address(this)));
-        return (sellAmount, boughtAmount);
+        buy.safeTransfer(address(origin), boughtAmt);
+        sell.safeTransfer(address(origin), sellBal);
     }
 
     /// Anyone can transfer any ERC20 back to the origin after the trade has been closed
