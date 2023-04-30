@@ -43,7 +43,7 @@ import {
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import { withinQuad } from './utils/matchers'
 import {
   Collateral,
@@ -56,7 +56,7 @@ import {
   REVENUE_HIDING,
 } from './fixtures'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
-import { expectTrade, getTrade } from './utils/trades'
+import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 
 const describeGas =
@@ -2335,6 +2335,122 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check status - nothing claimed
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+      })
+
+      context('DutchTrade', () => {
+        const auctionLength = 300
+        beforeEach(async () => {
+          await broker.connect(owner).setDutchAuctionLength(auctionLength)
+        })
+
+        it('Should not trade when paused', async () => {
+          await main.connect(owner).pauseTrading()
+          await expect(
+            rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          ).to.be.revertedWith('frozen or trading paused')
+        })
+
+        it('Should not trade when frozen', async () => {
+          await main.connect(owner).freezeLong()
+          await expect(
+            rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          ).to.be.revertedWith('frozen or trading paused')
+        })
+
+        it('Should only run 1 trade per ERC20 at a time', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
+          await expect(
+            rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          ).to.be.revertedWith('trade open')
+
+          // Other ERC20 should be able to open trade
+          await token1.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageToken(token1.address, TradeKind.BATCH_AUCTION)
+        })
+
+        it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
+          issueAmount = issueAmount.div(2)
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+          await rToken.connect(addr1).approve(trade.address, initialBal)
+
+          const start = await trade.startTime()
+          const end = await trade.endTime()
+
+          // Simulate 5 minutes of blocks, should swap at right price each time
+          for (let now = await getLatestBlockTimestamp(); now < end; now += 12) {
+            const actual = await trade.connect(addr1).bidAmount(now)
+            const expected = await dutchBuyAmount(
+              fp(now - start).div(end - start),
+              rTokenAsset.address,
+              collateral0.address,
+              issueAmount,
+              config.minTradeVolume,
+              config.maxTradeSlippage
+            )
+            expect(actual).to.equal(expected)
+
+            const staticResult = await trade.connect(addr1).callStatic.bid()
+            expect(staticResult).to.equal(expected)
+            await advanceToTimestamp((await getLatestBlockTimestamp()) + 12)
+          }
+        })
+
+        it('Should handle no bid case correctly', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+          await rToken.connect(addr1).approve(trade.address, initialBal)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 1)
+          await expect(
+            trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
+          ).to.be.revertedWith('auction over')
+          await expect(trade.connect(addr1).bid()).be.revertedWith('auction over')
+
+          // Should be able to settle
+          await expect(trade.settle()).to.be.revertedWith('only origin can settle')
+          await expect(rTokenTrader.settleTrade(token0.address))
+            .to.emit(rTokenTrader, 'TradeSettled')
+            .withArgs(trade.address, token0.address, rToken.address, 0, 0)
+        })
+
+        it('Should bid in final second of auction and not launch another auction', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+          await rToken.connect(addr1).approve(trade.address, initialBal)
+
+          // Snipe auction at 1s left
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 3)
+          await trade.connect(addr1).bid()
+          expect(await trade.canSettle()).to.equal(false)
+          expect(await trade.status()).to.equal(2) // Status.CLOSED
+          expect(await trade.bidder()).to.equal(addr1.address)
+          expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
+
+          const expected = await dutchBuyAmount(
+            fp('299').div(300), // after all txs in this test, will be left at 299/300s
+            rTokenAsset.address,
+            collateral0.address,
+            issueAmount,
+            config.minTradeVolume,
+            config.maxTradeSlippage
+          )
+          expect(await rTokenTrader.tradesOpen()).to.equal(0)
+          expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 100)
+          expect(await rToken.balanceOf(furnace.address)).to.equal(expected)
+        })
       })
     })
 

@@ -2,7 +2,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { TestITrading, GnosisTrade } from '../../typechain'
-import { fp, divCeil } from '../../common/numbers'
+import { bn, fp, divCeil } from '../../common/numbers'
 
 export const expectTrade = async (trader: TestITrading, auctionInfo: Partial<ITradeInfo>) => {
   if (!auctionInfo.sell) throw new Error('Must provide sell token to find trade')
@@ -72,4 +72,57 @@ export const toMinBuyAmt = (
     .mul(lowSellPrice) // (b)
 
   return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+}
+
+// Returns the buy amount in the auction for the given progression
+export const dutchBuyAmount = async (
+  progression: BigNumber,
+  assetInAddr: string,
+  assetOutAddr: string,
+  outAmount: BigNumber,
+  minTradeVolume: BigNumber,
+  maxTradeSlippage: BigNumber
+): Promise<BigNumber> => {
+  const assetIn = await ethers.getContractAt('IAsset', assetInAddr)
+  const assetOut = await ethers.getContractAt('IAsset', assetOutAddr)
+  const [sellLow, sellHigh] = await assetOut.price() // {UoA/sellTok}
+  const [buyLow, buyHigh] = await assetIn.price() // {UoA/buyTok}
+
+  const inMaxTradeVolume = await assetIn.maxTradeVolume()
+  let maxTradeVolume = await assetOut.maxTradeVolume()
+  if (inMaxTradeVolume.lt(maxTradeVolume)) maxTradeVolume = inMaxTradeVolume
+
+  const auctionVolume = outAmount.mul(sellHigh).div(fp('1'))
+  const slippage = maxTradeSlippage
+    .mul(
+      fp('1').sub(
+        auctionVolume.sub(minTradeVolume).mul(fp('1')).div(maxTradeVolume.sub(minTradeVolume))
+      )
+    )
+    .div(fp('1'))
+
+  // console.log('slippage: ', slippage)
+
+  const lowPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
+  const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
+  const highPrice = middlePrice.add(divCeil(middlePrice, bn('2'))) // 50% above middlePrice
+
+  const price = progression.lt(fp('0.15'))
+    ? highPrice.sub(highPrice.sub(middlePrice).mul(progression).div(fp('0.15')))
+    : middlePrice.sub(
+        middlePrice
+          .sub(lowPrice)
+          .mul(progression.sub(fp('0.15')))
+          .div(fp('0.85'))
+      )
+  // console.log(
+  //   'progression: ',
+  //   progression,
+  //   'price: ',
+  //   price,
+  //   'buyAmount: ',
+  //   divCeil(outAmount.mul(price), fp('1'))
+  // )
+
+  return divCeil(outAmount.mul(price), fp('1'))
 }
