@@ -933,12 +933,8 @@ describe('FacadeAct contract', () => {
         })
 
         // RToken forwarded
-        expect(await rToken.balanceOf(backingManager.address)).to.equal(
-          config.backingBuffer.mul(await rToken.totalSupply()).div(fp('1'))
-        )
-        expect(await rToken.balanceOf(rTokenTrader.address)).to.equal(
-          hndAmt.sub(issueAmount.mul(config.backingBuffer).div(fp('1')))
-        )
+        expect(await rToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rToken.balanceOf(rTokenTrader.address)).to.equal(hndAmt)
       })
     })
   })

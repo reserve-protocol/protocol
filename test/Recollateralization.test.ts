@@ -1096,7 +1096,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(
           toBNDecimals(issueAmount, 6).add(1)
         )
-        expect(await rToken.totalSupply()).to.equal(totalValue)
+        expect(await rToken.totalSupply()).to.equal(issueAmount) // assets kept in backing buffer
 
         // Check price in USD of the current RToken
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
@@ -1310,7 +1310,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.be.gt(issueAmount) // New RToken minting
 
         // Check price in USD of the current RToken
-        expect(await rToken.basketsNeeded()).to.equal(await rToken.totalSupply()) // no haircut
+        expect(await rToken.basketsNeeded()).to.be.gte(await rToken.totalSupply()) // no haircut
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
       })
 
@@ -2325,7 +2325,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           issueAmount.add(1)
         )
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(issueAmount.add(1))
-        expect(await rToken.totalSupply()).to.equal(issueAmount.add(1))
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - Remains the same
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
@@ -2510,8 +2510,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(bonus)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(bonus)
 
+        const supply = bonus.sub(bonus.mul(config.backingBuffer).div(fp('1')))
         // Should mint the excess in order to re-handout to RToken holders and stakers
-        expect(await rToken.totalSupply()).to.equal(bonus)
+        expect(await rToken.totalSupply()).to.be.closeTo(supply, supply.div(bn('1e6')))
+        expect(await rToken.totalSupply()).to.be.gte(supply)
 
         // Check price in USD of the current RToken - overcollateralized and still targeting 1
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
