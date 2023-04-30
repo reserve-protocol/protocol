@@ -190,7 +190,7 @@ contract DutchTrade is ITrade {
         require(timestamp > startTime, "cannot bid block auction was created");
         require(timestamp < endTime, "auction over");
 
-        uint192 progression = divuu(uint48(block.timestamp) - startTime, endTime - startTime);
+        uint192 progression = divuu(timestamp - startTime, endTime - startTime);
         // assert(progression <= FIX_ONE);
 
         // {buyTok/sellTok}
