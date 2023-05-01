@@ -22,6 +22,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
      *  - Issuance Paused: disallow issuance
      *
      * Typically freezing thaws on its own in a predetermined number of blocks.
+     *   However, OWNER can freeze forever and unfreeze.
      */
 
     /// The rest of the contract uses the shorthand; these declarations are here for getters
