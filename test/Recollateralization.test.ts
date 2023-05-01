@@ -825,6 +825,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       it('Should trade if issuance paused', async () => {
         // Setup new prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+        await basketHandler.refreshBasket()
+
         await main.connect(owner).pauseIssuance()
         await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
           backingManager,
@@ -3270,7 +3272,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await backingManager.connect(owner).setBackingBuffer(0)
 
         // Provide approvals
-        await token1.connect(addr1).approve(rToken.address, initialBal)
+        await token0.connect(addr1).approve(rToken.address, initialBal)
         await token1.connect(addr1).approve(rToken.address, initialBal)
         await token2.connect(addr1).approve(rToken.address, initialBal)
         await token3.connect(addr1).approve(rToken.address, initialBal)
@@ -4054,7 +4056,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Perform Mock Bids for the new Token (addr1 has balance)
-        await token1.connect(addr1).approve(gnosis.address, minBuyAmt2)
+        await token0.connect(addr1).approve(gnosis.address, minBuyAmt2)
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt2,
@@ -4108,7 +4110,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(quotes).to.eql(newQuotes)
 
         // Perform Mock Bids (addr1 has balance)
-        await token1.connect(addr1).approve(gnosis.address, minBuyAmt1)
+        await token0.connect(addr1).approve(gnosis.address, minBuyAmt1)
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: toBNDecimals(sellAmt1, 6),
@@ -4168,7 +4170,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        await token1.connect(addr1).approve(gnosis.address, minBuyAmt3)
+        await token0.connect(addr1).approve(gnosis.address, minBuyAmt3)
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: toBNDecimals(sellAmt3, 8),
