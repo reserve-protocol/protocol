@@ -38,7 +38,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // === 3.0.0 ===
     IFurnace private furnace;
-    mapping(TradeKind => uint48) private tradeEnd; // {s} The last endTime() of an auction of each kind
+    mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER

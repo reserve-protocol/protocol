@@ -26,7 +26,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
-    mapping(TradeKind => uint48) private tradeEnd; // {s} The last endTime() of an auction of each kind
+    mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
 
     function init(
         IMain main_,
