@@ -2357,16 +2357,25 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           ).to.be.revertedWith('frozen or trading paused')
         })
 
+        it('Should trade if issuance paused', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await main.connect(owner).pauseIssuance()
+          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+        })
+
         it('Should only run 1 trade per ERC20 at a time', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
+          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
           await expect(
             rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          ).to.be.revertedWith('trade open')
+          await expect(
+            rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
           ).to.be.revertedWith('trade open')
 
           // Other ERC20 should be able to open trade
           await token1.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageToken(token1.address, TradeKind.BATCH_AUCTION)
+          await rTokenTrader.manageToken(token1.address, TradeKind.DUTCH_AUCTION)
         })
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {

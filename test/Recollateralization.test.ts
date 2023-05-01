@@ -5,7 +5,13 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import { BN_SCALE_FACTOR, CollateralStatus, TradeKind, MAX_UINT256 } from '../common/constants'
+import {
+  BN_SCALE_FACTOR,
+  CollateralStatus,
+  TradeKind,
+  MAX_UINT256,
+  ZERO_ADDRESS,
+} from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, fp, pow10, toBNDecimals, divCeil } from '../common/numbers'
 import {
@@ -23,12 +29,13 @@ import {
   StaticATokenMock,
   TestIBackingManager,
   TestIBasketHandler,
+  TestIBroker,
   TestIMain,
   TestIRToken,
   TestIStRSR,
   USDCMock,
 } from '../typechain'
-import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import {
   Collateral,
   defaultFixture,
@@ -39,7 +46,7 @@ import {
   PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { expectTrade, getTrade } from './utils/trades'
+import { expectTrade, getTrade, dutchBuyAmount } from './utils/trades'
 import { withinQuad } from './utils/matchers'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { useEnv } from '#/utils/env'
@@ -93,6 +100,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
   let main: TestIMain
+  let broker: TestIBroker
 
   interface IBackingInfo {
     tokens: string[]
@@ -156,6 +164,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       basketHandler,
       main,
       rTokenAsset,
+      broker,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
@@ -799,7 +808,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await stRSR.connect(addr1).stake(stakeAmount)
       })
 
-      it('Should not trade if paused', async () => {
+      it('Should not trade if trading paused', async () => {
         await main.connect(owner).pauseTrading()
         await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'frozen or trading paused'
@@ -810,6 +819,16 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await main.connect(owner).freezeShort()
         await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'frozen or trading paused'
+        )
+      })
+
+      it('Should trade if issuance paused', async () => {
+        // Setup new prime basket
+        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+        await main.connect(owner).pauseIssuance()
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+          backingManager,
+          'TradeStarted'
         )
       })
 
@@ -3092,6 +3111,138 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount.sub(sellAmtRemToken))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmount)
       })
+
+      context('DutchTrade', () => {
+        const auctionLength = 300
+        beforeEach(async () => {
+          await broker.connect(owner).setDutchAuctionLength(auctionLength)
+
+          // Set up rebalancing scenario
+          await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+          await basketHandler.refreshBasket()
+        })
+
+        it('Should not trade when paused', async () => {
+          await main.connect(owner).pauseTrading()
+          await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
+            'frozen or trading paused'
+          )
+        })
+
+        it('Should not trade when frozen', async () => {
+          await main.connect(owner).freezeLong()
+          await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
+            'frozen or trading paused'
+          )
+        })
+
+        it('Should trade if issuance paused', async () => {
+          await main.connect(owner).pauseIssuance()
+          await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.emit(
+            backingManager,
+            'TradeStarted'
+          )
+        })
+
+        it('Should only run 1 trade at a time', async () => {
+          await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+          await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
+            'already rebalancing'
+          )
+          await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+            'trade open'
+          )
+        })
+
+        it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
+          await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await backingManager.trades(token0.address)
+          )
+          await token1.connect(addr1).approve(trade.address, initialBal)
+
+          const start = await trade.startTime()
+          const end = await trade.endTime()
+
+          // Simulate 5 minutes of blocks, should swap at right price each time
+          for (let now = await getLatestBlockTimestamp(); now < end; now += 12) {
+            const actual = await trade.connect(addr1).bidAmount(now)
+            const expected = divCeil(
+              await dutchBuyAmount(
+                fp(now - start).div(end - start),
+                rTokenAsset.address,
+                collateral0.address,
+                issueAmount,
+                config.minTradeVolume,
+                config.maxTradeSlippage
+              ),
+              bn('1e12') // fix for decimals
+            )
+            expect(actual).to.equal(expected)
+
+            const staticResult = await trade.connect(addr1).callStatic.bid()
+            expect(staticResult).to.equal(expected)
+            await advanceToTimestamp((await getLatestBlockTimestamp()) + 12)
+          }
+        })
+
+        it('Should handle no bid case correctly', async () => {
+          await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await backingManager.trades(token0.address)
+          )
+          await token1.connect(addr1).approve(trade.address, initialBal)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 1)
+          await expect(
+            trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
+          ).to.be.revertedWith('auction over')
+          await expect(trade.connect(addr1).bid()).be.revertedWith('auction over')
+
+          // Should be able to settle
+          await expect(trade.settle()).to.be.revertedWith('only origin can settle')
+          await expect(backingManager.settleTrade(token0.address))
+            .to.emit(backingManager, 'TradeSettled')
+            .withArgs(trade.address, token0.address, token1.address, 0, 0)
+        })
+
+        it('Should bid in final second of auction and launch another auction', async () => {
+          await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await backingManager.trades(token0.address)
+          )
+          await token1.connect(addr1).approve(trade.address, initialBal)
+
+          // Snipe auction at 1s left
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 3)
+          await trade.connect(addr1).bid()
+          expect(await trade.canSettle()).to.equal(false)
+          expect(await trade.status()).to.equal(2) // Status.CLOSED
+          expect(await trade.bidder()).to.equal(addr1.address)
+          expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+
+          const expected = divCeil(
+            await dutchBuyAmount(
+              fp('299').div(300), // after all txs in this test, will be left at 299/300s
+              collateral0.address,
+              collateral1.address,
+              issueAmount,
+              config.minTradeVolume,
+              config.maxTradeSlippage
+            ),
+            bn('1e12') // decimals
+          )
+          expect(await backingManager.tradesOpen()).to.equal(1)
+          expect(await token1.balanceOf(backingManager.address)).to.equal(expected)
+
+          // Should launch another auction: RSR -> token1
+          expect(await backingManager.trades(token0.address)).to.equal(ZERO_ADDRESS)
+          expect(await backingManager.trades(rsr.address)).to.not.equal(ZERO_ADDRESS)
+          expect(await backingManager.tradesOpen()).to.equal(1)
+        })
+      })
     })
 
     context('With issued Rtokens', function () {
@@ -3119,7 +3270,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await backingManager.connect(owner).setBackingBuffer(0)
 
         // Provide approvals
-        await token0.connect(addr1).approve(rToken.address, initialBal)
+        await token1.connect(addr1).approve(rToken.address, initialBal)
         await token1.connect(addr1).approve(rToken.address, initialBal)
         await token2.connect(addr1).approve(rToken.address, initialBal)
         await token3.connect(addr1).approve(rToken.address, initialBal)
@@ -3903,7 +4054,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         // Perform Mock Bids for the new Token (addr1 has balance)
-        await token0.connect(addr1).approve(gnosis.address, minBuyAmt2)
+        await token1.connect(addr1).approve(gnosis.address, minBuyAmt2)
         await gnosis.placeBid(0, {
           bidder: addr1.address,
           sellAmount: sellAmt2,
@@ -3957,7 +4108,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(quotes).to.eql(newQuotes)
 
         // Perform Mock Bids (addr1 has balance)
-        await token0.connect(addr1).approve(gnosis.address, minBuyAmt1)
+        await token1.connect(addr1).approve(gnosis.address, minBuyAmt1)
         await gnosis.placeBid(1, {
           bidder: addr1.address,
           sellAmount: toBNDecimals(sellAmt1, 6),
@@ -4017,7 +4168,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        await token0.connect(addr1).approve(gnosis.address, minBuyAmt3)
+        await token1.connect(addr1).approve(gnosis.address, minBuyAmt3)
         await gnosis.placeBid(2, {
           bidder: addr1.address,
           sellAmount: toBNDecimals(sellAmt3, 8),
@@ -4661,7 +4812,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await backingManager.connect(owner).setBackingBuffer(0)
 
       // Provide approvals
-      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
