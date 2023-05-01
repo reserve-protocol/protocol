@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "../../interfaces/IVersioned.sol";
 
 // This value should be updated on each release
-string constant VERSION = "3.0.0";
+string constant ASSET_VERSION = "3.0.0";
 
 /**
  * @title VersionedAsset
@@ -12,6 +12,6 @@ string constant VERSION = "3.0.0";
  */
 abstract contract VersionedAsset is IVersioned {
     function version() public pure virtual override returns (string memory) {
-        return VERSION;
+        return ASSET_VERSION;
     }
 }
