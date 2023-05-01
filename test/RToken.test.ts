@@ -1414,6 +1414,702 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         })
       })
     })
+
+    context.only('Historical redemptions with issued RTokens', function () {
+      let issueAmount: BigNumber
+
+      beforeEach(async function () {
+        // Issue some RTokens to user
+        issueAmount = bn('100e18')
+        // Provide approvals
+        await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+
+        // Issue rTokens
+        await rToken.connect(addr1).issue(issueAmount)
+      })
+
+      it('Should redeem RTokens correctly', async function () {
+        const redeemAmount = bn('100e18')
+
+        // Check balances
+        expect(await rToken.balanceOf(addr1.address)).to.equal(redeemAmount)
+        expect(await rToken.totalSupply()).to.equal(redeemAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+
+        // Redeem rTokens
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount)
+        await rToken.connect(addr1).customRedemption(
+          addr1.address,
+          redeemAmount,
+          basketNonces,
+          portions,
+          quote.erc20s,
+          quote.quantities
+        )
+
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        await Promise.all(
+          tokens.map(async (t) => {
+            expect(await t.balanceOf(addr1.address)).to.equal(initialBal)
+          })
+        )
+
+        // Check asset value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          issueAmount.sub(redeemAmount)
+        )
+      })
+
+      it('Should redeem to a different account', async function () {
+        // Provide approvals
+        await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+
+        // Redeem rTokens to another account
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        await expect(
+          rToken.connect(addr1).customRedemption(
+            addr2.address,
+            issueAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        )
+          .to.emit(rToken, 'Redemption')
+          .withArgs(addr1.address, addr2.address, issueAmount, issueAmount)
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.balanceOf(addr2.address)).to.equal(0)
+        expect(await token0.balanceOf(addr2.address)).to.equal(initialBal.add(issueAmount.div(4)))
+      })
+
+      it('Should redeem RTokens correctly for multiple users', async function () {
+        const issueAmount = bn('100e18')
+        const redeemAmount = bn('100e18')
+
+        // Issue new RTokens
+        await Promise.all(tokens.map((t) => t.connect(addr2).approve(rToken.address, initialBal)))
+
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+
+        // Issue rTokens
+        await rToken.connect(addr2).issue(issueAmount)
+
+        // Check asset value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          issueAmount.mul(2)
+        )
+
+        // Redeem rTokens
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount)
+        await rToken.connect(addr1).customRedemption(
+          addr1.address,
+          redeemAmount,
+          basketNonces,
+          portions,
+          quote.erc20s,
+          quote.quantities
+        )
+
+        // Check asset value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          issueAmount.mul(2).sub(redeemAmount)
+        )
+
+        // Redeem rTokens with another user
+        await rToken.connect(addr2).customRedemption(
+          addr2.address,
+          redeemAmount,
+          basketNonces,
+          portions,
+          quote.erc20s,
+          quote.quantities
+        )
+
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.balanceOf(addr2.address)).to.equal(0)
+
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        await Promise.all(
+          tokens.map(async (t) => {
+            expect(await t.balanceOf(addr1.address)).to.equal(initialBal)
+            expect(await t.balanceOf(addr2.address)).to.equal(initialBal)
+          })
+        )
+
+        // Check asset value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          issueAmount.mul(2).sub(redeemAmount.mul(2))
+        )
+      })
+
+      it('Should redeem if basket is IFFY #fast', async function () {
+        // Default one of the tokens - 50% price reduction and mark default as probable
+        await setOraclePrice(collateral3.address, bn('0.5e8'))
+
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        await rToken.connect(addr1).customRedemption(
+          addr1.address,
+          issueAmount,
+          basketNonces,
+          portions,
+          quote.erc20s,
+          quote.quantities
+        )
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should redeem if basket is UNPRICED #fast', async function () {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        await rToken.connect(addr1).customRedemption(
+          addr1.address,
+          issueAmount,
+          basketNonces,
+          portions,
+          quote.erc20s,
+          quote.quantities
+        )
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should redeem if paused #fast', async function () {
+        await main.connect(owner).pauseTrading()
+        await main.connect(owner).pauseIssuance()
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        await rToken.connect(addr1).customRedemption(
+          addr1.address,
+          issueAmount,
+          basketNonces,
+          portions,
+          quote.erc20s,
+          quote.quantities
+        )
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should revert if frozen #fast', async function () {
+        await main.connect(owner).freezeShort()
+
+        // Try to redeem
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        await expect(
+          rToken.connect(addr1).customRedemption(
+            addr1.address,
+            issueAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        ).to.be.revertedWith('frozen')
+
+        // Check values
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+      })
+
+      it('Should revert if empty redemption #fast', async function () {
+        // Eliminate most token balances
+        const bal = issueAmount.div(4)
+        await token0.connect(owner).burn(backingManager.address, bal)
+        await token1.connect(owner).burn(backingManager.address, toBNDecimals(bal, 6))
+        await token2.connect(owner).burn(backingManager.address, bal)
+
+        // Should not revert with empty redemption yet
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount.div(2))
+        await rToken.connect(addr1).customRedemption(
+          addr1.address,
+          issueAmount.div(2),
+          basketNonces,
+          portions,
+          quote.erc20s,
+          quote.quantities
+        )
+        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
+
+        // Burn the rest
+        await token3
+          .connect(owner)
+          .burn(backingManager.address, await token3.balanceOf(backingManager.address))
+
+        // Now it should revert
+        await expect(
+          rToken.connect(addr1).customRedemption(
+            addr1.address,
+            issueAmount.div(2),
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        ).to.be.revertedWith('empty redemption')
+
+        // Check values
+        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
+      })
+
+      it('Should revert if different basketNonce #fast', async function () {
+        // Should fail if revertOnPartialRedemption is true
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount.div(2))
+        await expect(
+          rToken.connect(addr1).customRedemption(
+            addr1.address,
+            issueAmount.div(2),
+            [2],
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        ).to.be.revertedWith('invalid basketNonce')
+      })
+
+      it('Should prorate redemption if basket is DISABLED from fallen refPerTok() #fast', async function () {
+        // Default immediately
+        await token2.setExchangeRate(fp('0.1')) // 90% decrease
+
+        // Even though a single BU requires 10x token2 as before, it should still hand out evenly
+
+        // 1st redemption
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount.div(2))
+        await expect(
+          rToken.connect(addr1).customRedemption(
+            addr1.address,
+            issueAmount.div(2),
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        ).to.emit(rToken, 'Redemption')
+        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
+
+        // 2nd redemption
+        await expect(
+          rToken.connect(addr1).customRedemption(
+            addr1.address,
+            issueAmount.div(2),
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        ).to.emit(rToken, 'Redemption')
+        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+      })
+
+      it('Should not redeem() unregistered collateral #fast', async function () {
+        // Unregister collateral2
+        
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        await assetRegistry.connect(owner).unregister(collateral2.address)
+        await expect(
+          rToken.connect(addr1).customRedemption(
+            addr1.address,
+            issueAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        ).revertedWith('erc20 unregistered')
+      })
+
+      it('Should redeem prorata when refPerTok() is 0 #fast', async function () {
+        // Set refPerTok to 0
+        await token2.setExchangeRate(fp('0'))
+
+        // Redemption
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        await expect(
+          rToken.connect(addr1).customRedemption(
+            addr1.address,
+            issueAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        ).to.emit(rToken, 'Redemption')
+        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await token0.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token1.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token2.balanceOf(addr1.address)).to.be.equal(initialBal)
+        expect(await token3.balanceOf(addr1.address)).to.be.equal(initialBal)
+      })
+
+      it('Should not overflow BU exchange rate above 1e9 on redeem', async function () {
+        // Leave only 1 RToken issue
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount.sub(bn('1e18')))
+        await rToken.connect(addr1).customRedemption(
+          addr1.address,
+          issueAmount.sub(bn('1e18')),
+          basketNonces,
+          portions,
+          quote.erc20s,
+          quote.quantities
+        )
+
+        expect(await rToken.totalSupply()).to.equal(fp('1'))
+
+        // setBasketsNeeded()
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await rToken.connect(signer).setBasketsNeeded(fp('1e9'))
+        })
+
+        const redeemAmount: BigNumber = bn('1.5e9')
+
+        // Redeem rTokens successfully
+        const quote2 = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, bn(redeemAmount))
+        await expect(
+          rToken.connect(addr1).customRedemption(
+            addr1.address,
+            bn(redeemAmount),
+            basketNonces,
+            portions,
+            quote2.erc20s,
+            quote2.quantities
+          )
+        ).to.not.be.reverted
+      })
+
+      context('And redemption throttling', function () {
+        // the fixture-configured redemption throttle uses 5%
+        let redemptionThrottleParams: ThrottleParams
+        let redeemAmount: BigNumber
+
+        beforeEach(async function () {
+          redemptionThrottleParams = {
+            amtRate: fp('2'), // 2 RToken,
+            pctRate: fp('0.1'), // 10%
+          }
+          await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+          const params = await rToken.redemptionThrottleParams()
+          expect(params[0]).to.equal(redemptionThrottleParams.amtRate)
+          expect(params[1]).to.equal(redemptionThrottleParams.pctRate)
+
+          // Charge throttle
+          await advanceTime(3600)
+        })
+
+        it('Should be able to do geometric redemptions to scale down supply', async function () {
+          // Should complete is just under 30 iterations at rates: 10% + 1e18
+          const numIterations = 30
+          for (let i = 0; i < numIterations; i++) {
+            const totalSupply = await rToken.totalSupply()
+            if (totalSupply.eq(0)) break
+
+            // Charge + redeem
+            await advanceTime(3600)
+            redeemAmount = await rToken.redemptionAvailable()
+
+            const basketNonces = [1]
+            const portions = [fp('1')]
+            const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount)
+            await rToken.connect(addr1).customRedemption(
+              addr1.address,
+              redeemAmount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+            issueAmount = issueAmount.sub(redeemAmount)
+            expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+            expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+            // Should reach dust supply before exhausting loop iterations
+            expect(i < numIterations - 1).to.equal(true)
+          }
+
+          expect(await rToken.totalSupply()).to.equal(0)
+        })
+
+        it('Should revert on overly-large redemption #fast', async function () {
+          redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
+          expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
+
+          // Check issuance throttle - full
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+
+          redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
+          const basketNonces = [1]
+          const portions = [fp('1')]
+          const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount.add(1))
+          await expect(
+            rToken.connect(addr1).customRedemption(
+              addr1.address,
+              redeemAmount.add(1),
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+          ).to.be.revertedWith('supply change throttled')
+          const quote2 = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount)
+          await rToken.connect(addr1).customRedemption(
+            addr1.address,
+            redeemAmount.add(1),
+            basketNonces,
+            portions,
+            quote2.erc20s,
+            quote2.quantities
+          )
+
+          // Check updated redemption throttle
+          expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+
+          // Check issuance throttle - remains
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+        })
+
+        it('Should support 1e48 amtRate throttles', async function () {
+          const throttles = JSON.parse(JSON.stringify(config.redemptionThrottle))
+          throttles.amtRate = bn('1e48')
+          await rToken.connect(owner).setIssuanceThrottleParams(throttles)
+          await rToken.connect(owner).setRedemptionThrottleParams(throttles)
+
+          // Mint collateral
+          await token0.mint(addr1.address, throttles.amtRate)
+          await token1.mint(addr1.address, throttles.amtRate)
+          await token2.mint(addr1.address, throttles.amtRate)
+          await token3.mint(addr1.address, throttles.amtRate)
+
+          // Provide approvals
+          await Promise.all(
+            tokens.map((t) => t.connect(addr1).approve(rToken.address, MAX_UINT256))
+          )
+
+          // Charge throttle
+          await advanceTime(3600)
+          expect(await rToken.issuanceAvailable()).to.equal(throttles.amtRate)
+
+          // Issue
+          await rToken.connect(addr1).issue(throttles.amtRate)
+          expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(throttles.amtRate))
+
+          // Redeem
+          expect(await rToken.redemptionAvailable()).to.equal(throttles.amtRate)
+          const basketNonces = [1]
+          const portions = [fp('1')]
+          const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, throttles.amtRate)
+          await rToken.connect(addr1).customRedemption(
+            addr1.address,
+            throttles.amtRate,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+          expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+        })
+
+        it('Should use amtRate if pctRate is zero', async function () {
+          redeemAmount = redemptionThrottleParams.amtRate
+          redemptionThrottleParams.pctRate = bn(0)
+          await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+
+          // Large redemption should fail
+          const basketNonces = [1]
+          const portions = [fp('1')]
+          const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount.add(1))
+          await rToken.connect(addr1).customRedemption(
+            addr1.address,
+            redeemAmount.add(1),
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+          await expect(
+            rToken.connect(addr1).redeem(redeemAmount.add(1), await basketHandler.nonce())
+          ).to.be.revertedWith('supply change throttled')
+
+          // amtRate redemption should succeed
+          await expect(
+            rToken.connect(addr1).redeem(redeemAmount, await basketHandler.nonce())
+          ).to.emit(rToken, 'Redemption')
+
+          // Check redemption throttle is 0
+          expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+        })
+
+        it('Should throttle after allowing two redemptions of half value #fast', async function () {
+          redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
+          // Check redemption throttle
+          expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
+
+          // Issuance throttle is fully charged
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+
+          // Redeem #1
+          await rToken.connect(addr1).redeem(redeemAmount.div(2), await basketHandler.nonce())
+
+          // Check redemption throttle updated
+          expect(await rToken.redemptionAvailable()).to.equal(redeemAmount.div(2))
+
+          // Issuance throttle remains equal
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+
+          // Redeem #2
+          await rToken.connect(addr1).redeem(redeemAmount.div(2), await basketHandler.nonce())
+
+          // Check redemption throttle updated - very small
+          expect(await rToken.redemptionAvailable()).to.be.closeTo(fp('0.002638'), fp('0.000001'))
+
+          // Issuance throttle remains equal
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+
+          // Redeem #3 - should not be processed
+          await expect(
+            rToken.connect(addr1).redeem(redeemAmount.div(100), await basketHandler.nonce())
+          ).to.be.revertedWith('supply change throttled')
+
+          // Advance time significantly
+          await advanceTime(10000000000)
+
+          // Check redemption throttle recharged
+          const balance = issueAmount.sub(redeemAmount)
+          const redeemAmountUpd = balance.mul(redemptionThrottleParams.pctRate).div(fp('1'))
+          expect(await rToken.redemptionAvailable()).to.equal(redeemAmountUpd)
+
+          // Issuance throttle remains equal
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+        })
+
+        it('Should handle redemption throttle correctly, using only amount', async function () {
+          // Check initial balance
+          expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+          // set fixed amount
+          redemptionThrottleParams.amtRate = fp('25')
+          redemptionThrottleParams.pctRate = bn(0)
+          await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+
+          // Check redemption throttle
+          expect(await rToken.redemptionAvailable()).to.equal(redemptionThrottleParams.amtRate)
+
+          // Issuance throttle is fully charged
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+
+          // Redeem #1 -  Will be processed
+          redeemAmount = fp('12.5')
+          await rToken.connect(addr1).redeem(redeemAmount, await basketHandler.nonce())
+
+          // Check redemption throttle updated
+          expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
+
+          // Issuance throttle remains equal
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+
+          // Attempt to redeem max amt, should not be processed
+          await expect(
+            rToken
+              .connect(addr1)
+              .redeem(redemptionThrottleParams.amtRate, await basketHandler.nonce())
+          ).to.be.revertedWith('supply change throttled')
+
+          // Advance one hour. Redemption should be fully rechardged
+          await advanceTime(3600)
+
+          // Check redemption throttle updated
+          expect(await rToken.redemptionAvailable()).to.equal(redemptionThrottleParams.amtRate)
+
+          // Issuance throttle remains equal
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+
+          // Redeem #2 - will be processed
+          await rToken
+            .connect(addr1)
+            .redeem(redemptionThrottleParams.amtRate, await basketHandler.nonce())
+
+          // Check redemption throttle emptied
+          expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+
+          // Issuance throttle remains equal
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+
+          // Check redemptions processed successfully
+          expect(await rToken.balanceOf(addr1.address)).to.equal(
+            issueAmount.sub(redeemAmount).sub(redemptionThrottleParams.amtRate)
+          )
+        })
+
+        it('Should update issuance throttle correctly on redemption', async function () {
+          const rechargePerBlock = config.issuanceThrottle.amtRate.div(BLOCKS_PER_HOUR)
+
+          redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
+          // Check redemption throttle
+          expect(await rToken.redemptionAvailable()).to.equal(redeemAmount)
+
+          // Issuance throttle is fully charged
+          expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+
+          // Issue all available
+          await rToken.connect(addr1).issue(config.issuanceThrottle.amtRate)
+
+          // Issuance throttle empty
+          expect(await rToken.issuanceAvailable()).to.equal(bn(0))
+
+          // Redemption allowed increase
+          const redeemAmountUpd = issueAmount
+            .add(config.issuanceThrottle.amtRate)
+            .mul(redemptionThrottleParams.pctRate)
+            .div(fp('1'))
+          expect(await rToken.redemptionAvailable()).to.equal(redeemAmountUpd)
+
+          // Redeem #1 -  Will be processed
+          redeemAmount = fp('10000')
+          await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+          await rToken.connect(addr1).redeem(redeemAmount, await basketHandler.nonce())
+
+          // Check redemption throttle updated
+          expect(await rToken.redemptionAvailable()).to.equal(redeemAmountUpd.sub(redeemAmount))
+
+          // Issuance throttle recharged, impacted mostly by redemption - 10K + period recharge
+          expect(await rToken.issuanceAvailable()).to.equal(redeemAmount.add(rechargePerBlock))
+
+          // Check issuance and redemption processed successfully
+          expect(await rToken.balanceOf(addr1.address)).to.equal(
+            issueAmount.add(config.issuanceThrottle.amtRate).sub(redeemAmount)
+          )
+        })
+      })
+    })
   })
 
   describe('Melt/Mint #fast', () => {
