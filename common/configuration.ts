@@ -393,6 +393,14 @@ export interface IGovParams {
   timelockDelay: BigNumber
 }
 
+export interface IGovRoles {
+  owner: string
+  guardian: string
+  pausers: string[]
+  shortFreezers: string[]
+  longFreezers: string[]
+}
+
 // System constants
 export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
 export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)

@@ -24,6 +24,7 @@ import {
   MAX_UINT192,
   MAX_UINT256,
   ONE_ADDRESS,
+  PAUSER,
 } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
@@ -783,6 +784,8 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         1,
         1
       )
+      // Set pauser and unpause
+      await main.connect(owner).grantRole(PAUSER, owner.address)
       await main.connect(owner).unpauseTrading()
       await main.connect(owner).unpauseIssuance()
       await broker.init(

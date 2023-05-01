@@ -152,13 +152,7 @@ contract DeployerP0 is IDeployer, Versioned {
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
-        main.grantRole(SHORT_FREEZER, owner);
-        main.grantRole(LONG_FREEZER, owner);
-        main.grantRole(PAUSER, owner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(SHORT_FREEZER, address(this));
-        main.renounceRole(LONG_FREEZER, address(this));
-        main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
         return (address(components.rToken));
