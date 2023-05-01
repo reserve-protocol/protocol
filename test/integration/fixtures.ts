@@ -2,6 +2,7 @@ import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
+import { PAUSER, SHORT_FREEZER, LONG_FREEZER } from '../../common/constants'
 import { expectInReceipt } from '../../common/events'
 import { advanceTime } from '../utils/time'
 import { bn, fp } from '../../common/numbers'
@@ -847,6 +848,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   for (let i = 0; i < basket.length; i++) {
     await backingManager.grantRTokenAllowance(await basket[i].erc20())
   }
+
+  // Set Owner as Pauser/Freezer for tests
+  await main.connect(owner).grantRole(PAUSER, owner.address)
+  await main.connect(owner).grantRole(SHORT_FREEZER, owner.address)
+  await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
 
   return {
     rsr,

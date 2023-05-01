@@ -5,7 +5,7 @@ import { getChainId } from '../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { CollateralStatus } from '../common/constants'
+import { CollateralStatus, PAUSER, LONG_FREEZER, SHORT_FREEZER } from '../common/constants'
 import {
   Asset,
   AssetRegistryP1,
@@ -661,6 +661,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
 
   // Charge throttle
   await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
+
+  // Set Owner as Pauser/Freezer for tests
+  await main.connect(owner).grantRole(PAUSER, owner.address)
+  await main.connect(owner).grantRole(SHORT_FREEZER, owner.address)
+  await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
 
   return {
     rsr,
