@@ -2429,6 +2429,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await expect(rTokenTrader.settleTrade(token0.address))
             .to.emit(rTokenTrader, 'TradeSettled')
             .withArgs(trade.address, token0.address, rToken.address, 0, 0)
+
+          // Should NOT start another auction, since caller was not DutchTrade
+          expect(await backingManager.tradesOpen()).to.equal(0)
         })
 
         it('Should bid in final second of auction and not launch another auction', async () => {

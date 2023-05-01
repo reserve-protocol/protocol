@@ -3207,6 +3207,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await expect(backingManager.settleTrade(token0.address))
             .to.emit(backingManager, 'TradeSettled')
             .withArgs(trade.address, token0.address, token1.address, 0, 0)
+
+          // Should NOT start another auction, since caller was not DutchTrade
+          expect(await backingManager.tradesOpen()).to.equal(0)
         })
 
         it('Should bid in final second of auction and launch another auction', async () => {
