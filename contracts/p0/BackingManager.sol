@@ -79,7 +79,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         // Assumption: chain has <= 12s blocktimes
         require(
-            _msgSender() == address(this) || tradeEnd[kind] < block.timestamp + 12,
+            _msgSender() == address(this) || tradeEnd[kind] < block.timestamp + ONE_BLOCK,
             "already rebalancing"
         );
 
@@ -119,8 +119,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             }
 
             // Execute Trade
+            tradeEnd[kind] = uint48(block.timestamp) + ONE_BLOCK;
             ITrade trade = tryTrade(kind, req);
-            tradeEnd[kind] = trade.endTime();
+            if (trade.endTime() > tradeEnd[kind]) tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);

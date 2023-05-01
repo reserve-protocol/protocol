@@ -13,7 +13,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     using FixLib for uint192;
 
     uint192 public constant MAX_RATIO = FIX_ONE; // {1} 100%
-    uint48 public constant PERIOD = 12; // {s} 12 seconds; 1 block on PoS Ethereum
+    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
 
     IRToken private rToken;
 

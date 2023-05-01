@@ -23,6 +23,8 @@ contract BrokerP1 is ComponentP1, IBroker {
     using Clones for address;
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
+    uint48 public constant MIN_AUCTION_LENGTH = ONE_BLOCK; // {s} min auction length - 1 block
+    // warning: blocktime <= 12s assumption
 
     IBackingManager private backingManager;
     IRevenueTrader private rsrTrader;
@@ -148,7 +150,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// @custom:governance
     function setBatchAuctionLength(uint48 newAuctionLength) public governance {
         require(
-            newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
+            newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH,
             "invalid batchAuctionLength"
         );
         emit BatchAuctionLengthSet(batchAuctionLength, newAuctionLength);
@@ -169,7 +171,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// @custom:governance
     function setDutchAuctionLength(uint48 newAuctionLength) public governance {
         require(
-            newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
+            newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH,
             "invalid dutchAuctionLength"
         );
         emit DutchAuctionLengthSet(dutchAuctionLength, newAuctionLength);
@@ -204,7 +206,6 @@ contract BrokerP1 is ComponentP1, IBroker {
             address(trade),
             req.sellAmount
         );
-
         trade.init(this, caller, gnosis, batchAuctionLength, req);
         return trade;
     }

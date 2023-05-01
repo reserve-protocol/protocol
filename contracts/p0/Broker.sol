@@ -21,9 +21,9 @@ contract BrokerP0 is ComponentP0, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
 
-    // The fraction of the supply of the bidding token that is the min bid size in case of default
-    uint192 public constant MIN_BID_SHARE_OF_TOTAL_SUPPLY = 1e9; // (1} = 1e-7%
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
+    uint48 public constant MIN_AUCTION_LENGTH = ONE_BLOCK; // {s} min auction length - 1 block
+    // warning: blocktime <= 12s assumption
 
     // Added for interface compatibility with P1
     ITrade public batchTradeImplementation;
@@ -135,7 +135,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @custom:governance
     function setBatchAuctionLength(uint48 newAuctionLength) public governance {
         require(
-            newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
+            newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH,
             "invalid batchAuctionLength"
         );
         emit BatchAuctionLengthSet(batchAuctionLength, newAuctionLength);
@@ -156,7 +156,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @custom:governance
     function setDutchAuctionLength(uint48 newAuctionLength) public governance {
         require(
-            newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
+            newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH,
             "invalid dutchAuctionLength"
         );
         emit DutchAuctionLengthSet(dutchAuctionLength, newAuctionLength);
