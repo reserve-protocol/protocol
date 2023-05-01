@@ -39,8 +39,8 @@ contract DutchTrade is ITrade {
     IERC20Metadata public buy;
     uint192 public sellAmount; // {sellTok}
 
-    uint48 public startTime; // timestamp at which the dutch auction began
-    uint48 public endTime; // timestamp the dutch auction ends, if no bids have been received
+    uint48 public startTime; // {s} when the dutch auction began
+    uint48 public endTime; // {s} when the dutch auction ends, if no bids are received
 
     uint192 public middlePrice; // {buyTok/sellTok} The price at which the function is piecewise
     uint192 public lowPrice; // {buyTok/sellTok} The price the auction ends at
@@ -84,6 +84,8 @@ contract DutchTrade is ITrade {
         origin = origin_;
         sell = sell_.erc20();
         buy = buy_.erc20();
+
+        require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
         startTime = uint48(block.timestamp);
         endTime = uint48(block.timestamp) + auctionLength;
