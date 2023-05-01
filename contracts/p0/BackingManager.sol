@@ -80,7 +80,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // Assumption: chain has <= 12s blocktimes
         require(
             _msgSender() == address(this) || tradeEnd[kind] < block.timestamp + 12,
-            "wait 1 block"
+            "already rebalancing"
         );
 
         require(tradesOpen == 0, "trade open");

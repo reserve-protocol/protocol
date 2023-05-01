@@ -176,7 +176,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Check Gnosis
       expect(await rsr.balanceOf(easyAuction.address)).to.equal(sellAmt)
       await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-        'trade open'
+        'already rebalancing'
       )
 
       // Auction should not be able to be settled
@@ -603,7 +603,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Check Gnosis
       expect(await token0.balanceOf(easyAuction.address)).to.equal(issueAmount)
       await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-        'trade open'
+        'already rebalancing'
       )
 
       // Auction should not be able to be settled
@@ -706,7 +706,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Check Gnosis
       expect(await token0.balanceOf(easyAuction.address)).to.be.closeTo(issueAmount, 1)
       await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-        'trade open'
+        'already rebalancing'
       )
 
       // Auction should not be able to be settled
