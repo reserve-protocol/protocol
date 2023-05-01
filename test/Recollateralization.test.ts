@@ -4817,7 +4817,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await backingManager.connect(owner).setBackingBuffer(0)
 
       // Provide approvals
-      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
@@ -4834,7 +4834,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await rsr.connect(owner).mint(addr1.address, initialBal)
     })
 
-    it('Settle Trades / Manage Funds', async () => {
+    it('rebalance() - GnosisTrade ', async () => {
       // Register Collateral
       await assetRegistry.connect(owner).register(backupCollateral1.address)
       await assetRegistry.connect(owner).register(backupCollateral2.address)
@@ -4860,18 +4860,20 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       // Mark Default - Perform basket switch
       await assetRegistry.refresh()
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
+      await advanceTime(config.tradingDelay.toNumber())
+      await advanceTime(config.warmupPeriod.toNumber())
+      await advanceTime(config.batchAuctionLength.toNumber())
 
       // Run auctions - First Settle trades then Manage Funds
       // Will sell all balance of token2
       const sellAmt2 = await token2.balanceOf(backingManager.address)
-      await snapshotGasCost(backingManager.settleTrade(token2.address))
+      await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith('no trade open')
       await snapshotGasCost(backingManager.rebalance(TradeKind.BATCH_AUCTION))
 
       // Another call should not create any new auctions if still ongoing
       await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith(
         'cannot settle yet'
       )
-      await snapshotGasCost(backingManager.rebalance(TradeKind.BATCH_AUCTION))
 
       // Perform Mock Bids for the new Token (addr1 has balance)
       // Get minBuyAmt, we will have now surplus of backupToken1
@@ -4893,6 +4895,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(token2.address))
+      await advanceTime(12)
       await snapshotGasCost(backingManager.rebalance(TradeKind.BATCH_AUCTION))
 
       // Perform Mock Bids for the new Token (addr1 has balance)
@@ -4913,6 +4916,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(backupToken1.address))
+      await advanceTime(12)
       await snapshotGasCost(backingManager.rebalance(TradeKind.BATCH_AUCTION))
 
       // Perform Mock Bids for RSR (addr1 has balance)
@@ -4931,6 +4935,53 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       // End current auction
       await snapshotGasCost(backingManager.settleTrade(rsr.address))
       expect(await backingManager.tradesOpen()).to.equal(0)
+    })
+
+    it('rebalance() - DutchTrade ', async () => {
+      // Register Collateral
+      await assetRegistry.connect(owner).register(backupCollateral1.address)
+
+      // Set backup configuration - USDT and aUSDT as backup
+      await basketHandler
+        .connect(owner)
+        .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
+
+      // Perform stake
+      const stakeAmount: BigNumber = bn('10000e18')
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
+      await stRSR.connect(addr1).stake(stakeAmount)
+
+      // Set Token2 to hard default - Reducing rate
+      await token2.setExchangeRate(fp('0.25'))
+
+      // Mark Default - Perform basket switch
+      await assetRegistry.refresh()
+      await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
+      await advanceTime(config.tradingDelay.toNumber())
+      await advanceTime(config.warmupPeriod.toNumber())
+      await advanceTime(config.dutchAuctionLength.toNumber())
+
+      // Run auctions - First Settle trades then Manage Funds
+      // Will sell all balance of token2
+      await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith('no trade open')
+      await snapshotGasCost(backingManager.rebalance(TradeKind.DUTCH_AUCTION))
+
+      // Another call should not create any new auctions if still ongoing
+      await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith(
+        'cannot settle yet'
+      )
+
+      // Bid + settle DutchTrade
+      const tradeAddr = await backingManager.trades(token2.address)
+      const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+      await backupToken1.connect(addr1).approve(trade.address, initialBal)
+      await snapshotGasCost(trade.connect(addr1).bid())
+
+      // Expect new trade started
+      expect(await backingManager.tradesOpen()).to.equal(1)
+      expect(await backingManager.trades(token2.address)).to.equal(ZERO_ADDRESS)
+      expect(await backingManager.trades(rsr.address)).to.not.equal(ZERO_ADDRESS)
+      await expect(backingManager.settleTrade(rsr.address)).to.be.revertedWith('cannot settle yet')
     })
   })
 })
