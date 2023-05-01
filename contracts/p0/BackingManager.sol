@@ -158,7 +158,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
         {
             IRToken rToken = main.rToken();
-            needed = rToken.basketsNeeded(); // {BU}
             if (basketsHeld.bottom.gt(needed)) {
                 int8 decimals = int8(rToken.decimals());
                 uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
@@ -171,6 +170,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
                 rToken.mint(address(this), rTok);
                 rToken.setBasketsNeeded(basketsHeld.bottom);
+                needed = basketsHeld.bottom;
             }
         }
 
