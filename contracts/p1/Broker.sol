@@ -73,7 +73,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // actions:
     //   Transfers req.sellAmount of req.sell.erc20 from caller to `trade`
     //   Calls trade.init() with appropriate parameters
-    function openTrade(TradeRequest memory req) external notTradingPausedOrFrozen returns (ITrade) {
+    function openTrade(TradeRequest memory req) external notTradingPausedOrFrozen returns (ITrade trade) {
         require(!disabled, "broker disabled");
 
         address caller = _msgSender();

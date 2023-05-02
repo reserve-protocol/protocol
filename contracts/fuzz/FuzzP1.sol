@@ -129,8 +129,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         TradingContext memory components = TradingContext({
             basketsHeld: IMainFuzz(address(main)).basketHandler().basketsHeldBy(address(this)),
             bm: IBackingManager(address(this)),
-            bh: IMainFuzz(address(main)).basketHandler(),
-            reg: IMainFuzz(address(main)).assetRegistry(),
+            ar: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
             rsr: IMainFuzz(address(main)).rsr(),
             rToken: IMainFuzz(address(main)).rToken(),
@@ -138,7 +137,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             maxTradeSlippage: ITrading(address(this)).maxTradeSlippage()
         });
 
-        IERC20[] memory erc20s = components.reg.erc20s();
+        IERC20[] memory erc20s = components.ar.erc20s();
 
         BasketRange memory range = getCurrentBasketRange();
 
@@ -149,14 +148,14 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             if (erc20s[i] == components.rsr) continue;
 
-            IAsset asset = components.reg.toAsset(erc20s[i]);
+            IAsset asset = components.ar.toAsset(erc20s[i]);
             uint192 bal = asset.bal(address(components.bm)); // {tok}
-            uint192 needed = range.top.mul(components.bh.quantity(erc20s[i]), CEIL); // {tok}
+            uint192 needed = range.top.mul(IMainFuzz(address(main)).basketHandler().quantity(erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
                 surplusTokens.push(asset.erc20());
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range
-                needed = range.bottom.mul(components.bh.quantity(erc20s[i]), CEIL); // {tok};
+                needed = range.bottom.mul(IMainFuzz(address(main)).basketHandler().quantity(erc20s[i]), CEIL); // {tok};
                 if (bal.lt(needed)) {
                     deficitTokens.push(ICollateral(address(asset)).erc20());
                 }
@@ -195,17 +194,26 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         TradingContext memory components = TradingContext({
             basketsHeld: IMainFuzz(address(main)).basketHandler().basketsHeldBy(address(this)),
             bm: IBackingManager(address(this)),
-            bh: IMainFuzz(address(main)).basketHandler(),
-            reg: IMainFuzz(address(main)).assetRegistry(),
+            ar: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
             rsr: IMainFuzz(address(main)).rsr(),
             rToken: IMainFuzz(address(main)).rToken(),
             minTradeVolume: ITrading(address(this)).minTradeVolume(),
             maxTradeSlippage: ITrading(address(this)).maxTradeSlippage()
         });
-
-        return
-            RecollateralizationLibP1.basketRange(components, components.reg.getRegistry());
+        IBasketHandler bh = IMainFuzz(address(main)).basketHandler();
+        Registry memory reg = components.ar.getRegistry();
+        uint192[] memory quantities = new uint192[](reg.erc20s.length);
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            quantities[i] = bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+        }
+        (Price memory buPrice, Price memory buLotPrice) = bh.prices();
+        return RecollateralizationLibP1.basketRange(
+            components,
+            reg,
+            quantities,
+            buPrice
+        );
     }
 
     function _msgSender() internal view virtual override returns (address) {

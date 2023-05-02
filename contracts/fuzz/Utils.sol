@@ -25,7 +25,8 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         backingBuffer: FixLib.divu(toFix(1), 10000), // 0.01%, 1 BIP
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
         issuanceThrottle: tParams,
-        redemptionThrottle: tParams
+        redemptionThrottle: tParams,
+        warmupPeriod: 259200
     });
 }
 

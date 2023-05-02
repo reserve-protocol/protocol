@@ -683,12 +683,20 @@ contract ChaosOpsScenario {
         main.unfreeze();
     }
 
-    function pause() public asSender {
-        main.pause();
+    function pauseIssuance() public asSender {
+        main.pauseIssuance();
     }
 
-    function unpause() public asSender {
-        main.unpause();
+    function pauseTrading() public asSender {
+        main.pauseTrading();
+    }
+
+    function unpauseIssuance() public asSender {
+        main.unpauseIssuance();
+    }
+
+    function unpauseTrading() public asSender {
+        main.unpauseTrading();
     }
 
     // ==== governance changes ====
