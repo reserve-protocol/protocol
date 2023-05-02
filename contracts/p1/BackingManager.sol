@@ -107,6 +107,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         assetRegistry.refresh();
         furnace.melt();
 
+        // == Checks/Effects ==
+
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         // Assumption: chain has <= 12s blocktimes
         require(
@@ -139,15 +141,18 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
             .prepareRecollateralizationTrade(this, basketsHeld);
 
+        // == Interactions ==
+
         if (doTrade) {
+            tradeEnd[kind] = uint48(block.timestamp) + ONE_BLOCK; // reentrancy protection
+
             // Seize RSR if needed
             if (req.sell.erc20() == rsr) {
                 uint256 bal = req.sell.erc20().balanceOf(address(this));
                 if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
             }
 
-            // Execute Trade -- prevent reentrancy
-            tradeEnd[kind] = uint48(block.timestamp) + ONE_BLOCK;
+            // Execute Trade
             ITrade trade = tryTrade(kind, req);
             uint48 endTime = trade.endTime();
             if (endTime > tradeEnd[kind]) tradeEnd[kind] = endTime;

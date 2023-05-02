@@ -82,7 +82,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         IAsset sell;
         IAsset buy;
 
-        // === Refresh ===
+        // == Refresh ==
         // do not need to refresh when caller is BackingManager.forwardRevenue()
         if (_msgSender() != address(backingManager)) {
             if (erc20 == IERC20(address(rToken)) || tokenToBuy == IERC20(address(rToken))) {
@@ -101,7 +101,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             }
         }
 
-        // === Checks/Effects ===
+        // == Checks/Effects ==
 
         require(address(trades[erc20]) == address(0), "trade open");
         require(erc20.balanceOf(address(this)) > 0, "0 balance");
@@ -129,7 +129,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         );
         require(launch, "trade not worth launching");
 
-        // === Interactions ===
+        // == Interactions ==
         tryTrade(kind, req);
     }
 
