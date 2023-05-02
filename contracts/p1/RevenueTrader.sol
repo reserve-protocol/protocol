@@ -101,6 +101,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             }
         }
 
+        // === Checks/Effects ===
+
         require(address(trades[erc20]) == address(0), "trade open");
         require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
@@ -125,8 +127,9 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             minTradeVolume,
             maxTradeSlippage
         );
-
         require(launch, "trade not worth launching");
+
+        // === Interactions ===
         tryTrade(kind, req);
     }
 
