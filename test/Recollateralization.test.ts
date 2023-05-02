@@ -18,6 +18,7 @@ import {
   Asset,
   ATokenFiatCollateral,
   CTokenMock,
+  DutchTrade,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -3223,39 +3224,103 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await backingManager.tradesOpen()).to.equal(0)
         })
 
-        it('Should bid in final second of auction and launch another auction', async () => {
-          await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
-          const trade = await ethers.getContractAt(
-            'DutchTrade',
-            await backingManager.trades(token0.address)
-          )
-          await token1.connect(addr1).approve(trade.address, initialBal)
+        context('Should successfully recollateralize after default', () => {
+          let trade1: DutchTrade // token0 -> token1
+          let trade2: DutchTrade // RSR -> token1
 
-          // Snipe auction at 1s left
-          await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 3)
-          await trade.connect(addr1).bid()
-          expect(await trade.canSettle()).to.equal(false)
-          expect(await trade.status()).to.equal(2) // Status.CLOSED
-          expect(await trade.bidder()).to.equal(addr1.address)
-          expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
+          beforeEach(async () => {
+            await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+            trade1 = await ethers.getContractAt(
+              'DutchTrade',
+              await backingManager.trades(token0.address)
+            )
+            await token1.connect(addr1).approve(trade1.address, initialBal)
 
-          const expected = divCeil(
-            await dutchBuyAmount(
-              fp('299').div(300), // after all txs in this test, will be left at 299/300s
-              collateral0.address,
-              collateral1.address,
-              issueAmount,
-              config.minTradeVolume,
-              config.maxTradeSlippage
-            ),
-            bn('1e12') // decimals
-          )
-          expect(await backingManager.tradesOpen()).to.equal(1)
-          expect(await token1.balanceOf(backingManager.address)).to.equal(expected)
+            // Snipe auction at 1s left
+            await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 3)
+            await trade1.connect(addr1).bid()
+            expect(await trade1.canSettle()).to.equal(false)
+            expect(await trade1.status()).to.equal(2) // Status.CLOSED
+            expect(await trade1.bidder()).to.equal(addr1.address)
+            expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
 
-          // Should launch another auction: RSR -> token1
-          expect(await backingManager.trades(token0.address)).to.equal(ZERO_ADDRESS)
-          expect(await backingManager.trades(rsr.address)).to.not.equal(ZERO_ADDRESS)
+            const expected = divCeil(
+              await dutchBuyAmount(
+                fp('299').div(300), // after all txs so far, at 299/300s
+                collateral0.address,
+                collateral1.address,
+                issueAmount,
+                config.minTradeVolume,
+                config.maxTradeSlippage
+              ),
+              bn('1e12') // decimals
+            )
+            expect(await backingManager.tradesOpen()).to.equal(1)
+            expect(await token1.balanceOf(backingManager.address)).to.equal(expected)
+
+            // Should launch RSR recapitalization auction to fill ~3%
+            expect(await backingManager.trades(token0.address)).to.equal(ZERO_ADDRESS)
+            trade2 = await ethers.getContractAt(
+              'DutchTrade',
+              await backingManager.trades(rsr.address)
+            )
+            expect(trade2.address).to.not.equal(ZERO_ADDRESS)
+          })
+
+          afterEach(async () => {
+            // Should be fully capitalized again
+            expect(await basketHandler.fullyCollateralized()).to.equal(true)
+            expect(await backingManager.tradesOpen()).to.equal(0)
+          })
+
+          it('even under worst-possible bids', async () => {
+            // Advance to final second of auction
+            await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 3)
+            expect(await trade2.status()).to.equal(1) // TradeStatus.OPEN
+            expect(await trade2.canSettle()).to.equal(false)
+
+            // Bid + settle RSR auction
+            await token1.connect(addr1).approve(trade2.address, initialBal)
+            await expect(trade2.connect(addr1).bid()).to.emit(backingManager, 'TradeSettled')
+          })
+
+          it('via fallback to Batch Auction', async () => {
+            // Advance past auction timeout
+            await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength)
+            expect(await trade2.status()).to.equal(1) // TradeStatus.OPEN
+            expect(await trade2.canSettle()).to.equal(true)
+
+            // Settle trade
+            await backingManager.settleTrade(rsr.address)
+            expect(await backingManager.tradesOpen()).to.equal(0)
+            expect(await rsr.balanceOf(trade2.address)).to.equal(0)
+            expect(await token0.balanceOf(trade2.address)).to.equal(0)
+            expect(await token1.balanceOf(trade2.address)).to.equal(0)
+
+            // Only BATCH_AUCTION can be launched
+            await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
+              'already rebalancing'
+            )
+            await backingManager.rebalance(TradeKind.BATCH_AUCTION)
+            expect(await backingManager.tradesOpen()).to.equal(1)
+
+            // Bid in Gnosis
+            const t = await getTrade(backingManager, rsr.address)
+            const sellAmt = await t.initBal()
+            const minBuyAmt = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+            expect(await t.KIND()).to.equal(TradeKind.BATCH_AUCTION)
+            await token1.connect(addr1).approve(gnosis.address, minBuyAmt)
+            await gnosis.placeBid(0, {
+              bidder: addr1.address,
+              sellAmount: sellAmt,
+              buyAmount: minBuyAmt,
+            })
+            await advanceTime(config.batchAuctionLength.toNumber())
+            await expect(backingManager.settleTrade(rsr.address)).not.to.emit(
+              backingManager,
+              'TradeStarted'
+            )
+          })
         })
       })
     })
