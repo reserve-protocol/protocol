@@ -3148,8 +3148,17 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           )
         })
 
-        it('Should only run 1 trade at a time', async () => {
+        it('Should only run 1 trade at a time, including into the empty buffer block', async () => {
           await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
+          await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
+            'already rebalancing'
+          )
+          await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+            'trade open'
+          )
+
+          // Check the empty buffer block as well
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength)
           await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
             'already rebalancing'
           )

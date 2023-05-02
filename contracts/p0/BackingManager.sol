@@ -79,7 +79,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         // Assumption: chain has <= 12s blocktimes
         require(
-            _msgSender() == address(this) || tradeEnd[kind] < block.timestamp + ONE_BLOCK,
+            _msgSender() == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
             "already rebalancing"
         );
 
