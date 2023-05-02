@@ -5,7 +5,7 @@ import { getChainId } from '../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { CollateralStatus } from '../common/constants'
+import { CollateralStatus, PAUSER, LONG_FREEZER, SHORT_FREEZER } from '../common/constants'
 import {
   Asset,
   AssetRegistryP1,
@@ -30,7 +30,6 @@ import {
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
-  IBasketHandler,
   MainP1,
   MockV3Aggregator,
   RevenueTraderP1,
@@ -40,6 +39,7 @@ import {
   StaticATokenMock,
   StRSRP1Votes,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
@@ -55,7 +55,7 @@ import {
   FacadeMonitor,
   ZeroDecimalMock,
 } from '../typechain'
-import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
+import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
 
 export enum Implementation {
@@ -369,7 +369,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   main: TestIMain
   assetRegistry: IAssetRegistry
   backingManager: TestIBackingManager
-  basketHandler: IBasketHandler
+  basketHandler: TestIBasketHandler
   distributor: TestIDistributor
   rsrAsset: Asset
   compAsset: Asset
@@ -410,6 +410,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     longFreeze: bn('2592000'), // 30 days
     rewardRatio: bn('1069671574938'), // approx. half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
+    warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
@@ -565,8 +566,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   const backingManager: TestIBackingManager = <TestIBackingManager>(
     await ethers.getContractAt('TestIBackingManager', await main.backingManager())
   )
-  const basketHandler: IBasketHandler = <IBasketHandler>(
-    await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+  const basketHandler: TestIBasketHandler = <TestIBasketHandler>(
+    await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
   )
   const distributor: TestIDistributor = <TestIDistributor>(
     await ethers.getContractAt('TestIDistributor', await main.distributor())
@@ -650,6 +651,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
   await basketHandler.connect(owner).refreshBasket()
 
+  // Advance time post warmup period
+  await advanceTime(Number(config.warmupPeriod) + 1)
+
   // Set up allowances
   for (let i = 0; i < basket.length; i++) {
     await backingManager.grantRTokenAllowance(await basket[i].erc20())
@@ -657,6 +661,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
 
   // Charge throttle
   await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
+
+  // Set Owner as Pauser/Freezer for tests
+  await main.connect(owner).grantRole(PAUSER, owner.address)
+  await main.connect(owner).grantRole(SHORT_FREEZER, owner.address)
+  await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
 
   return {
     rsr,

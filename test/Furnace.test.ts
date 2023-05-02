@@ -179,14 +179,19 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr2).issue(issueAmount)
     })
 
-    it('Should not melt if paused #fast', async () => {
-      await main.connect(owner).pause()
-      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
+    it('Should melt if trading paused #fast', async () => {
+      await main.connect(owner).pauseTrading()
+      await furnace.connect(addr1).melt()
+    })
+
+    it('Should melt if issuance paused #fast', async () => {
+      await main.connect(owner).pauseIssuance()
+      await furnace.connect(addr1).melt()
     })
 
     it('Should not melt if frozen #fast', async () => {
       await main.connect(owner).freezeShort()
-      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
+      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('frozen')
     })
 
     it('Should not melt any funds in the initial block #fast', async () => {

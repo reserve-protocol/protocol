@@ -24,11 +24,11 @@ import {
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIFurnace,
   TestIMain,
   TestIRToken,
@@ -94,7 +94,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let furnace: TestIFurnace
 
   beforeEach(async () => {
@@ -297,17 +297,31 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Issuance', function () {
-    it('Should not issue RTokens if paused', async function () {
+    it('Should not issue RTokens if issuance paused', async function () {
       const issueAmount: BigNumber = bn('10e18')
 
       // Pause Main
-      await main.connect(owner).pause()
+      await main.connect(owner).pauseIssuance()
 
       // Try to issue
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused or frozen')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+        'frozen or issuance paused'
+      )
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should issue RTokens if trading paused', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+
+      // Pause Main
+      await main.connect(owner).pauseTrading()
+
+      // Issue
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
+      await rToken.connect(addr1).issue(issueAmount)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
     })
 
     it('Should not issue RTokens if frozen', async function () {
@@ -317,7 +331,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).freezeShort()
 
       // Try to issue
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused or frozen')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+        'frozen or issuance paused'
+      )
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
@@ -332,7 +348,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
 
       // Try to issue
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('basket unsound')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('basket not ready')
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
@@ -606,6 +622,81 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Set automine to true again
       await hre.network.provider.send('evm_setAutomine', [true])
+    })
+
+    it('Should apply warmup period on issuance', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+      const warmupPeriod = bn('259200') // 3 days
+
+      // Set warmup period
+      await basketHandler.connect(owner).setWarmupPeriod(warmupPeriod)
+
+      // Start issuance
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
+
+      // Try to issue
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('basket not ready')
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+
+      // Move past warmup period
+      await advanceTime(warmupPeriod.toString())
+
+      // Try to issue
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.not.be.reverted
+
+      // Check values - rTokens issued
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+    })
+
+    it('Should use warmup period on issuance after regaining SOUND', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+      const warmupPeriod = bn('259200') // 3 days
+
+      // Set warmup period and move time forward
+      await basketHandler.connect(owner).setWarmupPeriod(warmupPeriod)
+      await advanceTime(warmupPeriod.toString())
+
+      // Set collateral and basket status to IFFY to prevent issuance
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
+      await assetRegistry.refresh()
+
+      // Collateral and basket in IFFY
+      expect(await collateral1.status()).to.equal(CollateralStatus.IFFY)
+      expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
+
+      // Start issuance
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
+
+      // Try to issue, reverts because basket is not SOUND
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('basket not ready')
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+
+      // Set collateral and basket status to SOUND again
+      await setOraclePrice(collateral1.address, bn('1e8'))
+      await collateral1.refresh()
+
+      // Collateral and basket in SOUND
+      expect(await collateral1.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Need to track status in BH to record timestamp on when SOUND was regained
+      await basketHandler.trackStatus()
+
+      // Try to issuem still cannot issue due to warmup period
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('basket not ready')
+
+      // Move past warmup period
+      await advanceTime(warmupPeriod.toString())
+
+      // Should be able to issue now
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.not.be.reverted
+
+      // Check values - rTokens issued
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
     })
 
     it('Should handle issuance throttle correctly', async function () {
@@ -949,7 +1040,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should redeem if paused #fast', async function () {
-        await main.connect(owner).pause()
+        await main.connect(owner).pauseTrading()
+        await main.connect(owner).pauseIssuance()
         await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
         expect(await rToken.totalSupply()).to.equal(0)
       })
@@ -1411,11 +1503,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not mint if paused', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).pauseTrading()
 
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
     })
@@ -1425,7 +1517,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
     })
@@ -1449,12 +1541,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(issueAmount)
 
       // Pause Main
-      await main.connect(owner).pause()
+      await main.connect(owner).pauseTrading()
 
       // Try to set baskets needed
       await whileImpersonating(backingManager.address, async (bhSigner) => {
         await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
 
@@ -1472,7 +1564,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Try to set baskets needed
       await whileImpersonating(backingManager.address, async (bhSigner) => {
         await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
 
@@ -1794,13 +1886,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('should not monetize while paused', async () => {
-      await main.connect(owner).pause()
-      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('paused or frozen')
+      await main.connect(owner).pauseTrading()
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith(
+        'frozen or trading paused'
+      )
     })
 
     it('should not monetize while frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith('paused or frozen')
+      await expect(rToken.monetizeDonations(token3.address)).to.be.revertedWith(
+        'frozen or trading paused'
+      )
     })
 
     it('should monetize registered erc20s', async () => {

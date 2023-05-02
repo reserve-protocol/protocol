@@ -10,11 +10,11 @@ import { expectEvents } from '../../common/events'
 import {
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   FiatCollateral,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRToken,
 } from '../../typechain'
@@ -56,7 +56,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()

@@ -46,13 +46,17 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     /// Update the state of all assets
     /// @custom:refresher
-    // actions: calls refresh(c) for c in keys(assets) when c.isCollateral()
+    // actions:
+    //   calls refresh(c) for c in keys(assets) when c.isCollateral()
+    //   tracks basket status on basketHandler
     function refresh() public {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
             assets[IERC20(_erc20s.at(i))].refresh();
         }
+
+        basketHandler.trackStatus();
     }
 
     /// Register `asset`
@@ -140,6 +144,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     /// Returns keys(assets), values(assets) as (duplicate-free) lists.
     // returns: [keys(assets)], [values(assets)] without duplicates.
+    /// @return reg The list of registered ERC20s and Assets, in the same order
     function getRegistry() external view returns (Registry memory reg) {
         uint256 length = _erc20s.length();
         reg.erc20s = new IERC20[](length);

@@ -22,12 +22,12 @@ import {
   ERC20Mock,
   FiatCollateral,
   IAssetRegistry,
-  IBasketHandler,
   InvalidFiatCollateral,
   InvalidMockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIRToken,
   USDCMock,
   UnpricedAssetMock,
@@ -74,7 +74,7 @@ describe('Assets contracts #fast', () => {
   let wallet: Wallet
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   // Factory
   let AssetFactory: ContractFactory

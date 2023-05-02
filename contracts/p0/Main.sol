@@ -37,6 +37,7 @@ contract MainP0 is Versioned, Initializable, Auth, ComponentRegistry, IMain {
 
     /// @custom:refresher
     function poke() external {
+        require(!frozen(), "frozen");
         assetRegistry.refresh();
         require(!pausedOrFrozen(), "paused or frozen");
 

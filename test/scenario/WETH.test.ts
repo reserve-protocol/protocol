@@ -11,16 +11,17 @@ import {
   SelfReferentialCollateral,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   IFacadeTest,
   MockV3Aggregator,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
   WETH9,
 } from '../../typechain'
 import { setOraclePrice } from '../utils/oracles'
+import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
@@ -58,7 +59,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let facadeTest: IFacadeTest
@@ -191,6 +192,10 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
     it('should change basket around WETH', async () => {
       await token0.setExchangeRate(fp('0.99')) // default
       await basketHandler.refreshBasket()
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       await expect(backingManager.manageTokens([token0.address, weth.address])).to.emit(
         backingManager,
         'TradeStarted'

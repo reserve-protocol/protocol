@@ -17,7 +17,14 @@ import "./ITrading.sol";
  *   vast majority of cases we expect the the O(n^2) function to be acceptable.
  */
 interface IBackingManager is IComponent, ITrading {
+    /// Emitted when the trading delay is changed
+    /// @param oldVal The old trading delay
+    /// @param newVal The new trading delay
     event TradingDelaySet(uint48 indexed oldVal, uint48 indexed newVal);
+
+    /// Emitted when the backing buffer is changed
+    /// @param oldVal The old backing buffer
+    /// @param newVal The new backing buffer
     event BackingBufferSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     // Initialization

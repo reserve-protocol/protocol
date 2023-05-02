@@ -315,6 +315,7 @@ export interface IConfig {
   longFreeze: BigNumber
   rewardRatio: BigNumber
   unstakingDelay: BigNumber
+  warmupPeriod: BigNumber
   tradingDelay: BigNumber
   auctionLength: BigNumber
   backingBuffer: BigNumber
@@ -386,6 +387,14 @@ export interface IGovParams {
   timelockDelay: BigNumber
 }
 
+export interface IGovRoles {
+  owner: string
+  guardian: string
+  pausers: string[]
+  shortFreezers: string[]
+  longFreezers: string[]
+}
+
 // System constants
 export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
 export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)
@@ -400,6 +409,8 @@ export const MAX_THROTTLE_PCT_RATE = BigNumber.from(10).pow(18)
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)
 export const MAX_TRADING_DELAY = 31536000 // 1 year
+export const MIN_WARMUP_PERIOD = 60 // 1 minute
+export const MAX_WARMUP_PERIOD = 31536000 // 1 year
 export const MAX_AUCTION_LENGTH = 604800 // 1 week
 export const MAX_UNSTAKING_DELAY = 31536000 // 1 year
 export const MAX_DELAY_UNTIL_DEFAULT = 1209600 // 2 weeks

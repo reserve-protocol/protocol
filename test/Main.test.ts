@@ -10,6 +10,8 @@ import {
   MAX_BACKING_BUFFER,
   MAX_TARGET_AMT,
   MAX_MIN_TRADE_VOLUME,
+  MIN_WARMUP_PERIOD,
+  MAX_WARMUP_PERIOD,
   IComponents,
 } from '../common/configuration'
 import {
@@ -38,13 +40,13 @@ import {
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
-  IBasketHandler,
   InvalidRefPerTokCollateralMock,
   MockV3Aggregator,
   MockableCollateral,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
@@ -126,7 +128,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
 
   let basket: Collateral[]
@@ -204,8 +206,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.getRoleAdmin(PAUSER)).to.equal(OWNER)
 
       // Should start unfrozen and unpaused
-      expect(await main.paused()).to.equal(false)
-      expect(await main.pausedOrFrozen()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.tradingPausedOrFrozen()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
+      expect(await main.issuancePausedOrFrozen()).to.equal(false)
       expect(await main.frozen()).to.equal(false)
 
       // Components
@@ -231,6 +235,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
       expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
+      expect(await basketHandler.warmupPeriod()).to.equal(config.warmupPeriod)
 
       // Should have semver version from deployer
       expect(await main.version()).to.equal(await deployer.version())
@@ -350,7 +355,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - Basket Handler
-      await expect(basketHandler.init(main.address)).to.be.revertedWith(
+      await expect(basketHandler.init(main.address, config.warmupPeriod)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
 
@@ -529,41 +534,54 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check initial status
       expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
       expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
-      expect(await main.paused()).to.equal(false)
-      expect(await main.pausedOrFrozen()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.tradingPausedOrFrozen()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
+      expect(await main.issuancePausedOrFrozen()).to.equal(false)
 
       // Pause with PAUSER
-      await main.connect(addr1).pause()
+      await main.connect(addr1).pauseTrading()
+      await main.connect(addr1).pauseIssuance()
 
       // Check if Paused, should not lose PAUSER
-      expect(await main.paused()).to.equal(true)
+      expect(await main.tradingPaused()).to.equal(true)
+      expect(await main.issuancePaused()).to.equal(true)
       expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
       expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
 
       // Unpause
-      await main.connect(addr1).unpause()
+      await main.connect(addr1).unpauseTrading()
+      await main.connect(addr1).unpauseIssuance()
 
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
 
       // OWNER should still be able to Pause
-      await main.connect(owner).pause()
+      await main.connect(owner).pauseTrading()
+      await main.connect(owner).pauseIssuance()
 
       // Check if Paused
-      expect(await main.pausedOrFrozen()).to.equal(true)
-      expect(await main.paused()).to.equal(true)
+      expect(await main.tradingPausedOrFrozen()).to.equal(true)
+      expect(await main.tradingPaused()).to.equal(true)
+      expect(await main.issuancePausedOrFrozen()).to.equal(true)
+      expect(await main.issuancePaused()).to.equal(true)
     })
 
     it('Should not allow to Pause/Unpause if not PAUSER or OWNER', async () => {
-      await expect(main.connect(other).pause()).to.be.reverted
+      await expect(main.connect(other).pauseTrading()).to.be.reverted
+      await expect(main.connect(other).pauseIssuance()).to.be.reverted
 
       // Check no changes
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
 
       // Attempt to unpause
-      await expect(main.connect(other).unpause()).to.be.reverted
+      await expect(main.connect(other).unpauseTrading()).to.be.reverted
+      await expect(main.connect(other).unpauseIssuance()).to.be.reverted
 
       // Check no changes
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
     })
 
     it('Should not allow to set PAUSER if not OWNER', async () => {
@@ -622,7 +640,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.hasRole(LONG_FREEZER, addr1.address)).to.equal(false)
       expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(true)
       expect(await main.frozen()).to.equal(false)
-      expect(await main.pausedOrFrozen()).to.equal(false)
+      expect(await main.tradingPausedOrFrozen()).to.equal(false)
+      expect(await main.issuancePausedOrFrozen()).to.equal(false)
     })
 
     it('Should only permit owner to freeze forever', async () => {
@@ -879,6 +898,37 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Configuration/State #fast', () => {
+    it('Should allow to update warmupPeriod if OWNER and perform validations', async () => {
+      const newValue: BigNumber = bn('360')
+
+      // Check existing value
+      expect(await basketHandler.warmupPeriod()).to.equal(config.warmupPeriod)
+
+      // If not owner cannot update
+      await expect(basketHandler.connect(other).setWarmupPeriod(newValue)).to.be.reverted
+
+      // Check value did not change
+      expect(await basketHandler.warmupPeriod()).to.equal(config.warmupPeriod)
+
+      // Update with owner
+      await expect(basketHandler.connect(owner).setWarmupPeriod(newValue))
+        .to.emit(basketHandler, 'WarmupPeriodSet')
+        .withArgs(config.warmupPeriod, newValue)
+
+      // Check value was updated
+      expect(await basketHandler.warmupPeriod()).to.equal(newValue)
+
+      // Cannot update with value < min
+      await expect(
+        basketHandler.connect(owner).setWarmupPeriod(MIN_WARMUP_PERIOD - 1)
+      ).to.be.revertedWith('invalid warmupPeriod')
+
+      // Cannot update with value > max
+      await expect(
+        basketHandler.connect(owner).setWarmupPeriod(MAX_WARMUP_PERIOD + 1)
+      ).to.be.revertedWith('invalid warmupPeriod')
+    })
+
     it('Should allow to update tradingDelay if OWNER and perform validations', async () => {
       const newValue: BigNumber = bn('360')
 
@@ -997,7 +1047,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should grant allowances when paused', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).pauseTrading()
+      await main.connect(owner).pauseIssuance()
       await expect(backingManager.grantRTokenAllowance(ZERO_ADDRESS)).to.be.revertedWith(
         'erc20 unregistered'
       )
@@ -1172,6 +1223,69 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       await basketHandler.refreshBasket()
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+    })
+
+    it('Should track basket status in BasketHandler when changed', async () => {
+      // Check initial basket status
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Refreshing from SOUND -> SOUND should not track status change
+      await expect(assetRegistry.refresh()).to.not.emit(basketHandler, 'BasketStatusChanged')
+
+      // Check Status remains SOUND
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Set Token1 to default - 50% price reduction
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
+
+      // Mark default as probable
+      await expect(assetRegistry.refresh())
+        .to.emit(basketHandler, 'BasketStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+
+      // Advance time post delayUntilDefault
+      await advanceTime((await collateral1.delayUntilDefault()).toString())
+
+      // Mark default as confirmed
+      await expect(assetRegistry.refresh())
+        .to.emit(basketHandler, 'BasketStatusChanged')
+        .withArgs(CollateralStatus.IFFY, CollateralStatus.DISABLED)
+
+      // Check status
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
+    it('Should be able to track basket status', async () => {
+      // Check initial basket status
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Refreshing from SOUND -> SOUND should not track status change
+      await expect(assetRegistry.refresh()).to.not.emit(basketHandler, 'BasketStatusChanged')
+
+      // Check Status remains SOUND
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
+      // Set Token1 to default - 50% price reduction
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
+
+      // Mark default as probable
+      await expect(assetRegistry.refresh())
+        .to.emit(basketHandler, 'BasketStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+
+      // Advance time post delayUntilDefault
+      await advanceTime((await collateral1.delayUntilDefault()).toString())
+
+      // Mark default as confirmed
+      await collateral1.refresh()
+
+      // Anyone can update status on BasketHandler
+      await expect(basketHandler.trackStatus())
+        .to.emit(basketHandler, 'BasketStatusChanged')
+        .withArgs(CollateralStatus.IFFY, CollateralStatus.DISABLED)
+
+      // Check status
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
     })
 
     it('Should allow to register Asset if OWNER', async () => {
@@ -1621,8 +1735,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).wait()
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
       const newMain: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
-      const emptyBasketHandler: IBasketHandler = <IBasketHandler>(
-        await ethers.getContractAt('IBasketHandler', await newMain.basketHandler())
+      const emptyBasketHandler: TestIBasketHandler = <TestIBasketHandler>(
+        await ethers.getContractAt('TestIBasketHandler', await newMain.basketHandler())
       )
       const busHeld = await emptyBasketHandler.basketsHeldBy(addr1.address)
       expect(busHeld[0]).to.equal(0)
@@ -1682,7 +1796,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to refresh basket if not OWNER when paused', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).pauseTrading()
       await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
         'basket unrefreshable'
       )
@@ -1695,14 +1809,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
     })
 
-    it('Should not allow to poke when paused', async () => {
-      await main.connect(owner).pause()
-      await expect(main.connect(other).poke()).to.be.revertedWith('paused or frozen')
+    it('Should allow to poke when trading paused', async () => {
+      await main.connect(owner).pauseTrading()
+      await main.connect(other).poke()
+    })
+
+    it('Should allow to poke when issuance paused', async () => {
+      await main.connect(owner).pauseIssuance()
+      await main.connect(other).poke()
     })
 
     it('Should not allow to poke when frozen', async () => {
       await main.connect(owner).freezeForever()
-      await expect(main.connect(other).poke()).to.be.revertedWith('paused or frozen')
+      await expect(main.connect(other).poke()).to.be.revertedWith('frozen')
     })
 
     it('Should not allow to refresh basket if not OWNER when unfrozen and unpaused', async () => {
@@ -1718,7 +1837,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should allow to call refresh Basket if OWNER and paused - No changes', async () => {
-      await main.connect(owner).pause()
+      await main.connect(owner).pauseTrading()
       // Switch basket - No backup nor default
       await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
@@ -1735,7 +1854,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Not updated so basket last changed is not set
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      await main.connect(owner).unpause()
+      await main.connect(owner).unpauseTrading()
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
@@ -1762,6 +1881,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         assetRegistry,
         'AssetUnregistered'
       )
+
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
@@ -1961,6 +2082,24 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const [lowPrice, highPrice] = await basketHandler.price()
       expect(lowPrice).to.equal(MAX_UINT192)
       expect(highPrice).to.equal(MAX_UINT192)
+    })
+
+    it('Should distinguish between price/lotPrice - prices()', async () => {
+      // Set basket with single collateral
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await basketHandler.refreshBasket()
+
+      await collateral0.refresh()
+      const [low, high] = await collateral0.price()
+      await setOraclePrice(collateral0.address, MAX_UINT256.div(2)) // oracle error
+
+      const [price, lotPrice] = await basketHandler.prices()
+      expect(price.low).to.equal(0)
+      expect(price.high).to.equal(MAX_UINT192)
+      expect(lotPrice.low).to.be.closeTo(low, low.div(bn('1e5'))) // small decay
+      expect(lotPrice.low).to.be.lt(low)
+      expect(lotPrice.high).to.be.closeTo(high, high.div(bn('1e5'))) // small decay
+      expect(lotPrice.high).to.be.lt(high)
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {

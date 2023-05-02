@@ -94,15 +94,16 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction
     function issueTo(address recipient, uint256 amount)
         public
-        notPausedOrFrozen
+        notIssuancePausedOrFrozen
         exchangeRateIsValidAfter
     {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
 
+        // Ensure basket is ready, SOUND and not in warmup period
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket unsound");
+        require(basketHandler.isReady(), "basket not ready");
 
         // Revert if issuance exceeds either supply throttle
         issuanceThrottle.useAvailable(totalSupply(), int256(amount)); // reverts on over-issuance
@@ -207,7 +208,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     function mint(address recipient, uint256 amount)
         external
-        notPausedOrFrozen
+        notTradingPausedOrFrozen
         exchangeRateIsValidAfter
     {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
@@ -226,7 +227,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     function setBasketsNeeded(uint192 basketsNeeded_)
         external
-        notPausedOrFrozen
+        notTradingPausedOrFrozen
         exchangeRateIsValidAfter
     {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
@@ -236,7 +237,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// Sends all token balance of erc20 (if it is registered) to the BackingManager
     /// @custom:interaction
-    function monetizeDonations(IERC20 erc20) external notPausedOrFrozen {
+    function monetizeDonations(IERC20 erc20) external notTradingPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         erc20.safeTransfer(address(main.backingManager()), erc20.balanceOf(address(this)));
     }

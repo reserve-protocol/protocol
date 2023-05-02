@@ -10,6 +10,7 @@ import forkBlockNumber from '../../../integration/fork-block-numbers'
 import {
   IConfig,
   IGovParams,
+  IGovRoles,
   IRevenueShare,
   IRTokenConfig,
   IRTokenSetup,
@@ -36,11 +37,11 @@ import {
   FacadeTest,
   FacadeWrite,
   IAssetRegistry,
-  IBasketHandler,
   InvalidMockV3Aggregator,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIDeployer,
   TestIMain,
   TestIRToken,
@@ -90,13 +91,14 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let rTokenAsset: RTokenAsset
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   let deployer: TestIDeployer
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
   let govParams: IGovParams
+  let govRoles: IGovRoles
 
   // RToken Configuration
   const dist: IRevenueShare = {
@@ -111,6 +113,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     longFreeze: bn('2592000'), // 30 days
     rewardRatio: bn('1069671574938'), // approx. half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
+    warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
@@ -242,13 +245,22 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     backingManager = <TestIBackingManager>(
       await ethers.getContractAt('TestIBackingManager', await main.backingManager())
     )
-    basketHandler = <IBasketHandler>(
-      await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+    basketHandler = <TestIBasketHandler>(
+      await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
     )
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
     rTokenAsset = <RTokenAsset>(
       await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
     )
+
+    // Set initial governance roles
+    govRoles = {
+      owner: owner.address,
+      guardian: ZERO_ADDRESS,
+      pausers: [],
+      shortFreezers: [],
+      longFreezers: [],
+    }
 
     // Setup owner and unpause
     await facadeWrite.connect(owner).setupGovernance(
@@ -256,9 +268,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       false, // do not deploy governance
       true, // unpaused
       govParams, // mock values, not relevant
-      owner.address, // owner
-      ZERO_ADDRESS, // no guardian
-      ZERO_ADDRESS // no pauser
+      govRoles
     )
 
     // Setup mock chainlink feed for some of the tests (so we can change the value)

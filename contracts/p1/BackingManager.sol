@@ -79,7 +79,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction
     // checks: the addresses in `erc20s` are unique
     // effect: _manageTokens(erc20s)
-    function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
+    function manageTokens(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
         // Token list must not contain duplicates
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
         _manageTokens(erc20s);
@@ -91,7 +91,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction
     // checks: the addresses in `erc20s` are unique (and sorted)
     // effect: _manageTokens(erc20s)
-    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notPausedOrFrozen {
+    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
         // Token list must not contain duplicates
         require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate/unsorted tokens");
         _manageTokens(erc20s);
@@ -106,11 +106,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         assetRegistry.refresh();
 
         if (tradesOpen > 0) return;
-        // Only trade when all the collateral assets in the basket are SOUND
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
+
+        // Ensure basket is ready, SOUND and not in warmup period
+        require(basketHandler.isReady(), "basket not ready");
 
         uint48 basketTimestamp = basketHandler.timestamp();
-        if (block.timestamp < basketTimestamp + tradingDelay) return;
+        require(block.timestamp >= basketTimestamp + tradingDelay, "trading delayed");
 
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(this));
         uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}

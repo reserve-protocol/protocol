@@ -23,6 +23,7 @@ import {
   MAX_UINT192,
   MAX_UINT256,
   ONE_ADDRESS,
+  PAUSER,
 } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
@@ -38,9 +39,9 @@ import {
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
-  IBasketHandler,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIRToken,
   TestIStRSR,
@@ -65,7 +66,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
   let rToken: TestIRToken
   let broker: TestIBroker
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
 
@@ -569,6 +570,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await collateral0.status()).to.equal(CollateralStatus.DISABLED)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
+      // Advance warmup period
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       // Should launch auction for token1
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
 
@@ -663,6 +667,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await collateral0.refresh()
       await advanceTime((await collateral0.delayUntilDefault()).toString())
       await basketHandler.refreshBasket()
+
+      // Advance warmup period
+      await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Should launch auction for token1
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
@@ -764,7 +771,11 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         1,
         1
       )
-      await main.connect(owner).unpause()
+      // Set pauser and unpause
+      await main.connect(owner).grantRole(PAUSER, owner.address)
+      await main.connect(owner).unpauseTrading()
+      await main.connect(owner).unpauseIssuance()
+
       await broker.init(main.address, easyAuction.address, ONE_ADDRESS, config.auctionLength)
       const sellTok = await ERC20Factory.deploy('Sell Token', 'SELL', sellTokDecimals)
       const buyTok = await ERC20Factory.deploy('Buy Token', 'BUY', buyTokDecimals)

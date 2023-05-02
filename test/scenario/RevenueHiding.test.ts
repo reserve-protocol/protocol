@@ -12,13 +12,14 @@ import {
   ComptrollerMock,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   SelfReferentialCollateral,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
 } from '../../typechain'
+import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
@@ -59,7 +60,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
@@ -137,6 +138,9 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       .connect(owner)
       .setBackupConfig(await ethers.utils.formatBytes32String('USD'), 1, [dai.address])
     await basketHandler.refreshBasket()
+
+    // Advance time post warmup period - SOUND just regained
+    await advanceTime(Number(config.warmupPeriod) + 1)
 
     await backingManager.grantRTokenAllowance(cDAI.address)
     await backingManager.grantRTokenAllowance(dai.address)

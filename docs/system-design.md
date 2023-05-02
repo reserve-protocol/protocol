@@ -110,7 +110,8 @@ On the other hand, while a redemption is pending in the mempool, the quantities 
 
 ## System States
 
-- `paused`: all interactions disabled EXCEPT ERC20 functions + RToken.redeem + StRSR.stake + StRSR.payoutRewards
+- `tradingPaused`: all interactions disabled EXCEPT ERC20 functions + RToken.issue + RToken.redeem + StRSR.stake + StRSR.payoutRewards
+- `issuancePaused`: all interactions enabled EXCEPT RToken.issue
 - `frozen`: all interactions disabled EXCEPT ERC20 functions + StRSR.stake
 
 Freezing can occur over two timescales: short freezing + long freezing.
@@ -205,6 +206,15 @@ Dimension: `{seconds}`
 The trading delay is how many seconds should pass after the basket has been changed before a trade can be opened. In the long term this can be set to 0 after MEV searchers are firmly integrated, but at the start it may be useful to have a delay before trading in order to avoid worst-case prices.
 
 Default value: `7200` = 2 hours
+Mainnet reasonable range: 0 to 604800
+
+### `warmupPeriod`
+
+Dimension: `{seconds}`
+
+The warmup period is how many seconds should pass after the basket regained the SOUND status before an RToken can be issued and/or a trade can be opened.
+
+Default value: `900` = 15 minutes
 Mainnet reasonable range: 0 to 604800
 
 ### `auctionLength`

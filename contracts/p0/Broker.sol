@@ -47,7 +47,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
     /// @custom:protected
-    function openTrade(TradeRequest memory req) external notPausedOrFrozen returns (ITrade trade) {
+    function openTrade(TradeRequest memory req) external notTradingPausedOrFrozen returns (ITrade) {
         require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
 
@@ -77,7 +77,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
-    function reportViolation() external notPausedOrFrozen {
+    function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
         disabled = true;

@@ -84,7 +84,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // actions:
     //   for dest where w[dest] != 0:
     //     erc20.transferFrom(from, addrOf(dest), tokensPerShare * w[dest])
-    function distribute(IERC20 erc20, uint256 amount) external notPausedOrFrozen {
+    function distribute(IERC20 erc20, uint256 amount) external notTradingPausedOrFrozen {
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;

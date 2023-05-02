@@ -64,6 +64,18 @@ struct GovernanceParams {
 }
 
 /**
+ * @title GovernanceRoles
+ * @notice The set of roles required (owner, guardian, pausers, and freezers)
+ */
+struct GovernanceRoles {
+    address owner;
+    address guardian;
+    address[] pausers;
+    address[] shortFreezers;
+    address[] longFreezers;
+}
+
+/**
  * @title IFacadeWrite
  * @notice A UX-friendly layer for interactin with the protocol
  */
@@ -89,8 +101,6 @@ interface IFacadeWrite {
         bool deployGovernance,
         bool unfreeze,
         GovernanceParams calldata govParams,
-        address owner,
-        address guardian,
-        address pauser
+        GovernanceRoles calldata govRoles
     ) external returns (address);
 }
