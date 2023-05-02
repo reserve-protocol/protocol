@@ -26,7 +26,7 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
     }
 
     // Get Deployed addresses
-    const deploymentFilename = getDeploymentFilename(chainId, `mainnet-${params.ver}`)
+    const deploymentFilename = getDeploymentFilename(chainId, `${hre.network.name}-${params.ver}`)
     const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
     await validateDeployments(hre, deployments, params.ver)
@@ -101,5 +101,7 @@ const validateUpgrade = async (
     unsafeAllow,
   })
 
-  console.log(`* Validated ${factoryName} (${ver}): from address ${prevImplAddress} - OK!`)
+  console.log(
+    `* Validated ${factoryName} upgrade (from version: ${ver}): address ${prevImplAddress} - OK!`
+  )
 }
