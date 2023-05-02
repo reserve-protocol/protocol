@@ -11,7 +11,7 @@ import {
 } from '../../scripts/deployment/common'
 
 // Force imports the contract storage layout from the deployed versions
-// Only run on Mainnet to keep track of the deployed implementations
+// Only run on Mainnet to keep track of previously deployed implementations
 // Example:  npx hardhat force-import --ver "2.1.0" --network mainnet
 task('force-import', 'Imports implementation layout for future upgrades')
   .addParam('ver', 'the version of the implementations being imported')
@@ -29,7 +29,7 @@ task('force-import', 'Imports implementation layout for future upgrades')
     }
 
     // Get Deployed addresses
-    const deploymentFilename = getDeploymentFilename(chainId, `mainnet-${params.ver}`)
+    const deploymentFilename = getDeploymentFilename(chainId, `${hre.network.name}-${params.ver}`)
     const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
     await validateDeployments(hre, deployments, params.ver)
