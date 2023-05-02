@@ -558,7 +558,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('Invalid trade state')
       })
 
-      it('Should initialize GnosisTrade with minimum buy amount of at least 1', async () => {
+      // This test is only here for coverage
+      it('Should initialize GnosisTrade - zero decimal token', async () => {
         const amount: BigNumber = bn('100e18')
 
         // Create a Trade
