@@ -79,8 +79,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             return;
         }
 
-        IAsset sell = assetRegistry.toAsset(erc20);
-        IAsset buy = assetRegistry.toAsset(tokenToBuy);
+        IAsset sell;
+        IAsset buy;
 
         // === Refresh ===
         // do not need to refresh when caller is BackingManager.forwardRevenue()
@@ -89,8 +89,13 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
                 // if either token is the RToken, refresh everything
                 assetRegistry.refresh();
                 furnace.melt();
+
+                sell = assetRegistry.toAsset(erc20);
+                buy = assetRegistry.toAsset(tokenToBuy);
             } else {
                 // otherwise, refresh just buy + sell
+                sell = assetRegistry.toAsset(erc20);
+                buy = assetRegistry.toAsset(tokenToBuy);
                 sell.refresh();
                 buy.refresh();
             }
