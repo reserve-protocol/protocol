@@ -1,4 +1,5 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { IComponents } from '../../common/configuration'
 import { IDeployments } from '../../scripts/deployment/common'
 
 export const validateDeployments = async (
@@ -13,22 +14,31 @@ export const validateDeployments = async (
     )
   }
 
-  // Check implementations are defined
-  if (
-    !deployments.implementations.main ||
-    !deployments.implementations.components.assetRegistry ||
-    !deployments.implementations.components.backingManager ||
-    !deployments.implementations.components.basketHandler ||
-    !deployments.implementations.components.broker ||
-    !deployments.implementations.components.distributor ||
-    !deployments.implementations.components.furnace ||
-    !deployments.implementations.components.rTokenTrader ||
-    !deployments.implementations.components.rsrTrader ||
-    !deployments.implementations.components.rToken ||
-    !deployments.implementations.components.stRSR
-  ) {
+  // Check Main implementation is defined
+  if (!deployments.implementations.main) {
     throw new Error(
-      `Missing deployed implementations for version ${version} in network ${hre.network.name}`
+      `Missing deployed Main implementation for version ${version} in network ${hre.network.name}`
     )
   }
+
+  // Check all componet implementations are defined
+  const componentsKeys: string[] = [
+    'backingManager',
+    'basketHandler',
+    'broker',
+    'distributor',
+    'furnace',
+    'rTokenTrader',
+    'rsrTrader',
+    'rToken',
+    'stRSR',
+  ]
+
+  componentsKeys.forEach((keystr) => {
+    if (!deployments.implementations.components[keystr as keyof IComponents]) {
+      throw new Error(
+        `Missing deployed ${keystr} implementation for version ${version} in network ${hre.network.name}`
+      )
+    }
+  })
 }
