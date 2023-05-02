@@ -500,16 +500,19 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
   describe('Trades', () => {
     context('GnosisTrade', () => {
-      it('Should initialize GnosisTrade correctly - only once', async () => {
-        const amount: BigNumber = bn('100e18')
+      const amount = bn('100e18')
+      let trade: GnosisTrade
 
+      beforeEach(async () => {
         // Create a Trade
         const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+        trade = <GnosisTrade>await TradeFactory.deploy()
 
         // Check state
         expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
-
+        expect(await trade.canSettle()).to.equal(false)
+      })
+      it('Should initialize GnosisTrade correctly - only once', async () => {
         // Initialize trade - simulate from backingManager
         const tradeRequest: ITradeRequest = {
           sell: collateral0.address,
@@ -560,15 +563,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // This test is only here for coverage
       it('Should initialize GnosisTrade - zero decimal token', async () => {
-        const amount: BigNumber = bn('100e18')
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
-
-        // Check state
-        expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
-
         // Initialize trade - simulate from backingManager
         const tradeRequest: ITradeRequest = {
           sell: collateral0.address,
@@ -606,8 +600,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should protect against reentrancy when initializing GnosisTrade', async () => {
-        const amount: BigNumber = bn('100e18')
-
         // Create a Reetrant Gnosis
         const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
           'GnosisMockReentrant'
@@ -616,13 +608,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await GnosisReentrantFactory.deploy()
         )
         await reentrantGnosis.setReenterOnInit(true)
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
-
-        // Check state
-        expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
 
         // Initialize trade - simulate from backingManager
         const tradeRequest: ITradeRequest = {
@@ -646,15 +631,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should perform balance and amounts validations on init', async () => {
-        const amount: BigNumber = bn('100e18')
         const invalidAmount: BigNumber = MAX_UINT96.add(1)
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
-
-        // Check state
-        expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
 
         // Initialize trade - Sell Amount too large
         // Fund trade
@@ -711,15 +688,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {
-        const amount: BigNumber = bn('100e18')
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
-
-        // Check state
-        expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
-
         // Initialize trade - simulate from backingManager
         const tradeRequest: ITradeRequest = {
           sell: collateral0.address,
@@ -741,12 +709,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should be able to settle a trade - performing validations', async () => {
-        const amount: BigNumber = bn('100e18')
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
-
         // Check state - cannot be settled
         expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
         expect(await trade.canSettle()).to.equal(false)
@@ -801,8 +763,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should protect against reentrancy when settling GnosisTrade', async () => {
-        const amount: BigNumber = bn('100e18')
-
         // Create a Reetrant Gnosis
         const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
           'GnosisMockReentrant'
@@ -812,10 +772,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
         await reentrantGnosis.setReenterOnInit(false)
         await reentrantGnosis.setReenterOnSettle(true)
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
 
         // Initialize trade - simulate from backingManager
         const tradeRequest: ITradeRequest = {
@@ -847,16 +803,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should be able to settle a GnosisTrade - handles arbitrary funds being sent to trade', async () => {
-        const amount: BigNumber = bn('100e18')
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
-
-        // Check state - cannot be settled
-        expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
-        expect(await trade.canSettle()).to.equal(false)
-
         // Initialize trade - simulate from backingManager
         const tradeRequest: ITradeRequest = {
           sell: collateral0.address,
@@ -931,12 +877,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should allow anyone to transfer to origin after a GnosisTrade is complete', async () => {
-        const amount: BigNumber = bn('100e18')
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-        const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
-
         // Initialize trade - simulate from backingManager
         const tradeRequest: ITradeRequest = {
           sell: collateral0.address,
@@ -1001,16 +941,22 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     })
 
     context('DutchTrade', () => {
-      it('Should initialize DutchTrade correctly - only once', async () => {
-        const amount: BigNumber = config.rTokenMaxTradeVolume
+      let amount: BigNumber
+      let trade: DutchTrade
+
+      beforeEach(async () => {
+        amount = config.rTokenMaxTradeVolume
 
         // Create a Trade
         const TradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
-        const trade: DutchTrade = <DutchTrade>await TradeFactory.deploy()
+        trade = <DutchTrade>await TradeFactory.deploy()
 
         // Check state
         expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
+        expect(await trade.canSettle()).to.equal(false)
+      })
 
+      it('Should initialize DutchTrade correctly - only once', async () => {
         // Fund trade and initialize
         await token0.connect(owner).mint(trade.address, amount)
         await expect(
@@ -1053,11 +999,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should apply full maxTradeSlippage to lowPrice at minTradeVolume', async () => {
-        const amount: BigNumber = config.minTradeVolume
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
-        const trade: DutchTrade = <DutchTrade>await TradeFactory.deploy()
+        amount = config.minTradeVolume
 
         // Fund trade and initialize
         await token0.connect(owner).mint(trade.address, amount)
@@ -1083,15 +1025,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {
-        const amount: BigNumber = bn('100e18')
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
-        const trade: DutchTrade = <DutchTrade>await TradeFactory.deploy()
-
-        // Check state
-        expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
-
         // Attempt to initialize without funding
         await expect(
           trade.init(
@@ -1105,12 +1038,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       it('Should allow anyone to transfer to origin after a DutchTrade is complete', async () => {
-        const amount: BigNumber = bn('100e18')
-
-        // Create a Trade
-        const TradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
-        const trade: DutchTrade = <DutchTrade>await TradeFactory.deploy()
-
         // Fund trade and initialize
         await token0.connect(owner).mint(trade.address, amount)
         await expect(
