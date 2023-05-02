@@ -1821,11 +1821,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openzeppelin/hardhat-upgrades@npm:^1.21.0":
-  version: 1.21.0
-  resolution: "@openzeppelin/hardhat-upgrades@npm:1.21.0"
+"@openzeppelin/hardhat-upgrades@npm:^1.23.0":
+  version: 1.23.1
+  resolution: "@openzeppelin/hardhat-upgrades@npm:1.23.1"
   dependencies:
-    "@openzeppelin/upgrades-core": ^1.20.0
+    "@openzeppelin/upgrades-core": ^1.25.0
     chalk: ^4.1.0
     debug: ^4.1.1
     proper-lockfile: ^4.1.1
@@ -1839,13 +1839,13 @@ __metadata:
       optional: true
   bin:
     migrate-oz-cli-project: dist/scripts/migrate-oz-cli-project.js
-  checksum: dada5df033bc29d4104a574bd8a28733c56cc86cd0d1ec17a6f074546d0ae589ba4ac417ebdb2ad7685061258cdefc406e672beeb3ec3f8874b5673badb1b0ef
+  checksum: b74ad66514e8b68da9a4ad37ab6ddea3f3688aa2741acf8e7a32ff4268142ad005291584717bff6c4a575e8be46e44487e2804535789eed3ea59f225517a485b
   languageName: node
   linkType: hard
 
-"@openzeppelin/upgrades-core@npm:^1.20.0":
-  version: 1.20.0
-  resolution: "@openzeppelin/upgrades-core@npm:1.20.0"
+"@openzeppelin/upgrades-core@npm:^1.25.0":
+  version: 1.25.0
+  resolution: "@openzeppelin/upgrades-core@npm:1.25.0"
   dependencies:
     cbor: ^8.0.0
     chalk: ^4.1.0
@@ -1854,7 +1854,7 @@ __metadata:
     ethereumjs-util: ^7.0.3
     proper-lockfile: ^4.1.1
     solidity-ast: ^0.4.15
-  checksum: 682829324dfcd15779f7f99390eb23549bf240715bcf080855e69fa1ea2e87a63b2f190e658793cdedeb3d7baf8c36a53bf35c3cf8eab8afb1c9a28554d8829c
+  checksum: 26125ffa41266ab31302cf6aff08baea125800cfcc74f8c7af25ac87e384fc29a99d9a56e846c948e9670f99ccfd1938e7ce4b4b66d72a00642df0e4395d69e6
   languageName: node
   linkType: hard
 
@@ -8255,7 +8255,7 @@ fsevents@~2.1.1:
     "@nomiclabs/hardhat-etherscan": ^3.1.0
     "@openzeppelin/contracts": ~4.7.3
     "@openzeppelin/contracts-upgradeable": ~4.7.3
-    "@openzeppelin/hardhat-upgrades": ^1.21.0
+    "@openzeppelin/hardhat-upgrades": ^1.23.0
     "@typechain/ethers-v5": ^7.2.0
     "@typechain/hardhat": ^2.3.1
     "@types/big.js": ^6.1.3
