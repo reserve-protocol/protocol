@@ -188,7 +188,7 @@ contract DutchTrade is ITrade {
     /// Calculates how much buy token is needed to purchase the lot, at a particular timestamp
     /// Price Curve:
     ///   - 1.5 * middlePrice down to the middlePrice for first 15% of auction
-    ///   - middlePrice down to lowPrice for the last 80% of auction
+    ///   - middlePrice down to lowPrice for the last 85% of auction
     /// @param timestamp {s} The block timestamp to get price for
     /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
     function bidAmount(uint48 timestamp) public view returns (uint256) {
