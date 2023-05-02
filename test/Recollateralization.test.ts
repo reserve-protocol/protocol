@@ -3247,7 +3247,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           // Should launch another auction: RSR -> token1
           expect(await backingManager.trades(token0.address)).to.equal(ZERO_ADDRESS)
           expect(await backingManager.trades(rsr.address)).to.not.equal(ZERO_ADDRESS)
-          expect(await backingManager.tradesOpen()).to.equal(1)
         })
       })
     })

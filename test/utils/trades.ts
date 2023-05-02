@@ -101,8 +101,6 @@ export const dutchBuyAmount = async (
     )
     .div(fp('1'))
 
-  // console.log('slippage: ', slippage)
-
   const lowPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
   const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
   const highPrice = middlePrice.add(divCeil(middlePrice, bn('2'))) // 50% above middlePrice
@@ -115,14 +113,6 @@ export const dutchBuyAmount = async (
           .mul(progression.sub(fp('0.15')))
           .div(fp('0.85'))
       )
-  // console.log(
-  //   'progression: ',
-  //   progression,
-  //   'price: ',
-  //   price,
-  //   'buyAmount: ',
-  //   divCeil(outAmount.mul(price), fp('1'))
-  // )
 
   return divCeil(outAmount.mul(price), fp('1'))
 }
