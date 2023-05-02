@@ -1212,6 +1212,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should recollateralize correctly when switching basket - Taking no Haircut - No RSR', async () => {
+        await backingManager.connect(owner).setBackingBuffer(0)
+
         // Empty out the staking pool
         await stRSR.connect(addr1).unstake(stakeAmount)
         await advanceTime(config.unstakingDelay.toString())
@@ -1331,7 +1333,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.be.gt(issueAmount) // New RToken minting
 
         // Check price in USD of the current RToken
-        expect(await rToken.basketsNeeded()).to.be.gte(await rToken.totalSupply()) // no haircut
+        expect(await rToken.basketsNeeded()).to.equal(await rToken.totalSupply()) // no haircut
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
       })
 
