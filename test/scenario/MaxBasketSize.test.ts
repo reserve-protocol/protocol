@@ -36,7 +36,6 @@ import { CollateralStatus } from '../../common/constants'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
 import { expectPrice, setOraclePrice } from '../utils/oracles'
-import { expectEvents } from '#/common/events'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h

@@ -459,7 +459,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
 
         const crvBefore = await crv.balanceOf(collateral.address)
         const cvxBefore = await cvx.balanceOf(collateral.address)
-        await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
+        await expect(collateral.claimRewards()).to.emit(ctx.wPool, 'RewardsClaimed')
         const crvAfter = await crv.balanceOf(collateral.address)
         const cvxAfter = await cvx.balanceOf(collateral.address)
         expect(crvAfter).gt(crvBefore)
