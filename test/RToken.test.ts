@@ -293,7 +293,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Issuance', function () {
-    it('Should not issue RTokens if paused', async function () {
+    it('Should not issue RTokens if issuance paused', async function () {
       const issueAmount: BigNumber = bn('10e18')
 
       // Pause Main
@@ -306,6 +306,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should issue RTokens if trading paused', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+
+      // Pause Main
+      await main.connect(owner).pauseTrading()
+
+      // Issue
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, issueAmount)))
+      await rToken.connect(addr1).issue(issueAmount)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
     })
 
     it('Should not issue RTokens if frozen', async function () {

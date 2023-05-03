@@ -98,7 +98,7 @@ contract DeployerP1 is IDeployer, Versioned {
     //   Deploy a proxy for Main and every component of Main
     //   Call init() on Main and every component of Main, using `params` for needed parameters
     //     While doing this, init assetRegistry with this.rsrAsset and a new rTokenAsset
-    //   Set up Auth so that `owner` holds all roles and no one else has any
+    //   Set up Auth so that `owner` holds the OWNER role and no one else has any
     function deploy(
         string memory name,
         string memory symbol,
@@ -234,13 +234,7 @@ contract DeployerP1 is IDeployer, Versioned {
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
-        main.grantRole(SHORT_FREEZER, owner);
-        main.grantRole(LONG_FREEZER, owner);
-        main.grantRole(PAUSER, owner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(SHORT_FREEZER, address(this));
-        main.renounceRole(LONG_FREEZER, address(this));
-        main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
         return (address(components.rToken));

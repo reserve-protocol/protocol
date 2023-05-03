@@ -208,7 +208,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // actions:
     //   rsr.transferFrom(account, this, rsrAmount)
-    function stake(uint256 rsrAmount) external {
+    function stake(uint256 rsrAmount) public {
         require(rsrAmount > 0, "Cannot stake zero");
 
         if (!main.frozen()) _payoutRewards();

@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
-import { IGovParams, networkConfig } from '../../../common/configuration'
+import { IGovParams, IGovRoles, networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 import { expectInReceipt } from '../../../common/events'
 import { getRTokenConfig, RTOKEN_NAME } from './rTokenConfig'
@@ -74,15 +74,21 @@ async function main() {
   }
 
   // Setup Governance in RToken
+  const govRoles: IGovRoles = {
+    owner: ZERO_ADDRESS,
+    guardian: ZERO_ADDRESS,
+    pausers: [],
+    shortFreezers: [],
+    longFreezers: [],
+  }
+
   const receipt = await (
     await facadeWrite.connect(deployerUser).setupGovernance(
       rToken.address,
       true, // deploy governance
       chainId != '1', // unpause if not mainnet
       govParams,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS // no other pauser
+      govRoles
     )
   ).wait()
 
