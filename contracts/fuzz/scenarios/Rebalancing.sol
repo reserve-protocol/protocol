@@ -1105,6 +1105,8 @@ contract RebalancingScenario {
                     keccak256(abi.encodePacked("BU rate out of range"))
                     || keccak256(abi.encodePacked(reason)) ==
                     keccak256(abi.encodePacked("basket not ready"))
+                    || keccak256(abi.encodePacked(reason)) ==
+                    keccak256(abi.encodePacked("trading delayed"))
                 ) return true;
                 else revert(reason);
             }

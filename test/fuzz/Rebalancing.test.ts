@@ -1705,4 +1705,15 @@ describe('The Rebalancing scenario', () => {
     await scenario.connect(alice).refreshBasket()
     await scenario.echidna_rebalancingProperties()
   })
+
+  it('does not revert if trading delay has not passed when checking echidna_rebalancingProperties', async () => {
+    await scenario.connect(alice).pushBackingForPrimeBasket(bn('2534475810960463152805528040151'), 0)
+    await scenario.connect(alice).setPrimeBasket()
+    await advanceTime(261386)
+    await advanceBlocks(405)
+    await scenario.connect(alice).setBackingManagerTradingDelay(1)
+    await scenario.connect(alice).issue(1)
+    await scenario.connect(alice).refreshBasket()
+    await scenario.echidna_rebalancingProperties()
+  })
 })
