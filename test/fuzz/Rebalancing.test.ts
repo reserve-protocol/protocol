@@ -1696,4 +1696,13 @@ describe('The Rebalancing scenario', () => {
     const check = await scenario.echidna_basketRangeSmallerWhenRebalancing()
     expect(check).to.equal(true)
   })
+
+  it('does not revert if warmup period has not passed when checking echidna_rebalancingProperties', async () => {
+    await advanceTime(259874)
+    await advanceBlocks(37)
+    await scenario.connect(alice).issue(1)
+    await scenario.connect(alice).unregisterAsset(0)
+    await scenario.connect(alice).refreshBasket()
+    await scenario.echidna_rebalancingProperties()
+  })
 })
