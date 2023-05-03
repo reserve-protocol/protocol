@@ -3,9 +3,9 @@ import { expect } from 'chai'
 import bnjs from 'bignumber.js'
 import { formatEther, parseEther, _TypedDataEncoder } from 'ethers/lib/utils'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import forkBlockNumber from './fork-block-numbers'
-import { whileImpersonating } from '../utils/impersonation'
-import { advanceTime } from '../utils/time'
+import forkBlockNumber from '../../../integration/fork-block-numbers'
+import { whileImpersonating } from '../../../utils/impersonation'
+import { advanceTime } from '../../../utils/time'
 import {
   buildPermitParams,
   buildMetaDepositParams,
@@ -13,12 +13,12 @@ import {
   evmRevert,
   evmSnapshot,
   waitForTx,
-} from './utils'
+} from '../../../integration/utils'
 import { BigNumber, ContractFactory, providers, Signer, utils } from 'ethers'
-import { rayDiv, rayMul } from './ray-math'
-import { getChainId } from '../../common/blockchain-utils'
-import { networkConfig } from '../../common/configuration'
-import { MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
+import { rayDiv, rayMul } from '../../../integration/ray-math'
+import { getChainId } from '../../../../common/blockchain-utils'
+import { networkConfig } from '../../../../common/configuration'
+import { MAX_UINT256, ZERO_ADDRESS } from '../../../../common/constants'
 import {
   ERC20Mock,
   IAaveIncentivesController,
@@ -27,7 +27,7 @@ import {
   IWETH,
   SelfdestructTransfer,
   StaticATokenLM,
-} from '../../typechain'
+} from '../../../../typechain'
 import { useEnv } from '#/utils/env'
 
 let chainId: number
@@ -297,11 +297,19 @@ describeFork('StaticATokenLM: aToken wrapper with static balances and liquidity 
     const ctxtAfterWithdrawal = await getContext(ctxtParams)
 
     // Claiming the rewards
-    await waitForTx(await staticAToken.connect(userSigner).claimRewards(userSigner._address, false))
+    await waitForTx(
+      await staticAToken
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, false)
+    )
 
     const ctxtAfterClaimNoForce = await getContext(ctxtParams)
 
-    await waitForTx(await staticAToken.connect(userSigner).claimRewards(userSigner._address, true))
+    await waitForTx(
+      await staticAToken
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, true)
+    )
 
     const ctxtAfterClaimForce = await getContext(ctxtParams)
 
@@ -389,13 +397,21 @@ describeFork('StaticATokenLM: aToken wrapper with static balances and liquidity 
     const ctxtAfterWithdrawal = await getContext(ctxtParams)
 
     // Claim
-    await waitForTx(await staticAToken.connect(userSigner).claimRewards(userSigner._address, false))
+    await waitForTx(
+      await staticAToken
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, false)
+    )
     const ctxtAfterClaim = await getContext(ctxtParams)
 
     await waitForTx(await staticAToken.collectAndUpdateRewards())
     const ctxtAfterUpdate = await getContext(ctxtParams)
 
-    await waitForTx(await staticAToken.connect(userSigner).claimRewards(userSigner._address, false))
+    await waitForTx(
+      await staticAToken
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, false)
+    )
     const ctxtAfterClaim2 = await getContext(ctxtParams)
 
     expect(ctxtInitial.userStaticATokenBalance).to.be.eq(0)
@@ -1061,7 +1077,9 @@ describeFork('StaticATokenLM: aToken wrapper with static balances and liquidity 
 
     // Claim
     await waitForTx(
-      await staticAToken.connect(user2Signer).claimRewards(user2Signer._address, true)
+      await staticAToken
+        .connect(user2Signer)
+        ['claimRewards(address,bool)'](user2Signer._address, true)
     )
     const ctxtAfterClaim = await getContext(ctxtParams)
 
@@ -1688,11 +1706,15 @@ describeFork('StaticATokenLM: aToken wrapper with static balances and liquidity 
       const pendingRewards3 = await staticAToken.getClaimableRewards(userSigner._address)
 
       const userBalance3 = await stkAave.balanceOf(userSigner._address)
-      await staticAToken.connect(user2Signer).claimRewards(userSigner._address, true)
+      await staticAToken
+        .connect(user2Signer)
+        ['claimRewards(address,bool)'](userSigner._address, true)
       const userBalance4 = await stkAave.balanceOf(userSigner._address)
 
       await waitForTx(
-        await staticAToken.connect(userSigner).claimRewards(user2Signer._address, true)
+        await staticAToken
+          .connect(userSigner)
+          ['claimRewards(address,bool)'](user2Signer._address, true)
       )
 
       const pendingRewards5 = await staticAToken.getClaimableRewards(userSigner._address)
@@ -2145,7 +2167,9 @@ describeFork('StaticATokenLM: aToken wrapper with static balances and liquidity 
       pendingRewards.push(pendingReward)
     }
     for (let i = 0; i < users.length; i++) {
-      await waitForTx(await staticAToken.connect(users[i]).claimRewards(receiverAddress, false))
+      await waitForTx(
+        await staticAToken.connect(users[i])['claimRewards(address,bool)'](receiverAddress, false)
+      )
       sum = sum.add(pendingRewards[i])
       expect(await stkAave.balanceOf(await receiverAddress)).to.be.eq(sum)
     }

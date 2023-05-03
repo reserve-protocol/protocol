@@ -32,7 +32,7 @@ import {
   Asset,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
-  CTokenMock,
+  CTokenVaultMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -70,6 +70,7 @@ import {
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime } from './utils/time'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
@@ -107,7 +108,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenMock
+  let token3: CTokenVaultMock
   let backupToken1: ERC20Mock
   let backupToken2: ERC20Mock
   let collateral0: FiatCollateral
@@ -172,7 +173,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
-    token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
+    token3 = <CTokenVaultMock>erc20s[collateral.indexOf(basket[3])]
 
     backupToken1 = erc20s[2] // USDT
     backupCollateral1 = <FiatCollateral>collateral[2]
@@ -187,15 +188,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     // Mint initial balances
     initialBal = bn('1000000e18')
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
-
-    await token0.connect(owner).mint(addr2.address, initialBal)
-    await token1.connect(owner).mint(addr2.address, initialBal)
-    await token2.connect(owner).mint(addr2.address, initialBal)
-    await token3.connect(owner).mint(addr2.address, initialBal)
+    await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
   })
 
   describe('Deployment #fast', () => {
@@ -1736,10 +1729,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const issueAmount = fp('10000')
       let usdcChainlink: MockV3Aggregator
       let daiChainlink: MockV3Aggregator
-      
+
       beforeEach(async () => {
-        usdcChainlink = await ethers.getContractAt('MockV3Aggregator', await collateral1.chainlinkFeed())
-        daiChainlink = await ethers.getContractAt('MockV3Aggregator', await collateral0.chainlinkFeed())
+        usdcChainlink = await ethers.getContractAt(
+          'MockV3Aggregator',
+          await collateral1.chainlinkFeed()
+        )
+        daiChainlink = await ethers.getContractAt(
+          'MockV3Aggregator',
+          await collateral0.chainlinkFeed()
+        )
 
         // register backups
         await assetRegistry.connect(owner).register(backupCollateral1.address)
@@ -1788,14 +1787,26 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         expect(quote.erc20s.length).equal(4)
         expect(quote.quantities.length).equal(4)
-        
+
         const expectedTokens = [token0, token1, token2, token3]
         const expectedAddresses = expectedTokens.map((t) => t.address)
         const expectedQuantities = [
-          fp('0.25').mul(issueAmount).div(await collateral0.refPerTok()).div(bn(`1e${18 - (await token0.decimals())}`)),
-          fp('0.25').mul(issueAmount).div(await collateral1.refPerTok()).div(bn(`1e${18 - (await token1.decimals())}`)),
-          fp('0.25').mul(issueAmount).div(await collateral2.refPerTok()).div(bn(`1e${18 - (await token2.decimals())}`)),
-          fp('0.25').mul(issueAmount).div(await collateral3.refPerTok()).div(bn(`1e${18 - (await token3.decimals())}`))
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral0.refPerTok())
+            .div(bn(`1e${18 - (await token0.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral1.refPerTok())
+            .div(bn(`1e${18 - (await token1.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral2.refPerTok())
+            .div(bn(`1e${18 - (await token2.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral3.refPerTok())
+            .div(bn(`1e${18 - (await token3.decimals())}`)),
         ]
         expectEqualArrays(quote.erc20s, expectedAddresses)
         expectEqualArrays(quote.quantities, expectedQuantities)
@@ -1804,14 +1815,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           Test Historical Redemption
         */
         const balsBefore = await getBalances(addr1.address, expectedTokens)
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          amount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )
+        await rToken
+          .connect(addr1)
+          .customRedemption(
+            addr1.address,
+            amount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
         const balsAfter = await getBalances(addr1.address, expectedTokens)
         expectDelta(balsBefore, quote.quantities, balsAfter)
       })
@@ -1826,7 +1839,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await advanceTime(Number(config.warmupPeriod) + 1)
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-  
+
         /*
           Test Quote
         */
@@ -1841,11 +1854,26 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const expectedTokens = [token0, token1, token2, token3, backupToken1]
         const expectedAddresses = expectedTokens.map((t) => t.address)
         const expectedQuantities = [
-          fp('0.25').mul(issueAmount).div(await collateral0.refPerTok()).div(bn(`1e${18 - (await token0.decimals())}`)),
-          fp('0.125').mul(issueAmount).div(await collateral1.refPerTok()).div(bn(`1e${18 - (await token1.decimals())}`)),
-          fp('0.25').mul(issueAmount).div(await collateral2.refPerTok()).div(bn(`1e${18 - (await token2.decimals())}`)),
-          fp('0.25').mul(issueAmount).div(await collateral3.refPerTok()).div(bn(`1e${18 - (await token3.decimals())}`)),
-          fp('0.125').mul(issueAmount).div(await backupCollateral1.refPerTok()).div(bn(`1e${18 - (await backupToken1.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral0.refPerTok())
+            .div(bn(`1e${18 - (await token0.decimals())}`)),
+          fp('0.125')
+            .mul(issueAmount)
+            .div(await collateral1.refPerTok())
+            .div(bn(`1e${18 - (await token1.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral2.refPerTok())
+            .div(bn(`1e${18 - (await token2.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral3.refPerTok())
+            .div(bn(`1e${18 - (await token3.decimals())}`)),
+          fp('0.125')
+            .mul(issueAmount)
+            .div(await backupCollateral1.refPerTok())
+            .div(bn(`1e${18 - (await backupToken1.decimals())}`)),
         ]
         expectEqualArrays(quote.erc20s, expectedAddresses)
         expectEqualArrays(quote.quantities, expectedQuantities)
@@ -1856,26 +1884,32 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const balsBefore = await getBalances(addr1.address, expectedTokens)
 
         // rToken is undercollateralized, no backupToken1. should fail
-        await expect(rToken.connect(addr1).customRedemption(
-          addr1.address,
-          amount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )).revertedWith("redemption below minimum")
+        await expect(
+          rToken
+            .connect(addr1)
+            .customRedemption(
+              addr1.address,
+              amount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+        ).revertedWith('redemption below minimum')
 
         // send enough backupToken1 to BackingManager to recollateralize and process redemption correctly
         await backupToken1.mint(backingManager.address, issueAmount)
 
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          amount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )
+        await rToken
+          .connect(addr1)
+          .customRedemption(
+            addr1.address,
+            amount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
         const balsAfter = await getBalances(addr1.address, expectedTokens)
         expectDelta(balsBefore, quote.quantities, balsAfter)
       })
@@ -1901,14 +1935,26 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         expect(quote.erc20s.length).equal(4)
         expect(quote.quantities.length).equal(4)
-        
+
         const expectedTokens = [token0, token1, token2, token3]
         const expectedAddresses = expectedTokens.map((t) => t.address)
         const expectedQuantities = [
-          fp('0.25').mul(issueAmount).div(await collateral0.refPerTok()).div(bn(`1e${18 - (await token0.decimals())}`)),
-          fp('0.25').mul(issueAmount).div(await collateral1.refPerTok()).div(bn(`1e${18 - (await token1.decimals())}`)),
-          fp('0.25').mul(issueAmount).div(await collateral2.refPerTok()).div(bn(`1e${18 - (await token2.decimals())}`)),
-          fp('0.25').mul(issueAmount).div(await collateral3.refPerTok()).div(bn(`1e${18 - (await token3.decimals())}`))
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral0.refPerTok())
+            .div(bn(`1e${18 - (await token0.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral1.refPerTok())
+            .div(bn(`1e${18 - (await token1.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral2.refPerTok())
+            .div(bn(`1e${18 - (await token2.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral3.refPerTok())
+            .div(bn(`1e${18 - (await token3.decimals())}`)),
         ]
         expectEqualArrays(quote.erc20s, expectedAddresses)
         expectEqualArrays(quote.quantities, expectedQuantities)
@@ -1917,14 +1963,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           Test Historical Redemption
         */
         const balsBefore = await getBalances(addr1.address, expectedTokens)
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          amount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )
+        await rToken
+          .connect(addr1)
+          .customRedemption(
+            addr1.address,
+            amount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
         const balsAfter = await getBalances(addr1.address, expectedTokens)
         expectDelta(balsBefore, quote.quantities, balsAfter)
       })
@@ -1936,7 +1984,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // add 2nd token to backup config
         await basketHandler
           .connect(owner)
-          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [backupToken1.address, backupToken2.address])
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
+            backupToken1.address,
+            backupToken2.address,
+          ])
         // default usdc & refresh basket to use backup collateral
         await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
         await daiChainlink.updateAnswer(bn('0.8e8')) // default token0, token2, token3
@@ -1944,7 +1995,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await advanceTime(Number(config.warmupPeriod) + 1)
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-  
+
         /*
           Test Quote
         */
@@ -1959,12 +2010,30 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const expectedTokens = [token0, token1, token2, token3, backupToken1, backupToken2]
         const expectedAddresses = expectedTokens.map((t) => t.address)
         const expectedQuantities = [
-          fp('0.05').mul(issueAmount).div(await collateral0.refPerTok()).div(bn(`1e${18 - (await token0.decimals())}`)),
-          fp('0.05').mul(issueAmount).div(await collateral1.refPerTok()).div(bn(`1e${18 - (await token1.decimals())}`)),
-          fp('0.05').mul(issueAmount).div(await collateral2.refPerTok()).div(bn(`1e${18 - (await token2.decimals())}`)),
-          fp('0.05').mul(issueAmount).div(await collateral3.refPerTok()).div(bn(`1e${18 - (await token3.decimals())}`)),
-          fp('0.40').mul(issueAmount).div(await backupCollateral1.refPerTok()).div(bn(`1e${18 - (await backupToken1.decimals())}`)),
-          fp('0.40').mul(issueAmount).div(await backupCollateral2.refPerTok()).div(bn(`1e${18 - (await backupToken2.decimals())}`)),
+          fp('0.05')
+            .mul(issueAmount)
+            .div(await collateral0.refPerTok())
+            .div(bn(`1e${18 - (await token0.decimals())}`)),
+          fp('0.05')
+            .mul(issueAmount)
+            .div(await collateral1.refPerTok())
+            .div(bn(`1e${18 - (await token1.decimals())}`)),
+          fp('0.05')
+            .mul(issueAmount)
+            .div(await collateral2.refPerTok())
+            .div(bn(`1e${18 - (await token2.decimals())}`)),
+          fp('0.05')
+            .mul(issueAmount)
+            .div(await collateral3.refPerTok())
+            .div(bn(`1e${18 - (await token3.decimals())}`)),
+          fp('0.40')
+            .mul(issueAmount)
+            .div(await backupCollateral1.refPerTok())
+            .div(bn(`1e${18 - (await backupToken1.decimals())}`)),
+          fp('0.40')
+            .mul(issueAmount)
+            .div(await backupCollateral2.refPerTok())
+            .div(bn(`1e${18 - (await backupToken2.decimals())}`)),
         ]
         expectEqualArrays(quote.erc20s, expectedAddresses)
         expectEqualArrays(quote.quantities, expectedQuantities)
@@ -1976,26 +2045,32 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await backupToken1.mint(backingManager.address, issueAmount)
 
         // rToken is undercollateralized, no backupToken2. should fail
-        await expect(rToken.connect(addr1).customRedemption(
-          addr1.address,
-          amount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )).revertedWith("redemption below minimum")
+        await expect(
+          rToken
+            .connect(addr1)
+            .customRedemption(
+              addr1.address,
+              amount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+        ).revertedWith('redemption below minimum')
 
         // send enough backupToken2 to BackingManager to recollateralize and process redemption correctly
         await backupToken2.mint(backingManager.address, issueAmount)
 
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          amount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )
+        await rToken
+          .connect(addr1)
+          .customRedemption(
+            addr1.address,
+            amount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
         const balsAfter = await getBalances(addr1.address, expectedTokens)
         expectDelta(balsBefore, quote.quantities, balsAfter)
       })

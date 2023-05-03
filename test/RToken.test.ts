@@ -18,7 +18,6 @@ import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   ATokenFiatCollateral,
   CTokenFiatCollateral,
-  CTokenMock,
   ERC20Mock,
   ERC1271Mock,
   FacadeTest,
@@ -33,6 +32,7 @@ import {
   TestIMain,
   TestIRToken,
   USDCMock,
+  CTokenVaultMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -55,6 +55,7 @@ import {
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const BLOCKS_PER_HOUR = bn(300)
 
@@ -75,7 +76,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenMock
+  let token3: CTokenVaultMock
   let tokens: ERC20Mock[]
 
   let collateral0: Collateral
@@ -124,19 +125,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token3 = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    )
     tokens = [token0, token1, token2, token3]
 
     // Mint initial balances
     initialBal = fp('1e7') // 10x the issuance throttle amount
-    await Promise.all(
-      tokens.map((t) =>
-        Promise.all([
-          t.connect(owner).mint(addr1.address, initialBal),
-          t.connect(owner).mint(addr2.address, initialBal),
-        ])
-      )
-    )
+    await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
   })
 
   describe('Deployment #fast', () => {
@@ -380,7 +376,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Issue under limit, ensure correct number of baskets is set and we do not overflow
-      await Promise.all(tokens.map((t) => t.mint(addr1.address, MAX_THROTTLE_AMT_RATE)))
+      await mintCollaterals(owner, [addr1], MAX_THROTTLE_AMT_RATE, basket)
       await Promise.all(
         tokens.map((t) => t.connect(addr1).approve(rToken.address, MAX_THROTTLE_AMT_RATE))
       )
@@ -2117,7 +2113,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     beforeEach(async () => {
       // Issue some RTokens
-      await Promise.all(tokens.map((t) => t.connect(owner).mint(addr1.address, initialBal)))
+      await mintCollaterals(owner, [addr1], issueAmount, basket)
 
       // Approvals
       await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
@@ -2549,7 +2545,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   describe('monetizeDonations #fast', () => {
     const donationAmt = fp('100')
     beforeEach(async () => {
-      await token3.mint(rToken.address, donationAmt)
+      await token3.connect(owner).mint(rToken.address, donationAmt)
       expect(await token3.balanceOf(rToken.address)).to.equal(donationAmt)
     })
 

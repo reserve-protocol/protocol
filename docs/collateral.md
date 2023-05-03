@@ -37,7 +37,6 @@ interface IRewardable {
 
   /// Claim rewards earned by holding a balance of the ERC20 token
   /// Must emit `RewardsClaimed` for each token rewards are claimed for
-  /// @dev delegatecall: there be dragons here!
   /// @custom:interaction
   function claimRewards() external;
 }
@@ -344,11 +343,11 @@ If a collateral implementor extends [Fiat Collateral](../contracts/plugins/asset
 
 If `status()` ever returns `CollateralStatus.DISABLED`, then it must always return `CollateralStatus.DISABLED` in the future.
 
-### Token rewards should be claimable via delegatecall.
+### Token rewards should be claimable.
 
-Protocol contracts that hold an asset for any significant amount of time are all able to call `claimRewards()` via delegatecall. The plugin contract should include whatever logic is necessary to claim rewards from all relevant defi protocols. These rewards are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
+Protocol contracts that hold an asset for any significant amount of time are all able to call `claimRewards()` on the ERC20 itself (previously on the asset/collateral plugin via delegatecall). The erc20 or its wrapper contract should include whatever logic is necessary to claim rewards from all relevant defi protocols. These rewards are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
 
-- `claimRewards()` should expected to be executed via delegatecall. It must claim all rewards that may be earned by holding the asset ERC20.
+- `claimRewards()` must claim all rewards that may be earned by holding the asset ERC20 and send them to the holder.
 - The `RewardsClaimed` event should be emitted for each token type claimed.
 
 ### Smaller Constraints

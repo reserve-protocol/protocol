@@ -27,6 +27,9 @@ contract ATokenMock is ERC20Mock {
 contract StaticATokenMock is ERC20Mock {
     using FixLib for uint192;
 
+    /// Emitted whenever a reward token balance is claimed
+    event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
+
     ATokenMock internal aToken;
 
     uint256 internal _exchangeRate;
@@ -90,5 +93,14 @@ contract StaticATokenMock is ERC20Mock {
 
     function _toExchangeRate(uint192 fiatcoinRedemptionRate) internal pure returns (uint256) {
         return fiatcoinRedemptionRate.mulu_toUint(1e27, ROUND);
+    }
+
+    function claimRewards() external {
+        uint256 oldBal = aaveToken.balanceOf(msg.sender);
+        if (address(aaveToken) != address(0) && aaveBalances[msg.sender] > 0) {
+            aaveToken.mint(msg.sender, aaveBalances[msg.sender]);
+            aaveBalances[msg.sender] = 0;
+        }
+        emit RewardsClaimed(IERC20(address(aaveToken)), aaveToken.balanceOf(msg.sender) - oldBal);
     }
 }
