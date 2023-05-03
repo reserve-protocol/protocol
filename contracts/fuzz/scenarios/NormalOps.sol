@@ -297,6 +297,17 @@ contract NormalOpsScenario {
         main.stRSR().unstake(amount);
     }
 
+    function cancelUnstake(uint256 endIdSeed) public asSender {
+        StRSRP1Fuzz strsr = StRSRP1Fuzz(address(main.stRSR()));
+        uint256 len = strsr.draftQueueLen(strsr.getDraftEra(), msg.sender);
+        uint256 id = between(
+            0,
+            len,
+            endIdSeed
+        );
+        strsr.cancelUnstake(id);
+    }
+
     function withdraw(uint256 seedAddr, uint256 seedID) public asSender {
         address user = main.someAddr(seedAddr);
         (uint256 left, uint256 right) = StRSRP1Fuzz(address(main.stRSR())).idRange(user);

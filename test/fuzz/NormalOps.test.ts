@@ -382,6 +382,29 @@ describe('The Normal Operations scenario', () => {
       expect(rsr1.add(3n * exa)).to.equal(rsr2)
     })
 
+    it('lets users cancel an unstake action', async () => {
+      await scenario.connect(alice).stake(5n * exa)
+
+      await scenario.connect(alice).unstake(3n * exa)
+      const rsr1 = await comp.rsr.balanceOf(aliceAddr)
+
+      // withdraw everything available (which is nothing, because we have to wait first)
+      await scenario.connect(alice).withdrawAvailable()
+      expect(await comp.rsr.balanceOf(aliceAddr)).to.equal(rsr1)
+
+      // cancel the unstake
+      await scenario.connect(alice).cancelUnstake(1);
+
+      // wait
+      await helpers.time.increase(await comp.stRSR.unstakingDelay())
+
+      // withdraw everything available (0 RTokens)
+      await scenario.connect(alice).withdrawAvailable()
+      const rsr2 = await comp.rsr.balanceOf(aliceAddr)
+
+      expect(rsr1).to.equal(rsr2)
+    })
+
     it('allows general withdrawing', async () => {
       const addr = await main.someAddr(7) // be a system contract for some reason
       const acct = await ethers.getSigner(addr)

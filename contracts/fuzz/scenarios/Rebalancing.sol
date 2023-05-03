@@ -953,6 +953,10 @@ contract RebalancingScenario {
     // Basket Range
     // BasketRange prevBasketRange;
 
+    function trackStatus() public {
+        main.basketHandler().trackStatus();
+    }
+
     function rTokenRate() public view returns (uint192) {
         return
             main.rToken().totalSupply() == 0
