@@ -6,7 +6,7 @@ import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../../test/utils/impersonation'
 import { RoundingMode, TradeStatus, CollateralStatus } from '../../common/constants'
-import { advanceTime } from '../../test/utils/time'
+import { advanceBlocks, advanceTime } from '../../test/utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
@@ -57,6 +57,13 @@ describe('The Normal Operations scenario', () => {
   // for any token symbol in the system, main.someToken(tokenIDs(symbol)).symbol() == symbol
   let tokenIDs: Map<string, number>
 
+  let warmupPeriod: number
+
+  const warmup = async () => {
+    await advanceTime(warmupPeriod)
+    await advanceBlocks(warmupPeriod / 12)
+  }
+
   before('deploy and setup', async () => {
     ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
     scenario = await (await F('NormalOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
@@ -103,6 +110,8 @@ describe('The Normal Operations scenario', () => {
 
     await helpers.mine(300, { interval: 12 }) // charge battery
 
+    warmupPeriod = await comp.basketHandler.warmupPeriod()
+
     startState = await helpers.takeSnapshot()
   })
 
@@ -126,7 +135,8 @@ describe('The Normal Operations scenario', () => {
 
     // auth state
     expect(await main.frozen()).to.equal(false)
-    expect(await main.pausedOrFrozen()).to.equal(false)
+    expect(await main.tradingPausedOrFrozen()).to.equal(false)
+    expect(await main.issuancePausedOrFrozen()).to.equal(false)
 
     // tokens and user balances
     const syms = ['C0', 'C1', 'C2', 'R0', 'R1', 'USD0', 'USD1', 'USD2']
@@ -275,6 +285,8 @@ describe('The Normal Operations scenario', () => {
     it('allows users to try to issue rtokens without forcing approvals first', async () => {
       const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
 
+      await warmup()
+
       // Try to issue rtokens, and fail due to insufficient allowances
       await expect(scenario.connect(alice).justIssue(7n * exa)).to.be.reverted
 
@@ -292,13 +304,24 @@ describe('The Normal Operations scenario', () => {
     })
 
     it('allows users to issue rtokens', async () => {
+      await warmup()
       const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
       await scenario.connect(alice).issue(7n * exa)
       const alice_bal = await comp.rToken.balanceOf(aliceAddr)
       expect(alice_bal.sub(alice_bal_init)).to.equal(7n * exa)
     })
 
+    it('does not allow users to issue rtokens until warmup period is over', async () => {
+      const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
+      await expect(scenario.connect(alice).issue(7n * exa)).revertedWith('basket not ready')
+      await warmup()
+      await scenario.connect(alice).issue(7n * exa)
+      const alice_bal = await comp.rToken.balanceOf(aliceAddr)
+      expect(alice_bal.sub(alice_bal_init)).to.equal(7n * exa)
+    })
+
     it('allows users to redeem rtokens', async () => {
+      await warmup()
       const bal0 = await comp.rToken.balanceOf(aliceAddr)
 
       await scenario.connect(alice).issue(7n * exa)
@@ -471,6 +494,7 @@ describe('The Normal Operations scenario', () => {
     }
 
     it('can call backingManager as expected', async () => {
+      await warmup()
       // If the backing buffer is 0 and we have 100% distribution to RSR, then when some collateral
       // token is managed it is just transferred from the backing mgr to the RSR trader
 
@@ -597,6 +621,7 @@ describe('The Normal Operations scenario', () => {
     })
 
     it('can manage tokens in Revenue Traders (RSR and RToken)', async () => {
+      await warmup()
       const furanceID = addrIDs.get(addr(1)) as number
       const strsrID = addrIDs.get(addr(2)) as number
 
@@ -662,6 +687,8 @@ describe('The Normal Operations scenario', () => {
     })
 
     it('can perform a revenue auction', async () => {
+      await warmup()
+
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
       const r0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('R0'))
 
@@ -743,11 +770,13 @@ describe('The Normal Operations scenario', () => {
     })
 
     it('rates fall after a tiny issuance', async () => {
+      await warmup()
       await scenario.connect(alice).issue(1)
       expect(await scenario.echidna_ratesNeverFall()).to.be.true
     })
 
     it('backingManager issues double revenue', async () => {
+      await warmup()
       // Have some RToken in existance
       await scenario.connect(alice).issue(1e6)
 

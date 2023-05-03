@@ -57,6 +57,13 @@ describe('The Rebalancing scenario', () => {
   // for any token symbol in the system, main.someToken(tokenIDs(symbol)).symbol() == symbol
   let tokenIDs: Map<string, number>
 
+  let warmupPeriod: number
+
+  const warmup = async () => {
+    await advanceTime(warmupPeriod)
+    await advanceBlocks(warmupPeriod / 12)
+  }
+
   before('deploy and setup', async () => {
     ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
     scenario = await (await F('RebalancingScenario')).deploy({ gasLimit: 0x1ffffffff })
@@ -103,6 +110,8 @@ describe('The Rebalancing scenario', () => {
 
     await helpers.mine(300, { interval: 12 }) // charge battery
 
+    warmupPeriod = await comp.basketHandler.warmupPeriod()
+
     startState = await helpers.takeSnapshot()
   })
 
@@ -125,7 +134,8 @@ describe('The Rebalancing scenario', () => {
 
     // auth state
     expect(await main.frozen()).to.equal(false)
-    expect(await main.pausedOrFrozen()).to.equal(false)
+    expect(await main.tradingPausedOrFrozen()).to.equal(false)
+    expect(await main.issuancePausedOrFrozen()).to.equal(false)
 
     // tokens and user balances
     const syms = [
@@ -294,6 +304,7 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('allows users to try to issue rtokens without forcing approvals first', async () => {
+      await warmup()
       const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
 
       // Try to issue rtokens, and fail due to insufficient allowances
@@ -313,6 +324,7 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('allows users to issue rtokens', async () => {
+      await warmup()
       const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
       await scenario.connect(alice).issue(7n * exa)
       const alice_bal = await comp.rToken.balanceOf(aliceAddr)
@@ -320,6 +332,7 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('allows users to redeem rtokens', async () => {
+      await warmup()
       const bal0 = await comp.rToken.balanceOf(aliceAddr)
 
       await scenario.connect(alice).issue(7n * exa)
@@ -492,6 +505,7 @@ describe('The Rebalancing scenario', () => {
     }
 
     it('can call backingManager as expected', async () => {
+      await warmup()
       // If the backing buffer is 0 and we have 100% distribution to RSR, then when some collateral
       // token is managed it is just transferred from the backing mgr to the RSR trader
 
@@ -618,6 +632,7 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('can manage tokens in Revenue Traders (RSR and RToken)', async () => {
+      await warmup()
       const furanceID = addrIDs.get(addr(1)) as number
       const strsrID = addrIDs.get(addr(2)) as number
 
@@ -929,28 +944,49 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('can handle freezing/pausing with roles', async () => {
+      await warmup()
       // Check initial status
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
       expect(await main.frozen()).to.equal(false)
 
-      //================= Pause =================
+      //================= Pause Trading =================
       // Attempt to pause and freeze with non-approved user
-      await expect(scenario.connect(alice).pause()).to.be.reverted
-      await expect(scenario.connect(bob).pause()).to.be.reverted
-      await expect(scenario.connect(carol).pause()).to.be.reverted
+      await expect(scenario.connect(alice).pauseTrading()).to.be.reverted
+      await expect(scenario.connect(bob).pauseTrading()).to.be.reverted
+      await expect(scenario.connect(carol).pauseTrading()).to.be.reverted
 
       // Grant role PAUSER (3) to Alice
       await scenario.grantRole(3, 0)
-      await scenario.connect(alice).pause()
+      await scenario.connect(alice).pauseTrading()
 
       // Check status
-      expect(await main.paused()).to.equal(true)
+      expect(await main.tradingPaused()).to.equal(true)
 
       // Unpause and revoke role
-      await scenario.connect(alice).unpause()
+      await scenario.connect(alice).unpauseTrading()
       await scenario.revokeRole(3, 0)
 
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+
+      //================= Pause Issuance =================
+      // Attempt to pause and freeze with non-approved user
+      await expect(scenario.connect(alice).pauseIssuance()).to.be.reverted
+      await expect(scenario.connect(bob).pauseIssuance()).to.be.reverted
+      await expect(scenario.connect(carol).pauseIssuance()).to.be.reverted
+
+      // Grant role PAUSER (3) to Alice
+      await scenario.grantRole(3, 0)
+      await scenario.connect(alice).pauseIssuance()
+
+      // Check status
+      expect(await main.issuancePaused()).to.equal(true)
+
+      // Unpause and revoke role
+      await scenario.connect(alice).unpauseIssuance()
+      await scenario.revokeRole(3, 0)
+
+      expect(await main.issuancePaused()).to.equal(false)
 
       // ==========  SHORT FREEZE  =================
       expect(await main.frozen()).to.equal(false)
@@ -1046,6 +1082,7 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('can perform a revenue auction', async () => {
+      await warmup()
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
       const r0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('RA0'))
 
@@ -1101,6 +1138,7 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('can perform a recollateralization', async () => {
+      await warmup()
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
       const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
 
@@ -1156,6 +1194,7 @@ describe('The Rebalancing scenario', () => {
       await scenario.refreshBasket()
 
       // Manage backing tokens, will create auction
+      await warmup()
       await scenario.manageBackingTokens()
 
       // Check trade
@@ -1240,6 +1279,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('maintains RToken invariants after calling issue', async () => {
+    await warmup()
     // As Alice, make allowances
     const [tokenAddrs, amts] = await comp.rToken.quote(20000n * exa, RoundingMode.CEIL)
     for (let i = 0; i < amts.length; i++) {
@@ -1253,6 +1293,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('does not have the backingManager double-revenue bug', async () => {
+    await warmup()
     // Have some RToken in existance
     await scenario.connect(alice).issue(1e6)
 
@@ -1266,6 +1307,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('can manage scenario states - basket switch - covered by RSR', async () => {
+    await warmup()
     await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('30000'), pctRate: fp('0.5')})
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
@@ -1437,6 +1479,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('can manage scenario states - collateral default - partially covered by RSR', async () => {
+    await warmup()
     await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('400000'), pctRate: fp('0.05')})
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
@@ -1500,6 +1543,7 @@ describe('The Rebalancing scenario', () => {
 
     // Cannot save basket range - Properties hold
     await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
+    await warmup()
     expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
@@ -1512,6 +1556,8 @@ describe('The Rebalancing scenario', () => {
     while ((await scenario.status()) == RebalancingScenarioStatus.REBALANCING_ONGOING) {
       // Check echidna property is true at all times in the process...
       await scenario.pushSeedForTrades(fp(100000))
+
+      await warmup()
       expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
       await scenario.saveBasketRange()
@@ -1560,13 +1606,16 @@ describe('The Rebalancing scenario', () => {
 
   describe('contains the fix for the bug where', () => {
     it('manageTokens() reverting due to an invalid BU rate violates expectations', async () => {
+      await warmup()
       await scenario.connect(alice).issue(1)
       await scenario.unregisterAsset(0)
       await scenario.refreshBasket()
+      await warmup()
       expect(await scenario.callStatic.echidna_rebalancingProperties()).to.be.true
     })
 
     it('the rToken invariant had an underflowing index computation', async () => {
+      await warmup()
       await scenario.connect(alice).issue(20_000n * exa)
       await advanceTime(1)
       await advanceBlocks(1)
@@ -1574,6 +1623,7 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('the quoteProportional property would fail right after a hard default', async () => {
+      await warmup()
       await scenario.connect(alice).issue(1000)
       await scenario.updatePrice(20, 0, 0, 0, 0) // reduces refPerTok and forces a hard default.
       expect(await scenario.callStatic.echidna_quoteProportionalWhenFullyCollateralized()).be.true
@@ -1595,6 +1645,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('issue/redeem not allowed during a rebalance', async () => {
+    await warmup()
     // similar case to false negatives seen in fuzzing
     await advanceBlocks(1)
     await advanceTime(1)
@@ -1610,16 +1661,19 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('uses the current basket to run the rebalancingProperties invariant', async () => {
+    await warmup()
     await scenario.connect(alice).issueTo(1,0)
     await scenario.connect(alice).unregisterAsset(0)
     await scenario.connect(alice).pushBackingToManage(bn('150835712417908919285644013065474027887448859297381733494843312354601897167'))
     await scenario.connect(alice).refreshBasket()
     await scenario.connect(alice).pushBackingToManage(bn('6277620527355649775567068284304829410240875426814377481773201392576289608'))
+    await warmup()
     const check = await scenario.callStatic.echidna_rebalancingProperties()
     expect(check).to.equal(true)
   })
 
   it('does not check basket range invariant if a natural range change occurs (claim rewards)', async () => {
+    await warmup()
     await advanceBlocks(1)
     await advanceTime(18)
     await scenario.connect(alice).issue(15)
@@ -1632,6 +1686,7 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('does not check basket range invariant if a natural range change occurs (price update)', async () => {
+    await warmup()
     await advanceBlocks(1)
     await advanceTime(1)
     await scenario.connect(alice).issue(101)

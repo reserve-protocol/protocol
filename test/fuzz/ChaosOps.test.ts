@@ -57,6 +57,13 @@ describe('The Chaos Operations scenario', () => {
   // for any token symbol in the system, main.someToken(tokenIDs(symbol)).symbol() == symbol
   let tokenIDs: Map<string, number>
 
+  let warmupPeriod: number
+
+  const warmup = async () => {
+    await advanceTime(warmupPeriod)
+    await advanceBlocks(warmupPeriod / 12)
+  }
+
   before('deploy and setup', async () => {
     ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
     scenario = await (await F('ChaosOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
@@ -103,6 +110,8 @@ describe('The Chaos Operations scenario', () => {
 
     await helpers.mine(300, { interval: 12 }) // charge battery
 
+    warmupPeriod = await comp.basketHandler.warmupPeriod()
+
     startState = await helpers.takeSnapshot()
   })
 
@@ -125,7 +134,8 @@ describe('The Chaos Operations scenario', () => {
 
     // auth state
     expect(await main.frozen()).to.equal(false)
-    expect(await main.pausedOrFrozen()).to.equal(false)
+    expect(await main.tradingPausedOrFrozen()).to.equal(false)
+    expect(await main.issuancePausedOrFrozen()).to.equal(false)
 
     // tokens and user balances
     const syms = [
@@ -297,6 +307,7 @@ describe('The Chaos Operations scenario', () => {
     })
 
     it('allows users to try to issue rtokens without forcing approvals first', async () => {
+      await warmup()
       const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
 
       // Try to issue rtokens, and fail due to insufficient allowances
@@ -316,6 +327,7 @@ describe('The Chaos Operations scenario', () => {
     })
 
     it('allows users to issue rtokens', async () => {
+      await warmup()
       const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
       await scenario.connect(alice).issue(7n * exa)
       const alice_bal = await comp.rToken.balanceOf(aliceAddr)
@@ -323,6 +335,7 @@ describe('The Chaos Operations scenario', () => {
     })
 
     it('allows users to redeem rtokens', async () => {
+      await warmup()
       const bal0 = await comp.rToken.balanceOf(aliceAddr)
 
       await scenario.connect(alice).issue(7n * exa)
@@ -498,6 +511,7 @@ describe('The Chaos Operations scenario', () => {
     }
 
     it('can call backingManager as expected', async () => {
+      await warmup()
       // If the backing buffer is 0 and we have 100% distribution to RSR, then when some collateral
       // token is managed it is just transferred from the backing mgr to the RSR trader
 
@@ -623,6 +637,7 @@ describe('The Chaos Operations scenario', () => {
     })
 
     it('can manage tokens in Revenue Traders (RSR and RToken)', async () => {
+      await warmup()
       const furanceID = addrIDs.get(addr(1)) as number
       const strsrID = addrIDs.get(addr(2)) as number
 
@@ -938,27 +953,47 @@ describe('The Chaos Operations scenario', () => {
 
     it('can handle freezing/pausing with roles', async () => {
       // Check initial status
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+      expect(await main.issuancePaused()).to.equal(false)
       expect(await main.frozen()).to.equal(false)
 
-      //================= Pause =================
+      //================= Pause Trading =================
       // Attempt to pause and freeze with non-approved user
-      await expect(scenario.connect(alice).pause()).to.be.reverted
-      await expect(scenario.connect(bob).pause()).to.be.reverted
-      await expect(scenario.connect(carol).pause()).to.be.reverted
+      await expect(scenario.connect(alice).pauseTrading()).to.be.reverted
+      await expect(scenario.connect(bob).pauseTrading()).to.be.reverted
+      await expect(scenario.connect(carol).pauseTrading()).to.be.reverted
 
       // Grant role PAUSER (3) to Alice
       await scenario.grantRole(3, 0)
-      await scenario.connect(alice).pause()
+      await scenario.connect(alice).pauseTrading()
 
       // Check status
-      expect(await main.paused()).to.equal(true)
+      expect(await main.tradingPaused()).to.equal(true)
 
       // Unpause and revoke role
-      await scenario.connect(alice).unpause()
+      await scenario.connect(alice).unpauseTrading()
       await scenario.revokeRole(3, 0)
 
-      expect(await main.paused()).to.equal(false)
+      expect(await main.tradingPaused()).to.equal(false)
+
+      //================= Pause Issuance =================
+      // Attempt to pause and freeze with non-approved user
+      await expect(scenario.connect(alice).pauseIssuance()).to.be.reverted
+      await expect(scenario.connect(bob).pauseIssuance()).to.be.reverted
+      await expect(scenario.connect(carol).pauseIssuance()).to.be.reverted
+
+      // Grant role PAUSER (3) to Alice
+      await scenario.grantRole(3, 0)
+      await scenario.connect(alice).pauseIssuance()
+
+      // Check status
+      expect(await main.issuancePaused()).to.equal(true)
+
+      // Unpause and revoke role
+      await scenario.connect(alice).unpauseIssuance()
+      await scenario.revokeRole(3, 0)
+
+      expect(await main.issuancePaused()).to.equal(false)
 
       // ==========  SHORT FREEZE  =================
       expect(await main.frozen()).to.equal(false)
@@ -1054,6 +1089,7 @@ describe('The Chaos Operations scenario', () => {
     })
 
     it('can perform a revenue auction', async () => {
+      await warmup()
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
       const r0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('RA0'))
 
@@ -1109,6 +1145,7 @@ describe('The Chaos Operations scenario', () => {
     })
 
     it('can perform a recollateralization', async () => {
+      await warmup()
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
       const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
 
@@ -1164,6 +1201,7 @@ describe('The Chaos Operations scenario', () => {
       // Refresh basket - will perform basket switch - New basket: CA1 and CA0
       await scenario.refreshBasket()
 
+      await warmup()
       // Manage backing tokens, will create auction
       await scenario.manageBackingTokens()
 
@@ -1242,6 +1280,7 @@ describe('The Chaos Operations scenario', () => {
   })
 
   it('maintains RToken invariants after calling issue', async () => {
+    await warmup()
     // As Alice, make allowances
     const [tokenAddrs, amts] = await comp.rToken.quote(20000n * exa, RoundingMode.CEIL)
     for (let i = 0; i < amts.length; i++) {
@@ -1255,6 +1294,7 @@ describe('The Chaos Operations scenario', () => {
   })
 
   it('does not have the backingManager double-revenue bug', async () => {
+    await warmup()
     // Have some RToken in existance
     await scenario.connect(alice).issue(1e6)
 
