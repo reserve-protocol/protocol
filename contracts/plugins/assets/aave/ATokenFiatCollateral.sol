@@ -52,11 +52,8 @@ contract ATokenFiatCollateral is AppreciatingFiatCollateral {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev Use delegatecall
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external virtual override(Asset, IRewardable) {
-        IERC20 stkAAVE = IStaticAToken(address(erc20)).REWARD_TOKEN();
-        uint256 oldBal = stkAAVE.balanceOf(address(this));
-        IStaticAToken(address(erc20)).claimRewardsToSelf(true);
-        emit RewardsClaimed(stkAAVE, stkAAVE.balanceOf(address(this)) - oldBal);
+        IRewardable(address(erc20)).claimRewards();
     }
 }

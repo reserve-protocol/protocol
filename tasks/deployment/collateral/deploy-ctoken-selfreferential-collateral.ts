@@ -12,7 +12,6 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
   .addParam('targetName', 'Target Name')
   .addParam('revenueHiding', 'Revenue Hiding')
   .addParam('referenceERC20Decimals', 'Decimals in the reference token')
-  .addParam('comptroller', 'Comptroller address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -36,8 +35,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
           delayUntilDefault: 0,
         },
         params.revenueHiding,
-        params.referenceERC20Decimals,
-        params.comptroller
+        params.referenceERC20Decimals
       )
     )
     await collateral.deployed()

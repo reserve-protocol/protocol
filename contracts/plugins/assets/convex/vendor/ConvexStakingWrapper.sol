@@ -41,7 +41,6 @@ interface IConvexDeposits {
 // if used as collateral some modifications will be needed to fit the specific platform
 
 // Based on audited contracts: https://github.com/convex-eth/platform/blob/main/contracts/contracts/wrappers/CvxCrvStakingWrapper.sol
-// TODO check on contract size to see if blocker
 contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;

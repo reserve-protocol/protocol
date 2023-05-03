@@ -38,6 +38,9 @@ contract StaticATokenLM is
     using WadRayMath for uint256;
     using RayMathNoRounding for uint256;
 
+    /// Emitted whenever a reward token balance is claimed
+    event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
+
     bytes public constant EIP712_REVISION = bytes("1");
     bytes32 internal constant EIP712_DOMAIN =
         keccak256(
@@ -419,7 +422,6 @@ contract StaticATokenLM is
         );
         uint256 lifetimeRewards = _lifetimeRewardsClaimed.add(freshlyClaimed);
         uint256 rewardsAccrued = lifetimeRewards.sub(_lifetimeRewards).wadToRay();
-
         if (supply > 0 && rewardsAccrued > 0) {
             _accRewardsPerToken = _accRewardsPerToken.add(
                 (rewardsAccrued).rayDivNoRounding(supply.wadToRay())
@@ -456,6 +458,7 @@ contract StaticATokenLM is
         uint256 balance = balanceOf(onBehalfOf);
         uint256 reward = _getClaimableRewards(onBehalfOf, balance, false);
         uint256 totBal = REWARD_TOKEN.balanceOf(address(this));
+
         if (reward > totBal) {
             reward = totBal;
         }
@@ -494,6 +497,15 @@ contract StaticATokenLM is
             return;
         }
         _claimRewardsOnBehalf(msg.sender, msg.sender, forceUpdate);
+    }
+
+    function claimRewards() external virtual nonReentrant {
+        if (address(INCENTIVES_CONTROLLER) == address(0)) {
+            return;
+        }
+        uint256 oldBal = REWARD_TOKEN.balanceOf(msg.sender);
+        _claimRewardsOnBehalf(msg.sender, msg.sender, true);
+        emit RewardsClaimed(REWARD_TOKEN, REWARD_TOKEN.balanceOf(msg.sender) - oldBal);
     }
 
     /**

@@ -22,14 +22,12 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
     /// @param targetUnitChainlinkFeed_ Feed units: {UoA/target}
     /// @param targetUnitOracleTimeout_ {s} oracle timeout to use for targetUnitChainlinkFeed
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    /// @param comptroller_ The CompoundFinance Comptroller
     constructor(
         CollateralConfig memory config,
         AggregatorV3Interface targetUnitChainlinkFeed_,
         uint48 targetUnitOracleTimeout_,
-        uint192 revenueHiding,
-        IComptroller comptroller_
-    ) CTokenFiatCollateral(config, revenueHiding, comptroller_) {
+        uint192 revenueHiding
+    ) CTokenFiatCollateral(config, revenueHiding) {
         require(address(targetUnitChainlinkFeed_) != address(0), "missing targetUnit feed");
         require(targetUnitOracleTimeout_ > 0, "targetUnitOracleTimeout zero");
         targetUnitChainlinkFeed = targetUnitChainlinkFeed_;

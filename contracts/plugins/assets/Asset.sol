@@ -5,8 +5,9 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../interfaces/IAsset.sol";
 import "./OracleLib.sol";
+import "./VersionedAsset.sol";
 
-contract Asset is IAsset {
+contract Asset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -160,7 +161,7 @@ contract Asset is IAsset {
 
     // solhint-disable no-empty-blocks
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev Use delegatecall
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external virtual {}
     // solhint-enable no-empty-blocks
 }
