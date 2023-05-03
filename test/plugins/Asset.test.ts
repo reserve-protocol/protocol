@@ -18,7 +18,7 @@ import {
   Asset,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
-  CTokenMock,
+  CTokenVaultMock,
   ERC20Mock,
   FiatCollateral,
   IAssetRegistry,
@@ -52,7 +52,7 @@ describe('Assets contracts #fast', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenMock
+  let cToken: CTokenVaultMock
 
   // Assets
   let collateral0: FiatCollateral
@@ -114,18 +114,20 @@ describe('Assets contracts #fast', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    cToken = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    )
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)
     await aaveToken.connect(wallet).mint(wallet.address, amt)
-
     // Issue RToken to enable RToken.price
     for (let i = 0; i < basket.length; i++) {
       const tok = await ethers.getContractAt('ERC20Mock', await basket[i].erc20())
       await tok.connect(wallet).mint(wallet.address, amt)
       await tok.connect(wallet).approve(rToken.address, amt)
     }
+
     await rToken.connect(wallet).issue(amt)
 
     AssetFactory = await ethers.getContractFactory('Asset')

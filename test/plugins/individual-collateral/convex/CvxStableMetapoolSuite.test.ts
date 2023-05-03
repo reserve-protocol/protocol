@@ -450,7 +450,7 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
         await expect(collateral.claimRewards()).to.not.be.reverted
       })
 
-      it('claims rewards', async () => {
+      it('claims rewards (plugin)', async () => {
         const amount = bn('20000').mul(bn(10).pow(await ctx.tok.decimals()))
         await mintCollateralTo(ctx, amount, alice, collateral.address)
 
@@ -459,9 +459,25 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
 
         const crvBefore = await crv.balanceOf(collateral.address)
         const cvxBefore = await cvx.balanceOf(collateral.address)
-        await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
+        await expect(collateral.claimRewards()).to.emit(ctx.wPool, 'RewardsClaimed')
         const crvAfter = await crv.balanceOf(collateral.address)
         const cvxAfter = await cvx.balanceOf(collateral.address)
+        expect(crvAfter).gt(crvBefore)
+        expect(cvxAfter).gt(cvxBefore)
+      })
+
+      it('claims rewards (wrapper)', async () => {
+        const amount = bn('20000').mul(bn(10).pow(await ctx.tok.decimals()))
+        await mintCollateralTo(ctx, amount, alice, alice.address)
+
+        await advanceBlocks(1000)
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+
+        const crvBefore = await crv.balanceOf(alice.address)
+        const cvxBefore = await cvx.balanceOf(alice.address)
+        await expect(ctx.wPool.connect(alice).claimRewards()).to.emit(ctx.wPool, 'RewardsClaimed')
+        const crvAfter = await crv.balanceOf(alice.address)
+        const cvxAfter = await cvx.balanceOf(alice.address)
         expect(crvAfter).gt(crvBefore)
         expect(cvxAfter).gt(cvxBefore)
       })

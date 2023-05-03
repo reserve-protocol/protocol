@@ -10,7 +10,7 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenMock,
+  CTokenVaultMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -36,7 +36,6 @@ import { CollateralStatus } from '../../common/constants'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
 import { expectPrice, setOraclePrice } from '../utils/oracles'
-import { expectEvents } from '../../common/events'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -212,9 +211,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     return atoken
   }
 
-  const makeCToken = async (tokenName: string): Promise<CTokenMock> => {
+  const makeCToken = async (tokenName: string): Promise<CTokenVaultMock> => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-    const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+    const CTokenVaultMockFactory: ContractFactory = await ethers.getContractFactory(
+      'CTokenVaultMock'
+    )
     const CTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     )
@@ -223,8 +224,14 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await ERC20MockFactory.deploy(tokenName, `${tokenName} symbol`)
     )
 
-    const ctoken: CTokenMock = <CTokenMock>(
-      await CTokenMockFactory.deploy('c' + tokenName, `${'c' + tokenName} symbol`, erc20.address)
+    const ctoken: CTokenVaultMock = <CTokenVaultMock>(
+      await CTokenVaultMockFactory.deploy(
+        'c' + tokenName,
+        `${'c' + tokenName} symbol`,
+        erc20.address,
+        compToken.address,
+        compoundMock.address
+      )
     )
 
     const chainlinkFeed = <MockV3Aggregator>(
@@ -243,8 +250,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
-        REVENUE_HIDING,
-        compoundMock.address
+        REVENUE_HIDING
       )
     )
 
@@ -485,7 +491,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         await assetRegistry.toColl(backing[0])
       )
       for (let i = maxBasketSize - tokensToDefault; i < backing.length; i++) {
-        const erc20 = await ethers.getContractAt('CTokenMock', backing[i])
+        const erc20 = await ethers.getContractAt('CTokenVaultMock', backing[i])
         // Decrease rate to cause default in Ctoken
         await erc20.setExchangeRate(fp('0.8'))
 
@@ -574,20 +580,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       if (REPORT_GAS) {
         await snapshotGasCost(backingManager.claimRewards())
       } else {
-        await expectEvents(backingManager.claimRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmount.mul(20)],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [aaveToken.address, rewardAmount],
-            emitted: true,
-          },
-        ])
+        await backingManager.claimRewards()
       }
 
       // Check balances after

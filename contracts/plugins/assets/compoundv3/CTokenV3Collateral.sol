@@ -47,10 +47,9 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
     }
 
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external override(Asset, IRewardable) {
-        uint256 oldBal = rewardERC20.balanceOf(address(this));
-        ICusdcV3Wrapper(address(erc20)).claimTo(address(this), address(this));
-        emit RewardsClaimed(rewardERC20, rewardERC20.balanceOf(address(this)) - oldBal);
+        IRewardable(address(erc20)).claimRewards();
     }
 
     function _underlyingRefPerTok() internal view virtual override returns (uint192) {

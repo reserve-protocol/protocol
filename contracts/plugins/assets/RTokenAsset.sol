@@ -5,10 +5,11 @@ import "../../p1/mixins/RecollateralizationLib.sol";
 import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
 import "./Asset.sol";
+import "./VersionedAsset.sol";
 
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
-contract RTokenAsset is IAsset {
+contract RTokenAsset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -144,7 +145,7 @@ contract RTokenAsset is IAsset {
     // solhint-disable no-empty-blocks
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev Use delegatecall
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks

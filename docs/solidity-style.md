@@ -303,14 +303,6 @@ For additional information on how to use the plugins and how to perform upgrades
 [upgrades-docs]: https://docs.openzeppelin.com/upgrades
 [forceimport]: https://docs.openzeppelin/upgrades-plugins/1.x/api-hardhat-upgrades#force-import
 
-### Why it's safe to use multicall on our upgradable contracts
-
-In our P1 implementation both our RevenueTrader and BackingManager components contain `delegatecall`, even though they are themselves implementations that sit behind an ERC1967Proxy (UUPSUpgradeable). This is disallowed by default by OZ's upgradable plugin.
-
-In this case, we think it is acceptable. The special danger of containing a `delegatecall` in a proxy implementation contract is that the `delegatecall` can self-destruct the proxy if the executed code contains `selfdestruct`. In this case `Multicall` executes `delegatecall` on `address(this)`, which resolves to the address of its caller, the proxy. This executes the `fallback` function, which results in another `delegatecall` to the implementation contract. So the only way for a `selfdestruct` to happen is if the implementation contract itself contains a `selfdestruct`, which it does not.
-
-Note that `delegatecall` can also be dangerous for other reasons, such as transferring tokens out of the address in an unintended way. The same argument applies to any such case; only the code from the implementation contract can be called.
-
 ### Developer discipline
 
 Here, "contract state" refers to the normal storage variables of a smart contract.

@@ -14,6 +14,7 @@ import {
 } from '../../common'
 import { priceTimeout, oracleTimeout, revenueHiding } from '../../utils'
 import { ICollateral } from '../../../../typechain'
+import { ZERO_ADDRESS } from '#/tasks/deployment/create-deployer-registry'
 
 async function main() {
   // ==== Read Configuration ====
@@ -41,19 +42,27 @@ async function main() {
   const deployedCollateral: string[] = []
 
   /********  Deploy FToken Fiat Collateral - fUSDC  **************************/
+  const FTokenFactory = await ethers.getContractFactory('CTokenVault')
+  const fUsdc = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.fUSDC!)
+
+  const fUsdcVault = await FTokenFactory.deploy(
+    networkConfig[chainId].tokens.fUSDC!,
+    `${await fUsdc.name()} Vault`,
+    `${await fUsdc.symbol()}-VAULT`,
+    networkConfig[chainId].COMPTROLLER!
+  )
 
   const { collateral: fUsdcCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     oracleError: fp('0.0025').toString(), // 0.25%
-    cToken: networkConfig[chainId].tokens.fUSDC,
+    cToken: fUsdcVault.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   let collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdcCollateral)
   await (await collateral.refresh()).wait()
@@ -65,19 +74,26 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy FToken Fiat Collateral - fUSDT  **************************/
+  const fUsdt = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.fUSDT!)
+
+  const fUsdtVault = await FTokenFactory.deploy(
+    networkConfig[chainId].tokens.fUSDT!,
+    `${await fUsdt.name()} Vault`,
+    `${await fUsdt.symbol()}-VAULT`,
+    networkConfig[chainId].COMPTROLLER!
+  )
 
   const { collateral: fUsdtCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     oracleError: fp('0.0025').toString(), // 0.25%
-    cToken: networkConfig[chainId].tokens.fUSDT,
+    cToken: fUsdtVault.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdtCollateral)
   await (await collateral.refresh()).wait()
@@ -89,19 +105,26 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy FToken Fiat Collateral - fDAI  **************************/
+  const fDai = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.fDAI!)
+
+  const fDaiVault = await FTokenFactory.deploy(
+    networkConfig[chainId].tokens.fDAI!,
+    `${await fDai.name()} Vault`,
+    `${await fDai.symbol()}-VAULT`,
+    networkConfig[chainId].COMPTROLLER!
+  )
 
   const { collateral: fDaiCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     oracleError: fp('0.0025').toString(), // 0.25%
-    cToken: networkConfig[chainId].tokens.fDAI,
+    cToken: fDaiVault.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fDaiCollateral)
   await collateral.refresh()
@@ -113,19 +136,26 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy FToken Fiat Collateral - fFRAX  **************************/
+  const fFrax = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.fFRAX!)
+
+  const fFraxVault = await FTokenFactory.deploy(
+    networkConfig[chainId].tokens.fFRAX!,
+    `${await fFrax.name()} Vault`,
+    `${await fFrax.symbol()}-VAULT`,
+    networkConfig[chainId].COMPTROLLER!
+  )
 
   const { collateral: fFRAXCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.FRAX,
     oracleError: fp('0.01').toString(), // 1%
-    cToken: networkConfig[chainId].tokens.fFRAX,
+    cToken: fFraxVault.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString(),
-    comptroller: networkConfig[chainId].FLUX_FINANCE_COMPTROLLER,
+    revenueHiding: revenueHiding.toString()
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fFRAXCollateral)
   await collateral.refresh()

@@ -182,6 +182,10 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         accrueAccountRewards(dst);
     }
 
+    function claimRewards() external {
+        claimTo(msg.sender, msg.sender);
+    }
+
     /// @param src The account to claim from
     /// @param dst The address to send claimed rewards to
     function claimTo(address src, address dst) public {
@@ -191,15 +195,15 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         accrueAccount(src);
         uint256 claimed = rewardsClaimed[src];
         uint256 accrued = baseTrackingAccrued[src] * RESCALE_FACTOR;
-
+        uint256 owed;
         if (accrued > claimed) {
-            uint256 owed = accrued - claimed;
+            owed = accrued - claimed;
             rewardsClaimed[src] = accrued;
 
             rewardsAddr.claimTo(address(underlyingComet), address(this), address(this), true);
             IERC20(rewardERC20).safeTransfer(dst, owed);
-            emit RewardClaimed(src, dst, address(rewardERC20), owed);
         }
+        emit RewardsClaimed(rewardERC20, owed);
     }
 
     /// Accure the cUSDCv3 account of the wrapper
