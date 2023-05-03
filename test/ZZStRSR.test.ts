@@ -786,7 +786,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'basket defaulted'
+          'basket not ready'
         )
 
         // Nothing completed
@@ -806,7 +806,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'basket defaulted'
+          'basket not ready'
         )
       })
 
