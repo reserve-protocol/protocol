@@ -164,7 +164,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // Nonce of the first reference basket from the current prime basket history
     // A new historical record begins whenever the prime basket is changed
     // There can be 0 to any number of reference baskets from the current history
-    uint48 private primeNonce; // {basketNonce}
+    uint48 public primeNonce; // {basketNonce}
 
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
@@ -822,9 +822,33 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     // ==== FacadeRead views ====
-    // Not used in-protocol
+    // Not used in-protocol; helpful for reconstructing state
 
-    /// Getter pt1 for `config` struct variable
+    /// Get a reference basket in today's collateral tokens, by nonce
+    /// @param basketNonce {basketNonce}
+    /// @return erc20s The erc20s in the reference basket
+    /// @return quantities {qTok/BU} The quantity of whole tokens per whole basket unit
+    function getHistoricalBasket(uint48 basketNonce)
+        external
+        view
+        returns (IERC20[] memory erc20s, uint256[] memory quantities)
+    {
+        Basket storage b = basketHistory[basketNonce];
+        erc20s = new IERC20[](b.erc20s.length);
+        quantities = new uint256[](erc20s.length);
+
+        for (uint256 i = 0; i < b.erc20s.length; ++i) {
+            erc20s[i] = b.erc20s[i];
+
+            // {qTok/BU} = {tok/BU} * {qTok/tok}
+            quantities[i] = quantity(basket.erc20s[i]).shiftl_toUint(
+                int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
+                FLOOR
+            );
+        }
+    }
+
+    /// Getter part1 for `config` struct variable
     /// @dev Indices are shared across return values
     /// @return erc20s The erc20s in the prime basket
     /// @return targetNames The bytes32 name identifier of the target unit, per ERC20
@@ -849,7 +873,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
-    /// Getter pt2 for `config` struct variable
+    /// Getter part2 for `config` struct variable
     /// @param targetName The name of the target unit to lookup the backup for
     /// @return erc20s The backup erc20s for the target unit, in order of most to least desirable
     /// @return max The maximum number of tokens from the array to use at a single time

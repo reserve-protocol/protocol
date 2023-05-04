@@ -121,8 +121,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // basket is the current basket.
     Basket private basket;
 
-    uint48 public override nonce; // {basketNonce} A unique identifier for this basket instance
-    uint48 public override timestamp; // The timestamp when this basket was last set
+    uint48 public nonce; // {basketNonce} A unique identifier for this basket instance
+    uint48 public timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
     // be paused.
@@ -143,7 +143,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Nonce of the first reference basket from the current history
     // A new historical record begins whenever the prime basket is changed
     // There can be 0 to any number of reference baskets from the current prime basket history
-    uint48 private primeNonce; // {basketNonce}
+    uint48 public primeNonce; // {basketNonce}
 
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;

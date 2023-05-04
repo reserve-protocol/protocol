@@ -120,7 +120,6 @@ interface IBasketHandler is IComponent {
         returns (address[] memory erc20s, uint256[] memory quantities);
 
     /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
-    /// Checks `portions` sum to FIX_ONE
     /// @param basketNonces An array of basket nonces to do redemption from
     /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
     /// @param amount {BU}
