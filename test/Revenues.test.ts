@@ -20,12 +20,11 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenMock,
+  CTokenVaultMock,
   ERC20Mock,
   FacadeTest,
   GnosisMock,
   IAssetRegistry,
-  InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
@@ -40,6 +39,7 @@ import {
   TestIStRSR,
   USDCMock,
   FiatCollateral,
+  InvalidATokenFiatCollateralMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -58,11 +58,10 @@ import {
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
-
-const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -74,9 +73,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let rsr: ERC20Mock
   let rsrAsset: Asset
   let compToken: ERC20Mock
-  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
+  let aaveAsset: Asset
 
   // Trading
   let gnosis: GnosisMock
@@ -89,7 +88,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenMock
+  let token3: CTokenVaultMock
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
@@ -114,6 +113,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let main: TestIMain
 
   let AssetFactory: ContractFactory
+
+  const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
   // Computes the minBuyAmt for a sellAmt at two prices
   // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
@@ -145,7 +146,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rsr,
       rsrAsset,
       compToken,
-      compAsset,
+      aaveAsset,
       aaveToken,
       compoundMock,
       erc20s,
@@ -183,19 +184,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token3 = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    )
 
     // Mint initial balances
     initialBal = bn('1000000e18')
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
-
-    await token0.connect(owner).mint(addr2.address, initialBal)
-    await token1.connect(owner).mint(addr2.address, initialBal)
-    await token2.connect(owner).mint(addr2.address, initialBal)
-    await token3.connect(owner).mint(addr2.address, initialBal)
+    await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
   })
 
   describe('Deployment', () => {
@@ -364,7 +359,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       let rewardAmountAAVE: BigNumber
 
       beforeEach(async function () {
-        issueAmount = bn('100e18')
+        issueAmount = bn('100000e18')
 
         // Provide approvals
         await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -419,9 +414,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('should claim a single reward', async () => {
         const rewardAmt = bn('100e18')
-        await token2.setRewards(rTokenTrader.address, rewardAmt)
-        await rTokenTrader.claimRewardsSingle(token2.address)
-        const balAfter = await aaveToken.balanceOf(rTokenTrader.address)
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        const balAfter = await aaveToken.balanceOf(backingManager.address)
         expect(balAfter).to.equal(rewardAmt)
       })
 
@@ -494,13 +489,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
             emitted: true,
@@ -648,28 +643,27 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .withArgs(STRSR_DEST, bn(0), bn(1))
 
         // Set COMP tokens as reward -1 qtok
-        rewardAmountCOMP = bn(1)
+        rewardAmountAAVE = bn('1')
 
         // COMP Rewards - 1 qTok
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
-
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -689,9 +683,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check no funds in Market, now in trader
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(bn(0))
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(bn(0))
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE)
 
         // Check destinations, nothing changed
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -718,34 +712,33 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .withArgs(STRSR_DEST, bn(0), bn(1))
 
         // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1000e18')
+        rewardAmountAAVE = bn('1000e18')
 
         // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Set COMP price to 0
-        await setOraclePrice(compAsset.address, bn(0))
+        await setOraclePrice(aaveAsset.address, bn(0))
 
         // Refresh asset so lot price also = 0
-        await compAsset.refresh()
+        await aaveAsset.refresh()
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
-
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -765,9 +758,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check no funds in Market, now in trader
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(bn(0))
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(bn(0))
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE)
 
         // Check destinations, nothing changed
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -784,7 +777,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(0), bn(0))
 
-        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        // Avoid dropping 20 qAAVE by making there be exactly 1 distribution share.
         await expect(
           distributor
             .connect(owner)
@@ -793,49 +786,49 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(STRSR_DEST, bn(0), bn(1))
 
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1000e18')
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = bn('1000e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
-        // Set new asset for COMP with low maxTradeVolume
-        const newCOMPAsset: Asset = <Asset>await AssetFactory.deploy(
+        // Set new asset for AAVE with low maxTradeVolume
+        const newAAVEAsset: Asset = <Asset>await AssetFactory.deploy(
           PRICE_TIMEOUT,
-          await compAsset.chainlinkFeed(),
+          await aaveAsset.chainlinkFeed(),
           ORACLE_ERROR,
-          compToken.address,
+          aaveToken.address,
           bn(1), // very low
           ORACLE_TIMEOUT
         )
 
         // Set a very high price
-        const compPrice = bn('300e8')
-        await setOraclePrice(newCOMPAsset.address, compPrice)
+        const aavePrice = bn('300e8')
+        await setOraclePrice(newAAVEAsset.address, aavePrice)
 
         // Refresh asset
-        await newCOMPAsset.refresh()
+        await newAAVEAsset.refresh()
 
         // Swap asset
-        await assetRegistry.connect(owner).swapRegistered(newCOMPAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newAAVEAsset.address)
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
 
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -849,7 +842,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             emitted: true,
             args: [
               anyValue,
-              compToken.address,
+              aaveToken.address,
               rsr.address,
               bn(1),
               // the 1% increase here offsets the 1% decrease that would normally be applied to the sellAmt, but since 1 is the floor, isn't
@@ -864,9 +857,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check funds now in Market
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(1))
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP.sub(bn(1)))
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(bn(1))
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(bn(0))
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE.sub(bn(1)))
 
         // Check destinations, nothing still -  Auctions need to be completed
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -890,13 +883,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Can also claim through Facade
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1015,7 +1008,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             PRICE_TIMEOUT,
             chainlinkFeed.address,
             ORACLE_ERROR,
-            compToken.address,
+            aaveToken.address,
             fp('1'),
             ORACLE_TIMEOUT
           )
@@ -1034,7 +1027,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(0), bn(0))
 
-        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        // Avoid dropping 20 qAAVE by making there be exactly 1 distribution share.
         await expect(
           distributor
             .connect(owner)
@@ -1043,22 +1036,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(STRSR_DEST, bn(0), bn(1))
 
-        // Set COMP tokens as reward
-        rewardAmountCOMP = fp('1.9')
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = fp('1.9')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
@@ -1067,7 +1060,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
+        // Expected values based on Prices between AAVE and RSR = 1 to 1 (for simplification)
         const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to oracle error
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
@@ -1076,7 +1069,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
@@ -1089,17 +1082,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
-        // COMP -> RSR Auction
+        // AAVE -> RSR Auction
         await expectTrade(rsrTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
         // Check funds in Market and Trader
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt)
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP.sub(sellAmt))
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(sellAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE.sub(sellAmt))
 
         // Another call will not create a new auction (we only allow only one at a time per pair)
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1127,13 +1120,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions
-        const remainderSellAmt = rewardAmountCOMP.sub(sellAmt)
+        const remainderSellAmt = rewardAmountAAVE.sub(sellAmt)
         const remainderMinBuyAmt = await toMinBuyAmt(remainderSellAmt, fp('1'), fp('1'))
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -1141,7 +1134,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             name: 'TradeStarted',
             args: [
               anyValue,
-              compToken.address,
+              aaveToken.address,
               rsr.address,
               remainderSellAmt,
               withinQuad(remainderMinBuyAmt),
@@ -1156,17 +1149,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check new auction
-        // COMP -> RSR Auction
+        // AAVE -> RSR Auction
         await expectTrade(rsrTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rsr.address,
           endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
         // Check now all funds in Market
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(remainderSellAmt)
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(remainderSellAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
 
         // Perform Mock Bids for RSR (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, remainderMinBuyAmt)
@@ -1184,7 +1177,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, remainderSellAmt, remainderMinBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, remainderSellAmt, remainderMinBuyAmt],
             emitted: true,
           },
           {
@@ -1255,13 +1248,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1413,7 +1406,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             PRICE_TIMEOUT,
             chainlinkFeed.address,
             ORACLE_ERROR,
-            compToken.address,
+            aaveToken.address,
             fp('1'),
             ORACLE_TIMEOUT
           )
@@ -1439,32 +1432,32 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(1), bn(0))
 
-        // Set COMP tokens as reward
+        // Set AAVE tokens as reward
         // Based on current f -> 1.6e18 to RSR and 0.4e18 to Rtoken
-        rewardAmountCOMP = bn('2e18')
+        rewardAmountAAVE = bn('2e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
-        // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
         const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
-        const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
         const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
@@ -1478,7 +1471,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
@@ -1486,7 +1479,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             name: 'TradeStarted',
             args: [
               anyValue,
-              compToken.address,
+              aaveToken.address,
               rToken.address,
               sellAmtRToken,
               withinQuad(minBuyAmtRToken),
@@ -1498,17 +1491,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
-        // COMP -> RSR Auction
+        // AAVE -> RSR Auction
         await expectTrade(rsrTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
-        // COMP -> RToken Auction
+        // AAVE -> RToken Auction
         await expectTrade(rTokenTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
@@ -1533,26 +1526,26 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Close auctions
         // Calculate pending amount
-        const sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken)
+        const sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt).sub(sellAmtRToken)
         const minBuyAmtRemainder: BigNumber = await toMinBuyAmt(sellAmtRemainder, fp('1'), fp('1'))
 
         // Check funds in Market and Traders
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmtRemainder)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(sellAmtRemainder)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Run auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -1560,7 +1553,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             name: 'TradeStarted',
             args: [
               anyValue,
-              compToken.address,
+              aaveToken.address,
               rsr.address,
               sellAmtRemainder,
               withinQuad(minBuyAmtRemainder),
@@ -1596,7 +1589,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
             emitted: true,
           },
           {
@@ -1717,37 +1710,37 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade dust when claiming rewards', async () => {
-        // Set COMP tokens as reward - both halves are < dust
-        rewardAmountCOMP = bn('0.01e18')
+        // Set AAVE tokens as reward - both halves are < dust
+        rewardAmountAAVE = bn('0.01e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
 
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
 
         // Set expected values, based on f = 0.6
-        const expectedToTrader = rewardAmountCOMP.mul(60).div(100)
-        const expectedToFurnace = rewardAmountCOMP.sub(expectedToTrader)
+        const expectedToTrader = rewardAmountAAVE.mul(60).div(100)
+        const expectedToFurnace = rewardAmountAAVE.sub(expectedToTrader)
 
         // Check status of traders and destinations at this point
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
@@ -1766,64 +1759,64 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check funds sent to traders
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
 
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
       })
 
       it('Should not trade if price for buy token = 0', async () => {
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1e18')
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = bn('1e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
 
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
 
         // Set expected values, based on f = 0.6
-        const expectedToTrader = rewardAmountCOMP.mul(60).div(100)
-        const expectedToFurnace = rewardAmountCOMP.sub(expectedToTrader)
+        const expectedToTrader = rewardAmountAAVE.mul(60).div(100)
+        const expectedToFurnace = rewardAmountAAVE.sub(expectedToTrader)
 
         // Check status of traders at this point
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
-        // Handout COMP tokens to Traders
-        await backingManager.forwardRevenue([compToken.address])
+        // Handout AAVE tokens to Traders
+        await backingManager.forwardRevenue([aaveToken.address])
 
         // Check funds sent to traders
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
 
         // Set RSR price to 0
         await setOraclePrice(rsrAsset.address, bn('0'))
 
         // Should revert
         await expect(
-          rsrTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION)
+          rsrTrader.manageToken(aaveToken.address, TradeKind.BATCH_AUCTION)
         ).to.be.revertedWith('buy asset price unknown')
 
         // Funds still in Trader
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
       })
 
       it('Should report violation when auction behaves incorrectly', async () => {
@@ -1844,13 +1837,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1973,13 +1966,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Claim rewards
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -2018,41 +2011,41 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not distribute other tokens beyond RSR/RToken', async () => {
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1e18')
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = bn('1e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
 
         // Check funds in Backing Manager and destinations
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        // Attempt to distribute COMP token
+        // Attempt to distribute AAVE token
         await whileImpersonating(basketHandler.address, async (signer) => {
           await expect(
-            distributor.connect(signer).distribute(compToken.address, rewardAmountCOMP)
+            distributor.connect(signer).distribute(aaveToken.address, rewardAmountAAVE)
           ).to.be.revertedWith('RSR or RToken')
         })
         //  Check nothing changed
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
@@ -2067,31 +2060,31 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(other.address, bn(40), bn(60))
 
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1e18')
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = bn('1e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
-        // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
-        const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
         const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
@@ -2107,7 +2100,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
@@ -2115,7 +2108,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             name: 'TradeStarted',
             args: [
               anyValue,
-              compToken.address,
+              aaveToken.address,
               rToken.address,
               sellAmtRToken,
               withinQuad(minBuyAmtRToken),
@@ -2127,24 +2120,24 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
-        // COMP -> RSR Auction
+        // AAVE -> RSR Auction
         await expectTrade(rsrTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rsr.address,
           endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
-        // COMP -> RToken Auction
+        // AAVE -> RToken Auction
         await expectTrade(rTokenTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rToken.address,
           endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
         // Check funds in Market
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auctions ended
         await advanceTime(config.batchAuctionLength.add(100).toString())
@@ -2168,13 +2161,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -2224,13 +2217,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(rsrTrader.claimRewards(), [
           {
-            contract: rsrTrader,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: rsrTrader,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -2265,19 +2258,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Claim and sweep rewards
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: newToken,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE.add(1)],
             emitted: true,
@@ -3261,7 +3254,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     let rewardAmountAAVE: BigNumber
 
     beforeEach(async function () {
-      issueAmount = bn('100e18')
+      issueAmount = bn('100000e18')
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -3290,7 +3283,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rewardAmountAAVE = bn('0.6e18')
 
       // COMP Rewards
-      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+      await compoundMock.setRewards(token3.address, rewardAmountCOMP)
       await compoundMock.setRewards(rsrTrader.address, rewardAmountCOMP)
       await compoundMock.setRewards(rTokenTrader.address, rewardAmountCOMP)
       await compoundMock.setRewards(rToken.address, rewardAmountCOMP)
@@ -3340,7 +3333,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rewardAmountCOMP = bn('2e18')
 
       // COMP Rewards
-      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+      await compoundMock.setRewards(token3.address, rewardAmountCOMP)
 
       // Collect revenue
       // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)

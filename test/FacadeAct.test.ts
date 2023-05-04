@@ -19,14 +19,12 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenMock,
   ERC20Mock,
   FacadeAct,
   IFacadeRead,
   FiatCollateral,
   GnosisMock,
   IAssetRegistry,
-  InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   StaticATokenMock,
   TestIBackingManager,
@@ -36,6 +34,7 @@ import {
   TestIRToken,
   TestIStRSR,
   USDCMock,
+  CTokenVaultMock,
 } from '../typechain'
 import {
   Collateral,
@@ -48,6 +47,7 @@ import {
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
@@ -66,7 +66,7 @@ describe('FacadeAct contract', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenMock
+  let cToken: CTokenVaultMock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
@@ -161,7 +161,9 @@ describe('FacadeAct contract', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
+    cToken = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
+    )
 
     // Backup tokens and collaterals - USDT - aUSDT - aUSDC - aBUSD
     backupToken1 = erc20s[2] // USDT
@@ -177,15 +179,7 @@ describe('FacadeAct contract', () => {
     beforeEach(async () => {
       // Mint Tokens
       initialBal = bn('10000000000e18')
-      await token.connect(owner).mint(addr1.address, initialBal)
-      await usdc.connect(owner).mint(addr1.address, initialBal)
-      await aToken.connect(owner).mint(addr1.address, initialBal)
-      await cToken.connect(owner).mint(addr1.address, initialBal)
-
-      await token.connect(owner).mint(addr2.address, initialBal)
-      await usdc.connect(owner).mint(addr2.address, initialBal)
-      await aToken.connect(owner).mint(addr2.address, initialBal)
-      await cToken.connect(owner).mint(addr2.address, initialBal)
+      await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
 
       // Mint RSR
       await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -814,6 +808,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'), // weird hardhat-ethers bug
         })
 
         // Check status - rewards claimed for both collaterals

@@ -16,7 +16,7 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenSelfReferentialCollateral,
-  CTokenMock,
+  CTokenVaultMock,
   ERC20Mock,
   DeployerP0,
   DeployerP1,
@@ -157,6 +157,7 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
+  compToken: ERC20Mock,
   comptroller: ComptrollerMock,
   aaveToken: ERC20Mock,
   config: IConfig
@@ -164,7 +165,7 @@ async function collateralFixture(
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
-  const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+  const CTokenVaultMockFactory: ContractFactory = await ethers.getContractFactory('CTokenVaultMock')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
@@ -237,10 +238,17 @@ async function collateralFixture(
   const makeCTokenCollateral = async (
     symbol: string,
     referenceERC20: ERC20Mock,
-    chainlinkAddr: string
-  ): Promise<[CTokenMock, CTokenFiatCollateral]> => {
-    const erc20: CTokenMock = <CTokenMock>(
-      await CTokenMockFactory.deploy(symbol + ' Token', symbol, referenceERC20.address)
+    chainlinkAddr: string,
+    compToken: ERC20Mock
+  ): Promise<[CTokenVaultMock, CTokenFiatCollateral]> => {
+    const erc20: CTokenVaultMock = <CTokenVaultMock>(
+      await CTokenVaultMockFactory.deploy(
+        symbol + ' Token',
+        symbol,
+        referenceERC20.address,
+        compToken.address,
+        comptroller.address
+      )
     )
     const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
@@ -254,8 +262,7 @@ async function collateralFixture(
         defaultThreshold: defaultThreshold,
         delayUntilDefault: delayUntilDefault,
       },
-      REVENUE_HIDING,
-      comptroller.address
+      REVENUE_HIDING
     )
     await coll.refresh()
     return [erc20, coll]
@@ -294,9 +301,19 @@ async function collateralFixture(
   const usdc = await makeSixDecimalCollateral('USDC')
   const usdt = await makeVanillaCollateral('USDT')
   const busd = await makeVanillaCollateral('BUSD')
-  const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed())
-  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0], await usdc[1].chainlinkFeed())
-  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0], await usdt[1].chainlinkFeed())
+  const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed(), compToken)
+  const cusdc = await makeCTokenCollateral(
+    'cUSDC',
+    usdc[0],
+    await usdc[1].chainlinkFeed(),
+    compToken
+  )
+  const cusdt = await makeCTokenCollateral(
+    'cUSDT',
+    usdt[0],
+    await usdt[1].chainlinkFeed(),
+    compToken
+  )
   const adai = await makeATokenCollateral('aDAI', dai[0], await dai[1].chainlinkFeed(), aaveToken)
   const ausdc = await makeATokenCollateral(
     'aUSDC',
@@ -633,6 +650,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
+    compToken,
     compoundMock,
     aaveToken,
     config

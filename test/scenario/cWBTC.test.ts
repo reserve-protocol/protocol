@@ -8,7 +8,7 @@ import { advanceTime } from '../utils/time'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
-  CTokenMock,
+  CTokenVaultMock,
   CTokenNonFiatCollateral,
   ComptrollerMock,
   ERC20Mock,
@@ -46,14 +46,15 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
   let collateral: Collateral[]
 
   // Non-backing assets
+  let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
 
   // Tokens and Assets
   let wbtc: ERC20Mock
   let wBTCCollateral: SelfReferentialCollateral
-  let cWBTC: CTokenMock
+  let cWBTC: CTokenVaultMock
   let cWBTCCollateral: CTokenNonFiatCollateral
-  let token0: CTokenMock
+  let token0: CTokenVaultMock
   let collateral0: Collateral
   let backupToken: ERC20Mock
   let backupCollateral: Collateral
@@ -85,6 +86,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     ;({
       rsr,
       stRSR,
+      compToken,
       compoundMock,
       erc20s,
       collateral,
@@ -99,7 +101,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
-    token0 = <CTokenMock>erc20s[4] // cDai
+    token0 = <CTokenVaultMock>erc20s[4] // cDai
     collateral0 = collateral[4]
 
     wbtc = await (await ethers.getContractFactory('ERC20Mock')).deploy('WBTC Token', 'WBTC')
@@ -129,8 +131,8 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
 
     // cWBTC
     cWBTC = await (
-      await ethers.getContractFactory('CTokenMock')
-    ).deploy('cWBTC Token', 'cWBTC', wbtc.address)
+      await ethers.getContractFactory('CTokenVaultMock')
+    ).deploy('cWBTC Token', 'cWBTC', wbtc.address, compToken.address, compoundMock.address)
     cWBTCCollateral = await (
       await ethers.getContractFactory('CTokenNonFiatCollateral')
     ).deploy(
@@ -147,8 +149,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       },
       targetUnitOracle.address,
       ORACLE_TIMEOUT,
-      REVENUE_HIDING,
-      compoundMock.address
+      REVENUE_HIDING
     )
 
     // Backup

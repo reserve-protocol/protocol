@@ -19,6 +19,7 @@ import {
   ATokenFiatCollateral,
   CTokenMock,
   DutchTrade,
+  CTokenVaultMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -51,6 +52,7 @@ import { expectTrade, getTrade, dutchBuyAmount } from './utils/trades'
 import { withinQuad } from './utils/matchers'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
@@ -78,6 +80,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
+  let token3Vault: CTokenVaultMock
   let token3: CTokenMock
   let backupToken1: ERC20Mock
   let backupToken2: ERC20Mock
@@ -170,7 +173,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
-    token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
+    token3Vault = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await basket[3].erc20())
+    )
+    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await token3Vault.asset())
 
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
@@ -188,19 +194,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
     // Mint initial balances
     initialBal = bn('1000000e18')
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
+    await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
+
     await backupToken1.connect(owner).mint(addr1.address, initialBal)
     await backupToken2.connect(owner).mint(addr1.address, initialBal)
 
-    await token0.connect(owner).mint(addr2.address, initialBal)
-    await token1.connect(owner).mint(addr2.address, initialBal)
-    await token2.connect(owner).mint(addr2.address, initialBal)
-    await token3.connect(owner).mint(addr2.address, initialBal)
-    await backupToken1.connect(owner).mint(addr1.address, initialBal)
-    await backupToken2.connect(owner).mint(addr1.address, initialBal)
+    await backupToken1.connect(owner).mint(addr2.address, initialBal)
+    await backupToken2.connect(owner).mint(addr2.address, initialBal)
   })
 
   describe('Default Handling - Basket Selection', function () {
@@ -228,7 +228,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await token0.connect(addr1).approve(rToken.address, initialBal)
         await token1.connect(addr1).approve(rToken.address, initialBal)
         await token2.connect(addr1).approve(rToken.address, initialBal)
-        await token3.connect(addr1).approve(rToken.address, initialBal)
+        await token3Vault.connect(addr1).approve(rToken.address, initialBal)
         await backupToken1.connect(addr1).approve(rToken.address, initialBal)
         await backupToken2.connect(addr1).approve(rToken.address, initialBal)
 
@@ -454,7 +454,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
             token0.address,
-            token3.address,
+            token3Vault.address,
           ])
 
         // Check initial state
@@ -1087,7 +1087,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
 
         // Nothing occurs if we attempt to settle for a token that is not being traded
-        await expect(backingManager.settleTrade(token3.address)).to.not.emit
+        await expect(backingManager.settleTrade(token3Vault.address)).to.not.emit
 
         // Advance time till auction ended
         await advanceTime(config.batchAuctionLength.add(100).toString())
@@ -3353,7 +3353,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await token0.connect(addr1).approve(rToken.address, initialBal)
         await token1.connect(addr1).approve(rToken.address, initialBal)
         await token2.connect(addr1).approve(rToken.address, initialBal)
-        await token3.connect(addr1).approve(rToken.address, initialBal)
+        await token3Vault.connect(addr1).approve(rToken.address, initialBal)
         await backupToken1.connect(addr1).approve(rToken.address, initialBal)
         await backupToken2.connect(addr1).approve(rToken.address, initialBal)
 
@@ -3702,7 +3702,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Running auctions will trigger recollateralization - All balance will be redeemed
         const sellAmt0: BigNumber = await token0.balanceOf(backingManager.address)
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
-        const sellAmt3: BigNumber = (await token3.balanceOf(backingManager.address)).mul(pow10(10)) // convert to 18 decimals for simplification
+        const sellAmt3: BigNumber = (await token3Vault.balanceOf(backingManager.address)).mul(
+          pow10(10)
+        ) // convert to 18 decimals for simplification
         const minBuyAmt0 = await toMinBuyAmt(sellAmt0, fp('0.8'), fp('1'))
 
         // Run auctions - Will start with token0
@@ -3812,7 +3814,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             name: 'TradeStarted',
             args: [
               anyValue,
-              token3.address,
+              token3Vault.address,
               backupToken1.address,
               toBNDecimals(sellAmt3, 8),
               minBuyAmt3,
@@ -3826,7 +3828,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Check new auction
         // Token3 -> Backup Token 1 Auction
         await expectTrade(backingManager, {
-          sell: token3.address,
+          sell: token3Vault.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
@@ -3868,7 +3870,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             name: 'TradeSettled',
             args: [
               anyValue,
-              token3.address,
+              token3Vault.address,
               backupToken1.address,
               toBNDecimals(sellAmt3, 8),
               minBuyAmt3,
@@ -4198,7 +4200,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.batchAuctionLength.add(100).toString())
 
-        // Run auctions - will end current and open a new auction for token3
+        // Run auctions - will end current and open a new auction for token3Vault
         // We only need now about 11.8 tokens for Token0 to be fully collateralized
         // Will check values later in the test to ensure they are in this range
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -4220,14 +4222,14 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Check new auction
         // Token3 -> Token0 Auction
         await expectTrade(backingManager, {
-          sell: token3.address,
+          sell: token3Vault.address,
           buy: token0.address,
           endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
         })
 
         // Get Trade
-        const t3 = await getTrade(backingManager, token3.address)
+        const t3 = await getTrade(backingManager, token3Vault.address)
         const sellAmt3 = (await t3.initBal()).mul(pow10(10)) // convert to 18 decimals
         let minBuyAmt3 = await toMinBuyAmt(sellAmt3, fp('1').div(50), fp('1'))
         expect(minBuyAmt3).to.be.closeTo(fp('11.28'), fp('0.01'))
@@ -4263,7 +4265,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [anyValue, token3.address, token0.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
+            args: [
+              anyValue,
+              token3Vault.address,
+              token0.address,
+              toBNDecimals(sellAmt3, 8),
+              minBuyAmt3,
+            ],
             emitted: true,
           },
           {
@@ -4379,7 +4387,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Running auctions will trigger recollateralization - All balance will be redeemed
         const sellAmt0: BigNumber = await token0.balanceOf(backingManager.address)
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
-        const sellAmt3: BigNumber = (await token3.balanceOf(backingManager.address)).mul(pow10(10)) // convert to 18 decimals for simplification
+        const sellAmt3: BigNumber = (await token3Vault.balanceOf(backingManager.address)).mul(
+          pow10(10)
+        ) // convert to 18 decimals for simplification
 
         // Run auctions - will start with token0 and backuptoken1
         const minBuyAmt = await toMinBuyAmt(sellAmt0, fp('0.5'), fp('1'))
@@ -4496,7 +4506,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             name: 'TradeStarted',
             args: [
               anyValue,
-              token3.address,
+              token3Vault.address,
               backupToken1.address,
               toBNDecimals(sellAmt3, 8),
               minBuyAmt3,
@@ -4510,7 +4520,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Check new auction
         // Token3 -> Backup Token 1 Auction
         await expectTrade(backingManager, {
-          sell: token3.address,
+          sell: token3Vault.address,
           buy: backupToken1.address,
           endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
@@ -4557,7 +4567,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             name: 'TradeSettled',
             args: [
               anyValue,
-              token3.address,
+              token3Vault.address,
               backupToken1.address,
               toBNDecimals(sellAmt3, 8),
               sellAmt3.div(50).div(2),
@@ -4895,7 +4905,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token3Vault.connect(addr1).approve(rToken.address, initialBal)
       await backupToken1.connect(addr1).approve(rToken.address, initialBal)
       await backupToken2.connect(addr1).approve(rToken.address, initialBal)
 

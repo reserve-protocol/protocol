@@ -19,13 +19,9 @@ abstract contract RewardableP0 is ComponentP0, IRewardableComponent {
         IERC20[] memory erc20s = reg.erc20s();
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            IAsset asset = reg.toAsset(erc20s[i]);
-
-            // Claim rewards via delegatecall
-            address(asset).functionDelegateCall(
-                abi.encodeWithSignature("claimRewards()"),
-                "rewards claim failed"
-            );
+            // empty try/catch because not every erc20 will be wrapped & have a claimRewards func
+            // solhint-disable-next-line
+            try IRewardable(address(erc20s[i])).claimRewards() {} catch {}
         }
     }
 
@@ -34,12 +30,8 @@ abstract contract RewardableP0 is ComponentP0, IRewardableComponent {
     /// @param erc20 The ERC20 to claimRewards on
     /// @custom:interaction CEI
     function claimRewardsSingle(IERC20 erc20) external notTradingPausedOrFrozen {
-        IAsset asset = main.assetRegistry().toAsset(erc20);
-
-        // Claim rewards via delegatecall
-        address(asset).functionDelegateCall(
-            abi.encodeWithSignature("claimRewards()"),
-            "rewards claim failed"
-        );
+        // empty try/catch because not every erc20 will be wrapped & have a claimRewards func
+        // solhint-disable-next-line
+        try IRewardable(address(erc20)).claimRewards() {} catch {}
     }
 }

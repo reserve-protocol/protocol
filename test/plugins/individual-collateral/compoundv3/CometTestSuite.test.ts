@@ -6,7 +6,7 @@ import {
   CollateralStatus,
 } from '../pluginTestTypes'
 import { mintWcUSDC, makewCSUDC, resetFork, enableRewardsAccrual } from './helpers'
-import { ethers } from 'hardhat'
+import { ethers, network } from 'hardhat'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   ERC20Mock,
@@ -44,7 +44,9 @@ import {
   DELAY_UNTIL_DEFAULT,
   REWARDS,
   USDC,
+  COMET_EXT,
 } from './constants'
+import { setCode } from '@nomicfoundation/hardhat-network-helpers'
 
 /*
   Define interfaces
@@ -54,7 +56,6 @@ interface CometCollateralFixtureContext extends CollateralFixtureContext {
   cusdcV3: CometInterface
   wcusdcV3: ICusdcV3Wrapper
   usdc: ERC20Mock
-  wcusdcV3Mock: CusdcV3WrapperMock
 }
 
 interface CometCollateralFixtureContextMockComet extends CollateralFixtureContext {
@@ -146,18 +147,7 @@ const makeCollateralFixtureContext = (
     const cusdcV3 = <CometInterface>fix.cusdcV3
     const { wcusdcV3, usdc } = fix
 
-    const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
-      await ethers.getContractFactory('CusdcV3WrapperMock')
-    )
-
-    const wcusdcV3Mock = <ICusdcV3WrapperMock>(
-      ((await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)) as ICusdcV3WrapperMock)
-    )
-    const realMock = (await ethers.getContractAt(
-      'ICusdcV3WrapperMock',
-      wcusdcV3Mock.address
-    )) as ICusdcV3WrapperMock
-    collateralOpts.erc20 = realMock.address
+    collateralOpts.erc20 = wcusdcV3.address
     const collateral = await deployCollateral(collateralOpts)
     const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
 
@@ -166,8 +156,7 @@ const makeCollateralFixtureContext = (
       collateral,
       chainlinkFeed,
       cusdcV3,
-      wcusdcV3: realMock,
-      wcusdcV3Mock,
+      wcusdcV3,
       usdc,
       tok: wcusdcV3,
       rewardToken,
@@ -238,7 +227,7 @@ const mintCollateralTo: MintCollateralFunc<CometCollateralFixtureContext> = asyn
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.wcusdcV3, user, amount, recipient)
+  await mintWcUSDC(ctx.usdc, ctx.cusdcV3, ctx.tok, user, amount, recipient)
 }
 
 const reduceTargetPerRef = async (
@@ -260,11 +249,26 @@ const increaseTargetPerRef = async (
 }
 
 const reduceRefPerTok = async (ctx: CometCollateralFixtureContext, pctDecrease: BigNumberish) => {
-  const currentExchangeRate = await ctx.wcusdcV3.exchangeRate()
-  await ctx.wcusdcV3Mock.setMockExchangeRate(
-    true,
-    currentExchangeRate.sub(currentExchangeRate.mul(pctDecrease).div(100))
-  )
+  const totalsBasic = await ctx.cusdcV3.totalsBasic()
+  const bsi = totalsBasic.baseSupplyIndex
+
+  // save old bytecode
+  const oldBytecode = await network.provider.send('eth_getCode', [COMET_EXT])
+
+  const mockFactory = await ethers.getContractFactory('CometExtMock')
+  const mock = await mockFactory.deploy()
+  const bytecode = await network.provider.send('eth_getCode', [mock.address])
+  await setCode(COMET_EXT, bytecode)
+
+  const cometAsMock = await ethers.getContractAt('CometExtMock', ctx.cusdcV3.address)
+  await cometAsMock.setBaseSupplyIndex(bsi.sub(bsi.mul(pctDecrease).div(100)))
+
+  await setCode(COMET_EXT, oldBytecode)
+  // const currentExchangeRate = await ctx.wcusdcV3.exchangeRate()
+  // await ctx.wcusdcV3Mock.setMockExchangeRate(
+  //   true,
+  //   currentExchangeRate.sub(currentExchangeRate.mul(pctDecrease).div(100))
+  // )
 }
 
 const increaseRefPerTok = async () => {
