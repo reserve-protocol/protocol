@@ -406,7 +406,7 @@ contract FacadeRead is IFacadeRead {
 
             uint192[] memory quantities = new uint192[](reg.erc20s.length);
             for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                quantities[i] = bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+                quantities[i] = bh.quantity(reg.erc20s[i]);
             }
 
             (Price memory buPrice, ) = bh.prices();

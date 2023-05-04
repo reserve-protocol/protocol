@@ -141,8 +141,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     CollateralStatus private lastStatus;
 
     // Nonce of the first reference basket from the current history
-    // A new historical record begins whenever the prime basket is changed
-    // There can be 0 to any number of reference baskets from the current prime basket history
+    // There can be 0 to any number of baskets with nonce >= primeNonce
     uint48 public primeNonce; // {basketNonce}
 
     // A history of baskets by basket nonce; includes current basket
@@ -267,7 +266,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
 
         primeNonce = nonce + 1; // set primeNonce to the next nonce
-        emit PrimeBasketSet(erc20s, targetAmts, names);
+        emit PrimeBasketSet(primeNonce, erc20s, targetAmts, names);
     }
 
     /// Set the backup configuration for some target name
@@ -337,18 +336,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         } catch {
             return FIX_ZERO;
         }
-    }
-
-    /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
-    /// @param erc20 The ERC20 token contract for the asset
-    /// @param asset The registered asset plugin contract for the erc20
-    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
-    // Returns 0 if erc20 is not registered or not in the basket
-    // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
-    // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function quantityUnsafe(IERC20 erc20, IAsset asset) public view returns (uint192) {
-        if (!asset.isCollateral()) return FIX_ZERO;
-        return _quantity(erc20, ICollateral(address(asset)));
     }
 
     /// @param erc20 The token contract
@@ -740,16 +727,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     /// Require that erc20s is a valid collateral array
     function requireValidCollArray(IERC20[] calldata erc20s) internal view {
+        IERC20 zero = IERC20(address(0));
         IERC20 rsr = main.rsr();
         IERC20 rToken = IERC20(address(main.rToken()));
         IERC20 stRSR = IERC20(address(main.stRSR()));
-        IERC20 zero = IERC20(address(0));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            require(erc20s[i] != rsr, "RSR is not valid collateral");
-            require(erc20s[i] != rToken, "RToken is not valid collateral");
-            require(erc20s[i] != stRSR, "stRSR is not valid collateral");
-            require(erc20s[i] != zero, "address zero is not valid collateral");
+            require(
+                erc20s[i] != zero && erc20s[i] != rsr && erc20s[i] != rToken && erc20s[i] != stRSR,
+                "invalid collateral"
+            );
         }
 
         require(ArrayLib.allUnique(erc20s), "contains duplicates");

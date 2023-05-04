@@ -162,8 +162,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // Added in 3.0.0
 
     // Nonce of the first reference basket from the current prime basket history
-    // A new historical record begins whenever the prime basket is changed
-    // There can be 0 to any number of reference baskets from the current history
+    // There can be 0 to any number of baskets with nonce >= primeNonce
     uint48 public primeNonce; // {basketNonce}
 
     // A history of baskets by basket nonce; includes current basket
@@ -262,10 +261,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   config'.erc20s = erc20s
     //   config'.targetAmts[erc20s[i]] = targetAmts[i], for i from 0 to erc20s.length-1
     //   config'.targetNames[e] = assetRegistry.toColl(e).targetName, for e in erc20s
-    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts)
-        external
-        governance
-    {
+    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts) external {
+        governanceOnly();
         require(erc20s.length > 0, "cannot empty basket");
         require(erc20s.length == targetAmts.length, "must be same length");
         requireValidCollArray(erc20s);
@@ -294,7 +291,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
 
         primeNonce = nonce + 1; // set primeNonce to the next nonce
-        emit PrimeBasketSet(erc20s, targetAmts, names);
+        emit PrimeBasketSet(primeNonce, erc20s, targetAmts, names);
     }
 
     /// Set the backup configuration for some target name
@@ -310,7 +307,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         bytes32 targetName,
         uint256 max,
         IERC20[] calldata erc20s
-    ) external governance {
+    ) external {
+        governanceOnly();
         requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
@@ -365,18 +363,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         } catch {
             return FIX_ZERO;
         }
-    }
-
-    /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
-    /// @param erc20 The ERC20 token contract for the asset
-    /// @param asset The registered asset plugin contract for the erc20
-    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
-    // Returns 0 if erc20 is not registered or not in the basket
-    // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
-    // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function quantityUnsafe(IERC20 erc20, IAsset asset) public view returns (uint192) {
-        if (!asset.isCollateral()) return FIX_ZERO;
-        return _quantity(erc20, ICollateral(address(asset)));
     }
 
     /// @param erc20 The token contract
@@ -587,7 +573,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // === Governance Setters ===
 
     /// @custom:governance
-    function setWarmupPeriod(uint48 val) public governance {
+    function setWarmupPeriod(uint48 val) public {
+        governanceOnly();
         require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
         emit WarmupPeriodSet(warmupPeriod, val);
         warmupPeriod = val;
@@ -789,10 +776,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         IERC20 zero = IERC20(address(0));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            require(erc20s[i] != rsr, "RSR is not valid collateral");
-            require(erc20s[i] != IERC20(address(rToken)), "RToken is not valid collateral");
-            require(erc20s[i] != IERC20(address(stRSR)), "stRSR is not valid collateral");
-            require(erc20s[i] != zero, "address zero is not valid collateral");
+            // Require collateral is NOT in [0x0, RSR, RToken, StRSR]
+            require(
+                erc20s[i] != zero &&
+                    erc20s[i] != rsr &&
+                    erc20s[i] != IERC20(address(rToken)) &&
+                    erc20s[i] != IERC20(address(stRSR)),
+                "invalid collateral"
+            );
         }
 
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
@@ -805,10 +796,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         //      All calls to goodCollateral pass an erc20 from the config or the backup.
         //      Both setPrimeBasket and setBackupConfig must pass a call to requireValidCollArray,
         //      which runs the 4 checks below.
-        if (erc20 == IERC20(address(0))) return false;
-        if (erc20 == rsr) return false;
-        if (erc20 == IERC20(address(rToken))) return false;
-        if (erc20 == IERC20(address(stRSR))) return false;
+        if (
+            erc20 == IERC20(address(0)) ||
+            erc20 == rsr ||
+            erc20 == IERC20(address(rToken)) ||
+            erc20 == IERC20(address(stRSR))
+        ) return false;
 
         try assetRegistry.toColl(erc20) returns (ICollateral coll) {
             return
@@ -820,6 +813,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             return false;
         }
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    function governanceOnly() private view governance {}
 
     // ==== FacadeRead views ====
     // Not used in-protocol; helpful for reconstructing state

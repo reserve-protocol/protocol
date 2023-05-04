@@ -186,7 +186,7 @@ contract RTokenAsset is IAsset, VersionedAsset {
 
             uint192[] memory quantities = new uint192[](reg.erc20s.length);
             for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+                quantities[i] = basketHandler.quantity(reg.erc20s[i]);
             }
 
             // will exclude UoA value from RToken balances at BackingManager

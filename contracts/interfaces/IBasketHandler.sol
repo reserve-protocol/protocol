@@ -20,13 +20,19 @@ struct BasketRange {
  */
 interface IBasketHandler is IComponent {
     /// Emitted when the prime basket is set
+    /// @param nonce {basketNonce} The first nonce under the prime basket; may not exist yet
     /// @param erc20s The collateral tokens for the prime basket
     /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
     /// @param targetNames Each collateral token's targetName
-    event PrimeBasketSet(IERC20[] erc20s, uint192[] targetAmts, bytes32[] targetNames);
+    event PrimeBasketSet(
+        uint256 indexed nonce,
+        IERC20[] erc20s,
+        uint192[] targetAmts,
+        bytes32[] targetNames
+    );
 
     /// Emitted when the reference basket is set
-    /// @param nonce The basket nonce
+    /// @param nonce {basketNonce} The basket nonce
     /// @param erc20s The list of collateral tokens in the reference basket
     /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
     /// @param disabled True when the list of erc20s + refAmts may not be correct
@@ -101,15 +107,6 @@ interface IBasketHandler is IComponent {
     /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) external view returns (uint192);
-
-    /// Like quantity(), but unsafe because it DOES NOT CONFIRM THAT THE ASSET IS CORRECT
-    /// @param erc20 The ERC20 token contract for the asset
-    /// @param asset The registered asset plugin contract for the erc20
-    /// @return {tok/BU} The whole token quantity of token in the reference basket
-    /// Returns 0 if erc20 is not registered or not in the basket
-    /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
-    /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
-    function quantityUnsafe(IERC20 erc20, IAsset asset) external view returns (uint192);
 
     /// @param amount {BU}
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
