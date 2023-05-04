@@ -43,4 +43,8 @@ contract ERC20Fuzz is ERC20Mock {
     function _msgSender() internal view virtual override returns (address) {
         return main.translateAddr(msg.sender);
     }
+
+    function claimRewards() external {
+        payRewards(msg.sender);
+    }
 }

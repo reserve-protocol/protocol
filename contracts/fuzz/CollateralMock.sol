@@ -115,7 +115,7 @@ contract CollateralMock is OracleErrorMock, AppreciatingFiatCollateral {
 
     // expects delegatecall; claimer and rewardee is `this`
     function claimRewards() public override(Asset, IRewardable) {
-        ERC20Fuzz(address(erc20)).payRewards(address(this));
+        ERC20Fuzz(address(erc20)).payRewards(msg.sender);
     }
 
     function _underlyingRefPerTok() internal view virtual override returns (uint192) {
