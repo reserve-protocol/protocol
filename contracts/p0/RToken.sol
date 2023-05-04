@@ -242,7 +242,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         // ==== Prorate redemption + send out balances ====
         {
             bool allZero = true;
-            // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
+            // Bound each withdrawal by the prorata share, in case currently under-collateralized
             for (uint256 i = 0; i < erc20s.length; i++) {
                 uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(
                     address(main.backingManager())
