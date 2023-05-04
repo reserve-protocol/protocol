@@ -1435,15 +1435,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Redeem rTokens
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount)
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          redeemAmount,
+        const quote = await basketHandler.quoteCustomRedemption(
           basketNonces,
           portions,
-          quote.erc20s,
-          quote.quantities
+          redeemAmount
         )
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(
+            addr1.address,
+            redeemAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
 
         // Check funds were transferred
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -1468,16 +1474,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Redeem rTokens to another account
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
         await expect(
-          rToken.connect(addr1).customRedemption(
-            addr2.address,
-            issueAmount,
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+          rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr2.address,
+              issueAmount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
         )
           .to.emit(rToken, 'Redemption')
           .withArgs(addr1.address, addr2.address, issueAmount, issueAmount)
@@ -1506,15 +1514,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Redeem rTokens
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount)
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          redeemAmount,
+        const quote = await basketHandler.quoteCustomRedemption(
           basketNonces,
           portions,
-          quote.erc20s,
-          quote.quantities
+          redeemAmount
         )
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(
+            addr1.address,
+            redeemAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
 
         // Check asset value
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
@@ -1522,14 +1536,16 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
 
         // Redeem rTokens with another user
-        await rToken.connect(addr2).customRedemption(
-          addr2.address,
-          redeemAmount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )
+        await rToken
+          .connect(addr2)
+          .redeemToCustom(
+            addr2.address,
+            redeemAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
 
         // Check funds were transferred
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -1556,15 +1572,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          issueAmount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(
+            addr1.address,
+            issueAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
@@ -1573,15 +1591,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          issueAmount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(
+            addr1.address,
+            issueAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
@@ -1590,15 +1610,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await main.connect(owner).pauseIssuance()
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          issueAmount,
-          basketNonces,
-          portions,
-          quote.erc20s,
-          quote.quantities
-        )
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(
+            addr1.address,
+            issueAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
@@ -1608,16 +1630,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Try to redeem
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
         await expect(
-          rToken.connect(addr1).customRedemption(
-            addr1.address,
-            issueAmount,
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+          rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              issueAmount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
         ).to.be.revertedWith('frozen')
 
         // Check values
@@ -1634,15 +1658,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Should not revert with empty redemption yet
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount.div(2))
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          issueAmount.div(2),
+        const quote = await basketHandler.quoteCustomRedemption(
           basketNonces,
           portions,
-          quote.erc20s,
-          quote.quantities
+          issueAmount.div(2)
         )
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(
+            addr1.address,
+            issueAmount.div(2),
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
 
         // Burn the rest
@@ -1652,14 +1682,16 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         // Now it should revert
         await expect(
-          rToken.connect(addr1).customRedemption(
-            addr1.address,
-            issueAmount.div(2),
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+          rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              issueAmount.div(2),
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
         ).to.be.revertedWith('empty redemption')
 
         // Check values
@@ -1670,16 +1702,22 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Should fail if revertOnPartialRedemption is true
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount.div(2))
+        const quote = await basketHandler.quoteCustomRedemption(
+          basketNonces,
+          portions,
+          issueAmount.div(2)
+        )
         await expect(
-          rToken.connect(addr1).customRedemption(
-            addr1.address,
-            issueAmount.div(2),
-            [2],
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+          rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              issueAmount.div(2),
+              [2],
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
         ).to.be.revertedWith('invalid basketNonce')
       })
 
@@ -1692,16 +1730,22 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // 1st redemption
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount.div(2))
+        const quote = await basketHandler.quoteCustomRedemption(
+          basketNonces,
+          portions,
+          issueAmount.div(2)
+        )
         await expect(
-          rToken.connect(addr1).customRedemption(
-            addr1.address,
-            issueAmount.div(2),
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+          rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              issueAmount.div(2),
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
         ).to.emit(rToken, 'Redemption')
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
         expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
@@ -1709,14 +1753,16 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         // 2nd redemption
         await expect(
-          rToken.connect(addr1).customRedemption(
-            addr1.address,
-            issueAmount.div(2),
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+          rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              issueAmount.div(2),
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
         ).to.emit(rToken, 'Redemption')
         expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
@@ -1724,20 +1770,22 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       it('Should not redeem() unregistered collateral #fast', async function () {
         // Unregister collateral2
-        
+
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
         await assetRegistry.connect(owner).unregister(collateral2.address)
         await expect(
-          rToken.connect(addr1).customRedemption(
-            addr1.address,
-            issueAmount,
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+          rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              issueAmount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
         ).revertedWith('erc20 unregistered')
       })
 
@@ -1748,16 +1796,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Redemption
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
         await expect(
-          rToken.connect(addr1).customRedemption(
-            addr1.address,
-            issueAmount,
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+          rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              issueAmount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
         ).to.emit(rToken, 'Redemption')
         expect(await rToken.totalSupply()).to.equal(0)
         expect(await token0.balanceOf(addr1.address)).to.be.equal(initialBal)
@@ -1770,15 +1820,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Leave only 1 RToken issue
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, issueAmount.sub(bn('1e18')))
-        await rToken.connect(addr1).customRedemption(
-          addr1.address,
-          issueAmount.sub(bn('1e18')),
+        const quote = await basketHandler.quoteCustomRedemption(
           basketNonces,
           portions,
-          quote.erc20s,
-          quote.quantities
+          issueAmount.sub(bn('1e18'))
         )
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(
+            addr1.address,
+            issueAmount.sub(bn('1e18')),
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
 
         expect(await rToken.totalSupply()).to.equal(fp('1'))
 
@@ -1790,16 +1846,22 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         const redeemAmount: BigNumber = bn('1.5e9')
 
         // Redeem rTokens successfully
-        const quote2 = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, bn(redeemAmount))
+        const quote2 = await basketHandler.quoteCustomRedemption(
+          basketNonces,
+          portions,
+          bn(redeemAmount)
+        )
         await expect(
-          rToken.connect(addr1).customRedemption(
-            addr1.address,
-            bn(redeemAmount),
-            basketNonces,
-            portions,
-            quote2.erc20s,
-            quote2.quantities
-          )
+          rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              bn(redeemAmount),
+              basketNonces,
+              portions,
+              quote2.erc20s,
+              quote2.quantities
+            )
         ).to.not.be.reverted
       })
 
@@ -1835,15 +1897,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
             const basketNonces = [1]
             const portions = [fp('1')]
-            const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount)
-            await rToken.connect(addr1).customRedemption(
-              addr1.address,
-              redeemAmount,
+            const quote = await basketHandler.quoteCustomRedemption(
               basketNonces,
               portions,
-              quote.erc20s,
-              quote.quantities
+              redeemAmount
             )
+            await rToken
+              .connect(addr1)
+              .redeemToCustom(
+                addr1.address,
+                redeemAmount,
+                basketNonces,
+                portions,
+                quote.erc20s,
+                quote.quantities
+              )
             issueAmount = issueAmount.sub(redeemAmount)
             expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
             expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1865,26 +1933,38 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           redeemAmount = issueAmount.mul(redemptionThrottleParams.pctRate).div(fp('1'))
           const basketNonces = [1]
           const portions = [fp('1')]
-          const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount.add(1))
+          const quote = await basketHandler.quoteCustomRedemption(
+            basketNonces,
+            portions,
+            redeemAmount.add(1)
+          )
           await expect(
-            rToken.connect(addr1).customRedemption(
+            rToken
+              .connect(addr1)
+              .redeemToCustom(
+                addr1.address,
+                redeemAmount.add(1),
+                basketNonces,
+                portions,
+                quote.erc20s,
+                quote.quantities
+              )
+          ).to.be.revertedWith('supply change throttled')
+          const quote2 = await basketHandler.quoteCustomRedemption(
+            basketNonces,
+            portions,
+            redeemAmount
+          )
+          await rToken
+            .connect(addr1)
+            .redeemToCustom(
               addr1.address,
               redeemAmount.add(1),
               basketNonces,
               portions,
-              quote.erc20s,
-              quote.quantities
+              quote2.erc20s,
+              quote2.quantities
             )
-          ).to.be.revertedWith('supply change throttled')
-          const quote2 = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount)
-          await rToken.connect(addr1).customRedemption(
-            addr1.address,
-            redeemAmount.add(1),
-            basketNonces,
-            portions,
-            quote2.erc20s,
-            quote2.quantities
-          )
 
           // Check updated redemption throttle
           expect(await rToken.redemptionAvailable()).to.equal(bn(0))
@@ -1922,15 +2002,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.redemptionAvailable()).to.equal(throttles.amtRate)
           const basketNonces = [1]
           const portions = [fp('1')]
-          const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, throttles.amtRate)
-          await rToken.connect(addr1).customRedemption(
-            addr1.address,
-            throttles.amtRate,
+          const quote = await basketHandler.quoteCustomRedemption(
             basketNonces,
             portions,
-            quote.erc20s,
-            quote.quantities
+            throttles.amtRate
           )
+          await rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              throttles.amtRate,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
           expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
         })
 
@@ -1942,15 +2028,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           // Large redemption should fail
           const basketNonces = [1]
           const portions = [fp('1')]
-          const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, redeemAmount.add(1))
-          await rToken.connect(addr1).customRedemption(
-            addr1.address,
-            redeemAmount.add(1),
+          const quote = await basketHandler.quoteCustomRedemption(
             basketNonces,
             portions,
-            quote.erc20s,
-            quote.quantities
+            redeemAmount.add(1)
           )
+          await rToken
+            .connect(addr1)
+            .redeemToCustom(
+              addr1.address,
+              redeemAmount.add(1),
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
           await expect(
             rToken.connect(addr1).redeem(redeemAmount.add(1), await basketHandler.nonce())
           ).to.be.revertedWith('supply change throttled')

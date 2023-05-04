@@ -126,7 +126,7 @@ interface IBasketHandler is IComponent {
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
-    function quoteHistoricalRedemption(
+    function quoteCustomRedemption(
         uint48[] memory basketNonces,
         uint192[] memory portions,
         uint192 amount

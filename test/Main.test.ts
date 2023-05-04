@@ -1783,7 +1783,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1]
         const portions = [fp('1')]
         const amount = fp('10000')
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, amount)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
 
         expect(quote.erc20s.length).equal(4)
         expect(quote.quantities.length).equal(4)
@@ -1817,7 +1817,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const balsBefore = await getBalances(addr1.address, expectedTokens)
         await rToken
           .connect(addr1)
-          .customRedemption(
+          .redeemToCustom(
             addr1.address,
             amount,
             basketNonces,
@@ -1846,7 +1846,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1, 2]
         const portions = [fp('0.5'), fp('0.5')]
         const amount = fp('10000')
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, amount)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
 
         expect(quote.erc20s.length).equal(5)
         expect(quote.quantities.length).equal(5)
@@ -1887,7 +1887,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .customRedemption(
+            .redeemToCustom(
               addr1.address,
               amount,
               basketNonces,
@@ -1902,7 +1902,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         await rToken
           .connect(addr1)
-          .customRedemption(
+          .redeemToCustom(
             addr1.address,
             amount,
             basketNonces,
@@ -1931,7 +1931,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1, 2]
         const portions = [fp('0.5'), fp('0.5')]
         const amount = fp('10000')
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, amount)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
 
         expect(quote.erc20s.length).equal(4)
         expect(quote.quantities.length).equal(4)
@@ -1965,7 +1965,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const balsBefore = await getBalances(addr1.address, expectedTokens)
         await rToken
           .connect(addr1)
-          .customRedemption(
+          .redeemToCustom(
             addr1.address,
             amount,
             basketNonces,
@@ -2002,7 +2002,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const basketNonces = [1, 2]
         const portions = [fp('0.2'), fp('0.8')]
         const amount = fp('10000')
-        const quote = await basketHandler.quoteHistoricalRedemption(basketNonces, portions, amount)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
 
         expect(quote.erc20s.length).equal(6)
         expect(quote.quantities.length).equal(6)
@@ -2048,7 +2048,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .customRedemption(
+            .redeemToCustom(
               addr1.address,
               amount,
               basketNonces,
@@ -2063,7 +2063,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         await rToken
           .connect(addr1)
-          .customRedemption(
+          .redeemToCustom(
             addr1.address,
             amount,
             basketNonces,

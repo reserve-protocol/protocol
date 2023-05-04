@@ -133,7 +133,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // basket is the current basket.
     Basket private basket;
 
-    uint48 public override nonce; // A unique identifier for this basket instance
+    uint48 public override nonce; // {basketNonce} A unique identifier for this basket instance
     uint48 public override timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid,
@@ -145,7 +145,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // These are effectively local variables of _switchBasket.
     // Nothing should use their values from previous transactions.
     EnumerableSet.Bytes32Set private _targetNames;
-    Basket private _newBasket; // Always empty
+    Basket private _newBasket;
 
     // === Warmup Period ===
     // Added in 3.0.0
@@ -164,10 +164,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // Nonce of the first reference basket from the current prime basket history
     // A new historical record begins whenever the prime basket is changed
     // There can be 0 to any number of reference baskets from the current history
-    uint48 private primeNonce; // {nonce}
+    uint48 private primeNonce; // {basketNonce}
 
-    // The historical baskets by basket nonce; includes current basket
-    mapping(uint48 => Basket) private historicalBaskets;
+    // A history of baskets by basket nonce; includes current basket
+    mapping(uint48 => Basket) private basketHistory;
 
     // ===
 
@@ -444,7 +444,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Return the current issuance/redemption value of `amount` BUs
-    /// @dev Subset of logic with quoteHistoricalRedemption; more gas efficient for current nonce
+    /// @dev Subset of logic of quoteCustomRedemption; more gas efficient for current nonce
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
@@ -473,14 +473,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
-    /// Checks `portions` sum to FIX_ONE
     /// @param basketNonces An array of basket nonces to do redemption from
-    /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
+    /// @param portions {1} An array of Fix quantities
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
     // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
-    function quoteHistoricalRedemption(
+    function quoteCustomRedemption(
         uint48[] memory basketNonces,
         uint192[] memory portions,
         uint192 amount
@@ -488,13 +487,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         // directly after upgrade the primeNonce will be 0, which is not a valid value
         require(primeNonce > 0, "primeNonce uninitialized");
         require(basketNonces.length == portions.length, "portions does not mirror basketNonces");
-
-        // Confirm portions sum to FIX_ONE
-        {
-            uint256 portionsSum;
-            for (uint256 i = 0; i < portions.length; ++i) portionsSum += portions[i];
-            require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
-        }
 
         IERC20[] memory erc20sAll = new IERC20[](assetRegistry.size());
         uint192[] memory refAmtsAll = new uint192[](erc20sAll.length);
@@ -507,7 +499,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 basketNonces[i] >= primeNonce && basketNonces[i] <= nonce,
                 "invalid basketNonce"
             ); // will always revert directly after setPrimeBasket()
-            Basket storage b = historicalBaskets[basketNonces[i]];
+            Basket storage b = basketHistory[basketNonces[i]];
             // Add-in refAmts contribution from historical basket
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
                 IERC20 erc20 = b.erc20s[j];
@@ -779,7 +771,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         if (!disabled) {
             nonce += 1;
             basket.setFrom(_newBasket);
-            historicalBaskets[nonce].setFrom(_newBasket);
+            basketHistory[nonce].setFrom(_newBasket);
             timestamp = uint48(block.timestamp);
         }
 

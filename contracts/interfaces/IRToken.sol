@@ -79,23 +79,17 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     function issueTo(address recipient, uint256 amount) external;
 
     /// Redeem RToken for basket collateral
-    /// @dev Use customRedemption to restrict min token amounts received
+    /// @dev Use redeemToCustom for non-current baskets
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
-    function redeem(uint256 amount, uint48 basketNonce) external;
+    function redeem(uint256 amount) external;
 
     /// Redeem RToken for basket collateral to a particular recipient
-    /// @dev Use customRedemption to restrict min token amounts received
+    /// @dev Use redeemToCustom for non-current baskets
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
-    function redeemTo(
-        address recipient,
-        uint256 amount,
-        uint48 basketNonce
-    ) external;
+    function redeemTo(address recipient, uint256 amount) external;
 
     /// Redeem RToken for a linear combination of historical baskets, to a particular recipient
     /// @dev Allows partial redemptions up to the minAmounts
@@ -103,15 +97,15 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonces An array of basket nonces to do redemption from
     /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
-    /// @param minERC20s An array of ERC20 addresses to require minAmounts for
+    /// @param erc20sOut An array of ERC20s expected out
     /// @param minAmounts {qTok} The minimum ERC20 quantities the caller should receive
     /// @custom:interaction
-    function customRedemption(
+    function redeemToCustom(
         address recipient,
         uint256 amount,
         uint48[] memory basketNonces,
         uint192[] memory portions,
-        IERC20[] memory minERC20s,
+        IERC20[] memory erc20sOut,
         uint256[] memory minAmounts
     ) external;
 
