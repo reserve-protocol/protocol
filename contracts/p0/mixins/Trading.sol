@@ -101,11 +101,12 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     // === FixLib Helper ===
 
     /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDivCeil(
+    function mulDiv(
         uint192 x,
         uint192 y,
-        uint192 z
+        uint192 z,
+        RoundingMode rounding
     ) external pure returns (uint192) {
-        return x.mulDiv(y, z, CEIL);
+        return x.mulDiv(y, z, rounding);
     }
 }

@@ -509,7 +509,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             if (refPerTok == 0) continue; // quantities[i] = 0;
 
             // {tok} = {BU} * {ref/BU} / {ref/tok}
-            quantities[i] = amount.mulDiv(refAmtsAll[i], refPerTok, FLOOR).shiftl_toUint(
+            quantities[i] = safeMulDivFloor(amount, refAmtsAll[i], refPerTok).shiftl_toUint(
                 int8(asset.erc20Decimals()),
                 FLOOR
             );
@@ -771,5 +771,25 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         } catch {
             return false;
         }
+    }
+
+    // === Private ===
+
+    /// @return The floored result of FixLib.mulDiv
+    function safeMulDivFloor(
+        uint192 x,
+        uint192 y,
+        uint192 z
+    ) internal view returns (uint192) {
+        try main.backingManager().mulDiv(x, y, z, FLOOR) returns (uint192 result) {
+            return result;
+        } catch Panic(uint256 errorCode) {
+            // 0x11: overflow
+            // 0x12: div-by-zero
+            assert(errorCode == 0x11 || errorCode == 0x12);
+        } catch (bytes memory reason) {
+            assert(keccak256(reason) == UIntOutofBoundsHash);
+        }
+        return FIX_MAX;
     }
 }
