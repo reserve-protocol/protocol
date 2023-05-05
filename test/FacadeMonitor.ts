@@ -216,7 +216,7 @@ describe('FacadeMonitor Contract', () => {
       })
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       const response2 = await facadeMonitor.callStatic.getTradesForBackingManager(rToken.address)
 
@@ -335,7 +335,7 @@ describe('FacadeMonitor Contract', () => {
       expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Mock auction by minting the buy tokens (in this case RSR and RToken)
       await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)

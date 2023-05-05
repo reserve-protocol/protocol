@@ -5,6 +5,7 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
+import { TradeKind } from '../../common/constants'
 import { bn, divCeil, fp } from '../../common/numbers'
 import {
   BadERC20,
@@ -216,7 +217,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs(3, [backupToken.address], [fp('1')], false)
-      await expect(backingManager.manageTokens([])).to.be.reverted // can't catch No Decimals
+      await expect(backingManager.forwardRevenue([])).to.be.reverted // can't catch No Decimals
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.reverted // can't catch No Decimals
     })
 
     it('should keep collateral working', async () => {
@@ -254,7 +256,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       // Advance time post warmup period - SOUND just regained
       await advanceTime(Number(config.warmupPeriod) + 1)
 
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
 
       // Should be trading RSR for backup token
       const trade = await getTrade(backingManager, rsr.address)
@@ -318,11 +323,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       // Advance time post warmup period - SOUND just regained
       await advanceTime(Number(config.warmupPeriod) + 1)
 
-      await expect(backingManager.manageTokens([])).to.be.revertedWith('censored')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith('censored')
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
-      await backingManager.manageTokens([])
+      await backingManager.rebalance(TradeKind.BATCH_AUCTION)
     })
 
     it('should keep collateral working', async () => {
@@ -364,7 +369,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       // Advance time post warmup period - SOUND just regained
       await advanceTime(Number(config.warmupPeriod) + 1)
 
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
 
       // Should be trading RSR for backup token
       const trade = await getTrade(backingManager, rsr.address)
@@ -376,10 +384,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     it('should be able to process any uncensored assets already accumulated at RevenueTraders', async () => {
       await rToken.connect(addr1).transfer(rTokenTrader.address, issueAmt.div(2))
       await rToken.connect(addr1).transfer(rsrTrader.address, issueAmt.div(2))
-      await expect(rTokenTrader.manageToken(rToken.address))
+      await expect(rTokenTrader.manageToken(rToken.address, TradeKind.BATCH_AUCTION))
         .to.emit(rToken, 'Transfer')
         .withArgs(rTokenTrader.address, furnace.address, issueAmt.div(2))
-      await expect(rsrTrader.manageToken(rToken.address))
+      await expect(rsrTrader.manageToken(rToken.address, TradeKind.BATCH_AUCTION))
         .to.emit(rsrTrader, 'TradeStarted')
         .withArgs(
           anyValue,

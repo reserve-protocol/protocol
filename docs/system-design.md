@@ -158,7 +158,7 @@ The minimum sized trade that can be performed, in terms of the unit of account.
 
 Setting this too high will result in auctions happening infrequently or the RToken taking a haircut when it cannot be sure it has enough staked RSR to succeed in rebalancing at par.
 
-Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `auctionLength` seconds.
+Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `batchAuctionLength` seconds.
 
 This variable should NOT be interpreted to mean that auction sizes above this value will necessarily clear. It could be the case that gas frictions are so high that auctions launched at this size are not worthy of bids.
 
@@ -217,7 +217,7 @@ The warmup period is how many seconds should pass after the basket regained the 
 Default value: `900` = 15 minutes
 Mainnet reasonable range: 0 to 604800
 
-### `auctionLength`
+### `batchAuctionLength`
 
 Dimension: `{seconds}`
 
@@ -226,11 +226,20 @@ The auction length is how many seconds long Gnosis EasyAuctions should be.
 Default value: `900` = 15 minutes
 Mainnet reasonable range: 60 to 3600
 
+### `dutchAuctionLength`
+
+Dimension: `{seconds}`
+
+The dutch auction length is how many seconds long falling-price dutch auctions should be. A longer period will result in less slippage due to better price granularity.
+
+Default value: `600` = 10 minutes
+Mainnet reasonable range: 120 to 3600
+
 ### `backingBuffer`
 
 Dimension: `{1}`
 
-The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This buffer allows collateral tokens to be periodically converted into the RToken, which is a more efficient form of revenue production than trading each individual collateral for the desired RToken. It also adds a small buffer that can prevent RSR from being seized when there are small losses due to slippage during rebalancing.
+The backing buffer is a percentage value that describes how much overcollateralization to hold in the form of RToken. This buffer allows collateral tokens to be converted into RToken, which is a more efficient form of revenue production than trading each individual collateral for the desired RToken, and also adds a small buffer that can prevent RSR from being seized when there are small losses due to slippage during rebalancing.
 
 Default value: `1e15` = 0.1%
 Mainnet reasonable range: 1e12 to 1e18

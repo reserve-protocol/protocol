@@ -10,6 +10,7 @@ import {
   BasketHandlerP1,
   BrokerP1,
   DistributorP1,
+  DutchTrade,
   FurnaceP1,
   GnosisTrade,
   MainP1,
@@ -28,7 +29,8 @@ let mainImpl: MainP1
 let revTraderImpl: RevenueTraderP1
 let rTokenImpl: RTokenP1
 let stRSRImpl: StRSRP1Votes
-let tradeImpl: GnosisTrade
+let gnosisTradeImpl: GnosisTrade
+let dutchTradeImpl: DutchTrade
 
 const writeComponentDeployment = (
   deployments: IDeployments,
@@ -80,17 +82,29 @@ async function main() {
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     Main Implementation:  ${mainImpl.address}`)
 
-  // ******************** Deploy Trade ********************************/
+  // ******************** Deploy GnosisTrade ********************************/
 
-  const TradeImplFactory = await ethers.getContractFactory('GnosisTrade')
-  tradeImpl = <GnosisTrade>await TradeImplFactory.connect(burner).deploy()
-  await tradeImpl.deployed()
+  const GnosisTradeImplFactory = await ethers.getContractFactory('GnosisTrade')
+  gnosisTradeImpl = <GnosisTrade>await GnosisTradeImplFactory.connect(burner).deploy()
+  await gnosisTradeImpl.deployed()
 
   // Write temporary deployments file
-  deployments.implementations.trade = tradeImpl.address
+  deployments.implementations.trading.gnosisTrade = gnosisTradeImpl.address
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
-  console.log(`    Trade Implementation:  ${tradeImpl.address}`)
+  console.log(`GnosisTrade Implementation:  ${gnosisTradeImpl.address}`)
+
+  // ******************** Deploy DutchTrade ********************************/
+
+  const DutchTradeImplFactory = await ethers.getContractFactory('DutchTrade')
+  dutchTradeImpl = <DutchTrade>await DutchTradeImplFactory.connect(burner).deploy()
+  await dutchTradeImpl.deployed()
+
+  // Write temporary deployments file
+  deployments.implementations.trading.dutchTrade = dutchTradeImpl.address
+  fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
+
+  console.log(`DutchTrade Implementation:  ${dutchTradeImpl.address}`)
 
   // ******************** Deploy Components ********************************/
 

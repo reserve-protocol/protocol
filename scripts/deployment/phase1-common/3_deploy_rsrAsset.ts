@@ -6,12 +6,7 @@ import { networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 import { fp } from '../../../common/numbers'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../../deployment/common'
-import {
-  priceTimeout,
-  longOracleTimeout,
-  oracleTimeout,
-  validateImplementations,
-} from '../../deployment/utils'
+import { priceTimeout, oracleTimeout, validateImplementations } from '../../deployment/utils'
 import { Asset } from '../../../typechain'
 
 let rsrAsset: Asset

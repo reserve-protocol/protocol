@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
@@ -171,16 +171,14 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
           await backingManager.maxTradeSlippage(),
           config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
         )
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+          'already collateralized'
+        )
         await expectEvents(
           backingManager
             .connect(owner)
-            .manageTokens([token0.address, token1.address, rsr.address, rToken.address]),
+            .forwardRevenue([token0.address, token1.address, rsr.address, rToken.address]),
           [
-            {
-              contract: backingManager,
-              name: 'TradeStarted',
-              emitted: false,
-            },
             {
               contract: token0,
               name: 'Transfer',
@@ -203,6 +201,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
             },
           ]
         )
+
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
         // sum of target amounts

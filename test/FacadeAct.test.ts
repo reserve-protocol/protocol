@@ -197,6 +197,51 @@ describe('FacadeAct contract', () => {
       await rToken.connect(addr1).issue(issueAmount)
     })
 
+    context('getRevenueAuctionERC20s/runRevenueAuctions', () => {
+      it('Revenues/Rewards', async () => {
+        const rewardAmountAAVE = bn('0.5e18')
+        const rewardAmountCOMP = bn('1e18')
+
+        // Setup AAVE + COMP rewards
+        await aToken.setRewards(backingManager.address, rewardAmountAAVE)
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        await backingManager.claimRewards()
+
+        // getRevenueAuctionERC20s should return reward token
+        const rTokenERC20s = await facadeAct.callStatic.getRevenueAuctionERC20s(
+          rTokenTrader.address
+        )
+        expect(rTokenERC20s.length).to.equal(2)
+        expect(rTokenERC20s[0]).to.equal(aaveToken.address)
+        expect(rTokenERC20s[1]).to.equal(compToken.address)
+        const rsrERC20s = await facadeAct.callStatic.getRevenueAuctionERC20s(rsrTrader.address)
+        expect(rsrERC20s.length).to.equal(2)
+        expect(rsrERC20s[0]).to.equal(aaveToken.address)
+        expect(rsrERC20s[1]).to.equal(compToken.address)
+
+        // Run revenue auctions for both traders
+        await facadeAct.runRevenueAuctions(rTokenTrader.address, [], rTokenERC20s)
+        await facadeAct.runRevenueAuctions(rsrTrader.address, [], rsrERC20s)
+
+        // Nothing should be settleable
+        expect((await facade.auctionsSettleable(rTokenTrader.address)).length).to.equal(0)
+        expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
+
+        // Advance time till auction ended
+        await advanceTime(config.batchAuctionLength.add(100).toString())
+
+        // Now both should be settleable
+        const rTokenSettleable = await facade.auctionsSettleable(rTokenTrader.address)
+        expect(rTokenSettleable.length).to.equal(2)
+        expect(rTokenSettleable[0]).to.equal(aaveToken.address)
+        expect(rTokenSettleable[1]).to.equal(compToken.address)
+        const rsrSettleable = await facade.auctionsSettleable(rsrTrader.address)
+        expect(rsrSettleable.length).to.equal(2)
+        expect(rsrSettleable[0]).to.equal(aaveToken.address)
+        expect(rsrSettleable[1]).to.equal(compToken.address)
+      })
+    })
+
     context('getActCalldata', () => {
       it('No call required', async () => {
         // Via Facade get next call - No action required
@@ -336,7 +381,7 @@ describe('FacadeAct contract', () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Confirm auctionsSettleable returns trade
         const settleable = await facade.auctionsSettleable(backingManager.address)
@@ -435,7 +480,7 @@ describe('FacadeAct contract', () => {
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -487,7 +532,7 @@ describe('FacadeAct contract', () => {
         expect(data).to.equal('0x')
 
         // distribute Revenue from RToken trader
-        await rTokenTrader.manageToken(rToken.address)
+        await rTokenTrader.distributeTokenToBuy()
 
         // Claim additional Revenue but only send to RSR (to trigger RSR trader directly)
         // Set f = 1
@@ -559,6 +604,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Collect revenue
@@ -578,6 +624,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Next call would start Revenue auction - RTokenTrader
@@ -590,6 +637,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rTokenTrader, 'TradeStarted')
@@ -611,6 +659,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rsrTrader, 'TradeStarted')
@@ -620,7 +669,7 @@ describe('FacadeAct contract', () => {
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -646,6 +695,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rTokenTrader, 'TradeSettled')
@@ -661,10 +711,29 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
+      })
+
+      it('Revenues - Should handle ERC20s with invalid claim logic', async () => {
+        // Set the cToken to revert
+        await cToken.setRevertClaimRewards(true)
+
+        const rewardAmountCOMP = bn('0.5e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Via Facade get next call - will attempt to claim
+        const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(ZERO_ADDRESS)
+        expect(data).to.equal('0x')
+
+        // Check status - nothing claimed
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       })
 
       it('Revenues - Should handle multiple assets with same reward token', async () => {
@@ -833,51 +902,6 @@ describe('FacadeAct contract', () => {
         // RToken forwarded
         expect(await rToken.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.balanceOf(rTokenTrader.address)).to.equal(hndAmt)
-      })
-    })
-
-    context('getRevenueAuctionERC20s/runRevenueAuctions', () => {
-      it('Revenues/Rewards', async () => {
-        const rewardAmountAAVE = bn('0.5e18')
-        const rewardAmountCOMP = bn('1e18')
-
-        // Setup AAVE + COMP rewards
-        await aToken.setRewards(backingManager.address, rewardAmountAAVE)
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-        await backingManager.claimRewards()
-
-        // getRevenueAuctionERC20s should return reward token
-        const rTokenERC20s = await facadeAct.callStatic.getRevenueAuctionERC20s(
-          rTokenTrader.address
-        )
-        expect(rTokenERC20s.length).to.equal(2)
-        expect(rTokenERC20s[0]).to.equal(aaveToken.address)
-        expect(rTokenERC20s[1]).to.equal(compToken.address)
-        const rsrERC20s = await facadeAct.callStatic.getRevenueAuctionERC20s(rsrTrader.address)
-        expect(rsrERC20s.length).to.equal(2)
-        expect(rsrERC20s[0]).to.equal(aaveToken.address)
-        expect(rsrERC20s[1]).to.equal(compToken.address)
-
-        // Run revenue auctions for both traders
-        await facadeAct.runRevenueAuctions(rTokenTrader.address, [], rTokenERC20s)
-        await facadeAct.runRevenueAuctions(rsrTrader.address, [], rsrERC20s)
-
-        // Nothing should be settleable
-        expect((await facade.auctionsSettleable(rTokenTrader.address)).length).to.equal(0)
-        expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
-
-        // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
-
-        // Now both should be settleable
-        const rTokenSettleable = await facade.auctionsSettleable(rTokenTrader.address)
-        expect(rTokenSettleable.length).to.equal(2)
-        expect(rTokenSettleable[0]).to.equal(aaveToken.address)
-        expect(rTokenSettleable[1]).to.equal(compToken.address)
-        const rsrSettleable = await facade.auctionsSettleable(rsrTrader.address)
-        expect(rsrSettleable.length).to.equal(2)
-        expect(rsrSettleable[0]).to.equal(aaveToken.address)
-        expect(rsrSettleable[1]).to.equal(compToken.address)
       })
     })
   })
