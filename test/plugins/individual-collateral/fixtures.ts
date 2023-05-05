@@ -9,6 +9,7 @@ import {
   AssetRegistryP1,
   BackingManagerP1,
   BasketHandlerP1,
+  BasketLibP1,
   BrokerP1,
   DeployerP0,
   DeployerP1,
@@ -98,6 +99,10 @@ export const getDefaultFixture = async function (salt: string) {
       await TradingLibFactory.deploy()
     )
 
+    // Deploy BasketLib external library
+    const BasketLibFactory: ContractFactory = await ethers.getContractFactory('BasketLibP1')
+    const basketLib: BasketLibP1 = <BasketLibP1>await BasketLibFactory.deploy()
+
     // Deploy FacadeWriteLib external library
     const facadeWriteLib = await (await ethers.getContractFactory('FacadeWriteLib')).deploy()
 
@@ -143,7 +148,8 @@ export const getDefaultFixture = async function (salt: string) {
       )
 
       const BskHandlerImplFactory: ContractFactory = await ethers.getContractFactory(
-        'BasketHandlerP1'
+        'BasketHandlerP1',
+        { libraries: { BasketLibP1: basketLib.address } }
       )
       const bskHndlrImpl: BasketHandlerP1 = <BasketHandlerP1>await BskHandlerImplFactory.deploy()
 

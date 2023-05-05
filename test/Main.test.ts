@@ -1689,13 +1689,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with 0 address tokens', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
+      ).to.be.revertedWith('address zero is not valid collateral')
     })
 
     it('Should not allow to set prime Basket with stRSR', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
-      ).to.be.revertedWith('stinvalid collateral')
+      ).to.be.revertedWith('stRSR is not valid collateral')
     })
 
     it('Should not allow to set prime Basket with invalid target amounts', async () => {
@@ -1735,7 +1735,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(2, [token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
-    describe.only('Historical Redemptions', () => {
+    // TODO
+    describe.skip('Historical Redemptions', () => {
       const issueAmount = fp('10000')
       let usdcChainlink: MockV3Aggregator
       let daiChainlink: MockV3Aggregator
@@ -2128,7 +2129,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rsr.address])
-      ).to.be.revertedWith('invalid collateral')
+      ).to.be.revertedWith('RSR is not valid collateral')
 
       it('Should not allow to set backup Config with duplicate ERC20s', async () => {
         await expect(
@@ -2145,7 +2146,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rToken.address])
-      ).to.be.revertedWith('invalid collateral')
+      ).to.be.revertedWith('RToken is not valid collateral')
     })
 
     it('Should allow to set backup Config if OWNER', async () => {

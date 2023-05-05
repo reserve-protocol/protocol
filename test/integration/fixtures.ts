@@ -14,6 +14,7 @@ import {
   ATokenMock,
   BackingManagerP1,
   BasketHandlerP1,
+  BasketLibP1,
   BrokerP1,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -670,6 +671,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     await TradingLibFactory.deploy()
   )
 
+  // Deploy BasketLib external library
+  const BasketLibFactory: ContractFactory = await ethers.getContractFactory('BasketLibP1')
+  const basketLib: BasketLibP1 = <BasketLibP1>await BasketLibFactory.deploy()
+
   // Deploy RSR Asset
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
   const rsrAsset: Asset = <Asset>(
@@ -711,7 +716,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
 
     const BskHandlerImplFactory: ContractFactory = await ethers.getContractFactory(
-      'BasketHandlerP1'
+      'BasketHandlerP1',
+      { libraries: { BasketLibP1: basketLib.address } }
     )
     const bskHndlrImpl: BasketHandlerP1 = <BasketHandlerP1>await BskHandlerImplFactory.deploy()
 
