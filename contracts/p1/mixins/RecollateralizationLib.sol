@@ -87,7 +87,7 @@ library RecollateralizationLibP1 {
         IBasketHandler bh = main.basketHandler();
         ntpCtx.quantities = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            ntpCtx.quantities[i] = bh.quantity(reg.erc20s[i]);
+            ntpCtx.quantities[i] = bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
         }
 
         // ============================
