@@ -1048,75 +1048,32 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
 
-      // TODO
-      it.skip('Should revert if empty redemption #fast', async function () {
-        // Eliminate most token balances
-        const bal = issueAmount.div(4)
-        await token0.connect(owner).burn(backingManager.address, bal)
-        await token1.connect(owner).burn(backingManager.address, toBNDecimals(bal, 6))
-        await token2.connect(owner).burn(backingManager.address, bal)
-
-        // Should not revert with empty redemption yet
-        await rToken.connect(addr1).redeem(issueAmount.div(2))
-        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
-
-        // Burn the rest
-        await token3
-          .connect(owner)
-          .burn(backingManager.address, await token3.balanceOf(backingManager.address))
-
-        // Now it should revert
-        await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.be.revertedWith(
-          'empty redemption'
-        )
-
-        // Check values
-        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
-      })
-
-      it('Should revert if undercollateralized #fast', async function () {
+      it('Should revert if undercollateralized from missing balance #fast', async function () {
         await token0.connect(owner).burn(backingManager.address, issueAmount.div(4))
         await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.be.revertedWith(
           'partial redemption; use redeemToCustom'
         )
       })
 
-      it('Should prorate redemption if basket is DISABLED from fallen refPerTok() #fast', async function () {
+      it('Should revert if undercollateralized from refPerTok decrease #fast', async function () {
         // Default immediately
         await token2.setExchangeRate(fp('0.1')) // 90% decrease
 
         // Even though a single BU requires 10x token2 as before, it should still hand out evenly
 
         // 1st redemption
-        await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.emit(rToken, 'Redemption')
-        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
-        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
-        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(8)))
-
-        // 2nd redemption
-        await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.emit(rToken, 'Redemption')
-        expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
-        expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).be.revertedWith(
+          'partial redemption; use redeemToCustom'
+        )
       })
 
       it('Should not redeem() unregistered collateral #fast', async function () {
         // Unregister collateral2
         await assetRegistry.connect(owner).unregister(collateral2.address)
 
-        await expect(rToken.connect(addr1).redeem(issueAmount)).revertedWith('erc20 unregistered')
-      })
-
-      it('Should redeem prorata when refPerTok() is 0 #fast', async function () {
-        // Set refPerTok to 0
-        await token2.setExchangeRate(fp('0'))
-
-        // Redemption
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
-        expect(await rToken.totalSupply()).to.equal(0)
-        expect(await token0.balanceOf(addr1.address)).to.be.equal(initialBal)
-        expect(await token1.balanceOf(addr1.address)).to.be.equal(initialBal)
-        expect(await token2.balanceOf(addr1.address)).to.be.equal(initialBal)
-        expect(await token3.balanceOf(addr1.address)).to.be.equal(initialBal)
+        await expect(rToken.connect(addr1).redeem(issueAmount)).revertedWith(
+          'partial redemption; use redeemToCustom'
+        )
       })
 
       it('Should not overflow BU exchange rate above 1e9 on redeem', async function () {
@@ -1129,6 +1086,24 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await whileImpersonating(backingManager.address, async (signer) => {
           await rToken.connect(signer).setBasketsNeeded(fp('1e9'))
         })
+
+        // Add extra backing
+        await token0.mint(
+          backingManager.address,
+          fp('1e9').mul(await token0.balanceOf(backingManager.address))
+        )
+        await token1.mint(
+          backingManager.address,
+          fp('1e9').mul(await token1.balanceOf(backingManager.address))
+        )
+        await token2.mint(
+          backingManager.address,
+          fp('1e9').mul(await token2.balanceOf(backingManager.address))
+        )
+        await token3.mint(
+          backingManager.address,
+          fp('1e9').mul(await token3.balanceOf(backingManager.address))
+        )
 
         const redeemAmount: BigNumber = bn('1.5e9')
 
@@ -1390,7 +1365,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
     })
 
-    context.only('Historical redemptions with issued RTokens', function () {
+    context('Custom redemption', function () {
       let issueAmount: BigNumber
 
       beforeEach(async function () {
@@ -1401,6 +1376,27 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         // Issue rTokens
         await rToken.connect(addr1).issue(issueAmount)
+      })
+
+      it('Should revert if zero amount #fast', async function () {
+        const zero: BigNumber = bn('0')
+        await expect(rToken.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
+      })
+
+      it('Should revert if no balance of RToken #fast', async function () {
+        const redeemAmount: BigNumber = bn('20000e18')
+        await expect(
+          rToken
+            .connect(addr2)
+            .redeemToCustom(
+              addr2.address,
+              redeemAmount,
+              [await basketHandler.nonce()],
+              [fp('1')],
+              [],
+              []
+            )
+        ).to.be.revertedWith('insufficient balance')
       })
 
       it('Should redeem RTokens correctly', async function () {
@@ -1637,21 +1633,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Should not revert with empty redemption yet
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteCustomRedemption(
-          basketNonces,
-          portions,
-          issueAmount.div(2)
-        )
+        await expect(
+          basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount.div(2))
+        ).to.not.be.reverted
         await rToken
           .connect(addr1)
-          .redeemToCustom(
-            addr1.address,
-            issueAmount.div(2),
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
+          .redeemToCustom(addr1.address, issueAmount.div(2), basketNonces, portions, [], [])
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
 
         // Burn the rest
@@ -1663,41 +1650,43 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
-              addr1.address,
-              issueAmount.div(2),
-              basketNonces,
-              portions,
-              quote.erc20s,
-              quote.quantities
-            )
+            .redeemToCustom(addr1.address, issueAmount.div(2), basketNonces, portions, [], [])
         ).to.be.revertedWith('empty redemption')
 
         // Check values
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
       })
 
-      it('Should revert if different basketNonce #fast', async function () {
-        // Should fail if revertOnPartialRedemption is true
-        const basketNonces = [1]
+      it('Should enforce primeNonce <-> reference nonce relationship #fast', async function () {
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteCustomRedemption(
-          basketNonces,
-          portions,
-          issueAmount.div(2)
-        )
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
-              addr1.address,
-              issueAmount.div(2),
-              [2],
-              portions,
-              quote.erc20s,
-              quote.quantities
-            )
+            .redeemToCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
         ).to.be.revertedWith('invalid basketNonce')
+
+        // Bump primeNonce
+        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+
+        // Old basket is no longer redeemable
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemToCustom(addr1.address, issueAmount.div(2), [1], portions, [], [])
+        ).to.be.revertedWith('invalid basketNonce')
+
+        // Nonce 2 still doesn't have a reference basket yet
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemToCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
+        ).to.be.revertedWith('invalid basketNonce')
+
+        // Refresh reference basket
+        await basketHandler.connect(owner).refreshBasket()
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
       })
 
       it('Should prorate redemption if basket is DISABLED from fallen refPerTok() #fast', async function () {
@@ -1747,25 +1736,44 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
       })
 
-      it('Should not redeem() unregistered collateral #fast', async function () {
+      it('Should not revert when redeeming unregistered collateral #fast', async function () {
         // Unregister collateral2
 
         const basketNonces = [1]
         const portions = [fp('1')]
-        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
         await assetRegistry.connect(owner).unregister(collateral2.address)
-        await expect(
-          rToken
-            .connect(addr1)
-            .redeemToCustom(
-              addr1.address,
-              issueAmount,
-              basketNonces,
-              portions,
-              quote.erc20s,
-              quote.quantities
-            )
-        ).revertedWith('erc20 unregistered')
+        const quote = await basketHandler.quoteCustomRedemption(
+          basketNonces,
+          portions,
+          issueAmount.div(2)
+        )
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(
+            addr1.address,
+            issueAmount.div(2),
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+
+        // Adding an unregistered ERC20 to the erc20sOut should not break anything
+        expect(await assetRegistry.isRegistered(token2.address)).to.equal(false)
+        const neweRC20s = JSON.parse(JSON.stringify(quote.erc20s))
+        const newQuantities = JSON.parse(JSON.stringify(quote.quantities))
+        neweRC20s.push(token2.address)
+        newQuantities.push(fp('0'))
+        await rToken
+          .connect(addr1)
+          .redeemToCustom(
+            addr1.address,
+            issueAmount.div(2),
+            basketNonces,
+            portions,
+            neweRC20s,
+            newQuantities
+          )
       })
 
       it('Should redeem prorata when refPerTok() is 0 #fast', async function () {
@@ -1938,7 +1946,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             .connect(addr1)
             .redeemToCustom(
               addr1.address,
-              redeemAmount.add(1),
+              redeemAmount,
               basketNonces,
               portions,
               quote2.erc20s,
@@ -2012,22 +2020,32 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             portions,
             redeemAmount.add(1)
           )
-          await rToken
-            .connect(addr1)
-            .redeemToCustom(
-              addr1.address,
-              redeemAmount.add(1),
-              basketNonces,
-              portions,
-              quote.erc20s,
-              quote.quantities
-            )
-          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.revertedWith(
-            'supply change throttled'
-          )
+          await expect(
+            rToken
+              .connect(addr1)
+              .redeemToCustom(
+                addr1.address,
+                redeemAmount.add(1),
+                basketNonces,
+                portions,
+                quote.erc20s,
+                quote.quantities
+              )
+          ).to.be.revertedWith('supply change throttled')
 
           // amtRate redemption should succeed
-          await expect(rToken.connect(addr1).redeem(redeemAmount)).to.emit(rToken, 'Redemption')
+          await expect(
+            rToken
+              .connect(addr1)
+              .redeemToCustom(
+                addr1.address,
+                redeemAmount,
+                basketNonces,
+                portions,
+                quote.erc20s,
+                quote.quantities
+              )
+          ).to.emit(rToken, 'Redemption')
 
           // Check redemption throttle is 0
           expect(await rToken.redemptionAvailable()).to.equal(bn(0))

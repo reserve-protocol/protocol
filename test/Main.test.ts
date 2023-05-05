@@ -1736,7 +1736,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     // TODO
-    describe.skip('Historical Redemptions', () => {
+    describe('Custom Redemption', () => {
       const issueAmount = fp('10000')
       let usdcChainlink: MockV3Aggregator
       let daiChainlink: MockV3Aggregator
@@ -1766,7 +1766,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await rToken.connect(addr1).issue(issueAmount)
       })
 
-      const expectEqualArrays = (arr1: Array<any>, arr2: Array<any>) => {
+      const expectEqualArrays = (arr1: Array<unknown>, arr2: Array<unknown>) => {
         expect(arr1.length).equal(arr2.length)
         for (let i = 0; i < arr1.length; i++) {
           expect(arr1[i]).equal(arr2[i])
