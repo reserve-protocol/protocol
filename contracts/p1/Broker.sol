@@ -9,6 +9,7 @@ import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/Component.sol";
+import "../plugins/trading/DutchTrade.sol";
 import "../plugins/trading/GnosisTrade.sol";
 
 // Gnosis: uint96 ~= 7e28
@@ -22,19 +23,23 @@ contract BrokerP1 is ComponentP1, IBroker {
     using Clones for address;
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
+    uint48 public constant MIN_AUCTION_LENGTH = ONE_BLOCK; // {s} min auction length - 1 block
+    // warning: blocktime <= 12s assumption
 
     IBackingManager private backingManager;
     IRevenueTrader private rsrTrader;
     IRevenueTrader private rTokenTrader;
 
-    // The trade contract to clone on openTrade(). Governance parameter.
-    ITrade public tradeImplementation;
+    /// @custom:oz-renamed-from tradeImplementation
+    // The Batch Auction Trade contract to clone on openTrade(). Governance parameter.
+    ITrade public batchTradeImplementation;
 
-    // The Gnosis contract to init each trade with. Governance parameter.
+    // The Gnosis contract to init batch auction trades with. Governance parameter.
     IGnosis public gnosis;
 
-    // {s} the length of an auction. Governance parameter.
-    uint48 public auctionLength;
+    /// @custom:oz-renamed-from auctionLength
+    // {s} the length of a Gnosis EasyAuction. Governance parameter.
+    uint48 public batchAuctionLength;
 
     // Whether trading is disabled.
     // Initially false. Settable by OWNER. A trade clone can set it to true via reportViolation()
@@ -43,6 +48,14 @@ contract BrokerP1 is ComponentP1, IBroker {
     // The set of ITrade (clone) addresses this contract has created
     mapping(address => bool) private trades;
 
+    // === 3.0.0 ===
+
+    // The Dutch Auction Trade contract to clone on openTrade(). Governance parameter.
+    ITrade public dutchTradeImplementation;
+
+    // {s} the length of a Dutch Auction. Governance parameter.
+    uint48 public dutchAuctionLength;
+
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
 
@@ -50,8 +63,10 @@ contract BrokerP1 is ComponentP1, IBroker {
     function init(
         IMain main_,
         IGnosis gnosis_,
-        ITrade tradeImplementation_,
-        uint48 auctionLength_
+        ITrade batchTradeImplementation_,
+        uint48 batchAuctionLength_,
+        ITrade dutchTradeImplementation_,
+        uint48 dutchAuctionLength_
     ) external initializer {
         __Component_init(main_);
 
@@ -60,11 +75,14 @@ contract BrokerP1 is ComponentP1, IBroker {
         rTokenTrader = main_.rTokenTrader();
 
         setGnosis(gnosis_);
-        setTradeImplementation(tradeImplementation_);
-        setAuctionLength(auctionLength_);
+        setBatchTradeImplementation(batchTradeImplementation_);
+        setBatchAuctionLength(batchAuctionLength_);
+        setDutchTradeImplementation(dutchTradeImplementation_);
+        setDutchAuctionLength(dutchAuctionLength_);
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @dev Requires setting an allowance in advance
     /// @custom:interaction CEI
     // checks:
@@ -76,7 +94,11 @@ contract BrokerP1 is ComponentP1, IBroker {
     // actions:
     //   Transfers req.sellAmount of req.sell.erc20 from caller to `trade`
     //   Calls trade.init() with appropriate parameters
-    function openTrade(TradeRequest memory req) external notTradingPausedOrFrozen returns (ITrade) {
+    function openTrade(TradeKind kind, TradeRequest memory req)
+        external
+        notTradingPausedOrFrozen
+        returns (ITrade)
+    {
         require(!disabled, "broker disabled");
 
         address caller = _msgSender();
@@ -87,28 +109,11 @@ contract BrokerP1 is ComponentP1, IBroker {
             "only traders"
         );
 
-        // In the future we'll have more sophisticated choice logic here, probably by trade size
-        GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
-        trades[address(trade)] = true;
-
-        // Apply Gnosis EasyAuction-specific resizing of req, if needed: Ensure that
-        // max(sellAmount, minBuyAmount) <= maxTokensAllowed, while maintaining their proportion
-        uint256 maxQty = (req.minBuyAmount > req.sellAmount) ? req.minBuyAmount : req.sellAmount;
-
-        if (maxQty > GNOSIS_MAX_TOKENS) {
-            req.sellAmount = mulDiv256(req.sellAmount, GNOSIS_MAX_TOKENS, maxQty, CEIL);
-            req.minBuyAmount = mulDiv256(req.minBuyAmount, GNOSIS_MAX_TOKENS, maxQty, FLOOR);
+        // Must be updated when new TradeKinds are created
+        if (kind == TradeKind.BATCH_AUCTION) {
+            return newBatchAuction(req, caller);
         }
-
-        // == Interactions ==
-        IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
-            caller,
-            address(trade),
-            req.sellAmount
-        );
-
-        trade.init(this, caller, gnosis, auctionLength, req);
-        return trade;
+        return newDutchAuction(req, ITrading(caller));
     }
 
     /// Disable the broker until re-enabled by governance
@@ -132,24 +137,45 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     /// @custom:governance
-    function setTradeImplementation(ITrade newTradeImplementation) public governance {
+    function setBatchTradeImplementation(ITrade newTradeImplementation) public governance {
         require(
             address(newTradeImplementation) != address(0),
-            "invalid Trade Implementation address"
+            "invalid batchTradeImplementation address"
         );
 
-        emit TradeImplementationSet(tradeImplementation, newTradeImplementation);
-        tradeImplementation = newTradeImplementation;
+        emit BatchTradeImplementationSet(batchTradeImplementation, newTradeImplementation);
+        batchTradeImplementation = newTradeImplementation;
     }
 
     /// @custom:governance
-    function setAuctionLength(uint48 newAuctionLength) public governance {
+    function setBatchAuctionLength(uint48 newAuctionLength) public governance {
         require(
-            newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
-            "invalid auctionLength"
+            newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH,
+            "invalid batchAuctionLength"
         );
-        emit AuctionLengthSet(auctionLength, newAuctionLength);
-        auctionLength = newAuctionLength;
+        emit BatchAuctionLengthSet(batchAuctionLength, newAuctionLength);
+        batchAuctionLength = newAuctionLength;
+    }
+
+    /// @custom:governance
+    function setDutchTradeImplementation(ITrade newTradeImplementation) public governance {
+        require(
+            address(newTradeImplementation) != address(0),
+            "invalid dutchTradeImplementation address"
+        );
+
+        emit DutchTradeImplementationSet(dutchTradeImplementation, newTradeImplementation);
+        dutchTradeImplementation = newTradeImplementation;
+    }
+
+    /// @custom:governance
+    function setDutchAuctionLength(uint48 newAuctionLength) public governance {
+        require(
+            newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH,
+            "invalid dutchAuctionLength"
+        );
+        emit DutchAuctionLengthSet(dutchAuctionLength, newAuctionLength);
+        dutchAuctionLength = newAuctionLength;
     }
 
     /// @custom:governance
@@ -158,10 +184,52 @@ contract BrokerP1 is ComponentP1, IBroker {
         disabled = disabled_;
     }
 
+    // === Private ===
+
+    function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
+        require(batchAuctionLength > 0, "batchAuctionLength unset");
+        GnosisTrade trade = GnosisTrade(address(batchTradeImplementation).clone());
+        trades[address(trade)] = true;
+
+        // Apply Gnosis EasyAuction-specific resizing of req, if needed: Ensure that
+        // max(sellAmount, minBuyAmount) <= maxTokensAllowed, while maintaining their proportion
+        uint256 maxQty = (req.minBuyAmount > req.sellAmount) ? req.minBuyAmount : req.sellAmount;
+
+        if (maxQty > GNOSIS_MAX_TOKENS) {
+            req.sellAmount = mulDiv256(req.sellAmount, GNOSIS_MAX_TOKENS, maxQty, CEIL);
+            req.minBuyAmount = mulDiv256(req.minBuyAmount, GNOSIS_MAX_TOKENS, maxQty, FLOOR);
+        }
+
+        // == Interactions ==
+        IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
+            caller,
+            address(trade),
+            req.sellAmount
+        );
+        trade.init(this, caller, gnosis, batchAuctionLength, req);
+        return trade;
+    }
+
+    function newDutchAuction(TradeRequest memory req, ITrading caller) private returns (ITrade) {
+        require(dutchAuctionLength > 0, "dutchAuctionLength unset");
+        DutchTrade trade = DutchTrade(address(dutchTradeImplementation).clone());
+        trades[address(trade)] = true;
+
+        // == Interactions ==
+        IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
+            address(caller),
+            address(trade),
+            req.sellAmount
+        );
+
+        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength);
+        return trade;
+    }
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[44] private __gap;
+    uint256[43] private __gap;
 }

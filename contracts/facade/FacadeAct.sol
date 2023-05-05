@@ -92,11 +92,10 @@ contract FacadeAct is IFacadeAct {
             ) {
                 // try: backingManager.manageTokens([])
 
-                IERC20[] memory empty = new IERC20[](0);
-                try cache.bm.manageTokens(empty) {
+                try cache.bm.rebalance(TradeKind.BATCH_AUCTION) {
                     return (
                         address(cache.bm),
-                        abi.encodeWithSelector(cache.bm.manageTokens.selector, empty)
+                        abi.encodeWithSelector(cache.bm.rebalance.selector, TradeKind.BATCH_AUCTION)
                     );
                 } catch {}
             } else {
@@ -138,14 +137,15 @@ contract FacadeAct is IFacadeAct {
 
                     // rTokenTrader: check if we can start any trades
                     uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
-                    try cache.rTokenTrader.manageToken(erc20s[i]) {
+                    try cache.rTokenTrader.manageToken(erc20s[i], TradeKind.BATCH_AUCTION) {
                         if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
                             // A trade started; do cache.rTokenTrader.manageToken
                             return (
                                 address(cache.rTokenTrader),
                                 abi.encodeWithSelector(
                                     cache.rTokenTrader.manageToken.selector,
-                                    erc20s[i]
+                                    erc20s[i],
+                                    TradeKind.BATCH_AUCTION
                                 )
                             );
                         }
@@ -153,14 +153,15 @@ contract FacadeAct is IFacadeAct {
 
                     // rsrTrader: check if we can start any trades
                     tradesOpen = cache.rsrTrader.tradesOpen();
-                    try cache.rsrTrader.manageToken(erc20s[i]) {
+                    try cache.rsrTrader.manageToken(erc20s[i], TradeKind.BATCH_AUCTION) {
                         if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
                             // A trade started; do cache.rsrTrader.manageToken
                             return (
                                 address(cache.rsrTrader),
                                 abi.encodeWithSelector(
                                     cache.rsrTrader.manageToken.selector,
-                                    erc20s[i]
+                                    erc20s[i],
+                                    TradeKind.BATCH_AUCTION
                                 )
                             );
                         }
@@ -172,7 +173,7 @@ contract FacadeAct is IFacadeAct {
                 if (cache.bh.status() == CollateralStatus.SOUND) {
                     IAsset rsrAsset = cache.reg.toAsset(cache.rsr);
                     uint192 initialStRSRBal = rsrAsset.bal(address(cache.stRSR)); // {RSR}
-                    try cache.bm.manageTokens(erc20s) {
+                    try cache.bm.forwardRevenue(erc20s) {
                         // if this unblocked an auction in either revenue trader,
                         // then prepare backingManager.manageTokens
                         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -183,7 +184,12 @@ contract FacadeAct is IFacadeAct {
                                 if (address(erc20s[i]) != address(rToken)) {
                                     // rTokenTrader: check if we can start any trades
                                     uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
-                                    try cache.rTokenTrader.manageToken(erc20s[i]) {
+                                    try
+                                        cache.rTokenTrader.manageToken(
+                                            erc20s[i],
+                                            TradeKind.BATCH_AUCTION
+                                        )
+                                    {
                                         if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
                                             // always forward RToken + the ERC20
                                             twoERC20s[0] = address(rToken);
@@ -193,7 +199,7 @@ contract FacadeAct is IFacadeAct {
                                             return (
                                                 address(cache.bm),
                                                 abi.encodeWithSelector(
-                                                    cache.bm.manageTokens.selector,
+                                                    cache.bm.forwardRevenue.selector,
                                                     twoERC20s
                                                 )
                                             );
@@ -207,7 +213,12 @@ contract FacadeAct is IFacadeAct {
                                 if (erc20s[i] != cache.rsr) {
                                     // rsrTrader: check if we can start any trades
                                     uint48 tradesOpen = cache.rsrTrader.tradesOpen();
-                                    try cache.rsrTrader.manageToken(erc20s[i]) {
+                                    try
+                                        cache.rsrTrader.manageToken(
+                                            erc20s[i],
+                                            TradeKind.BATCH_AUCTION
+                                        )
+                                    {
                                         if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
                                             // always forward RSR + the ERC20
                                             twoERC20s[0] = address(cache.rsr);
@@ -217,7 +228,7 @@ contract FacadeAct is IFacadeAct {
                                             return (
                                                 address(cache.bm),
                                                 abi.encodeWithSelector(
-                                                    cache.bm.manageTokens.selector,
+                                                    cache.bm.forwardRevenue.selector,
                                                     twoERC20s
                                                 )
                                             );
@@ -231,18 +242,22 @@ contract FacadeAct is IFacadeAct {
                         {
                             IAsset rTokenAsset = cache.reg.toAsset(IERC20(address(rToken)));
                             (uint192 lotLow, ) = rTokenAsset.lotPrice();
-
                             if (
-                                rTokenAsset.bal(address(cache.rTokenTrader)) >
+                                rTokenAsset.bal(address(cache.rTokenTrader)) >=
                                 minTradeSize(cache.rTokenTrader.minTradeVolume(), lotLow)
                             ) {
-                                try cache.rTokenTrader.manageToken(IERC20(address(rToken))) {
+                                try
+                                    cache.rTokenTrader.manageToken(
+                                        IERC20(address(rToken)),
+                                        TradeKind.BATCH_AUCTION
+                                    )
+                                {
                                     address[] memory oneERC20 = new address[](1);
                                     oneERC20[0] = address(rToken);
                                     return (
                                         address(cache.bm),
                                         abi.encodeWithSelector(
-                                            cache.bm.manageTokens.selector,
+                                            cache.bm.forwardRevenue.selector,
                                             oneERC20
                                         )
                                     );
@@ -256,13 +271,13 @@ contract FacadeAct is IFacadeAct {
                             (uint192 lotLow, ) = rsrAsset.lotPrice();
 
                             if (
-                                rsrAsset.bal(address(cache.stRSR)) - initialStRSRBal >
+                                rsrAsset.bal(address(cache.stRSR)) - initialStRSRBal >=
                                 minTradeSize(cache.rsrTrader.minTradeVolume(), lotLow)
                             ) {
                                 IERC20[] memory empty = new IERC20[](0);
                                 return (
                                     address(cache.bm),
-                                    abi.encodeWithSelector(cache.bm.manageTokens.selector, empty)
+                                    abi.encodeWithSelector(cache.bm.forwardRevenue.selector, empty)
                                 );
                             }
                         }
@@ -374,7 +389,10 @@ contract FacadeAct is IFacadeAct {
         if (tradesOpen != 0) return false;
 
         // Try to launch auctions
-        bm.manageTokensSortedOrder(new IERC20[](0));
+        // solhint-disable-next-line no-empty-blocks
+        try bm.rebalance(TradeKind.BATCH_AUCTION) {} catch {
+            return false;
+        }
         return bm.tradesOpen() > 0;
     }
 
@@ -388,7 +406,7 @@ contract FacadeAct is IFacadeAct {
         Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
 
         // Forward ALL revenue
-        revenueTrader.main().backingManager().manageTokens(reg.erc20s);
+        revenueTrader.main().backingManager().forwardRevenue(reg.erc20s);
 
         // Calculate which erc20s can have auctions started
         uint256 num;
@@ -402,7 +420,7 @@ contract FacadeAct is IFacadeAct {
 
             uint256 tradesOpen = revenueTrader.tradesOpen();
 
-            try revenueTrader.manageToken(reg.erc20s[i]) {
+            try revenueTrader.manageToken(reg.erc20s[i], TradeKind.BATCH_AUCTION) {
                 if (revenueTrader.tradesOpen() - tradesOpen > 0) {
                     unfiltered[num] = reg.erc20s[i];
                     ++num;
@@ -438,11 +456,11 @@ contract FacadeAct is IFacadeAct {
         }
 
         // Transfer revenue backingManager -> revenueTrader
-        revenueTrader.main().backingManager().manageTokens(toStart);
+        revenueTrader.main().backingManager().forwardRevenue(toStart);
 
         // Start auctions
         for (uint256 i = 0; i < toStart.length; ++i) {
-            revenueTrader.manageToken(toStart[i]);
+            revenueTrader.manageToken(toStart[i], TradeKind.BATCH_AUCTION);
         }
     }
 }

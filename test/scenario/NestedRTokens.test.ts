@@ -3,7 +3,7 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
+import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { withinQuad } from '../utils/matchers'
 import { toSellAmt, toMinBuyAmt } from '../utils/trades'
@@ -207,9 +207,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       await two.assetRegistry.refresh()
       expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      await expect(two.backingManager.manageTokens([])).to.not.emit(
-        two.backingManager,
-        'TradeStarted'
+      await expect(two.backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
       )
 
       // Launch recollateralization auction in inner RToken
@@ -221,7 +220,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         ORACLE_ERROR,
         await one.backingManager.maxTradeSlippage()
       )
-      await expect(one.backingManager.manageTokens([]))
+      await expect(one.backingManager.rebalance(TradeKind.BATCH_AUCTION))
         .to.emit(one.backingManager, 'TradeStarted')
         .withArgs(
           anyValue,
@@ -235,9 +234,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       await two.assetRegistry.refresh()
       expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      await expect(two.backingManager.manageTokens([])).to.not.emit(
-        two.backingManager,
-        'TradeStarted'
+      await expect(two.backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
       )
 
       // Prices should be aware

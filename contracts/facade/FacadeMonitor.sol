@@ -58,7 +58,7 @@ contract FacadeMonitor {
 
         // Let's check if there are any trades we can start.
         uint48 tradesOpen = backingManager.tradesOpen();
-        backingManager.manageTokens(erc20s);
+        backingManager.rebalance(TradeKind.DUTCH_AUCTION);
         if (backingManager.tradesOpen() - tradesOpen != 0) {
             response.tradesToBeStarted = erc20s;
         }
@@ -116,7 +116,7 @@ contract FacadeMonitor {
         IERC20[] memory tradesToBeStarted = new IERC20[](erc20Count);
 
         for (uint256 i = 0; i < erc20Count; ) {
-            trader.manageToken(erc20s[i]);
+            trader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION);
 
             uint48 newTradesOpen = trader.tradesOpen();
 

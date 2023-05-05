@@ -9,13 +9,6 @@ import "../../interfaces/IBroker.sol";
 import "../../interfaces/IGnosis.sol";
 import "../../interfaces/ITrade.sol";
 
-enum TradeStatus {
-    NOT_STARTED, // before init()
-    OPEN, // after init() and before settle()
-    CLOSED, // after settle()
-    PENDING // during init() or settle() (reentrancy protection)
-}
-
 // Modifications to this contract's state must only ever be made when status=PENDING!
 
 /// Trade contract against the Gnosis EasyAuction mechanism
@@ -24,6 +17,7 @@ contract GnosisTrade is ITrade {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // ==== Constants
+    TradeKind public constant KIND = TradeKind.BATCH_AUCTION;
     uint256 public constant FEE_DENOMINATOR = 1000;
 
     // Upper bound for the max number of orders we're happy to have the auction clear in;
@@ -82,7 +76,7 @@ contract GnosisTrade is ITrade {
         IBroker broker_,
         address origin_,
         IGnosis gnosis_,
-        uint48 auctionLength,
+        uint48 batchAuctionLength,
         TradeRequest calldata req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sellAmount <= type(uint96).max, "sellAmount too large");
@@ -100,7 +94,7 @@ contract GnosisTrade is ITrade {
         broker = broker_;
         origin = origin_;
         gnosis = gnosis_;
-        endTime = uint48(block.timestamp) + auctionLength;
+        endTime = uint48(block.timestamp) + batchAuctionLength;
 
         // {buyTok/sellTok}
         worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(

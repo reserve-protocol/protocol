@@ -11,6 +11,8 @@ contract CTokenVaultMock is ERC20Mock, IRewardable {
     CTokenMock public asset;
     IComptroller public comptroller;
 
+    bool public revertClaimRewards;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -40,6 +42,9 @@ contract CTokenVaultMock is ERC20Mock, IRewardable {
     }
 
     function claimRewards() external {
+        if (revertClaimRewards) {
+            revert("reverting claim rewards");
+        }
         uint256 oldBal = comp.balanceOf(msg.sender);
         comptroller.claimComp(msg.sender);
         emit RewardsClaimed(IERC20(address(comp)), comp.balanceOf(msg.sender) - oldBal);
@@ -47,5 +52,9 @@ contract CTokenVaultMock is ERC20Mock, IRewardable {
 
     function setExchangeRate(uint192 fiatcoinRedemptionRate) external {
         asset.setExchangeRate(fiatcoinRedemptionRate);
+    }
+
+    function setRevertClaimRewards(bool newVal) external {
+        revertClaimRewards = newVal;
     }
 }

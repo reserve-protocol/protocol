@@ -110,7 +110,14 @@ contract DeployerP0 is IDeployer, Versioned {
         // Init Furnace
         main.furnace().init(main, params.rewardRatio);
 
-        main.broker().init(main, gnosis, ITrade(address(1)), params.auctionLength);
+        main.broker().init(
+            main,
+            gnosis,
+            ITrade(address(1)),
+            params.batchAuctionLength,
+            ITrade(address(1)),
+            params.dutchAuctionLength
+        );
 
         // Init StRSR
         {
