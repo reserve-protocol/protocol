@@ -8,8 +8,6 @@ import "../../interfaces/ITrading.sol";
 import "../../libraries/Fixed.sol";
 import "./RecollateralizationLib.sol";
 
-import "hardhat/console.sol";
-
 struct TradeInfo {
     IAsset sell;
     IAsset buy;
@@ -76,7 +74,6 @@ library TradeLib {
         req.sell = trade.sell;
         req.buy = trade.buy;
 
-        console.log("prepareTradeSell", notDust, trade.sellAmount, req.sellAmount);
         return (notDust, req);
     }
 
