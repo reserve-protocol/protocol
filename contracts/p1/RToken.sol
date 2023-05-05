@@ -212,7 +212,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
 
         assetRegistry.refresh();
-        main.furnace().melt();
+        // solhint-disable-next-line no-empty-blocks
+        try main.furnace().melt() {} catch {}
 
         // == Checks and Effects ==
 
@@ -294,7 +295,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
 
         assetRegistry.refresh();
-        main.furnace().melt();
+        // solhint-disable-next-line no-empty-blocks
+        try main.furnace().melt() {} catch {}
 
         // == Checks and Effects ==
 
