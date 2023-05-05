@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../../interfaces/IAssetRegistry.sol";
 import "../../libraries/Fixed.sol";
 
-// A "valid collateral array" is a an IERC20[] value without rtoken, rsr, or any duplicate values
+// A "valid collateral array" is a IERC20[] array without rtoken/rsr/stRSR/zero address/duplicates
 
 // A BackupConfig value is valid if erc20s is a valid collateral array
 struct BackupConfig {
@@ -42,7 +42,6 @@ struct BasketConfig {
 /// The type of BasketHandler.basket.
 /// Defines a basket unit (BU) in terms of reference amounts of underlying tokens
 // Logically, basket is just a mapping of erc20 addresses to ref-unit amounts.
-// In the analytical comments I'll just refer to it that way.
 //
 // A Basket is valid if erc20s is a valid collateral array and erc20s == keys(refAmts)
 struct Basket {
@@ -50,6 +49,11 @@ struct Basket {
     mapping(IERC20 => uint192) refAmts; // {ref/BU}
 }
 
+/**
+ * @title BasketLibP1
+ * @notice A helper library that implements a `nextBasket()` function for selecting a reference
+ *   basket from the current basket config in combination with collateral statuses/exchange rates.
+ */
 library BasketLibP1 {
     using BasketLibP1 for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -153,7 +157,7 @@ library BasketLibP1 {
     /// @param targetNames Scratch space for computation; initial value unused
     /// @param newBasket Scratch space for computation; initial value unused
     /// @param config The current basket configuration
-    /// @return If successful; i.e the next argument contains a SOUND non-empty basket
+    /// @return success result; i.e newBasket can be expected to contain a valid reference basket
     function nextBasket(
         Basket storage newBasket,
         EnumerableSet.Bytes32Set storage targetNames,
@@ -286,7 +290,7 @@ library BasketLibP1 {
     ) private view returns (bool) {
         if (address(erc20) == address(0)) return false;
         // P1 gas optimization
-        // We do not need to check that the token is not a system token
+        // We do not need to check that the ERC20 is not a system token
         // BasketHandlerP1.requireValidCollArray() has been run on all ERC20s already
 
         try assetRegistry.toColl(erc20) returns (ICollateral coll) {
