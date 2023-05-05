@@ -50,7 +50,7 @@ library TradingLibP0 {
 
         (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
 
-        notDust = !isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume);
+        notDust = isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume);
 
         // Cap sell amount
         uint192 maxSell = maxTradeSize(trade.sell, trade.buy, lotHigh); // {sellTok}
