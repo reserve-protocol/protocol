@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../plugins/trading/DutchTrade.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IFacadeRead.sol";
@@ -226,33 +227,22 @@ contract FacadeRead is IFacadeRead {
             uint256 sellAmount
         )
     {
-        bm.main().assetRegistry().refresh();
-        bm.main().furnace().melt();
-
-        IERC20[] memory erc20s = bm.main().assetRegistry().erc20s();
-
-        // Settle all backingManager auctions
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            ITrade trade = bm.trades(erc20s[i]);
-            if (address(trade) != address(0) && trade.canSettle()) {
-                bm.settleTrade(erc20s[i]);
-            }
-        }
-
         if (bm.tradesOpen() == 0) {
-            // Try to launch auctions
-            bm.manageTokensSortedOrder(new IERC20[](0));
-            canStart = bm.tradesOpen() > 0;
+            IERC20[] memory erc20s = bm.main().assetRegistry().erc20s();
 
-            // Find the started auction
-            for (uint256 i = 0; i < erc20s.length; ++i) {
-                ITrade trade = bm.trades(erc20s[i]);
-                if (address(trade) != address(0)) {
-                    sell = trade.sell();
-                    buy = trade.buy();
-                    sellAmount = trade.initBal();
+            // Try to launch auctions
+            try bm.rebalance(TradeKind.DUTCH_AUCTION) {
+                // Find the started auction
+                for (uint256 i = 0; i < erc20s.length; ++i) {
+                    DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
+                    if (address(trade) != address(0)) {
+                        canStart = true;
+                        sell = trade.sell();
+                        buy = trade.buy();
+                        sellAmount = trade.sellAmount();
+                    }
                 }
-            }
+            } catch {}
         }
     }
 
@@ -275,7 +265,7 @@ contract FacadeRead is IFacadeRead {
         Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
 
         // Forward ALL revenue
-        revenueTrader.main().backingManager().manageTokens(reg.erc20s);
+        revenueTrader.main().backingManager().forwardRevenue(reg.erc20s);
 
         erc20s = new IERC20[](reg.erc20s.length);
         canStart = new bool[](reg.erc20s.length);
@@ -300,12 +290,14 @@ contract FacadeRead is IFacadeRead {
                 int8(reg.assets[i].erc20Decimals())
             );
 
-            try revenueTrader.manageToken(reg.erc20s[i]) {
-                if (revenueTrader.tradesOpen() - tradesOpen > 0) {
-                    canStart[i] = true;
-                }
-                // solhint-disable-next-line no-empty-blocks
-            } catch {}
+            if (reg.erc20s[i].balanceOf(address(revenueTrader)) >= minTradeAmounts[i]) {
+                try revenueTrader.manageToken(reg.erc20s[i], TradeKind.DUTCH_AUCTION) {
+                    if (revenueTrader.tradesOpen() - tradesOpen > 0) {
+                        canStart[i] = true;
+                    }
+                    // solhint-disable-next-line no-empty-blocks
+                } catch {}
+            }
         }
     }
 
