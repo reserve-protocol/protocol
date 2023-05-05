@@ -501,20 +501,25 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         // Calculate quantities
         for (uint256 i = 0; i < len; ++i) {
             erc20s[i] = address(erc20sAll[i]);
-            IAsset asset = main.assetRegistry().toAsset(IERC20(erc20s[i]));
-            if (!asset.isCollateral()) continue; // skip token if no longer registered
 
-            // prevent div-by-zero
-            uint192 refPerTok = ICollateral(address(asset)).refPerTok();
-            if (refPerTok == 0) continue; // quantities[i] = 0;
+            try main.assetRegistry().toAsset(IERC20(erc20s[i])) returns (IAsset asset) {
+                if (!asset.isCollateral()) continue; // skip token if no longer registered
 
-            // {tok} = {BU} * {ref/BU} / {ref/tok}
-            quantities[i] = safeMulDivFloor(amount, refAmtsAll[i], refPerTok).shiftl_toUint(
-                int8(asset.erc20Decimals()),
-                FLOOR
-            );
-            // marginally more penalizing than its sibling calculation that uses _quantity()
-            // because does not intermediately CEIL as part of the division
+                // prevent div-by-zero
+                uint192 refPerTok = ICollateral(address(asset)).refPerTok();
+                if (refPerTok == 0) continue; // quantities[i] = 0;
+
+                // {tok} = {BU} * {ref/BU} / {ref/tok}
+                quantities[i] = safeMulDivFloor(amount, refAmtsAll[i], refPerTok).shiftl_toUint(
+                    int8(asset.erc20Decimals()),
+                    FLOOR
+                );
+                // marginally more penalizing than its sibling calculation that uses _quantity()
+                // because does not intermediately CEIL as part of the division
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            }
         }
     }
 

@@ -351,6 +351,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint256[] memory erc20sOutBalances = new uint256[](erc20sOut.length);
         for (uint256 i = 0; i < erc20sOut.length; ++i) {
             erc20sOutBalances[i] = erc20sOut[i].balanceOf(recipient);
+            // we haven't verified this ERC20 is registered but this is always a staticcall
         }
 
         // === Interactions ===
@@ -359,7 +360,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         {
             bool allZero = true;
             for (uint256 i = 0; i < erc20s.length; ++i) {
-                if (amounts[i] == 0) continue;
+                if (amounts[i] == 0) continue; // unregistered ERC20s will have 0 amount
                 if (allZero) allZero = false;
 
                 // Send withdrawal
@@ -377,6 +378,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // Check post-balances
         for (uint256 i = 0; i < erc20sOut.length; ++i) {
             uint256 bal = erc20sOut[i].balanceOf(recipient);
+            // we haven't verified this ERC20 is registered but this is always a staticcall
             require(bal - erc20sOutBalances[i] >= minAmounts[i], "redemption below minimum");
         }
     }
