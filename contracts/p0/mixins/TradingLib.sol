@@ -70,7 +70,7 @@ library TradingLibP0 {
         req.minBuyAmount = b.shiftl_toUint(int8(trade.buy.erc20Decimals()), CEIL);
         req.sell = trade.sell;
         req.buy = trade.buy;
-        return (true, req);
+        return (notDust, req);
     }
 
     /// Assuming we have `trade.sellAmount` sell tokens available, prepare a trade to cover as
