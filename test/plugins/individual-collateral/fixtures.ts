@@ -150,7 +150,9 @@ export const getDefaultFixture = async function (salt: string) {
       const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
       const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
 
-      const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1')
+      const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
+        'RevenueTraderP1'
+      )
       const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
       const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')

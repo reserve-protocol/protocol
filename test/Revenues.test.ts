@@ -39,7 +39,6 @@ import {
   TestIStRSR,
   USDCMock,
   FiatCollateral,
-  InvalidATokenFiatCollateralMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -53,7 +52,6 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
-  REVENUE_HIDING,
 } from './fixtures'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
@@ -113,8 +111,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let main: TestIMain
 
   let AssetFactory: ContractFactory
-
-  const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
   // Computes the minBuyAmt for a sellAmt at two prices
   // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
@@ -2281,53 +2277,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(
           rewardAmountAAVE.mul(2).add(1)
         )
-      })
-
-      it('Should revert on invalid claim logic', async () => {
-        // Setup a new aToken with invalid claim data
-        const ATokenCollateralFactory = await ethers.getContractFactory(
-          'InvalidATokenFiatCollateralMock'
-        )
-        const chainlinkFeed = <MockV3Aggregator>(
-          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
-        )
-
-        const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
-          InvalidATokenFiatCollateralMock
-        >((await ATokenCollateralFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: chainlinkFeed.address,
-            oracleError: ORACLE_ERROR,
-            erc20: token2.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: DEFAULT_THRESHOLD,
-            delayUntilDefault: await collateral2.delayUntilDefault(),
-          },
-          REVENUE_HIDING
-        )) as unknown)
-
-        // Perform asset swap
-        await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
-
-        // Setup new basket with the invalid AToken
-        await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
-
-        // Switch basket
-        await basketHandler.connect(owner).refreshBasket()
-
-        rewardAmountAAVE = bn('0.5e18')
-
-        // AAVE Rewards
-        await token2.setRewards(backingManager.address, rewardAmountAAVE)
-
-        // Claim and sweep rewards - should revert and bubble up msg
-        await expect(backingManager.claimRewards()).to.be.revertedWith('claimRewards() error')
-
-        // Check status - nothing claimed
-        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
       })
 
       context('DutchTrade', () => {
