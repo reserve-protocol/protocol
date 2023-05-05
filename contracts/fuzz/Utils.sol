@@ -21,7 +21,8 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         rewardRatio: FixLib.divu(toFix(22840), (1_000_000)), // approx. half life of 30 pay periods
         unstakingDelay: 1209600, // 2 weeks
         tradingDelay: 0, // (the delay _after_ default has been confirmed)
-        auctionLength: 1800, // 30 minutes
+        batchAuctionLength: 1800, // 30 minutes
+        dutchAuctionLength: 300, // 5 minutes
         backingBuffer: FixLib.divu(toFix(1), 10000), // 0.01%, 1 BIP
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
         issuanceThrottle: tParams,

@@ -218,7 +218,7 @@ describe('The Rebalancing scenario', () => {
           sellAmount: fp(123),
         }
 
-        const trade = await (await F('TradeMock')).deploy()
+        const trade = await (await F('GnosisTradeMock')).deploy()
 
         // Alice sends 123 USD0 to the trade
         await usd0.connect(alice).transfer(trade.address, fp(123))
@@ -1113,8 +1113,8 @@ describe('The Rebalancing scenario', () => {
       expect(await r0.balanceOf(comp.rsrTrader.address)).to.equal(0)
 
       // Check trade
-      const tradeInTrader = await ConAt('TradeMock', await comp.rsrTrader.trades(r0.address))
-      const tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      const tradeInTrader = await ConAt('GnosisTradeMock', await comp.rsrTrader.trades(r0.address))
+      const tradeInBroker = await ConAt('GnosisTradeMock', await comp.broker.lastOpenedTrade())
       expect(tradeInTrader.address).to.equal(tradeInBroker.address)
 
       expect(await r0.balanceOf(tradeInTrader.address)).to.equal(12000n * exa)
@@ -1122,7 +1122,7 @@ describe('The Rebalancing scenario', () => {
       expect(await tradeInTrader.canSettle()).to.be.false
 
       // Wait and settle the trade
-      await advanceTime(await comp.broker.auctionLength())
+      await advanceTime(await comp.broker.batchAuctionLength())
       expect(await tradeInTrader.canSettle()).to.be.true
 
       // Manually update MarketMock seed to minBuyAmount, will provide the expected tokens
@@ -1199,10 +1199,10 @@ describe('The Rebalancing scenario', () => {
 
       // Check trade
       const tradeInBackingManager = await ConAt(
-        'TradeMock',
+        'GnosisTradeMock',
         await comp.backingManager.trades(c2.address)
       )
-      const tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      const tradeInBroker = await ConAt('GnosisTradeMock', await comp.broker.lastOpenedTrade())
       expect(tradeInBackingManager.address).to.equal(tradeInBroker.address)
 
       expect(await tradeInBackingManager.status()).to.equal(TradeStatus.OPEN)
@@ -1213,7 +1213,7 @@ describe('The Rebalancing scenario', () => {
       expect(await c2.balanceOf(tradeInBackingManager.address)).to.be.gt(0)
 
       // Wait and settle the trade
-      await advanceTime(await comp.broker.auctionLength())
+      await advanceTime(await comp.broker.batchAuctionLength())
       expect(await tradeInBackingManager.canSettle()).to.be.true
 
       // No C0 tokens in backing manager
@@ -1406,7 +1406,7 @@ describe('The Rebalancing scenario', () => {
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
       // Check trade
-      const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      const trade = await ConAt('GnosisTradeMock', await comp.broker.lastOpenedTrade())
 
       expect(await comp.backingManager.tradesOpen()).to.equal(1)
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
@@ -1420,7 +1420,7 @@ describe('The Rebalancing scenario', () => {
         expect(await c2.balanceOf(trade.address)).to.be.gt(0)
       }
       // Wait and settle the trade
-      await advanceTime(await comp.broker.auctionLength())
+      await advanceTime(await comp.broker.batchAuctionLength())
       expect(await trade.canSettle()).to.be.true
 
       if (iteration == 1) {
@@ -1573,12 +1573,12 @@ describe('The Rebalancing scenario', () => {
 
       expect(await comp.backingManager.tradesOpen()).to.equal(1)
 
-      const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      const trade = await ConAt('GnosisTradeMock', await comp.broker.lastOpenedTrade())
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
       expect(await trade.canSettle()).to.be.false
 
       // Wait and settle the trade
-      await advanceTime(await comp.broker.auctionLength())
+      await advanceTime(await comp.broker.batchAuctionLength())
       expect(await trade.canSettle()).to.be.true
 
       expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)

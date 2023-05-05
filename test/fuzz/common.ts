@@ -57,7 +57,7 @@ export const CONFIG: IConfig = {
   rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
   unstakingDelay: bn('1209600'), // 2 weeks
   tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
-  auctionLength: bn('900'), // 15 minutes
+  batchAuctionLength: bn('900'), // 15 minutes
   backingBuffer: fp('0.0001'), // 0.01%
   maxTradeSlippage: fp('0.01'), // 1%
   shortFreeze: bn(345600),

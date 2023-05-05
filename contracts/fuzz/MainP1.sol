@@ -15,7 +15,7 @@ import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/AssetMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/PriceModel.sol";
-import "contracts/fuzz/TradeMock.sol";
+import "contracts/fuzz/GnosisTradeMock.sol";
 import "contracts/fuzz/Utils.sol";
 import "contracts/fuzz/FuzzP1.sol";
 
@@ -156,6 +156,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         constAddrs.push(address(0));
         constAddrs.push(address(1));
         constAddrs.push(address(2));
+        constAddrs.push(address(3));
 
         deployedAt = uint48(block.timestamp);
     }
@@ -233,7 +234,14 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
         // Init Broker
         // `tradeImplmentation` and `gnosis` are unused in BrokerP1Fuzz
-        broker.init(this, IGnosis(address(1)), ITrade(address(1)), params.auctionLength);
+        broker.init(
+            this,
+            IGnosis(address(1)),
+            ITrade(address(1)),
+            params.batchAuctionLength,
+            ITrade(address(3)),
+            params.dutchAuctionLength
+        );
 
         this.unspoof(address(this));
     }

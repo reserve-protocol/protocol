@@ -11,7 +11,7 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
 
 import "contracts/fuzz/IFuzz.sol";
-import "contracts/fuzz/TradeMock.sol";
+import "contracts/fuzz/GnosisTradeMock.sol";
 import "contracts/fuzz/Utils.sol";
 
 import "contracts/p1/AssetRegistry.sol";
@@ -236,24 +236,24 @@ contract BrokerP1Fuzz is BrokerP1 {
     ITrade public lastOpenedTrade;
     EnumerableSet.AddressSet internal tradeSet;
 
-    function _openTrade(TradeRequest memory req) internal virtual override returns (ITrade) {
-        TradeMock trade = new TradeMock();
-        IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
-            _msgSender(),
-            address(trade),
-            req.sellAmount
-        );
+    // function _openTrade(TradeRequest memory req) internal virtual returns (ITrade) {
+    //     GnosisTradeMock trade = new GnosisTradeMock();
+    //     IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
+    //         _msgSender(),
+    //         address(trade),
+    //         req.sellAmount
+    //     );
 
-        trade.init(IMainFuzz(address(main)), _msgSender(), auctionLength, req);
-        tradeSet.add(address(trade));
-        lastOpenedTrade = trade;
-        return trade;
-    }
+    //     trade.init(IMainFuzz(address(main)), _msgSender(), batchAuctionLength, req);
+    //     tradeSet.add(address(trade));
+    //     lastOpenedTrade = trade;
+    //     return trade;
+    // }
 
     function settleTrades() public {
         uint256 length = tradesLength();
         for (uint256 i = 0; i < length; i++) {
-            TradeMock trade = TradeMock(tradeSet.at(i));
+            GnosisTradeMock trade = GnosisTradeMock(tradeSet.at(i));
             if (trade.canSettle()) {
                 ITrading(trade.origin()).settleTrade(IERC20(address(trade.sell())));
             }
@@ -275,8 +275,8 @@ contract BrokerP1Fuzz is BrokerP1 {
             if (!trades[tradeSet.at(i)]) tradesProp = false;
         }
 
-        bool auctionLengthProp = auctionLength > 0 && auctionLength <= MAX_AUCTION_LENGTH;
-        return tradesProp && auctionLengthProp;
+        bool batchAuctionLengthProp = batchAuctionLength > 0 && batchAuctionLength <= MAX_AUCTION_LENGTH;
+        return tradesProp && batchAuctionLengthProp;
     }
 }
 

@@ -10,7 +10,9 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/Utils.sol";
 
-contract TradeMock is ITrade {
+contract GnosisTradeMock is ITrade {
+    TradeKind public constant KIND = TradeKind.BATCH_AUCTION;
+    
     IMainFuzz public main;
 
     IERC20Metadata public sell;
@@ -21,25 +23,25 @@ contract TradeMock is ITrade {
     uint48 public endTime;
     address public origin;
 
-    enum TradeMockStatus {
+    enum GnosisTradeMockStatus {
         NOT_STARTED, // before init()
         OPEN, // after init(), before settle()
         CLOSED // after settle()
     }
-    TradeMockStatus public status;
+    GnosisTradeMockStatus public status;
 
     function init(
         IMainFuzz main_,
         address origin_,
-        uint48 auctionLength,
+        uint48 batchAuctionLength,
         TradeRequest memory req
     ) external {
-        require(status == TradeMockStatus.NOT_STARTED);
-        status = TradeMockStatus.OPEN;
+        require(status == GnosisTradeMockStatus.NOT_STARTED);
+        status = GnosisTradeMockStatus.OPEN;
 
         main = main_;
         origin = origin_;
-        endTime = uint48(block.timestamp) + auctionLength;
+        endTime = uint48(block.timestamp) + batchAuctionLength;
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
@@ -49,14 +51,14 @@ contract TradeMock is ITrade {
     }
 
     function canSettle() external view returns (bool) {
-        return uint48(block.timestamp) >= endTime && status == TradeMockStatus.OPEN;
+        return uint48(block.timestamp) >= endTime && status == GnosisTradeMockStatus.OPEN;
     }
 
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
         require(_msgSender() == origin, "only origin can settle");
-        require(status == TradeMockStatus.OPEN, "trade not OPEN");
+        require(status == GnosisTradeMockStatus.OPEN, "trade not OPEN");
         require(uint48(block.timestamp) >= endTime, "trade not yet closed");
-        status = TradeMockStatus.CLOSED;
+        status = GnosisTradeMockStatus.CLOSED;
 
         // ==== Trade tokens ====
         // Move tokens to-be-sold to the market mock
@@ -94,7 +96,7 @@ enum SettlingMode {
     Random // Provides a random amount of tokens
 }
 
-// A simple external actor to "be the market", taking the other side of TradeMock trades.
+// A simple external actor to "be the market", taking the other side of GnosisTradeMock trades.
 contract MarketMock is IMarketMock {
     using FixLib for uint192;
 

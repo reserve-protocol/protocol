@@ -3316,7 +3316,7 @@ contracts/p1/BackingManager.sol
 
 contracts/p1/Broker.sol
 
-133: function setAuctionLength
+133: function setBatchAuctionLength
 
 contracts/p1/Furnace.sol
 

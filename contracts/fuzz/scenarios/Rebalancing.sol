@@ -16,7 +16,7 @@ import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/AssetMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/PriceModel.sol";
-import "contracts/fuzz/TradeMock.sol";
+import "contracts/fuzz/GnosisTradeMock.sol";
 import "contracts/fuzz/Utils.sol";
 import "contracts/fuzz/FuzzP1.sol";
 
@@ -596,18 +596,22 @@ contract RebalancingScenario {
         if (backingToManage.length > 0) backingToManage.pop();
     }
 
-    function manageBackingTokens() public mayEndRebalancing {
-        main.backingManager().manageTokens(backingToManage);
+    function rebalance(uint256 kindSeed) public {
+        main.backingManager().rebalance(TradeKind(kindSeed % 2));
     }
 
-    function manageTokenInRSRTrader(uint256 tokenID) public {
-        IERC20 token = main.someToken(tokenID);
-        main.rsrTrader().manageToken(token);
+    function forwardRevenue() public {
+        main.backingManager().forwardRevenue(backingToManage);
     }
 
-    function manageTokenInRTokenTrader(uint256 tokenID) public {
+    function manageTokenInRSRTrader(uint256 tokenID, uint256 kindSeed) public {
         IERC20 token = main.someToken(tokenID);
-        main.rTokenTrader().manageToken(token);
+        main.rsrTrader().manageToken(token, TradeKind(kindSeed % 2));
+    }
+
+    function manageTokenInRTokenTrader(uint256 tokenID, uint256 kindSeed) public {
+        IERC20 token = main.someToken(tokenID);
+        main.rTokenTrader().manageToken(token, TradeKind(kindSeed % 2));
     }
 
     function grantAllowances(uint256 tokenID) public {
@@ -810,8 +814,13 @@ contract RebalancingScenario {
         ); // 31536000 is BackingManager.MAX_TRADING_DELAY
     }
 
-    function setAuctionLength(uint256 seed) public {
-        BrokerP1(address(main.broker())).setAuctionLength(uint48(between(1, 604800, seed)));
+    function setBatchAuctionLength(uint256 seed) public {
+        BrokerP1(address(main.broker())).setBatchAuctionLength(uint48(between(1, 604800, seed)));
+        // 604800 is Broker.MAX_AUCTION_LENGTH
+    }
+
+    function setDutchAuctionLength(uint256 seed) public {
+        BrokerP1(address(main.broker())).setDutchAuctionLength(uint48(between(1, 604800, seed)));
         // 604800 is Broker.MAX_AUCTION_LENGTH
     }
 
@@ -1066,7 +1075,7 @@ contract RebalancingScenario {
         return true;
     }
 
-    function echidna_rebalancingProperties() external returns (bool) {
+    function echidna_batchRebalancingProperties() external returns (bool) {
         assert(main.hasRole(OWNER, address(this)));
         BackingManagerP1Fuzz bm = BackingManagerP1Fuzz(address(main.backingManager()));
         BrokerP1Fuzz broker = BrokerP1Fuzz(address(main.broker()));
@@ -1082,10 +1091,10 @@ contract RebalancingScenario {
             bm.saveSurplusAndDeficitTokens();
             IAssetRegistry ar = main.assetRegistry();
             // Create trade, if able and needed
-            try main.backingManager().manageTokens(ar.erc20s()) {
+            try main.backingManager().rebalance(TradeKind(0)) {
                 // Check if new trade was created
                 if (bm.tradesOpen() > tradesBMPrev && broker.tradesLength() > tradesBrokerPrev) {
-                    TradeMock trade = TradeMock(address(broker.lastOpenedTrade()));
+                    GnosisTradeMock trade = GnosisTradeMock(address(broker.lastOpenedTrade()));
 
                     bool valid = bm.isValidSurplusToken(trade.sell()) &&
                         bm.isValidDeficitToken(trade.buy());

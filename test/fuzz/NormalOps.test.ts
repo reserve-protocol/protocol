@@ -197,7 +197,7 @@ describe('The Normal Operations scenario', () => {
           sellAmount: fp(123),
         }
 
-        const trade = await (await F('TradeMock')).deploy()
+        const trade = await (await F('GnosisTradeMock')).deploy()
 
         // Alice sends 123 USD0 to the trade
         await usd0.connect(alice).transfer(trade.address, fp(123))
@@ -742,8 +742,8 @@ describe('The Normal Operations scenario', () => {
       expect(await r0.balanceOf(comp.rsrTrader.address)).to.equal(0)
 
       // Check trade
-      const tradeInTrader = await ConAt('TradeMock', await comp.rsrTrader.trades(r0.address))
-      const tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      const tradeInTrader = await ConAt('GnosisTradeMock', await comp.rsrTrader.trades(r0.address))
+      const tradeInBroker = await ConAt('GnosisTradeMock', await comp.broker.lastOpenedTrade())
       expect(tradeInTrader.address).to.equal(tradeInBroker.address)
 
       expect(await r0.balanceOf(tradeInTrader.address)).to.equal(12000n * exa)
@@ -751,7 +751,7 @@ describe('The Normal Operations scenario', () => {
       expect(await tradeInTrader.canSettle()).to.be.false
 
       // Wait and settle the trade
-      await advanceTime(await comp.broker.auctionLength())
+      await advanceTime(await comp.broker.batchAuctionLength())
       expect(await tradeInTrader.canSettle()).to.be.true
 
       // Manually update MarketMock seed to minBuyAmount, will provide the expected tokens

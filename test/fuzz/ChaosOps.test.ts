@@ -218,7 +218,7 @@ describe('The Chaos Operations scenario', () => {
           sellAmount: fp(123),
         }
 
-        const trade = await (await F('TradeMock')).deploy()
+        const trade = await (await F('GnosisTradeMock')).deploy()
 
         // Alice sends 123 USD0 to the trade
         await usd0.connect(alice).transfer(trade.address, fp(123))
@@ -1143,8 +1143,8 @@ describe('The Chaos Operations scenario', () => {
       expect(await r0.balanceOf(comp.rsrTrader.address)).to.equal(0)
 
       // Check trade
-      const tradeInTrader = await ConAt('TradeMock', await comp.rsrTrader.trades(r0.address))
-      const tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      const tradeInTrader = await ConAt('GnosisTradeMock', await comp.rsrTrader.trades(r0.address))
+      const tradeInBroker = await ConAt('GnosisTradeMock', await comp.broker.lastOpenedTrade())
       expect(tradeInTrader.address).to.equal(tradeInBroker.address)
 
       expect(await r0.balanceOf(tradeInTrader.address)).to.equal(12000n * exa)
@@ -1152,7 +1152,7 @@ describe('The Chaos Operations scenario', () => {
       expect(await tradeInTrader.canSettle()).to.be.false
 
       // Wait and settle the trade
-      await advanceTime(await comp.broker.auctionLength())
+      await advanceTime(await comp.broker.batchAuctionLength())
       expect(await tradeInTrader.canSettle()).to.be.true
 
       // Manually update MarketMock seed to minBuyAmount, will provide the expected tokens
@@ -1230,10 +1230,10 @@ describe('The Chaos Operations scenario', () => {
 
       // Check trade
       const tradeInBackingManager = await ConAt(
-        'TradeMock',
+        'GnosisTradeMock',
         await comp.backingManager.trades(c2.address)
       )
-      const tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      const tradeInBroker = await ConAt('GnosisTradeMock', await comp.broker.lastOpenedTrade())
       expect(tradeInBackingManager.address).to.equal(tradeInBroker.address)
 
       expect(await tradeInBackingManager.status()).to.equal(TradeStatus.OPEN)
@@ -1244,7 +1244,7 @@ describe('The Chaos Operations scenario', () => {
       expect(await c2.balanceOf(tradeInBackingManager.address)).to.be.gt(0)
 
       // Wait and settle the trade
-      await advanceTime(await comp.broker.auctionLength())
+      await advanceTime(await comp.broker.batchAuctionLength())
       expect(await tradeInBackingManager.canSettle()).to.be.true
 
       // No C0 tokens in backing manager

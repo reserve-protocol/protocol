@@ -15,7 +15,7 @@
 // import "contracts/fuzz/AssetMock.sol";
 // import "contracts/fuzz/ERC20Fuzz.sol";
 // import "contracts/fuzz/PriceModel.sol";
-// import "contracts/fuzz/TradeMock.sol";
+// import "contracts/fuzz/GnosisTradeMock.sol";
 // import "contracts/fuzz/Utils.sol";
 
 // import "contracts/fuzz/FuzzP1.sol";
@@ -719,9 +719,9 @@
 //         }
 //     }
 
-//     function setAuctionLength(uint256 seed) public {
+//     function setBatchAuctionLength(uint256 seed) public {
 //         for (uint256 N = 0; N < 2; N++) {
-//             TestIBroker(address(p[N].broker())).setAuctionLength(uint48(between(1, 604800, seed)));
+//             TestIBroker(address(p[N].broker())).setBatchAuctionLength(uint48(between(1, 604800, seed)));
 //             // 604800 is Broker.MAX_AUCTION_LENGTH
 //         }
 //     }

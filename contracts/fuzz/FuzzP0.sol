@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "contracts/fuzz/IFuzz.sol";
-import "contracts/fuzz/TradeMock.sol";
+import "contracts/fuzz/GnosisTradeMock.sol";
 
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
@@ -62,23 +62,23 @@ contract BrokerP0Fuzz is BrokerP0 {
     ITrade public lastOpenedTrade;
     EnumerableSet.AddressSet internal tradeSet;
 
-    function _openTrade(TradeRequest memory req) internal virtual override returns (ITrade) {
-        TradeMock trade = new TradeMock();
-        IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
-            _msgSender(),
-            address(trade),
-            req.sellAmount
-        );
-        trade.init(IMainFuzz(address(main)), _msgSender(), auctionLength, req);
-        lastOpenedTrade = trade;
-        return trade;
-    }
+    // function _openTrade(TradeRequest memory req) internal virtual returns (ITrade) {
+    //     GnosisTradeMock trade = new GnosisTradeMock();
+    //     IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
+    //         _msgSender(),
+    //         address(trade),
+    //         req.sellAmount
+    //     );
+    //     trade.init(IMainFuzz(address(main)), _msgSender(), batchAuctionLength, req);
+    //     lastOpenedTrade = trade;
+    //     return trade;
+    // }
 
     function settleTrades() public {
         uint256 length = tradeSet.length();
         IMainFuzz m = IMainFuzz(address(main));
         for (uint256 i = 0; i < length; i++) {
-            TradeMock trade = TradeMock(tradeSet.at(i));
+            GnosisTradeMock trade = GnosisTradeMock(tradeSet.at(i));
             if (trade.canSettle()) {
                 m.spoof(address(this), trade.origin());
                 trade.settle();
