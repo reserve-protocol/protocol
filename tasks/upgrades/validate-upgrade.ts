@@ -20,11 +20,6 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
 
-    // ********* Validate this is only run on Mainnet *******
-    if (hre.network.name != 'mainnet') {
-      throw new Error('Only run on Mainnet')
-    }
-
     // Get Deployed addresses
     const deploymentFilename = getDeploymentFilename(chainId, `${hre.network.name}-${params.ver}`)
     const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
