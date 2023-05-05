@@ -1721,13 +1721,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with RSR/RToken', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('invalid collateral')
+      ).to.be.revertedWith('RSR is not valid collateral')
 
       await expect(
         basketHandler
           .connect(owner)
           .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('invalid collateral')
+      ).to.be.revertedWith('RToken is not valid collateral')
     })
 
     it('Should allow to set prime Basket if OWNER', async () => {

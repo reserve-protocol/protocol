@@ -511,8 +511,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         'BasketHandlerP1V2',
         { libraries: { BasketLibP1: basketLib.address } }
       )
-      const bskHndlrV2: BasketHandlerP1V2 = <BasketHandlerP1V2>(
-        await upgrades.upgradeProxy(basketHandler.address, BasketHandlerV2Factory)
+      const bskHndlrV2: BasketHandlerP1V2 = <BasketHandlerP1V2>await upgrades.upgradeProxy(
+        basketHandler.address,
+        BasketHandlerV2Factory,
+        {
+          unsafeAllow: ['external-library-linking'], // BasketLibP1
+        }
       )
 
       // Check address is maintained
