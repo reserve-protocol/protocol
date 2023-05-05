@@ -718,6 +718,24 @@ describe('FacadeAct contract', () => {
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
       })
 
+      it('Revenues - Should handle ERC20s with invalid claim logic', async () => {
+        // Set the cToken to revert
+        await cToken.setRevertClaimRewards(true)
+
+        const rewardAmountCOMP = bn('0.5e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Via Facade get next call - will attempt to claim
+        const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(ZERO_ADDRESS)
+        expect(data).to.equal('0x')
+
+        // Check status - nothing claimed
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
+      })
+
       it('Revenues - Should handle multiple assets with same reward token', async () => {
         // Update Reward token for AToken to use same as CToken
         const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')

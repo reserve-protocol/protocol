@@ -109,7 +109,6 @@ contract DutchTrade is ITrade {
                 slippage = 0;
             }
         }
-
         // {buyTok/sellTok} = {1} * {UoA/sellTok} / {UoA/buyTok}
         lowPrice = sellLow.mulDiv(FIX_ONE - slippage, buyHigh, FLOOR);
         middlePrice = sellHigh.div(buyLow, CEIL); // no additional slippage
