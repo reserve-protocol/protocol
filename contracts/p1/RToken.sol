@@ -9,7 +9,6 @@ import "../libraries/Fixed.sol";
 import "../libraries/Throttle.sol";
 import "../vendor/ERC20PermitUpgradeable.sol";
 import "./mixins/Component.sol";
-import "hardhat/console.sol";
 
 /**
  * @title RTokenP1

@@ -91,6 +91,7 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     /// @custom:interaction
     function redeemTo(address recipient, uint256 amount) external;
 
+    // TODO should probably return the amounts it ends up with, for simulation purposes
     /// Redeem RToken for a linear combination of historical baskets, to a particular recipient
     /// @dev Allows partial redemptions up to the minAmounts
     /// @param recipient The address to receive the backing collateral tokens

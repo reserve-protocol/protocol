@@ -11,7 +11,7 @@ import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/Component.sol";
-import "hardhat/console.sol";
+
 // A "valid collateral array" is a an IERC20[] value without rtoken, rsr, or any duplicate values
 
 // A BackupConfig value is valid if erc20s is a valid collateral array
@@ -133,8 +133,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // basket is the current basket.
     Basket private basket;
 
-    uint48 public override nonce; // {basketNonce} A unique identifier for this basket instance
-    uint48 public override timestamp; // The timestamp when this basket was last set
+    uint48 public nonce; // {basketNonce} A unique identifier for this basket instance
+    uint48 public timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid,
     // and everything except redemption should be paused.
