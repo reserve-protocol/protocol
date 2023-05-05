@@ -25,6 +25,7 @@ import {
   FacadeTest,
   GnosisMock,
   IAssetRegistry,
+  InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
@@ -49,6 +50,7 @@ import {
   defaultFixture,
   Implementation,
   IMPLEMENTATION,
+  REVENUE_HIDING,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
@@ -2277,6 +2279,58 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(
           rewardAmountAAVE.mul(2).add(1)
         )
+      })
+
+      it('Should not revert on invalid claim logic', async () => {
+        // Here the aToken is going to have an invalid claimRewards on its asset,
+        // while the cToken will have it on the ERC20
+
+        // cToken
+        rewardAmountCOMP = bn('0.5e18')
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        await token3.setRevertClaimRewards(true)
+
+        // Setup a new aToken with invalid claim data
+        const ATokenCollateralFactory = await ethers.getContractFactory(
+          'InvalidATokenFiatCollateralMock'
+        )
+        const chainlinkFeed = <MockV3Aggregator>(
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+        )
+
+        const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
+          InvalidATokenFiatCollateralMock
+        >((await ATokenCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: token2.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold: fp('0.05'),
+            delayUntilDefault: await collateral2.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )) as unknown)
+
+        // Perform asset swap
+        await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
+
+        // Setup new basket with the invalid AToken
+        await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
+
+        // Switch basket
+        await basketHandler.connect(owner).refreshBasket()
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Claim and sweep rewards -- should succeed
+        await expect(backingManager.claimRewards()).not.to.be.reverted
       })
 
       context('DutchTrade', () => {
