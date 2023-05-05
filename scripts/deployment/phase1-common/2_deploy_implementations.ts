@@ -37,7 +37,7 @@ let tradeImpl: GnosisTrade
 
 // Specify the last deployed version (e.g: '2.1.0').
 // Used only for Upgrades. Leave empty for new fresh deployment
-const LAST_DEPLOYED_VERSION = ''
+const LAST_DEPLOYED_VERSION = '2.1.0'
 
 async function main() {
   // ==== Read Configuration ====
@@ -60,12 +60,23 @@ async function main() {
   // Check if this is an upgrade or a new deployment
   let upgrade = false
   let prevDeployments: IDeployments = getEmptyDeployment()
+  let prevDeploymentFilename = ''
   if (LAST_DEPLOYED_VERSION.length > 0) {
     // Get Previously Deployed addresses
-    const prevDeploymentFilename = getDeploymentFilename(
-      chainId,
-      `${hre.network.name}-${LAST_DEPLOYED_VERSION}`
-    )
+    // If running on Mainnet or fork, use Mainnet deployments
+    if (
+      hre.network.name == 'mainnet' ||
+      hre.network.name == 'localhost' ||
+      hre.network.name == 'hardhat'
+    ) {
+      prevDeploymentFilename = getDeploymentFilename(1, `mainnet-${LAST_DEPLOYED_VERSION}`)
+    } else {
+      prevDeploymentFilename = getDeploymentFilename(
+        chainId,
+        `${hre.network.name}-${LAST_DEPLOYED_VERSION}`
+      )
+    }
+
     prevDeployments = <IDeployments>getDeploymentFile(prevDeploymentFilename)
     await validateImplementations(prevDeployments)
 
