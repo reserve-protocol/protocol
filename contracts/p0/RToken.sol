@@ -189,7 +189,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonces An array of basket nonces to do redemption from
     /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
-    /// @param erc20sOut An array of ERC20s expected out
+    /// @param expectedERC20sOut An array of ERC20s expected out
     /// @param minAmounts {qTok} The minimum ERC20 quantities the caller should receive
     /// @custom:interaction
     function redeemToCustom(
@@ -197,9 +197,14 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         uint256 amount,
         uint48[] memory basketNonces,
         uint192[] memory portions,
-        IERC20[] memory erc20sOut,
+        address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external notFrozen exchangeRateIsValidAfter {
+    )
+        external
+        notFrozen
+        exchangeRateIsValidAfter
+        returns (address[] memory erc20sOut, uint256[] memory amountsOut)
+    {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
 
@@ -225,39 +230,41 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
         }
 
-        (address[] memory erc20s, uint256[] memory amounts) = main
-            .basketHandler()
-            .quoteCustomRedemption(basketNonces, portions, basketsRedeemed);
+        (erc20sOut, amountsOut) = main.basketHandler().quoteCustomRedemption(
+            basketNonces,
+            portions,
+            basketsRedeemed
+        );
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(basketsRedeemed));
         basketsNeeded = basketsNeeded.minus(basketsRedeemed);
 
         // === Save initial recipient balances ===
 
-        uint256[] memory erc20sOutBalances = new uint256[](erc20sOut.length);
-        for (uint256 i = 0; i < erc20sOut.length; ++i) {
-            erc20sOutBalances[i] = erc20sOut[i].balanceOf(recipient);
+        uint256[] memory pastBals = new uint256[](expectedERC20sOut.length);
+        for (uint256 i = 0; i < expectedERC20sOut.length; ++i) {
+            pastBals[i] = IERC20(expectedERC20sOut[i]).balanceOf(recipient);
         }
 
         // ==== Prorate redemption + send out balances ====
         {
             bool allZero = true;
             // Bound each withdrawal by the prorata share, in case currently under-collateralized
-            for (uint256 i = 0; i < erc20s.length; i++) {
-                uint256 bal = IERC20Upgradeable(erc20s[i]).balanceOf(
+            for (uint256 i = 0; i < erc20sOut.length; i++) {
+                uint256 bal = IERC20Upgradeable(erc20sOut[i]).balanceOf(
                     address(main.backingManager())
                 ); // {qTok}
 
                 // {qTok} = {qTok} * {qRTok} / {qRTok}
                 uint256 prorata = mulDiv256(bal, amount, totalSupply()); // FLOOR
-                if (prorata < amounts[i]) amounts[i] = prorata;
+                if (prorata < amountsOut[i]) amountsOut[i] = prorata;
 
                 // Send withdrawal
-                if (amounts[i] > 0) {
-                    IERC20(erc20s[i]).safeTransferFrom(
+                if (amountsOut[i] > 0) {
+                    IERC20(erc20sOut[i]).safeTransferFrom(
                         address(main.backingManager()),
                         recipient,
-                        amounts[i]
+                        amountsOut[i]
                     );
                     allZero = false;
                 }
@@ -271,9 +278,9 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         // === Post-checks ===
 
         // Check post-balances
-        for (uint256 i = 0; i < erc20sOut.length; ++i) {
+        for (uint256 i = 0; i < expectedERC20sOut.length; ++i) {
             require(
-                erc20sOut[i].balanceOf(recipient) - erc20sOutBalances[i] >= minAmounts[i],
+                IERC20(expectedERC20sOut[i]).balanceOf(recipient) - pastBals[i] >= minAmounts[i],
                 "redemption below minimum"
             );
         }

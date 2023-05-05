@@ -26,6 +26,7 @@ import {
   PAUSER,
   MAX_UINT192,
 } from '../common/constants'
+import { expectEqualArrays } from './utils/matchers'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
 import { expectPrice, expectUnpriced, setOraclePrice } from './utils/oracles'
 import { bn, fp } from '../common/numbers'
@@ -1765,13 +1766,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await token3.connect(addr1).approve(rToken.address, issueAmount)
         await rToken.connect(addr1).issue(issueAmount)
       })
-
-      const expectEqualArrays = (arr1: Array<unknown>, arr2: Array<unknown>) => {
-        expect(arr1.length).equal(arr2.length)
-        for (let i = 0; i < arr1.length; i++) {
-          expect(arr1[i]).equal(arr2[i])
-        }
-      }
 
       const getBalances = async (account: string, tokens: Array<ERC20Mock>) => {
         const bals: Array<BigNumber> = []

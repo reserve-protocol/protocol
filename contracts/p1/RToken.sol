@@ -280,7 +280,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonces An array of basket nonces to do redemption from
     /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
-    /// @param erc20sOut An array of ERC20s expected out
+    /// @param expectedERC20sOut An array of ERC20s expected out
     /// @param minAmounts {qTok} The minimum ERC20 quantities the caller should receive
     /// @custom:interaction RCEI
     function redeemToCustom(
@@ -288,9 +288,14 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint256 amount,
         uint48[] memory basketNonces,
         uint192[] memory portions,
-        IERC20[] memory erc20sOut,
+        address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external notFrozen exchangeRateIsValidAfter {
+    )
+        external
+        notFrozen
+        exchangeRateIsValidAfter
+        returns (address[] memory erc20sOut, uint256[] memory amountsOut)
+    {
         // == Refresh ==
 
         assetRegistry.refresh();
@@ -324,7 +329,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // === Get basket redemption amounts ===
 
-        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quoteCustomRedemption(
+        (erc20sOut, amountsOut) = basketHandler.quoteCustomRedemption(
             basketNonces,
             portions,
             basketsRedeemed
@@ -332,25 +337,25 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // ==== Prorate redemption ====
         // i.e, set amounts = min(amounts, balances * amount / totalSupply)
-        //   where balances[i] = erc20s[i].balanceOf(backingManager)
+        //   where balances[i] = erc20sOut[i].balanceOf(backingManager)
 
         // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
-        for (uint256 i = 0; i < erc20s.length; ++i) {
+        for (uint256 i = 0; i < erc20sOut.length; ++i) {
             // {qTok} = {qTok} * {qRTok} / {qRTok}
             uint256 prorata = mulDiv256(
-                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingManager)),
+                IERC20(erc20sOut[i]).balanceOf(address(backingManager)),
                 amount,
                 supply
             ); // FLOOR
 
-            if (prorata < amounts[i]) amounts[i] = prorata;
+            if (prorata < amountsOut[i]) amountsOut[i] = prorata;
         }
 
         // === Save initial recipient balances ===
 
-        uint256[] memory erc20sOutBalances = new uint256[](erc20sOut.length);
-        for (uint256 i = 0; i < erc20sOut.length; ++i) {
-            erc20sOutBalances[i] = erc20sOut[i].balanceOf(recipient);
+        uint256[] memory pastBals = new uint256[](expectedERC20sOut.length);
+        for (uint256 i = 0; i < expectedERC20sOut.length; ++i) {
+            pastBals[i] = IERC20(expectedERC20sOut[i]).balanceOf(recipient);
             // we haven't verified this ERC20 is registered but this is always a staticcall
         }
 
@@ -359,15 +364,15 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // Distribute tokens; revert if empty redemption
         {
             bool allZero = true;
-            for (uint256 i = 0; i < erc20s.length; ++i) {
-                if (amounts[i] == 0) continue; // unregistered ERC20s will have 0 amount
+            for (uint256 i = 0; i < erc20sOut.length; ++i) {
+                if (amountsOut[i] == 0) continue; // unregistered ERC20s will have 0 amount
                 if (allZero) allZero = false;
 
                 // Send withdrawal
-                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
+                IERC20Upgradeable(erc20sOut[i]).safeTransferFrom(
                     address(backingManager),
                     recipient,
-                    amounts[i]
+                    amountsOut[i]
                 );
             }
             if (allZero) revert("empty redemption");
@@ -376,10 +381,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // === Post-checks ===
 
         // Check post-balances
-        for (uint256 i = 0; i < erc20sOut.length; ++i) {
-            uint256 bal = erc20sOut[i].balanceOf(recipient);
+        for (uint256 i = 0; i < expectedERC20sOut.length; ++i) {
+            uint256 bal = IERC20(expectedERC20sOut[i]).balanceOf(recipient);
             // we haven't verified this ERC20 is registered but this is always a staticcall
-            require(bal - erc20sOutBalances[i] >= minAmounts[i], "redemption below minimum");
+            require(bal - pastBals[i] >= minAmounts[i], "redemption below minimum");
         }
     }
 

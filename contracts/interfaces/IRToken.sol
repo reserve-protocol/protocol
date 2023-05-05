@@ -98,7 +98,7 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @param basketNonces An array of basket nonces to do redemption from
     /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
-    /// @param erc20sOut An array of ERC20s expected out
+    /// @param expectedERC20sOut An array of ERC20s expected out
     /// @param minAmounts {qTok} The minimum ERC20 quantities the caller should receive
     /// @custom:interaction
     function redeemToCustom(
@@ -106,9 +106,9 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
         uint256 amount,
         uint48[] memory basketNonces,
         uint192[] memory portions,
-        IERC20[] memory erc20sOut,
+        address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external;
+    ) external returns (address[] memory erc20sOut, uint256[] memory amountsOut);
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
     /// @param recipient The recipient of the newly minted RToken

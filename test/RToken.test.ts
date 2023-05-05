@@ -53,6 +53,7 @@ import {
   PRICE_TIMEOUT,
   VERSION,
 } from './fixtures'
+import { expectEqualArrays } from './utils/matchers'
 import { cartesianProduct } from './utils/cases'
 import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
@@ -1413,7 +1414,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         ).to.be.revertedWith('portions do not add up to FIX_ONE')
       })
 
-      it('Should redeem RTokens correctly', async function () {
+      it('Should redeemToCustom RTokens correctly', async function () {
         const redeemAmount = bn('100e18')
 
         // Check balances
@@ -1429,6 +1430,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           portions,
           redeemAmount
         )
+
+        // Check simulation result
+        const [actualERC20s, actualQuantities] = await rToken
+          .connect(addr1)
+          .callStatic.redeemToCustom(
+            addr1.address,
+            redeemAmount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        expectEqualArrays(actualERC20s, quote.erc20s)
+        expectEqualArrays(actualQuantities, quote.quantities)
+
         await rToken
           .connect(addr1)
           .redeemToCustom(
