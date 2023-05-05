@@ -16,6 +16,7 @@ import {
 } from '../common/configuration'
 import {
   CollateralStatus,
+  RoundingMode,
   ZERO_ADDRESS,
   ONE_ADDRESS,
   MAX_UINT256,
@@ -1735,7 +1736,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(2, [token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
-    // TODO
     describe('Custom Redemption', () => {
       const issueAmount = fp('10000')
       let usdcChainlink: MockV3Aggregator
@@ -1787,14 +1787,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         }
       }
 
-      it('Should correctly quote a historical redemption (current)', async () => {
+      it('Should correctly quote the current basket, same as quote()', async () => {
         /*
           Test Quote
         */
         const basketNonces = [1]
         const portions = [fp('1')]
         const amount = fp('10000')
+        const baseline = await basketHandler.quote(amount, RoundingMode.FLOOR)
         const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        expectEqualArrays(quote.erc20s, baseline.erc20s)
+        expectEqualArrays(quote.quantities, baseline.quantities)
 
         expect(quote.erc20s.length).equal(4)
         expect(quote.quantities.length).equal(4)
@@ -1823,7 +1826,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expectEqualArrays(quote.quantities, expectedQuantities)
 
         /*
-          Test Historical Redemption
+          Test Custom Redemption
         */
         const balsBefore = await getBalances(addr1.address, expectedTokens)
         await rToken
@@ -1837,10 +1840,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             quote.quantities
           )
         const balsAfter = await getBalances(addr1.address, expectedTokens)
-        expectDelta(balsBefore, quote.quantities, balsAfter)
+        expectDelta(balsBefore, baseline.quantities, balsAfter)
       })
 
-      it('Should correctly quote a historical redemption [single-asset default & replacement]', async () => {
+      it('Should correctly quote a custom redemption across 2 baskets after default', async () => {
         /*
           Setup
         */
@@ -1890,7 +1893,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expectEqualArrays(quote.quantities, expectedQuantities)
 
         /*
-          Test Historical Redemption
+          Test Custom Redemption
         */
         const balsBefore = await getBalances(addr1.address, expectedTokens)
 
@@ -1925,54 +1928,35 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expectDelta(balsBefore, quote.quantities, balsAfter)
       })
 
-      it('Should correctly quote a historical redemption [single-asset refPerTok appreciation]', async () => {
-        /*
-          Setup
-        */
-        // appreciate aDai and refresh basket
-        await token2.setExchangeRate(fp('2'))
-        await basketHandler.refreshBasket()
-        await advanceTime(Number(config.warmupPeriod) + 1)
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(true)
-
+      it('Repeating basket nonces should not be exploitable', async () => {
         /*
           Test Quote
         */
-        const basketNonces = [1, 2]
-        const portions = [fp('0.5'), fp('0.5')]
-        const amount = fp('10000')
-        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
-
-        expect(quote.erc20s.length).equal(4)
-        expect(quote.quantities.length).equal(4)
-
-        const expectedTokens = [token0, token1, token2, token3]
-        const expectedAddresses = expectedTokens.map((t) => t.address)
-        const expectedQuantities = [
-          fp('0.25')
-            .mul(issueAmount)
-            .div(await collateral0.refPerTok())
-            .div(bn(`1e${18 - (await token0.decimals())}`)),
-          fp('0.25')
-            .mul(issueAmount)
-            .div(await collateral1.refPerTok())
-            .div(bn(`1e${18 - (await token1.decimals())}`)),
-          fp('0.25')
-            .mul(issueAmount)
-            .div(await collateral2.refPerTok())
-            .div(bn(`1e${18 - (await token2.decimals())}`)),
-          fp('0.25')
-            .mul(issueAmount)
-            .div(await collateral3.refPerTok())
-            .div(bn(`1e${18 - (await token3.decimals())}`)),
+        const basketNonces = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        const portions = [
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
         ]
-        expectEqualArrays(quote.erc20s, expectedAddresses)
-        expectEqualArrays(quote.quantities, expectedQuantities)
+        const amount = fp('10000')
+        const baseline = await basketHandler.quote(amount, RoundingMode.FLOOR)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        expectEqualArrays(quote.erc20s, baseline.erc20s)
+        expectEqualArrays(quote.quantities, baseline.quantities)
 
         /*
-          Test Historical Redemption
+          Test Custom Redemption
         */
+        const expectedTokens = await Promise.all(
+          quote.erc20s.map(async (e) => ethers.getContractAt('ERC20Mock', e))
+        )
         const balsBefore = await getBalances(addr1.address, expectedTokens)
         await rToken
           .connect(addr1)
@@ -1985,7 +1969,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             quote.quantities
           )
         const balsAfter = await getBalances(addr1.address, expectedTokens)
-        expectDelta(balsBefore, quote.quantities, balsAfter)
+        expectDelta(balsBefore, baseline.quantities, balsAfter)
       })
 
       it('Should correctly quote a historical redemption [full basket default, multi-token-backup]', async () => {
@@ -2050,7 +2034,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expectEqualArrays(quote.quantities, expectedQuantities)
 
         /*
-          Test Historical Redemption
+          Test Custom Redemption
         */
         const balsBefore = await getBalances(addr1.address, expectedTokens)
         await backupToken1.mint(backingManager.address, issueAmount)

@@ -1380,23 +1380,37 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       it('Should revert if zero amount #fast', async function () {
         const zero: BigNumber = bn('0')
-        await expect(rToken.connect(addr1).redeem(zero)).to.be.revertedWith('Cannot redeem zero')
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemToCustom(addr1.address, zero, [await basketHandler.nonce()], [fp('1')], [], [])
+        ).to.be.revertedWith('Cannot redeem zero')
       })
 
       it('Should revert if no balance of RToken #fast', async function () {
         const redeemAmount: BigNumber = bn('20000e18')
+        const nonce = await basketHandler.nonce()
         await expect(
           rToken
             .connect(addr2)
+            .redeemToCustom(addr2.address, redeemAmount, [nonce], [fp('1')], [], [])
+        ).to.be.revertedWith('insufficient balance')
+      })
+
+      it('Should revert if portions do not sum to FIX_ONE #fast', async function () {
+        const nonce = await basketHandler.nonce()
+        await expect(
+          rToken
+            .connect(addr1)
             .redeemToCustom(
-              addr2.address,
-              redeemAmount,
-              [await basketHandler.nonce()],
-              [fp('1')],
+              addr1.address,
+              fp('1'),
+              [nonce, nonce],
+              [fp('0.5'), fp('0.5').add(1)],
               [],
               []
             )
-        ).to.be.revertedWith('insufficient balance')
+        ).to.be.revertedWith('portions do not add up to FIX_ONE')
       })
 
       it('Should redeem RTokens correctly', async function () {
