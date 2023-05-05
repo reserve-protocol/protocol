@@ -1,6 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { IComponents } from '../../common/configuration'
 import { IDeployments } from '../../scripts/deployment/common'
+import { isValidContract } from '../../common/blockchain-utils'
 
 export const validateDeployments = async (
   hre: HardhatRuntimeEnvironment,
@@ -12,6 +13,8 @@ export const validateDeployments = async (
     throw new Error(
       `Missing deployed TradingLib for version ${version} in network ${hre.network.name}`
     )
+  } else if (!(await isValidContract(hre, deployments.tradingLib))) {
+    throw new Error(`TradingLib contract not found in network ${hre.network.name}`)
   }
 
   // Check Main implementation is defined
@@ -19,6 +22,8 @@ export const validateDeployments = async (
     throw new Error(
       `Missing deployed Main implementation for version ${version} in network ${hre.network.name}`
     )
+  } else if (!(await isValidContract(hre, deployments.implementations.main))) {
+    throw new Error(`TradingLib contract not found in network ${hre.network.name}`)
   }
 
   // Check all componet implementations are defined
@@ -34,10 +39,19 @@ export const validateDeployments = async (
     'stRSR',
   ]
 
-  componentsKeys.forEach((keystr) => {
+  componentsKeys.forEach(async (keystr) => {
     if (!deployments.implementations.components[keystr as keyof IComponents]) {
       throw new Error(
         `Missing deployed ${keystr} implementation for version ${version} in network ${hre.network.name}`
+      )
+    } else if (
+      !(await isValidContract(
+        hre,
+        deployments.implementations.components[keystr as keyof IComponents]
+      ))
+    ) {
+      throw new Error(
+        `Implementation ${keystr} contract not found for version ${version} in network ${hre.network.name}`
       )
     }
   })
