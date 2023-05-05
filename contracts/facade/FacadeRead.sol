@@ -409,10 +409,10 @@ contract FacadeRead is IFacadeRead {
                 quantities[i] = bh.quantity(reg.erc20s[i]);
             }
 
-            (Price memory buPrice, ) = bh.prices();
+            (uint192 low, uint192 high) = bh.price(); // {UoA/BU}
 
             // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(ctx, reg, quantities, buPrice);
+            range = RecollateralizationLibP1.basketRange(ctx, reg, quantities, Price(low, high));
         }
     }
 }

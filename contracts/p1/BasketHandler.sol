@@ -10,7 +10,7 @@ import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
-import "./mixins/Basket.sol";
+import "./mixins/BasketLib.sol";
 import "./mixins/Component.sol";
 
 /**
@@ -18,7 +18,7 @@ import "./mixins/Component.sol";
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
 contract BasketHandlerP1 is ComponentP1, IBasketHandler {
-    using BasketLib for Basket;
+    using BasketLibP1 for Basket;
     using CollateralStatusComparator for CollateralStatus;
     using FixLib for uint192;
 

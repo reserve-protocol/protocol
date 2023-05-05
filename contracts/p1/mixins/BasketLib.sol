@@ -50,8 +50,8 @@ struct Basket {
     mapping(IERC20 => uint192) refAmts; // {ref/BU}
 }
 
-library BasketLib {
-    using BasketLib for Basket;
+library BasketLibP1 {
+    using BasketLibP1 for Basket;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
