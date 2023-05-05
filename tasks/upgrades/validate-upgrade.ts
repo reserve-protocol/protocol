@@ -9,6 +9,7 @@ import {
   getDeploymentFilename,
   getDeploymentFile,
 } from '../../scripts/deployment/common'
+import { RecollateralizationLibP1 } from '../../typechain'
 
 task('validate-upgrade', 'Validates if upgrade to new version is safe')
   .addParam('ver', 'the version of the currently deployed implementations')
@@ -20,8 +21,12 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
 
-    // Get Deployed addresses
-    const deploymentFilename = getDeploymentFilename(chainId, `${hre.network.name}-${params.ver}`)
+    if (hre.network.name != 'localhost' && hre.network.name != 'hardhat') {
+      throw new Error('Only run this on a local fork')
+    }
+
+    // Get Deployed addresses, use Mainnet deployments (we are in a Mainnet fork)
+    const deploymentFilename = getDeploymentFilename(1, `mainnet-${params.ver}`)
     const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
     await validateDeployments(hre, deployments, params.ver)
@@ -29,6 +34,15 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
     console.log(
       `Validating upgrades from version ${params.ver} in network ${hre.network.name} (${chainId})`
     )
+
+    // Deploy required libraries
+    const TradingLibFactory: ContractFactory = await hre.ethers.getContractFactory(
+      'RecollateralizationLibP1'
+    )
+    const tradingLib: RecollateralizationLibP1 = <RecollateralizationLibP1>(
+      await TradingLibFactory.deploy()
+    )
+    await tradingLib.deployed()
 
     await validateUpgrade(hre, deployments.implementations.main, 'MainP1')
     await validateUpgrade(hre, deployments.implementations.components.rToken, 'RTokenP1')
@@ -43,11 +57,12 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
       deployments.implementations.components.basketHandler,
       'BasketHandlerP1'
     )
+
     await validateUpgrade(
       hre,
       deployments.implementations.components.backingManager,
       'BackingManagerP1',
-      deployments.tradingLib,
+      tradingLib.address,
       ['external-library-linking', 'delegatecall']
     )
     await validateUpgrade(hre, deployments.implementations.components.distributor, 'DistributorP1')
