@@ -298,7 +298,7 @@ const redeemRTokens = async (
 
   const preRedeemRTokenBal = await rToken.balanceOf(user.address)
   const preRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
-  await rToken.connect(user).redeem(redeemAmount, await basketHandler.nonce())
+  await rToken.connect(user).redeem(redeemAmount)
   const postRedeemRTokenBal = await rToken.balanceOf(user.address)
   const postRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
 
