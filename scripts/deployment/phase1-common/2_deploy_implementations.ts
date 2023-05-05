@@ -35,9 +35,9 @@ let rTokenImpl: RTokenP1
 let stRSRImpl: StRSRP1Votes
 let tradeImpl: GnosisTrade
 
-// Specify the last deployed version (e.g: "2.1.0").
+// Specify the last deployed version (e.g: '2.1.0').
 // Used only for Upgrades. Leave empty for new fresh deployment
-const LAST_DEPLOYED_VERSION = '2.1.0'
+const LAST_DEPLOYED_VERSION = ''
 
 async function main() {
   // ==== Read Configuration ====
