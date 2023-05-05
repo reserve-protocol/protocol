@@ -18,6 +18,7 @@ import {
   BrokerP1V2,
   DistributorP1,
   DistributorP1V2,
+  DutchTrade,
   ERC20Mock,
   FurnaceP1,
   FurnaceP1V2,
@@ -86,7 +87,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let BasketHandlerFactory: ContractFactory
   let DistributorFactory: ContractFactory
   let BrokerFactory: ContractFactory
-  let TradeFactory: ContractFactory
+  let GnosisTradeFactory: ContractFactory
+  let DutchTradeFactory: ContractFactory
   let StRSRFactory: ContractFactory
 
   let notWallet: Wallet
@@ -138,7 +140,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1')
     DistributorFactory = await ethers.getContractFactory('DistributorP1')
     BrokerFactory = await ethers.getContractFactory('BrokerP1')
-    TradeFactory = await ethers.getContractFactory('GnosisTrade')
+    GnosisTradeFactory = await ethers.getContractFactory('GnosisTrade')
+    DutchTradeFactory = await ethers.getContractFactory('DutchTrade')
     StRSRFactory = await ethers.getContractFactory('StRSRP1Votes')
 
     // Import deployed proxies
@@ -249,11 +252,19 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should deploy valid implementation - Broker / Trade', async () => {
-      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy()
+      const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeFactory.deploy()
 
       const newBroker: BrokerP1 = <BrokerP1>await upgrades.deployProxy(
         BrokerFactory,
-        [main.address, gnosis.address, trade.address, config.auctionLength],
+        [
+          main.address,
+          gnosis.address,
+          gnosisTrade.address,
+          config.batchAuctionLength,
+          dutchTrade.address,
+          config.dutchAuctionLength,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
@@ -262,7 +273,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       await newBroker.deployed()
 
       expect(await newBroker.gnosis()).to.equal(gnosis.address)
-      expect(await newBroker.auctionLength()).to.equal(config.auctionLength)
+      expect(await newBroker.batchAuctionLength()).to.equal(config.batchAuctionLength)
+      expect(await newBroker.dutchAuctionLength()).to.equal(config.dutchAuctionLength)
       expect(await newBroker.disabled()).to.equal(false)
       expect(await newBroker.main()).to.equal(main.address)
     })
@@ -520,7 +532,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       // Check state is preserved
       expect(await brokerV2.gnosis()).to.equal(gnosis.address)
-      expect(await brokerV2.auctionLength()).to.equal(config.auctionLength)
+      expect(await brokerV2.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await brokerV2.disabled()).to.equal(false)
       expect(await brokerV2.main()).to.equal(main.address)
 

@@ -26,6 +26,7 @@ import {
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
+  UnpricedAppreciatingFiatCollateralMock,
   USDCMock,
   WETH9,
   UnpricedAppreciatingFiatCollateralMock,

@@ -278,7 +278,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       }
 
       // Advance time till auction ends
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
     }
   }
 
@@ -347,7 +347,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       // Mint any excess possible before increasing exchange rate to avoid blowing through max BU exchange rate
       // Explanation: For low-decimal tokens it's possible to begin overcollateralized when
       // the amount transferred in on RToken minting is 1 attoToken
-      await backingManager.manageTokens([])
+      await backingManager.forwardRevenue([])
 
       // === Execution ===
 
@@ -573,7 +573,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         }
 
         // Advance time till auction ends
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
         uncollateralized = !(await basketHandler.fullyCollateralized())
       }
 

@@ -5,7 +5,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { expectEvents } from '../../common/events'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp, divCeil } from '../../common/numbers'
 import {
   BadCollateralPlugin,
@@ -190,7 +190,10 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
     })
 
     it('should use RSR to recollateralize, breaking the economic model fundamentally', async () => {
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
       const trade = await getTrade(backingManager, rsr.address)
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(token0.address)
@@ -265,12 +268,10 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
       // Should not launch auctions or create revenue
-      await expectEvents(backingManager.manageTokens([token0.address]), [
-        {
-          contract: backingManager,
-          name: 'TradeStarted',
-          emitted: false,
-        },
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
+      )
+      await expectEvents(backingManager.forwardRevenue([token0.address]), [
         {
           contract: token0,
           name: 'Transfer',

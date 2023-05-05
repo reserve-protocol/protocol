@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IBroker.sol";
 import "./IComponent.sol";
 import "./ITrading.sol";
 
@@ -41,16 +42,15 @@ interface IBackingManager is IComponent, ITrading {
     /// @custom:interaction
     function grantRTokenAllowance(IERC20) external;
 
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @dev Performs a uniqueness check on the erc20s list in O(n^2)
-    /// @custom:interaction
-    function manageTokens(IERC20[] memory erc20s) external;
+    /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    /// @custom:interaction RCEI
+    function rebalance(TradeKind kind) external;
 
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @dev Tokens must be in sorted order!
-    /// @dev Performs a uniqueness check on the erc20s list in O(n)
-    /// @custom:interaction
-    function manageTokensSortedOrder(IERC20[] memory erc20s) external;
+    /// Forward revenue to RevenueTraders; reverts if not fully collateralized
+    /// @param erc20s The tokens to forward
+    /// @custom:interaction RCEI
+    function forwardRevenue(IERC20[] calldata erc20s) external;
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

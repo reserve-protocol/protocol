@@ -156,7 +156,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
             rsrTrader: mock.address,
             rTokenTrader: mock.address,
           },
-          trade: mock.address,
+          trading: { gnosisTrade: mock.address, dutchTrade: mock.address },
         }
 
         await expect(
@@ -179,12 +179,19 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('invalid address')
         implementations.main = mock.address
 
-        // Trade
-        implementations.trade = ZERO_ADDRESS
+        // GnosisTrade
+        implementations.trading.gnosisTrade = ZERO_ADDRESS
         await expect(
           deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
-        implementations.trade = mock.address
+        implementations.trading.gnosisTrade = mock.address
+
+        // DutchTrade
+        implementations.trading.dutchTrade = ZERO_ADDRESS
+        await expect(
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
+        ).to.be.revertedWith('invalid address')
+        implementations.trading.dutchTrade = mock.address
 
         await validateComponent(implementations, 'assetRegistry')
         await validateComponent(implementations, 'backingManager')

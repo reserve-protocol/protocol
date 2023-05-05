@@ -34,7 +34,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint48 public constant PERIOD = 12; // {s} 12 seconds; 1 block on PoS Ethereum
+    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
     uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = FIX_ONE; // {1} 100%
@@ -302,7 +302,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // == Checks + Effects ==
         require(basketHandler.fullyCollateralized(), "RToken uncollateralized");
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket defaulted");
+        require(basketHandler.isReady(), "basket not ready");
 
         uint256 firstId = firstRemainingDraft[draftEra][account];
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];
@@ -340,7 +340,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // We specifically allow unstaking when under collateralized
         // require(basketHandler.fullyCollateralized(), "RToken uncollateralized");
-        // require(basketHandler.status() == CollateralStatus.SOUND, "basket defaulted");
+        // require(basketHandler.isReady(), "basket not ready");
 
         uint256 firstId = firstRemainingDraft[draftEra][account];
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];

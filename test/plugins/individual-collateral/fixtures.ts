@@ -13,6 +13,7 @@ import {
   DeployerP0,
   DeployerP1,
   DistributorP1,
+  DutchTrade,
   ERC20Mock,
   FacadeRead,
   FacadeAct,
@@ -157,8 +158,11 @@ export const getDefaultFixture = async function (salt: string) {
       const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
       const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
-      const TradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-      const tradeImpl: GnosisTrade = <GnosisTrade>await TradeImplFactory.deploy()
+      const GnosisTradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeImplFactory.deploy()
+
+      const DutchTradeImplFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
+      const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeImplFactory.deploy()
 
       const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
       const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
@@ -172,7 +176,7 @@ export const getDefaultFixture = async function (salt: string) {
       // Setup Implementation addresses
       const implementations: IImplementations = {
         main: mainImpl.address,
-        trade: tradeImpl.address,
+        trading: { gnosisTrade: gnosisTrade.address, dutchTrade: dutchTrade.address },
         components: {
           assetRegistry: assetRegImpl.address,
           backingManager: backingMgrImpl.address,
@@ -186,7 +190,6 @@ export const getDefaultFixture = async function (salt: string) {
           stRSR: stRSRImpl.address,
         },
       }
-
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
       deployer = <DeployerP1>(
         await DeployerFactory.deploy(rsr.address, gnosis.address, rsrAsset.address, implementations)
