@@ -146,3 +146,38 @@ export const getEtherscanBaseURL = (chainId: number, api = false) => {
   else prefix = chainId == 1 ? '' : `${hre.network.name}.`
   return `https://${prefix}etherscan.io`
 }
+
+export const getEmptyDeployment = (): IDeployments => {
+  return {
+    prerequisites: {
+      RSR: '',
+      RSR_FEED: '',
+      GNOSIS_EASY_AUCTION: '',
+    },
+    tradingLib: '',
+    facadeRead: '',
+    facadeWriteLib: '',
+    cvxMiningLib: '',
+    facadeMonitor: '',
+    facadeWrite: '',
+    facadeAct: '',
+    deployer: '',
+    rsrAsset: '',
+    implementations: {
+      main: '',
+      trade: '',
+      components: {
+        assetRegistry: '',
+        backingManager: '',
+        basketHandler: '',
+        broker: '',
+        distributor: '',
+        furnace: '',
+        rsrTrader: '',
+        rTokenTrader: '',
+        rToken: '',
+        stRSR: '',
+      },
+    },
+  }
+}
