@@ -482,15 +482,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 }
 
                 // Add new ERC20 entry if not found
+                uint192 amt = portions[i].mul(b.refAmts[erc20], FLOOR);
                 if (erc20Index == type(uint256).max) {
                     erc20sAll[len] = erc20;
 
                     // {ref} = {1} * {ref}
-                    refAmtsAll[len] = portions[j].mul(b.refAmts[erc20], FLOOR);
+                    refAmtsAll[len] = amt;
                     ++len;
                 } else {
                     // {ref} = {1} * {ref}
-                    refAmtsAll[erc20Index] += portions[j].mul(b.refAmts[erc20], FLOOR);
+                    refAmtsAll[erc20Index] += amt;
                 }
             }
         }
@@ -504,10 +505,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
             try main.assetRegistry().toAsset(IERC20(erc20s[i])) returns (IAsset asset) {
                 if (!asset.isCollateral()) continue; // skip token if no longer registered
+                quantities[i] = FIX_MAX;
 
                 // prevent div-by-zero
                 uint192 refPerTok = ICollateral(address(asset)).refPerTok();
-                if (refPerTok == 0) continue; // quantities[i] = 0;
+                if (refPerTok == 0) continue;
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
                 quantities[i] = safeMulDivFloor(amount, refAmtsAll[i], refPerTok).shiftl_toUint(
@@ -745,15 +747,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// Require that erc20s is a valid collateral array
     function requireValidCollArray(IERC20[] calldata erc20s) internal view {
         IERC20 zero = IERC20(address(0));
-        IERC20 rsr = main.rsr();
-        IERC20 rToken = IERC20(address(main.rToken()));
-        IERC20 stRSR = IERC20(address(main.stRSR()));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            require(
-                erc20s[i] != zero && erc20s[i] != rsr && erc20s[i] != rToken && erc20s[i] != stRSR,
-                "invalid collateral"
-            );
+            require(erc20s[i] != main.rsr(), "RSR is not valid collateral");
+            require(erc20s[i] != IERC20(address(main.rToken())), "RToken is not valid collateral");
+            require(erc20s[i] != IERC20(address(main.stRSR())), "stRSR is not valid collateral");
+            require(erc20s[i] != zero, "address zero is not valid collateral");
         }
 
         require(ArrayLib.allUnique(erc20s), "contains duplicates");

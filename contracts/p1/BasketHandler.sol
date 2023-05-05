@@ -407,6 +407,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 "invalid basketNonce"
             ); // will always revert directly after setPrimeBasket()
             Basket storage b = basketHistory[basketNonces[i]];
+
             // Add-in refAmts contribution from historical basket
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
                 IERC20 erc20 = b.erc20s[j];
@@ -442,6 +443,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         // Calculate quantities
         for (uint256 i = 0; i < len; ++i) {
             erc20s[i] = address(erc20sAll[i]);
+
             try assetRegistry.toAsset(IERC20(erc20s[i])) returns (IAsset asset) {
                 if (!asset.isCollateral()) continue; // skip token if no longer registered
 

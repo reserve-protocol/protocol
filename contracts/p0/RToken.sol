@@ -279,10 +279,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
         // Check post-balances
         for (uint256 i = 0; i < expectedERC20sOut.length; ++i) {
-            require(
-                IERC20(expectedERC20sOut[i]).balanceOf(recipient) - pastBals[i] >= minAmounts[i],
-                "redemption below minimum"
-            );
+            uint256 bal = IERC20(expectedERC20sOut[i]).balanceOf(recipient);
+            require(bal - pastBals[i] >= minAmounts[i], "redemption below minimum");
         }
     }
 
