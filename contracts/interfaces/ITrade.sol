@@ -2,6 +2,15 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "./IBroker.sol";
+
+enum TradeStatus {
+    NOT_STARTED, // before init()
+    OPEN, // after init() and before settle()
+    CLOSED, // after settle()
+    // === Intermediate-tx state ===
+    PENDING // during init() or settle() (reentrancy protection)
+}
 
 /**
  * Simple generalized trading interface for all Trade contracts to obey
@@ -25,6 +34,7 @@ interface ITrade {
     /// @dev Should be guaranteed to be true eventually as an invariant
     function canSettle() external view returns (bool);
 
-    /// @return {qSellTok}
-    function initBal() external view returns (uint256);
+    /// @return TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    // solhint-disable-next-line func-name-mixedcase
+    function KIND() external view returns (TradeKind);
 }

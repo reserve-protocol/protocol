@@ -50,7 +50,8 @@ contract DeployerP1 is IDeployer, Versioned {
                 address(gnosis_) != address(0) &&
                 address(rsrAsset_) != address(0) &&
                 address(implementations_.main) != address(0) &&
-                address(implementations_.trade) != address(0) &&
+                address(implementations_.trading.gnosisTrade) != address(0) &&
+                address(implementations_.trading.dutchTrade) != address(0) &&
                 address(implementations_.components.assetRegistry) != address(0) &&
                 address(implementations_.components.backingManager) != address(0) &&
                 address(implementations_.components.basketHandler) != address(0) &&
@@ -98,7 +99,7 @@ contract DeployerP1 is IDeployer, Versioned {
     //   Deploy a proxy for Main and every component of Main
     //   Call init() on Main and every component of Main, using `params` for needed parameters
     //     While doing this, init assetRegistry with this.rsrAsset and a new rTokenAsset
-    //   Set up Auth so that `owner` holds all roles and no one else has any
+    //   Set up Auth so that `owner` holds the OWNER role and no one else has any
     function deploy(
         string memory name,
         string memory symbol,
@@ -199,7 +200,14 @@ contract DeployerP1 is IDeployer, Versioned {
         // Init Furnace
         components.furnace.init(main, params.rewardRatio);
 
-        components.broker.init(main, gnosis, implementations.trade, params.auctionLength);
+        components.broker.init(
+            main,
+            gnosis,
+            implementations.trading.gnosisTrade,
+            params.batchAuctionLength,
+            implementations.trading.dutchTrade,
+            params.dutchAuctionLength
+        );
 
         // Init StRSR
         {
@@ -234,13 +242,7 @@ contract DeployerP1 is IDeployer, Versioned {
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
-        main.grantRole(SHORT_FREEZER, owner);
-        main.grantRole(LONG_FREEZER, owner);
-        main.grantRole(PAUSER, owner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(SHORT_FREEZER, address(this));
-        main.renounceRole(LONG_FREEZER, address(this));
-        main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
         return (address(components.rToken));

@@ -1,11 +1,21 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`BrokerP1 contract #fast Gas Reporting Initialize Trade  1`] = `451349`;
+exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Initialize Trade  1`] = `233033`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Open Trade  1`] = `551875`;
+exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Open Trade  1`] = `350111`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Open Trade  2`] = `539713`;
+exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Open Trade  2`] = `352247`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Open Trade  3`] = `541851`;
+exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Open Trade  3`] = `354385`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Settle Trade  1`] = `113056`;
+exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Settle Trade  1`] = `63429`;
+
+exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Initialize Trade  1`] = `451337`;
+
+exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Open Trade  1`] = `552332`;
+
+exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Open Trade  2`] = `540170`;
+
+exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Open Trade  3`] = `542308`;
+
+exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Settle Trade  1`] = `113056`;

@@ -7,7 +7,7 @@ import { bn, fp } from '../common/numbers'
 import { setOraclePrice } from './utils/oracles'
 import {
   Asset,
-  CTokenMock,
+  CTokenVaultMock,
   ERC20Mock,
   FacadeAct,
   FacadeRead,
@@ -35,6 +35,7 @@ import {
 } from './fixtures'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { CollateralStatus, MAX_UINT256 } from '#/common/constants'
+import { mintCollaterals } from './utils/tokens'
 
 describe('FacadeRead contract', () => {
   let owner: SignerWithAddress
@@ -47,7 +48,7 @@ describe('FacadeRead contract', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenMock
+  let cTokenVault: CTokenVaultMock
   let rsr: ERC20Mock
   let basket: Collateral[]
 
@@ -106,7 +107,9 @@ describe('FacadeRead contract', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
+    cTokenVault = <CTokenVaultMock>(
+      await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
+    )
   })
 
   describe('Views', () => {
@@ -120,7 +123,7 @@ describe('FacadeRead contract', () => {
       expect(erc20s[0]).to.equal(token.address)
       expect(erc20s[1]).to.equal(usdc.address)
       expect(erc20s[2]).to.equal(aToken.address)
-      expect(erc20s[3]).to.equal(cToken.address)
+      expect(erc20s[3]).to.equal(cTokenVault.address)
       expect(breakdown[0]).to.be.closeTo(fp('0.25'), 10)
       expect(breakdown[1]).to.be.closeTo(fp('0.25'), 10)
       expect(breakdown[2]).to.be.closeTo(fp('0.25'), 10)
@@ -134,15 +137,7 @@ describe('FacadeRead contract', () => {
     beforeEach(async () => {
       // Mint Tokens
       initialBal = bn('10000000000e18')
-      await token.connect(owner).mint(addr1.address, initialBal)
-      await usdc.connect(owner).mint(addr1.address, initialBal)
-      await aToken.connect(owner).mint(addr1.address, initialBal)
-      await cToken.connect(owner).mint(addr1.address, initialBal)
-
-      await token.connect(owner).mint(addr2.address, initialBal)
-      await usdc.connect(owner).mint(addr2.address, initialBal)
-      await aToken.connect(owner).mint(addr2.address, initialBal)
-      await cToken.connect(owner).mint(addr2.address, initialBal)
+      await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
 
       // Issue some RTokens
       issueAmount = bn('100e18')
@@ -151,7 +146,7 @@ describe('FacadeRead contract', () => {
       await token.connect(addr1).approve(rToken.address, initialBal)
       await usdc.connect(addr1).approve(rToken.address, initialBal)
       await aToken.connect(addr1).approve(rToken.address, initialBal)
-      await cToken.connect(addr1).approve(rToken.address, initialBal)
+      await cTokenVault.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -172,7 +167,7 @@ describe('FacadeRead contract', () => {
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmount)
 
       // With 0 baskets needed - Returns correct value
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
@@ -186,7 +181,7 @@ describe('FacadeRead contract', () => {
       expect(toks[0]).to.equal(token.address)
       expect(toks[1]).to.equal(usdc.address)
       expect(toks[2]).to.equal(aToken.address)
-      expect(toks[3]).to.equal(cToken.address)
+      expect(toks[3]).to.equal(cTokenVault.address)
       expect(quantities.length).to.equal(4)
       expect(quantities[0]).to.equal(issueAmount.div(4))
       expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
@@ -210,7 +205,7 @@ describe('FacadeRead contract', () => {
       expect(toks[0]).to.equal(token.address)
       expect(toks[1]).to.equal(usdc.address)
       expect(toks[2]).to.equal(aToken.address)
-      expect(toks[3]).to.equal(cToken.address)
+      expect(toks[3]).to.equal(cTokenVault.address)
       expect(quantities[0]).to.equal(issueAmount.div(4))
       expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
       expect(quantities[2]).to.equal(issueAmount.div(4))
@@ -263,7 +258,7 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.equal(fp('1'))
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmount)
 
       // Check values = 0 (no supply)
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
@@ -380,8 +375,8 @@ describe('FacadeRead contract', () => {
       await usdc.connect(addr1).transfer(rsrTrader.address, 2)
       await aToken.connect(addr1).transfer(rTokenTrader.address, 1)
       await aToken.connect(addr1).transfer(rsrTrader.address, 2)
-      await cToken.connect(addr1).transfer(rTokenTrader.address, 1)
-      await cToken.connect(addr1).transfer(rsrTrader.address, 2)
+      await cTokenVault.connect(addr1).transfer(rTokenTrader.address, 1)
+      await cTokenVault.connect(addr1).transfer(rsrTrader.address, 2)
 
       // Balances
       const [erc20s, balances, balancesNeededByBackingManager] =
@@ -395,9 +390,12 @@ describe('FacadeRead contract', () => {
         if (erc20s[i] == token.address) bal = issueAmount.div(4)
         if (erc20s[i] == usdc.address) bal = issueAmount.div(4).div(bn('1e12'))
         if (erc20s[i] == aToken.address) bal = issueAmount.div(4)
-        if (erc20s[i] == cToken.address) bal = issueAmount.div(4).mul(50).div(bn('1e10'))
+        if (erc20s[i] == cTokenVault.address) bal = issueAmount.div(4).mul(50).div(bn('1e10'))
+        expect(balances[i]).to.equal(bal)
 
-        if ([token.address, usdc.address, aToken.address, cToken.address].indexOf(erc20s[i]) >= 0) {
+        if (
+          [token.address, usdc.address, aToken.address, cTokenVault.address].indexOf(erc20s[i]) >= 0
+        ) {
           expect(balances[i]).to.equal(bal.add(3)) // expect 3 more
           expect(balancesNeededByBackingManager[i]).to.equal(bal)
         } else {
@@ -413,7 +411,7 @@ describe('FacadeRead contract', () => {
         const trader = traders[traderIndex]
 
         const minTradeVolume = await trader.minTradeVolume()
-        const auctionLength = await broker.auctionLength()
+        const auctionLength = await broker.batchAuctionLength()
         const tokenSurplus = bn('0.5e18')
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
@@ -484,7 +482,7 @@ describe('FacadeRead contract', () => {
 
     it('Should return basketBreakdown correctly when RToken supply = 0', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmount)
 
       expect(await rToken.totalSupply()).to.equal(bn(0))
 
@@ -505,7 +503,7 @@ describe('FacadeRead contract', () => {
       expect(erc20s[0]).to.equal(token.address)
       expect(erc20s[1]).to.equal(usdc.address)
       expect(erc20s[2]).to.equal(aToken.address)
-      expect(erc20s[3]).to.equal(cToken.address)
+      expect(erc20s[3]).to.equal(cTokenVault.address)
       expect(breakdown[0]).to.equal(fp('0')) // dai
       expect(breakdown[1]).to.equal(fp('1')) // usdc
       expect(breakdown[2]).to.equal(fp('0')) // adai
@@ -562,7 +560,7 @@ describe('FacadeRead contract', () => {
         expect(erc20s.length).to.equal(4)
         expect(targetNames.length).to.equal(4)
         expect(targetAmts.length).to.equal(4)
-        const expectedERC20s = [token.address, usdc.address, aToken.address, cToken.address]
+        const expectedERC20s = [token.address, usdc.address, aToken.address, cTokenVault.address]
         for (let i = 0; i < 4; i++) {
           expect(erc20s[i]).to.equal(expectedERC20s[i])
           expect(targetNames[i]).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -594,7 +592,7 @@ describe('FacadeRead contract', () => {
         expect(erc20s.length).to.equal(4)
         expect(targetNames.length).to.equal(4)
         expect(targetAmts.length).to.equal(4)
-        const expectedERC20s = [token.address, usdc.address, aToken.address, cToken.address]
+        const expectedERC20s = [token.address, usdc.address, aToken.address, cTokenVault.address]
         for (let i = 0; i < 4; i++) {
           expect(erc20s[i]).to.equal(expectedERC20s[i])
           expect(targetNames[i]).to.equal(ethers.utils.formatBytes32String('USD'))

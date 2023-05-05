@@ -28,21 +28,46 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         tokenToBuy = tokenToBuy_;
     }
 
+    /// Settle a single trade + distribute revenue
+    /// @param sell The sell token in the trade
+    /// @return trade The ITrade contract settled
+    /// @custom:interaction
+    function settleTrade(IERC20 sell)
+        public
+        override(ITrading, TradingP0)
+        notTradingPausedOrFrozen
+        returns (ITrade trade)
+    {
+        trade = super.settleTrade(sell);
+        distributeTokenToBuy();
+        // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
+    }
+
+    /// Distribute tokenToBuy to its destinations
+    /// @dev Special-case of manageToken(tokenToBuy, *)
+    /// @custom:interaction
+    function distributeTokenToBuy() public {
+        uint256 bal = tokenToBuy.balanceOf(address(this));
+        tokenToBuy.safeApprove(address(main.distributor()), 0);
+        tokenToBuy.safeApprove(address(main.distributor()), bal);
+        main.distributor().distribute(tokenToBuy, bal);
+    }
+
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @custom:interaction
-    function manageToken(IERC20 erc20) external notTradingPausedOrFrozen {
-        if (address(trades[erc20]) != address(0)) return;
-
-        uint256 bal = erc20.balanceOf(address(this));
-        if (bal == 0) return;
-
+    function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
         if (erc20 == tokenToBuy) {
-            erc20.safeApprove(address(main.distributor()), 0);
-            erc20.safeApprove(address(main.distributor()), bal);
-            main.distributor().distribute(erc20, bal);
+            distributeTokenToBuy();
             return;
         }
+
+        main.assetRegistry().refresh();
+        main.furnace().melt();
+
+        require(address(trades[erc20]) == address(0), "trade open");
+        require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);
@@ -69,8 +94,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             maxTradeSlippage
         );
 
-        if (launch) {
-            tryTrade(req);
-        }
+        require(launch, "trade not worth launching");
+        tryTrade(kind, req);
     }
 }

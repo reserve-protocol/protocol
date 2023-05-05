@@ -6,9 +6,9 @@ import { ethers } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
-  CTokenMock,
+  CTokenVaultMock,
   CTokenNonFiatCollateral,
   ComptrollerMock,
   ERC20Mock,
@@ -46,14 +46,15 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
   let collateral: Collateral[]
 
   // Non-backing assets
+  let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
 
   // Tokens and Assets
   let wbtc: ERC20Mock
   let wBTCCollateral: SelfReferentialCollateral
-  let cWBTC: CTokenMock
+  let cWBTC: CTokenVaultMock
   let cWBTCCollateral: CTokenNonFiatCollateral
-  let token0: CTokenMock
+  let token0: CTokenVaultMock
   let collateral0: Collateral
   let backupToken: ERC20Mock
   let backupCollateral: Collateral
@@ -85,6 +86,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     ;({
       rsr,
       stRSR,
+      compToken,
       compoundMock,
       erc20s,
       collateral,
@@ -99,7 +101,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
-    token0 = <CTokenMock>erc20s[4] // cDai
+    token0 = <CTokenVaultMock>erc20s[4] // cDai
     collateral0 = collateral[4]
 
     wbtc = await (await ethers.getContractFactory('ERC20Mock')).deploy('WBTC Token', 'WBTC')
@@ -129,8 +131,8 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
 
     // cWBTC
     cWBTC = await (
-      await ethers.getContractFactory('CTokenMock')
-    ).deploy('cWBTC Token', 'cWBTC', wbtc.address)
+      await ethers.getContractFactory('CTokenVaultMock')
+    ).deploy('cWBTC Token', 'cWBTC', wbtc.address, compToken.address, compoundMock.address)
     cWBTCCollateral = await (
       await ethers.getContractFactory('CTokenNonFiatCollateral')
     ).deploy(
@@ -147,8 +149,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       },
       targetUnitOracle.address,
       ORACLE_TIMEOUT,
-      REVENUE_HIDING,
-      compoundMock.address
+      REVENUE_HIDING
     )
 
     // Backup
@@ -210,25 +211,32 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
 
     it('should sell appreciating stable collateral and ignore cWBTC', async () => {
       await token0.setExchangeRate(fp('1.1')) // 10% appreciation
-      await expect(backingManager.manageTokens([token0.address])).to.not.emit(
-        backingManager,
-        'TradeStarted'
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
       )
+      await backingManager.forwardRevenue([cWBTC.address, token0.address])
       expect(await cWBTC.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await cWBTC.balanceOf(rsrTrader.address)).to.equal(0)
-      await expect(rTokenTrader.manageToken(cWBTC.address)).to.not.emit(
+      await expect(
+        rTokenTrader.manageToken(cWBTC.address, TradeKind.BATCH_AUCTION)
+      ).to.be.revertedWith('0 balance')
+      await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
         rTokenTrader,
         'TradeStarted'
       )
-      await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
 
       // RTokenTrader should be selling token0 and buying RToken
       const trade = await getTrade(rTokenTrader, token0.address)
       expect(await trade.sell()).to.equal(token0.address)
       expect(await trade.buy()).to.equal(rToken.address)
 
-      await expect(rsrTrader.manageToken(cWBTC.address)).to.not.emit(rsrTrader, 'TradeStarted')
-      await expect(rsrTrader.manageToken(token0.address)).to.emit(rsrTrader, 'TradeStarted')
+      await expect(
+        rsrTrader.manageToken(cWBTC.address, TradeKind.BATCH_AUCTION)
+      ).to.be.revertedWith('0 balance')
+      await expect(rsrTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rsrTrader,
+        'TradeStarted'
+      )
 
       // RSRTrader should be selling token0 and buying RToken
       const trade2 = await getTrade(rsrTrader, token0.address)
@@ -243,7 +251,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       // Advance time post warmup period - SOUND just regained
       await advanceTime(Number(config.warmupPeriod) + 1)
 
-      await expect(backingManager.manageTokens([token0.address, cWBTC.address])).to.emit(
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
         backingManager,
         'TradeStarted'
       )
@@ -296,13 +304,16 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     it('should sell cWBTC for RToken after redemption rate increase', async () => {
       await cWBTC.setExchangeRate(fp('2')) // doubling of price
       await basketHandler.refreshBasket()
-      await expect(backingManager.manageTokens([cWBTC.address])).to.not.emit(
-        backingManager,
-        'TradeStarted'
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
       )
+      await backingManager.forwardRevenue([cWBTC.address])
 
       // RTokenTrader should be selling cWBTC and buying RToken
-      await expect(rTokenTrader.manageToken(cWBTC.address)).to.emit(rTokenTrader, 'TradeStarted')
+      await expect(rTokenTrader.manageToken(cWBTC.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rTokenTrader,
+        'TradeStarted'
+      )
       const trade = await getTrade(rTokenTrader, cWBTC.address)
       expect(await trade.sell()).to.equal(cWBTC.address)
       expect(await trade.buy()).to.equal(rToken.address)
@@ -351,7 +362,10 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       )
 
       // Should view cWBTC as surplus
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
 
       // BackingManager should be selling cWBTC and buying cWBTC
       const trade = await getTrade(backingManager, cWBTC.address)

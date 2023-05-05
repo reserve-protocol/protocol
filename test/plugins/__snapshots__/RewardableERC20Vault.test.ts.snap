@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Gas Reporting RewardableERC20Vault claimRewards 1`] = `159809`;
+
+exports[`Gas Reporting RewardableERC20Vault claimRewards 2`] = `83048`;
+
+exports[`Gas Reporting RewardableERC20Vault deposit 1`] = `118977`;
+
+exports[`Gas Reporting RewardableERC20Vault deposit 2`] = `85331`;
+
+exports[`Gas Reporting RewardableERC20Vault withdraw 1`] = `98012`;
+
+exports[`Gas Reporting RewardableERC20Vault withdraw 2`] = `66512`;

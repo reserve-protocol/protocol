@@ -2,6 +2,7 @@ import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
+import { PAUSER, SHORT_FREEZER, LONG_FREEZER } from '../../common/constants'
 import { expectInReceipt } from '../../common/events'
 import { advanceTime } from '../utils/time'
 import { bn, fp } from '../../common/numbers'
@@ -21,6 +22,7 @@ import {
   DeployerP0,
   DeployerP1,
   DistributorP1,
+  DutchTrade,
   EasyAuction,
   ERC20Mock,
   EURFiatCollateral,
@@ -153,6 +155,8 @@ async function collateralFixture(
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
+  const CTokenVaultFactory = await ethers.getContractFactory('CTokenVault')
+
   const StaticATokenFactory: ContractFactory = await ethers.getContractFactory('StaticATokenLM')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
@@ -201,23 +205,28 @@ async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
+    const vault = await CTokenVaultFactory.deploy(
+      erc20.address,
+      `${await erc20.name()} Vault`,
+      `${await erc20.symbol()}-VAULT`,
+      comptroller.address
+    )
     const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkAddr,
         oracleError: ORACLE_ERROR,
-        erc20: erc20.address,
+        erc20: vault.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
       },
-      REVENUE_HIDING,
-      comptroller.address
+      REVENUE_HIDING
     )
     await coll.refresh()
-    return [erc20, coll]
+    return [vault, coll]
   }
 
   const makeATokenCollateral = async (
@@ -291,12 +300,18 @@ async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
+    const vault = await CTokenVaultFactory.deploy(
+      erc20.address,
+      `${await erc20.name()} Vault`,
+      `${await erc20.symbol()}-VAULT`,
+      comptroller.address
+    )
     const coll = <CTokenNonFiatCollateral>await CTokenNonFiatCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: referenceUnitOracleAddr,
         oracleError: ORACLE_ERROR,
-        erc20: erc20.address,
+        erc20: vault.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String(targetName),
@@ -305,11 +320,10 @@ async function collateralFixture(
       },
       targetUnitOracleAddr,
       ORACLE_TIMEOUT,
-      REVENUE_HIDING,
-      comptroller.address
+      REVENUE_HIDING
     )
     await coll.refresh()
-    return [erc20, coll]
+    return [vault, coll]
   }
 
   const makeSelfReferentialCollateral = async (
@@ -342,13 +356,19 @@ async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
+    const vault = await CTokenVaultFactory.deploy(
+      erc20.address,
+      `${await erc20.name()} Vault`,
+      `${await erc20.symbol()}-VAULT`,
+      comptroller.address
+    )
     const coll = <CTokenSelfReferentialCollateral>(
       await CTokenSelfReferentialCollateralFactory.deploy(
         {
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: chainlinkAddr,
           oracleError: ORACLE_ERROR,
-          erc20: erc20.address,
+          erc20: vault.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String(targetName),
@@ -356,12 +376,11 @@ async function collateralFixture(
           delayUntilDefault,
         },
         REVENUE_HIDING,
-        referenceERC20Decimals,
-        comptroller.address
+        referenceERC20Decimals
       )
     )
     await coll.refresh()
-    return [erc20, coll]
+    return [vault, coll]
   }
 
   const makeEURFiatCollateral = async (
@@ -617,7 +636,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     unstakingDelay: bn('1209600'), // 2 weeks
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
-    auctionLength: bn('900'), // 15 minutes
+    batchAuctionLength: bn('900'), // 15 minutes
+    dutchAuctionLength: bn('600'), // 10 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     issuanceThrottle: {
@@ -704,8 +724,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
     const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
-    const TradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-    const tradeImpl: GnosisTrade = <GnosisTrade>await TradeImplFactory.deploy()
+    const GnosisTradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+    const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeImplFactory.deploy()
+
+    const DutchTradeImplFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
+    const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeImplFactory.deploy()
 
     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
@@ -719,7 +742,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     // Setup Implementation addresses
     const implementations: IImplementations = {
       main: mainImpl.address,
-      trade: tradeImpl.address,
       components: {
         assetRegistry: assetRegImpl.address,
         backingManager: backingMgrImpl.address,
@@ -731,6 +753,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
         rTokenTrader: revTraderImpl.address,
         rToken: rTokenImpl.address,
         stRSR: stRSRImpl.address,
+      },
+      trading: {
+        gnosisTrade: gnosisTrade.address,
+        dutchTrade: dutchTrade.address,
       },
     }
 
@@ -847,6 +873,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   for (let i = 0; i < basket.length; i++) {
     await backingManager.grantRTokenAllowance(await basket[i].erc20())
   }
+
+  // Set Owner as Pauser/Freezer for tests
+  await main.connect(owner).grantRole(PAUSER, owner.address)
+  await main.connect(owner).grantRole(SHORT_FREEZER, owner.address)
+  await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
 
   return {
     rsr,

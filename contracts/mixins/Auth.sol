@@ -21,8 +21,8 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
      *                    and rewards payout
      *  - Issuance Paused: disallow issuance
      *
-     * Typically freezing thaws on its own in a predetemined number of blocks.
-     *   However, OWNER can also freeze forever.
+     * Typically freezing thaws on its own in a predetermined number of blocks.
+     *   However, OWNER can freeze forever and unfreeze.
      */
 
     /// The rest of the contract uses the shorthand; these declarations are here for getters
@@ -41,6 +41,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // === Pausing ===
 
+    /// @custom:oz-renamed-from paused
     bool public tradingPaused;
     bool public issuancePaused;
 
@@ -54,9 +55,8 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     // - 0 < shortFreeze_ <= MAX_SHORT_FREEZE
     // - 0 < longFreeze_ <= MAX_LONG_FREEZE
     // effects:
-    // - caller has all roles
+    // - caller has only the OWNER role
     // - OWNER is the admin role for all roles
-    // - longFreezes[caller] == LONG_FREEZE_CHARGES
     // - shortFreeze' == shortFreeze_
     // - longFreeze' == longFreeze_
     // questions: (what do I know about the values of paused and unfreezeAt?)
@@ -74,12 +74,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         _setRoleAdmin(LONG_FREEZER, OWNER);
         _setRoleAdmin(PAUSER, OWNER);
 
-        address msgSender = _msgSender();
-        _grantRole(OWNER, msgSender);
-        _grantRole(SHORT_FREEZER, msgSender);
-        _grantRole(LONG_FREEZER, msgSender);
-        _grantRole(PAUSER, msgSender);
-        longFreezes[msgSender] = LONG_FREEZE_CHARGES;
+        _grantRole(OWNER, _msgSender());
 
         setShortFreeze(shortFreeze_);
         setLongFreeze(longFreeze_);
@@ -101,7 +96,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // ==== System-wide views ====
     // returns: bool(main is frozen) == now < unfreezeAt
-    function frozen() external view returns (bool) {
+    function frozen() public view returns (bool) {
         return block.timestamp < unfreezeAt;
     }
 

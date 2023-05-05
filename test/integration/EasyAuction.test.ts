@@ -18,11 +18,13 @@ import { IConfig, networkConfig } from '../../common/configuration'
 import {
   BN_SCALE_FACTOR,
   CollateralStatus,
+  TradeKind,
   QUEUE_START,
   MAX_UINT48,
   MAX_UINT192,
   MAX_UINT256,
   ONE_ADDRESS,
+  PAUSER,
 } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
@@ -146,7 +148,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await token0.connect(owner).mint(addr2.address, issueAmount.mul(1e9))
 
       // Create auction
-      await expect(backingManager.manageTokens([]))
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION))
         .to.emit(backingManager, 'TradeStarted')
         .withArgs(anyValue, rsr.address, token0.address, anyValue, withinQuad(buyAmt))
 
@@ -161,7 +163,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await expectTrade(backingManager, {
         sell: rsr.address,
         buy: token0.address,
-        endTime: auctionTimestamp + Number(config.auctionLength),
+        endTime: auctionTimestamp + Number(config.batchAuctionLength),
         externalId: auctionId,
       })
 
@@ -174,7 +176,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check Gnosis
       expect(await rsr.balanceOf(easyAuction.address)).to.equal(sellAmt)
-      await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already rebalancing'
+      )
 
       // Auction should not be able to be settled
       await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
@@ -204,7 +208,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
     it('no volume', async () => {
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction, should restart
       await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -237,7 +241,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         )
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction
       await expectEvents(backingManager.settleTrade(rsr.address), [
@@ -273,7 +277,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         )
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction
       await expectEvents(backingManager.settleTrade(rsr.address), [
@@ -302,7 +306,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction
       await expectEvents(backingManager.settleTrade(rsr.address), [
@@ -332,7 +336,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction
       await expectEvents(backingManager.settleTrade(rsr.address), [
@@ -362,7 +366,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction -- should trade at lower worst-case price
       await expectEvents(backingManager.settleTrade(rsr.address), [
@@ -406,7 +410,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         )
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction
       await expectEvents(backingManager.settleTrade(rsr.address), [
@@ -430,7 +434,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
     it('/w non-trivial prices', async () => {
       // End first auction, since it is at old prices
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
       await backingManager.settleTrade(rsr.address)
 
       // $0.007 RSR at $4k ETH
@@ -442,7 +446,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       buyAmt = issueAmount.add(1) // rounding up from prepareTradeToCoverDeficit
 
       // Start next auction
-      await expectEvents(backingManager.manageTokens([]), [
+      await expectEvents(backingManager.rebalance(TradeKind.BATCH_AUCTION), [
         {
           contract: backingManager,
           name: 'TradeStarted',
@@ -468,7 +472,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         )
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction
       await expectEvents(backingManager.settleTrade(rsr.address), [
@@ -497,7 +501,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Settle auction directly
       await easyAuction.connect(addr2).settleAuction(auctionId)
@@ -573,7 +577,10 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Should launch auction for token1
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
 
       const auctionTimestamp: number = await getLatestBlockTimestamp()
       const auctionId = await getAuctionId(backingManager, token0.address)
@@ -582,7 +589,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await expectTrade(backingManager, {
         sell: token0.address,
         buy: token1.address,
-        endTime: auctionTimestamp + Number(config.auctionLength),
+        endTime: auctionTimestamp + Number(config.batchAuctionLength),
         externalId: auctionId,
       })
       const trade = await getTrade(backingManager, token0.address)
@@ -596,7 +603,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check Gnosis
       expect(await token0.balanceOf(easyAuction.address)).to.equal(issueAmount)
-      await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already rebalancing'
+      )
 
       // Auction should not be able to be settled
       await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
@@ -630,7 +639,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         )
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction
       await expectEvents(backingManager.settleTrade(token0.address), [
@@ -671,7 +680,10 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Should launch auction for token1
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
 
       const auctionTimestamp: number = await getLatestBlockTimestamp()
       const auctionId = await getAuctionId(backingManager, token0.address)
@@ -680,7 +692,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await expectTrade(backingManager, {
         sell: token0.address,
         buy: token1.address,
-        endTime: auctionTimestamp + Number(config.auctionLength),
+        endTime: auctionTimestamp + Number(config.batchAuctionLength),
         externalId: auctionId,
       })
       const trade = await getTrade(backingManager, token0.address)
@@ -694,7 +706,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check Gnosis
       expect(await token0.balanceOf(easyAuction.address)).to.be.closeTo(issueAmount, 1)
-      await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already rebalancing'
+      )
 
       // Auction should not be able to be settled
       await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
@@ -714,7 +728,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         )
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End current auction
       await expectEvents(backingManager.settleTrade(token0.address), [
@@ -770,9 +784,18 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         1,
         1
       )
+      // Set pauser and unpause
+      await main.connect(owner).grantRole(PAUSER, owner.address)
       await main.connect(owner).unpauseTrading()
       await main.connect(owner).unpauseIssuance()
-      await broker.init(main.address, easyAuction.address, ONE_ADDRESS, config.auctionLength)
+      await broker.init(
+        main.address,
+        easyAuction.address,
+        ONE_ADDRESS,
+        config.batchAuctionLength,
+        ONE_ADDRESS,
+        config.dutchAuctionLength
+      )
       const sellTok = await ERC20Factory.deploy('Sell Token', 'SELL', sellTokDecimals)
       const buyTok = await ERC20Factory.deploy('Buy Token', 'BUY', buyTokDecimals)
       const sellColl = <FiatCollateral>await CollFactory.deploy({
@@ -807,7 +830,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // First simulate opening the trade to get where it will be deployed
       await sellTok.connect(addr1).approve(broker.address, auctionSellAmt)
-      const tradeAddr = await broker.connect(addr1).callStatic.openTrade({
+      const tradeAddr = await broker.connect(addr1).callStatic.openTrade(TradeKind.BATCH_AUCTION, {
         sell: sellColl.address,
         buy: buyColl.address,
         sellAmount: auctionSellAmt,
@@ -815,7 +838,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       })
 
       // Start auction!
-      await broker.connect(addr1).openTrade({
+      await broker.connect(addr1).openTrade(TradeKind.BATCH_AUCTION, {
         sell: sellColl.address,
         buy: buyColl.address,
         sellAmount: auctionSellAmt,
@@ -850,7 +873,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       }
 
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End Auction
       await expect(trade.connect(addr1).settle()).to.not.emit(broker, 'DisabledSet')

@@ -5,7 +5,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
   CTokenMock,
   CTokenSelfReferentialCollateral,
@@ -21,6 +21,7 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   WETH9,
+  CTokenVaultMock,
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
@@ -46,12 +47,13 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
   let collateral: Collateral[]
 
   // Non-backing assets
+  let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
 
   // Tokens and Assets
   let weth: WETH9
   let wethCollateral: SelfReferentialCollateral
-  let cETH: CTokenMock
+  let cETH: CTokenVaultMock
   let cETHCollateral: CTokenSelfReferentialCollateral
   let token0: CTokenMock
   let collateral0: Collateral
@@ -82,6 +84,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     ;({
       rsr,
       stRSR,
+      compToken,
       compoundMock,
       erc20s,
       collateral,
@@ -120,8 +123,8 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
 
     // cETH
     cETH = await (
-      await ethers.getContractFactory('CTokenMock')
-    ).deploy('cETH Token', 'cETH', weth.address)
+      await ethers.getContractFactory('CTokenVaultMock')
+    ).deploy('cETH Token', 'cETH', weth.address, compToken.address, compoundMock.address)
 
     cETHCollateral = await (
       await ethers.getContractFactory('CTokenSelfReferentialCollateral')
@@ -138,8 +141,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
       REVENUE_HIDING,
-      await weth.decimals(),
-      compoundMock.address
+      await weth.decimals()
     )
 
     // Backup
@@ -201,22 +203,32 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
 
     it('should sell appreciating stable collateral and ignore cETH', async () => {
       await token0.setExchangeRate(fp('1.1')) // 10% appreciation
-      await expect(backingManager.manageTokens([token0.address])).to.not.emit(
-        backingManager,
-        'TradeStarted'
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
       )
+      await backingManager.forwardRevenue([token0.address, cETH.address])
       expect(await cETH.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await cETH.balanceOf(rsrTrader.address)).to.equal(0)
-      await expect(rTokenTrader.manageToken(cETH.address)).to.not.emit(rTokenTrader, 'TradeStarted')
-      await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
+      await expect(
+        rTokenTrader.manageToken(cETH.address, TradeKind.BATCH_AUCTION)
+      ).to.be.revertedWith('0 balance')
+      await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rTokenTrader,
+        'TradeStarted'
+      )
 
       // RTokenTrader should be selling token0 and buying RToken
       const trade = await getTrade(rTokenTrader, token0.address)
       expect(await trade.sell()).to.equal(token0.address)
       expect(await trade.buy()).to.equal(rToken.address)
 
-      await expect(rsrTrader.manageToken(cETH.address)).to.not.emit(rsrTrader, 'TradeStarted')
-      await expect(rsrTrader.manageToken(token0.address)).to.emit(rsrTrader, 'TradeStarted')
+      await expect(rsrTrader.manageToken(cETH.address, TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        '0 balance'
+      )
+      await expect(rsrTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rsrTrader,
+        'TradeStarted'
+      )
 
       // RSRTrader should be selling token0 and buying RToken
       const trade2 = await getTrade(rsrTrader, token0.address)
@@ -231,7 +243,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       // Advance time post warmup period - SOUND just regained
       await advanceTime(Number(config.warmupPeriod) + 1)
 
-      await expect(backingManager.manageTokens([token0.address, cETH.address])).to.emit(
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
         backingManager,
         'TradeStarted'
       )
@@ -269,13 +281,16 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     it('should sell cETH for RToken after redemption rate increase', async () => {
       await cETH.setExchangeRate(fp('2')) // doubling of price
       await basketHandler.refreshBasket()
-      await expect(backingManager.manageTokens([cETH.address])).to.not.emit(
-        backingManager,
-        'TradeStarted'
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
       )
+      await backingManager.forwardRevenue([cETH.address])
 
       // RTokenTrader should be selling cETH and buying RToken
-      await expect(rTokenTrader.manageToken(cETH.address)).to.emit(rTokenTrader, 'TradeStarted')
+      await expect(rTokenTrader.manageToken(cETH.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rTokenTrader,
+        'TradeStarted'
+      )
       const trade = await getTrade(rTokenTrader, cETH.address)
       expect(await trade.sell()).to.equal(cETH.address)
       expect(await trade.buy()).to.equal(rToken.address)
@@ -323,7 +338,10 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       )
 
       // Should view WETH as surplus
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
 
       // BackingManager should be selling cETH and buying WETH
       const trade = await getTrade(backingManager, cETH.address)

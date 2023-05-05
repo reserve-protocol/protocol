@@ -51,31 +51,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         setMinTradeVolume(minTradeVolume_);
     }
 
-    /// Settle a single trade, expected to be used with multicall for efficient mass settlement
-    /// @custom:interaction (only reads or writes trades, and is marked `nonReentrant`)
-    // checks:
-    //   !paused (trading), !frozen
-    //   trade[sell].canSettle()
-    // actions:
-    //   trade[sell].settle()
-    // effects:
-    //   trades.set(sell, 0)
-    //   tradesOpen' = tradesOpen - 1
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) external notTradingPausedOrFrozen nonReentrant {
-        ITrade trade = trades[sell];
-        if (address(trade) == address(0)) return;
-        require(trade.canSettle(), "cannot settle yet");
-
-        delete trades[sell];
-        tradesOpen--;
-
-        // == Interactions ==
-        (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
-        emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
-    }
-
     /// Claim all rewards
     /// Collective Action
     /// @custom:interaction CEI
@@ -91,7 +66,42 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
     }
 
+    /// Settle a single trade, expected to be used with multicall for efficient mass settlement
+    /// @param sell The sell token in the trade
+    /// @return trade The ITrade contract settled
+    /// @custom:interaction (only reads or writes trades, and is marked `nonReentrant`)
+    // checks:
+    //   !paused (trading), !frozen
+    //   trade[sell].canSettle()
+    // actions:
+    //   trade[sell].settle()
+    // effects:
+    //   trades.set(sell, 0)
+    //   tradesOpen' = tradesOpen - 1
+    // untested:
+    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
+    function settleTrade(IERC20 sell)
+        public
+        virtual
+        notTradingPausedOrFrozen
+        nonReentrant
+        returns (ITrade trade)
+    {
+        trade = trades[sell];
+        require(address(trade) != address(0), "no trade open");
+        require(trade.canSettle(), "cannot settle yet");
+
+        delete trades[sell];
+        tradesOpen--;
+
+        // == Interactions ==
+        (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
+        emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
+    }
+
     /// Try to initiate a trade with a trading partner provided by the broker
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    /// @return trade The trade contract created
     /// @custom:interaction (only reads or writes `trades`, and is marked `nonReentrant`)
     // checks:
     //   (not external, so we don't need auth or pause checks)
@@ -108,15 +118,19 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
     // this contract that changes state this function refers to.
     // slither-disable-next-line reentrancy-vulnerabilities-1
-    function tryTrade(TradeRequest memory req) internal nonReentrant {
+    function tryTrade(TradeKind kind, TradeRequest memory req)
+        internal
+        nonReentrant
+        returns (ITrade trade)
+    {
         /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
-        ITrade trade = broker.openTrade(req);
 
+        trade = broker.openTrade(kind, req);
         trades[sell] = trade;
         tradesOpen++;
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);

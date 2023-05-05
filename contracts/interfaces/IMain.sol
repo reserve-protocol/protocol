@@ -16,6 +16,9 @@ import "./IStRSR.sol";
 import "./ITrading.sol";
 import "./IVersioned.sol";
 
+// Warning, assumption: Chain must have blocktimes >= 12s
+uint48 constant ONE_BLOCK = 12; //{s}
+
 // === Auth roles ===
 
 bytes32 constant OWNER = bytes32(bytes("OWNER"));

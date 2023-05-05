@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { expectPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
@@ -175,10 +175,13 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     await expectPrice(basketHandler.address, price, ORACLE_ERROR, true)
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+    await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+      'already collateralized'
+    )
     await expectEvents(
       backingManager
         .connect(owner)
-        .manageTokens([
+        .forwardRevenue([
           token0.address,
           token1.address,
           token2.address,
@@ -186,11 +189,6 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
           rToken.address,
         ]),
       [
-        {
-          contract: backingManager,
-          name: 'TradeStarted',
-          emitted: false,
-        },
         {
           contract: token0,
           name: 'Transfer',
@@ -257,7 +255,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
 
     // Should send donated token to revenue traders
     await expectEvents(
-      backingManager.manageTokens([
+      backingManager.forwardRevenue([
         token0.address,
         token1.address,
         token2.address,

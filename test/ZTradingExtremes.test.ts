@@ -11,7 +11,7 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenMock,
+  CTokenVaultMock,
   ERC20Mock,
   FacadeTest,
   FiatCollateral,
@@ -76,7 +76,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
   let ERC20Mock: ContractFactory
   let ATokenMockFactory: ContractFactory
-  let CTokenMockFactory: ContractFactory
+  let CTokenVaultMockFactory: ContractFactory
   let ATokenCollateralFactory: ContractFactory
   let CTokenCollateralFactory: ContractFactory
 
@@ -110,7 +110,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-    CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
+    CTokenVaultMockFactory = await ethers.getContractFactory('CTokenVaultMock')
     ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
@@ -157,15 +157,17 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     return erc20
   }
 
-  const prepCToken = async (index: number): Promise<CTokenMock> => {
+  const prepCToken = async (index: number): Promise<CTokenVaultMock> => {
     const underlying: ERC20Mock = <ERC20Mock>(
       await ERC20Mock.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`)
     )
-    const erc20: CTokenMock = <CTokenMock>(
-      await CTokenMockFactory.deploy(
+    const erc20: CTokenVaultMock = <CTokenVaultMock>(
+      await CTokenVaultMockFactory.deploy(
         `CToken_NAME:${index}`,
         `CToken_SYM:${index}`,
-        underlying.address
+        underlying.address,
+        compToken.address,
+        compoundMock.address
       )
     )
     await erc20.setExchangeRate(fp('1'))
@@ -185,8 +187,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
-      REVENUE_HIDING,
-      compoundMock.address
+      REVENUE_HIDING
     )
     await assetRegistry.connect(owner).register(collateral.address)
     return erc20
@@ -277,7 +278,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       }
 
       // Advance time till auction ends
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
     }
   }
 
@@ -346,7 +347,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       // Mint any excess possible before increasing exchange rate to avoid blowing through max BU exchange rate
       // Explanation: For low-decimal tokens it's possible to begin overcollateralized when
       // the amount transferred in on RToken minting is 1 attoToken
-      await backingManager.manageTokens([])
+      await backingManager.forwardRevenue([])
 
       // === Execution ===
 
@@ -500,9 +501,6 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         }
       }
 
-      // Claim rewards
-      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
       // Do auctions
       await runRevenueAuctionsUntilCompletion()
     }
@@ -575,7 +573,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         }
 
         // Advance time till auction ends
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
         uncollateralized = !(await basketHandler.fullyCollateralized())
       }
 

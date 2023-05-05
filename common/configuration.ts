@@ -317,7 +317,8 @@ export interface IConfig {
   unstakingDelay: BigNumber
   warmupPeriod: BigNumber
   tradingDelay: BigNumber
-  auctionLength: BigNumber
+  batchAuctionLength: BigNumber
+  dutchAuctionLength: BigNumber
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
   issuanceThrottle: ThrottleParams
@@ -347,9 +348,14 @@ export interface IComponents {
   stRSR: string
 }
 
+export interface ITradePlugins {
+  gnosisTrade: string
+  dutchTrade: string
+}
+
 export interface IImplementations {
   main: string
-  trade: string
+  trading: ITradePlugins
   components: IComponents
 }
 
@@ -385,6 +391,14 @@ export interface IGovParams {
   proposalThresholdAsMicroPercent: BigNumber
   quorumPercent: BigNumber
   timelockDelay: BigNumber
+}
+
+export interface IGovRoles {
+  owner: string
+  guardian: string
+  pausers: string[]
+  shortFreezers: string[]
+  longFreezers: string[]
 }
 
 // System constants

@@ -134,6 +134,8 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('rewards', () => {
+        // TODO: these tests will be deprecated along with the claimRewards()
+        // function on collateral plugins (4/18/23)
         beforeEach(async () => {
           await beforeEachRewardsTest(ctx)
         })
@@ -142,16 +144,35 @@ export default function fn<X extends CollateralFixtureContext>(
           await collateral.claimRewards()
         })
 
-        itClaimsRewards('claims rewards', async () => {
+        itClaimsRewards('claims rewards (via collateral.claimRewards())', async () => {
           const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
           await mintCollateralTo(ctx, amount, alice, collateral.address)
-
+          console.log(
+            alice.address,
+            await ctx.tok.balanceOf(alice.address),
+            await ctx.tok.balanceOf(collateral.address)
+          )
           await advanceBlocks(1000)
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 
           const balBefore = await (ctx.rewardToken as IERC20Metadata).balanceOf(collateral.address)
-          await expect(collateral.claimRewards()).to.emit(collateral, 'RewardsClaimed')
+          await expect(collateral.claimRewards()).to.emit(ctx.tok, 'RewardsClaimed')
           const balAfter = await (ctx.rewardToken as IERC20Metadata).balanceOf(collateral.address)
+          expect(balAfter).gt(balBefore)
+        })
+
+        itClaimsRewards('claims rewards (via erc20.claimRewards())', async () => {
+          const rewardable = await ethers.getContractAt('IRewardable', ctx.tok.address)
+
+          const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
+          await mintCollateralTo(ctx, amount, alice, alice.address)
+
+          await advanceBlocks(1000)
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
+
+          const balBefore = await (ctx.rewardToken as IERC20Metadata).balanceOf(alice.address)
+          await expect(rewardable.connect(alice).claimRewards()).to.emit(ctx.tok, 'RewardsClaimed')
+          const balAfter = await (ctx.rewardToken as IERC20Metadata).balanceOf(alice.address)
           expect(balAfter).gt(balBefore)
         })
       })
@@ -281,7 +302,10 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         itHasRevenueHiding('does revenue hiding correctly', async () => {
-          ctx.collateral = await deployCollateral({ revenueHiding: fp('0.01') })
+          ctx.collateral = await deployCollateral({
+            erc20: ctx.tok.address,
+            revenueHiding: fp('0.01'),
+          })
 
           // Should remain SOUND after a 1% decrease
           await reduceRefPerTok(ctx, 1) // 1% decrease

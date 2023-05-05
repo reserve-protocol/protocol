@@ -5,11 +5,10 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp, divCeil } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
-  CTokenMock,
+  CTokenVaultMock,
   CTokenFiatCollateral,
-  ComptrollerMock,
   ERC20Mock,
   IAssetRegistry,
   SelfReferentialCollateral,
@@ -42,13 +41,10 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
   // Assets
   let collateral: Collateral[]
 
-  // Non-backing assets
-  let compoundMock: ComptrollerMock
-
   // Tokens and Assets
   let dai: ERC20Mock
   let daiCollateral: SelfReferentialCollateral
-  let cDAI: CTokenMock
+  let cDAI: CTokenVaultMock
   let cDAICollateral: CTokenFiatCollateral
 
   // Config values
@@ -96,7 +92,6 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     ;({
       rsr,
       stRSR,
-      compoundMock,
       erc20s,
       collateral,
       config,
@@ -111,7 +106,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     // Main ERC20
     dai = <ERC20Mock>erc20s[0]
     daiCollateral = collateral[0]
-    cDAI = <CTokenMock>erc20s[4]
+    cDAI = <CTokenVaultMock>erc20s[4]
     cDAICollateral = await (
       await ethers.getContractFactory('CTokenFiatCollateral')
     ).deploy(
@@ -126,8 +121,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
-      REVENUE_HIDING,
-      compoundMock.address
+      REVENUE_HIDING
     )
 
     // Basket configuration
@@ -257,9 +251,15 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     it('auction should be launched at low price ignoring revenueHiding', async () => {
       // Double exchange rate and launch auctions
       await cDAI.setExchangeRate(fp('2')) // double rate
-      await backingManager.manageTokens([cDAI.address]) // transfers tokens to Traders
-      await expect(rTokenTrader.manageToken(cDAI.address)).to.emit(rTokenTrader, 'TradeStarted')
-      await expect(rsrTrader.manageToken(cDAI.address)).to.emit(rsrTrader, 'TradeStarted')
+      await backingManager.forwardRevenue([cDAI.address]) // transfers tokens to Traders
+      await expect(rTokenTrader.manageToken(cDAI.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rTokenTrader,
+        'TradeStarted'
+      )
+      await expect(rsrTrader.manageToken(cDAI.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rsrTrader,
+        'TradeStarted'
+      )
 
       // Auctions launched should be at discounted low price
       const t = await getTrade(rsrTrader, cDAI.address)
