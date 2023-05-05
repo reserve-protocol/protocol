@@ -56,6 +56,49 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         distributor.distribute(tokenToBuy, bal);
     }
 
+    /// If erc20 is tokenToBuy, do nothing; otherwise, sell it for tokenToBuy
+    /// @dev Intended to be used to manually start an auction for some token that the
+    /// RevenueTrader has a balance of but cannot be sold via a normal manageTokens(...) call
+    /// it will allow user to start trade even if trade size is < minTradeVolume
+    /// OR a BATCH_AUCTION trade in case the price feed is broken.
+    /// Works identially to manageToken(...) otherwise
+    /// @param erc20 The token the revenue trader has a balance of but cannot
+    /// be sold via a normal manageTokens(...) call
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION.
+    /// DUTCH_AUCTION can only be used if oracles are working
+    /// @custom:interaction RCEI
+    //
+    function startDustAuction(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
+        require(erc20 != tokenToBuy, "invalid token");
+        // == Refresh + basic Checks/Effects ==
+        TradeInfo memory trade = getTrade(erc20);
+        require(trade.sellAmount != 0, "zero balance");
+
+        uint192 minBuyAmount = (trade.sellPrice != 0 && trade.sellPrice != FIX_MAX)
+            ? trade.buyPrice.div(trade.sellPrice, CEIL).mul(trade.sellAmount)
+            : 0;
+
+        // == Checks/Effects ==
+        // Specific to starting dust auctions
+        if (minBuyAmount == 0) {
+            require(kind != TradeKind.DUTCH_AUCTION, "infinite slippage DUTCH_AUCTION not allowed");
+        }
+        uint192 maxSellTradeSize = trade.sell.maxTradeVolume();
+        uint192 maxBuyTradeSize = trade.buy.maxTradeVolume();
+        require(minBuyAmount <= maxBuyTradeSize, "buy amount too large");
+        require(trade.sellAmount <= maxSellTradeSize, "sell amount too large");
+
+        TradeRequest memory req = TradeRequest({
+            sellAmount: trade.sellAmount.shiftl_toUint(int8(trade.sell.erc20Decimals()), FLOOR),
+            minBuyAmount: minBuyAmount.shiftl_toUint(int8(trade.buy.erc20Decimals()), CEIL),
+            sell: trade.sell,
+            buy: trade.buy
+        });
+
+        // == Interactions ==
+        tryTrade(kind, req);
+    }
+
     /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
     /// @dev Intended to be used with multicall
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
@@ -79,6 +122,22 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             return;
         }
 
+        TradeInfo memory trade = getTrade(erc20);
+
+        // If not dust, trade the non-target asset for the target asset
+        // Any asset with a broken price feed will trigger a revert here
+        (bool launch, TradeRequest memory req) = TradeLib.prepareTradeSell(
+            trade,
+            minTradeVolume,
+            maxTradeSlippage
+        );
+        require(launch, "trade not worth launching");
+
+        // == Interactions ==
+        tryTrade(kind, req);
+    }
+
+    function getTrade(IERC20 erc20) internal returns (TradeInfo memory trade) {
         IAsset sell;
         IAsset buy;
 
@@ -105,13 +164,11 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         require(address(trades[erc20]) == address(0), "trade open");
         require(erc20.balanceOf(address(this)) > 0, "0 balance");
-
         (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
         (, uint192 buyPrice) = buy.price(); // {UoA/tok}
-
         require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
 
-        TradeInfo memory trade = TradeInfo({
+        trade = TradeInfo({
             sell: sell,
             buy: buy,
             sellAmount: sell.bal(address(this)),
@@ -119,18 +176,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             sellPrice: sellPrice,
             buyPrice: buyPrice
         });
-
-        // If not dust, trade the non-target asset for the target asset
-        // Any asset with a broken price feed will trigger a revert here
-        (bool launch, TradeRequest memory req) = TradeLib.prepareTradeSell(
-            trade,
-            minTradeVolume,
-            maxTradeSlippage
-        );
-        require(launch, "trade not worth launching");
-
-        // == Interactions ==
-        tryTrade(kind, req);
     }
 
     /// Call after upgrade to >= 3.0.0

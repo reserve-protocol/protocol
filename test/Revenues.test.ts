@@ -40,6 +40,7 @@ import {
   TestIStRSR,
   USDCMock,
   FiatCollateral,
+  RevenueTraderP1__factory,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -614,6 +615,62 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           minBuyAmtRToken,
           minBuyAmtRToken.div(bn('1e15'))
         )
+      })
+      it('Should be able to start a dust auction BATCH_AUCTION', async () => {
+        const minTrade = bn('1e18')
+
+        await rTokenTrader.connect(owner).setMinTradeVolume(minTrade)
+
+        await collateral0.refresh()
+
+        const dustAmount = bn('1e17')
+        await token0.connect(addr1).transfer(rTokenTrader.address, dustAmount)
+
+        await expect(
+          rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
+        ).to.revertedWith('trade not worth launching')
+
+        const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
+        await expect(
+          await p1RevenueTrader.startDustAuction(token0.address, TradeKind.BATCH_AUCTION)
+        ).to.emit(rTokenTrader, 'TradeStarted')
+      })
+
+      it('Should be able to start a dust auction DUTCH_AUCTION', async () => {
+        const minTrade = bn('1e18')
+
+        await rTokenTrader.connect(owner).setMinTradeVolume(minTrade)
+
+        await collateral0.refresh()
+
+        const dustAmount = bn('1e17')
+        await token0.connect(addr1).transfer(rTokenTrader.address, dustAmount)
+
+        const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
+        await expect(
+          await p1RevenueTrader.startDustAuction(token0.address, TradeKind.DUTCH_AUCTION)
+        ).to.emit(rTokenTrader, 'TradeStarted')
+      })
+
+      it('Should only be able to start a dust auction BATCH_AUCTION if oracle has failed', async () => {
+        const minTrade = bn('1e18')
+
+        await rTokenTrader.connect(owner).setMinTradeVolume(minTrade)
+
+        
+
+        const dustAmount = bn('1e17')
+        await token0.connect(addr1).transfer(rTokenTrader.address, dustAmount)
+
+        const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
+        await setOraclePrice(collateral0.address, bn(0))
+        await collateral0.refresh()
+        await expect(
+          p1RevenueTrader.startDustAuction(token0.address, TradeKind.DUTCH_AUCTION)
+        ).to.revertedWith('infinite slippage DUTCH_AUCTION not allowed')
+        await expect(
+          await p1RevenueTrader.startDustAuction(token0.address, TradeKind.BATCH_AUCTION)
+        ).to.emit(rTokenTrader, 'TradeStarted')
       })
 
       it('Should not auction 1qTok - Amount too small', async () => {
