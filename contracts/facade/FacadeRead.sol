@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../plugins/trading/DutchTrade.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IFacadeRead.sol";
@@ -9,10 +10,7 @@ import "../interfaces/IRToken.sol";
 import "../interfaces/IStRSR.sol";
 import "../libraries/Fixed.sol";
 import "../p1/BasketHandler.sol";
-import "../p1/BackingManager.sol";
-import "../p1/Furnace.sol";
 import "../p1/RToken.sol";
-import "../p1/RevenueTrader.sol";
 import "../p1/StRSRVotes.sol";
 
 /**
@@ -133,7 +131,7 @@ contract FacadeRead is IFacadeRead {
     /// @return uoaShares {1} The proportion of the basket associated with each ERC20
     /// @return targets The bytes32 representations of the target unit associated with each ERC20
     /// @custom:static-call
-    function basketBreakdown(RTokenP1 rToken)
+    function basketBreakdown(IRToken rToken)
         external
         returns (
             address[] memory erc20s,
@@ -173,6 +171,136 @@ contract FacadeRead is IFacadeRead {
         }
     }
 
+    /// @return erc20s The registered ERC20s
+    /// @return balances {qTok} The held balances of each ERC20 across all traders
+    /// @return balancesNeededByBackingManager {qTok} does not account for backingBuffer
+    /// @custom:static-call
+    function balancesAcrossAllTraders(IRToken rToken)
+        external
+        returns (
+            IERC20[] memory erc20s,
+            uint256[] memory balances,
+            uint256[] memory balancesNeededByBackingManager
+        )
+    {
+        IMain main = rToken.main();
+        main.assetRegistry().refresh();
+        main.furnace().melt();
+
+        erc20s = main.assetRegistry().erc20s();
+        balances = new uint256[](erc20s.length);
+        balancesNeededByBackingManager = new uint256[](erc20s.length);
+
+        uint192 basketsNeeded = rToken.basketsNeeded(); // {BU}
+
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            balances[i] = erc20s[i].balanceOf(address(main.backingManager()));
+            balances[i] += erc20s[i].balanceOf(address(main.rTokenTrader()));
+            balances[i] += erc20s[i].balanceOf(address(main.rsrTrader()));
+
+            // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
+            uint192 balNeededFix = main.basketHandler().quantity(erc20s[i]).safeMul(
+                basketsNeeded,
+                RoundingMode.FLOOR // FLOOR to match redemption
+            );
+
+            balancesNeededByBackingManager[i] = balNeededFix.shiftl_toUint(
+                int8(IERC20Metadata(address(erc20s[i])).decimals()),
+                RoundingMode.FLOOR
+            );
+        }
+    }
+
+    /// To use this, call via callStatic.
+    /// If canStart is true, can run FacadeAct.runRecollateralizationAuctions
+    /// @return canStart true iff a recollateralization auction can be started
+    /// @return sell The sell token in the auction
+    /// @return buy The buy token in the auction
+    /// @return sellAmount {qSellTok} How much would be sold
+    /// @custom:static-call
+    function nextRecollateralizationAuction(IBackingManager bm)
+        external
+        returns (
+            bool canStart,
+            IERC20 sell,
+            IERC20 buy,
+            uint256 sellAmount
+        )
+    {
+        if (bm.tradesOpen() == 0) {
+            IERC20[] memory erc20s = bm.main().assetRegistry().erc20s();
+
+            // Try to launch auctions
+            try bm.rebalance(TradeKind.DUTCH_AUCTION) {
+                // Find the started auction
+                for (uint256 i = 0; i < erc20s.length; ++i) {
+                    DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
+                    if (address(trade) != address(0)) {
+                        canStart = true;
+                        sell = trade.sell();
+                        buy = trade.buy();
+                        sellAmount = trade.sellAmount();
+                    }
+                }
+            } catch {}
+        }
+    }
+
+    /// To use this, call via callStatic.
+    /// @return erc20s The ERC20s that have auctions that can be started
+    /// @return canStart If the ERC20 auction can be started
+    /// @return surpluses {qTok} The surplus amount
+    /// @return minTradeAmounts {qTok} The minimum amount worth trading
+    /// @custom:static-call
+    function revenueOverview(IRevenueTrader revenueTrader)
+        external
+        returns (
+            IERC20[] memory erc20s,
+            bool[] memory canStart,
+            uint256[] memory surpluses,
+            uint256[] memory minTradeAmounts
+        )
+    {
+        uint192 minTradeVolume = revenueTrader.minTradeVolume(); // {UoA}
+        Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
+
+        // Forward ALL revenue
+        revenueTrader.main().backingManager().forwardRevenue(reg.erc20s);
+
+        erc20s = new IERC20[](reg.erc20s.length);
+        canStart = new bool[](reg.erc20s.length);
+        surpluses = new uint256[](reg.erc20s.length);
+        minTradeAmounts = new uint256[](reg.erc20s.length);
+        // Calculate which erc20s can have auctions started
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            // Settle first if possible. Required so we can assess full available balance
+            ITrade trade = revenueTrader.trades(reg.erc20s[i]);
+            if (address(trade) != address(0) && trade.canSettle()) {
+                revenueTrader.settleTrade(reg.erc20s[i]);
+            }
+
+            uint48 tradesOpen = revenueTrader.tradesOpen();
+            erc20s[i] = reg.erc20s[i];
+            surpluses[i] = reg.erc20s[i].balanceOf(address(revenueTrader));
+
+            (uint192 low, ) = reg.assets[i].price(); // {UoA/tok}
+
+            // {qTok} = {UoA} / {UoA/tok}
+            minTradeAmounts[i] = minTradeVolume.div(low).shiftl_toUint(
+                int8(reg.assets[i].erc20Decimals())
+            );
+
+            if (reg.erc20s[i].balanceOf(address(revenueTrader)) >= minTradeAmounts[i]) {
+                try revenueTrader.manageToken(reg.erc20s[i], TradeKind.DUTCH_AUCTION) {
+                    if (revenueTrader.tradesOpen() - tradesOpen > 0) {
+                        canStart[i] = true;
+                    }
+                    // solhint-disable-next-line no-empty-blocks
+                } catch {}
+            }
+        }
+    }
+
     // === Views ===
 
     /// @param account The account for the query
@@ -207,7 +335,7 @@ contract FacadeRead is IFacadeRead {
     /// @return erc20s The erc20s in the prime basket
     /// @return targetNames The bytes32 name identifier of the target unit, per ERC20
     /// @return targetAmts {target/BU} The amount of the target unit in the basket, per ERC20
-    function primeBasket(RTokenP1 rToken)
+    function primeBasket(IRToken rToken)
         external
         view
         returns (
@@ -228,7 +356,7 @@ contract FacadeRead is IFacadeRead {
     /// @param targetName The name of the target unit to lookup the backup for
     /// @return erc20s The backup erc20s for the target unit, in order of most to least desirable
     /// @return max The maximum number of tokens from the array to use at a single time
-    function backupConfig(RTokenP1 rToken, bytes32 targetName)
+    function backupConfig(IRToken rToken, bytes32 targetName)
         external
         view
         returns (IERC20[] memory erc20s, uint256 max)
@@ -300,47 +428,6 @@ contract FacadeRead is IFacadeRead {
         overCollateralization = rsrUoA.div(uoaNeeded);
     }
 
-    /// @return erc20s The registered ERC20s
-    /// @return balances {qTok} The held balances of each ERC20 at the trader
-    /// @return balancesNeeded {qTok} The needed balance of each ERC20 at the trader
-    function traderBalances(IRToken rToken, ITrading trader)
-        external
-        view
-        returns (
-            IERC20[] memory erc20s,
-            uint256[] memory balances,
-            uint256[] memory balancesNeeded
-        )
-    {
-        IBackingManager backingManager = rToken.main().backingManager();
-        IBasketHandler basketHandler = rToken.main().basketHandler();
-
-        erc20s = rToken.main().assetRegistry().erc20s();
-        balances = new uint256[](erc20s.length);
-        balancesNeeded = new uint256[](erc20s.length);
-
-        uint192 backingBuffer = TestIBackingManager(address(backingManager)).backingBuffer();
-        uint192 basketsNeeded = rToken.basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
-
-        bool isBackingManager = trader == backingManager;
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            balances[i] = erc20s[i].balanceOf(address(trader));
-
-            if (isBackingManager) {
-                // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
-                uint192 balNeededFix = basketHandler.quantity(erc20s[i]).safeMul(
-                    basketsNeeded,
-                    RoundingMode.FLOOR // FLOOR to match redemption
-                );
-
-                balancesNeeded[i] = balNeededFix.shiftl_toUint(
-                    int8(IERC20Metadata(address(erc20s[i])).decimals()),
-                    RoundingMode.FLOOR
-                );
-            }
-        }
-    }
-
     /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
     /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset
     function price(IRToken rToken) external view returns (uint192 low, uint192 high) {
@@ -366,53 +453,6 @@ contract FacadeRead is IFacadeRead {
         erc20s = new IERC20[](num);
         for (uint256 i = 0; i < num; ++i) {
             erc20s[i] = unfiltered[i];
-        }
-    }
-
-    // === Private ===
-
-    function basketRange(IRToken rToken, uint192 basketsNeeded)
-        private
-        view
-        returns (BasketRange memory range)
-    {
-        IMain main = rToken.main();
-        IBasketHandler bh = main.basketHandler();
-        IBackingManager bm = main.backingManager();
-        BasketRange memory basketsHeld = bh.basketsHeldBy(address(bm));
-
-        // if (bh.fullyCollateralized())
-        if (basketsHeld.bottom >= basketsNeeded) {
-            range.bottom = basketsNeeded;
-            range.top = basketsNeeded;
-        } else {
-            // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
-            // there is _some_ asset to represent the RToken itself when it is deployed, in
-            // the absence of an external price feed. Any RToken that gets reasonably big
-            // should switch over to an asset with a price feed.
-
-            TradingContext memory ctx = TradingContext({
-                basketsHeld: basketsHeld,
-                bm: bm,
-                ar: main.assetRegistry(),
-                stRSR: main.stRSR(),
-                rsr: main.rsr(),
-                rToken: main.rToken(),
-                minTradeVolume: bm.minTradeVolume(),
-                maxTradeSlippage: bm.maxTradeSlippage()
-            });
-
-            Registry memory reg = ctx.ar.getRegistry();
-
-            uint192[] memory quantities = new uint192[](reg.erc20s.length);
-            for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                quantities[i] = bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
-            }
-
-            (Price memory buPrice, ) = bh.prices();
-
-            // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(ctx, reg, quantities, buPrice);
         }
     }
 }
