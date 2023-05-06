@@ -140,6 +140,9 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
     function redeemTo(address recipient, uint256 amount) public notFrozen exchangeRateIsValidAfter {
+        // Call collective state keepers.
+        main.poke();
+
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
         require(
@@ -147,9 +150,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             "partial redemption; use redeemToCustom"
         );
         // redemption while IFFY/DISABLED allowed
-
-        // Call collective state keepers.
-        main.poke();
 
         // Revert if redemption exceeds either supply throttle
         issuanceThrottle.useAvailable(totalSupply(), -int256(amount));
