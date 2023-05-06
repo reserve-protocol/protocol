@@ -192,7 +192,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCollateralized(), "RToken uncollateralized");
-        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
+        require(bh.isReady(), "basket not ready");
 
         Withdrawal[] storage queue = withdrawals[account];
         if (endId == 0) return;
@@ -223,7 +223,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         // IBasketHandler bh = main.basketHandler();
         // require(bh.fullyCollateralized(), "RToken uncollateralized");
-        // require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
+        // require(bh.isReady(), "basket not ready");
 
         Withdrawal[] storage queue = withdrawals[account];
         if (endId == 0) return;

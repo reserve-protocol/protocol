@@ -302,7 +302,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // == Checks + Effects ==
         require(basketHandler.fullyCollateralized(), "RToken uncollateralized");
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket defaulted");
+        require(basketHandler.isReady(), "basket not ready");
 
         uint256 firstId = firstRemainingDraft[draftEra][account];
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];
@@ -340,7 +340,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // We specifically allow unstaking when under collateralized
         // require(basketHandler.fullyCollateralized(), "RToken uncollateralized");
-        // require(basketHandler.status() == CollateralStatus.SOUND, "basket defaulted");
+        // require(basketHandler.isReady(), "basket not ready");
 
         uint256 firstId = firstRemainingDraft[draftEra][account];
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];

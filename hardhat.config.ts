@@ -86,7 +86,11 @@ const config: HardhatUserConfig = {
     overrides: {
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
         version: '0.6.12',
-        settings: { optimizer: { enabled: true, runs: 1 } }, // to fit ContexStakingWrapper
+        settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
+      },
+      'contracts/facade/FacadeRead.sol': {
+        version: '0.8.17',
+        settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
       },
     },
   },
