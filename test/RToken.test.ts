@@ -1112,6 +1112,39 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(rToken.connect(addr1).redeem(bn(redeemAmount))).to.not.be.reverted
       })
 
+      it('Should revert while rebalancing after prime basket change', async function () {
+        // New prime basket
+        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+        expect(await basketHandler.fullyCollateralized()).to.equal(true) // ref basket hasn't changed
+
+        // Should still redeem through the main flow; not custom flow
+        await rToken.connect(addr1).redeem(1)
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemToCustom(addr1.address, 1, [await basketHandler.nonce()], [fp('1')], [], [])
+        ).to.be.revertedWith('invalid basketNonce')
+
+        // New reference basket
+        await basketHandler.refreshBasket()
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+
+        // Before the first auction is completed, BOTH redemption methods are bricked
+        await expect(rToken.connect(addr1).redeem(1)).to.be.revertedWith(
+          'partial redemption; use redeemToCustom'
+        )
+        const nonce = await basketHandler.nonce()
+        await expect(
+          rToken.connect(addr1).redeemToCustom(addr1.address, 1, [nonce], [fp('1')], [], [])
+        ).to.be.revertedWith('empty redemption')
+        await expect(
+          rToken.connect(addr1).redeemToCustom(addr1.address, 1, [nonce - 1], [fp('1')], [], [])
+        ).to.be.revertedWith('invalid basketNonce')
+        await expect(
+          rToken.connect(addr1).redeemToCustom(addr1.address, 1, [nonce + 1], [fp('1')], [], [])
+        ).to.be.revertedWith('invalid basketNonce')
+      })
+
       context('And redemption throttling', function () {
         // the fixture-configured redemption throttle uses 5%
         let redemptionThrottleParams: ThrottleParams
