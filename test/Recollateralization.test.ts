@@ -809,6 +809,12 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await stRSR.connect(addr1).stake(stakeAmount)
       })
 
+      afterEach(async () => {
+        // Every test in this section should end with full collateralization
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
+        await rToken.connect(addr1).redeem(1)
+      })
+
       it('Should not trade if trading paused', async () => {
         await main.connect(owner).pauseTrading()
         await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
@@ -821,6 +827,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'frozen or trading paused'
         )
+
+        // Unfreeze for afterEach
+        await main.connect(owner).unfreeze()
       })
 
       it('Should trade if issuance paused', async () => {
@@ -829,10 +838,16 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await basketHandler.refreshBasket()
 
         await main.connect(owner).pauseIssuance()
-        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.emit(
           backingManager,
           'TradeStarted'
         )
+
+        // Complete recollateralization
+        const tradeAddr = await backingManager.trades(token0.address)
+        const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+        await token1.connect(addr1).approve(trade.address, initialBal)
+        await trade.connect(addr1).bid()
       })
 
       it('Should not trade if UNPRICED', async () => {
