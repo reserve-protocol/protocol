@@ -3,8 +3,8 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
 import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IMain.sol";
@@ -19,6 +19,7 @@ import "./mixins/Component.sol";
  */
 contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using BasketLibP1 for Basket;
+    using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
     using CollateralStatusComparator for CollateralStatus;
     using FixLib for uint192;
 
@@ -75,6 +76,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
+
+    // Effectively local variable of `_switchConfig`.
+    EnumerableMap.Bytes32ToUintMap private _targetAmts; // targetName -> {target/BU}
 
     // ===
 
@@ -176,6 +180,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         require(erc20s.length > 0, "cannot empty basket");
         require(erc20s.length == targetAmts.length, "must be same length");
         requireValidCollArray(erc20s);
+
+        // If this isn't initial setup, require targets remain constant
+        if (config.erc20s.length > 0) requireConstantConfigTargets(erc20s, targetAmts);
 
         // Clean up previous basket config
         for (uint256 i = 0; i < config.erc20s.length; ++i) {
@@ -534,8 +541,45 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         emit BasketSet(nonce, basket.erc20s, refAmts, disabled);
     }
 
+    /// Require that newERC20s and newTargetAmts preserve the current config targets
+    function requireConstantConfigTargets(
+        IERC20[] calldata newERC20s,
+        uint192[] calldata newTargetAmts
+    ) private {
+        // Empty _targetAmts mapping
+        while (_targetAmts.length() > 0) {
+            (bytes32 key, ) = _targetAmts.at(0);
+            _targetAmts.remove(key);
+        }
+
+        // Populate _targetAmts mapping with old basket config
+        uint256 len = config.erc20s.length;
+        for (uint256 i = 0; i < len; ++i) {
+            IERC20 erc20 = config.erc20s[i];
+            bytes32 targetName = config.targetNames[erc20];
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            _targetAmts.set(
+                targetName,
+                contains ? amt + config.targetAmts[erc20] : config.targetAmts[erc20]
+            );
+        }
+
+        // Require new basket is exactly equal to old basket, in terms of targetAmts by targetName
+        len = newERC20s.length;
+        for (uint256 i = 0; i < len; ++i) {
+            bytes32 targetName = assetRegistry.toColl(newERC20s[i]).targetName();
+            // if the asset registry has a new registered asset targetName, this always reverts
+
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            require(contains && amt >= newTargetAmts[i], "new basket adds target weights");
+            if (amt > newTargetAmts[i]) _targetAmts.set(targetName, amt - newTargetAmts[i]);
+            else _targetAmts.remove(targetName);
+        }
+        require(_targetAmts.length() == 0, "new basket missing target weights");
+    }
+
     /// Require that erc20s is a valid collateral array
-    function requireValidCollArray(IERC20[] calldata erc20s) internal view {
+    function requireValidCollArray(IERC20[] calldata erc20s) private view {
         IERC20 zero = IERC20(address(0));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -644,5 +688,5 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[40] private __gap;
+    uint256[38] private __gap;
 }
