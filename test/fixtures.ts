@@ -698,15 +698,15 @@ const makeFixture = async (setBasket: boolean): Promise<DefaultFixture> => {
 
     // Advance time post warmup period
     await advanceTime(Number(config.warmupPeriod) + 1)
-
-    // Charge throttle
-    await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
   }
 
   // Set up allowances
   for (let i = 0; i < basket.length; i++) {
     await backingManager.grantRTokenAllowance(await basket[i].erc20())
   }
+
+  // Charge throttle
+  await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
 
   // Set Owner as Pauser/Freezer for tests
   await main.connect(owner).grantRole(PAUSER, owner.address)
