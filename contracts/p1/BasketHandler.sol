@@ -668,7 +668,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint192 x,
         uint192 y,
         uint192 z
-    ) internal view returns (uint192) {
+    ) private view returns (uint192) {
         try backingManager.mulDiv(x, y, z, FLOOR) returns (uint192 result) {
             return result;
         } catch Panic(uint256 errorCode) {

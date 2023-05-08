@@ -816,14 +816,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
-    // === Internal ===
+    // === Private ===
 
     /// @return The floored result of FixLib.mulDiv
     function safeMulDivFloor(
         uint192 x,
         uint192 y,
         uint192 z
-    ) internal view returns (uint192) {
+    ) private view returns (uint192) {
         try main.backingManager().mulDiv(x, y, z, FLOOR) returns (uint192 result) {
             return result;
         } catch Panic(uint256 errorCode) {
