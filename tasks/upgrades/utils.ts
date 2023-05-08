@@ -23,7 +23,7 @@ export const validateDeployments = async (
       `Missing deployed Main implementation for version ${version} in network ${hre.network.name}`
     )
   } else if (!(await isValidContract(hre, deployments.implementations.main))) {
-    throw new Error(`TradingLib contract not found in network ${hre.network.name}`)
+    throw new Error(`Main contract not found in network ${hre.network.name}`)
   }
 
   // Check all componet implementations are defined
