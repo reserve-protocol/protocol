@@ -41,6 +41,7 @@ import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './util
 import {
   Collateral,
   defaultFixture,
+  defaultFixtureNoBasket,
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
@@ -144,8 +145,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
     return divCeil(divCeil(product, highBuyPrice), BN_SCALE_FACTOR) // (c)
   }
 
-  beforeEach(async () => {
-    ;[owner, addr1, addr2] = await ethers.getSigners()
+  const doFixtureSetup = async (setBasket: boolean) => {
     let erc20s: ERC20Mock[]
 
       // Deploy fixture
@@ -169,7 +169,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       main,
       rTokenAsset,
       broker,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(setBasket ? defaultFixture : defaultFixtureNoBasket))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
@@ -201,6 +201,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
     await backupToken1.connect(owner).mint(addr2.address, initialBal)
     await backupToken2.connect(owner).mint(addr2.address, initialBal)
+  }
+
+  beforeEach(async () => {
+    ;[owner, addr1, addr2] = await ethers.getSigners()
+    await doFixtureSetup(true)
   })
 
   describe('Default Handling - Basket Selection', function () {
@@ -599,7 +604,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
     })
 
-    context('With multiple targets', function () {
+    context('With multiple targets -- USD + EUR', function () {
       let issueAmount: BigNumber
       let newEURCollateral: FiatCollateral
       let backupEURCollateral: Collateral
@@ -609,6 +614,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       let quotes: BigNumber[]
 
       beforeEach(async function () {
+        await doFixtureSetup(false) // don't set an initial prime basket
+
         // Issue some RTokens to user
         issueAmount = bn('100e18')
 
@@ -715,7 +722,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         const newRefAmounts = [fp('0.5'), fp('0.5')]
         await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(3, newTokens, newRefAmounts, false)
+          .withArgs(2, newTokens, newRefAmounts, false)
 
         // Check state - Basket switch in EUR targets
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -771,7 +778,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Basket should switch to empty and defaulted
         await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(2, [], [], true)
+          .withArgs(1, [], [], true)
 
         // Check state - Basket is disabled
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
@@ -809,12 +816,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await stRSR.connect(addr1).stake(stakeAmount)
       })
 
-      afterEach(async () => {
-        // Every test in this section should end with full collateralization
-        expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        await rToken.connect(addr1).redeem(1)
-      })
-
       it('Should not trade if trading paused', async () => {
         await main.connect(owner).pauseTrading()
         await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
@@ -827,9 +828,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
           'frozen or trading paused'
         )
-
-        // Unfreeze for afterEach
-        await main.connect(owner).unfreeze()
       })
 
       it('Should trade if issuance paused', async () => {
@@ -842,12 +840,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           backingManager,
           'TradeStarted'
         )
-
-        // Complete recollateralization
-        const tradeAddr = await backingManager.trades(token0.address)
-        const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
-        await token1.connect(addr1).approve(trade.address, initialBal)
-        await trade.connect(addr1).bid()
       })
 
       it('Should not trade if UNPRICED', async () => {
@@ -1017,8 +1009,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)

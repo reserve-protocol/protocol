@@ -6,6 +6,7 @@ import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../comm
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
 import { CollateralStatus, PAUSER, LONG_FREEZER, SHORT_FREEZER } from '../common/constants'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import {
   Asset,
   AssetRegistryP1,
@@ -408,7 +409,18 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
 
 type Fixture<T> = () => Promise<T>
 
+// Use this fixture when the prime basket will be constant at 1 USD
 export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
+  return await loadFixture(makeFixture.bind(null, true))
+}
+
+// Use this fixture when the prime basket needs to be set away from 1 USD
+export const defaultFixtureNoBasket: Fixture<DefaultFixture> =
+  async function (): Promise<DefaultFixture> {
+    return await loadFixture(makeFixture.bind(null, false))
+  }
+
+const makeFixture = async (setBasket: boolean): Promise<DefaultFixture> => {
   const signers = await ethers.getSigners()
   const owner = signers[0]
   const { rsr } = await rsrFixture()
@@ -679,20 +691,22 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   // Basket should begin disabled at 0 len
   expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
-  // Set non-empty basket
-  await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
-  await basketHandler.connect(owner).refreshBasket()
+  if (setBasket) {
+    // Set non-empty basket
+    await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
+    await basketHandler.connect(owner).refreshBasket()
 
-  // Advance time post warmup period
-  await advanceTime(Number(config.warmupPeriod) + 1)
+    // Advance time post warmup period
+    await advanceTime(Number(config.warmupPeriod) + 1)
+
+    // Charge throttle
+    await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
+  }
 
   // Set up allowances
   for (let i = 0; i < basket.length; i++) {
     await backingManager.grantRTokenAllowance(await basket[i].erc20())
   }
-
-  // Charge throttle
-  await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
 
   // Set Owner as Pauser/Freezer for tests
   await main.connect(owner).grantRole(PAUSER, owner.address)
