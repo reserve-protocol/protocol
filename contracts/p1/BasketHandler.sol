@@ -197,7 +197,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
-            require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
             require(0 < targetAmts[i], "invalid target amount; must be nonzero");
             require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
 
@@ -233,7 +233,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
-            require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
             conf.erc20s.push(erc20s[i]);
         }
         emit BackupConfigSet(targetName, max, erc20s);
