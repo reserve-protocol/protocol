@@ -1662,7 +1662,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Basket Handling', () => {
-    let freshBasketHandler: TestIBasketHandler // need to be able to execute first setPrimeBasket
+    let freshBasketHandler: TestIBasketHandler // need to have both this and regular basketHandler around
+    let eurToken: ERC20Mock
 
     beforeEach(async () => {
       if (IMPLEMENTATION == Implementation.P0) {
@@ -1686,6 +1687,23 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       }
 
       await freshBasketHandler.init(main.address, config.warmupPeriod)
+
+      eurToken = await (await ethers.getContractFactory('ERC20Mock')).deploy('EURO Token', 'EUR')
+      const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+        'FiatCollateral'
+      )
+      const eurColl = <FiatCollateral>await FiatCollateralFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR,
+        erc20: eurToken.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: await collateral0.oracleTimeout(),
+        targetName: ethers.utils.formatBytes32String('EUR'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: await collateral1.delayUntilDefault(),
+      })
+      await assetRegistry.connect(owner).register(eurColl.address)
     })
 
     it('Should not allow to set prime Basket if not OWNER', async () => {
@@ -1783,6 +1801,66 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
       ).to.be.revertedWith('new basket missing target weights')
+    })
+
+    it('Should be able to set exactly same basket', async () => {
+      await basketHandler
+        .connect(owner)
+        .setPrimeBasket(
+          [token0.address, token1.address, token2.address, token3.address],
+          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+        )
+    })
+
+    it('Should not allow to set prime Basket as superset of old basket', async () => {
+      await assetRegistry.connect(owner).register(backupCollateral1.address)
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address, backupToken1.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
+          )
+      ).to.be.revertedWith('new basket adds target weights')
+
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address, eurToken.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
+          )
+      ).to.be.revertedWith('new basket adds target weights')
+    })
+
+    it('Should not allow to set prime Basket as subset of old basket', async () => {
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.24')]
+          )
+      ).to.be.revertedWith('new basket missing target weights')
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address],
+            [fp('0.25'), fp('0.25'), fp('0.25')]
+          )
+      ).to.be.revertedWith('new basket missing target weights')
+    })
+
+    it('Should not allow to change target unit in old basket', async () => {
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, eurToken.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+          )
+      ).to.be.revertedWith('new basket adds target weights')
     })
 
     it('Should not allow to set prime Basket with RSR/RToken', async () => {
