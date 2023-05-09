@@ -2,7 +2,6 @@ import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { PAUSER, SHORT_FREEZER, LONG_FREEZER } from '../../common/constants'
 import { expectInReceipt } from '../../common/events'
 import { advanceTime } from '../utils/time'
@@ -613,16 +612,16 @@ type Fixture<T> = () => Promise<T>
 
 // Use this fixture when the prime basket will be constant at 1 USD
 export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
-  return await loadFixture(makeFixture.bind(null, true))
+  return await makeDefaultFixture(true)
 }
 
 // Use this fixture when the prime basket needs to be set away from 1 USD
 export const defaultFixtureNoBasket: Fixture<DefaultFixture> =
   async function (): Promise<DefaultFixture> {
-    return await loadFixture(makeFixture.bind(null, false))
+    return await makeDefaultFixture(false)
   }
 
-const makeFixture = async (setBasket: boolean): Promise<DefaultFixture> => {
+const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> => {
   const signers = await ethers.getSigners()
   const owner = signers[0]
   const { rsr } = await rsrFixture()

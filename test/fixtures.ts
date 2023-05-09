@@ -6,7 +6,6 @@ import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../comm
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
 import { CollateralStatus, PAUSER, LONG_FREEZER, SHORT_FREEZER } from '../common/constants'
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import {
   Asset,
   AssetRegistryP1,
@@ -411,16 +410,16 @@ type Fixture<T> = () => Promise<T>
 
 // Use this fixture when the prime basket will be constant at 1 USD
 export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
-  return await loadFixture(makeFixture.bind(null, true))
+  return await makeDefaultFixture(true)
 }
 
 // Use this fixture when the prime basket needs to be set away from 1 USD
 export const defaultFixtureNoBasket: Fixture<DefaultFixture> =
   async function (): Promise<DefaultFixture> {
-    return await loadFixture(makeFixture.bind(null, false))
+    return makeDefaultFixture(false)
   }
 
-const makeFixture = async (setBasket: boolean): Promise<DefaultFixture> => {
+const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> => {
   const signers = await ethers.getSigners()
   const owner = signers[0]
   const { rsr } = await rsrFixture()
