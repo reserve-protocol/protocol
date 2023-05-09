@@ -135,7 +135,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     EnumerableSet.Bytes32Set private targetNames;
     Basket private newBasket;
 
-    // Effectively local variable of `_switchConfig`.
+    // Effectively local variable of `requireConstantConfigTargets()`
     EnumerableMap.Bytes32ToUintMap private _targetAmts; // targetName -> {target/BU}
 
     uint48 public warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND

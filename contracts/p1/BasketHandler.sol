@@ -77,7 +77,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
 
-    // Effectively local variable of `_switchConfig`.
+    // Effectively local variable of `requireConstantConfigTargets()`
     EnumerableMap.Bytes32ToUintMap private _targetAmts; // targetName -> {target/BU}
 
     // ===
