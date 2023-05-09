@@ -31,7 +31,7 @@ import { withinQuad } from '../utils/matchers'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -142,7 +142,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rsrTrader,
       gnosis,
       rTokenAsset,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Mint initial balances
     initialBal = bn('100000000e18')

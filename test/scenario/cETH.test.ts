@@ -28,7 +28,7 @@ import { getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -96,7 +96,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       rsrTrader,
       rTokenTrader,
       facadeTest,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     token0 = <CTokenMock>erc20s[4] // cDai
@@ -163,6 +163,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       weth.address,
     ])
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
 
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(cETH.address)
@@ -281,6 +282,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     it('should sell cETH for RToken after redemption rate increase', async () => {
       await cETH.setExchangeRate(fp('2')) // doubling of price
       await basketHandler.refreshBasket()
+      await advanceTime(config.warmupPeriod.toNumber() + 1)
       await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
         'already collateralized'
       )

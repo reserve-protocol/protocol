@@ -25,7 +25,7 @@ import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -85,7 +85,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       rsrTrader,
       rTokenTrader,
       facadeTest,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     token0 = <CTokenMock>erc20s[4] // cDai
@@ -123,6 +123,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       backupToken.address,
     ])
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
 
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(weth.address)
