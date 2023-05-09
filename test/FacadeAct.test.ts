@@ -238,6 +238,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         ).to.emit(basketHandler, 'BasketSet')
 
@@ -291,6 +292,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Collect revenue
@@ -310,6 +312,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Next call would start Revenue auction - RTokenTrader
@@ -322,6 +325,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rTokenTrader, 'TradeStarted')
@@ -343,6 +347,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rsrTrader, 'TradeStarted')
@@ -378,6 +383,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rTokenTrader, 'TradeSettled')
@@ -393,6 +399,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rsrTrader, 'TradeSettled')
@@ -432,6 +439,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Next call would start Revenue auction - RSR Trader
@@ -445,6 +453,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rsrTrader, 'TradeStarted')
@@ -674,6 +683,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Check rewards collected
@@ -689,6 +699,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         ).to.emit(rsrTrader, 'TradeStarted')
 
@@ -704,6 +715,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Check rewards collected - there are funds in the RTokenTrader now
@@ -738,6 +750,7 @@ describe('FacadeAct contract', () => {
         await addr1.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // RSR forwarded
@@ -769,6 +782,7 @@ describe('FacadeAct contract', () => {
         await addr1.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // RToken forwarded
