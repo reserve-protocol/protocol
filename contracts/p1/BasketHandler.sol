@@ -568,8 +568,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         len = newERC20s.length;
         for (uint256 i = 0; i < len; ++i) {
             bytes32 targetName = assetRegistry.toColl(newERC20s[i]).targetName();
-            // if the asset registry has a new registered asset targetName, this always reverts
-
             (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
             require(contains && amt >= newTargetAmts[i], "new basket adds target weights");
             if (amt > newTargetAmts[i]) _targetAmts.set(targetName, amt - newTargetAmts[i]);

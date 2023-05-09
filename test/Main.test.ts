@@ -1812,6 +1812,33 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(2, [token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
+    it('Should revert if target has been changed in asset registry', async () => {
+      // Swap registered asset for NEW_TARGET target
+      const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
+      const coll = <FiatCollateral>await FiatCollateralFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR,
+        erc20: await collateral0.erc20(),
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: await collateral0.oracleTimeout(),
+        targetName: ethers.utils.formatBytes32String('NEW_TARGET'),
+        defaultThreshold: fp('0.01'),
+        delayUntilDefault: await collateral0.delayUntilDefault(),
+      })
+      await assetRegistry.connect(owner).swapRegistered(coll.address)
+
+      // Should revert
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+          )
+      ).to.be.revertedWith('new basket adds target weights')
+    })
+
     describe('Custom Redemption', () => {
       const issueAmount = fp('10000')
       let usdcChainlink: MockV3Aggregator
