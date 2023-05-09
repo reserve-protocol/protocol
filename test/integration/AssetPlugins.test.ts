@@ -11,7 +11,7 @@ import {
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from '../fixtures'
-import { defaultFixture } from './fixtures'
+import { defaultFixtureNoBasket } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, MAX_ORACLE_TIMEOUT, networkConfig } from '../../common/configuration'
 import { CollateralStatus, BN_SCALE_FACTOR } from '../../common/constants'
@@ -219,7 +219,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         facade,
         facadeTest,
         config,
-      } = await loadFixture(defaultFixture))
+      } = await loadFixture(defaultFixtureNoBasket))
 
       // Get tokens
       dai = <ERC20Mock>erc20s[0] // DAI
@@ -379,1027 +379,985 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e10'))
     })
 
-    it('Should setup assets correctly', async () => {
-      // COMP Token
-      expect(await compAsset.isCollateral()).to.equal(false)
-      expect(await compAsset.erc20()).to.equal(compToken.address)
-      expect(await compAsset.erc20()).to.equal(networkConfig[chainId].tokens.COMP)
-      expect(await compToken.decimals()).to.equal(18)
-      await expectPrice(compAsset.address, fp('58.28'), ORACLE_ERROR, true) // Close to $58 USD - June 2022
-      await expect(compAsset.claimRewards()).to.not.emit(compAsset, 'RewardsClaimed')
-      expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-
-      // stkAAVE Token
-      expect(await aaveAsset.isCollateral()).to.equal(false)
-      expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
-      expect(await aaveAsset.erc20()).to.equal(networkConfig[chainId].tokens.stkAAVE)
-      expect(await aaveToken.decimals()).to.equal(18)
-      await expectPrice(aaveAsset.address, fp('104.88183739'), ORACLE_ERROR, true) // Close to $104.8 USD - July 2022 - Uses AAVE price
-      await expect(aaveAsset.claimRewards()).to.not.emit(aaveAsset, 'RewardsClaimed')
-      expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-
-      // RSR Token
-      expect(await rsrAsset.isCollateral()).to.equal(false)
-      expect(await rsrAsset.erc20()).to.equal(rsr.address)
-      expect(await rsrAsset.erc20()).to.equal(networkConfig[chainId].tokens.RSR)
-      expect(rsr.address).to.equal(networkConfig[chainId].tokens.RSR)
-      expect(await rsr.decimals()).to.equal(18)
-      await expectPrice(rsrAsset.address, fp('0.0069934'), ORACLE_ERROR, true) // Close to $0.00699
-      await expect(rsrAsset.claimRewards()).to.not.emit(rsrAsset, 'RewardsClaimed')
-      expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-    })
-
-    it('Should setup collateral correctly - Fiatcoins', async () => {
-      // Define interface required for each fiat coin
-      interface TokenInfo {
-        token: ERC20Mock
-        tokenDecimals: number
-        tokenAddress: string
-        tokenCollateral: FiatCollateral
-        price: BigNumber
-      }
-
-      // DAI - USDC - USDT - BUSD
-      const tokenInfos: TokenInfo[] = [
-        {
-          token: dai,
-          tokenDecimals: 18,
-          tokenAddress: networkConfig[chainId].tokens.DAI || '',
-          tokenCollateral: daiCollateral,
-          price: fp('1'),
-        },
-        {
-          token: usdc,
-          tokenDecimals: 6,
-          tokenAddress: networkConfig[chainId].tokens.USDC || '',
-          tokenCollateral: usdcCollateral,
-          price: fp('1.0003994'),
-        },
-        {
-          token: usdt,
-          tokenDecimals: 6,
-          tokenAddress: networkConfig[chainId].tokens.USDT || '',
-          tokenCollateral: usdtCollateral,
-          price: fp('0.99934692'),
-        },
-        {
-          token: busd,
-          tokenDecimals: 18,
-          tokenAddress: networkConfig[chainId].tokens.BUSD || '',
-          tokenCollateral: busdCollateral,
-          price: fp('1.00030972'),
-        },
-        {
-          token: usdp,
-          tokenDecimals: 18,
-          tokenAddress: networkConfig[chainId].tokens.USDP || '',
-          tokenCollateral: usdpCollateral,
-          price: fp('0.99995491'),
-        },
-        {
-          token: tusd,
-          tokenDecimals: 18,
-          tokenAddress: networkConfig[chainId].tokens.TUSD || '',
-          tokenCollateral: tusdCollateral,
-          price: fp('1.00022194'),
-        },
-      ]
-
-      for (const tkInf of tokenInfos) {
-        // Fiat Token Assets
-        expect(await tkInf.tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await tkInf.tokenCollateral.isCollateral()).to.equal(true)
-        expect(await tkInf.tokenCollateral.erc20()).to.equal(tkInf.token.address)
-        expect(await tkInf.tokenCollateral.erc20()).to.equal(tkInf.tokenAddress)
-        expect(await tkInf.token.decimals()).to.equal(tkInf.tokenDecimals)
-        expect(await tkInf.tokenCollateral.targetName()).to.equal(
-          ethers.utils.formatBytes32String('USD')
-        )
-        expect(await tkInf.tokenCollateral.refPerTok()).to.equal(fp('1'))
-        expect(await tkInf.tokenCollateral.targetPerRef()).to.equal(fp('1'))
-
-        await expectPrice(tkInf.tokenCollateral.address, tkInf.price, ORACLE_ERROR, true, bn('1e5'))
-
-        await expect(tkInf.tokenCollateral.claimRewards()).to.not.emit(
-          tkInf.tokenCollateral,
-          'RewardsClaimed'
-        )
-        expect(await tkInf.tokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-      }
-    })
-
-    it('Should setup collateral correctly - CTokens Fiat', async () => {
-      // Define interface required for each ctoken
-      interface CTokenInfo {
-        token: ERC20Mock
-        tokenAddress: string
-        cToken: CTokenMock
-        cTokenVault: CTokenVault
-        cTokenAddress: string
-        cTokenCollateral: CTokenFiatCollateral
-        pegPrice: BigNumber
-        refPerTok: BigNumber
-      }
-
-      // Compound - cUSDC and cUSDT
-      const cTokenInfos: CTokenInfo[] = [
-        {
-          token: dai,
-          tokenAddress: networkConfig[chainId].tokens.DAI || '',
-          cToken: cDai,
-          cTokenVault: cDaiVault,
-          cTokenAddress: networkConfig[chainId].tokens.cDAI || '',
-          cTokenCollateral: cDaiCollateral,
-          pegPrice: fp('1'),
-          refPerTok: fp('0.022015108677007985'),
-        },
-        {
-          token: usdc,
-          tokenAddress: networkConfig[chainId].tokens.USDC || '',
-          cToken: cUsdc,
-          cTokenVault: cUsdcVault,
-          cTokenAddress: networkConfig[chainId].tokens.cUSDC || '',
-          cTokenCollateral: cUsdcCollateral,
-          pegPrice: fp('1.0003994'),
-          refPerTok: fp('0.022611941829792900'),
-        },
-        {
-          token: usdt,
-          tokenAddress: networkConfig[chainId].tokens.USDT || '',
-          cToken: cUsdt,
-          cTokenVault: cUsdtVault,
-          cTokenAddress: networkConfig[chainId].tokens.cUSDT || '',
-          cTokenCollateral: cUsdtCollateral,
-          pegPrice: fp('0.99934692'),
-          refPerTok: fp('0.021859813029312800'),
-        },
-        {
-          token: usdp,
-          tokenAddress: networkConfig[chainId].tokens.USDP || '',
-          cToken: cUsdp,
-          cTokenVault: cUsdpVault,
-          cTokenAddress: networkConfig[chainId].tokens.cUSDP || '',
-          cTokenCollateral: cUsdpCollateral,
-          pegPrice: fp('0.99995491'),
-          refPerTok: fp('0.020090037479321573'),
-        },
-      ]
-
-      for (const ctkInf of cTokenInfos) {
-        // CToken
-        expect(await ctkInf.cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
-        expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
-          await ctkInf.token.decimals()
-        )
-        expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
-        expect(await ctkInf.cTokenVault.asset()).to.equal(ctkInf.cTokenAddress)
-        expect(await ctkInf.cToken.decimals()).to.equal(8)
-        expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
-        expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
-          ethers.utils.formatBytes32String('USD')
-        )
-        expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
-          ctkInf.refPerTok,
-          fp('0.001')
-        )
-        expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
-          await ctkInf.cTokenCollateral.refPerTok()
-        )
-
-        await expectPrice(
-          ctkInf.cTokenCollateral.address,
-          ctkInf.pegPrice.mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR),
-          ORACLE_ERROR,
-          true,
-          bn('1e4')
-        )
-
-        // TODO: deprecate
-        await expect(ctkInf.cTokenCollateral.claimRewards())
-          .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
-          .withArgs(compToken.address, 0)
-
-        await expect(ctkInf.cTokenVault.claimRewards())
-          .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
-          .withArgs(compToken.address, 0)
-
-        expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-      }
-    })
-
-    it('Should setup collateral correctly - ATokens Fiat', async () => {
-      // Define interface required for each aToken
-      interface ATokenInfo {
-        token: ERC20Mock
-        tokenAddress: string
-        stataToken: StaticATokenLM
-        aToken: IAToken
-        aTokenAddress: string
-        aTokenCollateral: ATokenFiatCollateral
-        pegPrice: BigNumber
-        refPerTok: BigNumber
-      }
-
-      // aUSDC, aUSDT, and aBUSD
-      const aTokenInfos: ATokenInfo[] = [
-        {
-          token: dai,
-          tokenAddress: networkConfig[chainId].tokens.DAI || '',
-          stataToken: stataDai,
-          aToken: aDai,
-          aTokenAddress: networkConfig[chainId].tokens.aDAI || '',
-          aTokenCollateral: aDaiCollateral,
-          pegPrice: fp('1'),
-          refPerTok: fp('1.072871692909066736'),
-        },
-        {
-          token: usdc,
-          tokenAddress: networkConfig[chainId].tokens.USDC || '',
-          stataToken: stataUsdc,
-          aToken: aUsdc,
-          aTokenAddress: networkConfig[chainId].tokens.aUSDC || '',
-          aTokenCollateral: aUsdcCollateral,
-          pegPrice: fp('1.0003994'),
-          refPerTok: fp('1.075820226287820705'),
-        },
-        {
-          token: usdt,
-          tokenAddress: networkConfig[chainId].tokens.USDT || '',
-          stataToken: stataUsdt,
-          aToken: aUsdt,
-          aTokenAddress: networkConfig[chainId].tokens.aUSDT || '',
-          aTokenCollateral: aUsdtCollateral,
-          pegPrice: fp('0.99934692'),
-          refPerTok: fp('1.088178891886696259'),
-        },
-        {
-          token: busd,
-          tokenAddress: networkConfig[chainId].tokens.BUSD || '',
-          stataToken: stataBusd,
-          aToken: aBusd,
-          aTokenAddress: networkConfig[chainId].tokens.aBUSD || '',
-          aTokenCollateral: aBusdCollateral,
-          pegPrice: fp('1.00030972'),
-          refPerTok: fp('1.093996241277203301'),
-        },
-        {
-          token: usdp,
-          tokenAddress: networkConfig[chainId].tokens.USDP || '',
-          stataToken: stataUsdp,
-          aToken: aUsdp,
-          aTokenAddress: networkConfig[chainId].tokens.aUSDP || '',
-          aTokenCollateral: aUsdpCollateral,
-          pegPrice: fp('0.99995491'),
-          refPerTok: fp('1.019878722522085537'),
-        },
-      ]
-
-      for (const atkInf of aTokenInfos) {
-        // AToken
-        expect(await atkInf.aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await atkInf.aTokenCollateral.isCollateral()).to.equal(true)
-        expect(await atkInf.aTokenCollateral.erc20()).to.equal(atkInf.stataToken.address)
-        expect(await atkInf.stataToken.decimals()).to.equal(await atkInf.token.decimals())
-        expect(await atkInf.aTokenCollateral.targetName()).to.equal(
-          ethers.utils.formatBytes32String('USD')
-        )
-        expect(await atkInf.aTokenCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.095'))
-
-        expect(await atkInf.aTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        expect(await atkInf.aTokenCollateral.exposedReferencePrice()).to.be.closeTo(
-          await atkInf.aTokenCollateral.refPerTok(),
-          fp('0.000005')
-        )
-
-        await expectPrice(
-          atkInf.aTokenCollateral.address,
-          atkInf.pegPrice.mul(atkInf.refPerTok).div(BN_SCALE_FACTOR),
-          ORACLE_ERROR,
-          true,
-          bn('1e5')
-        )
-
-        // TODO: deprecate
-        await expect(atkInf.aTokenCollateral.claimRewards())
-          .to.emit(atkInf.stataToken, 'RewardsClaimed')
-          .withArgs(aaveToken.address, 0)
-
-        await expect(atkInf.stataToken['claimRewards()']())
-          .to.emit(atkInf.stataToken, 'RewardsClaimed')
-          .withArgs(aaveToken.address, 0)
-
-        // Check StaticAToken
-        expect(await atkInf.stataToken.name()).to.equal(
-          'Static Aave interest bearing ' + (await atkInf.token.symbol())
-        )
-        expect(await atkInf.stataToken.symbol()).to.equal('stata' + (await atkInf.token.symbol()))
-        expect(await atkInf.stataToken.decimals()).to.equal(await atkInf.token.decimals())
-        expect(await atkInf.stataToken.LENDING_POOL()).to.equal(
-          networkConfig[chainId].AAVE_LENDING_POOL
-        )
-        expect(await atkInf.stataToken.INCENTIVES_CONTROLLER()).to.equal(
-          networkConfig[chainId].AAVE_INCENTIVES
-        )
-        expect(await atkInf.stataToken.ATOKEN()).to.equal(atkInf.aToken.address)
-        expect(await atkInf.stataToken.ATOKEN()).to.equal(atkInf.aTokenAddress)
-        expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.token.address)
-        expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.tokenAddress)
-        expect(await atkInf.stataToken.REWARD_TOKEN()).to.equal(aaveToken.address)
-
-        expect(await atkInf.aTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-      }
-    })
-
-    it('Should setup collateral correctly - Non-Fiatcoins', async () => {
-      // Define interface required for each non-fiat coin
-      interface TokenInfo {
-        nonFiatToken: ERC20Mock
-        nonFiatTokenDecimals: number
-        nonFiatTokenAddress: string
-        nonFiatTokenCollateral: NonFiatCollateral
-        targetPrice: BigNumber
-        refPrice: BigNumber
-        targetName: string
-      }
-
-      // WBTC
-      const tokenInfos: TokenInfo[] = [
-        {
-          nonFiatToken: wbtc,
-          nonFiatTokenDecimals: 8,
-          nonFiatTokenAddress: networkConfig[chainId].tokens.WBTC || '',
-          nonFiatTokenCollateral: wbtcCollateral,
-          targetPrice: fp('31311.5'), // approx price June 6, 2022
-          refPrice: fp('1.00062735'), // approx price wbtc-btc
-          targetName: 'BTC',
-        },
-      ]
-
-      for (const tkInf of tokenInfos) {
-        // Non-Fiat Token Assets
-        expect(await tkInf.nonFiatTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await tkInf.nonFiatTokenCollateral.isCollateral()).to.equal(true)
-        expect(await tkInf.nonFiatTokenCollateral.erc20()).to.equal(tkInf.nonFiatToken.address)
-        expect(await tkInf.nonFiatTokenCollateral.erc20()).to.equal(tkInf.nonFiatTokenAddress)
-        expect(await tkInf.nonFiatToken.decimals()).to.equal(tkInf.nonFiatTokenDecimals)
-        expect(await tkInf.nonFiatTokenCollateral.targetName()).to.equal(
-          ethers.utils.formatBytes32String(tkInf.targetName)
-        )
-
-        // Get priceable info
-        await tkInf.nonFiatTokenCollateral.refresh()
-        expect(await tkInf.nonFiatTokenCollateral.refPerTok()).to.equal(fp('1'))
-        expect(await tkInf.nonFiatTokenCollateral.targetPerRef()).to.equal(fp('1'))
-
-        // ref price approx 1.00062
-        await expectPrice(
-          tkInf.nonFiatTokenCollateral.address,
-          tkInf.targetPrice.mul(tkInf.refPrice).div(BN_SCALE_FACTOR),
-          ORACLE_ERROR,
-          true,
-          bn('1e10')
-        )
-
-        await expect(tkInf.nonFiatTokenCollateral.claimRewards()).to.not.emit(
-          tkInf.nonFiatTokenCollateral,
-          'RewardsClaimed'
-        )
-
-        expect(await tkInf.nonFiatTokenCollateral.maxTradeVolume()).to.equal(
-          config.rTokenMaxTradeVolume
-        )
-      }
-    })
-
-    it('Should setup collateral correctly - CTokens Non-Fiat', async () => {
-      // Define interface required for each ctoken
-      interface CTokenInfo {
-        token: ERC20Mock
-        tokenAddress: string
-        cToken: CTokenMock
-        cTokenVault: CTokenVault
-        cTokenAddress: string
-        cTokenCollateral: CTokenNonFiatCollateral
-        targetPrice: BigNumber
-        refPrice: BigNumber
-        refPerTok: BigNumber
-        targetName: string
-      }
-
-      // Compound - cWBTC
-      const cTokenInfos: CTokenInfo[] = [
-        {
-          token: wbtc,
-          tokenAddress: networkConfig[chainId].tokens.WBTC || '',
-          cToken: cWBTC,
-          cTokenVault: cWBTCVault,
-          cTokenAddress: networkConfig[chainId].tokens.cWBTC || '',
-          cTokenCollateral: cWBTCCollateral,
-          targetPrice: fp('31311.5'), // approx price June 6, 2022
-          refPrice: fp('1.00062735'), // approx price wbtc-btc
-          refPerTok: fp('0.020065932066404677'), // for wbtc on June 2022
-          targetName: 'BTC',
-        },
-      ]
-
-      for (const ctkInf of cTokenInfos) {
-        // CToken
-        expect(await ctkInf.cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
-        expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
-          await ctkInf.token.decimals()
-        )
-        expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
-        expect(await ctkInf.cTokenVault.asset()).to.equal(ctkInf.cTokenAddress)
-        expect(await ctkInf.cToken.decimals()).to.equal(8)
-        expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
-        expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
-          ethers.utils.formatBytes32String(ctkInf.targetName)
-        )
-        expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
-          ctkInf.refPerTok,
-          fp('0.001')
-        )
-        expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-
-        expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
-          await ctkInf.cTokenCollateral.refPerTok()
-        )
-
-        // close to $633 usd
-        await expectPrice(
-          ctkInf.cTokenCollateral.address,
-          ctkInf.targetPrice
-            .mul(ctkInf.refPrice)
-            .mul(await ctkInf.cTokenCollateral.refPerTok())
-            .div(BN_SCALE_FACTOR.pow(2)),
-          ORACLE_ERROR,
-          true
-        )
-
-        // TODO: deprecate
-        await expect(ctkInf.cTokenCollateral.claimRewards())
-          .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
-          .withArgs(compToken.address, 0)
-
-        await expect(ctkInf.cTokenVault.claimRewards())
-          .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
-          .withArgs(compToken.address, 0)
-
-        expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-      }
-    })
-
-    it('Should setup collateral correctly - Self-Referential', async () => {
-      // Define interface required for each self-referential coin
-      interface TokenInfo {
-        selfRefToken: ERC20Mock | WETH9
-        selfRefTokenDecimals: number
-        selfRefTokenAddress: string
-        selfRefTokenCollateral: FiatCollateral
-        price: BigNumber
-        targetName: string
-      }
-
-      // WBTC
-      const tokenInfos: TokenInfo[] = [
-        {
-          selfRefToken: weth,
-          selfRefTokenDecimals: 18,
-          selfRefTokenAddress: networkConfig[chainId].tokens.WETH || '',
-          selfRefTokenCollateral: wethCollateral,
-          price: fp('1859.17'), //approx price June 2022
-          targetName: 'ETH',
-        },
-      ]
-
-      for (const tkInf of tokenInfos) {
-        // Non-Fiat Token Assets
-        expect(await tkInf.selfRefTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await tkInf.selfRefTokenCollateral.isCollateral()).to.equal(true)
-        expect(await tkInf.selfRefTokenCollateral.erc20()).to.equal(tkInf.selfRefToken.address)
-        expect(await tkInf.selfRefTokenCollateral.erc20()).to.equal(tkInf.selfRefTokenAddress)
-        expect(await tkInf.selfRefToken.decimals()).to.equal(tkInf.selfRefTokenDecimals)
-        expect(await tkInf.selfRefTokenCollateral.targetName()).to.equal(
-          ethers.utils.formatBytes32String(tkInf.targetName)
-        )
-        // Get priceable info
-        await tkInf.selfRefTokenCollateral.refresh()
-        expect(await tkInf.selfRefTokenCollateral.refPerTok()).to.equal(fp('1'))
-        expect(await tkInf.selfRefTokenCollateral.targetPerRef()).to.equal(fp('1'))
-
-        await expectPrice(tkInf.selfRefTokenCollateral.address, tkInf.price, ORACLE_ERROR, true)
-
-        await expect(tkInf.selfRefTokenCollateral.claimRewards()).to.not.emit(
-          tkInf.selfRefTokenCollateral,
-          'RewardsClaimed'
-        )
-        expect(await tkInf.selfRefTokenCollateral.maxTradeVolume()).to.equal(
-          config.rTokenMaxTradeVolume
-        )
-      }
-    })
-
-    it('Should setup collateral correctly - CTokens Self-Referential', async () => {
-      // Define interface required for each ctoken
-      interface CTokenInfo {
-        token: ERC20Mock
-        tokenAddress: string
-        cToken: CTokenMock
-        cTokenVault: CTokenVault
-        cTokenAddress: string
-        cTokenCollateral: CTokenSelfReferentialCollateral
-        price: BigNumber
-        refPerTok: BigNumber
-        targetName: string
-      }
-
-      // Compound - cUSDC and cUSDT
-      const cTokenInfos: CTokenInfo[] = [
-        {
-          token: weth,
-          tokenAddress: networkConfig[chainId].tokens.WETH || '',
-          cToken: cETH,
-          cTokenVault: cETHVault,
-          cTokenAddress: networkConfig[chainId].tokens.cETH || '',
-          cTokenCollateral: cETHCollateral,
-          price: fp('1859.17'), // approx price June 6, 2022
-          refPerTok: fp('0.020064224962890636'), // for weth on June 2022
-          targetName: 'ETH',
-        },
-      ]
-
-      for (const ctkInf of cTokenInfos) {
-        // CToken
-        expect(await ctkInf.cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
-        expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
-          await ctkInf.token.decimals()
-        )
-        expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
-        expect(await ctkInf.cTokenVault.asset()).to.equal(ctkInf.cTokenAddress)
-        expect(await ctkInf.cToken.decimals()).to.equal(8)
-        expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
-        expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
-          ethers.utils.formatBytes32String(ctkInf.targetName)
-        )
-
-        expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
-          ctkInf.refPerTok,
-          fp('0.001')
-        )
-        expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
-          await ctkInf.cTokenCollateral.refPerTok()
-        )
-
-        await expectPrice(
-          ctkInf.cTokenCollateral.address,
-          ctkInf.price.mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR),
-          ORACLE_ERROR,
-          true,
-          bn('1e5')
-        )
-
-        // TODO: deprecate
-        await expect(ctkInf.cTokenCollateral.claimRewards())
-          .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
-          .withArgs(compToken.address, 0)
-
-        await expect(ctkInf.cTokenVault.claimRewards())
-          .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
-          .withArgs(compToken.address, 0)
-
-        expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-      }
-    })
-
-    it('Should setup collateral correctly - EUR Fiatcoins', async () => {
-      // Define interface required for each Eur-fiat coin
-      interface TokenInfo {
-        eurFiatToken: ERC20Mock
-        eurFiatTokenDecimals: number
-        eurFiatTokenAddress: string
-        eurFiatTokenCollateral: EURFiatCollateral
-        targetPrice: BigNumber
-        refPrice: BigNumber
-        targetName: string
-      }
-
-      // EURT
-      const tokenInfos: TokenInfo[] = [
-        {
-          eurFiatToken: eurt,
-          eurFiatTokenDecimals: 6,
-          eurFiatTokenAddress: networkConfig[chainId].tokens.EURT || '',
-          eurFiatTokenCollateral: eurtCollateral,
-          targetPrice: fp('1.07025'), // approx price EUR-USD June 6, 2022
-          refPrice: fp('1.073'), // approx price EURT-USD June 6, 2022
-          targetName: 'EUR',
-        },
-      ]
-
-      for (const tkInf of tokenInfos) {
-        // Non-Fiat Token Assets
-        expect(await tkInf.eurFiatTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await tkInf.eurFiatTokenCollateral.isCollateral()).to.equal(true)
-        expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatToken.address)
-        expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatTokenAddress)
-        expect(await tkInf.eurFiatToken.decimals()).to.equal(tkInf.eurFiatTokenDecimals)
-        expect(await tkInf.eurFiatTokenCollateral.targetName()).to.equal(
-          ethers.utils.formatBytes32String(tkInf.targetName)
-        )
-
-        // Get priceable info
-        await tkInf.eurFiatTokenCollateral.refresh()
-        expect(await tkInf.eurFiatTokenCollateral.refPerTok()).to.equal(fp('1'))
-        expect(await tkInf.eurFiatTokenCollateral.targetPerRef()).to.equal(fp('1'))
-
-        // ref price approx 1.07
-        await expectPrice(tkInf.eurFiatTokenCollateral.address, tkInf.refPrice, ORACLE_ERROR, true)
-
-        await expect(tkInf.eurFiatTokenCollateral.claimRewards()).to.not.emit(
-          tkInf.eurFiatTokenCollateral,
-          'RewardsClaimed'
-        )
-
-        expect(await tkInf.eurFiatTokenCollateral.maxTradeVolume()).to.equal(
-          config.rTokenMaxTradeVolume
-        )
-      }
-    })
-
-    it('Should handle invalid/stale Price - Assets', async () => {
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      // Stale Oracle
-      await expectUnpriced(compAsset.address)
-      await expectUnpriced(aaveAsset.address)
-
-      // Setup Assets with no price feed
-      const nonpriceAsset: Asset = <Asset>(
-        await (
-          await ethers.getContractFactory('Asset')
-        ).deploy(
-          PRICE_TIMEOUT,
-          NO_PRICE_DATA_FEED,
-          ORACLE_ERROR,
-          networkConfig[chainId].tokens.stkAAVE || '',
-          config.rTokenMaxTradeVolume,
-          MAX_ORACLE_TIMEOUT
-        )
-      )
-      // Assets with invalid feed - revert
-      await expect(nonpriceAsset.price()).to.be.reverted
-
-      // With a feed with zero price
-      const zeroPriceAsset: Asset = <Asset>(
-        await (
-          await ethers.getContractFactory('Asset')
-        ).deploy(
-          PRICE_TIMEOUT,
-          mockChainlinkFeed.address,
-          ORACLE_ERROR,
-          networkConfig[chainId].tokens.stkAAVE || '',
-          config.rTokenMaxTradeVolume,
-          MAX_ORACLE_TIMEOUT
-        )
-      )
-
-      await setOraclePrice(zeroPriceAsset.address, bn(0))
-
-      // Zero price
-      await expectPrice(zeroPriceAsset.address, bn('0'), bn('0'), false)
-    })
-
-    it('Should handle invalid/stale Price - Collateral - Fiat', async () => {
-      // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      await expectUnpriced(daiCollateral.address)
-      await expectUnpriced(usdcCollateral.address)
-      await expectUnpriced(usdtCollateral.address)
-      await expectUnpriced(busdCollateral.address)
-      await expectUnpriced(usdpCollateral.address)
-      await expectUnpriced(tusdCollateral.address)
-
-      // Refresh should mark status IFFY
-      await daiCollateral.refresh()
-      await usdcCollateral.refresh()
-      await usdtCollateral.refresh()
-      await busdCollateral.refresh()
-      await usdpCollateral.refresh()
-      await tusdCollateral.refresh()
-      expect(await daiCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await usdcCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await usdtCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await busdCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await usdpCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await tusdCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-      const defaultThreshold = fp('0.01') // 1%
-      const delayUntilDefault = bn('86400') // 24h
-
-      // Non price Fiat collateral
-      const nonPriceCollateral: FiatCollateral = <FiatCollateral>await (
-        await ethers.getContractFactory('FiatCollateral')
-      ).deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: NO_PRICE_DATA_FEED,
-        oracleError: ORACLE_ERROR,
-        erc20: dai.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: MAX_ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
+    context('Setup and validation', () => {
+      beforeEach(async () => {
+        // Setup basket
+        await basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [dai.address, stataDai.address, cDaiVault.address],
+            [fp('0.25'), fp('0.25'), fp('0.5')]
+          )
+        await basketHandler.connect(owner).refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
       })
 
-      // Collateral with no price should revert
-      await expect(nonPriceCollateral.price()).to.be.reverted
+      it('Should setup assets correctly', async () => {
+        // COMP Token
+        expect(await compAsset.isCollateral()).to.equal(false)
+        expect(await compAsset.erc20()).to.equal(compToken.address)
+        expect(await compAsset.erc20()).to.equal(networkConfig[chainId].tokens.COMP)
+        expect(await compToken.decimals()).to.equal(18)
+        await expectPrice(compAsset.address, fp('58.28'), ORACLE_ERROR, true) // Close to $58 USD - June 2022
+        await expect(compAsset.claimRewards()).to.not.emit(compAsset, 'RewardsClaimed')
+        expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
-      // Refresh should also revert - status is not modified
-      await expect(nonPriceCollateral.refresh()).to.be.reverted
-      expect(await nonPriceCollateral.status()).to.equal(CollateralStatus.SOUND)
+        // stkAAVE Token
+        expect(await aaveAsset.isCollateral()).to.equal(false)
+        expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
+        expect(await aaveAsset.erc20()).to.equal(networkConfig[chainId].tokens.stkAAVE)
+        expect(await aaveToken.decimals()).to.equal(18)
+        await expectPrice(aaveAsset.address, fp('104.88183739'), ORACLE_ERROR, true) // Close to $104.8 USD - July 2022 - Uses AAVE price
+        await expect(aaveAsset.claimRewards()).to.not.emit(aaveAsset, 'RewardsClaimed')
+        expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
-      // feed with zero price - does not revert
-      const zeroFiatCollateral: FiatCollateral = <FiatCollateral>await (
-        await ethers.getContractFactory('FiatCollateral')
-      ).deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: mockChainlinkFeed.address,
-        oracleError: ORACLE_ERROR,
-        erc20: dai.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: MAX_ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
+        // RSR Token
+        expect(await rsrAsset.isCollateral()).to.equal(false)
+        expect(await rsrAsset.erc20()).to.equal(rsr.address)
+        expect(await rsrAsset.erc20()).to.equal(networkConfig[chainId].tokens.RSR)
+        expect(rsr.address).to.equal(networkConfig[chainId].tokens.RSR)
+        expect(await rsr.decimals()).to.equal(18)
+        await expectPrice(rsrAsset.address, fp('0.0069934'), ORACLE_ERROR, true) // Close to $0.00699
+        await expect(rsrAsset.claimRewards()).to.not.emit(rsrAsset, 'RewardsClaimed')
+        expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       })
-      await zeroFiatCollateral.refresh()
 
-      await setOraclePrice(zeroFiatCollateral.address, bn(0))
+      it('Should setup collateral correctly - Fiatcoins', async () => {
+        // Define interface required for each fiat coin
+        interface TokenInfo {
+          token: ERC20Mock
+          tokenDecimals: number
+          tokenAddress: string
+          tokenCollateral: FiatCollateral
+          price: BigNumber
+        }
 
-      // With zero price
-      await expectPrice(zeroFiatCollateral.address, bn('0'), bn('0'), false)
+        // DAI - USDC - USDT - BUSD
+        const tokenInfos: TokenInfo[] = [
+          {
+            token: dai,
+            tokenDecimals: 18,
+            tokenAddress: networkConfig[chainId].tokens.DAI || '',
+            tokenCollateral: daiCollateral,
+            price: fp('1'),
+          },
+          {
+            token: usdc,
+            tokenDecimals: 6,
+            tokenAddress: networkConfig[chainId].tokens.USDC || '',
+            tokenCollateral: usdcCollateral,
+            price: fp('1.0003994'),
+          },
+          {
+            token: usdt,
+            tokenDecimals: 6,
+            tokenAddress: networkConfig[chainId].tokens.USDT || '',
+            tokenCollateral: usdtCollateral,
+            price: fp('0.99934692'),
+          },
+          {
+            token: busd,
+            tokenDecimals: 18,
+            tokenAddress: networkConfig[chainId].tokens.BUSD || '',
+            tokenCollateral: busdCollateral,
+            price: fp('1.00030972'),
+          },
+          {
+            token: usdp,
+            tokenDecimals: 18,
+            tokenAddress: networkConfig[chainId].tokens.USDP || '',
+            tokenCollateral: usdpCollateral,
+            price: fp('0.99995491'),
+          },
+          {
+            token: tusd,
+            tokenDecimals: 18,
+            tokenAddress: networkConfig[chainId].tokens.TUSD || '',
+            tokenCollateral: tusdCollateral,
+            price: fp('1.00022194'),
+          },
+        ]
 
-      // Refresh should mark status IFFY
-      await zeroFiatCollateral.refresh()
-      expect(await zeroFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
-    })
+        for (const tkInf of tokenInfos) {
+          // Fiat Token Assets
+          expect(await tkInf.tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await tkInf.tokenCollateral.isCollateral()).to.equal(true)
+          expect(await tkInf.tokenCollateral.erc20()).to.equal(tkInf.token.address)
+          expect(await tkInf.tokenCollateral.erc20()).to.equal(tkInf.tokenAddress)
+          expect(await tkInf.token.decimals()).to.equal(tkInf.tokenDecimals)
+          expect(await tkInf.tokenCollateral.targetName()).to.equal(
+            ethers.utils.formatBytes32String('USD')
+          )
+          expect(await tkInf.tokenCollateral.refPerTok()).to.equal(fp('1'))
+          expect(await tkInf.tokenCollateral.targetPerRef()).to.equal(fp('1'))
 
-    it('Should handle invalid/stale Price - Collateral - CTokens Fiat', async () => {
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.SOUND)
+          await expectPrice(
+            tkInf.tokenCollateral.address,
+            tkInf.price,
+            ORACLE_ERROR,
+            true,
+            bn('1e5')
+          )
 
-      // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
+          await expect(tkInf.tokenCollateral.claimRewards()).to.not.emit(
+            tkInf.tokenCollateral,
+            'RewardsClaimed'
+          )
+          expect(await tkInf.tokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+        }
+      })
 
-      // Compound
-      await expectUnpriced(cDaiCollateral.address)
-      await expectUnpriced(cUsdcCollateral.address)
-      await expectUnpriced(cUsdtCollateral.address)
+      it('Should setup collateral correctly - CTokens Fiat', async () => {
+        // Define interface required for each ctoken
+        interface CTokenInfo {
+          token: ERC20Mock
+          tokenAddress: string
+          cToken: CTokenMock
+          cTokenVault: CTokenVault
+          cTokenAddress: string
+          cTokenCollateral: CTokenFiatCollateral
+          pegPrice: BigNumber
+          refPerTok: BigNumber
+        }
 
-      // Refresh should mark status IFFY
-      await cDaiCollateral.refresh()
-      await cUsdcCollateral.refresh()
-      await cUsdtCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
+        // Compound - cUSDC and cUSDT
+        const cTokenInfos: CTokenInfo[] = [
+          {
+            token: dai,
+            tokenAddress: networkConfig[chainId].tokens.DAI || '',
+            cToken: cDai,
+            cTokenVault: cDaiVault,
+            cTokenAddress: networkConfig[chainId].tokens.cDAI || '',
+            cTokenCollateral: cDaiCollateral,
+            pegPrice: fp('1'),
+            refPerTok: fp('0.022015108677007985'),
+          },
+          {
+            token: usdc,
+            tokenAddress: networkConfig[chainId].tokens.USDC || '',
+            cToken: cUsdc,
+            cTokenVault: cUsdcVault,
+            cTokenAddress: networkConfig[chainId].tokens.cUSDC || '',
+            cTokenCollateral: cUsdcCollateral,
+            pegPrice: fp('1.0003994'),
+            refPerTok: fp('0.022611941829792900'),
+          },
+          {
+            token: usdt,
+            tokenAddress: networkConfig[chainId].tokens.USDT || '',
+            cToken: cUsdt,
+            cTokenVault: cUsdtVault,
+            cTokenAddress: networkConfig[chainId].tokens.cUSDT || '',
+            cTokenCollateral: cUsdtCollateral,
+            pegPrice: fp('0.99934692'),
+            refPerTok: fp('0.021859813029312800'),
+          },
+          {
+            token: usdp,
+            tokenAddress: networkConfig[chainId].tokens.USDP || '',
+            cToken: cUsdp,
+            cTokenVault: cUsdpVault,
+            cTokenAddress: networkConfig[chainId].tokens.cUSDP || '',
+            cTokenCollateral: cUsdpCollateral,
+            pegPrice: fp('0.99995491'),
+            refPerTok: fp('0.020090037479321573'),
+          },
+        ]
 
-      const defaultThreshold = fp('0.01') // 1%
-      const delayUntilDefault = bn('86400') // 24h
+        for (const ctkInf of cTokenInfos) {
+          // CToken
+          expect(await ctkInf.cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
+          expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
+            await ctkInf.token.decimals()
+          )
+          expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
+          expect(await ctkInf.cTokenVault.asset()).to.equal(ctkInf.cTokenAddress)
+          expect(await ctkInf.cToken.decimals()).to.equal(8)
+          expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
+          expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
+            ethers.utils.formatBytes32String('USD')
+          )
+          expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
+            ctkInf.refPerTok,
+            fp('0.001')
+          )
+          expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
+          expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
+            await ctkInf.cTokenCollateral.refPerTok()
+          )
 
-      // CTokens Collateral with no price
-      const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral')
-      ).deploy(
-        {
+          await expectPrice(
+            ctkInf.cTokenCollateral.address,
+            ctkInf.pegPrice.mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR),
+            ORACLE_ERROR,
+            true,
+            bn('1e4')
+          )
+
+          // TODO: deprecate
+          await expect(ctkInf.cTokenCollateral.claimRewards())
+            .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
+            .withArgs(compToken.address, 0)
+
+          await expect(ctkInf.cTokenVault.claimRewards())
+            .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
+            .withArgs(compToken.address, 0)
+
+          expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(
+            config.rTokenMaxTradeVolume
+          )
+        }
+      })
+
+      it('Should setup collateral correctly - ATokens Fiat', async () => {
+        // Define interface required for each aToken
+        interface ATokenInfo {
+          token: ERC20Mock
+          tokenAddress: string
+          stataToken: StaticATokenLM
+          aToken: IAToken
+          aTokenAddress: string
+          aTokenCollateral: ATokenFiatCollateral
+          pegPrice: BigNumber
+          refPerTok: BigNumber
+        }
+
+        // aUSDC, aUSDT, and aBUSD
+        const aTokenInfos: ATokenInfo[] = [
+          {
+            token: dai,
+            tokenAddress: networkConfig[chainId].tokens.DAI || '',
+            stataToken: stataDai,
+            aToken: aDai,
+            aTokenAddress: networkConfig[chainId].tokens.aDAI || '',
+            aTokenCollateral: aDaiCollateral,
+            pegPrice: fp('1'),
+            refPerTok: fp('1.072871692909066736'),
+          },
+          {
+            token: usdc,
+            tokenAddress: networkConfig[chainId].tokens.USDC || '',
+            stataToken: stataUsdc,
+            aToken: aUsdc,
+            aTokenAddress: networkConfig[chainId].tokens.aUSDC || '',
+            aTokenCollateral: aUsdcCollateral,
+            pegPrice: fp('1.0003994'),
+            refPerTok: fp('1.075820226287820705'),
+          },
+          {
+            token: usdt,
+            tokenAddress: networkConfig[chainId].tokens.USDT || '',
+            stataToken: stataUsdt,
+            aToken: aUsdt,
+            aTokenAddress: networkConfig[chainId].tokens.aUSDT || '',
+            aTokenCollateral: aUsdtCollateral,
+            pegPrice: fp('0.99934692'),
+            refPerTok: fp('1.088178891886696259'),
+          },
+          {
+            token: busd,
+            tokenAddress: networkConfig[chainId].tokens.BUSD || '',
+            stataToken: stataBusd,
+            aToken: aBusd,
+            aTokenAddress: networkConfig[chainId].tokens.aBUSD || '',
+            aTokenCollateral: aBusdCollateral,
+            pegPrice: fp('1.00030972'),
+            refPerTok: fp('1.093996241277203301'),
+          },
+          {
+            token: usdp,
+            tokenAddress: networkConfig[chainId].tokens.USDP || '',
+            stataToken: stataUsdp,
+            aToken: aUsdp,
+            aTokenAddress: networkConfig[chainId].tokens.aUSDP || '',
+            aTokenCollateral: aUsdpCollateral,
+            pegPrice: fp('0.99995491'),
+            refPerTok: fp('1.019878722522085537'),
+          },
+        ]
+
+        for (const atkInf of aTokenInfos) {
+          // AToken
+          expect(await atkInf.aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await atkInf.aTokenCollateral.isCollateral()).to.equal(true)
+          expect(await atkInf.aTokenCollateral.erc20()).to.equal(atkInf.stataToken.address)
+          expect(await atkInf.stataToken.decimals()).to.equal(await atkInf.token.decimals())
+          expect(await atkInf.aTokenCollateral.targetName()).to.equal(
+            ethers.utils.formatBytes32String('USD')
+          )
+          expect(await atkInf.aTokenCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.095'))
+
+          expect(await atkInf.aTokenCollateral.targetPerRef()).to.equal(fp('1'))
+          expect(await atkInf.aTokenCollateral.exposedReferencePrice()).to.be.closeTo(
+            await atkInf.aTokenCollateral.refPerTok(),
+            fp('0.000005')
+          )
+
+          await expectPrice(
+            atkInf.aTokenCollateral.address,
+            atkInf.pegPrice.mul(atkInf.refPerTok).div(BN_SCALE_FACTOR),
+            ORACLE_ERROR,
+            true,
+            bn('1e5')
+          )
+
+          // TODO: deprecate
+          await expect(atkInf.aTokenCollateral.claimRewards())
+            .to.emit(atkInf.stataToken, 'RewardsClaimed')
+            .withArgs(aaveToken.address, 0)
+
+          await expect(atkInf.stataToken['claimRewards()']())
+            .to.emit(atkInf.stataToken, 'RewardsClaimed')
+            .withArgs(aaveToken.address, 0)
+
+          // Check StaticAToken
+          expect(await atkInf.stataToken.name()).to.equal(
+            'Static Aave interest bearing ' + (await atkInf.token.symbol())
+          )
+          expect(await atkInf.stataToken.symbol()).to.equal('stata' + (await atkInf.token.symbol()))
+          expect(await atkInf.stataToken.decimals()).to.equal(await atkInf.token.decimals())
+          expect(await atkInf.stataToken.LENDING_POOL()).to.equal(
+            networkConfig[chainId].AAVE_LENDING_POOL
+          )
+          expect(await atkInf.stataToken.INCENTIVES_CONTROLLER()).to.equal(
+            networkConfig[chainId].AAVE_INCENTIVES
+          )
+          expect(await atkInf.stataToken.ATOKEN()).to.equal(atkInf.aToken.address)
+          expect(await atkInf.stataToken.ATOKEN()).to.equal(atkInf.aTokenAddress)
+          expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.token.address)
+          expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.tokenAddress)
+          expect(await atkInf.stataToken.REWARD_TOKEN()).to.equal(aaveToken.address)
+
+          expect(await atkInf.aTokenCollateral.maxTradeVolume()).to.equal(
+            config.rTokenMaxTradeVolume
+          )
+        }
+      })
+
+      it('Should setup collateral correctly - Non-Fiatcoins', async () => {
+        // Define interface required for each non-fiat coin
+        interface TokenInfo {
+          nonFiatToken: ERC20Mock
+          nonFiatTokenDecimals: number
+          nonFiatTokenAddress: string
+          nonFiatTokenCollateral: NonFiatCollateral
+          targetPrice: BigNumber
+          refPrice: BigNumber
+          targetName: string
+        }
+
+        // WBTC
+        const tokenInfos: TokenInfo[] = [
+          {
+            nonFiatToken: wbtc,
+            nonFiatTokenDecimals: 8,
+            nonFiatTokenAddress: networkConfig[chainId].tokens.WBTC || '',
+            nonFiatTokenCollateral: wbtcCollateral,
+            targetPrice: fp('31311.5'), // approx price June 6, 2022
+            refPrice: fp('1.00062735'), // approx price wbtc-btc
+            targetName: 'BTC',
+          },
+        ]
+
+        for (const tkInf of tokenInfos) {
+          // Non-Fiat Token Assets
+          expect(await tkInf.nonFiatTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await tkInf.nonFiatTokenCollateral.isCollateral()).to.equal(true)
+          expect(await tkInf.nonFiatTokenCollateral.erc20()).to.equal(tkInf.nonFiatToken.address)
+          expect(await tkInf.nonFiatTokenCollateral.erc20()).to.equal(tkInf.nonFiatTokenAddress)
+          expect(await tkInf.nonFiatToken.decimals()).to.equal(tkInf.nonFiatTokenDecimals)
+          expect(await tkInf.nonFiatTokenCollateral.targetName()).to.equal(
+            ethers.utils.formatBytes32String(tkInf.targetName)
+          )
+
+          // Get priceable info
+          await tkInf.nonFiatTokenCollateral.refresh()
+          expect(await tkInf.nonFiatTokenCollateral.refPerTok()).to.equal(fp('1'))
+          expect(await tkInf.nonFiatTokenCollateral.targetPerRef()).to.equal(fp('1'))
+
+          // ref price approx 1.00062
+          await expectPrice(
+            tkInf.nonFiatTokenCollateral.address,
+            tkInf.targetPrice.mul(tkInf.refPrice).div(BN_SCALE_FACTOR),
+            ORACLE_ERROR,
+            true,
+            bn('1e10')
+          )
+
+          await expect(tkInf.nonFiatTokenCollateral.claimRewards()).to.not.emit(
+            tkInf.nonFiatTokenCollateral,
+            'RewardsClaimed'
+          )
+
+          expect(await tkInf.nonFiatTokenCollateral.maxTradeVolume()).to.equal(
+            config.rTokenMaxTradeVolume
+          )
+        }
+      })
+
+      it('Should setup collateral correctly - CTokens Non-Fiat', async () => {
+        // Define interface required for each ctoken
+        interface CTokenInfo {
+          token: ERC20Mock
+          tokenAddress: string
+          cToken: CTokenMock
+          cTokenVault: CTokenVault
+          cTokenAddress: string
+          cTokenCollateral: CTokenNonFiatCollateral
+          targetPrice: BigNumber
+          refPrice: BigNumber
+          refPerTok: BigNumber
+          targetName: string
+        }
+
+        // Compound - cWBTC
+        const cTokenInfos: CTokenInfo[] = [
+          {
+            token: wbtc,
+            tokenAddress: networkConfig[chainId].tokens.WBTC || '',
+            cToken: cWBTC,
+            cTokenVault: cWBTCVault,
+            cTokenAddress: networkConfig[chainId].tokens.cWBTC || '',
+            cTokenCollateral: cWBTCCollateral,
+            targetPrice: fp('31311.5'), // approx price June 6, 2022
+            refPrice: fp('1.00062735'), // approx price wbtc-btc
+            refPerTok: fp('0.020065932066404677'), // for wbtc on June 2022
+            targetName: 'BTC',
+          },
+        ]
+
+        for (const ctkInf of cTokenInfos) {
+          // CToken
+          expect(await ctkInf.cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
+          expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
+            await ctkInf.token.decimals()
+          )
+          expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
+          expect(await ctkInf.cTokenVault.asset()).to.equal(ctkInf.cTokenAddress)
+          expect(await ctkInf.cToken.decimals()).to.equal(8)
+          expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
+          expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
+            ethers.utils.formatBytes32String(ctkInf.targetName)
+          )
+          expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
+            ctkInf.refPerTok,
+            fp('0.001')
+          )
+          expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
+
+          expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
+            await ctkInf.cTokenCollateral.refPerTok()
+          )
+
+          // close to $633 usd
+          await expectPrice(
+            ctkInf.cTokenCollateral.address,
+            ctkInf.targetPrice
+              .mul(ctkInf.refPrice)
+              .mul(await ctkInf.cTokenCollateral.refPerTok())
+              .div(BN_SCALE_FACTOR.pow(2)),
+            ORACLE_ERROR,
+            true
+          )
+
+          // TODO: deprecate
+          await expect(ctkInf.cTokenCollateral.claimRewards())
+            .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
+            .withArgs(compToken.address, 0)
+
+          await expect(ctkInf.cTokenVault.claimRewards())
+            .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
+            .withArgs(compToken.address, 0)
+
+          expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(
+            config.rTokenMaxTradeVolume
+          )
+        }
+      })
+
+      it('Should setup collateral correctly - Self-Referential', async () => {
+        // Define interface required for each self-referential coin
+        interface TokenInfo {
+          selfRefToken: ERC20Mock | WETH9
+          selfRefTokenDecimals: number
+          selfRefTokenAddress: string
+          selfRefTokenCollateral: FiatCollateral
+          price: BigNumber
+          targetName: string
+        }
+
+        // WBTC
+        const tokenInfos: TokenInfo[] = [
+          {
+            selfRefToken: weth,
+            selfRefTokenDecimals: 18,
+            selfRefTokenAddress: networkConfig[chainId].tokens.WETH || '',
+            selfRefTokenCollateral: wethCollateral,
+            price: fp('1859.17'), //approx price June 2022
+            targetName: 'ETH',
+          },
+        ]
+
+        for (const tkInf of tokenInfos) {
+          // Non-Fiat Token Assets
+          expect(await tkInf.selfRefTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await tkInf.selfRefTokenCollateral.isCollateral()).to.equal(true)
+          expect(await tkInf.selfRefTokenCollateral.erc20()).to.equal(tkInf.selfRefToken.address)
+          expect(await tkInf.selfRefTokenCollateral.erc20()).to.equal(tkInf.selfRefTokenAddress)
+          expect(await tkInf.selfRefToken.decimals()).to.equal(tkInf.selfRefTokenDecimals)
+          expect(await tkInf.selfRefTokenCollateral.targetName()).to.equal(
+            ethers.utils.formatBytes32String(tkInf.targetName)
+          )
+          // Get priceable info
+          await tkInf.selfRefTokenCollateral.refresh()
+          expect(await tkInf.selfRefTokenCollateral.refPerTok()).to.equal(fp('1'))
+          expect(await tkInf.selfRefTokenCollateral.targetPerRef()).to.equal(fp('1'))
+
+          await expectPrice(tkInf.selfRefTokenCollateral.address, tkInf.price, ORACLE_ERROR, true)
+
+          await expect(tkInf.selfRefTokenCollateral.claimRewards()).to.not.emit(
+            tkInf.selfRefTokenCollateral,
+            'RewardsClaimed'
+          )
+          expect(await tkInf.selfRefTokenCollateral.maxTradeVolume()).to.equal(
+            config.rTokenMaxTradeVolume
+          )
+        }
+      })
+
+      it('Should setup collateral correctly - CTokens Self-Referential', async () => {
+        // Define interface required for each ctoken
+        interface CTokenInfo {
+          token: ERC20Mock
+          tokenAddress: string
+          cToken: CTokenMock
+          cTokenVault: CTokenVault
+          cTokenAddress: string
+          cTokenCollateral: CTokenSelfReferentialCollateral
+          price: BigNumber
+          refPerTok: BigNumber
+          targetName: string
+        }
+
+        // Compound - cUSDC and cUSDT
+        const cTokenInfos: CTokenInfo[] = [
+          {
+            token: weth,
+            tokenAddress: networkConfig[chainId].tokens.WETH || '',
+            cToken: cETH,
+            cTokenVault: cETHVault,
+            cTokenAddress: networkConfig[chainId].tokens.cETH || '',
+            cTokenCollateral: cETHCollateral,
+            price: fp('1859.17'), // approx price June 6, 2022
+            refPerTok: fp('0.020064224962890636'), // for weth on June 2022
+            targetName: 'ETH',
+          },
+        ]
+
+        for (const ctkInf of cTokenInfos) {
+          // CToken
+          expect(await ctkInf.cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
+          expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
+            await ctkInf.token.decimals()
+          )
+          expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
+          expect(await ctkInf.cTokenVault.asset()).to.equal(ctkInf.cTokenAddress)
+          expect(await ctkInf.cToken.decimals()).to.equal(8)
+          expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
+          expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
+            ethers.utils.formatBytes32String(ctkInf.targetName)
+          )
+
+          expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
+            ctkInf.refPerTok,
+            fp('0.001')
+          )
+          expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
+          expect(await ctkInf.cTokenCollateral.exposedReferencePrice()).to.equal(
+            await ctkInf.cTokenCollateral.refPerTok()
+          )
+
+          await expectPrice(
+            ctkInf.cTokenCollateral.address,
+            ctkInf.price.mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR),
+            ORACLE_ERROR,
+            true,
+            bn('1e5')
+          )
+
+          // TODO: deprecate
+          await expect(ctkInf.cTokenCollateral.claimRewards())
+            .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
+            .withArgs(compToken.address, 0)
+
+          await expect(ctkInf.cTokenVault.claimRewards())
+            .to.emit(ctkInf.cTokenVault, 'RewardsClaimed')
+            .withArgs(compToken.address, 0)
+
+          expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(
+            config.rTokenMaxTradeVolume
+          )
+        }
+      })
+
+      it('Should setup collateral correctly - EUR Fiatcoins', async () => {
+        // Define interface required for each Eur-fiat coin
+        interface TokenInfo {
+          eurFiatToken: ERC20Mock
+          eurFiatTokenDecimals: number
+          eurFiatTokenAddress: string
+          eurFiatTokenCollateral: EURFiatCollateral
+          targetPrice: BigNumber
+          refPrice: BigNumber
+          targetName: string
+        }
+
+        // EURT
+        const tokenInfos: TokenInfo[] = [
+          {
+            eurFiatToken: eurt,
+            eurFiatTokenDecimals: 6,
+            eurFiatTokenAddress: networkConfig[chainId].tokens.EURT || '',
+            eurFiatTokenCollateral: eurtCollateral,
+            targetPrice: fp('1.07025'), // approx price EUR-USD June 6, 2022
+            refPrice: fp('1.073'), // approx price EURT-USD June 6, 2022
+            targetName: 'EUR',
+          },
+        ]
+
+        for (const tkInf of tokenInfos) {
+          // Non-Fiat Token Assets
+          expect(await tkInf.eurFiatTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await tkInf.eurFiatTokenCollateral.isCollateral()).to.equal(true)
+          expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatToken.address)
+          expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatTokenAddress)
+          expect(await tkInf.eurFiatToken.decimals()).to.equal(tkInf.eurFiatTokenDecimals)
+          expect(await tkInf.eurFiatTokenCollateral.targetName()).to.equal(
+            ethers.utils.formatBytes32String(tkInf.targetName)
+          )
+
+          // Get priceable info
+          await tkInf.eurFiatTokenCollateral.refresh()
+          expect(await tkInf.eurFiatTokenCollateral.refPerTok()).to.equal(fp('1'))
+          expect(await tkInf.eurFiatTokenCollateral.targetPerRef()).to.equal(fp('1'))
+
+          // ref price approx 1.07
+          await expectPrice(
+            tkInf.eurFiatTokenCollateral.address,
+            tkInf.refPrice,
+            ORACLE_ERROR,
+            true
+          )
+
+          await expect(tkInf.eurFiatTokenCollateral.claimRewards()).to.not.emit(
+            tkInf.eurFiatTokenCollateral,
+            'RewardsClaimed'
+          )
+
+          expect(await tkInf.eurFiatTokenCollateral.maxTradeVolume()).to.equal(
+            config.rTokenMaxTradeVolume
+          )
+        }
+      })
+
+      it('Should handle invalid/stale Price - Assets', async () => {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        // Stale Oracle
+        await expectUnpriced(compAsset.address)
+        await expectUnpriced(aaveAsset.address)
+
+        // Setup Assets with no price feed
+        const nonpriceAsset: Asset = <Asset>(
+          await (
+            await ethers.getContractFactory('Asset')
+          ).deploy(
+            PRICE_TIMEOUT,
+            NO_PRICE_DATA_FEED,
+            ORACLE_ERROR,
+            networkConfig[chainId].tokens.stkAAVE || '',
+            config.rTokenMaxTradeVolume,
+            MAX_ORACLE_TIMEOUT
+          )
+        )
+        // Assets with invalid feed - revert
+        await expect(nonpriceAsset.price()).to.be.reverted
+
+        // With a feed with zero price
+        const zeroPriceAsset: Asset = <Asset>(
+          await (
+            await ethers.getContractFactory('Asset')
+          ).deploy(
+            PRICE_TIMEOUT,
+            mockChainlinkFeed.address,
+            ORACLE_ERROR,
+            networkConfig[chainId].tokens.stkAAVE || '',
+            config.rTokenMaxTradeVolume,
+            MAX_ORACLE_TIMEOUT
+          )
+        )
+
+        await setOraclePrice(zeroPriceAsset.address, bn(0))
+
+        // Zero price
+        await expectPrice(zeroPriceAsset.address, bn('0'), bn('0'), false)
+      })
+
+      it('Should handle invalid/stale Price - Collateral - Fiat', async () => {
+        // Does not revert with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        await expectUnpriced(daiCollateral.address)
+        await expectUnpriced(usdcCollateral.address)
+        await expectUnpriced(usdtCollateral.address)
+        await expectUnpriced(busdCollateral.address)
+        await expectUnpriced(usdpCollateral.address)
+        await expectUnpriced(tusdCollateral.address)
+
+        // Refresh should mark status IFFY
+        await daiCollateral.refresh()
+        await usdcCollateral.refresh()
+        await usdtCollateral.refresh()
+        await busdCollateral.refresh()
+        await usdpCollateral.refresh()
+        await tusdCollateral.refresh()
+        expect(await daiCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await usdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await usdtCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await busdCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await usdpCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await tusdCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+        const defaultThreshold = fp('0.01') // 1%
+        const delayUntilDefault = bn('86400') // 24h
+
+        // Non price Fiat collateral
+        const nonPriceCollateral: FiatCollateral = <FiatCollateral>await (
+          await ethers.getContractFactory('FiatCollateral')
+        ).deploy({
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
           oracleError: ORACLE_ERROR,
-          erc20: cDaiVault.address,
+          erc20: dai.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: MAX_ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
-        },
-        REVENUE_HIDING
-      )
-      // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenCollateral.price()).to.be.reverted
+        })
 
-      // Refresh should also revert - status is not modified
-      await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
-      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+        // Collateral with no price should revert
+        await expect(nonPriceCollateral.price()).to.be.reverted
 
-      // Does not revert with a feed with zero price
-      const zeropriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral')
-      ).deploy(
-        {
+        // Refresh should also revert - status is not modified
+        await expect(nonPriceCollateral.refresh()).to.be.reverted
+        expect(await nonPriceCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // feed with zero price - does not revert
+        const zeroFiatCollateral: FiatCollateral = <FiatCollateral>await (
+          await ethers.getContractFactory('FiatCollateral')
+        ).deploy({
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
-          erc20: cDaiVault.address,
+          erc20: dai.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: MAX_ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
-        },
-        REVENUE_HIDING
-      )
-      await zeropriceCtokenCollateral.refresh()
+        })
+        await zeroFiatCollateral.refresh()
 
-      await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
+        await setOraclePrice(zeroFiatCollateral.address, bn(0))
 
-      // With zero price
-      await expectPrice(zeropriceCtokenCollateral.address, bn('0'), bn('0'), false)
+        // With zero price
+        await expectPrice(zeroFiatCollateral.address, bn('0'), bn('0'), false)
 
-      // Refresh should mark status IFFY
-      await zeropriceCtokenCollateral.refresh()
-      expect(await zeropriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
-    })
+        // Refresh should mark status IFFY
+        await zeroFiatCollateral.refresh()
+        expect(await zeroFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
+      })
 
-    it('Should handle invalid/stale Price - Collateral - ATokens Fiat', async () => {
-      // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
+      it('Should handle invalid/stale Price - Collateral - CTokens Fiat', async () => {
+        expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Aave
-      await expectUnpriced(aDaiCollateral.address)
-      await expectUnpriced(aUsdcCollateral.address)
-      await expectUnpriced(aUsdtCollateral.address)
-      await expectUnpriced(aBusdCollateral.address)
+        // Does not revert with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
 
-      // Refresh should mark status IFFY
-      await aDaiCollateral.refresh()
-      await aUsdcCollateral.refresh()
-      await aUsdtCollateral.refresh()
-      await aBusdCollateral.refresh()
-      expect(await aDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await aUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await aUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await aBusdCollateral.status()).to.equal(CollateralStatus.IFFY)
+        // Compound
+        await expectUnpriced(cDaiCollateral.address)
+        await expectUnpriced(cUsdcCollateral.address)
+        await expectUnpriced(cUsdtCollateral.address)
 
-      const defaultThreshold = fp('0.01') // 1%
-      const delayUntilDefault = bn('86400') // 24h
+        // Refresh should mark status IFFY
+        await cDaiCollateral.refresh()
+        await cUsdcCollateral.refresh()
+        await cUsdtCollateral.refresh()
+        expect(await cDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // AToken collateral with no price
-      const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
-        await ethers.getContractFactory('ATokenFiatCollateral')
-      ).deploy(
-        {
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: NO_PRICE_DATA_FEED,
-          oracleError: ORACLE_ERROR,
-          erc20: stataDai.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: MAX_ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-        },
-        REVENUE_HIDING
-      )
+        const defaultThreshold = fp('0.01') // 1%
+        const delayUntilDefault = bn('86400') // 24h
 
-      // ATokens - Collateral with no price info should revert
-      await expect(nonpriceAtokenCollateral.price()).to.be.reverted
-
-      // Refresh should also revert - status is not modified
-      await expect(nonpriceAtokenCollateral.refresh()).to.be.reverted
-      expect(await nonpriceAtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Does not revert with a feed with zero price
-      const zeroPriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
-        await ethers.getContractFactory('ATokenFiatCollateral')
-      ).deploy(
-        {
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: mockChainlinkFeed.address,
-          oracleError: ORACLE_ERROR,
-          erc20: stataDai.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: MAX_ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-        },
-        REVENUE_HIDING
-      )
-      await zeroPriceAtokenCollateral.refresh()
-
-      await setOraclePrice(zeroPriceAtokenCollateral.address, bn(0))
-
-      // With zero price
-      await expectPrice(zeroPriceAtokenCollateral.address, bn('0'), bn('0'), false)
-
-      // Refresh should mark status IFFY
-      await zeroPriceAtokenCollateral.refresh()
-      expect(await zeroPriceAtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
-    })
-
-    it('Should handle invalid/stale Price - Collateral - Non-Fiatcoins', async () => {
-      // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      // Aave
-      await expectUnpriced(wbtcCollateral.address)
-
-      await wbtcCollateral.refresh()
-      expect(await wbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-      const defaultThreshold = fp('0.01') // 1%
-      const delayUntilDefault = bn('86400') // 24h
-
-      // Non-Fiat collateral with no price
-      const nonpriceNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>await (
-        await ethers.getContractFactory('NonFiatCollateral')
-      ).deploy(
-        {
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: NO_PRICE_DATA_FEED,
-          oracleError: ORACLE_ERROR,
-          erc20: wbtc.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: MAX_ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('BTC'),
-          defaultThreshold,
-          delayUntilDefault,
-        },
-        NO_PRICE_DATA_FEED,
-        MAX_ORACLE_TIMEOUT
-      )
-
-      // Non-fiat Collateral with no price should revert
-      await expect(nonpriceNonFiatCollateral.price()).to.be.reverted
-
-      // Refresh should also revert - status is not modified
-      await expect(nonpriceNonFiatCollateral.refresh()).to.be.reverted
-      expect(await nonpriceNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Non-Fiat collateral with zero price
-      const zeroPriceNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>await (
-        await ethers.getContractFactory('NonFiatCollateral')
-      ).deploy(
-        {
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: mockChainlinkFeed.address,
-          oracleError: ORACLE_ERROR,
-          erc20: wbtc.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: MAX_ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('BTC'),
-          defaultThreshold,
-          delayUntilDefault,
-        },
-        mockChainlinkFeed.address,
-        MAX_ORACLE_TIMEOUT
-      )
-      await zeroPriceNonFiatCollateral.refresh()
-
-      // Set price = 0
-      const chainlinkFeedAddr = await zeroPriceNonFiatCollateral.chainlinkFeed()
-      const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
-      await v3Aggregator.updateAnswer(bn(0))
-
-      // Does not revert with zero price
-      await expectPrice(zeroPriceNonFiatCollateral.address, bn('0'), bn('0'), false)
-
-      // Refresh should mark status IFFY
-      await zeroPriceNonFiatCollateral.refresh()
-      expect(await zeroPriceNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
-    })
-
-    it('Should handle invalid/stale Price - Collateral - CTokens Non-Fiat', async () => {
-      // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      // Compound
-      await expectUnpriced(cWBTCCollateral.address)
-
-      // Refresh should mark status IFFY
-      await cWBTCCollateral.refresh()
-      expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-      const defaultThreshold = fp('0.01') // 1%
-      const delayUntilDefault = bn('86400') // 24h
-
-      // CTokens Collateral with no price
-      const nonpriceCtokenNonFiatCollateral: CTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
-        await (
-          await ethers.getContractFactory('CTokenNonFiatCollateral')
+        // CTokens Collateral with no price
+        const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
         ).deploy(
           {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: NO_PRICE_DATA_FEED,
             oracleError: ORACLE_ERROR,
-            erc20: cWBTCVault.address,
+            erc20: cDaiVault.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
+          REVENUE_HIDING
+        )
+        // CTokens - Collateral with no price info should revert
+        await expect(nonpriceCtokenCollateral.price()).to.be.reverted
+
+        // Refresh should also revert - status is not modified
+        await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
+        expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // Does not revert with a feed with zero price
+        const zeropriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: mockChainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: cDaiVault.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
+          REVENUE_HIDING
+        )
+        await zeropriceCtokenCollateral.refresh()
+
+        await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
+
+        // With zero price
+        await expectPrice(zeropriceCtokenCollateral.address, bn('0'), bn('0'), false)
+
+        // Refresh should mark status IFFY
+        await zeropriceCtokenCollateral.refresh()
+        expect(await zeropriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      })
+
+      it('Should handle invalid/stale Price - Collateral - ATokens Fiat', async () => {
+        // Does not revert with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        // Aave
+        await expectUnpriced(aDaiCollateral.address)
+        await expectUnpriced(aUsdcCollateral.address)
+        await expectUnpriced(aUsdtCollateral.address)
+        await expectUnpriced(aBusdCollateral.address)
+
+        // Refresh should mark status IFFY
+        await aDaiCollateral.refresh()
+        await aUsdcCollateral.refresh()
+        await aUsdtCollateral.refresh()
+        await aBusdCollateral.refresh()
+        expect(await aDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await aUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await aUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
+        expect(await aBusdCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+        const defaultThreshold = fp('0.01') // 1%
+        const delayUntilDefault = bn('86400') // 24h
+
+        // AToken collateral with no price
+        const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+          await ethers.getContractFactory('ATokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: NO_PRICE_DATA_FEED,
+            oracleError: ORACLE_ERROR,
+            erc20: stataDai.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
+          REVENUE_HIDING
+        )
+
+        // ATokens - Collateral with no price info should revert
+        await expect(nonpriceAtokenCollateral.price()).to.be.reverted
+
+        // Refresh should also revert - status is not modified
+        await expect(nonpriceAtokenCollateral.refresh()).to.be.reverted
+        expect(await nonpriceAtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // Does not revert with a feed with zero price
+        const zeroPriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+          await ethers.getContractFactory('ATokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: mockChainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: stataDai.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
+          REVENUE_HIDING
+        )
+        await zeroPriceAtokenCollateral.refresh()
+
+        await setOraclePrice(zeroPriceAtokenCollateral.address, bn(0))
+
+        // With zero price
+        await expectPrice(zeroPriceAtokenCollateral.address, bn('0'), bn('0'), false)
+
+        // Refresh should mark status IFFY
+        await zeroPriceAtokenCollateral.refresh()
+        expect(await zeroPriceAtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      })
+
+      it('Should handle invalid/stale Price - Collateral - Non-Fiatcoins', async () => {
+        // Does not revert with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        // Aave
+        await expectUnpriced(wbtcCollateral.address)
+
+        await wbtcCollateral.refresh()
+        expect(await wbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+        const defaultThreshold = fp('0.01') // 1%
+        const delayUntilDefault = bn('86400') // 24h
+
+        // Non-Fiat collateral with no price
+        const nonpriceNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>await (
+          await ethers.getContractFactory('NonFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: NO_PRICE_DATA_FEED,
+            oracleError: ORACLE_ERROR,
+            erc20: wbtc.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: MAX_ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1407,28 +1365,25 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             delayUntilDefault,
           },
           NO_PRICE_DATA_FEED,
-          MAX_ORACLE_TIMEOUT,
-          REVENUE_HIDING
+          MAX_ORACLE_TIMEOUT
         )
-      )
 
-      // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenNonFiatCollateral.price()).to.be.reverted
+        // Non-fiat Collateral with no price should revert
+        await expect(nonpriceNonFiatCollateral.price()).to.be.reverted
 
-      // Refresh should also revert - status is not modified
-      await expect(nonpriceCtokenNonFiatCollateral.refresh()).to.be.reverted
-      expect(await nonpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+        // Refresh should also revert - status is not modified
+        await expect(nonpriceNonFiatCollateral.refresh()).to.be.reverted
+        expect(await nonpriceNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Does not revert with a feed with zero price
-      const zeropriceCtokenNonFiatCollateral: CTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
-        await (
-          await ethers.getContractFactory('CTokenNonFiatCollateral')
+        // Non-Fiat collateral with zero price
+        const zeroPriceNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>await (
+          await ethers.getContractFactory('NonFiatCollateral')
         ).deploy(
           {
             priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: mockChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
-            erc20: cWBTCVault.address,
+            erc20: wbtc.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: MAX_ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
@@ -1436,606 +1391,694 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             delayUntilDefault,
           },
           mockChainlinkFeed.address,
-          MAX_ORACLE_TIMEOUT,
-          REVENUE_HIDING
+          MAX_ORACLE_TIMEOUT
         )
-      )
-      await zeropriceCtokenNonFiatCollateral.refresh()
+        await zeroPriceNonFiatCollateral.refresh()
 
-      // Set price = 0
-      const chainlinkFeedAddr = await zeropriceCtokenNonFiatCollateral.targetUnitChainlinkFeed()
-      const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
-      await v3Aggregator.updateAnswer(bn(0))
+        // Set price = 0
+        const chainlinkFeedAddr = await zeroPriceNonFiatCollateral.chainlinkFeed()
+        const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
+        await v3Aggregator.updateAnswer(bn(0))
 
-      //  With zero price
-      await expectPrice(zeropriceCtokenNonFiatCollateral.address, bn('0'), bn('0'), false)
+        // Does not revert with zero price
+        await expectPrice(zeroPriceNonFiatCollateral.address, bn('0'), bn('0'), false)
 
-      // Refresh should mark status IFFY
-      await zeropriceCtokenNonFiatCollateral.refresh()
-      expect(await zeropriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
-    })
-
-    it('Should handle invalid/stale Price - Collateral - Self-Referential', async () => {
-      const delayUntilDefault = bn('86400') // 24h
-
-      // Dows not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      // Aave
-      await expectUnpriced(wethCollateral.address)
-
-      await wethCollateral.refresh()
-      expect(await wethCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-      // Self referential collateral with no price
-      const nonpriceSelfReferentialCollateral: FiatCollateral = <FiatCollateral>await (
-        await ethers.getContractFactory('FiatCollateral')
-      ).deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: NO_PRICE_DATA_FEED,
-        oracleError: ORACLE_ERROR,
-        erc20: weth.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: MAX_ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: bn('0'),
-        delayUntilDefault,
+        // Refresh should mark status IFFY
+        await zeroPriceNonFiatCollateral.refresh()
+        expect(await zeroPriceNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       })
 
-      // Non-fiat Collateral with no price should revert
-      await expect(nonpriceSelfReferentialCollateral.price()).to.be.reverted
+      it('Should handle invalid/stale Price - Collateral - CTokens Non-Fiat', async () => {
+        // Does not revert with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
 
-      // Refresh should also revert - status is not modified
-      await expect(nonpriceSelfReferentialCollateral.refresh()).to.be.reverted
-      expect(await nonpriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
+        // Compound
+        await expectUnpriced(cWBTCCollateral.address)
 
-      // Self referential collateral with zero price
-      const zeroPriceSelfReferentialCollateral: FiatCollateral = <FiatCollateral>await (
-        await ethers.getContractFactory('FiatCollateral')
-      ).deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: mockChainlinkFeed.address,
-        oracleError: ORACLE_ERROR,
-        erc20: weth.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume,
-        oracleTimeout: MAX_ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: bn('0'),
-        delayUntilDefault,
+        // Refresh should mark status IFFY
+        await cWBTCCollateral.refresh()
+        expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+        const defaultThreshold = fp('0.01') // 1%
+        const delayUntilDefault = bn('86400') // 24h
+
+        // CTokens Collateral with no price
+        const nonpriceCtokenNonFiatCollateral: CTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
+          await (
+            await ethers.getContractFactory('CTokenNonFiatCollateral')
+          ).deploy(
+            {
+              priceTimeout: PRICE_TIMEOUT,
+              chainlinkFeed: NO_PRICE_DATA_FEED,
+              oracleError: ORACLE_ERROR,
+              erc20: cWBTCVault.address,
+              maxTradeVolume: config.rTokenMaxTradeVolume,
+              oracleTimeout: MAX_ORACLE_TIMEOUT,
+              targetName: ethers.utils.formatBytes32String('BTC'),
+              defaultThreshold,
+              delayUntilDefault,
+            },
+            NO_PRICE_DATA_FEED,
+            MAX_ORACLE_TIMEOUT,
+            REVENUE_HIDING
+          )
+        )
+
+        // CTokens - Collateral with no price info should revert
+        await expect(nonpriceCtokenNonFiatCollateral.price()).to.be.reverted
+
+        // Refresh should also revert - status is not modified
+        await expect(nonpriceCtokenNonFiatCollateral.refresh()).to.be.reverted
+        expect(await nonpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // Does not revert with a feed with zero price
+        const zeropriceCtokenNonFiatCollateral: CTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
+          await (
+            await ethers.getContractFactory('CTokenNonFiatCollateral')
+          ).deploy(
+            {
+              priceTimeout: PRICE_TIMEOUT,
+              chainlinkFeed: mockChainlinkFeed.address,
+              oracleError: ORACLE_ERROR,
+              erc20: cWBTCVault.address,
+              maxTradeVolume: config.rTokenMaxTradeVolume,
+              oracleTimeout: MAX_ORACLE_TIMEOUT,
+              targetName: ethers.utils.formatBytes32String('BTC'),
+              defaultThreshold,
+              delayUntilDefault,
+            },
+            mockChainlinkFeed.address,
+            MAX_ORACLE_TIMEOUT,
+            REVENUE_HIDING
+          )
+        )
+        await zeropriceCtokenNonFiatCollateral.refresh()
+
+        // Set price = 0
+        const chainlinkFeedAddr = await zeropriceCtokenNonFiatCollateral.targetUnitChainlinkFeed()
+        const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
+        await v3Aggregator.updateAnswer(bn(0))
+
+        //  With zero price
+        await expectPrice(zeropriceCtokenNonFiatCollateral.address, bn('0'), bn('0'), false)
+
+        // Refresh should mark status IFFY
+        await zeropriceCtokenNonFiatCollateral.refresh()
+        expect(await zeropriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       })
-      await zeroPriceSelfReferentialCollateral.refresh()
 
-      // Set price = 0
-      await setOraclePrice(zeroPriceSelfReferentialCollateral.address, bn(0))
+      it('Should handle invalid/stale Price - Collateral - Self-Referential', async () => {
+        const delayUntilDefault = bn('86400') // 24h
 
-      // Does not revert with zero price
-      await expectPrice(zeroPriceSelfReferentialCollateral.address, bn('0'), bn('0'), false)
+        // Dows not revert with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
 
-      // Refresh should mark status IFFY
-      await zeroPriceSelfReferentialCollateral.refresh()
-      expect(await zeroPriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
-    })
+        // Aave
+        await expectUnpriced(wethCollateral.address)
 
-    it('Should handle invalid/stale Price - Collateral - CTokens Self-Referential', async () => {
-      const delayUntilDefault = bn('86400') // 24h
+        await wethCollateral.refresh()
+        expect(await wethCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      // Compound
-      await expectUnpriced(cETHCollateral.address)
-
-      // Refresh should mark status IFFY
-      await cETHCollateral.refresh()
-      expect(await cETHCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-      // CTokens Collateral with no price
-      const nonpriceCtokenSelfReferentialCollateral: CTokenSelfReferentialCollateral = <
-        CTokenSelfReferentialCollateral
-      >await (
-        await ethers.getContractFactory('CTokenSelfReferentialCollateral')
-      ).deploy(
-        {
+        // Self referential collateral with no price
+        const nonpriceSelfReferentialCollateral: FiatCollateral = <FiatCollateral>await (
+          await ethers.getContractFactory('FiatCollateral')
+        ).deploy({
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
           oracleError: ORACLE_ERROR,
-          erc20: cETHVault.address,
+          erc20: weth.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: MAX_ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('ETH'),
           defaultThreshold: bn('0'),
           delayUntilDefault,
-        },
-        REVENUE_HIDING,
-        await weth.decimals()
-      )
-
-      // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenSelfReferentialCollateral.price()).to.be.reverted
-
-      // Refresh should also revert - status is not modified
-      await expect(nonpriceCtokenSelfReferentialCollateral.refresh()).to.be.reverted
-      expect(await nonpriceCtokenSelfReferentialCollateral.status()).to.equal(
-        CollateralStatus.SOUND
-      )
-
-      // Does not revert with a feed with zero price
-      const zeroPriceCtokenSelfReferentialCollateral: CTokenSelfReferentialCollateral = <
-        CTokenSelfReferentialCollateral
-      >await (
-        await ethers.getContractFactory('CTokenSelfReferentialCollateral')
-      ).deploy(
-        {
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: mockChainlinkFeed.address,
-          oracleError: ORACLE_ERROR,
-          erc20: cETHVault.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: MAX_ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('ETH'),
-          defaultThreshold: bn('0'),
-          delayUntilDefault,
-        },
-        REVENUE_HIDING,
-        await weth.decimals()
-      )
-      await zeroPriceCtokenSelfReferentialCollateral.refresh()
-
-      // Set price = 0
-      await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn(0))
-
-      //  With zero price
-      await expectPrice(zeroPriceCtokenSelfReferentialCollateral.address, bn('0'), bn('0'), false)
-
-      // Refresh should mark status IFFY
-      await zeroPriceCtokenSelfReferentialCollateral.refresh()
-      expect(await zeroPriceCtokenSelfReferentialCollateral.status()).to.equal(
-        CollateralStatus.IFFY
-      )
-    })
-
-    it('Should handle invalid/stale Price - Collateral - EUR Fiat', async () => {
-      // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      await expectUnpriced(eurtCollateral.address)
-
-      // Refresh should mark status IFFY
-      await eurtCollateral.refresh()
-
-      const defaultThreshold = fp('0.01') // 1%
-      const delayUntilDefault = bn('86400') // 24h
-
-      // Non price EUR Fiat collateral
-      const nonPriceEURCollateral: EURFiatCollateral = <EURFiatCollateral>await (
-        await ethers.getContractFactory('EURFiatCollateral')
-      ).deploy(
-        {
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: NO_PRICE_DATA_FEED,
-          oracleError: ORACLE_ERROR,
-          erc20: eurt.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: MAX_ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('EUR'),
-          defaultThreshold,
-          delayUntilDefault,
-        },
-        NO_PRICE_DATA_FEED,
-        MAX_ORACLE_TIMEOUT
-      )
-
-      // Collateral with no price should revert
-      await expect(nonPriceEURCollateral.price()).to.be.reverted
-
-      // Refresh should also revert - status is not modified
-      await expect(nonPriceEURCollateral.refresh()).to.be.reverted
-      expect(await nonPriceEURCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Does not revert with a feed with zero price
-      const invalidPriceEURCollateral: EURFiatCollateral = <EURFiatCollateral>await (
-        await ethers.getContractFactory('EURFiatCollateral')
-      ).deploy(
-        {
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: mockChainlinkFeed.address,
-          oracleError: ORACLE_ERROR,
-          erc20: eurt.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: MAX_ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('EUR'),
-          defaultThreshold,
-          delayUntilDefault,
-        },
-        mockChainlinkFeed.address,
-        MAX_ORACLE_TIMEOUT
-      )
-      await invalidPriceEURCollateral.refresh()
-
-      // Set price = 0
-      const chainlinkFeedAddr = await invalidPriceEURCollateral.targetUnitChainlinkFeed()
-      const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
-      await v3Aggregator.updateAnswer(bn(0))
-
-      //  With zero price
-      await expectUnpriced(invalidPriceEURCollateral.address)
-
-      // Refresh should mark status IFFY
-      await invalidPriceEURCollateral.refresh()
-      expect(await invalidPriceEURCollateral.status()).to.equal(CollateralStatus.IFFY)
-    })
-
-    it('Should register ERC20s and Assets/Collateral correctly', async () => {
-      // Check assets/collateral
-      const ERC20s = await assetRegistry.erc20s()
-      expect(ERC20s[0]).to.equal(rToken.address)
-      expect(ERC20s[1]).to.equal(rsr.address)
-      expect(ERC20s[2]).to.equal(aaveToken.address)
-      expect(ERC20s[3]).to.equal(compToken.address)
-
-      const initialTokens: string[] = await Promise.all(
-        basket.map(async (c): Promise<string> => {
-          return await c.erc20()
         })
-      )
-      expect(ERC20s.slice(4)).to.eql(initialTokens)
-      expect(ERC20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
 
-      // Assets
-      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(aaveAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(compAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[4])).to.equal(daiCollateral.address)
-      expect(await assetRegistry.toAsset(ERC20s[5])).to.equal(aDaiCollateral.address)
-      expect(await assetRegistry.toAsset(ERC20s[6])).to.equal(cDaiCollateral.address)
+        // Non-fiat Collateral with no price should revert
+        await expect(nonpriceSelfReferentialCollateral.price()).to.be.reverted
 
-      // Collaterals
-      expect(await assetRegistry.toColl(ERC20s[4])).to.equal(daiCollateral.address)
-      expect(await assetRegistry.toColl(ERC20s[5])).to.equal(aDaiCollateral.address)
-      expect(await assetRegistry.toColl(ERC20s[6])).to.equal(cDaiCollateral.address)
-    })
+        // Refresh should also revert - status is not modified
+        await expect(nonpriceSelfReferentialCollateral.refresh()).to.be.reverted
+        expect(await nonpriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-    it('Should register simple Basket correctly', async () => {
-      // Basket
-      expect(await basketHandler.fullyCollateralized()).to.equal(true)
-      const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(dai.address)
-      expect(backing[1]).to.equal(stataDai.address)
-      expect(backing[2]).to.equal(cDaiVault.address)
+        // Self referential collateral with zero price
+        const zeroPriceSelfReferentialCollateral: FiatCollateral = <FiatCollateral>await (
+          await ethers.getContractFactory('FiatCollateral')
+        ).deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: mockChainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: weth.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: MAX_ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('ETH'),
+          defaultThreshold: bn('0'),
+          delayUntilDefault,
+        })
+        await zeroPriceSelfReferentialCollateral.refresh()
 
-      expect(backing.length).to.equal(3)
+        // Set price = 0
+        await setOraclePrice(zeroPriceSelfReferentialCollateral.address, bn(0))
 
-      // Check other values
-      expect(await basketHandler.timestamp()).to.be.gt(bn(0))
-      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true, bn('1e5'))
+        // Does not revert with zero price
+        await expectPrice(zeroPriceSelfReferentialCollateral.address, bn('0'), bn('0'), false)
 
-      // Check RToken price
-      const issueAmount: BigNumber = bn('10000e18')
-      await dai.connect(addr1).approve(rToken.address, issueAmount)
-      await stataDai.connect(addr1).approve(rToken.address, issueAmount)
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
-      await expectRTokenPrice(
-        rTokenAsset.address,
-        fp('1'),
-        ORACLE_ERROR,
-        await backingManager.maxTradeSlippage(),
-        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
-      )
-    })
-
-    it('Should issue/reedem correctly with simple basket ', async function () {
-      const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
-      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-
-      // Check balances before
-      expect(await dai.balanceOf(backingManager.address)).to.equal(0)
-      expect(await stataDai.balanceOf(backingManager.address)).to.equal(0)
-      expect(await cDaiVault.balanceOf(backingManager.address)).to.equal(0)
-      expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
-
-      // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
-      const initialBalAToken = initialBal.mul(9321).div(10000)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
-      expect(await cDaiVault.balanceOf(addr1.address)).to.equal(
-        toBNDecimals(initialBal, 17).mul(100)
-      )
-
-      // Provide approvals
-      await dai.connect(addr1).approve(rToken.address, issueAmount)
-      await stataDai.connect(addr1).approve(rToken.address, issueAmount)
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
-
-      // Check rToken balance
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      expect(await rToken.balanceOf(main.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(0)
-
-      // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
-      // Check Balances after
-      expect(await dai.balanceOf(backingManager.address)).to.equal(issueAmount.div(4)) // 2.5K needed (25% of basket)
-      const issueAmtAToken = issueAmount.div(4).mul(9321).div(10000) // approx 93.21% of 2.5K needed (25% of basket)
-      expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
-        issueAmtAToken,
-        fp('1')
-      )
-      const requiredCTokens: BigNumber = bn('227116e17') // approx 227K needed (~5K, 50% of basket) - Price: ~0.022
-      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
-        requiredCTokens,
-        bn('1e17')
-      )
-
-      // Balances for user
-      expect(await dai.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(
-        initialBalAToken.sub(issueAmtAToken),
-        fp('1.5')
-      )
-      expect(await cDaiVault.balanceOf(addr1.address)).to.be.closeTo(
-        toBNDecimals(initialBal, 17).mul(100).sub(requiredCTokens),
-        bn('1e17')
-      )
-      // Check RTokens issued to user
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await rToken.balanceOf(main.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(issueAmount)
-
-      // Check asset value
-      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        issueAmount,
-        fp('150')
-      ) // approx 10K in value
-
-      // Redeem Rtokens
-      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
-
-      // Check funds were transferred
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(0)
-
-      // Check balances after - Backing Manager is empty
-      expect(await dai.balanceOf(backingManager.address)).to.equal(0)
-      expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(bn(0), fp('0.01'))
-      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('1e15'))
-
-      // Check funds returned to user
-      expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
-      expect(await cDaiVault.balanceOf(addr1.address)).to.be.closeTo(
-        toBNDecimals(initialBal, 17).mul(100),
-        bn('1e16')
-      )
-
-      // Check asset value left
-      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        bn(0),
-        fp('0.001')
-      ) // Near zero
-    })
-
-    it('Should handle rates correctly on Issue/Redeem', async function () {
-      const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
-      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-
-      // Provide approvals for issuances
-      await dai.connect(addr1).approve(rToken.address, issueAmount)
-      await stataDai.connect(addr1).approve(rToken.address, issueAmount)
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
-
-      // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
-      // Check RTokens issued to user
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-
-      // Store Balances after issuance
-      const balanceAddr1Dai: BigNumber = await dai.balanceOf(addr1.address)
-      const balanceAddr1aDai: BigNumber = await stataDai.balanceOf(addr1.address)
-      const balanceAddr1cDai: BigNumber = await cDaiVault.balanceOf(addr1.address)
-
-      // Check rates and prices
-      const [aDaiPriceLow1, aDaiPriceHigh1] = await aDaiCollateral.price() // ~1.07546
-      const aDaiRefPerTok1: BigNumber = await aDaiCollateral.refPerTok() // ~ 1.07287
-      const [cDaiPriceLow1, cDaiPriceHigh1] = await cDaiCollateral.price() // ~ 0.022015 cents
-      const cDaiRefPerTok1: BigNumber = await cDaiCollateral.refPerTok() // ~ 0.022015 cents
-
-      await expectPrice(
-        aDaiCollateral.address,
-        fp('1.072871695141967225'),
-        ORACLE_ERROR,
-        true,
-        bn('1e5')
-      )
-      expect(aDaiRefPerTok1).to.be.closeTo(fp('1'), fp('0.095'))
-
-      await expectPrice(
-        cDaiCollateral.address,
-        fp('0.022015110752383443'),
-        ORACLE_ERROR,
-        true,
-        bn('1e5')
-      )
-      expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
-
-      // Check total asset value
-      const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
-        rToken.address
-      )
-      expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
-
-      // Advance time and blocks slightly
-      await advanceTime(10000)
-      await advanceBlocks(10000)
-
-      // Refresh assets
-      await assetRegistry.refresh()
-
-      // Check rates and prices - Have changed, slight inrease
-      const [aDaiPriceLow2, aDaiPriceHigh2] = await aDaiCollateral.price() // ~1.07548
-      const aDaiRefPerTok2: BigNumber = await aDaiCollateral.refPerTok() // ~1.07288
-      const [cDaiPriceLow2, cDaiPriceHigh2] = await cDaiCollateral.price() // ~0.022016
-      const cDaiRefPerTok2: BigNumber = await cDaiCollateral.refPerTok() // ~0.022016
-
-      // Check rates and price increase
-      expect(aDaiPriceLow2).to.be.gt(aDaiPriceLow1)
-      expect(aDaiPriceHigh2).to.be.gt(aDaiPriceHigh1)
-      expect(aDaiRefPerTok2).to.be.gt(aDaiRefPerTok1)
-      expect(cDaiPriceLow2).to.be.gt(cDaiPriceLow1)
-      expect(cDaiPriceHigh2).to.be.gt(cDaiPriceHigh1)
-      expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
-
-      // Still close to the original values
-      await expectPrice(
-        aDaiCollateral.address,
-        fp('1.072882861877314264'),
-        ORACLE_ERROR,
-        true,
-        bn('1e5')
-      )
-      expect(aDaiRefPerTok2).to.be.closeTo(fp('1'), fp('0.095'))
-
-      await expectPrice(
-        cDaiCollateral.address,
-        fp('0.022016203274102888'),
-        ORACLE_ERROR,
-        true,
-        bn('1e5')
-      )
-      expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
-
-      // Check total asset value increased
-      const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
-        rToken.address
-      )
-      expect(totalAssetValue2).to.be.gt(totalAssetValue1)
-
-      // Advance time and blocks significantly
-      await advanceTime(100000000)
-      await advanceBlocks(100000000)
-
-      // Refresh cToken manually (required)
-      await assetRegistry.refresh()
-
-      // Check rates and prices - Have changed significantly
-      const [aDaiPriceLow3, aDaiPriceHigh3] = await aDaiCollateral.price() // ~1.1873
-      const aDaiRefPerTok3: BigNumber = await aDaiCollateral.refPerTok() // ~1.1845
-      const [cDaiPriceLow3, cDaiPriceHigh3] = await cDaiCollateral.price() // ~0.03294
-      const cDaiRefPerTok3: BigNumber = await cDaiCollateral.refPerTok() // ~0.03294
-
-      // Check rates and price increase
-      expect(aDaiPriceLow3).to.be.gt(aDaiPriceLow2)
-      expect(aDaiPriceHigh3).to.be.gt(aDaiPriceHigh2)
-      expect(aDaiRefPerTok3).to.be.gt(aDaiRefPerTok2)
-      expect(cDaiPriceLow3).to.be.gt(cDaiPriceLow2)
-      expect(cDaiPriceHigh3).to.be.gt(cDaiPriceHigh2)
-      expect(cDaiRefPerTok3).to.be.gt(cDaiRefPerTok2)
-
-      await expectPrice(
-        aDaiCollateral.address,
-        fp('1.184527887459258141'),
-        ORACLE_ERROR,
-        true,
-        bn('1e5')
-      )
-      expect(aDaiRefPerTok3).to.be.closeTo(fp('1.1'), fp('0.095'))
-      await expectPrice(
-        cDaiCollateral.address,
-        fp('0.032941268543431921'),
-        ORACLE_ERROR,
-        true,
-        bn('1e5')
-      )
-      expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
-
-      // Check total asset value increased
-      const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
-        rToken.address
-      )
-      expect(totalAssetValue3).to.be.gt(totalAssetValue2)
-
-      // Redeem Rtokens with the udpated rates
-      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
-
-      // Check funds were transferred
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(0)
-
-      // Check balances - Fewer ATokens and cTokens should have been sent to the user
-      const newBalanceAddr1Dai: BigNumber = await dai.balanceOf(addr1.address)
-      const newBalanceAddr1aDai: BigNumber = await stataDai.balanceOf(addr1.address)
-      const newBalanceAddr1cDai: BigNumber = await cDaiVault.balanceOf(addr1.address)
-
-      // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1Dai.sub(balanceAddr1Dai)).to.equal(issueAmount.div(4)) // = 2.5K (25% of basket)
-      expect(newBalanceAddr1aDai.sub(balanceAddr1aDai)).to.be.closeTo(fp('2110.5'), fp('0.5')) // ~1.1873 * 2110.5  ~= 2.5K (25% of basket)
-      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('151785e17'), bn('5e16')) // ~0.03294 * 151785.3 ~= 5K (50% of basket)
-
-      // Check remainders in Backing Manager
-      expect(await dai.balanceOf(backingManager.address)).to.equal(0)
-      expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
-        fp('219.64'), // ~= 260 usd in value
-        fp('0.01')
-      )
-      expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
-        bn('75331e17'),
-        bn('5e16')
-      ) // ~= 2481 usd in value
-
-      //  Check total asset value (remainder)
-      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('2742'), // ~=  260usd + 2481 usd (from above)
-        fp('1')
-      )
-    })
-
-    it('Should also support StaticAToken from underlying', async () => {
-      // Transfer out all existing stataDai - empty balance
-      await stataDai.connect(addr1).transfer(addr2.address, await stataDai.balanceOf(addr1.address))
-      expect(await stataDai.balanceOf(addr1.address)).to.equal(bn(0))
-
-      const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
-      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-
-      // Transfer plain DAI
-      await whileImpersonating(holderDAI, async (daiSigner) => {
-        await dai.connect(daiSigner).transfer(addr1.address, initialBal)
+        // Refresh should mark status IFFY
+        await zeroPriceSelfReferentialCollateral.refresh()
+        expect(await zeroPriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
       })
 
-      // Wrap DAI into a staticaDAI
-      await dai.connect(addr1).approve(stataDai.address, initialBal)
-      await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, true)
+      it('Should handle invalid/stale Price - Collateral - CTokens Self-Referential', async () => {
+        const delayUntilDefault = bn('86400') // 24h
 
-      // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
-      const initialBalAToken = initialBal.mul(9321).div(10000)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
+        // Does not revert with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
 
-      // Provide approvals
-      await dai.connect(addr1).approve(rToken.address, issueAmount)
-      await stataDai.connect(addr1).approve(rToken.address, issueAmount)
-      await cDaiVault.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
+        // Compound
+        await expectUnpriced(cETHCollateral.address)
 
-      // Check rToken balance
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(0)
+        // Refresh should mark status IFFY
+        await cETHCollateral.refresh()
+        expect(await cETHCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+        // CTokens Collateral with no price
+        const nonpriceCtokenSelfReferentialCollateral: CTokenSelfReferentialCollateral = <
+          CTokenSelfReferentialCollateral
+        >await (
+          await ethers.getContractFactory('CTokenSelfReferentialCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: NO_PRICE_DATA_FEED,
+            oracleError: ORACLE_ERROR,
+            erc20: cETHVault.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: bn('0'),
+            delayUntilDefault,
+          },
+          REVENUE_HIDING,
+          await weth.decimals()
+        )
 
-      // Check RTokens issued to user
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await rToken.totalSupply()).to.equal(issueAmount)
+        // CTokens - Collateral with no price info should revert
+        await expect(nonpriceCtokenSelfReferentialCollateral.price()).to.be.reverted
 
-      // Check asset value
-      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        issueAmount,
-        fp('150')
-      ) // approx 10K in value
+        // Refresh should also revert - status is not modified
+        await expect(nonpriceCtokenSelfReferentialCollateral.refresh()).to.be.reverted
+        expect(await nonpriceCtokenSelfReferentialCollateral.status()).to.equal(
+          CollateralStatus.SOUND
+        )
+
+        // Does not revert with a feed with zero price
+        const zeroPriceCtokenSelfReferentialCollateral: CTokenSelfReferentialCollateral = <
+          CTokenSelfReferentialCollateral
+        >await (
+          await ethers.getContractFactory('CTokenSelfReferentialCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: mockChainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: cETHVault.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: bn('0'),
+            delayUntilDefault,
+          },
+          REVENUE_HIDING,
+          await weth.decimals()
+        )
+        await zeroPriceCtokenSelfReferentialCollateral.refresh()
+
+        // Set price = 0
+        await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn(0))
+
+        //  With zero price
+        await expectPrice(zeroPriceCtokenSelfReferentialCollateral.address, bn('0'), bn('0'), false)
+
+        // Refresh should mark status IFFY
+        await zeroPriceCtokenSelfReferentialCollateral.refresh()
+        expect(await zeroPriceCtokenSelfReferentialCollateral.status()).to.equal(
+          CollateralStatus.IFFY
+        )
+      })
+
+      it('Should handle invalid/stale Price - Collateral - EUR Fiat', async () => {
+        // Does not revert with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        await expectUnpriced(eurtCollateral.address)
+
+        // Refresh should mark status IFFY
+        await eurtCollateral.refresh()
+
+        const defaultThreshold = fp('0.01') // 1%
+        const delayUntilDefault = bn('86400') // 24h
+
+        // Non price EUR Fiat collateral
+        const nonPriceEURCollateral: EURFiatCollateral = <EURFiatCollateral>await (
+          await ethers.getContractFactory('EURFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: NO_PRICE_DATA_FEED,
+            oracleError: ORACLE_ERROR,
+            erc20: eurt.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('EUR'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
+          NO_PRICE_DATA_FEED,
+          MAX_ORACLE_TIMEOUT
+        )
+
+        // Collateral with no price should revert
+        await expect(nonPriceEURCollateral.price()).to.be.reverted
+
+        // Refresh should also revert - status is not modified
+        await expect(nonPriceEURCollateral.refresh()).to.be.reverted
+        expect(await nonPriceEURCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // Does not revert with a feed with zero price
+        const invalidPriceEURCollateral: EURFiatCollateral = <EURFiatCollateral>await (
+          await ethers.getContractFactory('EURFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: mockChainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: eurt.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('EUR'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
+          mockChainlinkFeed.address,
+          MAX_ORACLE_TIMEOUT
+        )
+        await invalidPriceEURCollateral.refresh()
+
+        // Set price = 0
+        const chainlinkFeedAddr = await invalidPriceEURCollateral.targetUnitChainlinkFeed()
+        const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
+        await v3Aggregator.updateAnswer(bn(0))
+
+        //  With zero price
+        await expectUnpriced(invalidPriceEURCollateral.address)
+
+        // Refresh should mark status IFFY
+        await invalidPriceEURCollateral.refresh()
+        expect(await invalidPriceEURCollateral.status()).to.equal(CollateralStatus.IFFY)
+      })
+
+      it('Should register ERC20s and Assets/Collateral correctly', async () => {
+        // Check assets/collateral
+        const ERC20s = await assetRegistry.erc20s()
+        expect(ERC20s[0]).to.equal(rToken.address)
+        expect(ERC20s[1]).to.equal(rsr.address)
+        expect(ERC20s[2]).to.equal(aaveToken.address)
+        expect(ERC20s[3]).to.equal(compToken.address)
+
+        const initialTokens: string[] = await Promise.all(
+          basket.map(async (c): Promise<string> => {
+            return await c.erc20()
+          })
+        )
+        expect(ERC20s.slice(4)).to.eql(initialTokens)
+        expect(ERC20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
+
+        // Assets
+        expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
+        expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
+        expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(aaveAsset.address)
+        expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(compAsset.address)
+        expect(await assetRegistry.toAsset(ERC20s[4])).to.equal(daiCollateral.address)
+        expect(await assetRegistry.toAsset(ERC20s[5])).to.equal(aDaiCollateral.address)
+        expect(await assetRegistry.toAsset(ERC20s[6])).to.equal(cDaiCollateral.address)
+
+        // Collaterals
+        expect(await assetRegistry.toColl(ERC20s[4])).to.equal(daiCollateral.address)
+        expect(await assetRegistry.toColl(ERC20s[5])).to.equal(aDaiCollateral.address)
+        expect(await assetRegistry.toColl(ERC20s[6])).to.equal(cDaiCollateral.address)
+      })
+
+      it('Should register simple Basket correctly', async () => {
+        // Basket
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
+        const backing = await facade.basketTokens(rToken.address)
+        expect(backing[0]).to.equal(dai.address)
+        expect(backing[1]).to.equal(stataDai.address)
+        expect(backing[2]).to.equal(cDaiVault.address)
+
+        expect(backing.length).to.equal(3)
+
+        // Check other values
+        expect(await basketHandler.timestamp()).to.be.gt(bn(0))
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true, bn('1e5'))
+
+        // Check RToken price
+        const issueAmount: BigNumber = bn('10000e18')
+        await dai.connect(addr1).approve(rToken.address, issueAmount)
+        await stataDai.connect(addr1).approve(rToken.address, issueAmount)
+        await cDaiVault
+          .connect(addr1)
+          .approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+        await expectRTokenPrice(
+          rTokenAsset.address,
+          fp('1'),
+          ORACLE_ERROR,
+          await backingManager.maxTradeSlippage(),
+          config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+        )
+      })
+
+      it('Should issue/reedem correctly with simple basket ', async function () {
+        const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+
+        // Check balances before
+        expect(await dai.balanceOf(backingManager.address)).to.equal(0)
+        expect(await stataDai.balanceOf(backingManager.address)).to.equal(0)
+        expect(await cDaiVault.balanceOf(backingManager.address)).to.equal(0)
+        expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
+
+        // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
+        const initialBalAToken = initialBal.mul(9321).div(10000)
+        expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
+        expect(await cDaiVault.balanceOf(addr1.address)).to.equal(
+          toBNDecimals(initialBal, 17).mul(100)
+        )
+
+        // Provide approvals
+        await dai.connect(addr1).approve(rToken.address, issueAmount)
+        await stataDai.connect(addr1).approve(rToken.address, issueAmount)
+        await cDaiVault
+          .connect(addr1)
+          .approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
+
+        // Check rToken balance
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.balanceOf(main.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Issue rTokens
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+        // Check Balances after
+        expect(await dai.balanceOf(backingManager.address)).to.equal(issueAmount.div(4)) // 2.5K needed (25% of basket)
+        const issueAmtAToken = issueAmount.div(4).mul(9321).div(10000) // approx 93.21% of 2.5K needed (25% of basket)
+        expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
+          issueAmtAToken,
+          fp('1')
+        )
+        const requiredCTokens: BigNumber = bn('227116e17') // approx 227K needed (~5K, 50% of basket) - Price: ~0.022
+        expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
+          requiredCTokens,
+          bn('1e17')
+        )
+
+        // Balances for user
+        expect(await dai.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
+        expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(
+          initialBalAToken.sub(issueAmtAToken),
+          fp('1.5')
+        )
+        expect(await cDaiVault.balanceOf(addr1.address)).to.be.closeTo(
+          toBNDecimals(initialBal, 17).mul(100).sub(requiredCTokens),
+          bn('1e17')
+        )
+        // Check RTokens issued to user
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+        expect(await rToken.balanceOf(main.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check asset value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          issueAmount,
+          fp('150')
+        ) // approx 10K in value
+
+        // Redeem Rtokens
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Check balances after - Backing Manager is empty
+        expect(await dai.balanceOf(backingManager.address)).to.equal(0)
+        expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(bn(0), fp('0.01'))
+        expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('1e15'))
+
+        // Check funds returned to user
+        expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
+        expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
+        expect(await cDaiVault.balanceOf(addr1.address)).to.be.closeTo(
+          toBNDecimals(initialBal, 17).mul(100),
+          bn('1e16')
+        )
+
+        // Check asset value left
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          bn(0),
+          fp('0.001')
+        ) // Near zero
+      })
+
+      it('Should handle rates correctly on Issue/Redeem', async function () {
+        const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+
+        // Provide approvals for issuances
+        await dai.connect(addr1).approve(rToken.address, issueAmount)
+        await stataDai.connect(addr1).approve(rToken.address, issueAmount)
+        await cDaiVault
+          .connect(addr1)
+          .approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
+
+        // Issue rTokens
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+        // Check RTokens issued to user
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+        // Store Balances after issuance
+        const balanceAddr1Dai: BigNumber = await dai.balanceOf(addr1.address)
+        const balanceAddr1aDai: BigNumber = await stataDai.balanceOf(addr1.address)
+        const balanceAddr1cDai: BigNumber = await cDaiVault.balanceOf(addr1.address)
+
+        // Check rates and prices
+        const [aDaiPriceLow1, aDaiPriceHigh1] = await aDaiCollateral.price() // ~1.07546
+        const aDaiRefPerTok1: BigNumber = await aDaiCollateral.refPerTok() // ~ 1.07287
+        const [cDaiPriceLow1, cDaiPriceHigh1] = await cDaiCollateral.price() // ~ 0.022015 cents
+        const cDaiRefPerTok1: BigNumber = await cDaiCollateral.refPerTok() // ~ 0.022015 cents
+
+        await expectPrice(
+          aDaiCollateral.address,
+          fp('1.072871695141967225'),
+          ORACLE_ERROR,
+          true,
+          bn('1e5')
+        )
+        expect(aDaiRefPerTok1).to.be.closeTo(fp('1'), fp('0.095'))
+
+        await expectPrice(
+          cDaiCollateral.address,
+          fp('0.022015110752383443'),
+          ORACLE_ERROR,
+          true,
+          bn('1e5')
+        )
+        expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
+
+        // Check total asset value
+        const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
+          rToken.address
+        )
+        expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
+
+        // Advance time and blocks slightly
+        await advanceTime(10000)
+        await advanceBlocks(10000)
+
+        // Refresh assets
+        await assetRegistry.refresh()
+
+        // Check rates and prices - Have changed, slight inrease
+        const [aDaiPriceLow2, aDaiPriceHigh2] = await aDaiCollateral.price() // ~1.07548
+        const aDaiRefPerTok2: BigNumber = await aDaiCollateral.refPerTok() // ~1.07288
+        const [cDaiPriceLow2, cDaiPriceHigh2] = await cDaiCollateral.price() // ~0.022016
+        const cDaiRefPerTok2: BigNumber = await cDaiCollateral.refPerTok() // ~0.022016
+
+        // Check rates and price increase
+        expect(aDaiPriceLow2).to.be.gt(aDaiPriceLow1)
+        expect(aDaiPriceHigh2).to.be.gt(aDaiPriceHigh1)
+        expect(aDaiRefPerTok2).to.be.gt(aDaiRefPerTok1)
+        expect(cDaiPriceLow2).to.be.gt(cDaiPriceLow1)
+        expect(cDaiPriceHigh2).to.be.gt(cDaiPriceHigh1)
+        expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
+
+        // Still close to the original values
+        await expectPrice(
+          aDaiCollateral.address,
+          fp('1.072882861877314264'),
+          ORACLE_ERROR,
+          true,
+          bn('1e5')
+        )
+        expect(aDaiRefPerTok2).to.be.closeTo(fp('1'), fp('0.095'))
+
+        await expectPrice(
+          cDaiCollateral.address,
+          fp('0.022016203274102888'),
+          ORACLE_ERROR,
+          true,
+          bn('1e5')
+        )
+        expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+
+        // Check total asset value increased
+        const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
+          rToken.address
+        )
+        expect(totalAssetValue2).to.be.gt(totalAssetValue1)
+
+        // Advance time and blocks significantly
+        await advanceTime(100000000)
+        await advanceBlocks(100000000)
+
+        // Refresh cToken manually (required)
+        await assetRegistry.refresh()
+
+        // Check rates and prices - Have changed significantly
+        const [aDaiPriceLow3, aDaiPriceHigh3] = await aDaiCollateral.price() // ~1.1873
+        const aDaiRefPerTok3: BigNumber = await aDaiCollateral.refPerTok() // ~1.1845
+        const [cDaiPriceLow3, cDaiPriceHigh3] = await cDaiCollateral.price() // ~0.03294
+        const cDaiRefPerTok3: BigNumber = await cDaiCollateral.refPerTok() // ~0.03294
+
+        // Check rates and price increase
+        expect(aDaiPriceLow3).to.be.gt(aDaiPriceLow2)
+        expect(aDaiPriceHigh3).to.be.gt(aDaiPriceHigh2)
+        expect(aDaiRefPerTok3).to.be.gt(aDaiRefPerTok2)
+        expect(cDaiPriceLow3).to.be.gt(cDaiPriceLow2)
+        expect(cDaiPriceHigh3).to.be.gt(cDaiPriceHigh2)
+        expect(cDaiRefPerTok3).to.be.gt(cDaiRefPerTok2)
+
+        await expectPrice(
+          aDaiCollateral.address,
+          fp('1.184527887459258141'),
+          ORACLE_ERROR,
+          true,
+          bn('1e5')
+        )
+        expect(aDaiRefPerTok3).to.be.closeTo(fp('1.1'), fp('0.095'))
+        await expectPrice(
+          cDaiCollateral.address,
+          fp('0.032941268543431921'),
+          ORACLE_ERROR,
+          true,
+          bn('1e5')
+        )
+        expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
+
+        // Check total asset value increased
+        const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
+          rToken.address
+        )
+        expect(totalAssetValue3).to.be.gt(totalAssetValue2)
+
+        // Redeem Rtokens with the udpated rates
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Check balances - Fewer ATokens and cTokens should have been sent to the user
+        const newBalanceAddr1Dai: BigNumber = await dai.balanceOf(addr1.address)
+        const newBalanceAddr1aDai: BigNumber = await stataDai.balanceOf(addr1.address)
+        const newBalanceAddr1cDai: BigNumber = await cDaiVault.balanceOf(addr1.address)
+
+        // Check received tokens represent ~10K in value at current prices
+        expect(newBalanceAddr1Dai.sub(balanceAddr1Dai)).to.equal(issueAmount.div(4)) // = 2.5K (25% of basket)
+        expect(newBalanceAddr1aDai.sub(balanceAddr1aDai)).to.be.closeTo(fp('2110.5'), fp('0.5')) // ~1.1873 * 2110.5  ~= 2.5K (25% of basket)
+        expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('151785e17'), bn('5e16')) // ~0.03294 * 151785.3 ~= 5K (50% of basket)
+
+        // Check remainders in Backing Manager
+        expect(await dai.balanceOf(backingManager.address)).to.equal(0)
+        expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
+          fp('219.64'), // ~= 260 usd in value
+          fp('0.01')
+        )
+        expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
+          bn('75331e17'),
+          bn('5e16')
+        ) // ~= 2481 usd in value
+
+        //  Check total asset value (remainder)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          fp('2742'), // ~=  260usd + 2481 usd (from above)
+          fp('1')
+        )
+      })
+
+      it('Should also support StaticAToken from underlying', async () => {
+        // Transfer out all existing stataDai - empty balance
+        await stataDai
+          .connect(addr1)
+          .transfer(addr2.address, await stataDai.balanceOf(addr1.address))
+        expect(await stataDai.balanceOf(addr1.address)).to.equal(bn(0))
+
+        const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+
+        // Transfer plain DAI
+        await whileImpersonating(holderDAI, async (daiSigner) => {
+          await dai.connect(daiSigner).transfer(addr1.address, initialBal)
+        })
+
+        // Wrap DAI into a staticaDAI
+        await dai.connect(addr1).approve(stataDai.address, initialBal)
+        await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, true)
+
+        // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
+        const initialBalAToken = initialBal.mul(9321).div(10000)
+        expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
+
+        // Provide approvals
+        await dai.connect(addr1).approve(rToken.address, issueAmount)
+        await stataDai.connect(addr1).approve(rToken.address, issueAmount)
+        await cDaiVault
+          .connect(addr1)
+          .approve(rToken.address, toBNDecimals(issueAmount, 17).mul(100))
+
+        // Check rToken balance
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Issue rTokens
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+        // Check RTokens issued to user
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check asset value
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          issueAmount,
+          fp('150')
+        ) // approx 10K in value
+      })
     })
 
     context('With Complex basket', function () {
@@ -2064,6 +2107,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Set non-empty basket
         await basketHandler.connect(owner).setPrimeBasket(newBasketERC20s, newBasketsNeededAmts)
         await basketHandler.connect(owner).refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Approve all balances for user
         await wbtc.connect(addr1).approve(rToken.address, await wbtc.balanceOf(addr1.address))
@@ -2311,6 +2355,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Set non-empty basket
         await basketHandler.connect(owner).setPrimeBasket(newBasketERC20s, newBasketsNeededAmts)
         await basketHandler.connect(owner).refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Approve all balances for user
         await usdt.connect(addr1).approve(rToken.address, await usdt.balanceOf(addr1.address))
@@ -2437,7 +2482,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         rToken,
         rTokenAsset,
         facade,
-      } = await loadFixture(defaultFixture))
+      } = await loadFixture(defaultFixtureNoBasket))
 
       // Get assets and tokens for default basket
       daiCollateral = <FiatCollateral>basket[0]
