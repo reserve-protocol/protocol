@@ -35,7 +35,8 @@
     "prettier": "prettier --ignore-path .gitignore --loglevel warn --write \"./**/*.{js,ts,sol,json,md}\"",
     "size": "hardhat size-contracts",
     "slither": "python3 tools/slither.py",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "storage": "hardhat compile && hardhat check"
   },
   "repository": {
     "type": "git",
