@@ -283,14 +283,14 @@ contract FacadeRead is IFacadeRead {
             erc20s[i] = reg.erc20s[i];
             surpluses[i] = reg.erc20s[i].balanceOf(address(revenueTrader));
 
-            (uint192 low, ) = reg.assets[i].price(); // {UoA/tok}
+            (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
 
             // {qTok} = {UoA} / {UoA/tok}
-            minTradeAmounts[i] = minTradeVolume.div(low).shiftl_toUint(
+            minTradeAmounts[i] = minTradeVolume.div(lotLow).shiftl_toUint(
                 int8(reg.assets[i].erc20Decimals())
             );
 
-            if (reg.erc20s[i].balanceOf(address(revenueTrader)) >= minTradeAmounts[i]) {
+            if (reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i]) {
                 try revenueTrader.manageToken(reg.erc20s[i], TradeKind.DUTCH_AUCTION) {
                     if (revenueTrader.tradesOpen() - tradesOpen > 0) {
                         canStart[i] = true;
