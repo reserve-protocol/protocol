@@ -24,6 +24,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // Registered Assets
     mapping(IERC20 => IAsset) private assets;
 
+    // === 3.0.0 ===
+
+    uint48 public lastRefresh; // {s}
+
     /* ==== Contract Invariants ====
        The contract state is just the mapping assets; _erc20s is ignored in properties.
 
@@ -57,6 +61,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
 
         basketHandler.trackStatus();
+        lastRefresh = uint48(block.timestamp); // safer to do this at end than start, actually
     }
 
     /// Register `asset`
@@ -211,5 +216,5 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[47] private __gap;
+    uint256[46] private __gap;
 }

@@ -22,7 +22,7 @@ contract RTokenAsset is IAsset, VersionedAsset {
 
     uint8 public immutable erc20Decimals;
 
-    uint192 public immutable override maxTradeVolume; // {UoA}
+    uint192 public immutable maxTradeVolume; // {UoA}
 
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(IRToken erc20_, uint192 maxTradeVolume_) {
@@ -135,6 +135,11 @@ contract RTokenAsset is IAsset, VersionedAsset {
         // The RToken has 18 decimals, so there's no reason to waste gas here doing a shiftl_toFix
         // return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
         return _safeWrap(erc20.balanceOf(account));
+    }
+
+    /// @return {s} The timestamp of the last refresh; always 0 since prices are never saved
+    function lastSave() external pure returns (uint48) {
+        return 0;
     }
 
     /// @return If the asset is an instance of ICollateral or not

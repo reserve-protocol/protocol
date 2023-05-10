@@ -80,14 +80,16 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         }
 
         // == Refresh ==
-        if (erc20 == IERC20(address(rToken)) || tokenToBuy == IERC20(address(rToken))) {
-            // if either token is the RToken, refresh everything
+        // Skip refresh() if data is from current block
+        if (erc20 != IERC20(address(rToken)) && tokenToBuy != IERC20(address(rToken))) {
+            IAsset sell_ = assetRegistry.toAsset(erc20);
+            IAsset buy_ = assetRegistry.toAsset(tokenToBuy);
+            if (sell_.lastSave() != uint48(block.timestamp)) sell_.refresh();
+            if (buy_.lastSave() != uint48(block.timestamp)) buy_.refresh();
+        } else if (assetRegistry.lastRefresh() != uint48(block.timestamp)) {
+            // Refresh everything only if RToken is being traded
             assetRegistry.refresh();
             furnace.melt();
-        } else {
-            // otherwise, refresh just buy + sell assets
-            assetRegistry.toAsset(erc20).refresh();
-            assetRegistry.toAsset(tokenToBuy).refresh();
         }
 
         // == Checks/Effects ==
