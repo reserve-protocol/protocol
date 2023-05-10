@@ -79,29 +79,21 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             return;
         }
 
-        IAsset sell;
-        IAsset buy;
-
         // == Refresh ==
-        // do not need to refresh when caller is BackingManager.forwardRevenue()
-        if (_msgSender() != address(backingManager)) {
-            if (erc20 == IERC20(address(rToken)) || tokenToBuy == IERC20(address(rToken))) {
-                // if either token is the RToken, refresh everything
-                assetRegistry.refresh();
-                furnace.melt();
-
-                sell = assetRegistry.toAsset(erc20);
-                buy = assetRegistry.toAsset(tokenToBuy);
-            } else {
-                // otherwise, refresh just buy + sell
-                sell = assetRegistry.toAsset(erc20);
-                buy = assetRegistry.toAsset(tokenToBuy);
-                sell.refresh();
-                buy.refresh();
-            }
+        if (erc20 == IERC20(address(rToken)) || tokenToBuy == IERC20(address(rToken))) {
+            // if either token is the RToken, refresh everything
+            assetRegistry.refresh();
+            furnace.melt();
+        } else {
+            // otherwise, refresh just buy + sell assets
+            assetRegistry.toAsset(erc20).refresh();
+            assetRegistry.toAsset(tokenToBuy).refresh();
         }
 
         // == Checks/Effects ==
+        // Above calls should not have changed registered assets, but just to be safe...
+        IAsset sell = assetRegistry.toAsset(erc20);
+        IAsset buy = assetRegistry.toAsset(tokenToBuy);
 
         require(address(trades[erc20]) == address(0), "trade open");
         require(erc20.balanceOf(address(this)) > 0, "0 balance");
