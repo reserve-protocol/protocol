@@ -12,7 +12,7 @@ reports
 typechain/
 scripts/addresses/31337*
 
-.openzeppelin
+.openzeppelin/unknown-*.json
 .env
 .vscode/
 /local/

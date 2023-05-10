@@ -367,84 +367,9 @@ contract FacadeAct is IFacadeAct {
         return size > 0 ? size : 1;
     }
 
-    /// To use this, call via callStatic.
-    /// If canStart is true, proceed to runRecollateralizationAuctions
-    /// @return canStart true iff a recollateralization auction can be started
-    /// @custom:static-call
-    function canRunRecollateralizationAuctions(IBackingManager bm)
-        external
-        returns (bool canStart)
-    {
-        IERC20[] memory erc20s = bm.main().assetRegistry().erc20s();
-
-        // Settle all backingManager auctions
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            ITrade trade = bm.trades(erc20s[i]);
-            if (address(trade) != address(0) && trade.canSettle()) {
-                bm.settleTrade(erc20s[i]);
-            }
-        }
-
-        uint256 tradesOpen = bm.tradesOpen();
-        if (tradesOpen != 0) return false;
-
-        // Try to launch auctions
-        // solhint-disable-next-line no-empty-blocks
-        try bm.rebalance(TradeKind.BATCH_AUCTION) {} catch {
-            return false;
-        }
-        return bm.tradesOpen() > 0;
-    }
-
-    /// To use this, call via callStatic.
-    /// @return toStart The ERC20s that have auctions that can be started
-    /// @custom:static-call
-    function getRevenueAuctionERC20s(IRevenueTrader revenueTrader)
-        external
-        returns (IERC20[] memory toStart)
-    {
-        Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
-        uint192 minTradeVolume = revenueTrader.minTradeVolume(); // {UoA}
-
-        // Forward ALL revenue
-        revenueTrader.main().backingManager().forwardRevenue(reg.erc20s);
-
-        // Calculate which erc20s can have auctions started
-        uint256 num;
-        IERC20[] memory unfiltered = new IERC20[](reg.erc20s.length); // will filter down later
-        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            // Settle first if possible. Required so we can assess full available balance
-            ITrade trade = revenueTrader.trades(reg.erc20s[i]);
-            if (address(trade) != address(0) && trade.canSettle()) {
-                revenueTrader.settleTrade(reg.erc20s[i]);
-            }
-
-            // Skip over dust balances, even though the RevenueTrader will trade them
-            (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
-            if (reg.assets[i].bal(address(revenueTrader)) < minTradeSize(minTradeVolume, lotLow)) {
-                continue;
-            }
-
-            // Include ERC20 if a trade is opened
-            uint256 tradesOpen = revenueTrader.tradesOpen();
-            try revenueTrader.manageToken(reg.erc20s[i], TradeKind.BATCH_AUCTION) {
-                if (revenueTrader.tradesOpen() - tradesOpen > 0) {
-                    unfiltered[num] = reg.erc20s[i];
-                    ++num;
-                }
-            } catch {}
-        }
-
-        // Filter down
-        toStart = new IERC20[](num);
-        for (uint256 i = 0; i < num; ++i) {
-            toStart[i] = unfiltered[i];
-        }
-    }
-
     /// To use this, first call:
     ///   - FacadeRead.auctionsSettleable(revenueTrader)
-    ///   - getRevenueAuctionERC20s(revenueTrader)
+    ///   - FacadeRead.revenueOverview(revenueTrader)
     /// If either arrays returned are non-empty, then can call this function.
     /// Logic:
     ///   For each ERC20 in `toSettle`:
