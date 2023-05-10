@@ -21,6 +21,7 @@ import "contracts/fuzz/Utils.sol";
 import "contracts/fuzz/FuzzP1.sol";
 
 import "contracts/fuzz/MainP1.sol";
+import "hardhat/console.sol";
 
 // solhint-disable max-states-count
 
@@ -1081,6 +1082,10 @@ contract RebalancingScenario {
         BrokerP1Fuzz broker = BrokerP1Fuzz(address(main.broker()));
 
         if (status == ScenarioStatus.REBALANCING_ONGOING) {
+            BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
+            if (basketsHeld.bottom > main.rToken().basketsNeeded()) {
+                return false;
+            }
             uint256 tradesBMPrev = bm.tradesOpen();
             uint256 tradesBrokerPrev = broker.tradesLength();
 
@@ -1091,7 +1096,7 @@ contract RebalancingScenario {
             bm.saveSurplusAndDeficitTokens();
             IAssetRegistry ar = main.assetRegistry();
             // Create trade, if able and needed
-            try main.backingManager().rebalance(TradeKind(0)) {
+            try main.backingManager().rebalance(TradeKind.BATCH_AUCTION) {
                 // Check if new trade was created
                 if (bm.tradesOpen() > tradesBMPrev && broker.tradesLength() > tradesBrokerPrev) {
                     GnosisTradeMock trade = GnosisTradeMock(address(broker.lastOpenedTrade()));
@@ -1109,18 +1114,85 @@ contract RebalancingScenario {
                     return bm.isBasketRangeSmaller();
                 }
             } catch Error(string memory reason) {
-                if (
-                    keccak256(abi.encodePacked(reason)) ==
-                    keccak256(abi.encodePacked("BU rate out of range"))
-                    || keccak256(abi.encodePacked(reason)) ==
-                    keccak256(abi.encodePacked("basket not ready"))
-                    || keccak256(abi.encodePacked(reason)) ==
-                    keccak256(abi.encodePacked("trading delayed"))
-                ) return true;
+                if (_isValidError(reason)) return true;
                 else revert(reason);
             }
         }
         return true;
+    }
+
+    function bidDutchAuction(DutchTrade trade) internal {
+        uint256 bidAmount = trade.bidAmount(uint48(block.timestamp));
+        ERC20Fuzz buy = ERC20Fuzz(address(trade.buy()));
+        buy.mint(address(this), bidAmount);
+        buy.approve(address(trade), bidAmount);
+        trade.bid();
+    }
+
+    function echidna_dutchRebalancingProperties() external returns (bool) {
+        assert(main.hasRole(OWNER, address(this)));
+        BackingManagerP1Fuzz bm = BackingManagerP1Fuzz(address(main.backingManager()));
+        BrokerP1Fuzz broker = BrokerP1Fuzz(address(main.broker()));
+
+        if (status == ScenarioStatus.REBALANCING_ONGOING) {
+            uint256 tradesBMPrev = bm.tradesOpen();
+            uint256 tradesBrokerPrev = broker.tradesLength();
+
+            // Save current basket range
+            bm.saveBasketRange();
+
+            // Save Tokens in surplus and deficit (excludes RSR)
+            bm.saveSurplusAndDeficitTokens();
+            IAssetRegistry ar = main.assetRegistry();
+
+            DutchTrade trade;
+            // Create trade, if able and needed
+            if (tradesBMPrev == 0) {
+                try main.backingManager().rebalance(TradeKind.DUTCH_AUCTION) {
+                    // Check if new trade was created
+                    if (bm.tradesOpen() > tradesBMPrev && broker.tradesLength() > tradesBrokerPrev) {
+                        trade = DutchTrade(address(broker.lastOpenedTrade()));
+
+                        bool valid = bm.isValidSurplusToken(trade.sell()) &&
+                            bm.isValidDeficitToken(trade.buy());
+                        // Check auctioned tokens
+                        if (!valid) return false;
+                    }
+                } catch Error(string memory reason) {
+                    if (_isValidError(reason)) return true;
+                    else revert(reason);
+                }
+            } else {
+                trade = DutchTrade(address(broker.lastOpenedTrade()));
+
+                if (broker.tradeKindSet(address(trade)) == uint256(TradeKind.DUTCH_AUCTION)) {
+                    // Bid & settle the auction
+                    bidDutchAuction(trade);
+                    require(trade.status() == TradeStatus.CLOSED, "trade not closed");
+
+                    // Check Range
+                    return bm.isBasketRangeSmaller();
+                }
+            }
+        }
+        return true;
+    }
+
+    function _isValidError(string memory reason) internal returns (bool) {
+        return (
+            keccak256(abi.encodePacked(reason)) ==
+            keccak256(abi.encodePacked("BU rate out of range"))
+            || keccak256(abi.encodePacked(reason)) ==
+            keccak256(abi.encodePacked("already rebalancing"))
+            || keccak256(abi.encodePacked(reason)) ==
+            keccak256(abi.encodePacked("trade open"))
+            || keccak256(abi.encodePacked(reason)) ==
+            keccak256(abi.encodePacked("basket not ready"))
+            || keccak256(abi.encodePacked(reason)) ==
+            keccak256(abi.encodePacked("trading delayed"))
+            || keccak256(abi.encodePacked(reason)) ==
+            keccak256(abi.encodePacked("already collateralized"))
+        );
     }
 
     // The system is fully collateralized after rebalancing

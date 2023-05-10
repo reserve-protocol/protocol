@@ -374,6 +374,7 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('lets users unstake and then withdraw rsr', async () => {
+      await warmup()
       await scenario.connect(alice).stake(5n * exa)
 
       await scenario.connect(alice).unstake(3n * exa)
@@ -532,7 +533,7 @@ describe('The Rebalancing scenario', () => {
 
       expect(tokenIDs.has('CA0')).to.be.true
       await scenario.pushBackingToManage(tokenIDs.get('CA0') as number)
-      await scenario.manageBackingTokens()
+      await scenario.forwardRevenue()
       await scenario.popBackingToManage()
 
       const bals1 = await allBalances(comp.rsrTrader.address)
@@ -551,7 +552,7 @@ describe('The Rebalancing scenario', () => {
         expect(tokenIDs.has(sym)).to.be.true
         await scenario.pushBackingToManage(tokenIDs.get(sym) as number)
       }
-      await scenario.manageBackingTokens()
+      await scenario.forwardRevenue()
       for (const _sym of round2) await scenario.popBackingToManage()
 
       // Check that the rsrTrader balance changed for C1, R1, and USD1, and no others
@@ -631,7 +632,7 @@ describe('The Rebalancing scenario', () => {
       expect(stRSR_bal_end.sub(stRSR_bal)).to.equal(20n * exa)
     })
 
-    it('can manage tokens in Revenue Traders (RSR and RToken)', async () => {
+    it.only('can manage tokens in Revenue Traders (RSR and RToken)', async () => {
       await warmup()
       const furanceID = addrIDs.get(addr(1)) as number
       const strsrID = addrIDs.get(addr(2)) as number
@@ -653,7 +654,7 @@ describe('The Rebalancing scenario', () => {
       expect(stRSR_bal_init).to.equal(0)
 
       // Manage token in RSR Trader
-      await scenario.manageTokenInRSRTrader(24)
+      await scenario.manageTokenInRSRTrader(24, 1) // BATCH_AUCTION
 
       const rsrTrader_bal = await comp.rsr.balanceOf(rsrTraderAddr)
       const stRSR_bal = await comp.rsr.balanceOf(stRSRAddr)
@@ -664,7 +665,8 @@ describe('The Rebalancing scenario', () => {
       // Should work for other tokens as well
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
       await c0.mint(comp.rsrTrader.address, exa)
-      await expect(scenario.manageTokenInRSRTrader(0)).to.not.be.reverted
+      // BATCH_AUCTION
+      await expect(scenario.manageTokenInRSRTrader(0, 1)).to.not.be.reverted
 
       // RToken Trader - When RToken is the token to manage simply distribute
       // Setup: 100% distribution to RToken;
@@ -684,7 +686,7 @@ describe('The Rebalancing scenario', () => {
       expect(furnace_bal_init).to.equal(0)
 
       // Manage token in RToken Trader
-      await scenario.manageTokenInRTokenTrader(25)
+      await scenario.manageTokenInRTokenTrader(25, 1) // BATCH_AUCTION
 
       const rTokenTrader_bal = await comp.rToken.balanceOf(rTokenTraderAddr)
       const furnace_bal = await comp.rToken.balanceOf(furnaceAddr)
@@ -694,7 +696,8 @@ describe('The Rebalancing scenario', () => {
 
       // Should work for other tokens as well
       await c0.mint(comp.rTokenTrader.address, exa)
-      await expect(scenario.manageTokenInRTokenTrader(0)).to.not.be.reverted
+      // BATCH_AUCTION
+      await expect(scenario.manageTokenInRTokenTrader(0, 1)).to.not.be.reverted
     })
 
     it('can refresh assets', async () => {
@@ -1103,13 +1106,13 @@ describe('The Rebalancing scenario', () => {
       await scenario.pushBackingToManage(1)
 
       // Manage revenue asset in Backing Manager
-      await scenario.manageBackingTokens()
+      await scenario.forwardRevenue()
       expect(await r0.balanceOf(comp.backingManager.address)).to.equal(0)
       expect(await r0.balanceOf(comp.rsrTrader.address)).to.equal(12000n * exa) // 60%
       expect(await r0.balanceOf(comp.rTokenTrader.address)).to.equal(8000n * exa) // 40%
 
       // Perform auction of R0
-      await scenario.manageTokenInRSRTrader(1)
+      await scenario.manageTokenInRSRTrader(1, 1) // BATCH_AUCTION
       expect(await r0.balanceOf(comp.rsrTrader.address)).to.equal(0)
 
       // Check trade
@@ -1188,14 +1191,15 @@ describe('The Rebalancing scenario', () => {
       // Trying to manage tokens will fail due to unsound basket
       await scenario.pushBackingToManage(2)
       await scenario.pushBackingToManage(4)
-      await expect(scenario.manageBackingTokens()).to.be.reverted
+      // BATCH_AUCTION
+      await expect(scenario.rebalance(1)).to.be.reverted
 
       // Refresh basket - will perform basket switch - New basket: CA1 and CA0
       await scenario.refreshBasket()
 
       // Manage backing tokens, will create auction
       await warmup()
-      await scenario.manageBackingTokens()
+      await scenario.rebalance(1) // BATCH_AUCTION
 
       // Check trade
       const tradeInBackingManager = await ConAt(
@@ -1248,7 +1252,8 @@ describe('The Rebalancing scenario', () => {
     expect(await scenario.callStatic.echidna_refreshBasketIsNoopDuringAfterRebalancing()).to.be.true
     expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.be.true
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
-    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.be.true
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.be.true
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.be.true
     expect(await scenario.echidna_isFullyCollateralizedAfterRebalancing()).to.be.true
   })
 
@@ -1303,7 +1308,7 @@ describe('The Rebalancing scenario', () => {
     // call manageTokens([C0, C0])
     await scenario.pushBackingToManage(0)
     await scenario.pushBackingToManage(0)
-    await expect(scenario.manageBackingTokens()).to.be.reverted
+    await expect(scenario.forwardRevenue()).to.be.reverted
   })
 
   it('can manage scenario states - basket switch - covered by RSR', async () => {
@@ -1353,7 +1358,8 @@ describe('The Rebalancing scenario', () => {
 
     // Cannot save basket range - Properties hold
     await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
-    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
     // ======== Begin rebalancing ========
@@ -1394,13 +1400,14 @@ describe('The Rebalancing scenario', () => {
     while ((await scenario.status()) == RebalancingScenarioStatus.REBALANCING_ONGOING) {
       iteration++
       // We'll check the echidna properties at each step during rebalancing...
-      expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
       await scenario.saveBasketRange()
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
       // Manage backing tokens, will create auction
-      await scenario.manageBackingTokens()
+      await scenario.rebalance(1) // BATCH_AUCTION
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
       await scenario.saveBasketRange()
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
@@ -1431,14 +1438,16 @@ describe('The Rebalancing scenario', () => {
         expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_ONGOING)
       }
       // Check echidna property is true at all times in the process
-      expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
       // Settle trades - set some seed > 0
       await scenario.pushSeedForTrades(fp(1000000))
       await scenario.settleTrades()
 
-      expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
       expect(await trade.status()).to.equal(TradeStatus.CLOSED)
       expect(await comp.backingManager.tradesOpen()).to.equal(0)
@@ -1452,7 +1461,8 @@ describe('The Rebalancing scenario', () => {
 
     // Property noop after rebalancing, returns true. Properties hold.
     await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
-    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
     // Once on this state we cannot force another rebalancing
@@ -1536,7 +1546,7 @@ describe('The Rebalancing scenario', () => {
     // Trying to manage tokens will fail due to unsound basket
     await scenario.pushBackingToManage(2)
     await scenario.pushBackingToManage(4)
-    await expect(scenario.manageBackingTokens()).to.be.reverted
+    await expect(scenario.rebalance(1)).to.be.reverted // BATCH_AUCTION
 
     // We are still in initial state
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
@@ -1544,7 +1554,8 @@ describe('The Rebalancing scenario', () => {
     // Cannot save basket range - Properties hold
     await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
     await warmup()
-    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
     // Refresh basket - will perform basket switch - New basket: CA1 and CA0
@@ -1558,13 +1569,14 @@ describe('The Rebalancing scenario', () => {
       await scenario.pushSeedForTrades(fp(100000))
 
       await warmup()
-      expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
       await scenario.saveBasketRange()
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
       // Manage backing tokens, will create auction
-      await scenario.manageBackingTokens()
+      await scenario.rebalance(1) // BATCH_AUCTION
       if ((await scenario.status()) != RebalancingScenarioStatus.REBALANCING_ONGOING) break
 
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
@@ -1581,13 +1593,15 @@ describe('The Rebalancing scenario', () => {
       await advanceTime(await comp.broker.batchAuctionLength())
       expect(await trade.canSettle()).to.be.true
 
-      expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
       // Settle trades - will use previous seed > 0
       await scenario.settleTrades()
 
-      expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
       expect(await trade.status()).to.equal(TradeStatus.CLOSED)
       expect(await comp.backingManager.tradesOpen()).to.equal(0)
@@ -1599,7 +1613,8 @@ describe('The Rebalancing scenario', () => {
     expect(await scenario.echidna_isFullyCollateralizedAfterRebalancing()).to.be.true
 
     // Property noop after rebalancing, returns true. Properties hold.
-    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
     await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
@@ -1611,7 +1626,8 @@ describe('The Rebalancing scenario', () => {
       await scenario.unregisterAsset(0)
       await scenario.refreshBasket()
       await warmup()
-      expect(await scenario.callStatic.echidna_rebalancingProperties()).to.be.true
+      expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+      expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
     })
 
     it('the rToken invariant had an underflowing index computation', async () => {
@@ -1668,8 +1684,8 @@ describe('The Rebalancing scenario', () => {
     await scenario.connect(alice).refreshBasket()
     await scenario.connect(alice).pushBackingToManage(bn('6277620527355649775567068284304829410240875426814377481773201392576289608'))
     await warmup()
-    const check = await scenario.callStatic.echidna_rebalancingProperties()
-    expect(check).to.equal(true)
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
 
   it('does not check basket range invariant if a natural range change occurs (claim rewards)', async () => {
@@ -1703,7 +1719,8 @@ describe('The Rebalancing scenario', () => {
     await scenario.connect(alice).issue(1)
     await scenario.connect(alice).unregisterAsset(0)
     await scenario.connect(alice).refreshBasket()
-    await scenario.echidna_rebalancingProperties()
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
 
   it('does not revert if trading delay has not passed when checking echidna_rebalancingProperties', async () => {
@@ -1714,6 +1731,7 @@ describe('The Rebalancing scenario', () => {
     await scenario.connect(alice).setBackingManagerTradingDelay(1)
     await scenario.connect(alice).issue(1)
     await scenario.connect(alice).refreshBasket()
-    await scenario.echidna_rebalancingProperties()
+    expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
+    expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
 })

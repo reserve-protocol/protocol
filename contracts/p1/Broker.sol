@@ -183,7 +183,7 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // === Private ===
 
-    function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
+    function newBatchAuction(TradeRequest memory req, address caller) internal virtual returns (ITrade) {
         require(batchAuctionLength > 0, "batchAuctionLength unset");
         GnosisTrade trade = GnosisTrade(address(batchTradeImplementation).clone());
         trades[address(trade)] = true;
@@ -207,7 +207,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         return trade;
     }
 
-    function newDutchAuction(TradeRequest memory req, ITrading caller) private returns (ITrade) {
+    function newDutchAuction(TradeRequest memory req, ITrading caller) internal virtual returns (ITrade) {
         require(dutchAuctionLength > 0, "dutchAuctionLength unset");
         DutchTrade trade = DutchTrade(address(dutchTradeImplementation).clone());
         trades[address(trade)] = true;

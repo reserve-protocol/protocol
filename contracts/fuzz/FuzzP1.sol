@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
@@ -25,6 +26,7 @@ import "contracts/p1/RToken.sol";
 import "contracts/p1/RevenueTrader.sol";
 import "contracts/p1/StRSR.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
+import "hardhat/console.sol";
 
 // Every component must override _msgSender() in this one, common way!
 
@@ -232,9 +234,11 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
 contract BrokerP1Fuzz is BrokerP1 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using Clones for address;
 
     ITrade public lastOpenedTrade;
-    EnumerableSet.AddressSet internal tradeSet;
+    EnumerableSet.AddressSet private tradeSet;
+    mapping(address => uint256) public tradeKindSet;
 
     // function _openTrade(TradeRequest memory req) internal virtual returns (ITrade) {
     //     GnosisTradeMock trade = new GnosisTradeMock();
@@ -249,6 +253,52 @@ contract BrokerP1Fuzz is BrokerP1 {
     //     lastOpenedTrade = trade;
     //     return trade;
     // }
+
+    function newBatchAuction(TradeRequest memory req, address caller) internal override returns (ITrade) {
+        require(batchAuctionLength > 0, "batchAuctionLength unset");
+        GnosisTradeMock trade = new GnosisTradeMock();
+        trades[address(trade)] = true;
+
+        // Apply Gnosis EasyAuction-specific resizing of req, if needed: Ensure that
+        // max(sellAmount, minBuyAmount) <= maxTokensAllowed, while maintaining their proportion
+        uint256 maxQty = (req.minBuyAmount > req.sellAmount) ? req.minBuyAmount : req.sellAmount;
+
+        if (maxQty > GNOSIS_MAX_TOKENS) {
+            req.sellAmount = mulDiv256(req.sellAmount, GNOSIS_MAX_TOKENS, maxQty, CEIL);
+            req.minBuyAmount = mulDiv256(req.minBuyAmount, GNOSIS_MAX_TOKENS, maxQty, FLOOR);
+        }
+
+        // == Interactions ==
+        IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
+            caller,
+            address(trade),
+            req.sellAmount
+        );
+        trade.init(IMainFuzz(address(main)), _msgSender(), batchAuctionLength, req);
+        tradeSet.add(address(trade));
+        tradeKindSet[address(trade)] = uint256(TradeKind.BATCH_AUCTION);
+        lastOpenedTrade = trade;
+        return trade;
+    }
+
+    function newDutchAuction(TradeRequest memory req, ITrading caller) internal override returns (ITrade) {
+        require(dutchAuctionLength > 0, "dutchAuctionLength unset");
+        DutchTrade trade = new DutchTrade(); // cannot clone in echidna
+        trades[address(trade)] = true;
+
+        // == Interactions ==
+        IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
+            address(caller),
+            address(trade),
+            req.sellAmount
+        );
+
+        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength);
+        tradeSet.add(address(trade));
+        tradeKindSet[address(trade)] = uint256(TradeKind.BATCH_AUCTION);
+        lastOpenedTrade = trade;
+        return trade;
+    }
 
     function settleTrades() public {
         uint256 length = tradesLength();
