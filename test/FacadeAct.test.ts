@@ -199,8 +199,13 @@ describe('FacadeAct contract', () => {
 
     context('getRevenueAuctionERC20s/runRevenueAuctions', () => {
       it('Revenues/Rewards', async () => {
-        const rewardAmountAAVE = bn('0.5e18')
-        const rewardAmountCOMP = bn('1e18')
+        const rewardAmountAAVE = fp('1')
+        const rewardAmountCOMP = fp('5')
+
+        // Raise minTradeVolume to in-between the two amounts
+        await rTokenTrader.connect(owner).setMinTradeVolume(fp('0.5'))
+        // at 3/5 and 2/5 rev split, the RTokenTrader has dust and RSRTrader does not (of AAVE)
+        // both should have COMP in non-dust balances
 
         // Setup AAVE + COMP rewards
         await aToken.setRewards(backingManager.address, rewardAmountAAVE)
@@ -211,9 +216,8 @@ describe('FacadeAct contract', () => {
         const rTokenERC20s = await facadeAct.callStatic.getRevenueAuctionERC20s(
           rTokenTrader.address
         )
-        expect(rTokenERC20s.length).to.equal(2)
-        expect(rTokenERC20s[0]).to.equal(aaveToken.address)
-        expect(rTokenERC20s[1]).to.equal(compToken.address)
+        expect(rTokenERC20s.length).to.equal(1)
+        expect(rTokenERC20s[0]).to.equal(compToken.address)
         const rsrERC20s = await facadeAct.callStatic.getRevenueAuctionERC20s(rsrTrader.address)
         expect(rsrERC20s.length).to.equal(2)
         expect(rsrERC20s[0]).to.equal(aaveToken.address)
@@ -232,9 +236,8 @@ describe('FacadeAct contract', () => {
 
         // Now both should be settleable
         const rTokenSettleable = await facade.auctionsSettleable(rTokenTrader.address)
-        expect(rTokenSettleable.length).to.equal(2)
-        expect(rTokenSettleable[0]).to.equal(aaveToken.address)
-        expect(rTokenSettleable[1]).to.equal(compToken.address)
+        expect(rTokenSettleable.length).to.equal(1)
+        expect(rTokenSettleable[0]).to.equal(compToken.address)
         const rsrSettleable = await facade.auctionsSettleable(rsrTrader.address)
         expect(rsrSettleable.length).to.equal(2)
         expect(rsrSettleable[0]).to.equal(aaveToken.address)

@@ -404,6 +404,7 @@ contract FacadeAct is IFacadeAct {
         returns (IERC20[] memory toStart)
     {
         Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
+        uint192 minTradeVolume = revenueTrader.minTradeVolume(); // {UoA}
 
         // Forward ALL revenue
         revenueTrader.main().backingManager().forwardRevenue(reg.erc20s);
@@ -418,8 +419,14 @@ contract FacadeAct is IFacadeAct {
                 revenueTrader.settleTrade(reg.erc20s[i]);
             }
 
-            uint256 tradesOpen = revenueTrader.tradesOpen();
+            // Skip over dust balances, even though the RevenueTrader will trade them
+            (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
+            if (reg.assets[i].bal(address(revenueTrader)) < minTradeSize(minTradeVolume, lotLow)) {
+                continue;
+            }
 
+            // Include ERC20 if a trade is opened
+            uint256 tradesOpen = revenueTrader.tradesOpen();
             try revenueTrader.manageToken(reg.erc20s[i], TradeKind.BATCH_AUCTION) {
                 if (revenueTrader.tradesOpen() - tradesOpen > 0) {
                     unfiltered[num] = reg.erc20s[i];
