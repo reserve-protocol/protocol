@@ -380,7 +380,8 @@ contract FacadeAct is IFacadeAct {
     function runRevenueAuctions(
         IRevenueTrader revenueTrader,
         IERC20[] memory toSettle,
-        IERC20[] memory toStart
+        IERC20[] memory toStart,
+        TradeKind kind
     ) external {
         // Settle auctions
         for (uint256 i = 0; i < toSettle.length; ++i) {
@@ -392,7 +393,7 @@ contract FacadeAct is IFacadeAct {
 
         // Start auctions
         for (uint256 i = 0; i < toStart.length; ++i) {
-            revenueTrader.manageToken(toStart[i], TradeKind.BATCH_AUCTION);
+            revenueTrader.manageToken(toStart[i], kind);
         }
     }
 }

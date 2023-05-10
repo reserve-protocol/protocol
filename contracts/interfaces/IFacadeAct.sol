@@ -33,6 +33,7 @@ interface IFacadeAct {
     function runRevenueAuctions(
         IRevenueTrader revenueTrader,
         IERC20[] memory toSettle,
-        IERC20[] memory toStart
+        IERC20[] memory toStart,
+        TradeKind kind
     ) external;
 }
