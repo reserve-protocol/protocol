@@ -3189,7 +3189,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rewardAmountCOMP = bn('2e18')
 
       // COMP Rewards
-      await compoundMock.setRewards(token3.address, rewardAmountCOMP)
+      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
       // Collect revenue
       // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
@@ -3235,7 +3235,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       // Manage Funds
       await snapshotGasCost(rsrTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION))
-      await snapshotGasCost(rTokenTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION))
 
       // Run final auction until all funds are converted
       // Advance time till auction ended
@@ -3252,7 +3251,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       // Run auctions - Order: Settle trades, then Manage funds
       // Settle trades
       await snapshotGasCost(rsrTrader.settleTrade(compToken.address))
-      await snapshotGasCost(rTokenTrader.settleTrade(compToken.address))
     })
   })
 })
