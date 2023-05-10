@@ -22,7 +22,7 @@ import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -101,7 +101,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       basketHandler,
       rsrTrader,
       rTokenTrader,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     dai = <ERC20Mock>erc20s[0]

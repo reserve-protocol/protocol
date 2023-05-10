@@ -3,6 +3,7 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
+import { BigNumber } from 'ethers'
 import { ONE_PERIOD, ZERO_ADDRESS, CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { withinQuad } from '../utils/matchers'
@@ -17,7 +18,7 @@ import {
   RTokenCollateral,
 } from '../../typechain'
 import {
-  defaultFixture,
+  defaultFixtureNoBasket,
   DefaultFixture,
   IMPLEMENTATION,
   ORACLE_ERROR,
@@ -55,8 +56,8 @@ Function.prototype.clone = function () {
 
 const dualFixture: Fixture<DualFixture> = async function (): Promise<DualFixture> {
   return {
-    one: await loadFixture(defaultFixture),
-    two: await loadFixture(defaultFixture.clone()),
+    one: await loadFixture(defaultFixtureNoBasket),
+    two: await loadFixture(defaultFixtureNoBasket.clone()),
   }
 }
 
@@ -77,9 +78,12 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
   let one: DefaultFixture
   let two: DefaultFixture
 
+  let warmupPeriod: BigNumber
+
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
     ;({ one, two } = await loadFixture(dualFixture))
+    warmupPeriod = one.config.warmupPeriod
   })
 
   // this is mostly a check on our testing suite
@@ -134,6 +138,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       await one.assetRegistry.connect(owner).register(aTokenCollateral.address)
       await one.basketHandler.connect(owner).setPrimeBasket([staticATokenERC20.address], [fp('1')])
       await one.basketHandler.refreshBasket()
+      await advanceTime(warmupPeriod.toNumber() + 1)
       await staticATokenERC20.connect(owner).mint(addr1.address, issueAmt)
       await staticATokenERC20.connect(addr1).approve(one.rToken.address, issueAmt)
       await one.rToken.connect(addr1).issue(issueAmt)
@@ -143,6 +148,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       await two.assetRegistry.connect(owner).register(rTokenCollateral.address)
       await two.basketHandler.connect(owner).setPrimeBasket([one.rToken.address], [fp('1')])
       await two.basketHandler.refreshBasket()
+      await advanceTime(warmupPeriod.toNumber() + 1)
       await one.rToken.connect(addr1).approve(two.rToken.address, issueAmt)
       await two.rToken.connect(addr1).issue(issueAmt)
       expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt)

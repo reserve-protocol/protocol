@@ -19,8 +19,8 @@
     "test:extreme:integration": "FORK=1 EXTREME=1 PROTO_IMPL=1 npx hardhat test test/integration/**/*.test.ts",
     "test:unit": "yarn test:plugins && yarn test:p0 && yarn test:p1",
     "test:fast": "bash tools/fast-test.sh",
-    "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
-    "test:p1": "PROTO_IMPL=1 hardhat test test/*.test.ts --parallel",
+    "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts",
+    "test:p1": "PROTO_IMPL=1 hardhat test test/*.test.ts",
     "test:plugins": "hardhat test test/{libraries,plugins}/*.test.ts --parallel",
     "test:plugins:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/plugins/individual-collateral/**/*.test.ts",
     "test:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/**/*.test.ts",
@@ -35,7 +35,8 @@
     "prettier": "prettier --ignore-path .gitignore --loglevel warn --write \"./**/*.{js,ts,sol,json,md}\"",
     "size": "hardhat size-contracts",
     "slither": "python3 tools/slither.py",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "storage": "hardhat compile && hardhat check"
   },
   "repository": {
     "type": "git",

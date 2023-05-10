@@ -610,7 +610,18 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
 
 type Fixture<T> = () => Promise<T>
 
+// Use this fixture when the prime basket will be constant at 1 USD
 export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
+  return await makeDefaultFixture(true)
+}
+
+// Use this fixture when the prime basket needs to be set away from 1 USD
+export const defaultFixtureNoBasket: Fixture<DefaultFixture> =
+  async function (): Promise<DefaultFixture> {
+    return await makeDefaultFixture(false)
+  }
+
+const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> => {
   const signers = await ethers.getSigners()
   const owner = signers[0]
   const { rsr } = await rsrFixture()
@@ -868,12 +879,14 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     basketERC20s.push(await basket[i].erc20())
   }
 
-  // Set non-empty basket
-  await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
-  await basketHandler.connect(owner).refreshBasket()
+  if (setBasket) {
+    // Set non-empty basket
+    await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
+    await basketHandler.connect(owner).refreshBasket()
 
-  // Advance time post warmup period
-  await advanceTime(Number(config.warmupPeriod) + 1)
+    // Advance time post warmup period
+    await advanceTime(Number(config.warmupPeriod) + 1)
+  }
 
   // Set up allowances
   for (let i = 0; i < basket.length; i++) {

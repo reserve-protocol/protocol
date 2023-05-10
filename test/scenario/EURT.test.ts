@@ -23,7 +23,7 @@ import {
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -86,7 +86,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       rsrTrader,
       rTokenTrader,
       facadeTest,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     token0 = <StaticATokenMock>erc20s[7] // aDAI
@@ -122,6 +122,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
     await assetRegistry.connect(owner).register(eurtCollateral.address)
     await basketHandler.setPrimeBasket([token0.address, eurt.address], [fp('0.5'), fp('0.5')])
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
 
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(eurt.address)

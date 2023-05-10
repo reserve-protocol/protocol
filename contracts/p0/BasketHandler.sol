@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IAssetRegistry.sol";
@@ -107,6 +108,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     using CollateralStatusComparator for CollateralStatus;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
+    using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
     using FixLib for uint192;
 
     uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
@@ -132,6 +134,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // Nothing should use their values from previous transactions.
     EnumerableSet.Bytes32Set private targetNames;
     Basket private newBasket;
+
+    // Effectively local variable of `requireConstantConfigTargets()`
+    EnumerableMap.Bytes32ToUintMap private _targetAmts; // targetName -> {target/BU}
 
     uint48 public warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
 
@@ -241,6 +246,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         require(erc20s.length == targetAmts.length, "must be same length");
         requireValidCollArray(erc20s);
 
+        // If this isn't initial setup, require targets remain constant
+        if (config.erc20s.length > 0) requireConstantConfigTargets(erc20s, targetAmts);
+
         // Clean up previous basket config
         for (uint256 i = 0; i < config.erc20s.length; ++i) {
             delete config.targetAmts[config.erc20s[i]];
@@ -255,7 +263,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
-            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(reg.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
             require(0 < targetAmts[i], "invalid target amount; must be nonzero");
             require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
 
@@ -292,7 +300,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
-            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(reg.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
             conf.erc20s.push(erc20s[i]);
         }
         emit BackupConfigSet(targetName, max, erc20s);
@@ -745,7 +753,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Require that erc20s is a valid collateral array
-    function requireValidCollArray(IERC20[] calldata erc20s) internal view {
+    function requireValidCollArray(IERC20[] calldata erc20s) private view {
         IERC20 zero = IERC20(address(0));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -756,6 +764,37 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
 
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
+    }
+
+    /// Require that newERC20s and newTargetAmts preserve the current config targets
+    function requireConstantConfigTargets(
+        IERC20[] calldata newERC20s,
+        uint192[] calldata newTargetAmts
+    ) private {
+        // Empty _targetAmts mapping
+        while (_targetAmts.length() > 0) {
+            (bytes32 key, ) = _targetAmts.at(0);
+            _targetAmts.remove(key);
+        }
+
+        // Populate _targetAmts mapping with old basket config
+        for (uint256 i = 0; i < config.erc20s.length; i++) {
+            IERC20 erc20 = config.erc20s[i];
+            bytes32 targetName = config.targetNames[erc20];
+            uint192 targetAmt = config.targetAmts[erc20];
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            _targetAmts.set(targetName, contains ? amt + targetAmt : targetAmt);
+        }
+
+        // Require new basket is exactly equal to old basket, in terms of targetAmts by targetName
+        for (uint256 i = 0; i < newERC20s.length; i++) {
+            bytes32 targetName = main.assetRegistry().toColl(newERC20s[i]).targetName();
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            require(contains && amt >= newTargetAmts[i], "new basket adds target weights");
+            if (amt == newTargetAmts[i]) _targetAmts.remove(targetName);
+            else _targetAmts.set(targetName, amt - newTargetAmts[i]);
+        }
+        require(_targetAmts.length() == 0, "new basket missing target weights");
     }
 
     /// Good collateral is registered, collateral, SOUND, has the expected targetName,
@@ -784,7 +823,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192 x,
         uint192 y,
         uint192 z
-    ) internal view returns (uint192) {
+    ) private view returns (uint192) {
         try main.backingManager().mulDiv(x, y, z, FLOOR) returns (uint192 result) {
             return result;
         } catch Panic(uint256 errorCode) {

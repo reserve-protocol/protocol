@@ -8,6 +8,7 @@ import { CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { expectPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
+import { advanceTime } from '../utils/time'
 import {
   ERC20Mock,
   IAssetRegistry,
@@ -21,7 +22,7 @@ import {
   WETH9,
 } from '../../typechain'
 import {
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -74,7 +75,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       basketHandler,
       rTokenTrader,
       rsrTrader,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     await backingManager.connect(owner).setBackingBuffer(0)
 
@@ -138,6 +139,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       [fp('1'), fp('3'), fp('9')] // powers of 3
     )
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
 
     // Mint initial balances
     await token1.connect(owner).mint(addr1.address, initialBal)
