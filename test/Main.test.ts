@@ -2005,7 +2005,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const balsBefore = await getBalances(addr1.address, expectedTokens)
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             amount,
             basketNonces,
@@ -2075,7 +2075,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               amount,
               basketNonces,
@@ -2090,7 +2090,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             amount,
             basketNonces,
@@ -2134,7 +2134,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const balsBefore = await getBalances(addr1.address, expectedTokens)
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             amount,
             basketNonces,
@@ -2217,7 +2217,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               amount,
               basketNonces,
@@ -2232,7 +2232,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             amount,
             basketNonces,

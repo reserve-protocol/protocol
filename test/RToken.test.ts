@@ -1052,7 +1052,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       it('Should revert if undercollateralized from missing balance #fast', async function () {
         await token0.connect(owner).burn(backingManager.address, issueAmount.div(4))
         await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.be.revertedWith(
-          'partial redemption; use redeemToCustom'
+          'partial redemption; use redeemCustom'
         )
       })
 
@@ -1064,7 +1064,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         // 1st redemption
         await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).be.revertedWith(
-          'partial redemption; use redeemToCustom'
+          'partial redemption; use redeemCustom'
         )
       })
 
@@ -1073,7 +1073,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await assetRegistry.connect(owner).unregister(collateral2.address)
 
         await expect(rToken.connect(addr1).redeem(issueAmount)).revertedWith(
-          'partial redemption; use redeemToCustom'
+          'partial redemption; use redeemCustom'
         )
       })
 
@@ -1122,7 +1122,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(addr1.address, 1, [await basketHandler.nonce()], [fp('1')], [], [])
+            .redeemCustom(addr1.address, 1, [await basketHandler.nonce()], [fp('1')], [], [])
         ).to.be.revertedWith('invalid basketNonce')
 
         // New reference basket
@@ -1131,17 +1131,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         // Before the first auction is completed, BOTH redemption methods are bricked
         await expect(rToken.connect(addr1).redeem(1)).to.be.revertedWith(
-          'partial redemption; use redeemToCustom'
+          'partial redemption; use redeemCustom'
         )
         const nonce = await basketHandler.nonce()
         await expect(
-          rToken.connect(addr1).redeemToCustom(addr1.address, 1, [nonce], [fp('1')], [], [])
+          rToken.connect(addr1).redeemCustom(addr1.address, 1, [nonce], [fp('1')], [], [])
         ).to.be.revertedWith('empty redemption')
         await expect(
-          rToken.connect(addr1).redeemToCustom(addr1.address, 1, [nonce - 1], [fp('1')], [], [])
+          rToken.connect(addr1).redeemCustom(addr1.address, 1, [nonce - 1], [fp('1')], [], [])
         ).to.be.revertedWith('invalid basketNonce')
         await expect(
-          rToken.connect(addr1).redeemToCustom(addr1.address, 1, [nonce + 1], [fp('1')], [], [])
+          rToken.connect(addr1).redeemCustom(addr1.address, 1, [nonce + 1], [fp('1')], [], [])
         ).to.be.revertedWith('invalid basketNonce')
       })
 
@@ -1417,7 +1417,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(addr1.address, zero, [await basketHandler.nonce()], [fp('1')], [], [])
+            .redeemCustom(addr1.address, zero, [await basketHandler.nonce()], [fp('1')], [], [])
         ).to.be.revertedWith('Cannot redeem zero')
       })
 
@@ -1427,7 +1427,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr2)
-            .redeemToCustom(addr2.address, redeemAmount, [nonce], [fp('1')], [], [])
+            .redeemCustom(addr2.address, redeemAmount, [nonce], [fp('1')], [], [])
         ).to.be.revertedWith('insufficient balance')
       })
 
@@ -1436,7 +1436,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               fp('1'),
               [nonce, nonce],
@@ -1447,7 +1447,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         ).to.be.revertedWith('portions do not add up to FIX_ONE')
       })
 
-      it('Should redeemToCustom RTokens correctly', async function () {
+      it('Should redeemCustom RTokens correctly', async function () {
         const redeemAmount = bn('100e18')
 
         // Check balances
@@ -1467,7 +1467,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Check simulation result
         const [actualERC20s, actualQuantities] = await rToken
           .connect(addr1)
-          .callStatic.redeemToCustom(
+          .callStatic.redeemCustom(
             addr1.address,
             redeemAmount,
             basketNonces,
@@ -1480,7 +1480,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             redeemAmount,
             basketNonces,
@@ -1516,7 +1516,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr2.address,
               issueAmount,
               basketNonces,
@@ -1559,7 +1559,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             redeemAmount,
             basketNonces,
@@ -1576,7 +1576,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Redeem rTokens with another user
         await rToken
           .connect(addr2)
-          .redeemToCustom(
+          .redeemCustom(
             addr2.address,
             redeemAmount,
             basketNonces,
@@ -1613,7 +1613,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             issueAmount,
             basketNonces,
@@ -1632,7 +1632,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             issueAmount,
             basketNonces,
@@ -1651,7 +1651,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, issueAmount)
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             issueAmount,
             basketNonces,
@@ -1672,7 +1672,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               issueAmount,
               basketNonces,
@@ -1701,7 +1701,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         ).to.not.be.reverted
         await rToken
           .connect(addr1)
-          .redeemToCustom(addr1.address, issueAmount.div(2), basketNonces, portions, [], [])
+          .redeemCustom(addr1.address, issueAmount.div(2), basketNonces, portions, [], [])
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
 
         // Burn the rest
@@ -1713,7 +1713,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(addr1.address, issueAmount.div(2), basketNonces, portions, [], [])
+            .redeemCustom(addr1.address, issueAmount.div(2), basketNonces, portions, [], [])
         ).to.be.revertedWith('empty redemption')
 
         // Check values
@@ -1725,7 +1725,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
+            .redeemCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
         ).to.be.revertedWith('invalid basketNonce')
 
         // Bump primeNonce
@@ -1735,21 +1735,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(addr1.address, issueAmount.div(2), [1], portions, [], [])
+            .redeemCustom(addr1.address, issueAmount.div(2), [1], portions, [], [])
         ).to.be.revertedWith('invalid basketNonce')
 
         // Nonce 2 still doesn't have a reference basket yet
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
+            .redeemCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
         ).to.be.revertedWith('invalid basketNonce')
 
         // Refresh reference basket
         await basketHandler.connect(owner).refreshBasket()
         await rToken
           .connect(addr1)
-          .redeemToCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
+          .redeemCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
       })
 
       it('Should prorate redemption if basket is DISABLED from fallen refPerTok() #fast', async function () {
@@ -1769,7 +1769,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               issueAmount.div(2),
               basketNonces,
@@ -1786,7 +1786,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               issueAmount.div(2),
               basketNonces,
@@ -1812,7 +1812,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             issueAmount.div(2),
             basketNonces,
@@ -1829,7 +1829,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         newQuantities.push(fp('0'))
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             issueAmount.div(2),
             basketNonces,
@@ -1850,7 +1850,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               issueAmount,
               basketNonces,
@@ -1877,7 +1877,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
         await rToken
           .connect(addr1)
-          .redeemToCustom(
+          .redeemCustom(
             addr1.address,
             issueAmount.sub(bn('1e18')),
             basketNonces,
@@ -1904,7 +1904,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(
           rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               bn(redeemAmount),
               basketNonces,
@@ -1954,7 +1954,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             )
             await rToken
               .connect(addr1)
-              .redeemToCustom(
+              .redeemCustom(
                 addr1.address,
                 redeemAmount,
                 basketNonces,
@@ -1991,7 +1991,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await expect(
             rToken
               .connect(addr1)
-              .redeemToCustom(
+              .redeemCustom(
                 addr1.address,
                 redeemAmount.add(1),
                 basketNonces,
@@ -2007,7 +2007,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           )
           await rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               redeemAmount,
               basketNonces,
@@ -2059,7 +2059,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           )
           await rToken
             .connect(addr1)
-            .redeemToCustom(
+            .redeemCustom(
               addr1.address,
               throttles.amtRate,
               basketNonces,
@@ -2086,7 +2086,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await expect(
             rToken
               .connect(addr1)
-              .redeemToCustom(
+              .redeemCustom(
                 addr1.address,
                 redeemAmount.add(1),
                 basketNonces,
@@ -2100,7 +2100,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await expect(
             rToken
               .connect(addr1)
-              .redeemToCustom(
+              .redeemCustom(
                 addr1.address,
                 redeemAmount,
                 basketNonces,

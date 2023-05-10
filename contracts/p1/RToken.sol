@@ -218,7 +218,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
-        require(basketHandler.fullyCollateralized(), "partial redemption; use redeemToCustom");
+        require(basketHandler.fullyCollateralized(), "partial redemption; use redeemCustom");
         // redemption while IFFY/DISABLED allowed
 
         uint256 supply = totalSupply();
@@ -283,7 +283,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param expectedERC20sOut An array of ERC20s expected out
     /// @param minAmounts {qTok} The minimum ERC20 quantities the caller should receive
     /// @custom:interaction RCEI
-    function redeemToCustom(
+    function redeemCustom(
         address recipient,
         uint256 amount,
         uint48[] memory basketNonces,

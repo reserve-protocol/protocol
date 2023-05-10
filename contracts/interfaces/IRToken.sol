@@ -79,13 +79,13 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     function issueTo(address recipient, uint256 amount) external;
 
     /// Redeem RToken for basket collateral
-    /// @dev Use redeemToCustom for non-current baskets
+    /// @dev Use redeemCustom for non-current baskets
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
     function redeem(uint256 amount) external;
 
     /// Redeem RToken for basket collateral to a particular recipient
-    /// @dev Use redeemToCustom for non-current baskets
+    /// @dev Use redeemCustom for non-current baskets
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
@@ -100,7 +100,7 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     /// @param expectedERC20sOut An array of ERC20s expected out
     /// @param minAmounts {qTok} The minimum ERC20 quantities the caller should receive
     /// @custom:interaction
-    function redeemToCustom(
+    function redeemCustom(
         address recipient,
         uint256 amount,
         uint48[] memory basketNonces,

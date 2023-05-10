@@ -163,7 +163,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await token0.balanceOf(addr1.address)).to.equal(0)
       await rToken
         .connect(addr1)
-        .redeemToCustom(
+        .redeemCustom(
           addr1.address,
           initialBal.div(2),
           [await basketHandler.nonce()],
@@ -186,7 +186,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       // Should be able to redeem half the RToken at-par
       await rToken
         .connect(addr1)
-        .redeemToCustom(
+        .redeemCustom(
           addr1.address,
           initialBal.div(2),
           [await basketHandler.nonce()],
@@ -236,7 +236,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       // Should be able to redeem half the RToken at-par
       await rToken
         .connect(addr1)
-        .redeemToCustom(
+        .redeemCustom(
           addr1.address,
           initialBal.div(2),
           [await basketHandler.nonce()],
