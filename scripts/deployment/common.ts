@@ -16,7 +16,6 @@ export interface IDeployments {
   facadeRead: string
   facadeWriteLib: string
   cvxMiningLib: string
-  facadeMonitor: string
   facadeWrite: string
   facadeAct: string
   deployer: string
