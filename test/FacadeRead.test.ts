@@ -34,7 +34,7 @@ import {
   ORACLE_ERROR,
 } from './fixtures'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
-import { CollateralStatus, MAX_UINT256 } from '#/common/constants'
+import { CollateralStatus, TradeKind, MAX_UINT256 } from '#/common/constants'
 import { mintCollaterals } from './utils/tokens'
 
 describe('FacadeRead contract', () => {
@@ -167,7 +167,7 @@ describe('FacadeRead contract', () => {
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmount)
 
       // With 0 baskets needed - Returns correct value
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
@@ -258,7 +258,7 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.equal(fp('1'))
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmount)
 
       // Check values = 0 (no supply)
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
@@ -438,7 +438,12 @@ describe('FacadeRead contract', () => {
         }
 
         // Run revenue auctions
-        await facadeAct.runRevenueAuctions(trader.address, [], erc20sToStart)
+        await facadeAct.runRevenueAuctions(
+          trader.address,
+          [],
+          erc20sToStart,
+          TradeKind.DUTCH_AUCTION
+        )
 
         // Nothing should be settleable
         expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
@@ -481,7 +486,7 @@ describe('FacadeRead contract', () => {
 
     it('Should return basketBreakdown correctly when RToken supply = 0', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmount)
 
       expect(await rToken.totalSupply()).to.equal(bn(0))
 

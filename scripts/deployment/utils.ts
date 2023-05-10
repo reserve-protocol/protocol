@@ -158,6 +158,7 @@ export const getEmptyDeployment = (): IDeployments => {
       GNOSIS_EASY_AUCTION: '',
     },
     tradingLib: '',
+    basketLib: '',
     facadeRead: '',
     facadeWriteLib: '',
     cvxMiningLib: '',

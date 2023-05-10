@@ -155,6 +155,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
+    /// @return The number of registered ERC20s
+    function size() external view returns (uint256) {
+        return _erc20s.length();
+    }
+
     /// Register an asset
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return registered If the asset was moved from unregistered to registered

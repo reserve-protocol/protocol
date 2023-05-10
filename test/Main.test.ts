@@ -16,6 +16,7 @@ import {
 } from '../common/configuration'
 import {
   CollateralStatus,
+  RoundingMode,
   ZERO_ADDRESS,
   ONE_ADDRESS,
   MAX_UINT256,
@@ -25,6 +26,7 @@ import {
   PAUSER,
   MAX_UINT192,
 } from '../common/constants'
+import { expectEqualArrays } from './utils/matchers'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
 import { expectPrice, expectUnpriced, setOraclePrice } from './utils/oracles'
 import { bn, fp } from '../common/numbers'
@@ -110,10 +112,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenVaultMock
+  let backupToken1: ERC20Mock
+  let backupToken2: ERC20Mock
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
+  let backupCollateral1: FiatCollateral
+  let backupCollateral2: FiatCollateral
   let erc20s: ERC20Mock[]
   let basketsNeededAmts: BigNumber[]
 
@@ -171,6 +177,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
     token3 = <CTokenVaultMock>erc20s[collateral.indexOf(basket[3])]
+
+    backupToken1 = erc20s[2] // USDT
+    backupCollateral1 = <FiatCollateral>collateral[2]
+
+    backupToken2 = erc20s[3] // BUSD
+    backupCollateral2 = <FiatCollateral>collateral[3]
 
     collateral0 = <FiatCollateral>basket[0]
     collateral1 = <FiatCollateral>basket[1]
@@ -1191,9 +1203,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Put all 128 coll in the basket
       const erc20s = await Promise.all(coll.map(async (c) => await c.erc20()))
-      const refAmts = erc20s.map(() => fp('1'))
+      const targetAmts = erc20s.map(() => fp('1').div(128))
       expect(erc20s.length).to.equal(128)
-      await basketHandler.setPrimeBasket(erc20s, refAmts)
+      await basketHandler.setPrimeBasket(erc20s, targetAmts)
       await basketHandler.refreshBasket()
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       const [quoteERC20s, tokAmts] = await basketHandler.quote(fp('1'), 0)
@@ -1650,13 +1662,63 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Basket Handling', () => {
+    let freshBasketHandler: TestIBasketHandler // need to have both this and regular basketHandler around
+    let eurToken: ERC20Mock
+
+    beforeEach(async () => {
+      if (IMPLEMENTATION == Implementation.P0) {
+        const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP0')
+        freshBasketHandler = <TestIBasketHandler>((await BasketHandlerFactory.deploy()) as unknown)
+      } else if (IMPLEMENTATION == Implementation.P1) {
+        const basketLib = await (await ethers.getContractFactory('BasketLibP1')).deploy()
+        const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1', {
+          libraries: { BasketLibP1: basketLib.address },
+        })
+        freshBasketHandler = <TestIBasketHandler>await upgrades.deployProxy(
+          BasketHandlerFactory,
+          [],
+          {
+            kind: 'uups',
+            unsafeAllow: ['external-library-linking'], // BasketLibP1
+          }
+        )
+      } else {
+        throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+      }
+
+      await freshBasketHandler.init(main.address, config.warmupPeriod)
+
+      eurToken = await (await ethers.getContractFactory('ERC20Mock')).deploy('EURO Token', 'EUR')
+      const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+        'FiatCollateral'
+      )
+      const eurColl = <FiatCollateral>await FiatCollateralFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR,
+        erc20: eurToken.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: await collateral0.oracleTimeout(),
+        targetName: ethers.utils.formatBytes32String('EUR'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: await collateral1.delayUntilDefault(),
+      })
+      await assetRegistry.connect(owner).register(eurColl.address)
+    })
+
     it('Should not allow to set prime Basket if not OWNER', async () => {
+      await expect(
+        freshBasketHandler.connect(other).setPrimeBasket([token0.address], [fp('1')])
+      ).to.be.revertedWith('governance only')
       await expect(
         basketHandler.connect(other).setPrimeBasket([token0.address], [fp('1')])
       ).to.be.revertedWith('governance only')
     })
 
     it('Should not allow to set prime Basket with invalid length', async () => {
+      await expect(
+        freshBasketHandler.connect(owner).setPrimeBasket([token0.address], [])
+      ).to.be.revertedWith('must be same length')
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [])
       ).to.be.revertedWith('must be same length')
@@ -1665,10 +1727,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with non-collateral tokens', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([compToken.address], [fp('1')])
-      ).to.be.revertedWith('token is not collateral')
+      ).to.be.revertedWith('erc20 is not collateral')
+      await expect(
+        freshBasketHandler.connect(owner).setPrimeBasket([compToken.address], [fp('1')])
+      ).to.be.revertedWith('erc20 is not collateral')
     })
 
     it('Should not allow to set prime Basket with duplicate ERC20s', async () => {
+      await expect(
+        freshBasketHandler
+          .connect(owner)
+          .setPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
+      ).to.be.revertedWith('contains duplicates')
       await expect(
         basketHandler
           .connect(owner)
@@ -1678,23 +1748,47 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should not allow to set prime Basket with 0 address tokens', async () => {
       await expect(
+        freshBasketHandler.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
+      ).to.be.revertedWith('address zero is not valid collateral')
+      await expect(
         basketHandler.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
       ).to.be.revertedWith('address zero is not valid collateral')
     })
 
     it('Should not allow to set prime Basket with stRSR', async () => {
       await expect(
+        freshBasketHandler.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
+      ).to.be.revertedWith('stRSR is not valid collateral')
+      await expect(
         basketHandler.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
       ).to.be.revertedWith('stRSR is not valid collateral')
     })
 
-    it('Should not allow to set prime Basket with invalid target amounts', async () => {
+    it('Should not allow to bypass MAX_TARGET_AMT', async () => {
+      // not possible on non-fresh basketHandler
       await expect(
-        basketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
+        freshBasketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
       ).to.be.revertedWith('invalid target amount; too large')
     })
 
+    it('Should not allow to increase prime Basket weights', async () => {
+      // not possible on freshBasketHandler
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').add(1)])
+      ).to.be.revertedWith('new basket adds target weights')
+    })
+
+    it('Should not allow to decrease prime Basket weights', async () => {
+      // not possible on freshBasketHandler
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').sub(1)])
+      ).to.be.revertedWith('new basket missing target weights')
+    })
+
     it('Should not allow to set prime Basket with an empty basket', async () => {
+      await expect(freshBasketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
+        'cannot empty basket'
+      )
       await expect(basketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
         'cannot empty basket'
       )
@@ -1702,15 +1796,86 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should not allow to set prime Basket with a zero amount', async () => {
       await expect(
-        basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
+        freshBasketHandler.connect(owner).setPrimeBasket([token0.address], [0])
       ).to.be.revertedWith('invalid target amount; must be nonzero')
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
+      ).to.be.revertedWith('new basket missing target weights')
+    })
+
+    it('Should be able to set exactly same basket', async () => {
+      await basketHandler
+        .connect(owner)
+        .setPrimeBasket(
+          [token0.address, token1.address, token2.address, token3.address],
+          [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+        )
+    })
+
+    it('Should not allow to set prime Basket as superset of old basket', async () => {
+      await assetRegistry.connect(owner).register(backupCollateral1.address)
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address, backupToken1.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
+          )
+      ).to.be.revertedWith('new basket adds target weights')
+
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address, eurToken.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
+          )
+      ).to.be.revertedWith('new basket adds target weights')
+    })
+
+    it('Should not allow to set prime Basket as subset of old basket', async () => {
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.24')]
+          )
+      ).to.be.revertedWith('new basket missing target weights')
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address],
+            [fp('0.25'), fp('0.25'), fp('0.25')]
+          )
+      ).to.be.revertedWith('new basket missing target weights')
+    })
+
+    it('Should not allow to change target unit in old basket', async () => {
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, eurToken.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+          )
+      ).to.be.revertedWith('new basket adds target weights')
     })
 
     it('Should not allow to set prime Basket with RSR/RToken', async () => {
       await expect(
+        freshBasketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
+      ).to.be.revertedWith('RSR is not valid collateral')
+      await expect(
         basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
       ).to.be.revertedWith('RSR is not valid collateral')
 
+      await expect(
+        freshBasketHandler
+          .connect(owner)
+          .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
+      ).to.be.revertedWith('RToken is not valid collateral')
       await expect(
         basketHandler
           .connect(owner)
@@ -1722,7 +1887,362 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Set basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+        .withArgs(2, [token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+    })
+
+    it('Should revert if target has been changed in asset registry', async () => {
+      // Swap registered asset for NEW_TARGET target
+      const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
+      const coll = <FiatCollateral>await FiatCollateralFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: ORACLE_ERROR,
+        erc20: await collateral0.erc20(),
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: await collateral0.oracleTimeout(),
+        targetName: ethers.utils.formatBytes32String('NEW_TARGET'),
+        defaultThreshold: fp('0.01'),
+        delayUntilDefault: await collateral0.delayUntilDefault(),
+      })
+      await assetRegistry.connect(owner).swapRegistered(coll.address)
+
+      // Should revert
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket(
+            [token0.address, token1.address, token2.address, token3.address],
+            [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+          )
+      ).to.be.revertedWith('new basket adds target weights')
+    })
+
+    describe('Custom Redemption', () => {
+      const issueAmount = fp('10000')
+      let usdcChainlink: MockV3Aggregator
+      let daiChainlink: MockV3Aggregator
+
+      beforeEach(async () => {
+        usdcChainlink = await ethers.getContractAt(
+          'MockV3Aggregator',
+          await collateral1.chainlinkFeed()
+        )
+        daiChainlink = await ethers.getContractAt(
+          'MockV3Aggregator',
+          await collateral0.chainlinkFeed()
+        )
+
+        // register backups
+        await assetRegistry.connect(owner).register(backupCollateral1.address)
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
+        await assetRegistry.connect(owner).register(backupCollateral2.address)
+
+        // issue rTokens
+        await token0.connect(addr1).approve(rToken.address, issueAmount)
+        await token1.connect(addr1).approve(rToken.address, issueAmount)
+        await token2.connect(addr1).approve(rToken.address, issueAmount)
+        await token3.connect(addr1).approve(rToken.address, issueAmount)
+        await rToken.connect(addr1).issue(issueAmount)
+      })
+
+      const getBalances = async (account: string, tokens: Array<ERC20Mock>) => {
+        const bals: Array<BigNumber> = []
+        for (const token of tokens) {
+          bals.push(await token.balanceOf(account))
+        }
+        return bals
+      }
+
+      const expectDelta = (x: Array<BigNumber>, y: Array<BigNumber>, z: Array<BigNumber>) => {
+        for (let i = 0; i < x.length; i++) {
+          expect(z[i]).equal(x[i].add(y[i]))
+        }
+      }
+
+      it('Should correctly quote the current basket, same as quote()', async () => {
+        /*
+          Test Quote
+        */
+        const basketNonces = [1]
+        const portions = [fp('1')]
+        const amount = fp('10000')
+        const baseline = await basketHandler.quote(amount, RoundingMode.FLOOR)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        expectEqualArrays(quote.erc20s, baseline.erc20s)
+        expectEqualArrays(quote.quantities, baseline.quantities)
+
+        expect(quote.erc20s.length).equal(4)
+        expect(quote.quantities.length).equal(4)
+
+        const expectedTokens = [token0, token1, token2, token3]
+        const expectedAddresses = expectedTokens.map((t) => t.address)
+        const expectedQuantities = [
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral0.refPerTok())
+            .div(bn(`1e${18 - (await token0.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral1.refPerTok())
+            .div(bn(`1e${18 - (await token1.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral2.refPerTok())
+            .div(bn(`1e${18 - (await token2.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral3.refPerTok())
+            .div(bn(`1e${18 - (await token3.decimals())}`)),
+        ]
+        expectEqualArrays(quote.erc20s, expectedAddresses)
+        expectEqualArrays(quote.quantities, expectedQuantities)
+
+        /*
+          Test Custom Redemption
+        */
+        const balsBefore = await getBalances(addr1.address, expectedTokens)
+        await rToken
+          .connect(addr1)
+          .redeemCustom(
+            addr1.address,
+            amount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        const balsAfter = await getBalances(addr1.address, expectedTokens)
+        expectDelta(balsBefore, baseline.quantities, balsAfter)
+      })
+
+      it('Should correctly quote a custom redemption across 2 baskets after default', async () => {
+        /*
+          Setup
+        */
+        // default usdc & refresh basket to use backup collateral
+        await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
+        await basketHandler.refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+
+        /*
+          Test Quote
+        */
+        const basketNonces = [1, 2]
+        const portions = [fp('0.5'), fp('0.5')]
+        const amount = fp('10000')
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+
+        expect(quote.erc20s.length).equal(5)
+        expect(quote.quantities.length).equal(5)
+
+        const expectedTokens = [token0, token1, token2, token3, backupToken1]
+        const expectedAddresses = expectedTokens.map((t) => t.address)
+        const expectedQuantities = [
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral0.refPerTok())
+            .div(bn(`1e${18 - (await token0.decimals())}`)),
+          fp('0.125')
+            .mul(issueAmount)
+            .div(await collateral1.refPerTok())
+            .div(bn(`1e${18 - (await token1.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral2.refPerTok())
+            .div(bn(`1e${18 - (await token2.decimals())}`)),
+          fp('0.25')
+            .mul(issueAmount)
+            .div(await collateral3.refPerTok())
+            .div(bn(`1e${18 - (await token3.decimals())}`)),
+          fp('0.125')
+            .mul(issueAmount)
+            .div(await backupCollateral1.refPerTok())
+            .div(bn(`1e${18 - (await backupToken1.decimals())}`)),
+        ]
+        expectEqualArrays(quote.erc20s, expectedAddresses)
+        expectEqualArrays(quote.quantities, expectedQuantities)
+
+        /*
+          Test Custom Redemption
+        */
+        const balsBefore = await getBalances(addr1.address, expectedTokens)
+
+        // rToken is undercollateralized, no backupToken1. should fail
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemCustom(
+              addr1.address,
+              amount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+        ).revertedWith('redemption below minimum')
+
+        // send enough backupToken1 to BackingManager to recollateralize and process redemption correctly
+        await backupToken1.mint(backingManager.address, issueAmount)
+
+        await rToken
+          .connect(addr1)
+          .redeemCustom(
+            addr1.address,
+            amount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        const balsAfter = await getBalances(addr1.address, expectedTokens)
+        expectDelta(balsBefore, quote.quantities, balsAfter)
+      })
+
+      it('Repeating basket nonces should not be exploitable', async () => {
+        /*
+          Test Quote
+        */
+        const basketNonces = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        const portions = [
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+          fp('0.1'),
+        ]
+        const amount = fp('10000')
+        const baseline = await basketHandler.quote(amount, RoundingMode.FLOOR)
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+        expectEqualArrays(quote.erc20s, baseline.erc20s)
+        expectEqualArrays(quote.quantities, baseline.quantities)
+
+        /*
+          Test Custom Redemption
+        */
+        const expectedTokens = await Promise.all(
+          quote.erc20s.map(async (e) => ethers.getContractAt('ERC20Mock', e))
+        )
+        const balsBefore = await getBalances(addr1.address, expectedTokens)
+        await rToken
+          .connect(addr1)
+          .redeemCustom(
+            addr1.address,
+            amount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        const balsAfter = await getBalances(addr1.address, expectedTokens)
+        expectDelta(balsBefore, baseline.quantities, balsAfter)
+      })
+
+      it('Should correctly quote a historical redemption [full basket default, multi-token-backup]', async () => {
+        /*
+          Setup
+        */
+        // add 2nd token to backup config
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
+            backupToken1.address,
+            backupToken2.address,
+          ])
+        // default usdc & refresh basket to use backup collateral
+        await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
+        await daiChainlink.updateAnswer(bn('0.8e8')) // default token0, token2, token3
+        await basketHandler.refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+
+        /*
+          Test Quote
+        */
+        const basketNonces = [1, 2]
+        const portions = [fp('0.2'), fp('0.8')]
+        const amount = fp('10000')
+        const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
+
+        expect(quote.erc20s.length).equal(6)
+        expect(quote.quantities.length).equal(6)
+
+        const expectedTokens = [token0, token1, token2, token3, backupToken1, backupToken2]
+        const expectedAddresses = expectedTokens.map((t) => t.address)
+        const expectedQuantities = [
+          fp('0.05')
+            .mul(issueAmount)
+            .div(await collateral0.refPerTok())
+            .div(bn(`1e${18 - (await token0.decimals())}`)),
+          fp('0.05')
+            .mul(issueAmount)
+            .div(await collateral1.refPerTok())
+            .div(bn(`1e${18 - (await token1.decimals())}`)),
+          fp('0.05')
+            .mul(issueAmount)
+            .div(await collateral2.refPerTok())
+            .div(bn(`1e${18 - (await token2.decimals())}`)),
+          fp('0.05')
+            .mul(issueAmount)
+            .div(await collateral3.refPerTok())
+            .div(bn(`1e${18 - (await token3.decimals())}`)),
+          fp('0.40')
+            .mul(issueAmount)
+            .div(await backupCollateral1.refPerTok())
+            .div(bn(`1e${18 - (await backupToken1.decimals())}`)),
+          fp('0.40')
+            .mul(issueAmount)
+            .div(await backupCollateral2.refPerTok())
+            .div(bn(`1e${18 - (await backupToken2.decimals())}`)),
+        ]
+        expectEqualArrays(quote.erc20s, expectedAddresses)
+        expectEqualArrays(quote.quantities, expectedQuantities)
+
+        /*
+          Test Custom Redemption
+        */
+        const balsBefore = await getBalances(addr1.address, expectedTokens)
+        await backupToken1.mint(backingManager.address, issueAmount)
+
+        // rToken is undercollateralized, no backupToken2. should fail
+        await expect(
+          rToken
+            .connect(addr1)
+            .redeemCustom(
+              addr1.address,
+              amount,
+              basketNonces,
+              portions,
+              quote.erc20s,
+              quote.quantities
+            )
+        ).revertedWith('redemption below minimum')
+
+        // send enough backupToken2 to BackingManager to recollateralize and process redemption correctly
+        await backupToken2.mint(backingManager.address, issueAmount)
+
+        await rToken
+          .connect(addr1)
+          .redeemCustom(
+            addr1.address,
+            amount,
+            basketNonces,
+            portions,
+            quote.erc20s,
+            quote.quantities
+          )
+        const balsAfter = await getBalances(addr1.address, expectedTokens)
+        expectDelta(balsBefore, quote.quantities, balsAfter)
+      })
     })
 
     it('Should return (FIX_ZERO, FIX_MAX) for basketsHeldBy(<any account>) if the basket is empty', async () => {
@@ -1759,7 +2279,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [compToken.address])
-      ).to.be.revertedWith('token is not collateral')
+      ).to.be.revertedWith('erc20 is not collateral')
     })
 
     it('Should not allow to set backup Config with RSR/RToken', async () => {
@@ -1997,10 +2517,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should handle a collateral (price * quantity) overflow', async () => {
-      // Check status and price
-      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
-
       // Swap in mock collateral with overflowing price
       const MockableCollateralFactory: ContractFactory = await ethers.getContractFactory(
         'MockableCollateral'
@@ -2023,8 +2539,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await setOraclePrice(newColl.address, MAX_UINT192) // overflow
       await expectUnpriced(newColl.address)
       await newColl.setTargetPerRef(1)
-      await basketHandler.setPrimeBasket([await newColl.erc20()], [fp('1000')])
-      await basketHandler.refreshBasket()
+      await freshBasketHandler.setPrimeBasket([await newColl.erc20()], [fp('1000')])
+      await freshBasketHandler.refreshBasket()
 
       // Expect [something > 0, FIX_MAX]
       const bh = await ethers.getContractAt('Asset', basketHandler.address)
@@ -2058,10 +2574,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await newColl.refresh()
 
       // Set basket with single collateral
-      await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1000')])
+      await freshBasketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1000')])
 
       // Change basket - valid at this point
-      await basketHandler.connect(owner).refreshBasket()
+      await freshBasketHandler.connect(owner).refreshBasket()
 
       // Set refPerTok = 1
       await newColl.setRate(bn(1))
@@ -2069,20 +2585,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const newPrice: BigNumber = MAX_UINT192.div(bn('1e10'))
       await setOraclePrice(collateral2.address, newPrice.sub(newPrice.div(100))) // oracle error
 
-      const [lowPrice, highPrice] = await basketHandler.price()
+      const [lowPrice, highPrice] = await freshBasketHandler.price()
       expect(lowPrice).to.equal(MAX_UINT192)
       expect(highPrice).to.equal(MAX_UINT192)
     })
 
     it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX] - case 2', async () => {
       // Set basket with single collateral
-      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1.1')])
-      await basketHandler.refreshBasket()
+      await freshBasketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1.1')])
+      await freshBasketHandler.refreshBasket()
 
       const newPrice: BigNumber = MAX_UINT192.div(bn('1e10'))
       await setOraclePrice(collateral0.address, newPrice.sub(newPrice.div(100))) // oracle error
 
-      const [lowPrice, highPrice] = await basketHandler.price()
+      const [lowPrice, highPrice] = await freshBasketHandler.price()
       expect(lowPrice).to.equal(MAX_UINT192)
       expect(highPrice).to.equal(MAX_UINT192)
     })

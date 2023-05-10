@@ -14,6 +14,7 @@ import {
   BackingManagerP1V2,
   BasketHandlerP1,
   BasketHandlerP1V2,
+  BasketLibP1,
   BrokerP1,
   BrokerP1V2,
   DistributorP1,
@@ -76,6 +77,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let tradingLib: RecollateralizationLibP1
+  let basketLib: BasketLibP1
 
   // Factories
   let MainFactory: ContractFactory
@@ -126,6 +128,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     )
     tradingLib = <RecollateralizationLibP1>await TradingLibFactory.deploy()
 
+    // Deploy BasketLib external library
+    const BasketLibFactory: ContractFactory = await ethers.getContractFactory('BasketLibP1')
+    basketLib = <BasketLibP1>await BasketLibFactory.deploy()
+
     // Setup factories
     MainFactory = await ethers.getContractFactory('MainP1')
     RTokenFactory = await ethers.getContractFactory('RTokenP1')
@@ -137,7 +143,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       },
     })
     AssetRegistryFactory = await ethers.getContractFactory('AssetRegistryP1')
-    BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1')
+    BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1', {
+      libraries: { BasketLibP1: basketLib.address },
+    })
     DistributorFactory = await ethers.getContractFactory('DistributorP1')
     BrokerFactory = await ethers.getContractFactory('BrokerP1')
     GnosisTradeFactory = await ethers.getContractFactory('GnosisTrade')
@@ -244,6 +252,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
+          unsafeAllow: ['external-library-linking'],
         }
       )
       await newBasketHandler.deployed()
@@ -499,10 +508,15 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should upgrade correctly - BasketHandler', async () => {
       // Upgrading
       const BasketHandlerV2Factory: ContractFactory = await ethers.getContractFactory(
-        'BasketHandlerP1V2'
+        'BasketHandlerP1V2',
+        { libraries: { BasketLibP1: basketLib.address } }
       )
-      const bskHndlrV2: BasketHandlerP1V2 = <BasketHandlerP1V2>(
-        await upgrades.upgradeProxy(basketHandler.address, BasketHandlerV2Factory)
+      const bskHndlrV2: BasketHandlerP1V2 = <BasketHandlerP1V2>await upgrades.upgradeProxy(
+        basketHandler.address,
+        BasketHandlerV2Factory,
+        {
+          unsafeAllow: ['external-library-linking'], // BasketLibP1
+        }
       )
 
       // Check address is maintained

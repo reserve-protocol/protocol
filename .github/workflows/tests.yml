@@ -76,6 +76,8 @@ jobs:
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:p0
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
   p1-tests:
     name: 'P1 Tests'
@@ -89,6 +91,8 @@ jobs:
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:p1
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
   scenario-tests:
     name: 'Scenario Tests'
@@ -102,6 +106,8 @@ jobs:
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:scenario
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
 
   extreme-tests:
     name: 'Extreme Tests'

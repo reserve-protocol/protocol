@@ -57,6 +57,8 @@ async function main() {
 
   if (!deployments.tradingLib) {
     throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
+  } else if (!deployments.basketLib) {
+    throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.tradingLib))) {
     throw new Error(`TradingLib contract not found in network ${hre.network.name}`)
   }
@@ -82,7 +84,6 @@ async function main() {
     }
 
     prevDeployments = <IDeployments>getDeploymentFile(prevDeploymentFilename)
-    console.log('previous deployments', prevDeployments)
     await validateImplementations(prevDeployments)
 
     // Set upgrade flag
@@ -114,8 +115,6 @@ async function main() {
       }
     )
   }
-
-  console.log('Result: ', mainImplAddr)
   mainImpl = <MainP1>await ethers.getContractAt('MainP1', mainImplAddr)
 
   // Write temporary deployments file
@@ -217,7 +216,9 @@ async function main() {
   )
 
   // 3. ********* Basket Handler *************/
-  const BskHandlerImplFactory = await ethers.getContractFactory('BasketHandlerP1')
+  const BskHandlerImplFactory = await ethers.getContractFactory('BasketHandlerP1', {
+    libraries: { BasketLibP1: deployments.basketLib },
+  })
   let bskHndlrImplAddr = ''
   if (!upgrade) {
     bskHndlrImplAddr = await upgrades.deployImplementation(BskHandlerImplFactory, {

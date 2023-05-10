@@ -20,10 +20,11 @@ import {
   TestIRToken,
 } from '../../typechain'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
+import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -79,7 +80,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       basketHandler,
       aaveToken,
       rTokenAsset,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Token0
     const nonStaticERC20 = await (
@@ -124,6 +125,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       backupToken.address,
     ])
     await basketHandler.refreshBasket()
+    await advanceTime(Number(config.warmupPeriod) + 1)
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(backupToken.address)
 
@@ -159,7 +161,16 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
     it('should keep a constant redemption basket as collateral loses value', async () => {
       // Redemption should be restrained to be prorata
       expect(await token0.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
+      await rToken
+        .connect(addr1)
+        .redeemCustom(
+          addr1.address,
+          initialBal.div(2),
+          [await basketHandler.nonce()],
+          [fp('1')],
+          [],
+          []
+        )
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
       await expectRTokenPrice(
@@ -173,7 +184,16 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
     it('should increase the issuance basket as collateral loses value', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
+      await rToken
+        .connect(addr1)
+        .redeemCustom(
+          addr1.address,
+          initialBal.div(2),
+          [await basketHandler.nonce()],
+          [fp('1')],
+          [],
+          []
+        )
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
@@ -214,7 +234,16 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
     it('should not change the redemption basket', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
+      await rToken
+        .connect(addr1)
+        .redeemCustom(
+          addr1.address,
+          initialBal.div(2),
+          [await basketHandler.nonce()],
+          [fp('1')],
+          [],
+          []
+        )
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
@@ -241,14 +270,14 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
 
       // RToken redemption should ignore depegging
-      await rToken.connect(addr1).redeem(initialBal.div(4), await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(initialBal.div(4))
       expect(await rToken.totalSupply()).to.equal(initialBal.div(4))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.mul(3).div(4))
     })
 
     it('should not change the issuance basket', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(initialBal.div(2))
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 

@@ -31,7 +31,7 @@ import { withinQuad } from '../utils/matchers'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -142,7 +142,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rsrTrader,
       gnosis,
       rTokenAsset,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Mint initial balances
     initialBal = bn('100000000e18')
@@ -500,7 +500,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(expectedTkn7).to.equal(quotes[7])
 
     // Redeem
-    await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+    await rToken.connect(addr1).redeem(issueAmt)
     expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     expect(await rToken.totalSupply()).to.equal(0)
 

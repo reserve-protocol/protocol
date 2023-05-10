@@ -53,10 +53,7 @@ library TradeLib {
 
         (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
 
-        // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume)) {
-            return (false, req);
-        }
+        notDust = isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume);
 
         // Cap sell amount
         uint192 maxSell = maxTradeSize(trade.sell, trade.buy, lotHigh); // {sellTok}
@@ -77,7 +74,7 @@ library TradeLib {
         req.sell = trade.sell;
         req.buy = trade.buy;
 
-        return (true, req);
+        return (notDust, req);
     }
 
     /// Assuming we have `trade.sellAmount` sell tokens available, prepare a trade to cover as
@@ -159,7 +156,7 @@ library TradeLib {
         uint192 y,
         uint192 z
     ) internal pure returns (uint192) {
-        try trader.mulDivCeil(x, y, z) returns (uint192 result) {
+        try trader.mulDiv(x, y, z, CEIL) returns (uint192 result) {
             return result;
         } catch Panic(uint256 errorCode) {
             // 0x11: overflow
