@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre, { ethers, upgrades } from 'hardhat'
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { getEmptyDeployment, validateImplementations } from '../utils'
+import { getEmptyDeployment, prompt, validateImplementations } from '../utils'
 import {
   getDeploymentFile,
   getDeploymentFilename,
@@ -39,14 +39,15 @@ let stRSRImpl: StRSRP1Votes
 let gnosisTradeImpl: GnosisTrade
 let dutchTradeImpl: DutchTrade
 
-// Specify the last deployed version (e.g: '2.1.0').
-// Used only for Upgrades. Leave empty for new fresh deployment
-const LAST_DEPLOYED_VERSION = ''
-
 async function main() {
   // ==== Read Configuration ====
   const [burner] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
+
+  // Request last deployed version - if empty, perform new deployment
+  const LAST_DEPLOYED_VERSION = await prompt(
+    'Enter the last deployed version (e.g: "2.1.0"), or leave empty for new deployment: '
+  )
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -55,12 +56,12 @@ async function main() {
   const deploymentFilename = getDeploymentFilename(chainId)
   const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
-  if (!deployments.tradingLib) {
-    throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
-  } else if (!deployments.basketLib) {
+  if (!deployments.tradingLib || !deployments.basketLib) {
     throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.tradingLib))) {
     throw new Error(`TradingLib contract not found in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, deployments.basketLib))) {
+    throw new Error(`BasketLib contract not found in network ${hre.network.name}`)
   }
 
   // Check if this is an upgrade or a new deployment
@@ -99,7 +100,6 @@ async function main() {
   }
 
   // ******************** Deploy Main ********************************/
-
   const MainImplFactory = await ethers.getContractFactory('MainP1')
   let mainImplAddr = ''
   if (!upgrade) {
@@ -190,7 +190,7 @@ async function main() {
   if (!upgrade) {
     backingMgrImplAddr = await upgrades.deployImplementation(BackingMgrImplFactory, {
       kind: 'uups',
-      unsafeAllow: ['external-library-linking', 'delegatecall'],
+      unsafeAllow: ['external-library-linking'],
     })
   } else {
     backingMgrImplAddr = await upgrades.prepareUpgrade(
@@ -198,7 +198,7 @@ async function main() {
       BackingMgrImplFactory,
       {
         kind: 'uups',
-        unsafeAllow: ['external-library-linking', 'delegatecall'],
+        unsafeAllow: ['external-library-linking'],
       }
     )
   }
@@ -340,7 +340,6 @@ async function main() {
   if (!upgrade) {
     rsrTraderImplAddr = await upgrades.deployImplementation(RevTraderImplFactory, {
       kind: 'uups',
-      unsafeAllow: ['delegatecall'],
     })
     rTokenTraderImplAddr = rsrTraderImplAddr // Both equal in initial deployment
   } else {
@@ -350,7 +349,6 @@ async function main() {
       RevTraderImplFactory,
       {
         kind: 'uups',
-        unsafeAllow: ['delegatecall'],
       }
     )
 
@@ -365,7 +363,6 @@ async function main() {
         RevTraderImplFactory,
         {
           kind: 'uups',
-          unsafeAllow: ['delegatecall'],
         }
       )
     } else {

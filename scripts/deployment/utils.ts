@@ -1,4 +1,5 @@
 import hre from 'hardhat'
+import * as readline from 'readline'
 import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber, BigNumberish } from 'ethers'
@@ -184,4 +185,18 @@ export const getEmptyDeployment = (): IDeployments => {
       },
     },
   }
+}
+
+export const prompt = async (query: string): Promise<string> => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+
+  return new Promise<string>((resolve) =>
+    rl.question(query, (ans) => {
+      rl.close()
+      resolve(ans)
+    })
+  )
 }
