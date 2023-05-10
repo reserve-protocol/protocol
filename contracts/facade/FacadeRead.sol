@@ -255,6 +255,7 @@ contract FacadeRead is IFacadeRead {
                         sellAmount = trade.sellAmount();
                     }
                 }
+                // solhint-disable-next-line no-empty-blocks
             } catch {}
         }
     }
