@@ -29,7 +29,7 @@ import {
 } from '../typechain'
 import { advanceTime } from './utils/time'
 import {
-  defaultFixture,
+  defaultFixtureNoBasket,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
@@ -106,7 +106,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       rsrAsset,
       aaveAsset,
       compAsset,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
@@ -336,6 +336,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         targetAmts
       )
       await basketHandler.connect(owner).refreshBasket()
+      await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Issue rTokens
       const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
@@ -473,6 +474,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         targetAmts
       )
       await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
+      await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Issue rTokens
       const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
@@ -638,6 +640,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         primeBasket.map((c) => c.address)
       )
       await basketHandler.connect(owner).refreshBasket()
+      await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Over-collateralize with RSR
       await rsr.connect(owner).mint(addr1.address, fp('1e29'))
@@ -756,7 +759,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
         return erc20
       }
 
-      ;({ assetRegistry, basketHandler, compoundMock } = await loadFixture(defaultFixture))
+      ;({ assetRegistry, basketHandler, compoundMock } = await loadFixture(defaultFixtureNoBasket))
 
       const primeERC20s = []
       const targetAmts = []
@@ -792,6 +795,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       // Set prime basket with all collateral
       await basketHandler.setPrimeBasket(primeERC20s, targetAmts)
       await basketHandler.connect(owner).refreshBasket()
+      await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Unregister collateral and switch basket
       if (firstCollateral !== undefined) {

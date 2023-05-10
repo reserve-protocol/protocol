@@ -122,6 +122,11 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         assert(reg.erc20s.length == reg.assets.length);
     }
 
+    /// @return The number of registered ERC20s
+    function size() external view returns (uint256) {
+        return _erc20s.length();
+    }
+
     //
 
     /// Forbids registering a different asset for an ERC20 that is already registered

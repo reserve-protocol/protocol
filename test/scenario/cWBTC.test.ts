@@ -25,7 +25,7 @@ import {
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -98,7 +98,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       rsrTrader,
       rTokenTrader,
       facadeTest,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     token0 = <CTokenVaultMock>erc20s[4] // cDai
@@ -171,6 +171,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       wbtc.address,
     ])
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
 
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(cWBTC.address)
@@ -285,7 +286,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('10000e8'))
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
+      expect(await rToken.connect(addr1).redeem(issueAmt))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cWBTC.balanceOf(addr1.address)).to.equal(initialBal)
     })
@@ -294,7 +295,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await cWBTC.setExchangeRate(fp('2')) // doubling of price
 
       // Compound Redemption rate should result in fewer tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
+      expect(await rToken.connect(addr1).redeem(issueAmt))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await cWBTC.balanceOf(addr1.address)).to.equal(
         initialBal.sub(cTokenAmt.div(1000).div(2))
@@ -304,6 +305,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     it('should sell cWBTC for RToken after redemption rate increase', async () => {
       await cWBTC.setExchangeRate(fp('2')) // doubling of price
       await basketHandler.refreshBasket()
+      await advanceTime(config.warmupPeriod.toNumber() + 1)
       await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
         'already collateralized'
       )

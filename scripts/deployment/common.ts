@@ -12,6 +12,7 @@ export interface IPrerequisites {
 export interface IDeployments {
   prerequisites: IPrerequisites
   tradingLib: string
+  basketLib: string
   facadeRead: string
   facadeWriteLib: string
   cvxMiningLib: string

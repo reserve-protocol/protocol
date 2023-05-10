@@ -62,7 +62,13 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // 1. Approve and execute the govnerance proposal
     if (!params.proposalid) {
       const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, proposal_2_1_0)
-      await passAndExecuteProposal(hre, params.rtoken, params.governor, proposal.proposalId!, proposal)
+      await passAndExecuteProposal(
+        hre,
+        params.rtoken,
+        params.governor,
+        proposal.proposalId!,
+        proposal
+      )
     } else {
       await passAndExecuteProposal(hre, params.rtoken, params.governor, params.proposalid)
     }
@@ -108,38 +114,54 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const cUsdc = await hre.ethers.getContractAt('ICToken', cUsdcAddress)
 
     // get saUsdt
-    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!.toLowerCase()], async (usdtSigner) => {
-      await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal)
-      await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
-    })
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
+      async (usdtSigner) => {
+        await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal)
+        await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
+      }
+    )
     const saUsdtBal = await saUsdt.balanceOf(tester.address)
     await saUsdt.connect(tester).approve(rToken.address, saUsdtBal)
 
     // get cUsdt
-    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!.toLowerCase()], async (usdtSigner) => {
-      await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
-      await cUsdt.connect(usdtSigner).mint(initialBal)
-      const bal = await cUsdt.balanceOf(usdtSigner.address)
-      await cUsdt.connect(usdtSigner).transfer(tester.address, bal)
-    })
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
+      async (usdtSigner) => {
+        await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
+        await cUsdt.connect(usdtSigner).mint(initialBal)
+        const bal = await cUsdt.balanceOf(usdtSigner.address)
+        await cUsdt.connect(usdtSigner).transfer(tester.address, bal)
+      }
+    )
     const cUsdtBal = await cUsdt.balanceOf(tester.address)
     await cUsdt.connect(tester).approve(rToken.address, cUsdtBal)
 
     // get saUsdc
-    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!.toLowerCase()], async (usdcSigner) => {
-      await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal)
-      await saUsdc.connect(usdcSigner).deposit(tester.address, initialBal, 0, true)
-    })
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
+      async (usdcSigner) => {
+        await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal)
+        await saUsdc.connect(usdcSigner).deposit(tester.address, initialBal, 0, true)
+      }
+    )
     const saUsdcBal = await saUsdc.balanceOf(tester.address)
     await saUsdc.connect(tester).approve(rToken.address, saUsdcBal)
 
     // get cUsdc
-    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!.toLowerCase()], async (usdcSigner) => {
-      await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal)
-      await cUsdc.connect(usdcSigner).mint(initialBal)
-      const bal = await cUsdc.balanceOf(usdcSigner.address)
-      await cUsdc.connect(usdcSigner).transfer(tester.address, bal)
-    })
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
+      async (usdcSigner) => {
+        await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal)
+        await cUsdc.connect(usdcSigner).mint(initialBal)
+        const bal = await cUsdc.balanceOf(usdcSigner.address)
+        await cUsdc.connect(usdcSigner).transfer(tester.address, bal)
+      }
+    )
     const cUsdcBal = await cUsdc.balanceOf(tester.address)
     await cUsdc.connect(tester).approve(rToken.address, cUsdcBal)
 
@@ -157,8 +179,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     console.log('successfully minted RTokens')
 
-
-
     /*
 
       redeem
@@ -167,19 +187,15 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const redeemAmount = fp('5e4')
     await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
 
-    
     // 2. Run the 2.1.0 checks
     await runChecks2_1_0(hre, params.rtoken, params.governor)
 
-    
     /*
 
       claim rewards
 
     */
-      await claimRsrRewards(hre, params.rtoken)
-    
-
+    await claimRsrRewards(hre, params.rtoken)
 
     /*
 
@@ -199,13 +215,13 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         .setPrimeBasket([saUsdtAddress, cUsdtAddress], [fp('0.5'), fp('0.5')])
       await basketHandler.connect(tl).refreshBasket()
       const tradingDelay = await backingManager.tradingDelay()
-      await advanceBlocks(hre, tradingDelay/12 + 1)
+      await advanceBlocks(hre, tradingDelay / 12 + 1)
       await advanceTime(hre, tradingDelay + 1)
     })
 
     const b = await basketHandler.getPrimeBasket()
     console.log(b.erc20s)
-    
+
     await recollateralize(hre, rToken.address)
   })
 

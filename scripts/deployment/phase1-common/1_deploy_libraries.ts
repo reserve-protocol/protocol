@@ -4,9 +4,10 @@ import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validatePrerequisites } from '../utils'
-import { CvxMining, RecollateralizationLibP1 } from '../../../typechain'
+import { BasketLibP1, CvxMining, RecollateralizationLibP1 } from '../../../typechain'
 
 let tradingLib: RecollateralizationLibP1
+let basketLib: BasketLibP1
 let cvxMiningLib: CvxMining
 
 async function main() {
@@ -34,6 +35,14 @@ async function main() {
   tradingLib = <RecollateralizationLibP1>await TradingLibFactory.connect(burner).deploy()
   await tradingLib.deployed()
   deployments.tradingLib = tradingLib.address
+
+  fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
+
+  // Deploy BasketLib external library
+  const BasketLibFactory = await ethers.getContractFactory('BasketLibP1')
+  basketLib = <BasketLibP1>await BasketLibFactory.connect(burner).deploy()
+  await basketLib.deployed()
+  deployments.basketLib = basketLib.address
 
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 

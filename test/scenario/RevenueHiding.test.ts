@@ -22,7 +22,7 @@ import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -101,7 +101,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       basketHandler,
       rsrTrader,
       rTokenTrader,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     dai = <ERC20Mock>erc20s[0]
@@ -190,7 +190,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       // Redeem half
       const balBefore = await cDAI.balanceOf(addr1.address)
       const redeemAmt = issueAmt.div(2)
-      await rToken.connect(addr1).redeem(redeemAmt, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(redeemAmt)
       const balAfter = await cDAI.balanceOf(addr1.address)
       const cTokenRedeemAmt = q2.mul(redeemAmt.div(bn('1e10'))).div(fp('1'))
       expect(balAfter).to.equal(balBefore.add(cTokenRedeemAmt))

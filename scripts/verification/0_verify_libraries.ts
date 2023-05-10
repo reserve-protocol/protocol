@@ -27,6 +27,14 @@ async function main() {
     [],
     'contracts/p1/mixins/RecollateralizationLib.sol:RecollateralizationLibP1'
   )
+
+  /** ******************** Verify Basket Library ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.basketLib,
+    [],
+    'contracts/p1/mixins/BasketLib.sol:BasketLibP1'
+  )
 }
 
 main().catch((error) => {

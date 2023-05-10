@@ -551,7 +551,7 @@ library TradingLibP0 {
         uint192 y,
         uint192 z
     ) internal pure returns (uint192) {
-        try trader.mulDivCeil(x, y, z) returns (uint192 result) {
+        try trader.mulDiv(x, y, z, CEIL) returns (uint192 result) {
             return result;
         } catch Panic(uint256 errorCode) {
             // 0x11: overflow
