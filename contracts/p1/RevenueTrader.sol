@@ -120,14 +120,14 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             buyPrice: buyPrice
         });
 
-        // If not dust, trade the non-target asset for the target asset
+        // Whether dust or not, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
-        (bool launch, TradeRequest memory req) = TradeLib.prepareTradeSell(
+        (, TradeRequest memory req) = TradeLib.prepareTradeSell(
             trade,
             minTradeVolume,
             maxTradeSlippage
         );
-        require(launch, "trade not worth launching");
+        require(req.sellAmount > 1, "sell amount too low");
 
         // == Interactions ==
         tryTrade(kind, req);

@@ -50,10 +50,7 @@ library TradingLibP0 {
 
         (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
 
-        // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume)) {
-            return (false, req);
-        }
+        notDust = isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume);
 
         // Cap sell amount
         uint192 maxSell = maxTradeSize(trade.sell, trade.buy, lotHigh); // {sellTok}
@@ -73,7 +70,7 @@ library TradingLibP0 {
         req.minBuyAmount = b.shiftl_toUint(int8(trade.buy.erc20Decimals()), CEIL);
         req.sell = trade.sell;
         req.buy = trade.buy;
-        return (true, req);
+        return (notDust, req);
     }
 
     /// Assuming we have `trade.sellAmount` sell tokens available, prepare a trade to cover as

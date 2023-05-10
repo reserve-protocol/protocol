@@ -45,3 +45,17 @@ export const advanceBlocks = async (hre: HardhatRuntimeEnvironment, blocks: numb
   await hre.ethers.provider.send('hardhat_mine', [blockString])
   await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x0']) // Temporary fix - Hardhat issue
 }
+
+export const advanceBlocksTenderly = async (hre: HardhatRuntimeEnvironment, blocks: number | BigNumber) => {
+  let blockString: string = BigNumber.isBigNumber(blocks)
+    ? blocks.toHexString()
+    : '0x' + blocks.toString(16)
+
+  // Remove a single leading zero from a hexadecimal number, if present
+  // (hardhat doesn't want it, but BigNumber.toHexString often makes it)
+  if (blockString.length > 3 && blockString[2] == '0') {
+    const newBlockString = blockString.slice(0, 2) + blockString.slice(3)
+    blockString = newBlockString
+  }
+  await hre.ethers.provider.send('evm_increaseBlocks', [blockString])
+}
