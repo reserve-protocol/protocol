@@ -188,15 +188,19 @@ export const getEmptyDeployment = (): IDeployments => {
 }
 
 export const prompt = async (query: string): Promise<string> => {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  return new Promise<string>((resolve) =>
-    rl.question(query, (ans) => {
-      rl.close()
-      resolve(ans)
+  if (!useEnv('SKIP_PROMPT')) {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
     })
-  )
+
+    return new Promise<string>((resolve) =>
+      rl.question(query, (ans) => {
+        rl.close()
+        resolve(ans)
+      })
+    )
+  } else {
+    return ''
+  }
 }
