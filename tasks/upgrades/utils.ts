@@ -17,6 +17,15 @@ export const validateDeployments = async (
     throw new Error(`TradingLib contract not found in network ${hre.network.name}`)
   }
 
+  // Check basket lib defined
+  if (!deployments.basketLib) {
+    throw new Error(
+      `Missing deployed BasketLib for version ${version} in network ${hre.network.name}`
+    )
+  } else if (!(await isValidContract(hre, deployments.basketLib))) {
+    throw new Error(`BasketLib contract not found in network ${hre.network.name}`)
+  }
+
   // Check Main implementation is defined
   if (!deployments.implementations.main) {
     throw new Error(

@@ -9,7 +9,7 @@ import {
   getDeploymentFilename,
   getDeploymentFile,
 } from '../../scripts/deployment/common'
-import { RecollateralizationLibP1 } from '../../typechain'
+import { BasketLibP1, RecollateralizationLibP1 } from '../../typechain'
 
 task('validate-upgrade', 'Validates if upgrade to new version is safe')
   .addParam('ver', 'the version of the currently deployed implementations')
@@ -36,6 +36,7 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
     )
 
     // Deploy required libraries
+    // TradingLib
     const TradingLibFactory: ContractFactory = await hre.ethers.getContractFactory(
       'RecollateralizationLibP1'
     )
@@ -43,6 +44,11 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
       await TradingLibFactory.deploy()
     )
     await tradingLib.deployed()
+
+    // BasketLib
+    const BasketLibFactory: ContractFactory = await hre.ethers.getContractFactory('BasketLibP1')
+    const basketLib: BasketLibP1 = <BasketLibP1>await BasketLibFactory.deploy()
+    await basketLib.deployed()
 
     await validateUpgrade(hre, deployments.implementations.main, 'MainP1')
     await validateUpgrade(hre, deployments.implementations.components.rToken, 'RTokenP1')
@@ -55,7 +61,10 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
     await validateUpgrade(
       hre,
       deployments.implementations.components.basketHandler,
-      'BasketHandlerP1'
+      'BasketHandlerP1',
+      undefined,
+      basketLib.address,
+      ['external-library-linking']
     )
 
     await validateUpgrade(
@@ -63,6 +72,7 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
       deployments.implementations.components.backingManager,
       'BackingManagerP1',
       tradingLib.address,
+      undefined,
       ['external-library-linking', 'delegatecall']
     )
     await validateUpgrade(hre, deployments.implementations.components.distributor, 'DistributorP1')
@@ -89,19 +99,27 @@ const validateUpgrade = async (
   prevImplAddress: string,
   factoryName: string,
   tradingLibAddress?: string,
+  basketLibAddress?: string,
   unsafeAllow?: any[]
 ) => {
   // Get Contract Factory
   let contractFactory: ContractFactory
-  if (!tradingLibAddress) {
-    contractFactory = await hre.ethers.getContractFactory(factoryName)
-  } else {
-    // Should be BackingManagerP1
+  if (tradingLibAddress) {
+    // BackingManagerP1
     contractFactory = await hre.ethers.getContractFactory(factoryName, {
       libraries: {
         RecollateralizationLibP1: tradingLibAddress,
       },
     })
+  } else if (basketLibAddress) {
+    // BasketHandlerP1
+    contractFactory = await hre.ethers.getContractFactory(factoryName, {
+      libraries: {
+        BasketLibP1: basketLibAddress,
+      },
+    })
+  } else {
+    contractFactory = await hre.ethers.getContractFactory(factoryName)
   }
 
   const ver = await (await hre.ethers.getContractAt('Versioned', prevImplAddress)).version()
