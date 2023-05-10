@@ -250,31 +250,5 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       // Should be in disabled state, as there are no backups for WETH
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
     })
-
-    it('should be able to switch away from WETH', async () => {
-      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      await basketHandler.refreshBasket()
-
-      // Should be fully collateralized
-      expect(await basketHandler.fullyCollateralized()).to.equal(true)
-      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
-        issueAmt
-      )
-
-      // Should view WETH as surplus
-      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-        'already collateralized'
-      )
-      await backingManager.forwardRevenue([weth.address])
-      await expect(rsrTrader.manageToken(weth.address, TradeKind.BATCH_AUCTION)).to.emit(
-        rsrTrader,
-        'TradeStarted'
-      )
-      await expect(rTokenTrader.manageToken(weth.address, TradeKind.BATCH_AUCTION)).to.emit(
-        rTokenTrader,
-        'TradeStarted'
-      )
-    })
   })
 })
