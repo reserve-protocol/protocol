@@ -632,7 +632,7 @@ describe('The Rebalancing scenario', () => {
       expect(stRSR_bal_end.sub(stRSR_bal)).to.equal(20n * exa)
     })
 
-    it.only('can manage tokens in Revenue Traders (RSR and RToken)', async () => {
+    it('can manage tokens in Revenue Traders (RSR and RToken)', async () => {
       await warmup()
       const furanceID = addrIDs.get(addr(1)) as number
       const strsrID = addrIDs.get(addr(2)) as number
