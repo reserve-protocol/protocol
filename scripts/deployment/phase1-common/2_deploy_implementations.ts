@@ -190,6 +190,7 @@ async function main() {
   if (!upgrade) {
     backingMgrImplAddr = await upgrades.deployImplementation(BackingMgrImplFactory, {
       kind: 'uups',
+      unsafeAllow: ['external-library-linking', 'delegatecall'],
     })
   } else {
     backingMgrImplAddr = await upgrades.prepareUpgrade(
@@ -223,6 +224,7 @@ async function main() {
   if (!upgrade) {
     bskHndlrImplAddr = await upgrades.deployImplementation(BskHandlerImplFactory, {
       kind: 'uups',
+      unsafeAllow: ['external-library-linking'],
     })
   } else {
     bskHndlrImplAddr = await upgrades.prepareUpgrade(
@@ -230,6 +232,7 @@ async function main() {
       BskHandlerImplFactory,
       {
         kind: 'uups',
+        unsafeAllow: ['external-library-linking'],
       }
     )
   }
@@ -337,6 +340,7 @@ async function main() {
   if (!upgrade) {
     rsrTraderImplAddr = await upgrades.deployImplementation(RevTraderImplFactory, {
       kind: 'uups',
+      unsafeAllow: ['delegatecall'],
     })
     rTokenTraderImplAddr = rsrTraderImplAddr // Both equal in initial deployment
   } else {
