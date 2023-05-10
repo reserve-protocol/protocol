@@ -34,7 +34,7 @@ import {
   ORACLE_ERROR,
 } from './fixtures'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
-import { CollateralStatus, MAX_UINT256 } from '#/common/constants'
+import { CollateralStatus, TradeKind, MAX_UINT256 } from '#/common/constants'
 import { mintCollaterals } from './utils/tokens'
 
 describe('FacadeRead contract', () => {
@@ -438,7 +438,12 @@ describe('FacadeRead contract', () => {
         }
 
         // Run revenue auctions
-        await facadeAct.runRevenueAuctions(trader.address, [], erc20sToStart)
+        await facadeAct.runRevenueAuctions(
+          trader.address,
+          [],
+          erc20sToStart,
+          TradeKind.DUTCH_AUCTION
+        )
 
         // Nothing should be settleable
         expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)

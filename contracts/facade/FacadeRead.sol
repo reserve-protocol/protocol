@@ -212,7 +212,8 @@ contract FacadeRead is IFacadeRead {
     }
 
     /// To use this, call via callStatic.
-    /// If canStart is true, can run FacadeAct.runRecollateralizationAuctions
+    /// If canStart is true, call backingManager.rebalance(). May require settling a
+    /// trade first; see auctionsSettleable.
     /// @return canStart true iff a recollateralization auction can be started
     /// @return sell The sell token in the auction
     /// @return buy The buy token in the auction
@@ -227,9 +228,21 @@ contract FacadeRead is IFacadeRead {
             uint256 sellAmount
         )
     {
-        if (bm.tradesOpen() == 0) {
-            IERC20[] memory erc20s = bm.main().assetRegistry().erc20s();
+        IERC20[] memory erc20s = bm.main().assetRegistry().erc20s();
 
+        // Settle any settle-able open trades
+        if (bm.tradesOpen() > 0) {
+            for (uint256 i = 0; i < erc20s.length; ++i) {
+                ITrade trade = bm.trades(erc20s[i]);
+                if (address(trade) != address(0) && trade.canSettle()) {
+                    trade.settle();
+                    break; // backingManager can only have 1 trade open at a time
+                }
+            }
+        }
+
+        // If no auctions ongoing, try to find a new auction to start
+        if (bm.tradesOpen() == 0) {
             // Try to launch auctions
             try bm.rebalance(TradeKind.DUTCH_AUCTION) {
                 // Find the started auction

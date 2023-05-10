@@ -72,6 +72,8 @@ interface IFacadeRead {
         );
 
     /// To use this, call via callStatic.
+    /// If canStart is true, call backingManager.rebalance(). May require settling a
+    /// trade first; see auctionsSettleable.
     /// @return canStart true iff a recollateralization auction can be started
     /// @return sell The sell token in the auction
     /// @return buy The buy token in the auction
