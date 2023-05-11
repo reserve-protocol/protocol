@@ -81,6 +81,10 @@ async function main() {
   await wPool.deployed()
   await (await wPool.initialize(MIM_THREE_POOL_POOL_ID)).wait()
 
+  console.log(
+    `Deployed wrapper for Convex Stable MIM/3Pool on ${hre.network.name} (${chainId}): ${wPool.address} `
+  )
+
   const collateral = <CvxStableMetapoolCollateral>await CvxStableCollateralFactory.connect(
     deployer
   ).deploy(
@@ -117,7 +121,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
-    `Deployed Convex RToken Metapool Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+    `Deployed Convex Metapool Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
   assetCollDeployments.collateral.cvxMIM3Pool = collateral.address

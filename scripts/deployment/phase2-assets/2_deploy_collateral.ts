@@ -400,6 +400,10 @@ async function main() {
     networkConfig[chainId].COMPTROLLER!
   )
 
+  await cDaiVault.deployed()
+
+  console.log(`Deployed Vault for cDAI on ${hre.network.name} (${chainId}): ${cDaiVault.address} `)
+
   const { collateral: cDaiCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
@@ -430,6 +434,12 @@ async function main() {
     `${await cUsdc.name()} Vault`,
     `${await cUsdc.symbol()}-VAULT`,
     networkConfig[chainId].COMPTROLLER!
+  )
+
+  await cUsdcVault.deployed()
+
+  console.log(
+    `Deployed Vault for cUSDC on ${hre.network.name} (${chainId}): ${cUsdcVault.address} `
   )
 
   const { collateral: cUsdcCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
@@ -464,6 +474,12 @@ async function main() {
     networkConfig[chainId].COMPTROLLER!
   )
 
+  await cUsdtVault.deployed()
+
+  console.log(
+    `Deployed Vault for cUSDT on ${hre.network.name} (${chainId}): ${cUsdtVault.address} `
+  )
+
   const { collateral: cUsdtCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
@@ -496,6 +512,12 @@ async function main() {
     networkConfig[chainId].COMPTROLLER!
   )
 
+  await cUsdpVault.deployed()
+
+  console.log(
+    `Deployed Vault for cUSDP on ${hre.network.name} (${chainId}): ${cUsdpVault.address} `
+  )
+
   const { collateral: cUsdpCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
@@ -526,6 +548,12 @@ async function main() {
     `${await cWBTC.name()} Vault`,
     `${await cWBTC.symbol()}-VAULT`,
     networkConfig[chainId].COMPTROLLER!
+  )
+
+  await cWBTCVault.deployed()
+
+  console.log(
+    `Deployed Vault for cWBTC on ${hre.network.name} (${chainId}): ${cWBTCVault.address} `
   )
 
   const wbtcOracleError = fp('0.02') // 2%
@@ -565,6 +593,10 @@ async function main() {
     `${await cETH.symbol()}-VAULT`,
     networkConfig[chainId].COMPTROLLER!
   )
+
+  await cETHVault.deployed()
+
+  console.log(`Deployed Vault for cETH on ${hre.network.name} (${chainId}): ${cETHVault.address} `)
 
   const { collateral: cETHCollateral } = await hre.run('deploy-ctoken-selfreferential-collateral', {
     priceTimeout: priceTimeout.toString(),

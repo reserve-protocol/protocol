@@ -75,6 +75,10 @@ async function main() {
   await w3Pool.deployed()
   await (await w3Pool.initialize(THREE_POOL_CVX_POOL_ID)).wait()
 
+  console.log(
+    `Deployed wrapper for Convex Stable 3Pool on ${hre.network.name} (${chainId}): ${w3Pool.address} `
+  )
+
   const collateral = <CvxStableCollateral>await CvxStableCollateralFactory.connect(deployer).deploy(
     {
       erc20: w3Pool.address,
