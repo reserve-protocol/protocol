@@ -1,4 +1,5 @@
 import hre from 'hardhat'
+import * as readline from 'readline'
 import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber, BigNumberish } from 'ethers'
@@ -148,4 +149,58 @@ export const getEtherscanBaseURL = (chainId: number, api = false) => {
   if (api) prefix = chainId == 1 ? 'api.' : `api-${hre.network.name}.`
   else prefix = chainId == 1 ? '' : `${hre.network.name}.`
   return `https://${prefix}etherscan.io`
+}
+
+export const getEmptyDeployment = (): IDeployments => {
+  return {
+    prerequisites: {
+      RSR: '',
+      RSR_FEED: '',
+      GNOSIS_EASY_AUCTION: '',
+    },
+    tradingLib: '',
+    basketLib: '',
+    facadeRead: '',
+    facadeWriteLib: '',
+    cvxMiningLib: '',
+    facadeMonitor: '',
+    facadeWrite: '',
+    facadeAct: '',
+    deployer: '',
+    rsrAsset: '',
+    implementations: {
+      main: '',
+      trading: { gnosisTrade: '', dutchTrade: '' },
+      components: {
+        assetRegistry: '',
+        backingManager: '',
+        basketHandler: '',
+        broker: '',
+        distributor: '',
+        furnace: '',
+        rsrTrader: '',
+        rTokenTrader: '',
+        rToken: '',
+        stRSR: '',
+      },
+    },
+  }
+}
+
+export const prompt = async (query: string): Promise<string> => {
+  if (!useEnv('SKIP_PROMPT')) {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    })
+
+    return new Promise<string>((resolve) =>
+      rl.question(query, (ans) => {
+        rl.close()
+        resolve(ans)
+      })
+    )
+  } else {
+    return ''
+  }
 }
