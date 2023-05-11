@@ -48,6 +48,7 @@ async function main() {
   await (<Asset>await ethers.getContractAt('Asset', crvAsset)).refresh()
 
   assetCollDeployments.assets.CRV = crvAsset
+  assetCollDeployments.erc20s.CRV = networkConfig[chainId].tokens.CRV
   deployedAssets.push(crvAsset.toString())
 
   /**************************************************************/

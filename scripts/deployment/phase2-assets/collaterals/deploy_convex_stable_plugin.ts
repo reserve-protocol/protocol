@@ -111,6 +111,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvx3Pool = collateral.address
+  assetCollDeployments.erc20s.cvx3Pool = w3Pool.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

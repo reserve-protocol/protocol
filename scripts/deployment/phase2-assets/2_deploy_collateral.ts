@@ -59,6 +59,7 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   assetCollDeployments.collateral.DAI = daiCollateral
+  assetCollDeployments.erc20s.DAI = networkConfig[chainId].tokens.DAI
   deployedCollateral.push(daiCollateral.toString())
 
   /********  Deploy Fiat Collateral - USDC  **************************/
@@ -80,6 +81,7 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   assetCollDeployments.collateral.USDC = usdcCollateral
+  assetCollDeployments.erc20s.USDC = networkConfig[chainId].tokens.USDC
   deployedCollateral.push(usdcCollateral.toString())
 
   /********  Deploy Fiat Collateral - USDT  **************************/
@@ -101,6 +103,7 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   assetCollDeployments.collateral.USDT = usdtCollateral
+  assetCollDeployments.erc20s.USDT = networkConfig[chainId].tokens.USDT
   deployedCollateral.push(usdtCollateral.toString())
 
   /********  Deploy Fiat Collateral - USDP  **************************/
@@ -122,6 +125,7 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   assetCollDeployments.collateral.USDP = usdpCollateral
+  assetCollDeployments.erc20s.USDP = networkConfig[chainId].tokens.USDP
   deployedCollateral.push(usdpCollateral.toString())
 
   /********  Deploy Fiat Collateral - TUSD  **************************/
@@ -141,6 +145,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.TUSD = tusdCollateral
+  assetCollDeployments.erc20s.TUSD = networkConfig[chainId].tokens.TUSD
   deployedCollateral.push(tusdCollateral.toString())
 
   /********  Deploy Fiat Collateral - BUSD  **************************/
@@ -162,6 +167,7 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   assetCollDeployments.collateral.BUSD = busdCollateral
+  assetCollDeployments.erc20s.BUSD = networkConfig[chainId].tokens.BUSD
   deployedCollateral.push(busdCollateral.toString())
 
   /********  Deploy AToken Fiat Collateral - aDAI  **************************/
@@ -205,6 +211,7 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   assetCollDeployments.collateral.aDAI = aDaiCollateral
+  assetCollDeployments.erc20s.aDAI = adaiStaticToken.address
   deployedCollateral.push(aDaiCollateral.toString())
 
   /********  Deploy AToken Fiat Collateral - aUSDC  **************************/
@@ -246,6 +253,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.aUSDC = aUsdcCollateral
+  assetCollDeployments.erc20s.aUSDC = ausdcStaticToken.address
   deployedCollateral.push(aUsdcCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -289,6 +297,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.aUSDT = aUsdtCollateral
+  assetCollDeployments.erc20s.aUSDT = ausdtStaticToken.address
   deployedCollateral.push(aUsdtCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -331,6 +340,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.aBUSD = aBusdCollateral
+  assetCollDeployments.erc20s.aBUSD = abusdStaticToken.address
   deployedCollateral.push(aBusdCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -374,6 +384,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.aUSDP = aUsdpCollateral
+  assetCollDeployments.erc20s.aUSDP = ausdpStaticToken.address
   deployedCollateral.push(aUsdpCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -399,13 +410,14 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString()
+    revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cDaiCollateral)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cDAI = cDaiCollateral
+  assetCollDeployments.erc20s.cDAI = cDaiVault.address
   deployedCollateral.push(cDaiCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -430,13 +442,14 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString()
+    revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdcCollateral)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cUSDC = cUsdcCollateral
+  assetCollDeployments.erc20s.cUSDC = cUsdcVault.address
   deployedCollateral.push(cUsdcCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -461,13 +474,14 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString()
+    revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdtCollateral)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cUSDT = cUsdtCollateral
+  assetCollDeployments.erc20s.cUSDT = cUsdtVault.address
   deployedCollateral.push(cUsdtCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -492,13 +506,14 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString()
+    revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cUsdpCollateral)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cUSDP = cUsdpCollateral
+  assetCollDeployments.erc20s.cUSDP = cUsdpVault.address
   deployedCollateral.push(cUsdpCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -529,13 +544,14 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.01').add(combinedBTCWBTCError).toString(), // ~3.5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString()
+    revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', cWBTCCollateral)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cWBTC = cWBTCCollateral
+  assetCollDeployments.erc20s.cWBTC = cWBTCVault.address
   deployedCollateral.push(cWBTCCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -566,6 +582,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.cETH = cETHCollateral
+  assetCollDeployments.erc20s.cETH = cETHVault.address
   deployedCollateral.push(cETHCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -589,6 +606,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.WBTC = wBTCCollateral
+  assetCollDeployments.erc20s.WBTC = networkConfig[chainId].tokens.WBTC
   deployedCollateral.push(wBTCCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -609,6 +627,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.WETH = wETHCollateral
+  assetCollDeployments.erc20s.WETH = networkConfig[chainId].tokens.WETH
   deployedCollateral.push(wETHCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -634,6 +653,7 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.EURT = eurtCollateral
+  assetCollDeployments.erc20s.EURT = networkConfig[chainId].tokens.EURT
   deployedCollateral.push(eurtCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

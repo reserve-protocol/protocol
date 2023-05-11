@@ -120,6 +120,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvxTriCrypto = collateral.address
+  assetCollDeployments.erc20s.cvxTriCrypto = w3Pool.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

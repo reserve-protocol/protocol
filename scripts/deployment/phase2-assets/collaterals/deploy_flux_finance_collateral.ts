@@ -14,7 +14,6 @@ import {
 } from '../../common'
 import { priceTimeout, oracleTimeout, revenueHiding } from '../../utils'
 import { ICollateral } from '../../../../typechain'
-import { ZERO_ADDRESS } from '#/tasks/deployment/create-deployer-registry'
 
 async function main() {
   // ==== Read Configuration ====
@@ -62,13 +61,14 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString()
+    revenueHiding: revenueHiding.toString(),
   })
   let collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdcCollateral)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDC = fUsdcCollateral
+  assetCollDeployments.erc20s.fUSDC = fUsdcVault.address
   deployedCollateral.push(fUsdcCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -93,13 +93,14 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString()
+    revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fUsdtCollateral)
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fUSDT = fUsdtCollateral
+  assetCollDeployments.erc20s.fUSDT = fUsdtVault.address
   deployedCollateral.push(fUsdtCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -124,13 +125,14 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString()
+    revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fDaiCollateral)
   await collateral.refresh()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fDAI = fDaiCollateral
+  assetCollDeployments.erc20s.fDAI = fDaiVault.address
   deployedCollateral.push(fDaiCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -155,13 +157,14 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.02').toString(), // 2%
     delayUntilDefault: bn('86400').toString(), // 24h
-    revenueHiding: revenueHiding.toString()
+    revenueHiding: revenueHiding.toString(),
   })
   collateral = <ICollateral>await ethers.getContractAt('ICollateral', fFRAXCollateral)
   await collateral.refresh()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.fFRAX = fFRAXCollateral
+  assetCollDeployments.erc20s.fFRAX = fFraxVault.address
   deployedCollateral.push(fFRAXCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

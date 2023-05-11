@@ -69,6 +69,7 @@ async function main() {
   console.log(`Deployed Rocketpool rETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
   assetCollDeployments.collateral.rETH = collateral.address
+  assetCollDeployments.erc20s.rETH = networkConfig[chainId].tokens.rETH
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
