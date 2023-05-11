@@ -61,7 +61,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
     uint256 private totalStakes; // Total of all stakes {qStRSR}
     uint256 private stakeRSR; // Amount of RSR backing all stakes {qRSR}
-    uint192 private stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
+    uint192 public stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
 
     uint192 private constant MAX_STAKE_RATE = 1e9 * FIX_ONE; // 1e9 D18{qStRSR/qRSR}
 
