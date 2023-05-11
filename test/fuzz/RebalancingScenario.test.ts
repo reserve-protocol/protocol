@@ -7,15 +7,10 @@ import { MainP1Fuzz } from "@typechain/MainP1Fuzz"
 import { impersonateAccount, loadFixture, mine, setBalance } from "@nomicfoundation/hardhat-network-helpers"
 import { advanceBlocks, advanceTime } from '../utils/time'
 import { RebalancingScenario } from '@typechain/RebalancingScenario'
-import { RebalancingScenarioStatus, addr, Components, FuzzTestContext, componentsOf, FuzzTestFixture } from './common'
+import { RebalancingScenarioStatus, Components, FuzzTestContext, componentsOf, FuzzTestFixture, ConAt, F, exa, user } from './common'
 import { bn, fp } from '#/common/numbers'
 import { CollateralStatus } from '../plugins/individual-collateral/pluginTestTypes'
 import { RoundingMode, TradeStatus } from '#/common/constants'
-
-const exa = 10n ** 18n // 1e18 in bigInt. "exa" is the SI prefix for 1000 ** 6
-const ConAt = ethers.getContractAt
-const F = ethers.getContractFactory
-const user = (i: number) => addr((i + 1) * 0x10000)
 
 type Fixture<T> = () => Promise<T>
 

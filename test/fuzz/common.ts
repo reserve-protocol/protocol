@@ -92,6 +92,7 @@ export function addr(n: BigNumberish): string {
 export const exa = 10n ** 18n // 1e18 in bigInt. "exa" is the SI prefix for 1000 ** 6
 export const ConAt = ethers.getContractAt
 export const F = ethers.getContractFactory
+export const user = (i: number) => addr((i + 1) * 0x10000)
 
 export const componentsOf = async (main: IMainFuzz) => ({
   rsr: await ConAt('ERC20Fuzz', await main.rsr()),
