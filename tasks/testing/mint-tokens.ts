@@ -110,7 +110,7 @@ task('give-rsr', 'Mints RSR to an address on a tenderly fork')
 
     const rsr = await hre.ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.RSR!)
 
-    const rsrWhale = "0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1"
+    const rsrWhale = '0x6bab6EB87Aa5a1e4A8310C73bDAAA8A5dAAd81C1'
     await whileImpersonating(hre, rsrWhale, async (signer) => {
       await rsr.connect(signer).transfer(params.address, fp('100e6'))
     })
