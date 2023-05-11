@@ -11,7 +11,7 @@ import "../../libraries/Fixed.sol";
 import "./Component.sol";
 import "./RewardableLib.sol";
 
-/// Abstract trading mixin for all Traders, to be paired with TradingLib
+/// Abstract trading mixin for BackingManager + RevenueTrader.
 /// @dev The use of Multicall here instead of MulticallUpgradeable cannot be changed
 ///   changed without breaking <3.0.0 RTokens. The only difference in
 ///   MulticallUpgradeable is the 50 slot storage gap and an empty constructor.
