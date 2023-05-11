@@ -114,6 +114,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvxeUSDFRAXBP = collateral.address
+  assetCollDeployments.erc20s.cvxeUSDFRAXBP = wPool.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

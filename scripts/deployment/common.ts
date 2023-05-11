@@ -27,6 +27,7 @@ export interface IDeployments {
 export interface IAssetCollDeployments {
   assets: ITokens
   collateral: ITokens & IPlugins
+  erc20s: ITokens & IPlugins
 }
 
 export interface IRTokenDeployments {

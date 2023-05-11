@@ -48,6 +48,7 @@ async function main() {
   await (<Asset>await ethers.getContractAt('Asset', stkAAVEAsset)).refresh()
 
   assetCollDeployments.assets.stkAAVE = stkAAVEAsset
+  assetCollDeployments.erc20s.stkAAVE = networkConfig[chainId].tokens.stkAAVE
   deployedAssets.push(stkAAVEAsset.toString())
 
   /********  Deploy Comp Asset **************************/
@@ -62,6 +63,7 @@ async function main() {
   await (<Asset>await ethers.getContractAt('Asset', compAsset)).refresh()
 
   assetCollDeployments.assets.COMP = compAsset
+  assetCollDeployments.erc20s.COMP = networkConfig[chainId].tokens.COMP
   deployedAssets.push(compAsset.toString())
 
   /**************************************************************/
