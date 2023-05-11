@@ -691,6 +691,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
     function requireNotTradingPausedOrFrozen() private notTradingPausedOrFrozen {}
 
     // ==== ERC20 ====
