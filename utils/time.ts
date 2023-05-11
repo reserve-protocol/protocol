@@ -46,7 +46,10 @@ export const advanceBlocks = async (hre: HardhatRuntimeEnvironment, blocks: numb
   await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x0']) // Temporary fix - Hardhat issue
 }
 
-export const advanceBlocksTenderly = async (hre: HardhatRuntimeEnvironment, blocks: number | BigNumber) => {
+export const advanceBlocksTenderly = async (
+  hre: HardhatRuntimeEnvironment,
+  blocks: number | BigNumber
+) => {
   let blockString: string = BigNumber.isBigNumber(blocks)
     ? blocks.toHexString()
     : '0x' + blocks.toString(16)

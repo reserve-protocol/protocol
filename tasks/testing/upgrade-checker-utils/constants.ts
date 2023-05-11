@@ -1,4 +1,4 @@
-import { networkConfig } from "#/common/configuration";
+import { networkConfig } from '#/common/configuration'
 
 export const whales: { [key: string]: string } = {
   [networkConfig['1'].tokens.USDT!.toLowerCase()]: '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503',

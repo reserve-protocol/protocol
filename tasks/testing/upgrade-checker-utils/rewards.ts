@@ -1,10 +1,10 @@
-import { fp } from "#/common/numbers"
-import { whileImpersonating } from "#/utils/impersonation"
-import { advanceBlocks, advanceTime } from "#/utils/time"
-import { IRewardable } from "@typechain/IRewardable"
-import { formatEther } from "ethers/lib/utils"
-import { HardhatRuntimeEnvironment } from "hardhat/types"
-import { runTrade } from "../upgrade-checker-utils/trades"
+import { fp } from '#/common/numbers'
+import { whileImpersonating } from '#/utils/impersonation'
+import { advanceBlocks, advanceTime } from '#/utils/time'
+import { IRewardable } from '@typechain/IRewardable'
+import { formatEther } from 'ethers/lib/utils'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { runTrade } from '../upgrade-checker-utils/trades'
 
 const claimRewards = async (claimer: IRewardable) => {
   const resp = await claimer.claimRewards()
