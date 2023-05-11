@@ -410,19 +410,18 @@ contract ChaosOpsScenario {
         main.rToken().issueTo(recipient, amount);
     }
 
-    function redeem(uint256 amount, uint48 basketNonce) public asSender {
+    function redeem(uint256 amount) public asSender {
         _saveRTokenRate();
-        main.rToken().redeem(amount, basketNonce);
+        main.rToken().redeem(amount);
     }
 
     function redeemTo(
         uint256 amount,
-        uint8 recipientID,
-        uint48 basketNonce
+        uint8 recipientID
     ) public asSender {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
-        main.rToken().redeemTo(recipient, amount, basketNonce);
+        main.rToken().redeemTo(recipient, amount);
     }
 
     function monetizeDonations(uint8 tokenID) public {

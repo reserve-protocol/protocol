@@ -60,7 +60,7 @@ contract AssetRegistryP1Fuzz is AssetRegistryP1 {
 }
 
 contract BasketHandlerP1Fuzz is BasketHandlerP1 {
-    using BasketLib for Basket;
+    using BasketLibP1 for Basket;
     Basket internal prev;
 
     function _msgSender() internal view virtual override returns (address) {

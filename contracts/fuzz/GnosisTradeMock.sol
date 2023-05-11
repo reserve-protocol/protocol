@@ -182,7 +182,7 @@ contract MarketMock is IMarketMock {
         IRTokenFuzz rtoken = IRTokenFuzz(address(main.rToken()));
 
         // Redeem these tokens
-        rtoken.redeem(rtokenAmt, main.basketHandler().nonce());
+        rtoken.redeem(rtokenAmt);
 
         // Burn the backing tokens we received
         (address[] memory tokens, ) = rtoken.quote(rtokenAmt, FLOOR);

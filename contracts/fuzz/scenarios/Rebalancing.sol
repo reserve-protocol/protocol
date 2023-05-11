@@ -469,26 +469,25 @@ contract RebalancingScenario {
         main.rToken().issueTo(recipient, amount);
     }
 
-    function redeem(uint256 amount, uint48 basketNonce)
+    function redeem(uint256 amount)
         public
         onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
         asSender
     {
         _saveRTokenRate();
-        main.rToken().redeem(amount, basketNonce);
+        main.rToken().redeem(amount);
     }
 
     function redeemTo(
         uint256 amount,
-        uint8 recipientID,
-        uint48 basketNonce
+        uint8 recipientID
     )   public
         onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
         asSender
     {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
-        main.rToken().redeemTo(recipient, amount, basketNonce);
+        main.rToken().redeemTo(recipient, amount);
     }
 
     function monetizeDonations(uint8 tokenID) public {

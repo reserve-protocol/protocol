@@ -9,7 +9,6 @@ import "../interfaces/IAssetRegistry.sol";
 import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
-import "../libraries/Basket.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/BasketLib.sol";
 import "./mixins/Component.sol";
