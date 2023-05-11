@@ -1,21 +1,24 @@
-import hre, { ethers } from 'hardhat'
+import { ethers } from 'hardhat'
 import { Signer, Wallet } from "ethers"
-import fuzzTests, { Components, FuzzTestContext, componentsOf, FuzzTestFixture } from "./commonTests"
+import fuzzTests from "./commonTests"
 import { NormalOpsScenario } from "@typechain/NormalOpsScenario"
 import { MainP1Fuzz } from "@typechain/MainP1Fuzz"
-import { impersonateAccount, mine, setBalance, takeSnapshot } from "@nomicfoundation/hardhat-network-helpers"
+import { impersonateAccount, loadFixture, mine, setBalance } from "@nomicfoundation/hardhat-network-helpers"
 import { advanceBlocks, advanceTime } from '../utils/time'
+import { expect } from 'chai'
+import { CollateralStatus } from '../plugins/individual-collateral/pluginTestTypes'
+import { whileImpersonating } from '../utils/impersonation'
+import { fp } from '#/common/numbers'
+import { addr, Components, FuzzTestContext, componentsOf, FuzzTestFixture } from './common'
 
 const exa = 10n ** 18n // 1e18 in bigInt. "exa" is the SI prefix for 1000 ** 6
 const ConAt = ethers.getContractAt
 const F = ethers.getContractFactory
+const user = (i: number) => addr((i + 1) * 0x10000)
 
 type Fixture<T> = () => Promise<T>
 
 const createFixture: Fixture<FuzzTestFixture> = async () => {
-    // context variables
-    let testType: string = "Normal"
-
     let scenario: NormalOpsScenario
     let main: MainP1Fuzz
     let comp: Components
@@ -96,7 +99,6 @@ const createFixture: Fixture<FuzzTestFixture> = async () => {
     warmupPeriod = await comp.basketHandler.warmupPeriod()
     
     return {
-      testType,
       scenario,
       main,
       comp,
@@ -116,8 +118,170 @@ const createFixture: Fixture<FuzzTestFixture> = async () => {
     }
 }
 
+const scenarioSpecificTests = () => {
+  let scenario: NormalOpsScenario
+  let main: MainP1Fuzz
+  let comp: Components
+  let alice: Signer
+  let tokenIDs: Map<string, number>
+  let warmup: () => void
+
+  beforeEach(async () => {
+    const f = await loadFixture(createFixture)
+    scenario = f.scenario as NormalOpsScenario
+    main = f.main
+    comp = f.comp
+    alice = f.alice
+    tokenIDs = f.tokenIDs
+    warmup = f.warmup
+  })
+  
+  it('deploys as expected', async () => {
+    // users
+    expect(await main.numUsers()).to.equal(3)
+    expect(await main.users(0)).to.equal(user(0))
+    expect(await main.users(1)).to.equal(user(1))
+    expect(await main.users(2)).to.equal(user(2))
+
+    // auth state
+    expect(await main.frozen()).to.equal(false)
+    expect(await main.tradingPausedOrFrozen()).to.equal(false)
+    expect(await main.issuancePausedOrFrozen()).to.equal(false)
+
+    // tokens and user balances
+    const syms = ['C0', 'C1', 'C2', 'R0', 'R1', 'USD0', 'USD1', 'USD2']
+    expect(await main.numTokens()).to.equal(syms.length)
+    for (const sym of syms) {
+      const tokenAddr = await main.tokenBySymbol(sym)
+      const token = await ConAt('ERC20Fuzz', tokenAddr)
+      expect(await token.symbol()).to.equal(sym)
+      for (let u = 0; u < 3; u++) {
+        expect(await token.balanceOf(user(u))).to.equal(fp(1e6))
+      }
+      await comp.assetRegistry.toAsset(tokenAddr)
+    }
+
+    // assets and collateral
+    const erc20s = await comp.assetRegistry.erc20s()
+    expect(erc20s.length).to.equal(10)
+    for (const erc20 of erc20s) {
+      await comp.assetRegistry.toAsset(erc20)
+    }
+
+    // relations between components and their addresses
+    expect(await comp.assetRegistry.isRegistered(comp.rsr.address)).to.be.true
+    expect(await comp.assetRegistry.isRegistered(comp.rToken.address)).to.be.true
+    expect(await comp.rToken.main()).to.equal(main.address)
+    expect(await comp.stRSR.main()).to.equal(main.address)
+    expect(await comp.assetRegistry.main()).to.equal(main.address)
+    expect(await comp.basketHandler.main()).to.equal(main.address)
+    expect(await comp.backingManager.main()).to.equal(main.address)
+    expect(await comp.distributor.main()).to.equal(main.address)
+    expect(await comp.rsrTrader.main()).to.equal(main.address)
+    expect(await comp.rTokenTrader.main()).to.equal(main.address)
+    expect(await comp.furnace.main()).to.equal(main.address)
+    expect(await comp.broker.main()).to.equal(main.address)
+
+    expect(await comp.basketHandler.status()).to.equal(CollateralStatus.SOUND)
+  })
+
+  it('has only initially-true properties', async () => {
+    expect(await scenario.echidna_ratesNeverFall()).to.be.true
+    expect(await scenario.echidna_isFullyCollateralized()).to.be.true
+    expect(await scenario.echidna_quoteProportionalToBasket()).to.be.true
+
+    // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
+    await comp.basketHandler.savePrev()
+    await whileImpersonating(scenario.address, async (asOwner) => {
+      await comp.basketHandler.connect(asOwner).refreshBasket()
+    })
+    expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
+  })
+
+  describe('does not have the bug in which', () => {
+    it('refreshBasket fails after just one call to updatePrice', async () => {
+      await scenario.updatePrice(0, 0, 0, 0, 0)
+
+      // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
+      await comp.basketHandler.savePrev()
+      await whileImpersonating(scenario.address, async (asOwner) => {
+        await comp.basketHandler.connect(asOwner).refreshBasket()
+      })
+      expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
+    })
+
+    it('rates fall after a tiny issuance', async () => {
+      await warmup()
+      await scenario.connect(alice).issue(1)
+      expect(await scenario.echidna_ratesNeverFall()).to.be.true
+    })
+
+    it('backingManager issues double revenue', async () => {
+      await warmup()
+      // Have some RToken in existance
+      await scenario.connect(alice).issue(1e6)
+
+      // cause C0 to grow against its ref unit
+      await scenario.updatePrice(0, fp(1.1), 0, 0, fp(1))
+
+      // call manageTokens([C0, C0])
+      await scenario.pushBackingToManage(0)
+      await scenario.pushBackingToManage(0)
+      await expect(scenario.forwardRevenue()).to.be.reverted
+
+      expect(await scenario.echidna_isFullyCollateralized()).to.be.true
+    })
+
+    it('stRSR tries to pay revenue to no stakers', async () => {
+      await advanceTime(600000)
+      await scenario.distributeRevenue(0, 0, exa)
+      await advanceTime(200000)
+      await scenario.payRSRProfits()
+      await advanceTime(600000)
+      await scenario.payRSRProfits()
+      expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
+    })
+
+    it('stRSRInvariants has an out-of-bounds access', async () => {
+      await scenario.connect(alice).stake(1)
+      await scenario.connect(alice).unstake(1)
+      await advanceTime(1213957)
+      await scenario.connect(alice).withdrawAvailable()
+      expect(await scenario.callStatic.echidna_stRSRInvariants()).to.be.true
+      // fails due to Panic(0x32), out-of-bounds array access
+    })
+
+    it('rate falling after distributing revenue, staking, and unstaking', async () => {
+      await advanceTime(410_000)
+      await scenario.distributeRevenue(0, 0, 50) // Distribute 50 atto RSR from alice
+      await advanceTime(410_000)
+      await scenario.connect(alice).stake(1)
+      await advanceTime(410_000)
+      await scenario.connect(alice).unstake(1)
+
+      expect(await scenario.callStatic.echidna_ratesNeverFall()).to.be.true
+    })
+  })
+
+  it('sends rtoken donations to the backing manager', async () => {
+    const tokenAddr = await main.someToken(0)
+    const token = await ConAt('ERC20Fuzz', tokenAddr)
+    const amt = fp('10')
+    const bmBalBefore = await token.balanceOf(comp.backingManager.address)
+    const rTokBalBefore = await token.balanceOf(comp.rToken.address)
+    await token.connect(alice).transfer(comp.rToken.address, amt)
+    await scenario.monetizeDonations(0)
+    const bmBalAFter = await token.balanceOf(comp.backingManager.address)
+    const rTokBalAfter = await token.balanceOf(comp.rToken.address)
+    expect(rTokBalAfter).to.equal(0)
+    expect(bmBalAFter).to.equal(bmBalBefore.add(rTokBalBefore).add(amt))
+  })
+}
+
 const context: FuzzTestContext<FuzzTestFixture> = {
-    f: createFixture
+    f: createFixture,
+    testType: "Normal",
+    scenarioSpecificTests
 }
 
 fuzzTests(context)

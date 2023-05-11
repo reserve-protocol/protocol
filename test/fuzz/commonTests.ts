@@ -1,6 +1,4 @@
 import { ethers } from 'hardhat'
-import { IMainFuzz } from '@typechain/IMainFuzz'
-import { NormalOpsScenario } from '@typechain/NormalOpsScenario'
 import { expect } from 'chai'
 import { MainP1Fuzz } from '@typechain/MainP1Fuzz'
 import { Wallet, Signer, BigNumber } from 'ethers'
@@ -12,65 +10,13 @@ import {
   loadFixture,
 } from '@nomicfoundation/hardhat-network-helpers'
 import { fp } from '#/common/numbers'
-import { RoundingMode, TradeStatus, CollateralStatus } from '../../common/constants'
-import { addr } from './common'
+import { RoundingMode, TradeStatus } from '../../common/constants'
+import { Components, ConAt, F, FuzzTestContext, FuzzTestFixture, Scenario, addr, exa } from './common'
 import { whileImpersonating } from '../utils/impersonation'
-import { advanceBlocks, advanceTime } from '../utils/time'
-import { RebalancingScenario } from '@typechain/RebalancingScenario'
-import { ChaosOpsScenario } from '@typechain/ChaosOpsScenario'
-
-const exa = 10n ** 18n // 1e18 in bigInt. "exa" is the SI prefix for 1000 ** 6
-const ConAt = ethers.getContractAt
-const F = ethers.getContractFactory
-
-export const componentsOf = async (main: IMainFuzz) => ({
-  rsr: await ConAt('ERC20Fuzz', await main.rsr()),
-  rToken: await ConAt('RTokenP1Fuzz', await main.rToken()),
-  stRSR: await ConAt('StRSRP1Fuzz', await main.stRSR()),
-  assetRegistry: await ConAt('AssetRegistryP1Fuzz', await main.assetRegistry()),
-  basketHandler: await ConAt('BasketHandlerP1Fuzz', await main.basketHandler()),
-  backingManager: await ConAt('BackingManagerP1Fuzz', await main.backingManager()),
-  distributor: await ConAt('DistributorP1Fuzz', await main.distributor()),
-  rsrTrader: await ConAt('RevenueTraderP1Fuzz', await main.rsrTrader()),
-  rTokenTrader: await ConAt('RevenueTraderP1Fuzz', await main.rTokenTrader()),
-  furnace: await ConAt('FurnaceP1Fuzz', await main.furnace()),
-  broker: await ConAt('BrokerP1Fuzz', await main.broker()),
-})
-
-export type Components = Awaited<ReturnType<typeof componentsOf>>
-
-export type Scenario = NormalOpsScenario | RebalancingScenario | ChaosOpsScenario
-
-export type FuzzTestFixture = {
-  testType: string
-  scenario: Scenario
-  main: MainP1Fuzz
-  comp: Components
-  owner: Wallet
-  alice: Signer
-  bob: Signer
-  carol: Signer
-  aliceAddr: string
-  bobAddr: string
-  carolAddr: string
-  addrIDs: Map<string, number>
-  tokenIDs: Map<string, number>
-  warmup: () => void
-  collaterals: string[]
-  rewards: string[]
-  stables: string[]
-}
-
-type Fixture<T> = () => Promise<T>
-
-export interface FuzzTestContext<T extends FuzzTestFixture> {
-  f: Fixture<T>
-}
+import { advanceTime } from '../utils/time'
 
 export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X>) {
-  describe('common mutators', () => {
-    let testType: string
-
+  describe(`${context.testType} Fuzz Tests`, () => {
     let scenario: Scenario
     let main: MainP1Fuzz
     let comp: Components
@@ -102,7 +48,6 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
     beforeEach(async () => {
       const f = await loadFixture(context.f)
-      testType = f.testType
       scenario = f.scenario
       main = f.main
       comp = f.comp
@@ -122,7 +67,9 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       numTokens = collaterals.length + rewards.length + stables.length
     })
 
-    describe.only('contains a mock Broker, TradingMock, and MarketMock, which...', () => {
+    describe(`${context.testType} specific tests`, context.scenarioSpecificTests)
+
+    describe('contains a mock Broker, TradingMock, and MarketMock, which...', () => {
       it('lets users trade two fiatcoins', async () => {
         const usd0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol(stables[0]))
         const rsr = comp.rsr
@@ -160,7 +107,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
         expect(await trade.canSettle()).to.be.true
 
-        if (testType == 'Chaos') {
+        if (context.testType == 'Chaos') {
           // Manually update MarketMock seed to minBuyAmount, will provide the expected tokens
           await scenario.pushSeedForTrades(tradeReq.minBuyAmount)
         }
@@ -725,11 +672,11 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(await comp.rsr.balanceOf(comp.rsrTrader.address)).to.be.gt(0)
     })
 
-    after('stop impersonations', async () => {
-      await stopImpersonatingAccount(aliceAddr)
-      await stopImpersonatingAccount(bobAddr)
-      await stopImpersonatingAccount(carolAddr)
-      await stopImpersonatingAccount(main.address)
-    })
+    // after('stop impersonations', async () => {
+    //   await stopImpersonatingAccount(aliceAddr)
+    //   await stopImpersonatingAccount(bobAddr)
+    //   await stopImpersonatingAccount(carolAddr)
+    //   await stopImpersonatingAccount(main.address)
+    // })
   })
 }
