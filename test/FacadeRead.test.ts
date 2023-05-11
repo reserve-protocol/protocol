@@ -9,17 +9,23 @@ import {
   Asset,
   CTokenVaultMock,
   ERC20Mock,
+  FacadeAct,
   FacadeRead,
   FacadeTest,
   MockV3Aggregator,
   StaticATokenMock,
   StRSRP1,
-  TestIBasketHandler,
+  IAssetRegistry,
+  IBackingManager,
+  IBasketHandler,
+  TestIBroker,
+  TestIRevenueTrader,
   TestIMain,
   TestIStRSR,
   TestIRToken,
   USDCMock,
 } from '../typechain'
+import { advanceTime } from './utils/time'
 import {
   Collateral,
   Implementation,
@@ -28,7 +34,7 @@ import {
   ORACLE_ERROR,
 } from './fixtures'
 import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
-import { CollateralStatus, MAX_UINT256 } from '#/common/constants'
+import { CollateralStatus, TradeKind, MAX_UINT256 } from '#/common/constants'
 import { mintCollaterals } from './utils/tokens'
 
 describe('FacadeRead contract', () => {
@@ -55,12 +61,18 @@ describe('FacadeRead contract', () => {
   // Facade
   let facade: FacadeRead
   let facadeTest: FacadeTest
+  let facadeAct: FacadeAct
 
   // Main
   let rToken: TestIRToken
   let main: TestIMain
   let stRSR: TestIStRSR
-  let basketHandler: TestIBasketHandler
+  let basketHandler: IBasketHandler
+  let rTokenTrader: TestIRevenueTrader
+  let rsrTrader: TestIRevenueTrader
+  let backingManager: IBackingManager
+  let broker: TestIBroker
+  let assetRegistry: IAssetRegistry
 
   // RSR
   let rsrAsset: Asset
@@ -69,8 +81,23 @@ describe('FacadeRead contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, rsrAsset, basket, facade, facadeTest, rToken, main, basketHandler } =
-      await loadFixture(defaultFixture))
+    ;({
+      stRSR,
+      rsr,
+      rsrAsset,
+      basket,
+      facade,
+      facadeAct,
+      facadeTest,
+      rToken,
+      main,
+      basketHandler,
+      backingManager,
+      rTokenTrader,
+      rsrTrader,
+      broker,
+      assetRegistry,
+    } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -140,7 +167,7 @@ describe('FacadeRead contract', () => {
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmount)
 
       // With 0 baskets needed - Returns correct value
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
@@ -231,7 +258,7 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.equal(fp('1'))
 
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmount)
 
       // Check values = 0 (no supply)
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
@@ -340,58 +367,116 @@ describe('FacadeRead contract', () => {
       expect(overCollateralization).to.equal(0)
     })
 
-    it('Should return traderBalances correctly', async () => {
-      // BackingManager
-      const backingManager = await ethers.getContractAt(
-        'TestIBackingManager',
-        await main.backingManager()
-      )
-      let [erc20s, balances, balancesNeeded] = await facade.traderBalances(
-        rToken.address,
-        backingManager.address
-      )
+    it('Should return balancesAcrossAllTraders correctly', async () => {
+      // Send 1 token to rTokenTrader; 2 to rsrTrader
+      await token.connect(addr1).transfer(rTokenTrader.address, 1)
+      await token.connect(addr1).transfer(rsrTrader.address, 2)
+      await usdc.connect(addr1).transfer(rTokenTrader.address, 1)
+      await usdc.connect(addr1).transfer(rsrTrader.address, 2)
+      await aToken.connect(addr1).transfer(rTokenTrader.address, 1)
+      await aToken.connect(addr1).transfer(rsrTrader.address, 2)
+      await cTokenVault.connect(addr1).transfer(rTokenTrader.address, 1)
+      await cTokenVault.connect(addr1).transfer(rsrTrader.address, 2)
+
+      // Balances
+      const [erc20s, balances, balancesNeededByBackingManager] =
+        await facade.callStatic.balancesAcrossAllTraders(rToken.address)
       expect(erc20s.length).to.equal(8)
       expect(balances.length).to.equal(8)
-      expect(balancesNeeded.length).to.equal(8)
+      expect(balancesNeededByBackingManager.length).to.equal(8)
 
-      const backingBuffer = await backingManager.backingBuffer()
       for (let i = 0; i < 8; i++) {
         let bal = bn('0')
         if (erc20s[i] == token.address) bal = issueAmount.div(4)
         if (erc20s[i] == usdc.address) bal = issueAmount.div(4).div(bn('1e12'))
         if (erc20s[i] == aToken.address) bal = issueAmount.div(4)
         if (erc20s[i] == cTokenVault.address) bal = issueAmount.div(4).mul(50).div(bn('1e10'))
-        expect(balances[i]).to.equal(bal)
 
-        const balNeeded = bal.add(bal.mul(backingBuffer).div(fp('1')))
-        expect(balancesNeeded[i]).to.equal(balNeeded)
+        if (
+          [token.address, usdc.address, aToken.address, cTokenVault.address].indexOf(erc20s[i]) >= 0
+        ) {
+          expect(balances[i]).to.equal(bal.add(3)) // expect 3 more
+          expect(balancesNeededByBackingManager[i]).to.equal(bal)
+        } else {
+          expect(balances[i]).to.equal(0)
+          expect(balancesNeededByBackingManager[i]).to.equal(0)
+        }
       }
+    })
 
-      // RTokenTrader
-      ;[erc20s, balances, balancesNeeded] = await facade.traderBalances(
-        rToken.address,
-        await main.rTokenTrader()
-      )
-      expect(erc20s.length).to.equal(8)
-      expect(balances.length).to.equal(8)
-      expect(balancesNeeded.length).to.equal(8)
-      for (let i = 0; i < 8; i++) {
-        expect(balances[i]).to.equal(0)
-        expect(balancesNeeded[i]).to.equal(0)
-      }
+    it('Should return revenue + chain into FacadeAct.runRevenueAuctions', async () => {
+      const traders = [rTokenTrader, rsrTrader]
+      for (let traderIndex = 0; traderIndex < traders.length; traderIndex++) {
+        const trader = traders[traderIndex]
 
-      // RSRTrader
-      ;[erc20s, balances, balancesNeeded] = await facade.traderBalances(
-        rToken.address,
-        await main.rsrTrader()
-      )
-      expect(erc20s.length).to.equal(8)
-      expect(balances.length).to.equal(8)
-      expect(balancesNeeded.length).to.equal(8)
-      for (let i = 0; i < 8; i++) {
-        expect(balances[i]).to.equal(0)
-        expect(balancesNeeded[i]).to.equal(0)
+        const minTradeVolume = await trader.minTradeVolume()
+        const auctionLength = await broker.batchAuctionLength()
+        const tokenSurplus = bn('0.5e18')
+        await token.connect(addr1).transfer(trader.address, tokenSurplus)
+
+        // revenue
+        const [erc20s, canStart, surpluses, minTradeAmounts] =
+          await facade.callStatic.revenueOverview(trader.address)
+        expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
+
+        const erc20sToStart = []
+        for (let i = 0; i < 8; i++) {
+          if (erc20s[i] == token.address) {
+            erc20sToStart.push(erc20s[i])
+            expect(canStart[i]).to.equal(true)
+            expect(surpluses[i]).to.equal(tokenSurplus)
+          } else {
+            expect(canStart[i]).to.equal(false)
+            expect(surpluses[i]).to.equal(0)
+          }
+
+          const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
+          const [low] = await asset.price()
+          expect(minTradeAmounts[i]).to.equal(
+            minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low)
+          ) // 1% oracleError
+        }
+
+        // Run revenue auctions
+        await facadeAct.runRevenueAuctions(
+          trader.address,
+          [],
+          erc20sToStart,
+          TradeKind.DUTCH_AUCTION
+        )
+
+        // Nothing should be settleable
+        expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
+
+        // Advance time till auction ended
+        await advanceTime(auctionLength + 100)
+
+        // Now should be settleable
+        const settleable = await facade.auctionsSettleable(trader.address)
+        expect(settleable.length).to.equal(1)
+        expect(settleable[0]).to.equal(token.address)
       }
+    })
+
+    it('Should return nextRecollateralizationAuction', async () => {
+      // Setup prime basket
+      await basketHandler.connect(owner).setPrimeBasket([usdc.address], [fp('1')])
+
+      // Switch Basket
+      await expect(basketHandler.connect(owner).refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs(2, [usdc.address], [fp('1')], false)
+
+      // Trigger recollateralization
+      const sellAmt: BigNumber = await token.balanceOf(backingManager.address)
+
+      // Confirm nextRecollateralizationAuction is true
+      const [canStart, sell, buy, sellAmount] =
+        await facade.callStatic.nextRecollateralizationAuction(backingManager.address)
+      expect(canStart).to.equal(true)
+      expect(sell).to.equal(token.address)
+      expect(buy).to.equal(usdc.address)
+      expect(sellAmount).to.equal(sellAmt)
     })
 
     it('Should return basketBreakdown correctly for paused token', async () => {
@@ -401,7 +486,7 @@ describe('FacadeRead contract', () => {
 
     it('Should return basketBreakdown correctly when RToken supply = 0', async () => {
       // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmount)
 
       expect(await rToken.totalSupply()).to.equal(bn(0))
 

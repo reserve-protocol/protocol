@@ -19,7 +19,8 @@ type IEnvVars =
   | 'JOBS'
   | 'EXTREME'
   | 'SUBGRAPH_URL'
-  | 'MAINNET_PK'
+  | 'TENDERLY_RPC_URL'
+  | 'SKIP_PROMPT'
 
 export function useEnv(key: IEnvVars | IEnvVars[], _default = ''): string {
   if (typeof key === 'string') {

@@ -25,7 +25,7 @@ import { getTrade } from '../utils/trades'
 import { advanceTime } from '../utils/time'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -108,7 +108,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       rTokenTrader,
       rsrTrader,
       rTokenAsset,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     token0 = await (await ethers.getContractFactory('BadERC20')).deploy('Bad ERC20', 'BERC20')
@@ -142,6 +142,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       backupToken.address,
     ])
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(backupToken.address)
 
@@ -201,13 +202,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should revert during redemption', async () => {
-      await expect(
-        rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
-      ).to.be.revertedWith('No Decimals')
+      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.revertedWith('No Decimals')
 
       // Should work now
       await token0.setRevertDecimals(false)
-      await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmt)
     })
 
     it('should revert during trading', async () => {
@@ -216,7 +215,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(3, [backupToken.address], [fp('1')], false)
+        .withArgs(2, [backupToken.address], [fp('1')], false)
+      await advanceTime(config.warmupPeriod.toNumber() + 1)
       await expect(backingManager.forwardRevenue([])).to.be.reverted // can't catch No Decimals
       await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.reverted // can't catch No Decimals
     })
@@ -251,7 +251,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(3, [backupToken.address], [fp('1')], false)
+        .withArgs(2, [backupToken.address], [fp('1')], false)
 
       // Advance time post warmup period - SOUND just regained
       await advanceTime(Number(config.warmupPeriod) + 1)
@@ -302,14 +302,12 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should revert during redemption', async () => {
-      await expect(
-        rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
-      ).to.be.revertedWith('censored')
+      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.revertedWith('censored')
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
       await token0.setCensored(rToken.address, false)
-      await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmt)
     })
 
     it('should revert during trading', async () => {
@@ -318,7 +316,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(3, [backupToken.address], [fp('1')], false)
+        .withArgs(2, [backupToken.address], [fp('1')], false)
 
       // Advance time post warmup period - SOUND just regained
       await advanceTime(Number(config.warmupPeriod) + 1)
@@ -364,7 +362,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(3, [backupToken.address], [fp('1')], false)
+        .withArgs(2, [backupToken.address], [fp('1')], false)
 
       // Advance time post warmup period - SOUND just regained
       await advanceTime(Number(config.warmupPeriod) + 1)

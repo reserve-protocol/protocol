@@ -23,7 +23,7 @@ import {
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -88,7 +88,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       rsrTrader,
       rTokenTrader,
       facadeTest,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     token0 = <StaticATokenMock>erc20s[7] // aDAI
@@ -133,6 +133,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       backupToken.address,
     ])
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
 
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(wbtc.address)
@@ -236,7 +237,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       await targetUnitOracle.updateAnswer(bn('40000e8'))
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
+      expect(await rToken.connect(addr1).redeem(issueAmt))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await wbtc.balanceOf(addr1.address)).to.equal(initialBal)
     })

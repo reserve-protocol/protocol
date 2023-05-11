@@ -18,6 +18,7 @@ import forkBlockNumber from '#/test/integration/fork-block-numbers'
 require('#/tasks')
 
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
+const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
@@ -67,6 +68,15 @@ const config: HardhatUserConfig = {
       // gasPrice: 30_000_000_000,
       gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
+    tenderly: {
+      chainId: 1,
+      url: TENDERLY_RPC_URL,
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+      // gasPrice: 10_000_000_000,
+      gasMultiplier: 1.015, // 1.5% buffer; seen failures on RToken deployment and asset refreshes
+    }
   },
   solidity: {
     compilers: [
@@ -93,7 +103,11 @@ const config: HardhatUserConfig = {
     overrides: {
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
         version: '0.6.12',
-        settings: { optimizer: { enabled: true, runs: 1 } }, // to fit ContexStakingWrapper
+        settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
+      },
+      'contracts/facade/FacadeRead.sol': {
+        version: '0.8.17',
+        settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
       },
     },
   },

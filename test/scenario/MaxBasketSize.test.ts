@@ -25,7 +25,7 @@ import {
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -287,7 +287,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       basketHandler,
       facade,
       facadeTest,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Mint initial balances
     initialBal = bn('10000e18')
@@ -330,9 +330,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Redemption
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
+        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt))
       } else {
-        await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+        await rToken.connect(addr1).redeem(issueAmt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     })
@@ -467,9 +467,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Redemption
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
+        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt))
       } else {
-        await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+        await rToken.connect(addr1).redeem(issueAmt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     })

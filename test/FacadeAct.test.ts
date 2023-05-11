@@ -11,7 +11,7 @@ import {
   ZERO_ADDRESS,
   BN_SCALE_FACTOR,
 } from '../common/constants'
-import { bn, fp, toBNDecimals, divCeil } from '../common/numbers'
+import { bn, fp, divCeil } from '../common/numbers'
 import { IConfig } from '../common/configuration'
 import { advanceTime } from './utils/time'
 import { withinQuad } from './utils/matchers'
@@ -21,7 +21,6 @@ import {
   CTokenFiatCollateral,
   ERC20Mock,
   FacadeAct,
-  IFacadeRead,
   FiatCollateral,
   GnosisMock,
   IAssetRegistry,
@@ -88,7 +87,6 @@ describe('FacadeAct contract', () => {
 
   // Facade
   let facadeAct: FacadeAct
-  let facade: IFacadeRead
 
   // Main
   let rToken: TestIRToken
@@ -141,7 +139,6 @@ describe('FacadeAct contract', () => {
       collateral,
       basket,
       facadeAct,
-      facade,
       rToken,
       stRSR,
       config,
@@ -197,51 +194,6 @@ describe('FacadeAct contract', () => {
       await rToken.connect(addr1).issue(issueAmount)
     })
 
-    context('getRevenueAuctionERC20s/runRevenueAuctions', () => {
-      it('Revenues/Rewards', async () => {
-        const rewardAmountAAVE = bn('0.5e18')
-        const rewardAmountCOMP = bn('1e18')
-
-        // Setup AAVE + COMP rewards
-        await aToken.setRewards(backingManager.address, rewardAmountAAVE)
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-        await backingManager.claimRewards()
-
-        // getRevenueAuctionERC20s should return reward token
-        const rTokenERC20s = await facadeAct.callStatic.getRevenueAuctionERC20s(
-          rTokenTrader.address
-        )
-        expect(rTokenERC20s.length).to.equal(2)
-        expect(rTokenERC20s[0]).to.equal(aaveToken.address)
-        expect(rTokenERC20s[1]).to.equal(compToken.address)
-        const rsrERC20s = await facadeAct.callStatic.getRevenueAuctionERC20s(rsrTrader.address)
-        expect(rsrERC20s.length).to.equal(2)
-        expect(rsrERC20s[0]).to.equal(aaveToken.address)
-        expect(rsrERC20s[1]).to.equal(compToken.address)
-
-        // Run revenue auctions for both traders
-        await facadeAct.runRevenueAuctions(rTokenTrader.address, [], rTokenERC20s)
-        await facadeAct.runRevenueAuctions(rsrTrader.address, [], rsrERC20s)
-
-        // Nothing should be settleable
-        expect((await facade.auctionsSettleable(rTokenTrader.address)).length).to.equal(0)
-        expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
-
-        // Advance time till auction ended
-        await advanceTime(config.batchAuctionLength.add(100).toString())
-
-        // Now both should be settleable
-        const rTokenSettleable = await facade.auctionsSettleable(rTokenTrader.address)
-        expect(rTokenSettleable.length).to.equal(2)
-        expect(rTokenSettleable[0]).to.equal(aaveToken.address)
-        expect(rTokenSettleable[1]).to.equal(compToken.address)
-        const rsrSettleable = await facade.auctionsSettleable(rsrTrader.address)
-        expect(rsrSettleable.length).to.equal(2)
-        expect(rsrSettleable[0]).to.equal(aaveToken.address)
-        expect(rsrSettleable[1]).to.equal(compToken.address)
-      })
-    })
-
     context('getActCalldata', () => {
       it('No call required', async () => {
         // Via Facade get next call - No action required
@@ -286,6 +238,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         ).to.emit(basketHandler, 'BasketSet')
 
@@ -296,7 +249,7 @@ describe('FacadeAct contract', () => {
 
       it('Basket - Should handle no valid basket after refresh', async () => {
         // Redeem all RTokens
-        await rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())
+        await rToken.connect(addr1).redeem(issueAmount)
 
         // Set simple basket with only one collateral
         await basketHandler.connect(owner).setPrimeBasket([aToken.address], [fp('1')])
@@ -324,86 +277,6 @@ describe('FacadeAct contract', () => {
         expect(data).to.equal('0x')
       })
 
-      it('Trades in Backing Manager', async () => {
-        // Setup prime basket
-        await basketHandler.connect(owner).setPrimeBasket([usdc.address], [fp('1')])
-
-        // Switch Basket
-        await expect(basketHandler.connect(owner).refreshBasket())
-          .to.emit(basketHandler, 'BasketSet')
-          .withArgs(2, [usdc.address], [fp('1')], false)
-
-        // Trigger recollateralization
-        const sellAmt: BigNumber = await token.balanceOf(backingManager.address)
-        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
-
-        // Confirm canRunRecollateralizationAuctions is true
-        expect(
-          await facadeAct.callStatic.canRunRecollateralizationAuctions(backingManager.address)
-        ).to.equal(true)
-
-        // Run auction via Facade
-        let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
-        expect(addr).to.equal(backingManager.address)
-        expect(data).to.not.equal('0x')
-
-        await expect(
-          owner.sendTransaction({
-            to: addr,
-            data,
-          })
-        )
-          .to.emit(backingManager, 'TradeStarted')
-          .withArgs(
-            anyValue,
-            token.address,
-            usdc.address,
-            sellAmt,
-            toBNDecimals(minBuyAmt, 6).add(1)
-          )
-
-        // Confirm canRunRecollateralizationAuctions is false
-        expect(
-          await facadeAct.callStatic.canRunRecollateralizationAuctions(backingManager.address)
-        ).to.equal(false)
-
-        // Check state
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCollateralized()).to.equal(false)
-
-        // Perform Mock Bids for the new Token (addr1 has balance)
-        // Get fair price - all tokens
-        await usdc.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmt, 6))
-        await gnosis.placeBid(0, {
-          bidder: addr1.address,
-          sellAmount: sellAmt,
-          buyAmount: toBNDecimals(sellAmt, 6),
-        })
-
-        // Advance time till auction ended
-        await advanceTime(config.batchAuctionLength.add(100).toString())
-
-        // Confirm auctionsSettleable returns trade
-        const settleable = await facade.auctionsSettleable(backingManager.address)
-        expect(settleable.length).to.equal(1)
-        expect(settleable[0]).to.equal(token.address)
-
-        // Trade is ready to be settled - Call settle trade via  Facade
-        ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
-        expect(addr).to.equal(backingManager.address)
-        expect(data).to.not.equal('0x')
-
-        // End current auction
-        await expect(
-          owner.sendTransaction({
-            to: addr,
-            data,
-          })
-        )
-          .to.emit(backingManager, 'TradeSettled')
-          .withArgs(anyValue, token.address, usdc.address, sellAmt, toBNDecimals(sellAmt, 6))
-      })
-
       it('Revenues/Rewards', async () => {
         const rewardAmountAAVE = bn('0.5e18')
 
@@ -419,6 +292,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Collect revenue
@@ -438,6 +312,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Next call would start Revenue auction - RTokenTrader
@@ -450,6 +325,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rTokenTrader, 'TradeStarted')
@@ -471,6 +347,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rsrTrader, 'TradeStarted')
@@ -506,6 +383,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rTokenTrader, 'TradeSettled')
@@ -521,6 +399,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rsrTrader, 'TradeSettled')
@@ -560,6 +439,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Next call would start Revenue auction - RSR Trader
@@ -573,6 +453,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         )
           .to.emit(rsrTrader, 'TradeStarted')
@@ -802,6 +683,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Check rewards collected
@@ -817,6 +699,7 @@ describe('FacadeAct contract', () => {
           owner.sendTransaction({
             to: addr,
             data,
+            gasLimit: bn('10000000'),
           })
         ).to.emit(rsrTrader, 'TradeStarted')
 
@@ -832,6 +715,7 @@ describe('FacadeAct contract', () => {
         await owner.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // Check rewards collected - there are funds in the RTokenTrader now
@@ -866,6 +750,7 @@ describe('FacadeAct contract', () => {
         await addr1.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // RSR forwarded
@@ -897,6 +782,7 @@ describe('FacadeAct contract', () => {
         await addr1.sendTransaction({
           to: addr,
           data,
+          gasLimit: bn('10000000'),
         })
 
         // RToken forwarded

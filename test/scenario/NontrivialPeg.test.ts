@@ -7,6 +7,7 @@ import { CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
+import { advanceTime } from '../utils/time'
 import {
   ERC20Mock,
   IAssetRegistry,
@@ -19,7 +20,7 @@ import {
   TestIRToken,
 } from '../../typechain'
 import {
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -63,7 +64,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
 
     // Deploy fixture
     ;({ rsr, stRSR, config, rToken, assetRegistry, backingManager, basketHandler, rTokenAsset } =
-      await loadFixture(defaultFixture))
+      await loadFixture(defaultFixtureNoBasket))
 
     // Variable-peg ERC20
     token0 = await (await ethers.getContractFactory('ERC20Mock')).deploy('Peg ERC20', 'PERC20')
@@ -136,6 +137,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
 
         await basketHandler.setPrimeBasket([token0.address, token1.address], [fp('1'), fp('1')])
         await basketHandler.refreshBasket()
+        await advanceTime(config.warmupPeriod.toNumber() + 1)
 
         // Issue
         await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -155,7 +157,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
       })
 
       it('should respect differing scales during redemption', async () => {
-        await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+        await rToken.connect(addr1).redeem(issueAmt)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
       })

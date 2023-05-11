@@ -21,13 +21,19 @@ struct BasketRange {
  */
 interface IBasketHandler is IComponent {
     /// Emitted when the prime basket is set
+    /// @param nonce {basketNonce} The first nonce under the prime basket; may not exist yet
     /// @param erc20s The collateral tokens for the prime basket
     /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
     /// @param targetNames Each collateral token's targetName
-    event PrimeBasketSet(IERC20[] erc20s, uint192[] targetAmts, bytes32[] targetNames);
+    event PrimeBasketSet(
+        uint256 indexed nonce,
+        IERC20[] erc20s,
+        uint192[] targetAmts,
+        bytes32[] targetNames
+    );
 
     /// Emitted when the reference basket is set
-    /// @param nonce The basket nonce
+    /// @param nonce {basketNonce} The basket nonce
     /// @param erc20s The list of collateral tokens in the reference basket
     /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
     /// @param disabled True when the list of erc20s + refAmts may not be correct
@@ -119,6 +125,18 @@ interface IBasketHandler is IComponent {
         external
         view
         returns (address[] memory erc20s, uint256[] memory quantities);
+
+    /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
+    /// @param basketNonces An array of basket nonces to do redemption from
+    /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
+    /// @param amount {BU}
+    /// @return erc20s The backing collateral erc20s
+    /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
+    function quoteCustomRedemption(
+        uint48[] memory basketNonces,
+        uint192[] memory portions,
+        uint192 amount
+    ) external view returns (address[] memory erc20s, uint256[] memory quantities);
 
     /// @return top {BU} The number of partial basket units: e.g max(coll.map((c) => c.balAsBUs())
     ///         bottom {BU} The number of whole basket units held by the account

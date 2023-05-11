@@ -147,11 +147,6 @@ export default function fn<X extends CollateralFixtureContext>(
         itClaimsRewards('claims rewards (via collateral.claimRewards())', async () => {
           const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
           await mintCollateralTo(ctx, amount, alice, collateral.address)
-          console.log(
-            alice.address,
-            await ctx.tok.balanceOf(alice.address),
-            await ctx.tok.balanceOf(collateral.address)
-          )
           await advanceBlocks(1000)
           await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 

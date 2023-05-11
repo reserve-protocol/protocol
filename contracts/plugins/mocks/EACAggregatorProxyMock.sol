@@ -1,7 +1,4 @@
-/**
- *Submitted for verification at Etherscan.io on 2020-09-29
- */
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
 /**
@@ -15,7 +12,7 @@ contract Owned {
     event OwnershipTransferRequested(address indexed from, address indexed to);
     event OwnershipTransferred(address indexed from, address indexed to);
 
-    constructor() public {
+    constructor() {
         owner = msg.sender;
     }
 
@@ -76,7 +73,9 @@ interface AggregatorV3Interface_ {
     // getRoundData and latestRoundData should both raise "No data present"
     // if they do not have data to report, instead of returning unset values
     // which could be misinterpreted as actual reported values.
-    function getRoundData(uint80 _roundId)
+    function getRoundData(
+        uint80 _roundId
+    )
         external
         view
         returns (
@@ -118,9 +117,9 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
 
     uint256 private constant PHASE_OFFSET = 64;
     uint256 private constant PHASE_SIZE = 16;
-    uint256 private constant MAX_ID = 2**(PHASE_OFFSET + PHASE_SIZE) - 1;
+    uint256 private constant MAX_ID = 2 ** (PHASE_OFFSET + PHASE_SIZE) - 1;
 
-    constructor(address _aggregator) public Owned() {
+    constructor(address _aggregator) Owned() {
         setAggregator(_aggregator);
     }
 
@@ -160,11 +159,11 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
     function getAnswer(uint256 _roundId) public view virtual override returns (int256 answer) {
         if (_roundId > MAX_ID) return 0;
 
-        (uint16 phaseId, uint64 aggregatorRoundId) = parseIds(_roundId);
-        AggregatorV2V3Interface aggregator = phaseAggregators[phaseId];
-        if (address(aggregator) == address(0)) return 0;
+        (uint16 _phaseId, uint64 aggregatorRoundId) = parseIds(_roundId);
+        AggregatorV2V3Interface _aggregator = phaseAggregators[_phaseId];
+        if (address(_aggregator) == address(0)) return 0;
 
-        return aggregator.getAnswer(aggregatorRoundId);
+        return _aggregator.getAnswer(aggregatorRoundId);
     }
 
     /**
@@ -176,20 +175,16 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
      * an already answered Aggregator or use the recommended getRoundData
      * instead which includes better verification information.
      */
-    function getTimestamp(uint256 _roundId)
-        public
-        view
-        virtual
-        override
-        returns (uint256 updatedAt)
-    {
+    function getTimestamp(
+        uint256 _roundId
+    ) public view virtual override returns (uint256 updatedAt) {
         if (_roundId > MAX_ID) return 0;
 
-        (uint16 phaseId, uint64 aggregatorRoundId) = parseIds(_roundId);
-        AggregatorV2V3Interface aggregator = phaseAggregators[phaseId];
-        if (address(aggregator) == address(0)) return 0;
+        (uint16 _phaseId, uint64 aggregatorRoundId) = parseIds(_roundId);
+        AggregatorV2V3Interface _aggregator = phaseAggregators[_phaseId];
+        if (address(_aggregator) == address(0)) return 0;
 
-        return aggregator.getTimestamp(aggregatorRoundId);
+        return _aggregator.getTimestamp(aggregatorRoundId);
     }
 
     /**
@@ -232,7 +227,9 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
      * (Only some AggregatorV3Interface_ implementations return meaningful values)
      * @dev Note that answer and updatedAt may change between queries.
      */
-    function getRoundData(uint80 _roundId)
+    function getRoundData(
+        uint80 _roundId
+    )
         public
         view
         virtual
@@ -245,17 +242,17 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
             uint80 answeredInRound
         )
     {
-        (uint16 phaseId, uint64 aggregatorRoundId) = parseIds(_roundId);
+        (uint16 _phaseId, uint64 aggregatorRoundId) = parseIds(_roundId);
 
         (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 ansIn
-        ) = phaseAggregators[phaseId].getRoundData(aggregatorRoundId);
+            uint80 __roundId,
+            int256 __answer,
+            uint256 __startedAt,
+            uint256 __updatedAt,
+            uint80 __ansIn
+        ) = phaseAggregators[_phaseId].getRoundData(aggregatorRoundId);
 
-        return addPhaseIds(roundId, answer, startedAt, updatedAt, ansIn, phaseId);
+        return addPhaseIds(__roundId, __answer, __startedAt, __updatedAt, __ansIn, _phaseId);
     }
 
     /**
@@ -296,14 +293,14 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
         Phase memory current = currentPhase; // cache storage reads
 
         (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 ansIn
+            uint80 __roundId,
+            int256 __answer,
+            uint256 __startedAt,
+            uint256 __updatedAt,
+            uint80 __ansIn
         ) = current.aggregator.latestRoundData();
 
-        return addPhaseIds(roundId, answer, startedAt, updatedAt, ansIn, current.id);
+        return addPhaseIds(__roundId, __answer, __startedAt, __updatedAt, __ansIn, current.id);
     }
 
     /**
@@ -318,7 +315,9 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
      * @return answeredInRound is the round ID of the round in which the answer
      * was computed.
      */
-    function proposedGetRoundData(uint80 _roundId)
+    function proposedGetRoundData(
+        uint80 _roundId
+    )
         public
         view
         virtual
@@ -428,15 +427,15 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
         phaseAggregators[id] = AggregatorV2V3Interface(_aggregator);
     }
 
-    function addPhase(uint16 _phase, uint64 _originalId) internal view returns (uint80) {
+    function addPhase(uint16 _phase, uint64 _originalId) internal pure returns (uint80) {
         return uint80((uint256(_phase) << PHASE_OFFSET) | _originalId);
     }
 
-    function parseIds(uint256 _roundId) internal view returns (uint16, uint64) {
-        uint16 phaseId = uint16(_roundId >> PHASE_OFFSET);
+    function parseIds(uint256 _roundId) internal pure returns (uint16, uint64) {
+        uint16 _phaseId = uint16(_roundId >> PHASE_OFFSET);
         uint64 aggregatorRoundId = uint64(_roundId);
 
-        return (phaseId, aggregatorRoundId);
+        return (_phaseId, aggregatorRoundId);
     }
 
     function addPhaseIds(
@@ -445,24 +444,14 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
         uint256 startedAt,
         uint256 updatedAt,
         uint80 answeredInRound,
-        uint16 phaseId
-    )
-        internal
-        view
-        returns (
-            uint80,
-            int256,
-            uint256,
-            uint256,
-            uint80
-        )
-    {
+        uint16 _phaseId
+    ) internal pure returns (uint80, int256, uint256, uint256, uint80) {
         return (
-            addPhase(phaseId, uint64(roundId)),
+            addPhase(_phaseId, uint64(roundId)),
             answer,
             startedAt,
             updatedAt,
-            addPhase(phaseId, uint64(answeredInRound))
+            addPhase(_phaseId, uint64(answeredInRound))
         );
     }
 
@@ -492,10 +481,10 @@ interface AccessControllerInterface {
 contract EACAggregatorProxy is AggregatorProxy {
     AccessControllerInterface public accessController;
 
-    constructor(address _aggregator, address _accessController)
-        public
-        AggregatorProxy(_aggregator)
-    {
+    constructor(
+        address _aggregator,
+        address _accessController
+    ) AggregatorProxy(_aggregator) {
         setController(_accessController);
     }
 
@@ -598,7 +587,9 @@ contract EACAggregatorProxy is AggregatorProxy {
      * (Only some AggregatorV3Interface_ implementations return meaningful values)
      * @dev Note that answer and updatedAt may change between queries.
      */
-    function getRoundData(uint80 _roundId)
+    function getRoundData(
+        uint80 _roundId
+    )
         public
         view
         virtual
@@ -666,7 +657,9 @@ contract EACAggregatorProxy is AggregatorProxy {
      * @return answeredInRound is the round ID of the round in which the answer
      * was computed.
      */
-    function proposedGetRoundData(uint80 _roundId)
+    function proposedGetRoundData(
+        uint80 _roundId
+    )
         public
         view
         override
@@ -771,7 +764,9 @@ contract EACAggregatorProxyMock is EACAggregatorProxy {
         __latestAnsweredRound = _roundId;
     }
 
-    function getRoundData(uint80 _roundId)
+    function getRoundData(
+        uint80 _roundId
+    )
         public
         view
         override

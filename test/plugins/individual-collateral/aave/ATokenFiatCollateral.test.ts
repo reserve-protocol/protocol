@@ -542,10 +542,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(totalAssetValue3).to.be.gt(totalAssetValue2)
 
       // Redeem Rtokens with the updated rates
-      await expect(rToken.connect(addr1).redeem(issueAmount, await basketHandler.nonce())).to.emit(
-        rToken,
-        'Redemption'
-      )
+      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
 
       // Check funds were transferred
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
