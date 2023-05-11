@@ -61,7 +61,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
     uint256 private totalStakes; // Total of all stakes {qStRSR}
     uint256 private stakeRSR; // Amount of RSR backing all stakes {qRSR}
-    uint192 public stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
+    uint192 private stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
 
     uint192 private constant MAX_STAKE_RATE = 1e9 * FIX_ONE; // 1e9 D18{qStRSR/qRSR}
 
@@ -155,6 +155,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 private constant MAX_LEAK = 5e15; // {1} 0.5%
 
     uint192 private leak; // {1} stake fraction that has withdrawn without a refresh
+    uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
 
     // ======================
 
@@ -673,14 +674,25 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Refresh if too much RSR has exited since the last refresh occurred
     /// @param rsrWithdrawal {qRSR} How much RSR is being withdrawn
+    /// Effects-Refresh
     function leakyRefresh(uint256 rsrWithdrawal) private {
-        // Assume rsrWithdrawal has already been taken out of draftRSR
+        uint48 lastRefresh = assetRegistry.lastRefresh(); // {s}
+        bool refreshedElsewhere = lastWithdrawRefresh != lastRefresh;
+
+        // Assumption: rsrWithdrawal has already been taken out of draftRSR
         uint192 withdrawal = divuu(rsrWithdrawal, stakeRSR + draftRSR + rsrWithdrawal); // {1}
 
-        leak += withdrawal;
+        // == Effects ==
+        leak = refreshedElsewhere ? withdrawal : leak + withdrawal;
+        lastWithdrawRefresh = lastRefresh;
+
         if (leak > MAX_LEAK) {
             leak = 0;
-            assetRegistry.refresh();
+            if (!refreshedElsewhere) {
+                lastWithdrawRefresh = uint48(block.timestamp);
+                /// == Interaction ==
+                assetRegistry.refresh();
+            }
         }
     }
 
