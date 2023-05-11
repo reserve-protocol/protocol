@@ -51,6 +51,8 @@ async function main() {
   )
   await erc20.deployed()
 
+  console.log(`Deployed wrapper for cUSDCv3 on ${hre.network.name} (${chainId}): ${erc20.address} `)
+
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(

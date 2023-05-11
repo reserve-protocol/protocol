@@ -78,6 +78,10 @@ async function main() {
   await w3Pool.deployed()
   await (await w3Pool.initialize(TRI_CRYPTO_CVX_POOL_ID)).wait()
 
+  console.log(
+    `Deployed wrapper for Convex Volatile TriCrypto on ${hre.network.name} (${chainId}): ${w3Pool.address} `
+  )
+
   const collateral = <CvxVolatileCollateral>await CvxVolatileCollateralFactory.connect(
     deployer
   ).deploy(

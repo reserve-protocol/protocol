@@ -51,6 +51,12 @@ async function main() {
     networkConfig[chainId].COMPTROLLER!
   )
 
+  await fUsdcVault.deployed()
+
+  console.log(
+    `Deployed Vault for fUSDC on ${hre.network.name} (${chainId}): ${fUsdcVault.address} `
+  )
+
   const { collateral: fUsdcCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
@@ -81,6 +87,12 @@ async function main() {
     `${await fUsdt.name()} Vault`,
     `${await fUsdt.symbol()}-VAULT`,
     networkConfig[chainId].COMPTROLLER!
+  )
+
+  await fUsdtVault.deployed()
+
+  console.log(
+    `Deployed Vault for fUSDT on ${hre.network.name} (${chainId}): ${fUsdtVault.address} `
   )
 
   const { collateral: fUsdtCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
@@ -115,6 +127,10 @@ async function main() {
     networkConfig[chainId].COMPTROLLER!
   )
 
+  await fDaiVault.deployed()
+
+  console.log(`Deployed Vault for fDAI on ${hre.network.name} (${chainId}): ${fDaiVault.address} `)
+
   const { collateral: fDaiCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
@@ -145,6 +161,12 @@ async function main() {
     `${await fFrax.name()} Vault`,
     `${await fFrax.symbol()}-VAULT`,
     networkConfig[chainId].COMPTROLLER!
+  )
+
+  await fFraxVault.deployed()
+
+  console.log(
+    `Deployed Vault for fFRAX on ${hre.network.name} (${chainId}): ${fFraxVault.address} `
   )
 
   const { collateral: fFRAXCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
