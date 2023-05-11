@@ -1,29 +1,21 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "../p1/RToken.sol";
+import "../interfaces/IRevenueTrader.sol";
+import "../interfaces/IRToken.sol";
 
 /**
  * @title IFacadeAct
- * @notice A calldata-preparer, useful to MEV searchers and off-chain bots looking to progress an
- *   RToken. 
- *
- * - @custom:static-call - Use ethers callStatic() in order to get result after update
+ * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely. 
 v */
 interface IFacadeAct {
-    /// Returns the next call a keeper of MEV searcher should make in order to progress the system
-    /// Returns zero bytes to indicate no action should be made
-    /// @dev Don't actually execute this!
-    /// @custom:static-call
-    function getActCalldata(RTokenP1 rToken) external returns (address to, bytes memory calldata_);
-
     /// Claims rewards from all places they can accrue.
-    function claimRewards(RTokenP1 rToken) external;
+    function claimRewards(IRToken rToken) external;
 
     /// To use this, first call:
     ///   - FacadeRead.auctionsSettleable(revenueTrader)
     ///   - FacadeRead.revenueOverview(revenueTrader)
-    /// If either arrays returned are non-empty, then can call this function.
+    /// If either arrays returned are non-empty, then can execute this function productively.
     /// Logic:
     ///   For each ERC20 in `toSettle`:
     ///     - Settle any open ERC20 trades
