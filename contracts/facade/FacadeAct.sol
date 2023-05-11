@@ -7,6 +7,7 @@ import "../interfaces/IFacadeAct.sol";
 /**
  * @title Facade
  * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely.
+ *   For use with ^3.0.0 RTokens.
  */
 contract FacadeAct is IFacadeAct {
     function claimRewards(IRToken rToken) public {
