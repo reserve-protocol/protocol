@@ -155,7 +155,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 private constant MAX_LEAK = 5e15; // {1} 0.5%
 
     uint192 private leak; // {1} stake fraction that has withdrawn without a refresh
-    uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
 
     // ======================
 
@@ -675,17 +674,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Refresh if too much RSR has exited since the last refresh occurred
     /// @param rsrWithdrawal {qRSR} How much RSR is being withdrawn
     function leakyRefresh(uint256 rsrWithdrawal) private {
-        uint48 lastRefresh = assetRegistry.lastRefresh(); // {s}
-
         // Assume rsrWithdrawal has already been taken out of draftRSR
         uint192 withdrawal = divuu(rsrWithdrawal, stakeRSR + draftRSR + rsrWithdrawal); // {1}
 
-        leak = lastWithdrawRefresh != lastRefresh ? withdrawal : leak + withdrawal;
-        lastWithdrawRefresh = lastRefresh;
-
+        leak += withdrawal;
         if (leak > MAX_LEAK) {
             leak = 0;
-            lastWithdrawRefresh = uint48(block.timestamp);
             assetRegistry.refresh();
         }
     }
