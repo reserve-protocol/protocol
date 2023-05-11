@@ -688,11 +688,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         if (leak > MAX_LEAK) {
             leak = 0;
-            if (!refreshedElsewhere) {
-                lastWithdrawRefresh = uint48(block.timestamp);
-                /// == Interaction ==
-                assetRegistry.refresh();
-            }
+            lastWithdrawRefresh = uint48(block.timestamp);
+
+            /// == Interaction ==
+            assetRegistry.refresh();
         }
     }
 
