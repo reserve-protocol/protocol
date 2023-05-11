@@ -12,7 +12,10 @@ import "./Component.sol";
 import "./RewardableLib.sol";
 
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
-/// @dev See docs/security for discussion of Multicall safety
+/// @dev The use of Multicall here instead of MulticallUpgradeable cannot be changed
+///   changed without breaking <3.0.0 RTokens. The only difference in
+///   MulticallUpgradeable is the 50 slot storage gap and an empty constructor.
+///   It should be fine to leave the non-upgradeable Multicall here permanently.
 abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeable, ITrading {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
