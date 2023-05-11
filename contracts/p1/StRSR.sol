@@ -319,14 +319,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint192 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
         uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
 
+        // advance queue past withdrawal
+        firstRemainingDraft[draftEra][account] = endId;
+
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
         // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
         uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
         uint256 rsrAmount = draftRSR - newDraftRSR;
-
-        // advance queue past withdrawal
-        firstRemainingDraft[draftEra][account] = endId;
 
         if (rsrAmount == 0) return;
 
