@@ -76,7 +76,7 @@ const config: HardhatUserConfig = {
       },
       // gasPrice: 10_000_000_000,
       gasMultiplier: 1.015, // 1.5% buffer; seen failures on RToken deployment and asset refreshes
-    }
+    },
   },
   solidity: {
     compilers: [
