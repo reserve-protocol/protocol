@@ -678,7 +678,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         }
     }
 
-    /// Mint stakes to an account
+    /// Mint stakes corresponding to rsrAmount to an account
     /// @param rsrAmount {qRSR} The RSR amount being staked
     function mintStakes(address account, uint256 rsrAmount) private {
         // This is not an overflow risk according to our expected ranges:
@@ -690,10 +690,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
         uint256 stakeAmount = newTotalStakes - totalStakes;
 
+        // Transfer RSR from account to this contract
         stakeRSR += rsrAmount;
         _mint(account, stakeAmount);
-
-        // Transfer RSR from account to this contract
         emit Staked(era, account, rsrAmount, stakeAmount);
     }
 
