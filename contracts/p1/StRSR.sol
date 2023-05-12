@@ -155,7 +155,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 private constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
 
     uint192 private leaked; // {1} stake fraction that has withdrawn without a refresh
-    uint48 private withdrawRefresh; // {s} timestamp of last refresh() during withdraw()
+    uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
     uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
 
     // ======================
@@ -686,12 +686,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint192 withdrawal = _safeWrap((rsrWithdrawal * FIX_ONE + totalRSR - 1) / totalRSR); // {1}
 
         // == Effects ==
-        leaked = withdrawRefresh != lastRefresh ? withdrawal : leaked + withdrawal;
-        withdrawRefresh = lastRefresh;
+        leaked = lastWithdrawRefresh != lastRefresh ? withdrawal : leaked + withdrawal;
+        lastWithdrawRefresh = lastRefresh;
 
         if (leaked > withdrawalLeak) {
             leaked = 0;
-            withdrawRefresh = uint48(block.timestamp);
+            lastWithdrawRefresh = uint48(block.timestamp);
 
             /// == Refresh ==
             assetRegistry.refresh();
