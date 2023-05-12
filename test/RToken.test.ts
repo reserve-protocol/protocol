@@ -64,7 +64,7 @@ const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 const describeExtreme =
-  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
 
 describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
