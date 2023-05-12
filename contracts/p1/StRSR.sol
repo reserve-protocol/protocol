@@ -223,18 +223,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         if (!main.frozen()) _payoutRewards();
 
-        // Compute stake amount
-        // This is not an overflow risk according to our expected ranges:
-        //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
-        // stakeAmount: how many stRSR the user shall receive.
-        // pick stakeAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
-        uint256 newStakeRSR = stakeRSR + rsrAmount;
-        // newTotalStakes: {qStRSR} = D18{qStRSR/qRSR} * {qRSR} / D18
-        uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
-        uint256 stakeAmount = newTotalStakes - totalStakes;
+        address account = _msgSender();
 
         // Update staked
-        address account = _msgSender();
+        uint256 stakeAmount = toDrafts(rsrAmount);
         stakeRSR += rsrAmount;
         _mint(account, stakeAmount);
 
@@ -385,11 +377,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         emit UnstakingCancelled(firstId, endId, draftEra, account, rsrAmount);
 
-        uint256 newStakeRSR = stakeRSR + rsrAmount;
-        // newTotalStakes: {qStRSR} = D18{qStRSR/qRSR} * {qRSR} / D18
-        uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
-        uint256 stakeAmount = newTotalStakes - totalStakes;
-
+        uint256 stakeAmount = toDrafts(rsrAmount); // {qDraft}
         stakeRSR += rsrAmount;
         _mint(account, stakeAmount);
     }
@@ -696,6 +684,18 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             /// == Refresh ==
             assetRegistry.refresh();
         }
+    }
+
+    /// @return {qDraft} The given rsrAmount in drafts
+    function toDrafts(uint256 rsrAmount) private view returns (uint256) {
+        // This is not an overflow risk according to our expected ranges:
+        //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
+        // stakeAmount: how many stRSR the user shall receive.
+        // pick stakeAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
+        uint256 newStakeRSR = stakeRSR + rsrAmount;
+        // newTotalStakes: {qStRSR} = D18{qStRSR/qRSR} * {qRSR} / D18
+        uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
+        return newTotalStakes - totalStakes;
     }
 
     // contract-size-saver
