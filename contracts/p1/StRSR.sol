@@ -152,10 +152,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // === 3.0.0 ===
     // The fraction of draftRSR + stakeRSR that may exit without a refresh
-    uint192 private constant MAX_LEAK = 5e15; // {1} 0.5%
+    uint192 private constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
 
-    uint192 private leak; // {1} stake fraction that has withdrawn without a refresh
-    uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
+    uint192 private leaked; // {1} stake fraction that has withdrawn without a refresh
+    uint48 private withdrawRefresh; // {s} timestamp of last refresh() during withdraw()
+    uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
 
     // ======================
 
@@ -170,7 +171,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         string calldata name_,
         string calldata symbol_,
         uint48 unstakingDelay_,
-        uint192 rewardRatio_
+        uint192 rewardRatio_,
+        uint192 withdrawalLeak_
     ) external initializer {
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
@@ -188,6 +190,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         setUnstakingDelay(unstakingDelay_);
         setRewardRatio(rewardRatio_);
+        setWithdrawalLeak(withdrawalLeak_);
 
         beginEra();
         beginDraftEra();
@@ -677,18 +680,18 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Effects-Refresh
     function leakyRefresh(uint256 rsrWithdrawal) private {
         uint48 lastRefresh = assetRegistry.lastRefresh(); // {s}
-        bool refreshedElsewhere = lastWithdrawRefresh != lastRefresh;
 
         // Assumption: rsrWithdrawal has already been taken out of draftRSR
-        uint192 withdrawal = divuu(rsrWithdrawal, stakeRSR + draftRSR + rsrWithdrawal); // {1}
+        uint256 totalRSR = stakeRSR + draftRSR + rsrWithdrawal; // {qRSR}
+        uint192 withdrawal = _safeWrap((rsrWithdrawal * FIX_ONE + totalRSR - 1) / totalRSR); // {1}
 
         // == Effects ==
-        leak = refreshedElsewhere ? withdrawal : leak + withdrawal;
-        lastWithdrawRefresh = lastRefresh;
+        leaked = withdrawRefresh != lastRefresh ? withdrawal : leaked + withdrawal;
+        withdrawRefresh = lastRefresh;
 
-        if (leak > MAX_LEAK) {
-            leak = 0;
-            lastWithdrawRefresh = uint48(block.timestamp);
+        if (leaked > withdrawalLeak) {
+            leaked = 0;
+            withdrawRefresh = uint48(block.timestamp);
 
             /// == Refresh ==
             assetRegistry.refresh();
@@ -929,6 +932,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         rewardRatio = val;
     }
 
+    /// @custom:governance
+    function setWithdrawalLeak(uint192 val) public {
+        governanceOnly();
+        require(val <= MAX_WITHDRAWAL_LEAK, "invalid withdrawalLeak");
+        emit WithdrawalLeakSet(withdrawalLeak, val);
+        withdrawalLeak = val;
+    }
+
     // contract-size-saver
     // solhint-disable-next-line no-empty-blocks
     function governanceOnly() private governance {}
@@ -938,5 +949,5 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[29] private __gap;
+    uint256[28] private __gap;
 }

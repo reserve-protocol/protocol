@@ -218,7 +218,8 @@ contract DeployerP1 is IDeployer, Versioned {
                 stRSRName,
                 stRSRSymbol,
                 params.unstakingDelay,
-                params.rewardRatio
+                params.rewardRatio,
+                params.withdrawalLeak
             );
         }
 

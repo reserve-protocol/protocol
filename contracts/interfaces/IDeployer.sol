@@ -34,6 +34,7 @@ struct DeploymentParams {
     //
     // === StRSR ===
     uint48 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
+    uint192 withdrawalLeak; // {1} fraction of RSR that can be withdrawn without refresh
     //
     // === BasketHandler ===
     uint48 warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND

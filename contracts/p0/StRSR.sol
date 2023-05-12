@@ -35,6 +35,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e18;
+    uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
 
     // ==== ERC20Permit ====
 
@@ -94,16 +95,22 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // Min exchange rate {qRSR/qStRSR} (compile-time constant)
     uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9
 
+    // Withdrawal Leak
+    uint192 private leaked; // {1} stake fraction that has withdrawn without a refresh
+    uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
+
     // ==== Gov Params ====
     uint48 public unstakingDelay;
     uint192 public rewardRatio;
+    uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
 
     function init(
         IMain main_,
         string memory name_,
         string memory symbol_,
         uint48 unstakingDelay_,
-        uint192 rewardRatio_
+        uint192 rewardRatio_,
+        uint192 withdrawalLeak_
     ) public initializer {
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
@@ -115,6 +122,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         setUnstakingDelay(unstakingDelay_);
         setRewardRatio(rewardRatio_);
+        setWithdrawalLeak(withdrawalLeak_);
         era = 1;
     }
 
@@ -187,12 +195,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
     /// @custom:interaction
     function withdraw(address account, uint256 endId) external notTradingPausedOrFrozen {
-        // Call state keepers
-        main.poke();
-
         IBasketHandler bh = main.basketHandler();
-        require(bh.fullyCollateralized(), "RToken uncollateralized");
-        require(bh.isReady(), "basket not ready");
 
         Withdrawal[] storage queue = withdrawals[account];
         if (endId == 0) return;
@@ -212,6 +215,13 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             queue[i].rsrAmount = 0;
             queue[i].stakeAmount = 0;
         }
+
+        // Refresh
+        leakyRefresh(total);
+
+        // Checks
+        require(bh.fullyCollateralized(), "RToken uncollateralized");
+        require(bh.isReady(), "basket not ready");
 
         // Execute accumulated withdrawals
         emit UnstakingCompleted(start, i, era, account, total);
@@ -347,6 +357,27 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             address account = accounts.at(i);
             delete withdrawals[account];
         }
+    }
+
+    /// Refresh if too much RSR has exited since the last refresh occurred
+    /// @param rsrWithdrawal {qRSR} How much RSR is being withdrawn
+    function leakyRefresh(uint256 rsrWithdrawal) private {
+        uint48 lastRefresh = main.assetRegistry().lastRefresh(); // {s}
+
+        // {1} Assumption: rsrWithdrawal has already been taken out of draftRSR
+        uint192 withdrawal = toFix(rsrWithdrawal).divu(
+            rsrBacking + rsrBeingWithdrawn() + rsrWithdrawal,
+            CEIL
+        );
+
+        bool refreshedElsewhere = lastWithdrawRefresh != lastRefresh;
+        leaked = refreshedElsewhere ? withdrawal : leaked + withdrawal;
+
+        if (leaked > withdrawalLeak) {
+            leaked = 0;
+            main.assetRegistry().refresh();
+        }
+        lastWithdrawRefresh = main.assetRegistry().lastRefresh();
     }
 
     function exchangeRate() public view returns (uint192) {
@@ -571,5 +602,11 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
+    }
+
+    function setWithdrawalLeak(uint192 val) public governance {
+        require(val <= MAX_WITHDRAWAL_LEAK, "invalid withdrawalLeak");
+        emit WithdrawalLeakSet(withdrawalLeak, val);
+        withdrawalLeak = val;
     }
 }

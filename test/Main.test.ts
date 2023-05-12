@@ -425,7 +425,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           'stRTKNRSR Token',
           'stRTKNRSR',
           config.unstakingDelay,
-          config.rewardRatio
+          config.rewardRatio,
+          config.withdrawalLeak
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
     })

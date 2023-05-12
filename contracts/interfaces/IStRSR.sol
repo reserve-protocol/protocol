@@ -95,6 +95,7 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
 
     event UnstakingDelaySet(uint48 indexed oldVal, uint48 indexed newVal);
     event RewardRatioSet(uint192 indexed oldVal, uint192 indexed newVal);
+    event WithdrawalLeakSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     // Initialization
     function init(
@@ -102,7 +103,8 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
         string memory name_,
         string memory symbol_,
         uint48 unstakingDelay_,
-        uint192 rewardRatio_
+        uint192 rewardRatio_,
+        uint192 withdrawalLeak_
     ) external;
 
     /// Gather and payout rewards from rsrTrader
@@ -147,6 +149,10 @@ interface TestIStRSR is IStRSR {
     function unstakingDelay() external view returns (uint48);
 
     function setUnstakingDelay(uint48) external;
+
+    function withdrawalLeak() external view returns (uint48);
+
+    function setWithdrawalLeak(uint192) external;
 
     function increaseAllowance(address, uint256) external returns (bool);
 
