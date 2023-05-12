@@ -30,7 +30,7 @@ contract WETH9 {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
-    receive() external payable {
+    fallback() external payable {
         deposit();
     }
 
