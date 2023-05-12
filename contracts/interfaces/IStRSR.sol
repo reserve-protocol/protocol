@@ -150,7 +150,7 @@ interface TestIStRSR is IStRSR {
 
     function setUnstakingDelay(uint48) external;
 
-    function withdrawalLeak() external view returns (uint48);
+    function withdrawalLeak() external view returns (uint192);
 
     function setWithdrawalLeak(uint192) external;
 

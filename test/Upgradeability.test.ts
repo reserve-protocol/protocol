@@ -366,7 +366,14 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - StRSR', async () => {
       const newStRSR: StRSRP1Votes = <StRSRP1Votes>await upgrades.deployProxy(
         StRSRFactory,
-        [main.address, 'rtknRSR Token', 'rtknRSR', config.unstakingDelay, config.rewardRatio],
+        [
+          main.address,
+          'rtknRSR Token',
+          'rtknRSR',
+          config.unstakingDelay,
+          config.rewardRatio,
+          config.withdrawalLeak,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
