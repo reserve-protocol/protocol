@@ -86,11 +86,7 @@ const config: HardhatUserConfig = {
       {
         version: '0.6.12',
         settings,
-      },
-      {
-        version: '0.4.24',
-        settings,
-      },
+      }
     ],
     overrides: {
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
