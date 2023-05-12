@@ -75,7 +75,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // Drafts: share of the withdrawing tokens. Not transferrable and not revenue-earning.
     struct CumulativeDraft {
         // Avoid re-using uint192 in order to avoid confusion with our type system; 176 is enough
-        uint176 drafts; // Total amount of drafts that will become available // {qDraft}
+        uint176 drafts; // Total amount of drafts that will become available // {qDrafts}
         uint64 availableAt; // When the last of the drafts will become available
     }
     // draftEra => ({account} => {drafts})
@@ -223,18 +223,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         if (!main.frozen()) _payoutRewards();
 
-        address account = _msgSender();
-
-        // Update staked
-        uint256 stakeAmount = toDrafts(rsrAmount);
-        stakeRSR += rsrAmount;
-        _mint(account, stakeAmount);
-
-        // Transfer RSR from account to this contract
-        emit Staked(era, account, rsrAmount, stakeAmount);
+        // Mint new stakes
+        mintStakes(_msgSender(), rsrAmount);
 
         // == Interactions ==
-        IERC20Upgradeable(address(rsr)).safeTransferFrom(account, address(this), rsrAmount);
+        IERC20Upgradeable(address(rsr)).safeTransferFrom(_msgSender(), address(this), rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` StRSR
@@ -377,9 +370,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         emit UnstakingCancelled(firstId, endId, draftEra, account, rsrAmount);
 
-        uint256 stakeAmount = toDrafts(rsrAmount); // {qDraft}
-        stakeRSR += rsrAmount;
-        _mint(account, stakeAmount);
+        // Mint new stakes
+        mintStakes(account, rsrAmount);
     }
 
     /// @param rsrAmount {qRSR}
@@ -686,8 +678,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         }
     }
 
-    /// @return {qDraft} The given rsrAmount in drafts
-    function toDrafts(uint256 rsrAmount) private view returns (uint256) {
+    /// Mint stakes to an account
+    /// @param rsrAmount {qRSR} The RSR amount being staked
+    function mintStakes(address account, uint256 rsrAmount) private {
         // This is not an overflow risk according to our expected ranges:
         //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
         // stakeAmount: how many stRSR the user shall receive.
@@ -695,7 +688,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint256 newStakeRSR = stakeRSR + rsrAmount;
         // newTotalStakes: {qStRSR} = D18{qStRSR/qRSR} * {qRSR} / D18
         uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
-        return newTotalStakes - totalStakes;
+        uint256 stakeAmount = newTotalStakes - totalStakes;
+
+        stakeRSR += rsrAmount;
+        _mint(account, stakeAmount);
+
+        // Transfer RSR from account to this contract
+        emit Staked(era, account, rsrAmount, stakeAmount);
     }
 
     // contract-size-saver
