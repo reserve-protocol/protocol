@@ -54,7 +54,7 @@ const describeGas =
 const describeExtreme =
   IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
 
-describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
+describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -3112,7 +3112,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe(`Extreme Bounds ${SLOW ? 'slow mode' : 'fast mode'})`, () => {
+  describeExtreme(`Extreme Bounds ${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     // Dimensions
     //
     // StRSR economics can be broken down into 4 "places" that RSR can be.
