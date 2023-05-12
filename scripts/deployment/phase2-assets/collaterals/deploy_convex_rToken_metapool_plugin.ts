@@ -75,6 +75,10 @@ async function main() {
   await wPool.deployed()
   await (await wPool.initialize(eUSD_FRAX_BP_POOL_ID)).wait()
 
+  console.log(
+    `Deployed wrapper for Convex eUSD/FRAX Metapool on ${hre.network.name} (${chainId}): ${wPool.address} `
+  )
+
   const collateral = <CvxStableRTokenMetapoolCollateral>await CvxStableCollateralFactory.connect(
     deployer
   ).deploy(
@@ -114,6 +118,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvxeUSDFRAXBP = collateral.address
+  assetCollDeployments.erc20s.cvxeUSDFRAXBP = wPool.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

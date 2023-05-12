@@ -56,6 +56,7 @@ async function main() {
 
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     TradingLib: ${tradingLib.address}
+    BasketLib: ${basketLib.address}
     CvxMiningLib: ${cvxMiningLib.address}
     Deployment file: ${deploymentFilename}`)
 }

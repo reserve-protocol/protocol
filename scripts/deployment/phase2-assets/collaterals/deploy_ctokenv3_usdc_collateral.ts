@@ -51,6 +51,8 @@ async function main() {
   )
   await erc20.deployed()
 
+  console.log(`Deployed wrapper for cUSDCv3 on ${hre.network.name} (${chainId}): ${erc20.address} `)
+
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
@@ -75,6 +77,7 @@ async function main() {
   console.log(`Deployed CompoundV3 USDC to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
   assetCollDeployments.collateral.cUSDCv3 = collateral.address
+  assetCollDeployments.erc20s.cUSDCv3 = erc20.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

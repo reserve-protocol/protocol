@@ -282,26 +282,37 @@ The OpenZeppelin documentation has good material on [how to write upgradable con
 
 Prior to initial launch, the most glaring consequence of keeping this upgrade pattern is that core P1 contracts cannot rely on their constructor to initialize values in contract state. Instead, each contract must define a separate initializer function to initialize its state.
 
+Following subsequent upgrades, the most important check that has to be performed is related to making sure the storage layouts are compatible and no storage slots are overwritten by mistake.
+
 [writing-upgradable]: https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
 
 ### Performing upgrades
 
-When upgrading smart contracts it is crucial to keep in mind the limitations of what can be changed/modified to avoid breaking the contracts. As OZ recommends, we use their upgrades plugin for Hardhat to ensure that implementations are upgrade-safe before upgrading any smart contract.
+When upgrading smart contracts it is crucial to keep in mind there are limitations of what can be changed/modified to avoid breaking the contracts.
 
-The recommended process to perform an upgrade is the following:
+To check for upgradeability and perform the required validations we use the **[OpenZeppelin Upgrades Plugin](https://docs.openzeppelin.com/upgrades-plugins/1.x/),** designed for Hardhat.
 
-- Create the new implementation version of the contract. This should follow all the recommendations from the article linked above, to make sure the implementation is "Upgrade Safe"
+The Plugin relies on an internal file (per network) which is stored in the `.openzeppelin` folder in the repository, and is version controlled in Github for Mainnet (there is no need to track local or forked networks). Additional information can be found [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/network-files).
 
-- Ensure metadata of the existing/deployed proxies is created for the required network. This is located in a folder names `.openzeppelin`, which should be persisted in `git` for Production networks. Because the initial proxies are deployed via the `Deployer` factory contract, this folder needs to be created using the [forceImport][] function provided by the plugin. A concrete example on how to use this function is provided in our Upgradeability test file (`test/Upgradeability.test.ts`)
+This file keeps track of deployed “implementation” contracts, and their storage layout at the time of deployment, so they can be used later to be compared with the new version and validate if there are no issues in terms of storage handling.
 
-- Using mainnet forking, make sure you perform tests to check the new implementation behaves as expected. Proxies should be updated using the `upgradeProxy` function provided by the plugin to ensure all validations and checks are performed.
+The **recommended** process to perform an upgrade is the following:
 
-- Create a deployemnt script to the required network (Mainnet), using `upgradeProxy`. Ensure the new version of the `.openzeppelin` files are checked into `git` for future reference.
+- Ensure metadata of the existing/deployed implementations is created for the required network. This is located in a folder names `.openzeppelin`, which should be persisted in `git` for Production networks. This can be done for prior versions using the `upgrades/force-import.ts` task in our repository. This task is limited to be run only on Mainnet.
+
+- Create the new implementation version of the contract. This should follow all the recommendations from the article linked above, to make sure the implementation is "Upgrade Safe". At anytime you can check for compatibility by running the `upgrades/validate-upgrade.ts` task in our repo, in a Mainnet fork. This task would compare the current code vs. a previously deployed implementation and validate if it is "upgrade safe". Make sure the MAINNET_BLOCK is set up appropiately.
+
+- To deploy to Mainnet the new version, make sure you use the script provided in `scripts/deployment/phase1-common/2_deploy_implementations.ts`. If you are upgrading a previous version you need to specify the `LAST_VERSION_DEPLOYED` value at the top of the script. For new, clean deployments just leave that empty. This script will perform all validations on the new code, deploy the new implementation contracts, and register the deployment in the network file. It relies on the `deployImplementation` (for new deployments) or `prepareUpgrade` functions of the OZ Plugin.
+
+- Ensure the new version of the `.openzeppelin` files are checked into `git` for future reference.
 
 For additional information on how to use the plugins and how to perform upgrades on smart contracts please refer to the [OZ docs][upgrades-docs].
 
 [upgrades-docs]: https://docs.openzeppelin.com/upgrades
-[forceimport]: https://docs.openzeppelin/upgrades-plugins/1.x/api-hardhat-upgrades#force-import
+[forceimport]: https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#force-import
+[validateupgrade]: https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#validate-upgrade
+[deployimplementation]: https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#deploy-implementation
+[prepareupgrade]: https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#prepare-upgrade
 
 ### Developer discipline
 

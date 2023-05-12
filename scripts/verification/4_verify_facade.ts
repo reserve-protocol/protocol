@@ -28,14 +28,6 @@ async function main() {
     'contracts/facade/FacadeRead.sol:FacadeRead'
   )
 
-  /** ******************** Verify FacadeMonitor ****************************************/
-  await verifyContract(
-    chainId,
-    deployments.facadeMonitor,
-    [],
-    'contracts/facade/FacadeMonitor.sol:FacadeMonitor'
-  )
-
   /** ******************** Verify FacadeAct ****************************************/
   await verifyContract(
     chainId,

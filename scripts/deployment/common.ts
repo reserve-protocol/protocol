@@ -16,7 +16,6 @@ export interface IDeployments {
   facadeRead: string
   facadeWriteLib: string
   cvxMiningLib: string
-  facadeMonitor: string
   facadeWrite: string
   facadeAct: string
   deployer: string
@@ -27,6 +26,7 @@ export interface IDeployments {
 export interface IAssetCollDeployments {
   assets: ITokens
   collateral: ITokens & IPlugins
+  erc20s: ITokens & IPlugins
 }
 
 export interface IRTokenDeployments {
@@ -74,4 +74,21 @@ export const getDeploymentFile = (
   } catch (e) {
     throw new Error(`Failed to read ${path}. Maybe the file is badly generated?`)
   }
+}
+
+export const writeComponentDeployment = (
+  deployments: IDeployments,
+  deploymentFilename: string,
+  name: string,
+  implAddr: string,
+  logDesc: string,
+  prevAddr?: string
+) => {
+  const field = name as keyof typeof deployments.implementations.components
+
+  // Write temporary deployments file for component
+  deployments.implementations.components[field] = implAddr
+  fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
+
+  console.log(`  ${logDesc} Implementation: ${implAddr} ${prevAddr == implAddr ? '- SKIPPED' : ''}`)
 }

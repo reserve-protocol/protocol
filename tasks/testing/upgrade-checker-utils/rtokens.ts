@@ -1,11 +1,11 @@
-import { bn } from "#/common/numbers"
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { BigNumber } from "ethers"
-import { Interface, LogDescription, formatEther } from "ethers/lib/utils"
-import { HardhatRuntimeEnvironment } from "hardhat/types"
-import { runTrade } from "./trades"
-import { logToken } from "./logs"
-import { CollateralStatus } from "#/common/constants"
+import { bn } from '#/common/numbers'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { BigNumber } from 'ethers'
+import { Interface, LogDescription, formatEther } from 'ethers/lib/utils'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { runTrade } from './trades'
+import { logToken } from './logs'
+import { CollateralStatus } from '#/common/constants'
 
 type Balances = { [key: string]: BigNumber }
 
@@ -104,10 +104,18 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
     const resp = await r.wait()
     for (const event of resp.events!) {
       let parsedLog: LogDescription | undefined
-      try { parsedLog = iface.parseLog(event) } catch {}
+      try {
+        parsedLog = iface.parseLog(event)
+      } catch {}
       if (parsedLog && parsedLog.name == 'TradeStarted') {
         tradesRemain = true
-        console.log(`\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(parsedLog.args.buy)} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${parsedLog.args.sellAmount}`)
+        console.log(
+          `\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(
+            parsedLog.args.buy
+          )} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${
+            parsedLog.args.sellAmount
+          }`
+        )
         await runTrade(hre, backingManager, parsedLog.args.sell, false)
       }
     }
@@ -119,5 +127,5 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
     throw new Error(`Basket is not SOUND after recollateralizing new basket`)
   }
 
-  console.log("Recollateralization complete!")
+  console.log('Recollateralization complete!')
 }
