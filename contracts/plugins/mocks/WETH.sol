@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.4.22 <0.6;
+pragma solidity 0.8.17;
 
 /// https://github.com/gnosis/canonical-weth at commit 0dd1ea3e295eef916d0c6223ec63141137d22d67
 
@@ -30,7 +30,7 @@ contract WETH9 {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
-    function() external payable {
+    receive() external payable {
         deposit();
     }
 
@@ -42,7 +42,10 @@ contract WETH9 {
     function withdraw(uint256 wad) public {
         require(balanceOf[msg.sender] >= wad);
         balanceOf[msg.sender] -= wad;
-        msg.sender.transfer(wad);
+        (bool success, ) = address(msg.sender).call{value: wad}("");
+        if (!success) {
+          revert("transfer failed");
+        }
         emit Withdrawal(msg.sender, wad);
     }
 
@@ -67,7 +70,7 @@ contract WETH9 {
     ) public returns (bool) {
         require(balanceOf[src] >= wad);
 
-        if (src != msg.sender && allowance[src][msg.sender] != uint256(-1)) {
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
             require(allowance[src][msg.sender] >= wad);
             allowance[src][msg.sender] -= wad;
         }
