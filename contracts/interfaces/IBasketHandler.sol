@@ -20,16 +20,10 @@ struct BasketRange {
  */
 interface IBasketHandler is IComponent {
     /// Emitted when the prime basket is set
-    /// @param nonce {basketNonce} The first nonce under the prime basket; may not exist yet
     /// @param erc20s The collateral tokens for the prime basket
     /// @param targetAmts {target/BU} A list of quantities of target unit per basket unit
     /// @param targetNames Each collateral token's targetName
-    event PrimeBasketSet(
-        uint256 indexed nonce,
-        IERC20[] erc20s,
-        uint192[] targetAmts,
-        bytes32[] targetNames
-    );
+    event PrimeBasketSet(IERC20[] erc20s, uint192[] targetAmts, bytes32[] targetNames);
 
     /// Emitted when the reference basket is set
     /// @param nonce {basketNonce} The basket nonce

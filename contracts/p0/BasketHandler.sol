@@ -145,10 +145,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     uint48 private lastStatusTimestamp;
     CollateralStatus private lastStatus;
 
-    // Nonce of the first reference basket from the current history
-    // There can be 0 to any number of baskets with nonce >= primeNonce
-    uint48 public primeNonce; // {basketNonce}
-
     // A history of baskets by basket nonce; includes current basket
     mapping(uint48 => Basket) private basketHistory;
 
@@ -273,8 +269,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             config.targetNames[erc20s[i]] = names[i];
         }
 
-        primeNonce = nonce + 1; // set primeNonce to the next nonce
-        emit PrimeBasketSet(primeNonce, erc20s, targetAmts, names);
+        emit PrimeBasketSet(erc20s, targetAmts, names);
     }
 
     /// Set the backup configuration for some target name
@@ -458,8 +453,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192[] memory portions,
         uint192 amount
     ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
-        // directly after upgrade the primeNonce will be 0, which is not a valid value
-        require(primeNonce > 0, "primeNonce uninitialized");
         require(basketNonces.length == portions.length, "portions does not mirror basketNonces");
 
         IERC20[] memory erc20sAll = new IERC20[](main.assetRegistry().size());
@@ -469,10 +462,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         // Calculate the linear combination basket
         for (uint48 i = 0; i < basketNonces.length; ++i) {
-            require(
-                basketNonces[i] >= primeNonce && basketNonces[i] <= nonce,
-                "invalid basketNonce"
-            ); // will always revert directly after setPrimeBasket()
+            require(basketNonces[i] <= nonce, "invalid basketNonce");
             Basket storage b = basketHistory[basketNonces[i]];
 
             // Add-in refAmts contribution from historical basket
