@@ -47,7 +47,7 @@ contract FacadeAct is IFacadeAct, Multicall {
 
             // 3.0.0 BackingManager interface
             (bool success, ) = bm.call{ value: 0 }(
-                abi.encodeWithSignature("forwardRevenues(address[])", toStart)
+                abi.encodeWithSignature("forwardRevenue(address[])", toStart)
             );
 
             // Fallback to <=2.1.0 interface
