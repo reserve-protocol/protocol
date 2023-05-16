@@ -55,6 +55,7 @@ contract FacadeAct is IFacadeAct, Multicall {
                 (success, ) = bm.call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", toStart)
                 );
+                require(success, "failed to forward revenue");
             }
         }
 
@@ -71,6 +72,7 @@ contract FacadeAct is IFacadeAct, Multicall {
                 (success, ) = rt.call{ value: 0 }(
                     abi.encodeWithSignature("manageToken(address)", toStart[i])
                 );
+                require(success, "failed to start revenue auction");
             }
         }
         // solhint-enable avoid-low-level-calls

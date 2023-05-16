@@ -294,6 +294,7 @@ contract FacadeRead is IFacadeRead {
                 (success, ) = bm.call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", reg.erc20s)
                 );
+                require(success, "failed to forward revenue");
             }
         }
 
@@ -335,6 +336,7 @@ contract FacadeRead is IFacadeRead {
                     (success, ) = address(revenueTrader).call{ value: 0 }(
                         abi.encodeWithSignature("manageToken(address)", erc20s[i])
                     );
+                    require(success, "failed to start revenue auction");
                 }
 
                 if (revenueTrader.tradesOpen() - tradesOpen > 0) {
