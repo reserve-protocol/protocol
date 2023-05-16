@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../interfaces/IFacadeAct.sol";
 
 /**
@@ -9,7 +10,7 @@ import "../interfaces/IFacadeAct.sol";
  * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely.
  *   For use with ^3.0.0 RTokens.
  */
-contract FacadeAct is IFacadeAct {
+contract FacadeAct is IFacadeAct, Multicall {
     function claimRewards(IRToken rToken) public {
         IMain main = rToken.main();
         main.backingManager().claimRewards();
