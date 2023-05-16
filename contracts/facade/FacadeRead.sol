@@ -278,8 +278,24 @@ contract FacadeRead is IFacadeRead {
         uint192 minTradeVolume = revenueTrader.minTradeVolume(); // {UoA}
         Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
 
+        // solhint-disable avoid-low-level-calls
+
         // Forward ALL revenue
-        revenueTrader.main().backingManager().forwardRevenue(reg.erc20s);
+        {
+            address bm = address(revenueTrader.main().backingManager());
+
+            // First try 3.0.0 interface
+            (bool success, ) = bm.call{ value: 0 }(
+                abi.encodeWithSignature("forwardRevenue(address[])", reg.erc20s)
+            );
+
+            // Fallback to <=2.1.0 interface
+            if (!success) {
+                (success, ) = bm.call{ value: 0 }(
+                    abi.encodeWithSignature("manageTokens(address[])", reg.erc20s)
+                );
+            }
+        }
 
         erc20s = new IERC20[](reg.erc20s.length);
         canStart = new bool[](reg.erc20s.length);
@@ -305,14 +321,28 @@ contract FacadeRead is IFacadeRead {
             );
 
             if (reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i]) {
-                try revenueTrader.manageToken(reg.erc20s[i], TradeKind.DUTCH_AUCTION) {
-                    if (revenueTrader.tradesOpen() - tradesOpen > 0) {
-                        canStart[i] = true;
-                    }
-                    // solhint-disable-next-line no-empty-blocks
-                } catch {}
+                // 3.0.0 RevenueTrader interface
+                (bool success, ) = address(revenueTrader).call{ value: 0 }(
+                    abi.encodeWithSignature(
+                        "manageToken(address,uint8)",
+                        erc20s[i],
+                        TradeKind.DUTCH_AUCTION
+                    )
+                );
+
+                // Fallback to <=2.1.0 interface
+                if (!success) {
+                    (success, ) = address(revenueTrader).call{ value: 0 }(
+                        abi.encodeWithSignature("manageToken(address)", erc20s[i])
+                    );
+                }
+
+                if (revenueTrader.tradesOpen() - tradesOpen > 0) {
+                    canStart[i] = true;
+                }
             }
         }
+        // solhint-enable avoid-low-level-calls
     }
 
     // === Views ===

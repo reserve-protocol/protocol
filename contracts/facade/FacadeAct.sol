@@ -38,12 +38,40 @@ contract FacadeAct is IFacadeAct {
             revenueTrader.settleTrade(toSettle[i]);
         }
 
+        // solhint-disable avoid-low-level-calls
+
         // Transfer revenue backingManager -> revenueTrader
-        revenueTrader.main().backingManager().forwardRevenue(toStart);
+        {
+            address bm = address(revenueTrader.main().backingManager());
+
+            // 3.0.0 BackingManager interface
+            (bool success, ) = bm.call{ value: 0 }(
+                abi.encodeWithSignature("forwardRevenues(address[])", toStart)
+            );
+
+            // Fallback to <=2.1.0 interface
+            if (!success) {
+                (success, ) = bm.call{ value: 0 }(
+                    abi.encodeWithSignature("manageTokens(address[])", toStart)
+                );
+            }
+        }
 
         // Start auctions
+        address rt = address(revenueTrader);
         for (uint256 i = 0; i < toStart.length; ++i) {
-            revenueTrader.manageToken(toStart[i], kind);
+            // 3.0.0 RevenueTrader interface
+            (bool success, ) = rt.call{ value: 0 }(
+                abi.encodeWithSignature("manageToken(address,uint8)", toStart[i], kind)
+            );
+
+            // Fallback to <=2.1.0 interface
+            if (!success) {
+                (success, ) = rt.call{ value: 0 }(
+                    abi.encodeWithSignature("manageToken(address)", toStart[i])
+                );
+            }
         }
+        // solhint-enable avoid-low-level-calls
     }
 }
