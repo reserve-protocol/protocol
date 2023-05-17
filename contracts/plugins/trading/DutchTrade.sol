@@ -32,19 +32,20 @@ contract DutchTrade is ITrade {
 
     TradeStatus public status; // reentrancy protection
 
-    ITrading public origin; // creator
+    ITrading public origin; // initializer
 
     // === Auction ===
     IERC20Metadata public sell;
     IERC20Metadata public buy;
     uint192 public sellAmount; // {sellTok}
 
-    uint48 public startTime; // {s} when the dutch auction began
-    uint48 public endTime; // {s} when the dutch auction ends, if no bids are received
+    // The auction runs from [startTime, endTime)
+    uint48 public startTime; // {s} when the dutch auction begins (1 block after init())
+    uint48 public endTime; // {s} when the dutch auction ends if no bids are received
 
     uint192 public middlePrice; // {buyTok/sellTok} The price at which the function is piecewise
     uint192 public lowPrice; // {buyTok/sellTok} The price the auction ends at
-    // highPrice is always 1.5x the middlePrice
+    // highPrice is always 1.5x the middlePrice, so we don't need to track it explicitly
 
     // === Bid ===
     address public bidder;
@@ -71,11 +72,15 @@ contract DutchTrade is ITrade {
         uint256 sellAmount_,
         uint48 auctionLength
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
-        assert(address(sell_) != address(0) && address(buy_) != address(0)); // misuse of contract
+        assert(
+            address(sell_) != address(0) &&
+                address(buy_) != address(0) &&
+                auctionLength >= 2 * ONE_BLOCK
+        ); // misuse by caller
 
         // Only start dutch auctions under well-defined prices
         //
-        // In the BackingManager this may end up recalculating the RToken price
+        // may end up recalculating the RToken price
         (uint192 sellLow, uint192 sellHigh) = sell_.price(); // {UoA/sellTok}
         (uint192 buyLow, uint192 buyHigh) = buy_.price(); // {UoA/buyTok}
         require(sellLow > 0 && sellHigh < FIX_MAX, "bad sell pricing");
@@ -87,8 +92,8 @@ contract DutchTrade is ITrade {
 
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
-        startTime = uint48(block.timestamp);
-        endTime = uint48(block.timestamp) + auctionLength;
+        startTime = uint48(block.timestamp) + ONE_BLOCK;
+        endTime = startTime + auctionLength;
 
         // {UoA}
         uint192 maxTradeVolume = fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume());
@@ -124,21 +129,19 @@ contract DutchTrade is ITrade {
         require(bidder == address(0), "bid received");
 
         // {qBuyTok}
-        amountIn = bidAmount(uint48(block.timestamp));
+        amountIn = bidAmount(uint48(block.timestamp)); // enforces auction ongoing
 
         // Transfer in buy tokens
         bidder = msg.sender;
         buy.safeTransferFrom(bidder, address(this), amountIn);
 
-        // TODO examine reentrancy - think it's probably ok
-        // the other candidate design is ditch the bid() function entirely and have them transfer
-        // tokens directly into this contract followed by origin.settleTrade(), but I don't like
-        // that pattern because it means humans cannot bid without a smart contract helper.
-        // also requires changing the function signature of settle() to accept the caller address
-
-        // settle() via callback; may also start a new Trade
+        // status must begin OPEN
         assert(status == TradeStatus.OPEN);
+
+        // settle() via callback
         origin.settleTrade(sell);
+
+        // confirm callback succeeded
         assert(status == TradeStatus.CLOSED);
     }
 
@@ -191,7 +194,7 @@ contract DutchTrade is ITrade {
     /// @param timestamp {s} The block timestamp to get price for
     /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
     function bidAmount(uint48 timestamp) public view returns (uint256) {
-        require(timestamp > startTime, "cannot bid block auction was created");
+        require(timestamp >= startTime, "cannot bid block auction was created");
         require(timestamp < endTime, "auction over");
 
         uint192 progression = divuu(timestamp - startTime, endTime - startTime);
