@@ -615,7 +615,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           minBuyAmtRToken.div(bn('1e15'))
         )
       })
-      it('Should be able to start a dust auction BATCH_AUCTION', async () => {
+      it('Should be able to start a dust auction BATCH_AUCTION, if enabled', async () => {
         const minTrade = bn('1e18')
 
         await rTokenTrader.connect(owner).setMinTradeVolume(minTrade)
@@ -626,12 +626,21 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token0.connect(addr1).transfer(rTokenTrader.address, dustAmount)
 
         const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
+
+        // Disable batch auctions, should not start auction
+        await broker.connect(owner).setBatchAuctionLength(bn(0))
+        await expect(
+          await p1RevenueTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
+        ).to.be.revertedWith('No va')
+
+        // Enable batch auctions (normal flow)
+        await broker.connect(owner).setBatchAuctionLength(config.batchAuctionLength)
         await expect(
           await p1RevenueTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
         ).to.emit(rTokenTrader, 'TradeStarted')
       })
 
-      it('Should be able to start a dust auction DUTCH_AUCTION', async () => {
+      it('Should be able to start a dust auction DUTCH_AUCTION, if enabled', async () => {
         const minTrade = bn('1e18')
 
         await rTokenTrader.connect(owner).setMinTradeVolume(minTrade)
@@ -642,6 +651,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token0.connect(addr1).transfer(rTokenTrader.address, dustAmount)
 
         const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
+
+        // Disable dutch auctions, should not start auction
+        await broker.connect(owner).setDutchAuctionLength(bn(0))
+        await expect(
+          await p1RevenueTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+        ).to.be.revertedWith('No va')
+
+        // Enable batch auctions (normal flow)
+        await broker.connect(owner).setDutchAuctionLength(config.dutchAuctionLength)
+
         await expect(
           await p1RevenueTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
         ).to.emit(rTokenTrader, 'TradeStarted')
