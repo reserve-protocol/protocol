@@ -60,6 +60,31 @@ contract DutchTrade is ITrade {
         status = end;
     }
 
+    // === Public Bid Helper ===
+
+    /// Calculates how much buy token is needed to purchase the lot, at a particular timestamp
+    /// @param timestamp {s} The block timestamp to get price for
+    /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
+    function bidAmount(uint48 timestamp) public view returns (uint256) {
+        /// Price Curve:
+        ///   - 1.5 * middlePrice down to the middlePrice for first 15% of auction
+        ///   - middlePrice down to lowPrice for the last 85% of auction
+
+        require(timestamp >= startTime, "cannot bid block auction was created");
+        require(timestamp < endTime, "auction over");
+
+        uint192 progression = divuu(timestamp - startTime, endTime - startTime);
+        // assert(progression <= FIX_ONE); obviously true by inspection
+
+        // {buyTok/sellTok}
+        uint192 price = _price(progression);
+
+        // {qBuyTok} = {sellTok} * {buyTok/sellTok}
+        return sellAmount.mul(price, CEIL).shiftl_toUint(int8(buy.decimals()), CEIL);
+    }
+
+    // === External ===
+
     /// @param origin_ The Trader that originated the trade
     /// @param sell_ The asset being sold by the protocol
     /// @param buy_ The asset being bought by the protocol
@@ -95,31 +120,18 @@ contract DutchTrade is ITrade {
         startTime = uint48(block.timestamp) + ONE_BLOCK;
         endTime = startTime + auctionLength;
 
-        // {UoA}
-        uint192 maxTradeVolume = fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume());
-        uint192 minTradeVolume = origin.minTradeVolume();
+        uint192 slippage = _slippage(
+            sellAmount.mul(sellHigh, FLOOR), // auctionVolume
+            origin.minTradeVolume(), // minTradeVolume
+            fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume()) // maxTradeVolume
+        ); // {1}
 
-        // Apply sliding slippage from 0% at maxTradeVolume to maxTradeSlippage() at minTradeVolume
-        uint192 slippage = origin.maxTradeSlippage(); // {1}
-        if (minTradeVolume < maxTradeVolume) {
-            // {UoA} = {sellTok} * {UoA/sellTok}
-            uint192 auctionVolume = sellAmount.mul(sellHigh, FLOOR);
-
-            if (auctionVolume > minTradeVolume && auctionVolume <= maxTradeVolume) {
-                // {1} = {1} * ({UoA} - {UoA}} / ({UoA} - {UoA})
-                slippage = slippage.mul(
-                    FIX_ONE - divuu(auctionVolume - minTradeVolume, maxTradeVolume - minTradeVolume)
-                );
-            } else if (auctionVolume > maxTradeVolume) {
-                slippage = 0;
-            }
-        }
         // {buyTok/sellTok} = {1} * {UoA/sellTok} / {UoA/buyTok}
         lowPrice = sellLow.mulDiv(FIX_ONE - slippage, buyHigh, FLOOR);
         middlePrice = sellHigh.div(buyLow, CEIL); // no additional slippage
         // highPrice = 1.5 * middlePrice
 
-        require(lowPrice <= middlePrice, "asset inverted pricing");
+        assert(lowPrice <= middlePrice);
     }
 
     /// Bid for the auction lot at the current price; settling atomically via a callback
@@ -153,7 +165,7 @@ contract DutchTrade is ITrade {
         stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
-        require(msg.sender == address(origin), "only origin can settle"); // origin.settleTrade()
+        require(msg.sender == address(origin), "only origin can settle");
 
         // Received bid
         if (bidder != address(0)) {
@@ -185,38 +197,43 @@ contract DutchTrade is ITrade {
         return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp >= endTime);
     }
 
-    // === Bid Helper ===
+    // === Private ===
 
-    /// Calculates how much buy token is needed to purchase the lot, at a particular timestamp
-    /// Price Curve:
-    ///   - 1.5 * middlePrice down to the middlePrice for first 15% of auction
-    ///   - middlePrice down to lowPrice for the last 85% of auction
-    /// @param timestamp {s} The block timestamp to get price for
-    /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
-    function bidAmount(uint48 timestamp) public view returns (uint256) {
-        require(timestamp >= startTime, "cannot bid block auction was created");
-        require(timestamp < endTime, "auction over");
+    /// Return a sliding % from 0 (at maxTradeVolume) to maxTradeSlippage (at minTradeVolume)
+    /// @param auctionVolume {UoA} The actual auction volume
+    /// @param minTradeVolume {UoA} The minimum trade volume
+    /// @param maxTradeVolume {UoA} The maximum trade volume
+    /// @return slippage {1} The fraction of auctionVolume that should be permitted as slippage
+    function _slippage(
+        uint192 auctionVolume,
+        uint192 minTradeVolume,
+        uint192 maxTradeVolume
+    ) private view returns (uint192 slippage) {
+        slippage = origin.maxTradeSlippage(); // {1}
+        if (maxTradeVolume <= minTradeVolume || auctionVolume < minTradeVolume) return slippage;
+        if (auctionVolume > maxTradeVolume) return 0; // 0% slippage beyond maxTradeVolume
 
-        uint192 progression = divuu(timestamp - startTime, endTime - startTime);
-        // assert(progression <= FIX_ONE);
+        // {1} = {1} * ({UoA} - {UoA}} / ({UoA} - {UoA})
+        return
+            slippage.mul(
+                FIX_ONE - divuu(auctionVolume - minTradeVolume, maxTradeVolume - minTradeVolume)
+            );
+    }
 
-        // {buyTok/sellTok}
-        uint192 price;
-
+    /// Return the price of the auction based on a particular progression
+    /// @param progression {1} The progression of the auction
+    /// @return {buyTok/sellTok}
+    function _price(uint192 progression) private view returns (uint192) {
+        // Fast decay -- 15th percentile case
         if (progression < FIFTEEN_PERCENT) {
-            // Fast decay -- 15th percentile case
-
             // highPrice is 1.5x middlePrice
             uint192 highPrice = middlePrice + middlePrice.mul(FIFTY_PERCENT);
-            price = highPrice - (highPrice - middlePrice).mulDiv(progression, FIFTEEN_PERCENT);
-        } else {
-            // Slow decay -- 85th percentile case
-            price =
-                middlePrice -
-                (middlePrice - lowPrice).mulDiv(progression - FIFTEEN_PERCENT, EIGHTY_FIVE_PERCENT);
+            return highPrice - (highPrice - middlePrice).mulDiv(progression, FIFTEEN_PERCENT);
         }
 
-        // {qBuyTok} = {sellTok} * {buyTok/sellTok}
-        return sellAmount.mul(price, CEIL).shiftl_toUint(int8(buy.decimals()), CEIL);
+        // Slow decay -- 85th percentile case
+        return
+            middlePrice -
+            (middlePrice - lowPrice).mulDiv(progression - FIFTEEN_PERCENT, EIGHTY_FIVE_PERCENT);
     }
 }
