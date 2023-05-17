@@ -23,7 +23,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     using Clones for address;
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
-    uint48 public constant MIN_AUCTION_LENGTH = ONE_BLOCK; // {s} min auction length - 1 block
+    uint48 public constant MIN_AUCTION_LENGTH = ONE_BLOCK * 2; // {s} min auction length - 2 blocks
     // warning: blocktime <= 12s assumption
 
     IBackingManager private backingManager;
@@ -150,7 +150,8 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// @custom:governance
     function setBatchAuctionLength(uint48 newAuctionLength) public governance {
         require(
-            newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH,
+            newAuctionLength == 0 ||
+                (newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH),
             "invalid batchAuctionLength"
         );
         emit BatchAuctionLengthSet(batchAuctionLength, newAuctionLength);
@@ -171,7 +172,8 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// @custom:governance
     function setDutchAuctionLength(uint48 newAuctionLength) public governance {
         require(
-            newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH,
+            newAuctionLength == 0 ||
+                (newAuctionLength >= MIN_AUCTION_LENGTH && newAuctionLength <= MAX_AUCTION_LENGTH),
             "invalid dutchAuctionLength"
         );
         emit DutchAuctionLengthSet(dutchAuctionLength, newAuctionLength);
@@ -187,7 +189,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // === Private ===
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
-        require(batchAuctionLength > 0, "batchAuctionLength unset");
+        require(batchAuctionLength > 0, "batch auctions not enabled");
         GnosisTrade trade = GnosisTrade(address(batchTradeImplementation).clone());
         trades[address(trade)] = true;
 
@@ -211,7 +213,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     function newDutchAuction(TradeRequest memory req, ITrading caller) private returns (ITrade) {
-        require(dutchAuctionLength > 0, "dutchAuctionLength unset");
+        require(dutchAuctionLength > 0, "dutch auctions not enabled");
         DutchTrade trade = DutchTrade(address(dutchTradeImplementation).clone());
         trades[address(trade)] = true;
 
