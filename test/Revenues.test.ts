@@ -631,7 +631,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await broker.connect(owner).setBatchAuctionLength(bn(0))
         await expect(
           await p1RevenueTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
-        ).to.be.revertedWith('No va')
+        ).to.be.revertedWith('batch auctions not enabled')
 
         // Enable batch auctions (normal flow)
         await broker.connect(owner).setBatchAuctionLength(config.batchAuctionLength)
@@ -656,7 +656,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await broker.connect(owner).setDutchAuctionLength(bn(0))
         await expect(
           await p1RevenueTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
-        ).to.be.revertedWith('No va')
+        ).to.be.revertedWith('dutch auctions not enabled')
 
         // Enable batch auctions (normal flow)
         await broker.connect(owner).setDutchAuctionLength(config.dutchAuctionLength)

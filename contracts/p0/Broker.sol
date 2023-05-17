@@ -22,7 +22,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     using SafeERC20 for IERC20Metadata;
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
-    uint48 public constant MIN_AUCTION_LENGTH = ONE_BLOCK * 2; // {s} min auction length - 2 block
+    uint48 public constant MIN_AUCTION_LENGTH = ONE_BLOCK * 2; // {s} min auction length - 2 blocks
     // warning: blocktime <= 12s assumption
 
     // Added for interface compatibility with P1
