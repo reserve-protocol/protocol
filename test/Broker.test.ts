@@ -284,7 +284,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     })
 
     it('Should perform validations on batchAuctionLength', async () => {
-      let invalidValue: BigNumber = bn(0)
+      let invalidValue: BigNumber = bn(1)
 
       // Attempt to update
       await expect(broker.connect(owner).setBatchAuctionLength(invalidValue)).to.be.revertedWith(
@@ -297,10 +297,18 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       await expect(broker.connect(owner).setBatchAuctionLength(invalidValue)).to.be.revertedWith(
         'invalid batchAuctionLength'
       )
+
+      // Allows to set it to zero to disable feature
+      await expect(broker.connect(owner).setBatchAuctionLength(bn(0)))
+        .to.emit(broker, 'BatchAuctionLengthSet')
+        .withArgs(config.batchAuctionLength, bn(0))
+
+      // Check value was updated
+      expect(await broker.batchAuctionLength()).to.equal(bn(0))
     })
 
     it('Should perform validations on dutchAuctionLength', async () => {
-      let invalidValue: BigNumber = bn(0)
+      let invalidValue: BigNumber = bn(13)
 
       // Attempt to update
       await expect(broker.connect(owner).setDutchAuctionLength(invalidValue)).to.be.revertedWith(
@@ -313,6 +321,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       await expect(broker.connect(owner).setDutchAuctionLength(invalidValue)).to.be.revertedWith(
         'invalid dutchAuctionLength'
       )
+
+      // Allows to set it to zero to disable feature
+      await expect(broker.connect(owner).setDutchAuctionLength(bn(0)))
+        .to.emit(broker, 'DutchAuctionLengthSet')
+        .withArgs(config.dutchAuctionLength, bn(0))
+
+      // Check value was updated
+      expect(await broker.dutchAuctionLength()).to.equal(bn(0))
     })
 
     it('Should allow to update disabled if Owner', async () => {
