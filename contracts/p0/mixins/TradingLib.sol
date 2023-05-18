@@ -423,7 +423,7 @@ library TradingLibP0 {
 
         // No space on the stack to cache erc20s.length
         for (uint256 i = 0; i < erc20s.length; ++i) {
-            if (erc20s[i] == ctx.rsr) continue;
+            if (erc20s[i] == ctx.rsr || address(erc20s[i]) == address(ctx.rToken)) continue;
 
             IAsset asset = ctx.reg.toAsset(erc20s[i]);
 
@@ -483,6 +483,28 @@ library TradingLibP0 {
 
                         maxes.deficit = delta;
                     }
+                }
+            }
+        }
+
+        // Use RToken if needed
+        if (address(trade.sell) == address(0) && address(trade.buy) != address(0)) {
+            IAsset rTokenAsset = IAsset(address(ctx.reg.toAsset(IERC20(address(ctx.rToken)))));
+            uint192 bal = rTokenAsset.bal(address(ctx.bm));
+
+            // Only price RToken if it is large enough to be worth it
+            if (bal > MAX_REVENUE_TOTALS) {
+                // Context: The Distributor leaves small balances behind. It is a non-UoA measure.
+                // MAX_REVENUE_TOTALS is about 1e7, so on a minTradeVolume of $1000 it would
+                // require 1 whole RToken to be worth 100 trillion dollars to be a mistake.
+                // So, it seems like a safe heuristic to use to avoid looking up RToken price.
+
+                (uint192 low, uint192 high) = rTokenAsset.price(); // {UoA/tok}
+                (uint192 lotLow, ) = rTokenAsset.lotPrice(); // {UoA/tok}
+                if (high > 0 && isEnoughToSell(rTokenAsset, bal, lotLow, ctx.minTradeVolume)) {
+                    trade.sell = rTokenAsset;
+                    trade.sellAmount = bal;
+                    trade.sellPrice = low;
                 }
             }
         }

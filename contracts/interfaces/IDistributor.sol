@@ -15,6 +15,9 @@ struct RevenueTotals {
     uint24 rsrTotal; // {revShare}
 }
 
+// The maximum value of rTokenTotal and rsrTotal; up to 1024 entries, each up to 10,000
+uint256 constant MAX_REVENUE_TOTALS = 1024 * 1e4;
+
 /**
  * @title IDistributor
  * @notice The Distributor Component maintains a revenue distribution table that dictates

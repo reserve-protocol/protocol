@@ -2,7 +2,7 @@
 
 exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  1`] = `1332440`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  2`] = `2230209`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  2`] = `1453082`;
 
 exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  1`] = `1689530`;
 
@@ -12,6 +12,6 @@ exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  3`] =
 
 exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  4`] = `184816`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  5`] = `2664701`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  5`] = `1731105`;
 
 exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  6`] = `212916`;

@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/IAssetRegistry.sol";
 import "../../interfaces/IBackingManager.sol";
-import "../../plugins/assets/RTokenAsset.sol";
 import "../../libraries/Fixed.sol";
 import "./TradeLib.sol";
 
@@ -394,12 +393,16 @@ library RecollateralizationLibP1 {
 
         // Use RToken if needed
         if (address(trade.sell) == address(0) && address(trade.buy) != address(0)) {
-            RTokenAsset rTokenAsset = RTokenAsset(
-                address(ctx.ar.toAsset(IERC20(address(ctx.rToken))))
-            );
+            IAsset rTokenAsset = ctx.ar.toAsset(IERC20(address(ctx.rToken)));
             uint192 bal = rTokenAsset.bal(address(ctx.bm));
 
-            if (bal > 0) {
+            // Only price RToken if it is large enough to be worth it
+            if (bal > MAX_REVENUE_TOTALS) {
+                // Context: The Distributor leaves small balances behind. It is a non-UoA measure.
+                // MAX_REVENUE_TOTALS is about 1e7, so on a minTradeVolume of $1000 it would
+                // require 1 whole RToken to be worth 100 trillion dollars to be a mistake.
+                // So, it seems like a safe heuristic to use to avoid looking up RToken price.
+
                 (uint192 low, uint192 high) = rTokenAsset.price(); // {UoA/tok}
                 (uint192 lotLow, ) = rTokenAsset.lotPrice(); // {UoA/tok}
                 if (
