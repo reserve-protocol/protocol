@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
-import "./IsfrxEth.sol";
+import "./vendor/IsfrxEth.sol";
 
 /**
  * @title SFraxEthCollateral
