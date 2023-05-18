@@ -18,13 +18,14 @@ export const validateDeployments = async (
   }
 
   // Check basket lib defined
-  if (!deployments.basketLib) {
-    throw new Error(
-      `Missing deployed BasketLib for version ${version} in network ${hre.network.name}`
-    )
-  } else if (!(await isValidContract(hre, deployments.basketLib))) {
-    throw new Error(`BasketLib contract not found in network ${hre.network.name}`)
-  }
+  // Only enable after 3.0.0 for future releases
+  //   if (!deployments.basketLib) {
+  //     throw new Error(
+  //       `Missing deployed BasketLib for version ${version} in network ${hre.network.name}`
+  //     )
+  //   } else if (!(await isValidContract(hre, deployments.basketLib))) {
+  //     throw new Error(`BasketLib contract not found in network ${hre.network.name}`)
+  //   }
 
   // Check Main implementation is defined
   if (!deployments.implementations.main) {

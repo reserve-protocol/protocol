@@ -37,8 +37,7 @@
     "prettier": "prettier --ignore-path .gitignore --loglevel warn --write \"./**/*.{js,ts,sol,json,md}\"",
     "size": "hardhat size-contracts",
     "slither": "python3 tools/slither.py",
-    "prepare": "husky install",
-    "storage": "hardhat compile && hardhat check"
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -92,7 +91,6 @@
     "hardhat": "^2.12.3",
     "hardhat-contract-sizer": "^2.4.0",
     "hardhat-gas-reporter": "^1.0.8",
-    "hardhat-storage-layout": "^0.1.7",
     "husky": "^7.0.0",
     "lodash": "^4.17.21",
     "lodash.get": "^4.4.2",
@@ -111,8 +109,5 @@
   "resolutions": {
     "@solidity-parser/parser": "^0.13.2"
   },
-  "packageManager": "yarn@3.3.1",
-  "dependencies": {
-    "@nomicfoundation/hardhat-network-helpers": "^1.0.7"
-  }
+  "packageManager": "yarn@3.3.1"
 }

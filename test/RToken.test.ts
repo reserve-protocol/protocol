@@ -64,7 +64,7 @@ const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 const describeExtreme =
-  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
 
 describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -1112,36 +1112,36 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(rToken.connect(addr1).redeem(bn(redeemAmount))).to.not.be.reverted
       })
 
-      it('Should revert while rebalancing after prime basket change', async function () {
+      it('Should behave correctly after basket change', async function () {
         // New prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
         expect(await basketHandler.fullyCollateralized()).to.equal(true) // ref basket hasn't changed
 
-        // Should still redeem through the main flow; not custom flow
-        await rToken.connect(addr1).redeem(1)
-        await expect(
-          rToken
-            .connect(addr1)
-            .redeemCustom(addr1.address, 1, [await basketHandler.nonce()], [fp('1')], [], [])
-        ).to.be.revertedWith('invalid basketNonce')
+        // Should be able to redeem through both main flow and custom flow
+        await rToken.connect(addr1).redeem(fp('1'))
+        await rToken
+          .connect(addr1)
+          .redeemCustom(addr1.address, fp('1'), [await basketHandler.nonce()], [fp('1')], [], [])
 
         // New reference basket
         await basketHandler.refreshBasket()
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
-        // Before the first auction is completed, BOTH redemption methods are bricked
+        // Custom redemption should not revert since there is collateral overlap
         await expect(rToken.connect(addr1).redeem(1)).to.be.revertedWith(
           'partial redemption; use redeemCustom'
         )
         const nonce = await basketHandler.nonce()
+        await rToken.connect(addr1).redeemCustom(addr1.address, fp('1'), [nonce], [fp('1')], [], [])
+
+        // Previous basket nonce should be redeemable
+        await rToken
+          .connect(addr1)
+          .redeemCustom(addr1.address, fp('1'), [nonce - 1], [fp('1')], [], [])
+
+        // Future basket nonce should not be redeemable
         await expect(
-          rToken.connect(addr1).redeemCustom(addr1.address, 1, [nonce], [fp('1')], [], [])
-        ).to.be.revertedWith('empty redemption')
-        await expect(
-          rToken.connect(addr1).redeemCustom(addr1.address, 1, [nonce - 1], [fp('1')], [], [])
-        ).to.be.revertedWith('invalid basketNonce')
-        await expect(
-          rToken.connect(addr1).redeemCustom(addr1.address, 1, [nonce + 1], [fp('1')], [], [])
+          rToken.connect(addr1).redeemCustom(addr1.address, fp('1'), [nonce + 1], [fp('1')], [], [])
         ).to.be.revertedWith('invalid basketNonce')
       })
 
@@ -1718,38 +1718,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         // Check values
         expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
-      })
-
-      it('Should enforce primeNonce <-> reference nonce relationship #fast', async function () {
-        const portions = [fp('1')]
-        await expect(
-          rToken
-            .connect(addr1)
-            .redeemCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
-        ).to.be.revertedWith('invalid basketNonce')
-
-        // Bump primeNonce
-        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
-
-        // Old basket is no longer redeemable
-        await expect(
-          rToken
-            .connect(addr1)
-            .redeemCustom(addr1.address, issueAmount.div(2), [1], portions, [], [])
-        ).to.be.revertedWith('invalid basketNonce')
-
-        // Nonce 2 still doesn't have a reference basket yet
-        await expect(
-          rToken
-            .connect(addr1)
-            .redeemCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
-        ).to.be.revertedWith('invalid basketNonce')
-
-        // Refresh reference basket
-        await basketHandler.connect(owner).refreshBasket()
-        await rToken
-          .connect(addr1)
-          .redeemCustom(addr1.address, issueAmount.div(2), [2], portions, [], [])
       })
 
       it('Should prorate redemption if basket is DISABLED from fallen refPerTok() #fast', async function () {

@@ -20,6 +20,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     // Registered Assets
     mapping(IERC20 => IAsset) private assets;
 
+    uint48 public lastRefresh; // {s}
+
     function init(IMain main_, IAsset[] memory assets_) public initializer {
         __Component_init(main_);
         for (uint256 i = 0; i < assets_.length; i++) {
@@ -37,6 +39,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
         IBasketHandler basketHandler = main.basketHandler();
         basketHandler.trackStatus();
+        lastRefresh = uint48(block.timestamp);
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered

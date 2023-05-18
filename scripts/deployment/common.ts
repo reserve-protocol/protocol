@@ -16,7 +16,6 @@ export interface IDeployments {
   facadeRead: string
   facadeWriteLib: string
   cvxMiningLib: string
-  facadeMonitor: string
   facadeWrite: string
   facadeAct: string
   deployer: string
@@ -27,6 +26,7 @@ export interface IDeployments {
 export interface IAssetCollDeployments {
   assets: ITokens
   collateral: ITokens & IPlugins
+  erc20s: ITokens & IPlugins
 }
 
 export interface IRTokenDeployments {

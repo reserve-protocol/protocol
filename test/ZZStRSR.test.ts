@@ -15,6 +15,7 @@ import {
   StRSRP0,
   StRSRP1Votes,
   StaticATokenMock,
+  IAssetRegistry,
   TestIBackingManager,
   TestIBasketHandler,
   TestIMain,
@@ -51,9 +52,9 @@ const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 const describeExtreme =
-  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
 
-describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
+describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -69,6 +70,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
   let basketHandler: TestIBasketHandler
   let rToken: TestIRToken
   let facade: FacadeRead
+  let assetRegistry: IAssetRegistry
 
   // StRSR
   let stRSR: TestIStRSR
@@ -158,6 +160,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       basketHandler,
       rToken,
       facade,
+      assetRegistry,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
@@ -226,10 +229,24 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       }
 
       await expect(
-        newStRSR.init(main.address, '', 'rtknRSR', config.unstakingDelay, config.rewardRatio)
+        newStRSR.init(
+          main.address,
+          '',
+          'rtknRSR',
+          config.unstakingDelay,
+          config.rewardRatio,
+          config.withdrawalLeak
+        )
       ).to.be.revertedWith('name empty')
       await expect(
-        newStRSR.init(main.address, 'rtknRSR Token', '', config.unstakingDelay, config.rewardRatio)
+        newStRSR.init(
+          main.address,
+          'rtknRSR Token',
+          '',
+          config.unstakingDelay,
+          config.rewardRatio,
+          config.withdrawalLeak
+        )
       ).to.be.revertedWith('symbol empty')
     })
   })
@@ -272,7 +289,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       await expect(stRSR.connect(owner).setRewardRatio(newRatio))
         .to.emit(stRSR, 'RewardRatioSet')
-        .withArgs(stRSR.rewardRatio, newRatio)
+        .withArgs(config.rewardRatio, newRatio)
 
       expect(await stRSR.rewardRatio()).to.equal(newRatio)
 
@@ -284,6 +301,27 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Cannot update with rewardRatio > max
       await expect(stRSR.connect(owner).setRewardRatio(MAX_RATIO.add(1))).to.be.revertedWith(
         'invalid rewardRatio'
+      )
+    })
+
+    it('Should allow to update withdrawalLeak if Owner and perform validations', async () => {
+      // Setup a new value
+      const newLeak: BigNumber = fp('0.1') // 10%
+
+      await expect(stRSR.connect(owner).setWithdrawalLeak(newLeak))
+        .to.emit(stRSR, 'WithdrawalLeakSet')
+        .withArgs(config.withdrawalLeak, newLeak)
+
+      expect(await stRSR.withdrawalLeak()).to.equal(newLeak)
+
+      // Try to update again if not owner
+      await expect(stRSR.connect(addr1).setWithdrawalLeak(bn('0'))).to.be.revertedWith(
+        'governance only'
+      )
+
+      // Cannot update with withdrawalLeak > max
+      await expect(stRSR.connect(owner).setWithdrawalLeak(fp('0.3').add(1))).to.be.revertedWith(
+        'invalid withdrawalLeak'
       )
     })
 
@@ -638,6 +676,61 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.totalSupply()).to.equal(amount)
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount) // RSR is still in the contract
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount)) // RSR wasn't returned
+    })
+
+    describe('Withdrawal Leak', () => {
+      const withdrawalLeak = fp('0.1') // 10%
+      const stake = bn('1000e18')
+
+      beforeEach(async () => {
+        stkWithdrawalDelay = bn(await stRSR.unstakingDelay()).toNumber()
+
+        // Stake
+        await rsr.connect(addr1).approve(stRSR.address, stake)
+        await stRSR.connect(addr1).stake(stake)
+
+        // Set Withdrawal Leak
+        await expect(stRSR.connect(owner).setWithdrawalLeak(withdrawalLeak))
+          .to.emit(stRSR, 'WithdrawalLeakSet')
+          .withArgs(config.withdrawalLeak, withdrawalLeak)
+      })
+
+      it('Should refresh above withdrawal leak only', async () => {
+        const withdrawal = stake.mul(withdrawalLeak).div(fp('1'))
+        await stRSR.connect(addr1).unstake(withdrawal)
+        await stRSR.connect(addr1).unstake(1)
+        await stRSR.connect(addr1).unstake(1)
+
+        // Move forward past stakingWithdrawalDelaylay
+        await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay)
+
+        let lastRefresh = await assetRegistry.lastRefresh()
+
+        // Should not refresh
+        await stRSR.withdraw(addr1.address, 1)
+        expect(await assetRegistry.lastRefresh()).to.eq(lastRefresh)
+
+        // Should refresh
+        await stRSR.withdraw(addr1.address, 2)
+        expect(await assetRegistry.lastRefresh()).to.be.gt(lastRefresh)
+        lastRefresh = await assetRegistry.lastRefresh()
+
+        // Should not refresh
+        await stRSR.withdraw(addr1.address, 3)
+        expect(await assetRegistry.lastRefresh()).to.eq(lastRefresh)
+      })
+
+      it('Should prevent unstaking', async () => {
+        const withdrawal = stake.mul(withdrawalLeak).div(fp('1')).add(1)
+        await stRSR.connect(addr1).unstake(withdrawal)
+
+        // Move forward past stakingWithdrawalDelaylay
+        await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay)
+
+        // Depeg collateral
+        await setOraclePrice(collateral1.address, bn('0.5e8'))
+        await expect(stRSR.withdraw(addr1.address, 1)).to.be.revertedWith('basket not ready')
+      })
     })
 
     context('With deposits and withdrawals', () => {
@@ -3019,7 +3112,7 @@ describeExtreme(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
   })
 
-  describe(`Extreme Bounds ${SLOW ? 'slow mode' : 'fast mode'})`, () => {
+  describeExtreme(`Extreme Bounds ${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     // Dimensions
     //
     // StRSR economics can be broken down into 4 "places" that RSR can be.

@@ -48,6 +48,7 @@ async function main() {
   await (<Asset>await ethers.getContractAt('Asset', cvxAsset)).refresh()
 
   assetCollDeployments.assets.CVX = cvxAsset
+  assetCollDeployments.erc20s.CVX = networkConfig[chainId].tokens.CVX
   deployedAssets.push(cvxAsset.toString())
 
   /**************************************************************/

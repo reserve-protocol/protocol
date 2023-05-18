@@ -425,7 +425,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           'stRTKNRSR Token',
           'stRTKNRSR',
           config.unstakingDelay,
-          config.rewardRatio
+          config.rewardRatio,
+          config.withdrawalLeak
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
     })
@@ -1887,7 +1888,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Set basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs(2, [token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
+        .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
     it('Should revert if target has been changed in asset registry', async () => {

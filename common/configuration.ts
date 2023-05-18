@@ -316,6 +316,7 @@ export interface IConfig {
   longFreeze: BigNumber
   rewardRatio: BigNumber
   unstakingDelay: BigNumber
+  withdrawalLeak: BigNumber
   warmupPeriod: BigNumber
   tradingDelay: BigNumber
   batchAuctionLength: BigNumber

@@ -83,12 +83,14 @@ task('validate-upgrade', 'Validates if upgrade to new version is safe')
       deployments.implementations.components.rsrTrader,
       'RevenueTraderP1',
       undefined,
+      undefined,
       ['delegatecall']
     )
     await validateUpgrade(
       hre,
       deployments.implementations.components.rTokenTrader,
       'RevenueTraderP1',
+      undefined,
       undefined,
       ['delegatecall']
     )

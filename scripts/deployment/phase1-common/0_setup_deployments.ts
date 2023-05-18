@@ -58,8 +58,8 @@ async function main() {
     facadeRead: '',
     facadeAct: '',
     facadeWriteLib: '',
+    basketLib: '',
     facadeWrite: '',
-    facadeMonitor: '',
     deployer: '',
     rsrAsset: '',
     implementations: {

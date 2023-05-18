@@ -54,7 +54,6 @@ import {
   RecollateralizationLibP1,
   USDCMock,
   NonFiatCollateral,
-  FacadeMonitor,
   ZeroDecimalMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
@@ -400,7 +399,6 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   facade: FacadeRead
   facadeAct: FacadeAct
   facadeTest: FacadeTest
-  facadeMonitor: FacadeMonitor
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -440,6 +438,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     longFreeze: bn('2592000'), // 30 days
     rewardRatio: bn('1069671574938'), // approx. half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
+    withdrawalLeak: fp('0'), // 0%; always refresh
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     batchAuctionLength: bn('900'), // 15 minutes
@@ -467,10 +466,6 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   // Deploy FacadeAct
   const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
   const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
-
-  // Deploy FacadeMonitor
-  const FacadeMonitorFactory: ContractFactory = await ethers.getContractFactory('FacadeMonitor')
-  const facadeMonitor = <FacadeMonitor>await FacadeMonitorFactory.deploy()
 
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
@@ -742,7 +737,6 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     easyAuction,
     facade,
     facadeAct,
-    facadeMonitor,
     facadeTest,
     rsrTrader,
     rTokenTrader,

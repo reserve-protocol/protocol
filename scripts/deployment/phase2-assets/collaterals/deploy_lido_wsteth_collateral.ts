@@ -71,6 +71,7 @@ async function main() {
   console.log(`Deployed Lido wStETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
   assetCollDeployments.collateral.wstETH = collateral.address
+  assetCollDeployments.erc20s.wstETH = networkConfig[chainId].tokens.wstETH
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
