@@ -429,7 +429,6 @@ describe('FacadeRead contract', () => {
             expect(canStart[i]).to.equal(false)
             expect(surpluses[i]).to.equal(0)
           }
-
           const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
           const [low] = await asset.price()
           expect(minTradeAmounts[i]).to.equal(
@@ -437,10 +436,14 @@ describe('FacadeRead contract', () => {
           ) // 1% oracleError
         }
 
-        // Run revenue auctions
-        await expect(
-          facadeAct.runRevenueAuctions(trader.address, [], erc20sToStart, TradeKind.DUTCH_AUCTION)
-        ).to.emit(trader, 'TradeStarted')
+        // Run revenue auctions via multicall
+        const funcSig = ethers.utils.id('runRevenueAuctions(address,address[],address[],uint8)')
+        const args = ethers.utils.defaultAbiCoder.encode(
+          ['address', 'address[]', 'address[]', 'uint8'],
+          [trader.address, [], erc20sToStart, TradeKind.DUTCH_AUCTION]
+        )
+        const data = funcSig.substring(0, 10) + args.slice(2)
+        await expect(facadeAct.multicall([data])).to.emit(trader, 'TradeStarted')
 
         // Nothing should be settleable
         expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
