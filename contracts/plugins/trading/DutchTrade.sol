@@ -73,7 +73,7 @@ contract DutchTrade is ITrade {
     /// @param timestamp {s} The block timestamp to get price for
     /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
     function bidAmount(uint48 timestamp) public view returns (uint256) {
-        require(timestamp >= startTime, "cannot bid block auction was created");
+        require(timestamp >= startTime, "auction not started");
         require(timestamp <= endTime, "auction over");
 
         // {buyTok/sellTok}
@@ -104,8 +104,6 @@ contract DutchTrade is ITrade {
         ); // misuse by caller
 
         // Only start dutch auctions under well-defined prices
-        //
-        // may end up recalculating the RToken price
         (uint192 sellLow, uint192 sellHigh) = sell_.price(); // {UoA/sellTok}
         (uint192 buyLow, uint192 buyHigh) = buy_.price(); // {UoA/buyTok}
         require(sellLow > 0 && sellHigh < FIX_MAX, "bad sell pricing");

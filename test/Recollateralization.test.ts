@@ -5076,23 +5076,35 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       // Will sell all balance of token2
       await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith('no trade open')
       await snapshotGasCost(backingManager.rebalance(TradeKind.DUTCH_AUCTION))
+      expect(await backingManager.tradesOpen()).to.equal(1)
 
       // Another call should not create any new auctions if still ongoing
       await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith(
         'cannot settle yet'
       )
 
-      // Bid + settle DutchTrade
-      const tradeAddr = await backingManager.trades(token2.address)
-      const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+      // Bid + settle DutchTrade in final block at floor price
+      let tradeAddr = await backingManager.trades(token2.address)
+      let trade = await ethers.getContractAt('DutchTrade', tradeAddr)
       await backupToken1.connect(addr1).approve(trade.address, initialBal)
+      await advanceToTimestamp((await trade.endTime()) - 1)
       await snapshotGasCost(trade.connect(addr1).bid())
 
-      // Expect new trade started
+      // Expect new trade started -- bid in first block at ~1000x price
       expect(await backingManager.tradesOpen()).to.equal(1)
       expect(await backingManager.trades(token2.address)).to.equal(ZERO_ADDRESS)
       expect(await backingManager.trades(rsr.address)).to.not.equal(ZERO_ADDRESS)
-      await expect(backingManager.settleTrade(rsr.address)).to.be.revertedWith('cannot settle yet')
+      tradeAddr = await backingManager.trades(rsr.address)
+      trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+      await backupToken1.connect(addr1).approve(trade.address, initialBal)
+      await advanceToTimestamp((await trade.startTime()) - 1)
+      await snapshotGasCost(trade.connect(addr1).bid())
+
+      // No new trade
+      expect(await backingManager.tradesOpen()).to.equal(0)
+      expect(await backingManager.trades(token2.address)).to.equal(ZERO_ADDRESS)
+      expect(await backingManager.trades(rsr.address)).equal(ZERO_ADDRESS)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
     })
   })
 })
