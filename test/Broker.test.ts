@@ -1076,7 +1076,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
 
         // Advance time till trade can be settled
-        await advanceTime(config.batchAuctionLength.add(100).toString())
+        await advanceTime(config.dutchAuctionLength.add(100).toString())
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {
