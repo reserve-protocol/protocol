@@ -163,7 +163,6 @@ export const getEmptyDeployment = (): IDeployments => {
     facadeRead: '',
     facadeWriteLib: '',
     cvxMiningLib: '',
-    facadeMonitor: '',
     facadeWrite: '',
     facadeAct: '',
     deployer: '',
