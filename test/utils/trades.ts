@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
@@ -105,16 +106,19 @@ export const dutchBuyAmount = async (
 
   const lowPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
   const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
-  const highPrice = middlePrice.add(divCeil(middlePrice, bn('2'))) // 50% above middlePrice
 
-  const price = progression.lt(fp('0.15'))
-    ? highPrice.sub(highPrice.sub(middlePrice).mul(progression).div(fp('0.15')))
-    : middlePrice.sub(
-        middlePrice
-          .sub(lowPrice)
-          .mul(progression.sub(fp('0.15')))
-          .div(fp('0.85'))
-      )
-
+  let price: BigNumber
+  if (progression.lt(fp('0.30'))) {
+    const exp = bn('31').mul(fp('0.30').sub(progression)).div(fp('0.30'))
+    const divisor = new Decimal('4').div(5).pow(exp.toString())
+    price = divCeil(middlePrice.mul(fp('1')), fp(divisor.toString()))
+  } else {
+    price = middlePrice.sub(
+      middlePrice
+        .sub(lowPrice)
+        .mul(progression.sub(fp('0.30')))
+        .div(fp('0.70'))
+    )
+  }
   return divCeil(outAmount.mul(price), fp('1'))
 }
