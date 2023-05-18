@@ -2267,7 +2267,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           // Simulate 18.6 minutes of blocks, should swap at right price each time
           for (let now = await getLatestBlockTimestamp(); now <= end; now += 12) {
             const actual = await trade.connect(addr1).bidAmount(now)
-            console.log(actual)
             const expected = await dutchBuyAmount(
               fp(now - start).div(end - start),
               rTokenAsset.address,
