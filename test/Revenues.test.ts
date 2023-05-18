@@ -2210,7 +2210,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       context('DutchTrade', () => {
-        const auctionLength = 300
+        const auctionLength = 1116 // 18.6 minutes
         beforeEach(async () => {
           await broker.connect(owner).setDutchAuctionLength(auctionLength)
         })
@@ -2251,7 +2251,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
-          await broker.connect(owner).setDutchAuctionLength(1240) // 20.66 minutes
           issueAmount = issueAmount.div(10000)
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
@@ -2265,7 +2264,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           const end = await trade.endTime()
           await advanceToTimestamp(start)
 
-          // Simulate 20 minutes of blocks, should swap at right price each time
+          // Simulate 18.6 minutes of blocks, should swap at right price each time
           for (let now = await getLatestBlockTimestamp(); now <= end; now += 12) {
             const actual = await trade.connect(addr1).bidAmount(now)
             console.log(actual)

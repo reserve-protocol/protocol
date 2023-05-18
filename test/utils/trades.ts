@@ -3,7 +3,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { TestITrading, GnosisTrade } from '../../typechain'
-import { bn, fp, divCeil } from '../../common/numbers'
+import { bn, fp, divCeil, divRound } from '../../common/numbers'
 
 export const expectTrade = async (trader: TestITrading, auctionInfo: Partial<ITradeInfo>) => {
   if (!auctionInfo.sell) throw new Error('Must provide sell token to find trade')
@@ -107,17 +107,17 @@ export const dutchBuyAmount = async (
   const lowPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
   const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
 
+  const ONE_THIRD = fp('1').div(3) // 0.33333
+  const TWO_THIRDS = ONE_THIRD.mul(2) // 0.66666
+
   let price: BigNumber
-  if (progression.lt(fp('0.30'))) {
-    const exp = bn('31').mul(fp('0.30').sub(progression)).div(fp('0.30'))
+  if (progression.lt(ONE_THIRD)) {
+    const exp = divRound(bn('31').mul(ONE_THIRD.sub(progression)), ONE_THIRD)
     const divisor = new Decimal('4').div(5).pow(exp.toString())
     price = divCeil(middlePrice.mul(fp('1')), fp(divisor.toString()))
   } else {
     price = middlePrice.sub(
-      middlePrice
-        .sub(lowPrice)
-        .mul(progression.sub(fp('0.30')))
-        .div(fp('0.70'))
+      middlePrice.sub(lowPrice).mul(progression.sub(ONE_THIRD)).div(TWO_THIRDS)
     )
   }
   return divCeil(outAmount.mul(price), fp('1'))

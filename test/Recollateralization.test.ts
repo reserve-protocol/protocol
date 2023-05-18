@@ -3141,7 +3141,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       context('DutchTrade', () => {
-        const auctionLength = 1240 // 20.66 minutes
+        const auctionLength = 1116 // 18.6 minutes
         beforeEach(async () => {
           await broker.connect(owner).setDutchAuctionLength(auctionLength)
 

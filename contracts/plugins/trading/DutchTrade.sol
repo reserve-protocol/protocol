@@ -7,9 +7,8 @@ import "../../libraries/Fixed.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/ITrade.sol";
 
-uint192 constant THIRTY_PERCENT = 3e17; // {1} 30%
-uint192 constant FIFTY_PERCENT = 5e17; // {1} 50%
-uint192 constant SEVENTY_PERCENT = 7e17; // {1} 70%
+uint192 constant ONE_THIRD = FIX_ONE / 3; // {1} 1/3
+uint192 constant TWO_THIRDS = ONE_THIRD * 2; // {1} 2/3
 
 uint192 constant MAX_EXP = 31 * FIX_ONE; // {1} (5/4)^31 = 1009
 // by using 4/5 as the base of the price exponential, the avg loss due to precision is exactly 10%
@@ -18,11 +17,11 @@ uint192 constant BASE = 8e17; // {1} (4/5)
 /**
  * @title DutchTrade
  * @notice Implements a wholesale dutch auction via a piecewise falling-price mechansim.
- *   Over the first 30% of the auction the price falls from ~1000x the best plausible price
+ *   Over the first third of the auction the price falls from ~1000x the best plausible price
  *   down to the best expected price in a geometric series. The price decreases by 20% each time.
  *   This period DOES NOT expect to receive a bid; it defends against manipulated prices.
  *
- *   Over the last 70% of the auction the price falls from the best expected price to the worst
+ *   Over the last 2/3 of the auction the price falls from the best expected price to the worst
  *   price, linearly. The worst price is further discounted by the maxTradeSlippage as a fraction
  *   of how far from minTradeVolume to maxTradeVolume the trade lies.
  *   At maxTradeVolume, no further discount is applied.
@@ -74,10 +73,6 @@ contract DutchTrade is ITrade {
     /// @param timestamp {s} The block timestamp to get price for
     /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
     function bidAmount(uint48 timestamp) public view returns (uint256) {
-        /// Price Curve:
-        ///   - first 30%: exponentially 4/5ths the price from 1009x the middlePrice to 1x
-        ///   - last 70%: decrease linearly from middlePrice to lowPrice
-
         require(timestamp >= startTime, "cannot bid block auction was created");
         require(timestamp <= endTime, "auction over");
 
@@ -230,22 +225,24 @@ contract DutchTrade is ITrade {
     /// @param timestamp {s} The block timestamp
     /// @return {buyTok/sellTok}
     function _price(uint48 timestamp) private view returns (uint192) {
+        /// Price Curve:
+        ///   - first 1/3%: exponentially 4/5ths the price from 1009x the middlePrice to 1x
+        ///   - last 2/3: decrease linearly from middlePrice to lowPrice
+
         uint192 progression = divuu(timestamp - startTime, endTime - startTime); // {1}
 
-        // Fast geometric decay -- 30th percentile case
-        if (progression < THIRTY_PERCENT) {
-            uint192 exp = MAX_EXP.mulDiv(THIRTY_PERCENT - progression, THIRTY_PERCENT);
+        // Fast geometric decay -- 0%-33% of auction
+        if (progression < ONE_THIRD) {
+            uint192 exp = MAX_EXP.mulDiv(ONE_THIRD - progression, ONE_THIRD, ROUND);
 
             // middlePrice * ((5/4) ^ exp) = middlePrice / ((4/5) ^ exp)
             // safe uint48 downcast: exp is at-most 31
             // {buyTok/sellTok} = {buyTok/sellTok} / {1} ^ {1}
-            return middlePrice.div(BASE.powu(uint48(exp.toUint())), CEIL);
+            return middlePrice.div(BASE.powu(uint48(exp.toUint(ROUND))), CEIL);
             // this reverts for middlePrice >= 6.21654046e36 * FIX_ONE
         }
 
-        // Slow linear decay -- 70th percentile case
-        return
-            middlePrice -
-            (middlePrice - lowPrice).mulDiv(progression - THIRTY_PERCENT, SEVENTY_PERCENT);
+        // Slow linear decay -- 33%-100% of auction
+        return middlePrice - (middlePrice - lowPrice).mulDiv(progression - ONE_THIRD, TWO_THIRDS);
     }
 }
