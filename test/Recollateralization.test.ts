@@ -3141,7 +3141,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       context('DutchTrade', () => {
-        const auctionLength = 300
+        const auctionLength = 1240 // 20.66 minutes
         beforeEach(async () => {
           await broker.connect(owner).setDutchAuctionLength(auctionLength)
 
@@ -3182,7 +3182,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           )
 
           // Check the empty buffer block as well
-          await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength)
+          await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength + 12)
           await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION)).to.be.revertedWith(
             'already rebalancing'
           )
@@ -3192,6 +3192,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
+          // issueAmount = issueAmount.div(10000)
           await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
           const trade = await ethers.getContractAt(
             'DutchTrade',
@@ -3201,9 +3202,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
           const start = await trade.startTime()
           const end = await trade.endTime()
+          await advanceToTimestamp(start)
 
-          // Simulate 5 minutes of blocks, should swap at right price each time
-          for (let now = await getLatestBlockTimestamp(); now < end; now += 12) {
+          // Simulate 20 minutes of blocks, should swap at right price each time
+          for (let now = await getLatestBlockTimestamp(); now <= end; now += 12) {
             const actual = await trade.connect(addr1).bidAmount(now)
             const expected = divCeil(
               await dutchBuyAmount(
@@ -3231,7 +3233,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             await backingManager.trades(token0.address)
           )
           await token1.connect(addr1).approve(trade.address, initialBal)
-          await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 1)
+          await advanceToTimestamp((await trade.endTime()) + 1)
           await expect(
             trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
           ).to.be.revertedWith('auction over')
@@ -3259,8 +3261,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             )
             await token1.connect(addr1).approve(trade1.address, initialBal)
 
-            // Snipe auction at 1s left
-            await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 3)
+            // Snipe auction at 0s left
+            await advanceToTimestamp((await trade1.endTime()) - 1)
             await trade1.connect(addr1).bid()
             expect(await trade1.canSettle()).to.equal(false)
             expect(await trade1.status()).to.equal(2) // Status.CLOSED
@@ -3269,7 +3271,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
             const expected = divCeil(
               await dutchBuyAmount(
-                fp('299').div(300), // after all txs so far, at 299/300s
+                fp('300').div(300), // after all txs so far, at 300/300s
                 collateral0.address,
                 collateral1.address,
                 issueAmount,
@@ -3297,19 +3299,20 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           })
 
           it('even under worst-possible bids', async () => {
+            await token1.connect(addr1).approve(trade2.address, initialBal)
+
             // Advance to final second of auction
-            await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength - 3)
+            await advanceToTimestamp((await trade2.endTime()) - 1)
             expect(await trade2.status()).to.equal(1) // TradeStatus.OPEN
             expect(await trade2.canSettle()).to.equal(false)
 
             // Bid + settle RSR auction
-            await token1.connect(addr1).approve(trade2.address, initialBal)
             await expect(trade2.connect(addr1).bid()).to.emit(backingManager, 'TradeSettled')
           })
 
           it('via fallback to Batch Auction', async () => {
             // Advance past auction timeout
-            await advanceToTimestamp((await getLatestBlockTimestamp()) + auctionLength)
+            await advanceToTimestamp((await trade2.endTime()) + 1)
             expect(await trade2.status()).to.equal(1) // TradeStatus.OPEN
             expect(await trade2.canSettle()).to.equal(true)
 

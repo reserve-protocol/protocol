@@ -19,7 +19,7 @@ uint192 constant BASE = 8e17; // {1} (4/5)
  * @title DutchTrade
  * @notice Implements a wholesale dutch auction via a piecewise falling-price mechansim.
  *   Over the first 30% of the auction the price falls from ~1000x the best plausible price
- *   down to the best expected price, exponentially. The price decreases by 20% each time.
+ *   down to the best expected price in a geometric series. The price decreases by 20% each time.
  *   This period DOES NOT expect to receive a bid; it defends against manipulated prices.
  *
  *   Over the last 70% of the auction the price falls from the best expected price to the worst
@@ -232,15 +232,15 @@ contract DutchTrade is ITrade {
     function _price(uint48 timestamp) private view returns (uint192) {
         uint192 progression = divuu(timestamp - startTime, endTime - startTime); // {1}
 
-        // Fast exponential decay -- 30th percentile case
+        // Fast geometric decay -- 30th percentile case
         if (progression < THIRTY_PERCENT) {
             uint192 exp = MAX_EXP.mulDiv(THIRTY_PERCENT - progression, THIRTY_PERCENT);
 
-            // return middePrice / ((4/5) ^ exp)
-            // this reverts for middlePrice >= 6.21654046e36 * FIX_ONE
+            // middlePrice * ((5/4) ^ exp) = middlePrice / ((4/5) ^ exp)
             // safe uint48 downcast: exp is at-most 31
             // {buyTok/sellTok} = {buyTok/sellTok} / {1} ^ {1}
             return middlePrice.div(BASE.powu(uint48(exp.toUint())), CEIL);
+            // this reverts for middlePrice >= 6.21654046e36 * FIX_ONE
         }
 
         // Slow linear decay -- 70th percentile case
