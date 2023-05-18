@@ -2604,7 +2604,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(highPrice).to.equal(MAX_UINT192)
     })
 
-    it('Should distinguish between price/lotPrice - prices()', async () => {
+    it('Should distinguish between price/lotPrice', async () => {
       // Set basket with single collateral
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.refreshBasket()
@@ -2613,13 +2613,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const [low, high] = await collateral0.price()
       await setOraclePrice(collateral0.address, MAX_UINT256.div(2)) // oracle error
 
-      const [price, lotPrice] = await basketHandler.prices()
-      expect(price.low).to.equal(0)
-      expect(price.high).to.equal(MAX_UINT192)
-      expect(lotPrice.low).to.be.closeTo(low, low.div(bn('1e5'))) // small decay
-      expect(lotPrice.low).to.be.lt(low)
-      expect(lotPrice.high).to.be.closeTo(high, high.div(bn('1e5'))) // small decay
-      expect(lotPrice.high).to.be.lt(high)
+      const [lowPrice, highPrice] = await basketHandler.price()
+      const [lotLowPrice, lotHighPrice] = await basketHandler.lotPrice()
+      expect(lowPrice).to.equal(0)
+      expect(highPrice).to.equal(MAX_UINT192)
+      expect(lotLowPrice).to.be.closeTo(low, low.div(bn('1e5'))) // small decay
+      expect(lotLowPrice).to.be.lt(low)
+      expect(lotHighPrice).to.be.closeTo(high, high.div(bn('1e5'))) // small decay
+      expect(lotHighPrice).to.be.lt(high)
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
