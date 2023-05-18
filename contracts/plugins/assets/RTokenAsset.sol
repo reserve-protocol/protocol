@@ -146,24 +146,24 @@ contract RTokenAsset is IAsset, VersionedAsset {
             // should switch over to an asset with a price feed.
 
             IMain main = backingManager.main();
-            Registry memory reg = assetRegistry.getRegistry();
+            TradingContext memory ctx;
 
-            uint192[] memory quantities = new uint192[](reg.erc20s.length);
+            ctx.basketsHeld = basketsHeld;
+            ctx.bm = backingManager;
+            ctx.bh = basketHandler;
+            ctx.ar = assetRegistry;
+            ctx.stRSR = main.stRSR();
+            ctx.rsr = main.rsr();
+            ctx.rToken = main.rToken();
+            ctx.minTradeVolume = backingManager.minTradeVolume();
+            ctx.maxTradeSlippage = backingManager.maxTradeSlippage();
+
+            // Calculate quantities
+            Registry memory reg = ctx.ar.getRegistry();
+            ctx.quantities = new uint192[](reg.erc20s.length);
             for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+                ctx.quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
             }
-            TradingContext memory ctx = TradingContext({
-                basketsHeld: basketsHeld,
-                bm: backingManager,
-                bh: basketHandler,
-                ar: assetRegistry,
-                stRSR: main.stRSR(),
-                rsr: main.rsr(),
-                rToken: main.rToken(),
-                minTradeVolume: backingManager.minTradeVolume(),
-                maxTradeSlippage: backingManager.maxTradeSlippage(),
-                quantities: quantities
-            });
 
             // will exclude UoA value from RToken balances at BackingManager
             range = RecollateralizationLibP1.basketRange(ctx, reg);
