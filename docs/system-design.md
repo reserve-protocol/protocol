@@ -232,7 +232,9 @@ Dimension: `{seconds}`
 
 The dutch auction length is how many seconds long falling-price dutch auctions should be. A longer period will result in less slippage due to better price granularity.
 
-Default value: `1116` = 18.6 minutes - this value has been specifically chosen as a function of the dutch auction price curve. Increasing this value slightly will not have much benefit, and decreasing it at all will have significant cost. Changes to this value only make sense if they are substantial. 9.8 minutes is the other obvious attractor if looking for a shorter auction.
+In general, the dutchAuctionLength should be a multiple of the blocktime. This is not enforced at a smart-contract level.
+
+Default value: `1116` = 18.6 minutes - this value has been specifically chosen as a function of the dutch auction price curve. Increasing this value slightly will not have much benefit, and decreasing it at all results in meaningfully worse precision. Changes to this value only make sense if the change is substantial. It should be kept a multiple of the blocktime.
 Mainnet reasonable range: 300 to 3600
 
 ### `backingBuffer`
