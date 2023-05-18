@@ -29,7 +29,7 @@ import {
   IMPLEMENTATION,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
 
@@ -923,7 +923,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
 
         // Advance time till trade can be settled
-        await advanceTime(config.batchAuctionLength.add(100).toString())
+        await advanceToTimestamp(await trade.endTime())
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -992,9 +992,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.sell()).to.equal(token0.address)
         expect(await trade.buy()).to.equal(token1.address)
         expect(await trade.sellAmount()).to.equal(amount)
-        expect(await trade.startTime()).to.equal(await getLatestBlockTimestamp())
+        expect(await trade.startTime()).to.equal((await getLatestBlockTimestamp()) + 12)
         expect(await trade.endTime()).to.equal(
-          (await getLatestBlockTimestamp()) + Number(config.dutchAuctionLength)
+          (await trade.startTime()) + config.dutchAuctionLength.toNumber()
         )
         const [sellLow, sellHigh] = await collateral0.price()
         const [buyLow, buyHigh] = await collateral1.price()

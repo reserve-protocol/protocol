@@ -410,7 +410,7 @@ describe('FacadeRead contract', () => {
         const trader = traders[traderIndex]
 
         const minTradeVolume = await trader.minTradeVolume()
-        const auctionLength = await broker.batchAuctionLength()
+        const auctionLength = await broker.dutchAuctionLength()
         const tokenSurplus = bn('0.5e18')
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
@@ -438,18 +438,15 @@ describe('FacadeRead contract', () => {
         }
 
         // Run revenue auctions
-        await facadeAct.runRevenueAuctions(
-          trader.address,
-          [],
-          erc20sToStart,
-          TradeKind.DUTCH_AUCTION
-        )
+        await expect(
+          facadeAct.runRevenueAuctions(trader.address, [], erc20sToStart, TradeKind.DUTCH_AUCTION)
+        ).to.emit(trader, 'TradeStarted')
 
         // Nothing should be settleable
         expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
 
         // Advance time till auction ended
-        await advanceTime(auctionLength + 100)
+        await advanceTime(auctionLength + 13)
 
         // Now should be settleable
         const settleable = await facade.auctionsSettleable(trader.address)
