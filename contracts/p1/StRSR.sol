@@ -198,7 +198,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notFrozen {
+    function payoutRewards() external {
+        requireNotFrozen();
         _payoutRewards();
     }
 
@@ -333,8 +334,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     function cancelUnstake(uint256 endId) external {
-        requireNotTradingPausedOrFrozen();
-
+        requireNotFrozen();
         address account = _msgSender();
 
         // We specifically allow unstaking when under collateralized
@@ -699,6 +699,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // contract-size-saver
     // solhint-disable-next-line no-empty-blocks
     function requireNotTradingPausedOrFrozen() private notTradingPausedOrFrozen {}
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function requireNotFrozen() private notFrozen {}
 
     // ==== ERC20 ====
     // This section extracted from ERC20; adjusted to work with stakes/eras

@@ -40,8 +40,13 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
-        trade = super.settleTrade(sell); // modifier: notTradingPausedOrFrozen
+    function settleTrade(IERC20 sell)
+        public
+        override(ITrading, TradingP1)
+        notTradingPausedOrFrozen
+        returns (ITrade trade)
+    {
+        trade = super.settleTrade(sell); // nonReentrant
         distributeTokenToBuy();
         // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
@@ -73,7 +78,11 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //   actions:
     //     tryTrade(kind, prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
-    function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
+    function manageToken(IERC20 erc20, TradeKind kind)
+        external
+        nonReentrant
+        notTradingPausedOrFrozen
+    {
         if (erc20 == tokenToBuy) {
             distributeTokenToBuy();
             return;

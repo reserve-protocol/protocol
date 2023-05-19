@@ -83,13 +83,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell)
-        public
-        virtual
-        notTradingPausedOrFrozen
-        nonReentrant
-        returns (ITrade trade)
-    {
+    function settleTrade(IERC20 sell) public virtual nonReentrant returns (ITrade trade) {
         trade = trades[sell];
         require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
@@ -121,11 +115,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
     // this contract that changes state this function refers to.
     // slither-disable-next-line reentrancy-vulnerabilities-1
-    function tryTrade(TradeKind kind, TradeRequest memory req)
-        internal
-        nonReentrant
-        returns (ITrade trade)
-    {
+    function tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
         /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));

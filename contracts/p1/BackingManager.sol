@@ -55,16 +55,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         __Component_init(main_);
         __Trading_init(main_, maxTradeSlippage_, minTradeVolume_);
 
-        assetRegistry = main_.assetRegistry();
-        basketHandler = main_.basketHandler();
-        distributor = main_.distributor();
-        rsr = main_.rsr();
-        rsrTrader = main_.rsrTrader();
-        rTokenTrader = main_.rTokenTrader();
-        rToken = main_.rToken();
-        stRSR = main_.stRSR();
-        furnace = main_.furnace();
-
+        cacheComponents();
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
     }
@@ -82,11 +73,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
+    /// While this function is not nonReentrant, its two subsets each individually are
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
-        trade = super.settleTrade(sell); // modifier: notTradingPausedOrFrozen
+    function settleTrade(IERC20 sell)
+        public
+        override(ITrading, TradingP1)
+        notTradingPausedOrFrozen
+        returns (ITrade trade)
+    {
+        trade = super.settleTrade(sell); // nonReentrant
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
         if (_msgSender() == address(trade)) {
@@ -101,13 +98,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    /// @custom:interaction RCEI
-    function rebalance(TradeKind kind) external notTradingPausedOrFrozen {
+    /// @custom:interaction not RCEI, nonReentrant
+    function rebalance(TradeKind kind) external nonReentrant notTradingPausedOrFrozen {
         // == Refresh ==
         assetRegistry.refresh();
         furnace.melt();
-
-        // == Checks/Effects ==
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
         // Assumption: chain has <= 12s blocktimes
@@ -147,11 +142,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
             .prepareRecollateralizationTrade(this, basketsHeld);
 
-        // == Interactions ==
-
         if (doTrade) {
-            tradeEnd[kind] = uint48(block.timestamp) + ONE_BLOCK; // reentrancy protection
-
             // Seize RSR if needed
             if (req.sell.erc20() == rsr) {
                 uint256 bal = req.sell.erc20().balanceOf(address(this));
@@ -160,8 +151,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
             // Execute Trade
             ITrade trade = tryTrade(kind, req);
-            uint48 endTime = trade.endTime();
-            if (endTime > tradeEnd[kind]) tradeEnd[kind] = endTime;
+            tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);
@@ -170,11 +160,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Forward revenue to RevenueTraders; reverts if not fully collateralized
     /// @param erc20s The tokens to forward
-    /// @custom:interaction RCEI
-    function forwardRevenue(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
+    /// @custom:interaction not RCEI, nonReentrant
+    function forwardRevenue(IERC20[] calldata erc20s)
+        external
+        nonReentrant
+        notTradingPausedOrFrozen
+    {
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
-        // == Refresh ==
         assetRegistry.refresh();
         furnace.melt();
 
@@ -210,34 +203,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             IERC20(address(rsr)).safeTransfer(address(stRSR), rsr.balanceOf(address(this)));
         }
 
-        // Mint revenue RToken and update `basketsNeeded`
-        // across this block:
-        //   where rate(R) == R.basketsNeeded / R.totalSupply,
-        //   rate(rToken') >== rate(rToken)
-        //   (>== is "no less than, and nearly equal to")
-        //    and rToken'.basketsNeeded <= basketsHeld.bottom
-        // and rToken'.totalSupply is maximal satisfying this.
-
+        // Mint revenue RToken
         // Keep backingBuffer worth of collateral before recognizing revenue
-        uint192 needed = rToken.basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
-
-        if (basketsHeld.bottom.gt(needed)) {
-            // gas-optimization: RToken is known to have 18 decimals, the same as FixLib
-            uint192 totalSupply = _safeWrap(rToken.totalSupply()); // {rTok}
-
-            // {BU} = {BU} - {BU}
-            uint192 extraBUs = basketsHeld.bottom.minus(needed);
-
-            // {rTok} = {BU} * {rTok / BU} (if needed == 0, conv rate is 1 rTok/BU)
-            uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
-
-            // gas-optimization: RToken is known to have 18 decimals, same as FixLib
-            rToken.mint(address(this), uint256(rTok));
-            rToken.setBasketsNeeded(basketsHeld.bottom);
-            needed = basketsHeld.bottom;
+        uint192 needed = rToken.basketsNeeded().mul(FIX_ONE + backingBuffer); // {BU}
+        if (basketsHeld.bottom > needed) {
+            rToken.mint(basketsHeld.bottom - needed);
+            needed = rToken.basketsNeeded().mul(FIX_ONE + backingBuffer); // keep buffer
         }
 
-        // At this point, even though basketsNeeded may have changed:
+        // At this point, even though basketsNeeded may have changed, we are:
         // - We're fully collateralized
         // - The BU exchange rate {BU/rTok} did not decrease
 
@@ -245,8 +219,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         uint256 length = erc20s.length;
         RevenueTotals memory totals = distributor.totals();
-        uint256[] memory toRSR = new uint256[](length);
-        uint256[] memory toRToken = new uint256[](length);
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assetRegistry.toAsset(erc20s[i]);
 
@@ -257,20 +229,22 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             if (bal.gt(req)) {
                 // delta: {qTok}, the excess quantity of this asset that we hold
                 uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20Decimals()));
+                uint256 tokensPerShare = delta / (totals.rTokenTotal + totals.rsrTotal);
 
                 // no div-by-0: Distributor guarantees (totals.rTokenTotal + totals.rsrTotal) > 0
                 // initial division is intentional here! We'd rather save the dust than be unfair
-                toRSR[i] = (delta / (totals.rTokenTotal + totals.rsrTotal)) * totals.rsrTotal;
-                toRToken[i] = (delta / (totals.rTokenTotal + totals.rsrTotal)) * totals.rTokenTotal;
+
+                if (totals.rsrTotal > 0) {
+                    erc20s[i].safeTransfer(address(rsrTrader), tokensPerShare * totals.rsrTotal);
+                }
+                if (totals.rTokenTotal > 0) {
+                    erc20s[i].safeTransfer(
+                        address(rTokenTrader),
+                        tokensPerShare * totals.rTokenTotal
+                    );
+                }
             }
         }
-
-        // == Interactions ==
-        for (uint256 i = 0; i < length; ++i) {
-            if (toRToken[i] > 0) erc20s[i].safeTransfer(address(rTokenTrader), toRToken[i]);
-            if (toRSR[i] > 0) erc20s[i].safeTransfer(address(rsrTrader), toRSR[i]);
-        }
-
         // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)
     }
 
@@ -301,7 +275,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Call after upgrade to >= 3.0.0
-    function cacheFurnace() public {
+    function cacheComponents() public {
+        assetRegistry = main.assetRegistry();
+        basketHandler = main.basketHandler();
+        distributor = main.distributor();
+        rToken = main.rToken();
+        rsr = main.rsr();
+        stRSR = main.stRSR();
+        rsrTrader = main.rsrTrader();
+        rTokenTrader = main.rTokenTrader();
         furnace = main.furnace();
     }
 

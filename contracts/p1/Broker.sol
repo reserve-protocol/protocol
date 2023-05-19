@@ -84,7 +84,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @dev Requires setting an allowance in advance
-    /// @custom:interaction CEI
+    /// @custom:protected and @custom:interaction CEI
     // checks:
     //   not disabled, paused (trading), or frozen
     //   caller is a system Trader
@@ -94,11 +94,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // actions:
     //   Transfers req.sellAmount of req.sell.erc20 from caller to `trade`
     //   Calls trade.init() with appropriate parameters
-    function openTrade(TradeKind kind, TradeRequest memory req)
-        external
-        notTradingPausedOrFrozen
-        returns (ITrade)
-    {
+    function openTrade(TradeKind kind, TradeRequest memory req) external returns (ITrade) {
         require(!disabled, "broker disabled");
 
         address caller = _msgSender();

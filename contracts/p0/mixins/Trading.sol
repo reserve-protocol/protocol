@@ -43,12 +43,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell)
-        public
-        virtual
-        notTradingPausedOrFrozen
-        returns (ITrade trade)
-    {
+    function settleTrade(IERC20 sell) public virtual returns (ITrade trade) {
         trade = trades[sell];
         require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");

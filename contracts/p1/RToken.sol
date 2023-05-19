@@ -113,14 +113,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction
-    // untestable:
-    //      `else` branch of `exchangeRateIsValidAfter` (ie. revert)
-    //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
-    function issueTo(address recipient, uint256 amount)
-        public
-        notIssuancePausedOrFrozen
-        exchangeRateIsValidAfter
-    {
+    // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
+    function issueTo(address recipient, uint256 amount) public notIssuancePausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
 
         // == Refresh ==
@@ -160,15 +154,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             CEIL
         );
 
-        // Fixlib optimization:
-        // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
-        uint192 newBasketsNeeded = basketsNeeded + amtBaskets;
-        emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
-        basketsNeeded = newBasketsNeeded;
-
-        // == Interactions: mint + transfer tokens to BackingManager ==
-
-        _mint(recipient, amount);
+        // == Interactions: Create RToken + transfer tokens to BackingManager ==
+        _scaleUp(recipient, amtBaskets, supply);
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
@@ -201,13 +188,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   for each token in erc20s:
     //     let tokenAmt = (amount * basketsNeeded / totalSupply) current baskets
     //     do token.transferFrom(backingManager, caller, tokenAmt)
-    // untestable:
-    //      `else` branch of `exchangeRateIsValidAfter` (ie. revert)
-    //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
+    // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction RCEI
-    function redeemTo(address recipient, uint256 amount) public notFrozen exchangeRateIsValidAfter {
+    function redeemTo(address recipient, uint256 amount) public notFrozen {
         // == Refresh ==
 
         assetRegistry.refresh();
@@ -228,13 +213,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
 
         // {BU}
-        uint192 basketsRedeemed = _redeem(_msgSender(), amount);
-        emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
+        uint192 baskets = _scaleDown(_msgSender(), amount);
+        emit Redemption(_msgSender(), recipient, amount, baskets);
 
-        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(
-            basketsRedeemed,
-            FLOOR
-        );
+        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(baskets, FLOOR);
 
         // === Interactions ===
 
@@ -267,9 +249,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //     let tokenAmt = (amount * basketsNeeded / totalSupply) custom baskets
     //     let prorataAmt = (amount / totalSupply) * token.balanceOf(backingManager)
     //     do token.transferFrom(backingManager, caller, min(tokenAmt, prorataAmt))
-    // untestable:
-    //      `else` branch of `exchangeRateIsValidAfter` (ie. revert)
-    //       BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
+    // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     /// @dev Allows partial redemptions up to the minAmounts
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
@@ -285,12 +265,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192[] memory portions,
         address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    )
-        external
-        notFrozen
-        exchangeRateIsValidAfter
-        returns (address[] memory erc20sOut, uint256[] memory amountsOut)
-    {
+    ) external notFrozen returns (address[] memory erc20sOut, uint256[] memory amountsOut) {
         // == Refresh ==
 
         assetRegistry.refresh();
@@ -314,15 +289,15 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
 
         // {BU}
-        uint192 basketsRedeemed = _redeem(_msgSender(), amount);
-        emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
+        uint192 baskets = _scaleDown(_msgSender(), amount);
+        emit Redemption(_msgSender(), recipient, amount, baskets);
 
         // === Get basket redemption amounts ===
 
         (erc20sOut, amountsOut) = basketHandler.quoteCustomRedemption(
             basketNonces,
             portions,
-            basketsRedeemed
+            baskets
         );
 
         // ==== Prorate redemption ====
@@ -378,25 +353,22 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         }
     }
 
-    /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
-    /// @param recipient The recipient of the newly minted RToken
-    /// @param amtRToken {qRTok} The amtRToken to be minted
+    /// Mint an amount of RToken equivalent to baskets BUs, scaling basketsNeeded up
+    /// Callable only by BackingManager
+    /// @param baskets {BU} The number of baskets to mint RToken for
     /// @custom:protected
     // checks: unpaused; unfrozen; caller is backingManager
     // effects:
     //   bal'[recipient] = bal[recipient] + amtRToken
     //   totalSupply' = totalSupply + amtRToken
+    //   basketsNeeded' = basketsNeeded + baskets
     //
     // untestable:
     //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
     //   but it is fully covered for `mint` (limitations of coverage plugin)
-    function mint(address recipient, uint256 amtRToken)
-        external
-        notTradingPausedOrFrozen
-        exchangeRateIsValidAfter
-    {
+    function mint(uint192 baskets) external exchangeRateIsValidAfter {
         require(_msgSender() == address(backingManager), "not backing manager");
-        _mint(recipient, amtRToken);
+        _scaleUp(address(backingManager), baskets, totalSupply());
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
@@ -416,13 +388,14 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         emit Melted(amtRToken);
     }
 
-    /// Dissolve an amount of RToken from caller's account and scale basketsNeeded down
+    /// Burn an amount of RToken from caller's account and scale basketsNeeded down
     /// Callable only by backingManager
     /// @param amount {qRTok}
     /// @custom:protected
-    function dissolve(uint256 amount) external notTradingPausedOrFrozen exchangeRateIsValidAfter {
+    // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
+    function dissolve(uint256 amount) external {
         require(_msgSender() == address(backingManager), "not backing manager");
-        _redeem(_msgSender(), amount);
+        _scaleDown(_msgSender(), amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
@@ -433,11 +406,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // untestable:
     //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
     //   but it is fully covered for `setBasketsNeeded` (limitations of coverage plugin)
-    function setBasketsNeeded(uint192 basketsNeeded_)
-        external
-        notTradingPausedOrFrozen
-        exchangeRateIsValidAfter
-    {
+    function setBasketsNeeded(uint192 basketsNeeded_) external exchangeRateIsValidAfter {
         require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
@@ -498,15 +467,35 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     // ==== Private ====
 
-    /// Redeem an amount of RToken from an account for basket units, without transferring tokens
-    /// @param account The address to redeem RTokens from
-    /// @param amount {qRTok} The amount of RToken to be redeemed
-    /// @param basketsRedeemed {BU} The number of baskets redeemed
-    function _redeem(address account, uint256 amount) private returns (uint192 basketsRedeemed) {
+    /// Mint an amount of RToken equivalent to amtBaskets and scale basketsNeeded up
+    /// @param recipient The address to receive the RTokens
+    /// @param amtBaskets {BU} The number of amtBaskets to mint RToken for
+    /// @param totalSupply {qRTok} The current totalSupply
+    function _scaleUp(
+        address recipient,
+        uint192 amtBaskets,
+        uint256 totalSupply
+    ) private {
+        // take advantage of 18 decimals during casting
+        uint256 amtRToken = totalSupply > 0
+            ? amtBaskets.muluDivu(totalSupply, basketsNeeded) // {rTok} = {BU} * {qRTok} * {qRTok}
+            : amtBaskets; // {rTok}
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded + amtBaskets);
+        basketsNeeded += amtBaskets;
+
+        // Mint RToken to recipient
+        _mint(recipient, amtRToken);
+    }
+
+    /// Burn an amount of RToken and scale basketsNeeded down
+    /// @param account The address to dissolve RTokens from
+    /// @param amount {qRTok} The amount of RToken to be dissolved
+    /// @return baskets {BU} The equivalent number of baskets dissolved
+    function _scaleDown(address account, uint256 amount) private returns (uint192 baskets) {
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        basketsRedeemed = basketsNeeded.muluDivu(amount, totalSupply()); // FLOOR
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded - basketsRedeemed);
-        basketsNeeded = basketsNeeded - basketsRedeemed;
+        baskets = basketsNeeded.muluDivu(amount, totalSupply()); // FLOOR
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded - baskets);
+        basketsNeeded -= baskets;
 
         // Burn RToken from account; reverts if not enough balance
         _burn(account, amount);
