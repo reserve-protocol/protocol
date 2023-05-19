@@ -368,8 +368,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qRTok} The amount of RToken to be redeemed
     /// @param basketsRedeemed {BU} The number of baskets redeemed
     function _redeem(address account, uint256 amount) private returns (uint192 basketsRedeemed) {
-        if (amount == 0) return 0;
-
         // {BU} = {BU} * {qRTok} / {qRTok}
         basketsRedeemed = basketsNeeded.muluDivu(amount, totalSupply()); // FLOOR
         assert(basketsRedeemed.lte(basketsNeeded));
