@@ -146,16 +146,27 @@ export default async (hre: HardhatRuntimeEnvironment, rTokenAddress: string, gov
       const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
       await whileImpersonating(hre, whales[buyTokenAddress.toLowerCase()], async (whale) => {
         const sellToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
-        await sellToken.connect(whale).approve(gnosis.address, buyAmount)
-        await gnosis
-          .connect(whale)
-          .placeSellOrders(
-            auctionId,
-            [sellAmount],
-            [buyAmount],
-            [QUEUE_START],
-            hre.ethers.constants.HashZero
-          )
+        let repeat = true
+        while(repeat) {
+          try {
+            await sellToken.connect(whale).approve(gnosis.address, 0)
+            await sellToken.connect(whale).approve(gnosis.address, buyAmount)
+            await gnosis
+              .connect(whale)
+              .placeSellOrders(
+                auctionId,
+                [sellAmount],
+                [buyAmount],
+                [QUEUE_START],
+                hre.ethers.constants.HashZero
+              )
+            repeat = false
+          } catch (e) {
+            console.log(e)
+            buyAmount = buyAmount.add(1)
+            console.log('Trying again...')
+          }
+        }
       })
     
       const lastTimestamp = await getLatestBlockTimestamp(hre)
