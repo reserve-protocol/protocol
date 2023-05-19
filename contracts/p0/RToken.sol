@@ -273,14 +273,17 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
     /// @custom:protected
-    function mint(address recipient, uint256 amount) external exchangeRateIsValidAfter {
+    function mint(address recipient, uint256 amount)
+        external
+        notTradingPausedOrFrozen
+        exchangeRateIsValidAfter
+    {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amount {qRTok} The amount to be melted
-    /// @custom:protected
     function melt(uint256 amount) external exchangeRateIsValidAfter {
         require(_msgSender() == address(main.furnace()), "furnace only");
         _burn(_msgSender(), amount);
@@ -291,14 +294,18 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     /// Callable only by backingManager
     /// @param amount {qRTok}
     /// @custom:protected
-    function dissolve(uint256 amount) external exchangeRateIsValidAfter {
+    function dissolve(uint256 amount) external notTradingPausedOrFrozen exchangeRateIsValidAfter {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _redeem(_msgSender(), amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(uint192 basketsNeeded_) external exchangeRateIsValidAfter {
+    function setBasketsNeeded(uint192 basketsNeeded_)
+        external
+        notTradingPausedOrFrozen
+        exchangeRateIsValidAfter
+    {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
