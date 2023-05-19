@@ -401,6 +401,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
+    /// @custom:protected
     // checks: not trading paused or frozen
     // effects:
     //   bal'[caller] = bal[caller] - amtRToken
@@ -410,8 +411,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
     //   but it is fully covered for `melt` (limitations of coverage plugin)
     function melt(uint256 amtRToken) external exchangeRateIsValidAfter {
-        address caller = _msgSender();
-        require(caller == address(furnace) || caller == address(backingManager), "furnace only");
+        require(_msgSender() == address(furnace), "furnace only");
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
     }
