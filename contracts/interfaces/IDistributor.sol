@@ -4,19 +4,20 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IComponent.sol";
 
+uint256 constant MAX_DISTRIBUTION = 1e4; // 10,000
+uint8 constant MAX_DESTINATIONS = 100;
+
 struct RevenueShare {
     uint16 rTokenDist; // {revShare} A value between [0, 10,000]
     uint16 rsrDist; // {revShare} A value between [0, 10,000]
 }
 
-/// Assumes no more than 1024 independent distributions.
+/// Assumes no more than MAX_DESTINATIONS independent distributions.
+/// Each total can only be at most MAX_DISTRIBUTION * MAX_DESTINATIONS
 struct RevenueTotals {
     uint24 rTokenTotal; // {revShare}
     uint24 rsrTotal; // {revShare}
 }
-
-// The maximum value of rTokenTotal and rsrTotal; up to 1024 entries, each up to 10,000
-uint256 constant MAX_REVENUE_TOTALS = 1024 * 1e4;
 
 /**
  * @title IDistributor

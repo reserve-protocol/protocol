@@ -31,7 +31,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
-    uint8 public constant MAX_DESTINATIONS_ALLOWED = 100;
+    uint8 public constant MAX_DESTINATIONS_ALLOWED = MAX_DESTINATIONS;
 
     IERC20 private rsr;
     IERC20 private rToken;
