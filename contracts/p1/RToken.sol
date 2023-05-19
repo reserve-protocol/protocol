@@ -471,6 +471,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the RTokens
     /// @param amtBaskets {BU} The number of amtBaskets to mint RToken for
     /// @param totalSupply {qRTok} The current totalSupply
+    // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function _scaleUp(
         address recipient,
         uint192 amtBaskets,
@@ -491,6 +492,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param account The address to dissolve RTokens from
     /// @param amount {qRTok} The amount of RToken to be dissolved
     /// @return baskets {BU} The equivalent number of baskets dissolved
+    // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function _scaleDown(address account, uint256 amount) private returns (uint192 baskets) {
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         baskets = basketsNeeded.muluDivu(amount, totalSupply()); // FLOOR

@@ -172,31 +172,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Configuration #fast', () => {
-    it('Should allow to dissolve RTokens only from BackingManager and when unpaused/unfrozen', async () => {
+    it('Should allow to dissolve RTokens only from BackingManager', async () => {
       await expect(rToken.connect(owner).dissolve(fp('1'))).to.be.revertedWith(
         'not backing manager'
       )
-
-      await whileImpersonating(backingManager.address, async (bmSigner) => {
-        // Should revert if paused
-        await main.connect(owner).pauseTrading()
-        await expect(rToken.connect(bmSigner).dissolve(fp('1'))).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-
-        // Should revert if frozen
-        await main.connect(owner).unpauseTrading()
-        await main.connect(owner).freezeShort()
-        await expect(rToken.connect(bmSigner).dissolve(fp('1'))).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-
-        // Should have a different outcome if unfrozen
-        await main.connect(owner).unfreeze()
-        await expect(rToken.connect(bmSigner).dissolve(fp('1'))).to.not.be.revertedWith(
-          'frozen or trading paused'
-        )
-      })
     })
 
     it('Should allow to set basketsNeeded only from BackingManager', async () => {
@@ -2267,27 +2246,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('furnace only')
     })
 
-    it('Should not allow mint/transfer/transferFrom to address(this)', async () => {
-      // mint
-      await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(rToken.connect(signer).mint(rToken.address, 1)).to.be.revertedWith(
-          'RToken transfer to self'
-        )
-      })
-
-      // transfer
-      await expect(rToken.connect(addr1).transfer(rToken.address, 1)).to.be.revertedWith(
-        'RToken transfer to self'
-      )
-
-      // transferFrom
-      await rToken.connect(addr1).approve(addr2.address, 1)
-      await expect(
-        rToken.connect(addr2).transferFrom(addr1.address, rToken.address, 1)
-      ).to.be.revertedWith('RToken transfer to self')
-    })
-
-    it('Should allow to mint tokens when called by backing manager', async () => {
+    it('Should only allow to mint tokens when called by backing manager', async () => {
       // Mint tokens
       const mintAmount: BigNumber = bn('10e18')
 
@@ -2295,41 +2254,19 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.totalSupply()).to.equal(issueAmount)
 
       await whileImpersonating(backingManager.address, async (signer) => {
-        await rToken.connect(signer).mint(addr1.address, mintAmount)
+        await rToken.connect(signer).mint(mintAmount)
       })
 
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(mintAmount))
+      expect(await rToken.balanceOf(backingManager.address)).to.equal(mintAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(mintAmount))
 
       // Trying to mint with another account will fail
-      await expect(rToken.connect(other).mint(addr1.address, mintAmount)).to.be.revertedWith(
-        'not backing manager'
-      )
+      await expect(rToken.connect(other).mint(mintAmount)).to.be.revertedWith('not backing manager')
 
       // Trying to mint from a non-backing manager component should fail
       await whileImpersonating(basketHandler.address, async (signer) => {
-        await expect(rToken.connect(signer).mint(addr1.address, mintAmount)).to.be.revertedWith(
+        await expect(rToken.connect(signer).mint(mintAmount)).to.be.revertedWith(
           'not backing manager'
-        )
-      })
-    })
-
-    it('Should not mint if paused', async () => {
-      await main.connect(owner).pauseTrading()
-
-      await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-      })
-    })
-
-    it('Should not mint if frozen', async () => {
-      await main.connect(owner).freezeShort()
-
-      await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(rToken.connect(signer).mint(addr1.address, bn('10e18'))).to.be.revertedWith(
-          'frozen or trading paused'
         )
       })
     })
@@ -2348,53 +2285,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
     })
 
-    it('Should not allow setBasketsNeeded if paused', async () => {
-      // Check initial status
-      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
-
-      // Pause Main
-      await main.connect(owner).pauseTrading()
-
-      // Try to set baskets needed
-      await whileImpersonating(backingManager.address, async (bhSigner) => {
-        await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-      })
-
-      // Check value remains the same
-      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
-    })
-
-    it('Should not allow setBasketsNeeded if frozen', async () => {
-      // Check initial status
-      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
-
-      // Freeze Main
-      await main.connect(owner).freezeShort()
-
-      // Try to set baskets needed
-      await whileImpersonating(backingManager.address, async (bhSigner) => {
-        await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-      })
-
-      // Check value remains the same
-      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
-    })
-
-    it('Should not allow mint to set BU exchange rate to above 1e9', async () => {
+    it('mint() should not change the BU exchange rate', async () => {
       // mint()
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(
-          rToken
-            .connect(signer)
-            .mint(addr1.address, issueAmount.mul(bn('1e9')).add(1).sub(issueAmount))
-        ).to.be.revertedWith('BU rate out of range')
-        await rToken
-          .connect(signer)
-          .mint(addr1.address, issueAmount.mul(bn('1e9')).sub(issueAmount))
+        await rToken.connect(signer).mint(issueAmount.mul(bn('1e9')).add(1).sub(issueAmount))
+        const basketsNeeded = await rToken.basketsNeeded()
+        const supply = await rToken.totalSupply()
+        expect(basketsNeeded.mul(fp('1')).div(supply)).to.equal(fp('1'))
       })
     })
 
