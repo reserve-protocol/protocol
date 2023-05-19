@@ -496,9 +496,9 @@ library TradingLibP0 {
             // Heuristic: If the distributor would skip it, it's smaller than minTradeVolume
             if (bal >= MAX_DISTRIBUTION * MAX_DESTINATIONS) {
                 // Context: The Distributor leaves small balances behind. It is a non-UoA measure.
-                // MAX_REVENUE_TOTALS is about 1e7, so on a minTradeVolume of $1000 it would
-                // require 1 whole RToken to be worth 100 trillion dollars to be a mistake.
-                // So, it seems like a safe heuristic to use to avoid looking up RToken price.
+                // This product is 1e6, so on a minTradeVolume of $1000 it would
+                // require 1 whole RToken to be worth 1 quadrillion dollars to be a mistake.
+                // So, it is a pretty safe heuristic to use to avoid looking up RToken price.
 
                 (uint192 low, uint192 high) = rTokenAsset.price(); // {UoA/tok}
                 (uint192 lotLow, ) = rTokenAsset.lotPrice(); // {UoA/tok}
