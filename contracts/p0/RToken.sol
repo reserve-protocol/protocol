@@ -152,18 +152,14 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         issuanceThrottle.useAvailable(totalSupply(), -int256(amount));
         redemptionThrottle.useAvailable(totalSupply(), int256(amount)); // reverts on overuse
 
-        // {BU} = {BU} * {qRTok} / {qRTok}
-        uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, totalSupply());
-        assert(basketsRedeemed.lte(basketsNeeded));
+        // {BU}
+        uint192 basketsRedeemed = _redeem(_msgSender(), amount);
         emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
 
         (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
             basketsRedeemed,
             FLOOR
         );
-
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(basketsRedeemed));
-        basketsNeeded = basketsNeeded.minus(basketsRedeemed);
 
         // ==== Send out balances ====
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -176,9 +172,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
                 );
             }
         }
-
-        // Accept and burn RToken, reverts if not enough balance
-        _burn(_msgSender(), amount);
     }
 
     /// Redeem RToken for a linear combination of historical baskets, to a particular recipient
@@ -212,9 +205,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         issuanceThrottle.useAvailable(totalSupply(), -int256(amount));
         redemptionThrottle.useAvailable(totalSupply(), int256(amount)); // reverts on overuse
 
-        // {BU} = {BU} * {qRTok} / {qRTok}
-        uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, totalSupply());
-        assert(basketsRedeemed.lte(basketsNeeded));
+        // {BU}
+        uint192 basketsRedeemed = _redeem(_msgSender(), amount);
         emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
 
         // === Get basket redemption amounts ===
@@ -232,9 +224,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             portions,
             basketsRedeemed
         );
-
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(basketsRedeemed));
-        basketsNeeded = basketsNeeded.minus(basketsRedeemed);
 
         // === Save initial recipient balances ===
 
@@ -269,9 +258,6 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             if (allZero) revert("empty redemption");
         }
 
-        // Accept and burn RToken, reverts if not enough balance
-        _burn(_msgSender(), amount);
-
         // === Post-checks ===
 
         // Check post-balances
@@ -302,6 +288,15 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         require(_msgSender() == address(main.furnace()), "furnace only");
         _burn(_msgSender(), amount);
         emit Melted(amount);
+    }
+
+    /// Dissolve an amount of RToken from caller's account and scale basketsNeeded down
+    /// Callable only by backingManager
+    /// @param amount {qRTok}
+    /// @custom:protected
+    function dissolve(uint256 amount) external notTradingPausedOrFrozen exchangeRateIsValidAfter {
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        _redeem(_msgSender(), amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
@@ -367,6 +362,21 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
     }
 
     // === Private ===
+
+    /// Redeem an amount of RToken from an account for basket units, without transferring tokens
+    /// @param account The address to redeem RTokens from
+    /// @param amount {qRTok} The amount of RToken to be redeemed
+    /// @param basketsRedeemed {BU} The number of baskets redeemed
+    function _redeem(address account, uint256 amount) private returns (uint192 basketsRedeemed) {
+        // {BU} = {BU} * {qRTok} / {qRTok}
+        basketsRedeemed = basketsNeeded.muluDivu(amount, totalSupply()); // FLOOR
+        assert(basketsRedeemed.lte(basketsNeeded));
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(basketsRedeemed));
+        basketsNeeded = basketsNeeded.minus(basketsRedeemed);
+
+        // Burn RToken from account; reverts if not enough balance
+        _burn(account, amount);
+    }
 
     /**
      * @dev Hook that is called before any transfer of tokens. This includes

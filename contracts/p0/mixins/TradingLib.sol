@@ -423,7 +423,7 @@ library TradingLibP0 {
 
         // No space on the stack to cache erc20s.length
         for (uint256 i = 0; i < erc20s.length; ++i) {
-            if (erc20s[i] == ctx.rsr) continue;
+            if (erc20s[i] == ctx.rsr || address(erc20s[i]) == address(ctx.rToken)) continue;
 
             IAsset asset = ctx.reg.toAsset(erc20s[i]);
 
