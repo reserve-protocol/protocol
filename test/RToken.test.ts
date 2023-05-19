@@ -190,6 +190,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(rToken.connect(bmSigner).dissolve(fp('1'))).to.be.revertedWith(
           'frozen or trading paused'
         )
+
+        // Should have a different outcome if unfrozen
+        await main.connect(owner).unfreeze()
+        await expect(rToken.connect(bmSigner).dissolve(fp('1'))).to.not.be.revertedWith(
+          'frozen or trading paused'
+        )
       })
     })
 
