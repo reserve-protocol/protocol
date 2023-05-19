@@ -416,11 +416,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         emit Melted(amtRToken);
     }
 
-    /// Giveup an amount of RToken from caller's account and scales basketsNeeded down
+    /// Dissolve an amount of RToken from caller's account and scale basketsNeeded down
     /// Callable only by backingManager
     /// @param amount {qRTok}
-    /// @custom:proctected
-    function giveup(uint256 amount) external notTradingPausedOrFrozen exchangeRateIsValidAfter {
+    /// @custom:protected
+    function dissolve(uint256 amount) external notTradingPausedOrFrozen exchangeRateIsValidAfter {
         require(_msgSender() == address(backingManager), "not backing manager");
         _redeem(_msgSender(), amount);
     }
