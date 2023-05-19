@@ -172,8 +172,25 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Configuration #fast', () => {
-    it('Should allow to giveup RTokens only from BackingManager', async () => {
-      await expect(rToken.connect(owner).giveup(fp('1'))).to.be.revertedWith('not backing manager')
+    it('Should allow to dissolve RTokens only from BackingManager and when unpaused/unfrozen', async () => {
+      await expect(rToken.connect(owner).dissolve(fp('1'))).to.be.revertedWith(
+        'not backing manager'
+      )
+
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        // Should revert if paused
+        await main.connect(owner).pauseTrading()
+        await expect(rToken.connect(bmSigner).dissolve(fp('1'))).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+
+        // Should revert if frozen
+        await main.connect(owner).unpauseTrading()
+        await main.connect(owner).freezeShort()
+        await expect(rToken.connect(bmSigner).dissolve(fp('1'))).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+      })
     })
 
     it('Should allow to set basketsNeeded only from BackingManager', async () => {
