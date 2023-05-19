@@ -5,14 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IComponent.sol";
 
 uint256 constant MAX_DISTRIBUTION = 1e4; // 10,000
-uint8 constant MAX_DESTINATIONS = 100;
 
 struct RevenueShare {
     uint16 rTokenDist; // {revShare} A value between [0, 10,000]
     uint16 rsrDist; // {revShare} A value between [0, 10,000]
 }
 
-/// Assumes no more than MAX_DESTINATIONS independent distributions.
+/// Assumes no more than 100 independent distributions.
 struct RevenueTotals {
     uint24 rTokenTotal; // {revShare}
     uint24 rsrTotal; // {revShare}

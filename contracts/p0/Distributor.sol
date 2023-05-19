@@ -21,7 +21,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
-    uint8 public constant MAX_DESTINATIONS_ALLOWED = MAX_DESTINATIONS;
+    uint8 public constant MAX_DESTINATIONS_ALLOWED = 100;
 
     function init(IMain main_, RevenueShare memory dist) public initializer {
         __Component_init(main_);
