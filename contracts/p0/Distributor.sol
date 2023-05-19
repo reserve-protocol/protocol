@@ -94,8 +94,8 @@ contract DistributorP0 is ComponentP0, IDistributor {
         );
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
-        require(share.rsrDist <= 10000, "RSR distribution too high");
-        require(share.rTokenDist <= 10000, "RToken distribution too high");
+        require(share.rsrDist <= MAX_DISTRIBUTION, "RSR distribution too high");
+        require(share.rTokenDist <= MAX_DISTRIBUTION, "RToken distribution too high");
 
         if (share.rsrDist == 0 && share.rTokenDist == 0) {
             destinations.remove(dest);

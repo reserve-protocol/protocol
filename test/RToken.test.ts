@@ -172,6 +172,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Configuration #fast', () => {
+    it('Should allow to giveup RTokens only from BackingManager', async () => {
+      await expect(rToken.connect(owner).giveup(fp('1'))).to.be.revertedWith('not backing manager')
+    })
+
     it('Should allow to set basketsNeeded only from BackingManager', async () => {
       // Check initial status
       expect(await rToken.basketsNeeded()).to.equal(0)

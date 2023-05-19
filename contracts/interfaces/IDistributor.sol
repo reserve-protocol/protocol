@@ -13,7 +13,6 @@ struct RevenueShare {
 }
 
 /// Assumes no more than MAX_DESTINATIONS independent distributions.
-/// Each total can only be at most MAX_DISTRIBUTION * MAX_DESTINATIONS
 struct RevenueTotals {
     uint24 rTokenTotal; // {revShare}
     uint24 rsrTotal; // {revShare}

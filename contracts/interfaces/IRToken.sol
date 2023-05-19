@@ -119,6 +119,10 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     /// @param amount {qRTok} The amount to be melted
     function melt(uint256 amount) external;
 
+    /// Giveup an amount of RToken from caller's account and scales basketsNeeded down
+    /// Callable only by backingManager
+    function giveup(uint256 amount) external;
+
     /// Set the number of baskets needed directly, callable only by the BackingManager
     /// @param basketsNeeded {BU} The number of baskets to target
     ///                      needed range: pretty interesting

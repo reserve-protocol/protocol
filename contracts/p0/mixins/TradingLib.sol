@@ -487,29 +487,6 @@ library TradingLibP0 {
             }
         }
 
-        // Use RToken if needed
-        if (address(trade.sell) == address(0) && address(trade.buy) != address(0)) {
-            IAsset rTokenAsset = IAsset(address(ctx.reg.toAsset(IERC20(address(ctx.rToken)))));
-            uint192 bal = rTokenAsset.bal(address(ctx.bm));
-
-            // Only price RToken if it is large enough to be worth it
-            // Heuristic: If the distributor would skip it, it's smaller than minTradeVolume
-            if (bal >= MAX_DISTRIBUTION * MAX_DESTINATIONS) {
-                // Context: The Distributor leaves small balances behind. It is a non-UoA measure.
-                // This product is 1e6, so on a minTradeVolume of $1000 it would
-                // require 1 whole RToken to be worth 1 quadrillion dollars to be a mistake.
-                // So, it is a pretty safe heuristic to use to avoid looking up RToken price.
-
-                (uint192 low, uint192 high) = rTokenAsset.price(); // {UoA/tok}
-                (uint192 lotLow, ) = rTokenAsset.lotPrice(); // {UoA/tok}
-                if (high > 0 && isEnoughToSell(rTokenAsset, bal, lotLow, ctx.minTradeVolume)) {
-                    trade.sell = rTokenAsset;
-                    trade.sellAmount = bal;
-                    trade.sellPrice = low;
-                }
-            }
-        }
-
         // Use RSR if needed
         if (address(trade.sell) == address(0) && address(trade.buy) != address(0)) {
             IAsset rsrAsset = ctx.reg.toAsset(ctx.rsr);
