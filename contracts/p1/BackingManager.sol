@@ -124,6 +124,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         require(basketsHeld.bottom < rToken.basketsNeeded(), "already collateralized");
         // require(!basketHandler.fullyCollateralized())
 
+        // First dissolve any held RToken balance (above Distributor-dust)
+        // gas-optimization: 1 whole RToken must be worth 100 trillion dollars for this to skip $1
+        uint256 balance = main.rToken().balanceOf(address(this));
+        if (balance >= MAX_DISTRIBUTION * MAX_DESTINATIONS) main.rToken().dissolve(balance);
+        if (basketsHeld.bottom >= rToken.basketsNeeded()) return; // return if now capitalized
+
         /*
          * Recollateralization
          *
@@ -267,6 +273,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)
     }
+
+    // === Private ===
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     /// @param basketsHeldBottom {BU} The number of full basket units held by the BackingManager

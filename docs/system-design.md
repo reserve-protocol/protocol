@@ -273,6 +273,17 @@ The number of seconds a long freeze lasts. Long freezes can be disabled by remov
 Default value: `604800` = 7 days
 Mainnet reasonable range: 86400 to 31536000 (1 day to 1 year)
 
+### `withdrawalLeak`
+
+Dimension: `{1}`
+
+The fraction of RSR stake that should be permitted to withdraw without a refresh. When cumulative withdrawals (or a single withdrawal) exceed this fraction, gas must be paid to refresh all assets.
+
+Setting this number larger allows unstakers to save more on gas at the cost of allowing more RSR to exit improperly prior to a default.
+
+Default value: `0.005e18` = 0.5%
+Mainnet reasonable range: 0 to 0.1e18 (0 to 10%)
+
 ### `RToken Supply Throttles`
 
 In order to restrict the system to organic patterns of behavior, we maintain two supply throttles, one for net issuance and one for net redemption. When a supply change occurs, a check is performed to ensure this does not move the supply more than an acceptable range over a period; a period is fixed to be an hour. The acceptable range (per throttle) is a function of the `amtRate` and `pctRate` variables. **It is the maximum of whichever variable provides the larger rate.**

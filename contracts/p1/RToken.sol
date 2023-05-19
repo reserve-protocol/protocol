@@ -223,18 +223,13 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         uint256 supply = totalSupply();
 
-        // Accept and burn RToken, reverts if not enough balance to burn
-        _burn(_msgSender(), amount);
-
         // Revert if redemption exceeds either supply throttle
         issuanceThrottle.useAvailable(supply, -int256(amount));
         redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
 
-        // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, supply); // FLOOR
+        // {BU}
+        uint192 basketsRedeemed = _redeem(_msgSender(), amount);
         emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded - basketsRedeemed);
-        basketsNeeded = basketsNeeded - basketsRedeemed;
 
         (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(
             basketsRedeemed,
@@ -314,18 +309,13 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         uint256 supply = totalSupply();
 
-        // Accept and burn RToken, reverts if not enough balance to burn
-        _burn(_msgSender(), amount);
-
         // Revert if redemption exceeds either supply throttle
         issuanceThrottle.useAvailable(supply, -int256(amount));
         redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on over-redemption
 
-        // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        uint192 basketsRedeemed = basketsNeeded.muluDivu(amount, supply); // FLOOR
+        // {BU}
+        uint192 basketsRedeemed = _redeem(_msgSender(), amount);
         emit Redemption(_msgSender(), recipient, amount, basketsRedeemed);
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded - basketsRedeemed);
-        basketsNeeded = basketsNeeded - basketsRedeemed;
 
         // === Get basket redemption amounts ===
 
@@ -411,6 +401,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
+    /// @custom:protected
     // checks: not trading paused or frozen
     // effects:
     //   bal'[caller] = bal[caller] - amtRToken
@@ -423,6 +414,15 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(_msgSender() == address(furnace), "furnace only");
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
+    }
+
+    /// Dissolve an amount of RToken from caller's account and scale basketsNeeded down
+    /// Callable only by backingManager
+    /// @param amount {qRTok}
+    /// @custom:protected
+    function dissolve(uint256 amount) external notTradingPausedOrFrozen exchangeRateIsValidAfter {
+        require(_msgSender() == address(backingManager), "not backing manager");
+        _redeem(_msgSender(), amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
@@ -497,6 +497,20 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     // ==== Private ====
+
+    /// Redeem an amount of RToken from an account for basket units, without transferring tokens
+    /// @param account The address to redeem RTokens from
+    /// @param amount {qRTok} The amount of RToken to be redeemed
+    /// @param basketsRedeemed {BU} The number of baskets redeemed
+    function _redeem(address account, uint256 amount) private returns (uint192 basketsRedeemed) {
+        // D18{BU} = D18{BU} * {qRTok} / {qRTok}
+        basketsRedeemed = basketsNeeded.muluDivu(amount, totalSupply()); // FLOOR
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded - basketsRedeemed);
+        basketsNeeded = basketsNeeded - basketsRedeemed;
+
+        // Burn RToken from account; reverts if not enough balance
+        _burn(account, amount);
+    }
 
     /**
      * @dev Hook that is called before any transfer of tokens. This includes

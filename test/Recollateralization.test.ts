@@ -2024,6 +2024,53 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmount)
         })
 
+        it('Should dissolve held RToken to recapitalize, when possible', async () => {
+          // Send all RToken to BackingManager
+          await rToken.connect(addr1).transfer(backingManager.address, issueAmount)
+
+          // Set prime basket
+          await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+
+          // Switch Basket
+          await expect(basketHandler.connect(owner).refreshBasket())
+            .to.emit(basketHandler, 'BasketSet')
+            .withArgs(3, [token1.address], [fp('1')], false)
+
+          // Check state remains SOUND
+          expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+          expect(await basketHandler.fullyCollateralized()).to.equal(false)
+          expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+          expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+          expect(await token1.balanceOf(backingManager.address)).to.equal(0)
+          expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+          // Check price in USD of the current RToken -- retains price because of
+          // over-collateralization
+          await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+
+          // Trigger recollateralization -- should recapitalize by dissolving RToken
+          await expectEvents(backingManager.rebalance(TradeKind.BATCH_AUCTION), [
+            {
+              contract: backingManager,
+              name: 'TradeStarted',
+              emitted: false,
+            },
+            {
+              contract: rToken,
+              name: 'BasketsNeededChanged',
+              emitted: true,
+            },
+          ])
+
+          // Check fullyCollateralized and rest of state
+          expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+          expect(await basketHandler.fullyCollateralized()).to.equal(true)
+          expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+          expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+          expect(await token1.balanceOf(backingManager.address)).to.equal(0)
+          expect(await rToken.totalSupply()).to.equal(0)
+        })
+
         it('Should recollateralize correctly in case of default - Using RSR for remainder', async () => {
           // Register Collateral
           await assetRegistry.connect(owner).register(backupCollateral1.address)
