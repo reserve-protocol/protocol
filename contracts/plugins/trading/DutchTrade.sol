@@ -7,28 +7,34 @@ import "../../libraries/Fixed.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/ITrade.sol";
 
-uint192 constant ONE_THIRD = FIX_ONE / 3; // {1} 1/3
-uint192 constant TWO_THIRDS = ONE_THIRD * 2; // {1} 2/3
+uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
+uint192 constant SIXTY_PERCENT = 6e17; // {1} 0.6
 
-uint192 constant MAX_EXP = 31 * FIX_ONE; // {1} (5/4)^31 = 1009
-// by using 4/5 as the base of the price exponential, the avg loss due to precision is exactly 10%
-uint192 constant BASE = 8e17; // {1} (4/5)
+// A geometric price decay with base (999999/1000000). Price starts at 1000x and decays to 1x
+//  (1000000/999999)^6907752 = ~1000x
+//   A 30-minute auction on a chain with a 12-second blocktime has a ~10.87% price drop per block
+//   during the geometric period and a 0.05% drop during the linear period of the auction.
+//   This is the recommended length of auction for a chain with 12
+uint192 constant MAX_EXP = 6907752 * FIX_ONE; // {1}
+uint192 constant BASE = 999999e12; // {1} (999999/1000000)
 
 /**
  * @title DutchTrade
  * @notice Implements a wholesale dutch auction via a piecewise falling-price mechansim.
- *   Over the first third of the auction the price falls from ~1000x the best plausible price
- *   down to the best expected price in a geometric series. The price decreases by 20% each time.
- *   This period DOES NOT expect to receive a bid; it defends against manipulated prices.
+ *   Over the first 40% of the auction the price falls from ~1000x the best plausible price
+ *   down to the best plausible price in a geometric series. The price decreases by the same %
+ *   each time. At 30 minutes the decreases are 10.87% per block. Longer auctions have
+ *   smaller price decreases, and shorter auctions have larger price decreases.
+ *   This period DOES NOT expect to receive a bid; it just defends against manipulated prices.
  *
- *   Over the last 2/3 of the auction the price falls from the best expected price to the worst
+ *   Over the last 60% of the auction the price falls from the best plausible price to the worst
  *   price, linearly. The worst price is further discounted by the maxTradeSlippage as a fraction
  *   of how far from minTradeVolume to maxTradeVolume the trade lies.
  *   At maxTradeVolume, no further discount is applied.
  *
  * To bid:
  * - Call `bidAmount()` view to check prices at various timestamps
- * - Wait until desirable a block is reached
+ * - Wait until desirable a block is reached (hopefully not in the first 40% of the auction)
  * - Provide approval of buy tokens and call bid(). The swap will be atomic
  */
 contract DutchTrade is ITrade {
@@ -50,7 +56,7 @@ contract DutchTrade is ITrade {
     uint48 public startTime; // {s} when the dutch auction begins (1 block after init())
     uint48 public endTime; // {s} when the dutch auction ends if no bids are received
 
-    // highPrice is always 8192x the middlePrice, so we don't need to track it explicitly
+    // highPrice is always 1000x the middlePrice, so we don't need to track it explicitly
     uint192 public middlePrice; // {buyTok/sellTok} The price at which the function is piecewise
     uint192 public lowPrice; // {buyTok/sellTok} The price the auction ends at
 
@@ -219,28 +225,30 @@ contract DutchTrade is ITrade {
             );
     }
 
-    /// Return the price of the auction based on a particular % progression
+    /// Return the price of the auction at a particular timestamp
     /// @param timestamp {s} The block timestamp
     /// @return {buyTok/sellTok}
     function _price(uint48 timestamp) private view returns (uint192) {
         /// Price Curve:
-        ///   - first 1/3%: exponentially 4/5ths the price from 1009x the middlePrice to 1x
-        ///   - last 2/3: decrease linearly from middlePrice to lowPrice
+        ///   - first 40%: geometrically decrease the price from 1000x the middlePrice to 1x
+        ///   - last 60: decrease linearly from middlePrice to lowPrice
 
         uint192 progression = divuu(timestamp - startTime, endTime - startTime); // {1}
 
-        // Fast geometric decay -- 0%-33% of auction
-        if (progression < ONE_THIRD) {
-            uint192 exp = MAX_EXP.mulDiv(ONE_THIRD - progression, ONE_THIRD, ROUND);
+        // Fast geometric decay -- 0%-40% of auction
+        if (progression < FORTY_PERCENT) {
+            uint192 exp = MAX_EXP.mulDiv(FORTY_PERCENT - progression, FORTY_PERCENT, ROUND);
 
-            // middlePrice * ((5/4) ^ exp) = middlePrice / ((4/5) ^ exp)
-            // safe uint48 downcast: exp is at-most 31
+            // middlePrice * ((1000000/999999) ^ exp) = middlePrice / ((999999/1000000) ^ exp)
+            // safe uint48 downcast: exp is at-most 69075
             // {buyTok/sellTok} = {buyTok/sellTok} / {1} ^ {1}
             return middlePrice.div(BASE.powu(uint48(exp.toUint(ROUND))), CEIL);
             // this reverts for middlePrice >= 6.21654046e36 * FIX_ONE
         }
 
-        // Slow linear decay -- 33%-100% of auction
-        return middlePrice - (middlePrice - lowPrice).mulDiv(progression - ONE_THIRD, TWO_THIRDS);
+        // Slow linear decay -- 40%-100% of auction
+        return
+            middlePrice -
+            (middlePrice - lowPrice).mulDiv(progression - FORTY_PERCENT, SIXTY_PERCENT);
     }
 }

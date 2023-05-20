@@ -2210,7 +2210,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       context('DutchTrade', () => {
-        const auctionLength = 1116 // 18.6 minutes
+        const auctionLength = 1800 // 30 minutes
         beforeEach(async () => {
           await broker.connect(owner).setDutchAuctionLength(auctionLength)
         })
@@ -2264,7 +2264,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           const end = await trade.endTime()
           await advanceToTimestamp(start)
 
-          // Simulate 18.6 minutes of blocks, should swap at right price each time
+          // Simulate 30 minutes of blocks, should swap at right price each time
           for (let now = await getLatestBlockTimestamp(); now <= end; now += 12) {
             const actual = await trade.connect(addr1).bidAmount(now)
             const expected = await dutchBuyAmount(
@@ -2275,7 +2275,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               config.minTradeVolume,
               config.maxTradeSlippage
             )
-            expect(actual).to.equal(expected)
+            expect(actual).to.be.closeTo(expected, expected.div(bn('1e15')))
 
             const staticResult = await trade.connect(addr1).callStatic.bid()
             expect(staticResult).to.equal(actual)

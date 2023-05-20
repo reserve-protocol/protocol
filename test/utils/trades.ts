@@ -107,17 +107,17 @@ export const dutchBuyAmount = async (
   const lowPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
   const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
 
-  const ONE_THIRD = fp('1').div(3) // 0.33333
-  const TWO_THIRDS = ONE_THIRD.mul(2) // 0.66666
+  const FORTY_PERCENT = fp('0.4') // 40%
+  const SIXTY_PERCENT = fp('0.6') // 60%
 
   let price: BigNumber
-  if (progression.lt(ONE_THIRD)) {
-    const exp = divRound(bn('31').mul(ONE_THIRD.sub(progression)), ONE_THIRD)
-    const divisor = new Decimal('4').div(5).pow(exp.toString())
+  if (progression.lt(FORTY_PERCENT)) {
+    const exp = divRound(bn('6907752').mul(FORTY_PERCENT.sub(progression)), FORTY_PERCENT)
+    const divisor = new Decimal('999999').div('1000000').pow(exp.toString())
     price = divCeil(middlePrice.mul(fp('1')), fp(divisor.toString()))
   } else {
     price = middlePrice.sub(
-      middlePrice.sub(lowPrice).mul(progression.sub(ONE_THIRD)).div(TWO_THIRDS)
+      middlePrice.sub(lowPrice).mul(progression.sub(FORTY_PERCENT)).div(SIXTY_PERCENT)
     )
   }
   return divCeil(outAmount.mul(price), fp('1'))

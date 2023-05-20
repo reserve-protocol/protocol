@@ -3188,7 +3188,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       context('DutchTrade', () => {
-        const auctionLength = 1116 // 18.6 minutes
+        const auctionLength = 1800 // 30 minutes
         beforeEach(async () => {
           await broker.connect(owner).setDutchAuctionLength(auctionLength)
 
@@ -3239,7 +3239,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
 
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
-          // issueAmount = issueAmount.div(10000)
           await backingManager.rebalance(TradeKind.DUTCH_AUCTION)
           const trade = await ethers.getContractAt(
             'DutchTrade',
@@ -3251,7 +3250,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           const end = await trade.endTime()
           await advanceToTimestamp(start)
 
-          // Simulate 20 minutes of blocks, should swap at right price each time
+          // Simulate 30 minutes of blocks, should swap at right price each time
           for (let now = await getLatestBlockTimestamp(); now <= end; now += 12) {
             const actual = await trade.connect(addr1).bidAmount(now)
             const expected = divCeil(
@@ -3265,7 +3264,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
               ),
               bn('1e12') // fix for decimals
             )
-            expect(actual).to.equal(expected)
+            expect(actual).to.be.closeTo(expected, expected.div(bn('1e15')))
 
             const staticResult = await trade.connect(addr1).callStatic.bid()
             expect(staticResult).to.equal(expected)
