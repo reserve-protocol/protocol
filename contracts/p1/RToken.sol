@@ -86,22 +86,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         redemptionThrottle.lastTimestamp = uint48(block.timestamp);
     }
 
-    /// after fn(), assert exchangeRate in [MIN_EXCHANGE_RATE, MAX_EXCHANGE_RATE]
-    modifier exchangeRateIsValidAfter() {
-        _;
-        uint256 supply = totalSupply();
-        if (supply == 0) return;
-
-        // Note: These are D18s, even though they are uint256s. This is because
-        // we cannot assume we stay inside our valid range here, as that is what
-        // we are checking in the first place
-        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
-        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
-
-        // here we take advantage of an implicit upcast from uint192 exchange rates
-        require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
-    }
-
     /// Issue an RToken on current the basket
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
@@ -357,16 +341,13 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// Callable only by BackingManager
     /// @param baskets {BU} The number of baskets to mint RToken for
     /// @custom:protected
-    // checks: unpaused; unfrozen; caller is backingManager
+    // checks: caller is backingManager
     // effects:
     //   bal'[recipient] = bal[recipient] + amtRToken
     //   totalSupply' = totalSupply + amtRToken
     //   basketsNeeded' = basketsNeeded + baskets
-    //
-    // untestable:
-    //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
-    //   but it is fully covered for `mint` (limitations of coverage plugin)
-    function mint(uint192 baskets) external exchangeRateIsValidAfter {
+    // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
+    function mint(uint192 baskets) external {
         require(_msgSender() == address(backingManager), "not backing manager");
         _scaleUp(address(backingManager), baskets, totalSupply());
     }
@@ -374,15 +355,13 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
     /// @custom:protected
-    // checks: not trading paused or frozen
+    // checks: caller is furnace
     // effects:
     //   bal'[caller] = bal[caller] - amtRToken
     //   totalSupply' = totalSupply - amtRToken
-    //
-    // untestable:
-    //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
-    //   but it is fully covered for `melt` (limitations of coverage plugin)
-    function melt(uint256 amtRToken) external exchangeRateIsValidAfter {
+    // BU exchange rate cannot decrease
+    // BU exchange rate CAN increase, but we already trust furnace to do this slowly
+    function melt(uint256 amtRToken) external {
         require(_msgSender() == address(furnace), "furnace only");
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
@@ -392,6 +371,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// Callable only by backingManager
     /// @param amount {qRTok}
     /// @custom:protected
+    // checks: caller is backingManager
+    // effects:
+    //   bal'[recipient] = bal[recipient] - amtRToken
+    //   totalSupply' = totalSupply - amtRToken
+    //   basketsNeeded' = basketsNeeded - baskets
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function dissolve(uint256 amount) external {
         require(_msgSender() == address(backingManager), "not backing manager");
@@ -400,16 +384,25 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    // checks: trading unpaused; unfrozen; caller is backingManager
+    // checks: caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
-    //
-    // untestable:
-    //   `else` branch of `exchangeRateIsValidAfter` (ie. revert) shows as uncovered
-    //   but it is fully covered for `setBasketsNeeded` (limitations of coverage plugin)
-    function setBasketsNeeded(uint192 basketsNeeded_) external exchangeRateIsValidAfter {
+    function setBasketsNeeded(uint192 basketsNeeded_) external {
         require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
+
+        // Ensure exchange rate is valid
+        uint256 supply = totalSupply();
+        assert(supply > 0);
+
+        // Note: These are D18s, even though they are uint256s. This is because
+        // we cannot assume we stay inside our valid range here, as that is what
+        // we are checking in the first place
+        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
+        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
+
+        // here we take advantage of an implicit upcast from uint192 exchange rates
+        require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
     }
 
     /// Sends all token balance of erc20 (if it is registered) to the BackingManager
@@ -471,6 +464,10 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The address to receive the RTokens
     /// @param amtBaskets {BU} The number of amtBaskets to mint RToken for
     /// @param totalSupply {qRTok} The current totalSupply
+    // effects:
+    //   bal'[recipient] = bal[recipient] + amtRToken
+    //   totalSupply' = totalSupply + amtRToken
+    //   basketsNeeded' = basketsNeeded + amtBaskets
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function _scaleUp(
         address recipient,
@@ -490,17 +487,21 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
     /// Burn an amount of RToken and scale basketsNeeded down
     /// @param account The address to dissolve RTokens from
-    /// @param amount {qRTok} The amount of RToken to be dissolved
-    /// @return baskets {BU} The equivalent number of baskets dissolved
+    /// @param amtRToken {qRTok} The amount of RToken to be dissolved
+    /// @return amtBaskets {BU} The equivalent number of baskets dissolved
+    // effects:
+    //   bal'[recipient] = bal[recipient] - amtRToken
+    //   totalSupply' = totalSupply - amtRToken
+    //   basketsNeeded' = basketsNeeded - amtBaskets
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
-    function _scaleDown(address account, uint256 amount) private returns (uint192 baskets) {
+    function _scaleDown(address account, uint256 amtRToken) private returns (uint192 amtBaskets) {
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        baskets = basketsNeeded.muluDivu(amount, totalSupply()); // FLOOR
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded - baskets);
-        basketsNeeded -= baskets;
+        amtBaskets = basketsNeeded.muluDivu(amtRToken, totalSupply()); // FLOOR
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded - amtBaskets);
+        basketsNeeded -= amtBaskets;
 
         // Burn RToken from account; reverts if not enough balance
-        _burn(account, amount);
+        _burn(account, amtRToken);
     }
 
     /**

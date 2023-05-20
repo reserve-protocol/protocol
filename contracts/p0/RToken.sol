@@ -368,16 +368,16 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// Burn an amount of RToken and scale basketsNeeded down
     /// @param account The address to dissolve RTokens from
-    /// @param amount {qRTok} The amount of RToken to be dissolved
-    /// @return baskets {BU} The equivalent number of baskets dissolved
-    function _scaleDown(address account, uint256 amount) private returns (uint192 baskets) {
+    /// @param amtRToken {qRTok} The amount of RToken to be dissolved
+    /// @return amtBaskets {BU} The equivalent number of baskets dissolved
+    function _scaleDown(address account, uint256 amtRToken) private returns (uint192 amtBaskets) {
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        baskets = basketsNeeded.muluDivu(amount, totalSupply()); // FLOOR
-        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
-        basketsNeeded = basketsNeeded.minus(baskets);
+        amtBaskets = basketsNeeded.muluDivu(amtRToken, totalSupply()); // FLOOR
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(amtBaskets));
+        basketsNeeded = basketsNeeded.minus(amtBaskets);
 
         // Burn RToken from account; reverts if not enough balance
-        _burn(account, amount);
+        _burn(account, amtRToken);
     }
 
     /**
