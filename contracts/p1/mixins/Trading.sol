@@ -109,23 +109,18 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
-    //
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
-    // this contract that changes state this function refers to.
-    // slither-disable-next-line reentrancy-vulnerabilities-1
     function tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
         /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
-        IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
-        IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
-
-        trade = broker.openTrade(kind, req);
         trades[sell] = trade;
         tradesOpen++;
+
+        IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
+        IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
+        trade = broker.openTrade(kind, req);
+
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 

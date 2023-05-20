@@ -78,6 +78,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //   actions:
     //     tryTrade(kind, prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
+    // untested:
+    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function manageToken(IERC20 erc20, TradeKind kind)
         external
         nonReentrant
