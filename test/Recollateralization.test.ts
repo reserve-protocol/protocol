@@ -3317,7 +3317,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
             const expected = divCeil(
               await dutchBuyAmount(
-                fp('300').div(300), // after all txs so far, at 300/300s
+                fp(auctionLength).div(auctionLength), // last possible second
                 collateral0.address,
                 collateral1.address,
                 issueAmount,

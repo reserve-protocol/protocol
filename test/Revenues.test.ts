@@ -2326,7 +2326,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
 
           const expected = await dutchBuyAmount(
-            fp('300').div(300),
+            fp(auctionLength).div(auctionLength), // last possible second
             rTokenAsset.address,
             collateral0.address,
             issueAmount,
