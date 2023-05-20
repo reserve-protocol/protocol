@@ -393,7 +393,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // Ensure exchange rate is valid
         uint256 supply = totalSupply();
-        assert(supply > 0); // BackingManager should not be calling
+        require(supply > 0, "0 supply");
 
         // Note: These are D18s, even though they are uint256s. This is because
         // we cannot assume we stay inside our valid range here, as that is what

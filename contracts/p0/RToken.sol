@@ -302,6 +302,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         exchangeRateIsValidAfter
     {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(totalSupply() > 0, "0 supply");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
