@@ -1,8 +1,10 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  1`] = `1338646`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  1`] = `1340369`;
 
-exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  2`] = `1451081`;
+exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  2`] = `1472971`;
+
+exports[`Recollateralization - P1 Gas Reporting rebalance() - DutchTrade  3`] = `646632`;
 
 exports[`Recollateralization - P1 Gas Reporting rebalance() - GnosisTrade  1`] = `1695736`;
 

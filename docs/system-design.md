@@ -230,10 +230,14 @@ Mainnet reasonable range: 60 to 3600
 
 Dimension: `{seconds}`
 
-The dutch auction length is how many seconds long falling-price dutch auctions should be. A longer period will result in less slippage due to better price granularity.
+The dutch auction length is how many seconds long falling-price dutch auctions should be. A longer period will result in less slippage due to better price granularity, and a shorter period will result in more slippage.
 
-Default value: `600` = 10 minutes
-Mainnet reasonable range: 120 to 3600
+In general, the dutchAuctionLength should be a multiple of the blocktime. This is not enforced at a smart-contract level.
+
+Default value: `1800` = 30 minutes
+Mainnet reasonable range: 300 to 3600
+
+At 30 minutes, a 12-second blocktime chain would have 10.87% price drops during the first 40% of the auction, and 0.055% price drops during the second 60%.
 
 ### `backingBuffer`
 
