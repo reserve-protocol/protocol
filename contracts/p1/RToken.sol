@@ -391,7 +391,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
 
-        // Ensure exchange rate is valid
+        // == P0 exchangeRateIsValidAfter modifier ==
         uint256 supply = totalSupply();
         require(supply > 0, "0 supply");
 

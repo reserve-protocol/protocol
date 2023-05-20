@@ -201,6 +201,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
     await backupToken1.connect(owner).mint(addr2.address, initialBal)
     await backupToken2.connect(owner).mint(addr2.address, initialBal)
+    await backingManager.cacheComponents()
   }
 
   beforeEach(async () => {

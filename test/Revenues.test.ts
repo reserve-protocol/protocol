@@ -189,6 +189,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     // Mint initial balances
     initialBal = bn('1000000e18')
     await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
+    await rTokenTrader.cacheComponents()
+    await rsrTrader.cacheComponents()
   })
 
   describe('Deployment', () => {
