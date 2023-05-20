@@ -99,7 +99,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @return trade The trade contract created
-    /// @custom:interaction (only reads or writes `trades`, and is marked `nonReentrant`)
+    /// @custom:interaction Assumption: Caller is nonReentrant
     // checks:
     //   (not external, so we don't need auth or pause checks)
     //   trades[req.sell] == 0
@@ -114,12 +114,12 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
-        trades[sell] = trade;
-        tradesOpen++;
-
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
+
         trade = broker.openTrade(kind, req);
+        trades[sell] = trade;
+        tradesOpen++;
 
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
