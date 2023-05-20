@@ -201,9 +201,11 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         // Call collective state keepers.
         main.poke();
 
+        uint256 supply = totalSupply();
+
         // Revert if redemption exceeds either supply throttle
-        issuanceThrottle.useAvailable(totalSupply(), -int256(amount));
-        redemptionThrottle.useAvailable(totalSupply(), int256(amount)); // reverts on overuse
+        issuanceThrottle.useAvailable(supply, -int256(amount));
+        redemptionThrottle.useAvailable(supply, int256(amount)); // reverts on overuse
 
         // {BU}
         uint192 basketsRedeemed = _redeem(_msgSender(), amount);
@@ -237,12 +239,12 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             bool allZero = true;
             // Bound each withdrawal by the prorata share, in case currently under-collateralized
             for (uint256 i = 0; i < erc20sOut.length; i++) {
-                uint256 bal = IERC20Upgradeable(erc20sOut[i]).balanceOf(
-                    address(main.backingManager())
-                ); // {qTok}
-
                 // {qTok} = {qTok} * {qRTok} / {qRTok}
-                uint256 prorata = mulDiv256(bal, amount, totalSupply()); // FLOOR
+                uint256 prorata = mulDiv256(
+                    IERC20(erc20sOut[i]).balanceOf(address(main.backingManager())),
+                    amount,
+                    supply
+                ); // FLOOR
                 if (prorata < amountsOut[i]) amountsOut[i] = prorata;
 
                 // Send withdrawal
