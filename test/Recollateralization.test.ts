@@ -17,7 +17,6 @@ import { bn, fp, pow10, toBNDecimals, divCeil } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
-  BackingManagerP1,
   CTokenMock,
   DutchTrade,
   CTokenVaultMock,
@@ -204,7 +203,9 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
     await backupToken2.connect(owner).mint(addr2.address, initialBal)
 
     if (IMPLEMENTATION === Implementation.P1) {
-      await (<BackingManagerP1>backingManager).cacheComponents()
+      await (
+        await ethers.getContractAt('BackingManagerP1', backingManager.address)
+      ).cacheComponents()
     }
   }
 
