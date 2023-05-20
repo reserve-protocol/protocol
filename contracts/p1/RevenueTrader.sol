@@ -64,7 +64,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
     /// @dev Intended to be used with multicall
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    /// @custom:interaction RCEI
+    /// @custom:interaction RCEI and nonReentrant
     // let bal = this contract's balance of erc20
     // checks: !paused (trading), !frozen
     // does nothing if erc20 == addr(0) or bal == 0

@@ -181,7 +181,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {}
+        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 

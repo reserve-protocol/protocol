@@ -72,7 +72,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         IERC20(address(erc20)).safeApprove(address(main.rToken()), type(uint256).max);
     }
 
-    /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
+    /// Settle a single trade. If the caller is the trade, try chaining into rebalance()
     /// While this function is not nonReentrant, its two subsets each individually are
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
@@ -98,7 +98,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    /// @custom:interaction not RCEI, nonReentrant
+    /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function rebalance(TradeKind kind) external nonReentrant notTradingPausedOrFrozen {
@@ -162,7 +162,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Forward revenue to RevenueTraders; reverts if not fully collateralized
     /// @param erc20s The tokens to forward
-    /// @custom:interaction not RCEI, nonReentrant
+    /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function forwardRevenue(IERC20[] calldata erc20s)
