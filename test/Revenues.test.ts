@@ -27,6 +27,7 @@ import {
   IAssetRegistry,
   InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
+  RevenueTraderP1,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -189,8 +190,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     // Mint initial balances
     initialBal = bn('1000000e18')
     await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
-    await rTokenTrader.cacheComponents()
-    await rsrTrader.cacheComponents()
+    if (IMPLEMENTATION === Implementation.P1) {
+      await (<RevenueTraderP1>rTokenTrader).cacheComponents()
+      await (<RevenueTraderP1>rsrTrader).cacheComponents()
+    }
   })
 
   describe('Deployment', () => {

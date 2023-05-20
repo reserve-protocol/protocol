@@ -61,6 +61,4 @@ interface TestIBackingManager is IBackingManager, TestITrading {
     function setTradingDelay(uint48 val) external;
 
     function setBackingBuffer(uint192 val) external;
-
-    function cacheComponents() external;
 }

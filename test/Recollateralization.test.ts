@@ -17,6 +17,7 @@ import { bn, fp, pow10, toBNDecimals, divCeil } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
+  BackingManagerP1,
   CTokenMock,
   DutchTrade,
   CTokenVaultMock,
@@ -201,7 +202,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
     await backupToken1.connect(owner).mint(addr2.address, initialBal)
     await backupToken2.connect(owner).mint(addr2.address, initialBal)
-    await backingManager.cacheComponents()
+
+    if (IMPLEMENTATION === Implementation.P1) {
+      await (<BackingManagerP1>backingManager).cacheComponents()
+    }
   }
 
   beforeEach(async () => {
