@@ -386,14 +386,14 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     // checks: caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
-    function setBasketsNeeded(uint192 basketsNeeded_) external {
+    function setBasketsNeeded(uint192 basketsNeeded_) external notTradingPausedOrFrozen {
         require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
 
         // Ensure exchange rate is valid
         uint256 supply = totalSupply();
-        assert(supply > 0);
+        assert(supply > 0); // BackingManager should not be calling
 
         // Note: These are D18s, even though they are uint256s. This is because
         // we cannot assume we stay inside our valid range here, as that is what

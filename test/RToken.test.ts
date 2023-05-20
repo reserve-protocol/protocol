@@ -2285,6 +2285,42 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
     })
 
+    it('Should not allow setBasketsNeeded if paused', async () => {
+      // Check initial status
+      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
+
+      // Pause Main
+      await main.connect(owner).pauseTrading()
+
+      // Try to set baskets needed
+      await whileImpersonating(backingManager.address, async (bhSigner) => {
+        await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+      })
+
+      // Check value remains the same
+      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
+    })
+
+    it('Should not allow setBasketsNeeded if frozen', async () => {
+      // Check initial status
+      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
+
+      // Freeze Main
+      await main.connect(owner).freezeShort()
+
+      // Try to set baskets needed
+      await whileImpersonating(backingManager.address, async (bhSigner) => {
+        await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+      })
+
+      // Check value remains the same
+      expect(await rToken.basketsNeeded()).to.equal(issueAmount)
+    })
+
     it('mint() should not change the BU exchange rate', async () => {
       // mint()
       await whileImpersonating(backingManager.address, async (signer) => {

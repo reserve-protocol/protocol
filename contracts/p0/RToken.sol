@@ -294,7 +294,11 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(uint192 basketsNeeded_) external exchangeRateIsValidAfter {
+    function setBasketsNeeded(uint192 basketsNeeded_)
+        external
+        notTradingPausedOrFrozen
+        exchangeRateIsValidAfter
+    {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
