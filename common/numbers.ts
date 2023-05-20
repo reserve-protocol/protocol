@@ -33,6 +33,8 @@ export const fp = (x: BigNumberish): BigNumber => {
 
 export const divFloor = (x: BigNumber, y: BigNumber): BigNumber => div(x, y, RoundingMode.FLOOR)
 
+export const divRound = (x: BigNumber, y: BigNumber): BigNumber => div(x, y, RoundingMode.ROUND)
+
 export const divCeil = (x: BigNumber, y: BigNumber): BigNumber => div(x, y, RoundingMode.CEIL)
 
 export function div(x: BigNumber, y: BigNumber, rnd: RoundingMode) {
