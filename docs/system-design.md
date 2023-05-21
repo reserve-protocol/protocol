@@ -132,14 +132,28 @@ Design intentions:
 
 The Reserve Protocol makes a few different types of trades:
 
-- from collateral to RSR or RToken, in order to distribute collateral yields. These happen often.
-- from reward tokens to RSR or RToken, in order to distribute tokens rewards from collateral. These also happen often.
-- collateral to collateral, in order to change the distribution of collateral due to a basket change. Basket changes should be rare, happening only when governance changes the basket, or when some collateral token defaults.
-- RSR to collateral, in order to recollateralize the protocol from stRSR over-collateralization, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using the over-collateralization buffer.
+- from collateral to RSR or RToken, in order to distribute collateral yields. These happen often in a RevenueTrader.
+- from reward tokens to RSR or RToken, in order to distribute tokens rewards from collateral. These also happen often in a RevenueTrader.
+- collateral to collateral, in order to change the distribution of collateral due to a basket change. Basket changes should be rare, happening only when governance changes the basket, or when some collateral token defaults. This only happens in the BackingManager.
+- RSR to collateral, in order to recollateralize the protocol from stRSR over-collateralization, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using the over-collateralization buffer. These auctions also happen in the BackingManager.
 
-Each type of trade can currently happen in only one way; the protocol launches a Gnosis EasyAuction. The Reserve Protocol is designed to make it easy to add other trading methods, but none others are currently supported.
+Each type of trade can happen two ways: either by a falling-price ductch auction (DutchTrade) or by a batch auction via Gnosis EasyAuction (GnosisTrade). More trading methods can be added in the future.
+
+### Gnosis EasyAuction Batch Auctions (GnosisTrade)
 
 A good explainer for how Gnosis auctions work can be found (on their github)[https://github.com/gnosis/ido-contracts].
+
+### Dutch Auctions (DutchTrade)
+
+The Dutch auction occurs in two phases:
+
+Geometric/Exponential Phase (first 40% of auction): The price starts at about 1000x the best plausible price and decays down to the best plausible price following a geometric/exponential series. The price decreases by the same percentage each time. This phase is primarily defensive, and it's not expected to receive a bid; it merely protects against manipulated prices.
+
+Linear Phase (last 60% of auction): During this phase, the price decreases linearly from the best plausible price to the worst plausible price. The worst price is further discounted based on maxTradeSlippage, which considers how far from minTradeVolume to maxTradeVolume the trade lies. No further discount is applied at maxTradeVolume.
+
+The `dutchAuctionLength` can be configured to be any value. The suggested default is 30 minutes for a blockchain with a 12-second blocktime. At this ratio of blocktime to auction length, there is a 10.87% price drop per block during the geometric/exponential period and a 0.05% drop during the linear period. The duration of the auction can be adjusted, which will impact the size of the price decreases per block.
+
+The "best plausible price" is equal to the exchange rate at the high price of the sell token and the low price of the buy token. The "worst-case price" is equal to the exchange rate at the low price of the sell token and the high price of the sell token, plus an additional discount ranging from 0 to `maxTradeSlippage()`. At minimum auction size the full `maxTradeSlippage()` is applied, while at max auction size no further discount is applied.
 
 ## Deployment Parameters
 
