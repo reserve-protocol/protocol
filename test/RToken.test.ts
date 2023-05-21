@@ -28,7 +28,6 @@ import {
   StaticATokenMock,
   TestIBackingManager,
   TestIBasketHandler,
-  TestIFurnace,
   TestIMain,
   TestIRToken,
   USDCMock,
@@ -97,7 +96,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
-  let furnace: TestIFurnace
 
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
@@ -113,7 +111,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       main,
       rToken,
       rTokenAsset,
-      furnace,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens

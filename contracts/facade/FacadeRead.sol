@@ -86,11 +86,7 @@ contract FacadeRead is IFacadeRead {
     /// @return withdrawals The balances necessary to issue `amount` RToken
     /// @return isProrata True if the redemption is prorata and not full
     /// @custom:static-call
-    function redeem(
-        IRToken rToken,
-        uint256 amount,
-        uint48 basketNonce
-    )
+    function redeem(IRToken rToken, uint256 amount)
         external
         returns (
             address[] memory tokens,
@@ -103,7 +99,6 @@ contract FacadeRead is IFacadeRead {
         IRToken rTok = rToken;
         IBasketHandler bh = main.basketHandler();
         uint256 supply = rTok.totalSupply();
-        require(bh.nonce() == basketNonce, "non-current basket nonce");
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         uint192 basketsRedeemed = rTok.basketsNeeded().muluDivu(amount, supply);
@@ -285,6 +280,7 @@ contract FacadeRead is IFacadeRead {
             IBackingManager bm = revenueTrader.main().backingManager();
 
             // First try 3.0.0 interface
+            // solhint-disable-next-line no-empty-blocks
             try bm.forwardRevenue(reg.erc20s) {} catch {
                 // try 2.1.0 interface
                 (bool success, ) = address(bm).call{ value: 0 }(
@@ -319,6 +315,7 @@ contract FacadeRead is IFacadeRead {
 
             if (reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i]) {
                 // 3.0.0 RevenueTrader interface
+                // solhint-disable-next-line no-empty-blocks
                 try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {
                     // try 2.1.0 interface
                     (bool success, ) = address(revenueTrader).call{ value: 0 }(

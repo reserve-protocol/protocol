@@ -46,6 +46,7 @@ contract FacadeAct is IFacadeAct, Multicall {
             IBackingManager bm = revenueTrader.main().backingManager();
 
             // 3.0.0 interface
+            // solhint-disable-next-line no-empty-blocks
             try bm.forwardRevenue(toStart) {} catch {
                 // try 2.1.0 interface
                 (bool success, ) = address(bm).call{ value: 0 }(
@@ -58,6 +59,7 @@ contract FacadeAct is IFacadeAct, Multicall {
         // Start auctions
         for (uint256 i = 0; i < toStart.length; ++i) {
             // 3.0.0 RevenueTrader interface
+            // solhint-disable-next-line no-empty-blocks
             try revenueTrader.manageToken(toStart[i], kind) {} catch {
                 // Fallback to <=2.1.0 interface
                 (bool success, ) = address(revenueTrader).call{ value: 0 }(

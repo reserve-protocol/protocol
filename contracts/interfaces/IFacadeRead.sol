@@ -35,11 +35,7 @@ interface IFacadeRead {
     /// @return withdrawals The balances necessary to issue `amount` RToken
     /// @return isProrata True if the redemption is prorata and not full
     /// @custom:static-call
-    function redeem(
-        IRToken rToken,
-        uint256 amount,
-        uint48 basketNonce
-    )
+    function redeem(IRToken rToken, uint256 amount)
         external
         returns (
             address[] memory tokens,
