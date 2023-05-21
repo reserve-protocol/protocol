@@ -239,19 +239,26 @@ contract FacadeRead is IFacadeRead {
         // If no auctions ongoing, try to find a new auction to start
         if (bm.tradesOpen() == 0) {
             // Try to launch auctions
-            try bm.rebalance(TradeKind.DUTCH_AUCTION) {
-                // Find the started auction
-                for (uint256 i = 0; i < erc20s.length; ++i) {
-                    DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
-                    if (address(trade) != address(0)) {
-                        canStart = true;
-                        sell = trade.sell();
-                        buy = trade.buy();
-                        sellAmount = trade.sellAmount();
-                    }
+            // solhint-disable-next-line no-empty-blocks
+            try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {
+                // try 2.1.0 interface
+                IERC20[] memory emptyERC20s = new IERC20[](0);
+                (bool success, ) = address(bm).call{ value: 0 }(
+                    abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
+                );
+                require(success, "failed to launch rebalance");
+            }
+
+            // Find the started auction
+            for (uint256 i = 0; i < erc20s.length; ++i) {
+                DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
+                if (address(trade) != address(0)) {
+                    canStart = true;
+                    sell = trade.sell();
+                    buy = trade.buy();
+                    sellAmount = trade.sellAmount();
                 }
-                // solhint-disable-next-line no-empty-blocks
-            } catch {}
+            }
         }
     }
 
