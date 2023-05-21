@@ -282,16 +282,12 @@ contract FacadeRead is IFacadeRead {
 
         // Forward ALL revenue
         {
-            address bm = address(revenueTrader.main().backingManager());
+            IBackingManager bm = revenueTrader.main().backingManager();
 
             // First try 3.0.0 interface
-            (bool success, ) = bm.call{ value: 0 }(
-                abi.encodeWithSignature("forwardRevenue(address[])", reg.erc20s)
-            );
-
-            // Fallback to <=2.1.0 interface
-            if (!success) {
-                (success, ) = bm.call{ value: 0 }(
+            try bm.forwardRevenue(reg.erc20s) {} catch {
+                // try 2.1.0 interface
+                (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", reg.erc20s)
                 );
                 require(success, "failed to forward revenue");
@@ -323,17 +319,9 @@ contract FacadeRead is IFacadeRead {
 
             if (reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i]) {
                 // 3.0.0 RevenueTrader interface
-                (bool success, ) = address(revenueTrader).call{ value: 0 }(
-                    abi.encodeWithSignature(
-                        "manageToken(address,uint8)",
-                        erc20s[i],
-                        TradeKind.DUTCH_AUCTION
-                    )
-                );
-
-                // Fallback to <=2.1.0 interface
-                if (!success) {
-                    (success, ) = address(revenueTrader).call{ value: 0 }(
+                try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {
+                    // try 2.1.0 interface
+                    (bool success, ) = address(revenueTrader).call{ value: 0 }(
                         abi.encodeWithSignature("manageToken(address)", erc20s[i])
                     );
                     require(success, "failed to start revenue auction");

@@ -43,16 +43,12 @@ contract FacadeAct is IFacadeAct, Multicall {
 
         // Transfer revenue backingManager -> revenueTrader
         {
-            address bm = address(revenueTrader.main().backingManager());
+            IBackingManager bm = revenueTrader.main().backingManager();
 
-            // 3.0.0 BackingManager interface
-            (bool success, ) = bm.call{ value: 0 }(
-                abi.encodeWithSignature("forwardRevenue(address[])", toStart)
-            );
-
-            // Fallback to <=2.1.0 interface
-            if (!success) {
-                (success, ) = bm.call{ value: 0 }(
+            // 3.0.0 interface
+            try bm.forwardRevenue(toStart) {} catch {
+                // try 2.1.0 interface
+                (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", toStart)
                 );
                 require(success, "failed to forward revenue");
@@ -60,16 +56,11 @@ contract FacadeAct is IFacadeAct, Multicall {
         }
 
         // Start auctions
-        address rt = address(revenueTrader);
         for (uint256 i = 0; i < toStart.length; ++i) {
             // 3.0.0 RevenueTrader interface
-            (bool success, ) = rt.call{ value: 0 }(
-                abi.encodeWithSignature("manageToken(address,uint8)", toStart[i], kind)
-            );
-
-            // Fallback to <=2.1.0 interface
-            if (!success) {
-                (success, ) = rt.call{ value: 0 }(
+            try revenueTrader.manageToken(toStart[i], kind) {} catch {
+                // Fallback to <=2.1.0 interface
+                (bool success, ) = address(revenueTrader).call{ value: 0 }(
                     abi.encodeWithSignature("manageToken(address)", toStart[i])
                 );
                 require(success, "failed to start revenue auction");
