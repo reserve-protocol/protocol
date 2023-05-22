@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../interfaces/IBackingManager.sol";
 import "../interfaces/IFacadeAct.sol";
+import "../interfaces/IFacadeRead.sol";
 
 /**
  * @title Facade
@@ -40,35 +41,41 @@ contract FacadeAct is IFacadeAct, Multicall {
             revenueTrader.settleTrade(toSettle[i]);
         }
 
-        // solhint-disable avoid-low-level-calls
-
         // Transfer revenue backingManager -> revenueTrader
         {
             IBackingManager bm = revenueTrader.main().backingManager();
+            bytes1 majorVersion = bytes(bm.version())[0];
 
-            // 3.0.0 interface
-            // solhint-disable-next-line no-empty-blocks
-            try bm.forwardRevenue(toStart) {} catch {
-                // try 2.1.0 interface
+            if (majorVersion == MAJOR_VERSION_3) {
+                // solhint-disable-next-line no-empty-blocks
+                try bm.forwardRevenue(toStart) {} catch {}
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", toStart)
                 );
-                require(success, "failed to forward revenue");
+                success = success; // hush warning
+            } else {
+                revert("unrecognized version");
             }
         }
 
         // Start auctions
         for (uint256 i = 0; i < toStart.length; ++i) {
-            // 3.0.0 RevenueTrader interface
-            // solhint-disable-next-line no-empty-blocks
-            try revenueTrader.manageToken(toStart[i], kind) {} catch {
-                // Fallback to <=2.1.0 interface
+            bytes1 majorVersion = bytes(revenueTrader.version())[0];
+
+            if (majorVersion == MAJOR_VERSION_3) {
+                // solhint-disable-next-line no-empty-blocks
+                try revenueTrader.manageToken(toStart[i], kind) {} catch {}
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = address(revenueTrader).call{ value: 0 }(
                     abi.encodeWithSignature("manageToken(address)", toStart[i])
                 );
-                require(success, "failed to start revenue auction");
+                success = success; // hush warning
+            } else {
+                revert("unrecognized version");
             }
         }
-        // solhint-enable avoid-low-level-calls
     }
 }
