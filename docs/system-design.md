@@ -313,8 +313,8 @@ The fraction of RSR stake that should be permitted to withdraw without a refresh
 
 Setting this number larger allows unstakers to save more on gas at the cost of allowing more RSR to exit improperly prior to a default.
 
-Default value: `1e16` = 1%
-Mainnet reasonable range: 0 to 1e17 (0 to 10%)
+Default value: `5e16` = 5%
+Mainnet reasonable range: 0 to 25e16 (0 to 25%)
 
 ### `RToken Supply Throttles`
 
