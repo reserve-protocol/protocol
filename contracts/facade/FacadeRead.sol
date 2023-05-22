@@ -238,15 +238,19 @@ contract FacadeRead is IFacadeRead {
 
         // If no auctions ongoing, try to find a new auction to start
         if (bm.tradesOpen() == 0) {
-            // Try to launch auctions
-            // solhint-disable-next-line no-empty-blocks
-            try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {
-                // try 2.1.0 interface
+            bytes1 majorVersion = bytes(bm.version())[0];
+
+            if (majorVersion == MAJOR_VERSION_3) {
+                // solhint-disable-next-line no-empty-blocks
+                try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_2) {
                 IERC20[] memory emptyERC20s = new IERC20[](0);
                 (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
                 );
-                require(success, "failed to launch rebalance");
+                success = success; // hush warning
+            } else {
+                revert("unrecognized version");
             }
 
             // Find the started auction
@@ -285,15 +289,18 @@ contract FacadeRead is IFacadeRead {
         // Forward ALL revenue
         {
             IBackingManager bm = revenueTrader.main().backingManager();
+            bytes1 majorVersion = bytes(bm.version())[0];
 
-            // First try 3.0.0 interface
-            // solhint-disable-next-line no-empty-blocks
-            try bm.forwardRevenue(reg.erc20s) {} catch {
-                // try 2.1.0 interface
+            if (majorVersion == MAJOR_VERSION_3) {
+                // solhint-disable-next-line no-empty-blocks
+                try bm.forwardRevenue(reg.erc20s) {} catch {}
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_2) {
                 (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", reg.erc20s)
                 );
-                require(success, "failed to forward revenue");
+                success = success; // hush warning
+            } else {
+                revert("unrecognized version");
             }
         }
 
@@ -320,15 +327,21 @@ contract FacadeRead is IFacadeRead {
                 int8(reg.assets[i].erc20Decimals())
             );
 
-            if (reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i]) {
-                // 3.0.0 RevenueTrader interface
-                // solhint-disable-next-line no-empty-blocks
-                try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {
-                    // try 2.1.0 interface
+            bytes1 majorVersion = bytes(revenueTrader.version())[0];
+            if (
+                reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i] &&
+                revenueTrader.trades(reg.erc20s[i]) == ITrade(address(0))
+            ) {
+                if (majorVersion == MAJOR_VERSION_3) {
+                    // solhint-disable-next-line no-empty-blocks
+                    try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
+                } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_2) {
                     (bool success, ) = address(revenueTrader).call{ value: 0 }(
                         abi.encodeWithSignature("manageToken(address)", erc20s[i])
                     );
-                    require(success, "failed to start revenue auction");
+                    success = success; // hush warning
+                } else {
+                    revert("unrecognized version");
                 }
 
                 if (revenueTrader.tradesOpen() - tradesOpen > 0) {
