@@ -41,8 +41,6 @@ contract FacadeAct is IFacadeAct, Multicall {
             revenueTrader.settleTrade(toSettle[i]);
         }
 
-        // solhint-disable avoid-low-level-calls
-
         // Transfer revenue backingManager -> revenueTrader
         {
             IBackingManager bm = revenueTrader.main().backingManager();
@@ -52,6 +50,7 @@ contract FacadeAct is IFacadeAct, Multicall {
                 // solhint-disable-next-line no-empty-blocks
                 try bm.forwardRevenue(toStart) {} catch {}
             } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", toStart)
                 );
@@ -69,6 +68,7 @@ contract FacadeAct is IFacadeAct, Multicall {
                 // solhint-disable-next-line no-empty-blocks
                 try revenueTrader.manageToken(toStart[i], kind) {} catch {}
             } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = address(revenueTrader).call{ value: 0 }(
                     abi.encodeWithSignature("manageToken(address)", toStart[i])
                 );
@@ -77,6 +77,5 @@ contract FacadeAct is IFacadeAct, Multicall {
                 revert("unrecognized version");
             }
         }
-        // solhint-enable avoid-low-level-calls
     }
 }

@@ -245,6 +245,7 @@ contract FacadeRead is IFacadeRead {
                 try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
             } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
                 IERC20[] memory emptyERC20s = new IERC20[](0);
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
                 );
@@ -284,8 +285,6 @@ contract FacadeRead is IFacadeRead {
         uint192 minTradeVolume = revenueTrader.minTradeVolume(); // {UoA}
         Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
 
-        // solhint-disable avoid-low-level-calls
-
         // Forward ALL revenue
         {
             IBackingManager bm = revenueTrader.main().backingManager();
@@ -295,6 +294,7 @@ contract FacadeRead is IFacadeRead {
                 // solhint-disable-next-line no-empty-blocks
                 try bm.forwardRevenue(reg.erc20s) {} catch {}
             } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", reg.erc20s)
                 );
@@ -336,6 +336,7 @@ contract FacadeRead is IFacadeRead {
                     // solhint-disable-next-line no-empty-blocks
                     try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
                 } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                    // solhint-disable-next-line avoid-low-level-calls
                     (bool success, ) = address(revenueTrader).call{ value: 0 }(
                         abi.encodeWithSignature("manageToken(address)", erc20s[i])
                     );
@@ -349,7 +350,6 @@ contract FacadeRead is IFacadeRead {
                 }
             }
         }
-        // solhint-enable avoid-low-level-calls
     }
 
     // === Views ===
