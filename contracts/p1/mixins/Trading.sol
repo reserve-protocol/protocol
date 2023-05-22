@@ -12,7 +12,7 @@ import "./Component.sol";
 import "./RewardableLib.sol";
 
 /// Abstract trading mixin for BackingManager + RevenueTrader.
-/// @dev The use of Multicall here instead of MulticallUpgradeable cannot be changed
+/// @dev The use of Multicall here instead of MulticallUpgradeable cannot be
 ///   changed without breaking <3.0.0 RTokens. The only difference in
 ///   MulticallUpgradeable is the 50 slot storage gap and an empty constructor.
 ///   It should be fine to leave the non-upgradeable Multicall here permanently.
@@ -76,6 +76,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // checks:
     //   !paused (trading), !frozen
     //   trade[sell].canSettle()
+    //   (see override)
     // actions:
     //   trade[sell].settle()
     // effects:

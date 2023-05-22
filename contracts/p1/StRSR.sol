@@ -704,6 +704,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // solhint-disable-next-line no-empty-blocks
     function requireNotFrozen() private notFrozen {}
 
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function requireGovernanceOnly() private governance {}
+
     // ==== ERC20 ====
     // This section extracted from ERC20; adjusted to work with stakes/eras
     // name(), symbol(), and decimals() are all auto-generated
@@ -919,7 +923,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @custom:governance
     function setUnstakingDelay(uint48 val) public {
-        governanceOnly();
+        requireGovernanceOnly();
         require(val > MIN_UNSTAKING_DELAY && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
@@ -927,7 +931,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @custom:governance
     function setRewardRatio(uint192 val) public {
-        governanceOnly();
+        requireGovernanceOnly();
         if (!main.frozen()) _payoutRewards();
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
@@ -936,15 +940,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @custom:governance
     function setWithdrawalLeak(uint192 val) public {
-        governanceOnly();
+        requireGovernanceOnly();
         require(val <= MAX_WITHDRAWAL_LEAK, "invalid withdrawalLeak");
         emit WithdrawalLeakSet(withdrawalLeak, val);
         withdrawalLeak = val;
     }
-
-    // contract-size-saver
-    // solhint-disable-next-line no-empty-blocks
-    function governanceOnly() private governance {}
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
