@@ -158,8 +158,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
     uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
 
-    // NOTE for future: Do not add a uint48 (or smaller) here
-
     // ======================
 
     // init() can only be called once (initializer)
