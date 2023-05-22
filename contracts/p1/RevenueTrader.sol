@@ -40,8 +40,13 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
-        trade = super.settleTrade(sell); // modifier: notTradingPausedOrFrozen
+    function settleTrade(IERC20 sell)
+        public
+        override(ITrading, TradingP1)
+        notTradingPausedOrFrozen
+        returns (ITrade trade)
+    {
+        trade = super.settleTrade(sell); // nonReentrant
         distributeTokenToBuy();
         // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
@@ -59,7 +64,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
     /// @dev Intended to be used with multicall
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    /// @custom:interaction RCEI
+    /// @custom:interaction RCEI and nonReentrant
     // let bal = this contract's balance of erc20
     // checks: !paused (trading), !frozen
     // does nothing if erc20 == addr(0) or bal == 0
@@ -73,7 +78,13 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //   actions:
     //     tryTrade(kind, prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
-    function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
+    // untested:
+    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
+    function manageToken(IERC20 erc20, TradeKind kind)
+        external
+        nonReentrant
+        notTradingPausedOrFrozen
+    {
         if (erc20 == tokenToBuy) {
             distributeTokenToBuy();
             return;

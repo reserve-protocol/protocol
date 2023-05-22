@@ -195,11 +195,9 @@ describe('FacadeRead contract', () => {
     })
 
     it('Should return redeemable quantities correctly', async () => {
-      const nonce = await basketHandler.nonce()
       const [toks, quantities, isProrata] = await facade.callStatic.redeem(
         rToken.address,
-        issueAmount,
-        nonce
+        issueAmount
       )
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
@@ -216,17 +214,11 @@ describe('FacadeRead contract', () => {
       await token.burn(await main.backingManager(), issueAmount.div(8))
       const [newToks, newQuantities, newIsProrata] = await facade.callStatic.redeem(
         rToken.address,
-        issueAmount,
-        nonce
+        issueAmount
       )
       expect(newToks[0]).to.equal(token.address)
       expect(newQuantities[0]).to.equal(issueAmount.div(8))
       expect(newIsProrata).to.equal(true)
-
-      // Wrong nonce
-      await expect(
-        facade.callStatic.redeem(rToken.address, issueAmount, nonce - 1)
-      ).to.be.revertedWith('non-current basket nonce')
     })
 
     it('Should return backingOverview correctly', async () => {

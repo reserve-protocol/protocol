@@ -41,7 +41,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
-    function distribute(IERC20 erc20, uint256 amount) external notTradingPausedOrFrozen {
+    function distribute(IERC20 erc20, uint256 amount) external {
         IERC20 rsr = main.rsr();
 
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");

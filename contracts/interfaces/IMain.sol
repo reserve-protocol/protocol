@@ -16,7 +16,8 @@ import "./IStRSR.sol";
 import "./ITrading.sol";
 import "./IVersioned.sol";
 
-// Warning, assumption: Chain must have blocktimes >= 12s
+// Warning, assumption: Chain should have blocktimes of 12s
+// See docs/system-design.md for discussion of handling longer or shorter times
 uint48 constant ONE_BLOCK = 12; //{s}
 
 // === Auth roles ===

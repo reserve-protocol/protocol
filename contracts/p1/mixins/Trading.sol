@@ -83,13 +83,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell)
-        public
-        virtual
-        notTradingPausedOrFrozen
-        nonReentrant
-        returns (ITrade trade)
-    {
+    function settleTrade(IERC20 sell) public virtual nonReentrant returns (ITrade trade) {
         trade = trades[sell];
         require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
@@ -105,7 +99,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @return trade The trade contract created
-    /// @custom:interaction (only reads or writes `trades`, and is marked `nonReentrant`)
+    /// @custom:interaction Assumption: Caller is nonReentrant
     // checks:
     //   (not external, so we don't need auth or pause checks)
     //   trades[req.sell] == 0
@@ -115,17 +109,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
-    //
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
-    // this contract that changes state this function refers to.
-    // slither-disable-next-line reentrancy-vulnerabilities-1
-    function tryTrade(TradeKind kind, TradeRequest memory req)
-        internal
-        nonReentrant
-        returns (ITrade trade)
-    {
+    function tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
         /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
@@ -136,6 +120,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         trade = broker.openTrade(kind, req);
         trades[sell] = trade;
         tradesOpen++;
+
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 

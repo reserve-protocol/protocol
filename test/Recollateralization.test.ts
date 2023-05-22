@@ -201,6 +201,12 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
     await backupToken1.connect(owner).mint(addr2.address, initialBal)
     await backupToken2.connect(owner).mint(addr2.address, initialBal)
+
+    if (IMPLEMENTATION === Implementation.P1) {
+      await (
+        await ethers.getContractAt('BackingManagerP1', backingManager.address)
+      ).cacheComponents()
+    }
   }
 
   beforeEach(async () => {
@@ -2601,7 +2607,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
           const supply = bonus.sub(bonus.mul(config.backingBuffer).div(fp('1')))
           // Should mint the excess in order to re-handout to RToken holders and stakers
-          expect(await rToken.totalSupply()).to.be.closeTo(supply, supply.div(bn('1e6')))
+          expect(await rToken.totalSupply()).to.be.closeTo(supply, supply.div(bn('1e4')))
           expect(await rToken.totalSupply()).to.be.gte(supply)
 
           // Check price in USD of the current RToken - overcollateralized and still targeting 1

@@ -384,48 +384,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
     })
 
-    it('Should not allow to open trade if trading paused', async () => {
-      await main.connect(owner).pauseTrading()
-
-      // Attempt to open trade
-      const tradeRequest: ITradeRequest = {
-        sell: collateral0.address,
-        buy: collateral1.address,
-        sellAmount: bn('100e18'),
-        minBuyAmount: bn('0'),
-      }
-
-      await whileImpersonating(backingManager.address, async (bmSigner) => {
-        await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
-        ).to.be.revertedWith('frozen or trading paused')
-        await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest)
-        ).to.be.revertedWith('frozen or trading paused')
-      })
-    })
-
-    it('Should not allow to open trade if frozen', async () => {
-      await main.connect(owner).freezeShort()
-
-      // Attempt to open trade
-      const tradeRequest: ITradeRequest = {
-        sell: collateral0.address,
-        buy: collateral1.address,
-        sellAmount: bn('100e18'),
-        minBuyAmount: bn('0'),
-      }
-
-      await whileImpersonating(backingManager.address, async (bmSigner) => {
-        await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
-        ).to.be.revertedWith('frozen or trading paused')
-        await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest)
-        ).to.be.revertedWith('frozen or trading paused')
-      })
-    })
-
     it('Should only allow to open trade if a trader', async () => {
       const amount: BigNumber = bn('100e18')
 

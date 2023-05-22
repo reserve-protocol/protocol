@@ -189,6 +189,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     // Mint initial balances
     initialBal = bn('1000000e18')
     await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
+    if (IMPLEMENTATION === Implementation.P1) {
+      await (await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)).cacheComponents()
+      await (await ethers.getContractAt('RevenueTraderP1', rsrTrader.address)).cacheComponents()
+    }
   })
 
   describe('Deployment', () => {
@@ -1545,24 +1549,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
           minBuyAmtRToken,
           minBuyAmtRToken.div(bn('1e4')) // melting
-        )
-      })
-
-      it('Should not distribute if paused or frozen', async () => {
-        const distAmount: BigNumber = bn('100e18')
-
-        await main.connect(owner).pauseTrading()
-
-        await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-
-        await main.connect(owner).unpauseTrading()
-
-        await main.connect(owner).freezeShort()
-
-        await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
-          'frozen or trading paused'
         )
       })
 
@@ -3109,7 +3095,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
 
-      it('Should be unable to handout excess assets', async () => {
+      it('Should be able to forwardRevenue without changing BU exchange rate', async () => {
         // Check Price and Assets value
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
@@ -3124,7 +3110,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token2.connect(owner).mint(backingManager.address, mintAmt)
         await token3.connect(owner).mint(backingManager.address, mintAmt)
 
-        await expect(backingManager.forwardRevenue([])).revertedWith('BU rate out of range')
+        await expect(backingManager.forwardRevenue([])).to.emit(rToken, 'Transfer')
+        expect(await rToken.totalSupply()).to.equal(mintAmt.mul(2))
+        expect(await rToken.basketsNeeded()).to.equal(mintAmt.mul(2))
       })
     })
   })

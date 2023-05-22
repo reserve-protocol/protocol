@@ -86,11 +86,7 @@ contract FacadeRead is IFacadeRead {
     /// @return withdrawals The balances necessary to issue `amount` RToken
     /// @return isProrata True if the redemption is prorata and not full
     /// @custom:static-call
-    function redeem(
-        IRToken rToken,
-        uint256 amount,
-        uint48 basketNonce
-    )
+    function redeem(IRToken rToken, uint256 amount)
         external
         returns (
             address[] memory tokens,
@@ -103,7 +99,6 @@ contract FacadeRead is IFacadeRead {
         IRToken rTok = rToken;
         IBasketHandler bh = main.basketHandler();
         uint256 supply = rTok.totalSupply();
-        require(bh.nonce() == basketNonce, "non-current basket nonce");
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         uint192 basketsRedeemed = rTok.basketsNeeded().muluDivu(amount, supply);
@@ -244,19 +239,26 @@ contract FacadeRead is IFacadeRead {
         // If no auctions ongoing, try to find a new auction to start
         if (bm.tradesOpen() == 0) {
             // Try to launch auctions
-            try bm.rebalance(TradeKind.DUTCH_AUCTION) {
-                // Find the started auction
-                for (uint256 i = 0; i < erc20s.length; ++i) {
-                    DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
-                    if (address(trade) != address(0)) {
-                        canStart = true;
-                        sell = trade.sell();
-                        buy = trade.buy();
-                        sellAmount = trade.sellAmount();
-                    }
+            // solhint-disable-next-line no-empty-blocks
+            try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {
+                // try 2.1.0 interface
+                IERC20[] memory emptyERC20s = new IERC20[](0);
+                (bool success, ) = address(bm).call{ value: 0 }(
+                    abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
+                );
+                require(success, "failed to launch rebalance");
+            }
+
+            // Find the started auction
+            for (uint256 i = 0; i < erc20s.length; ++i) {
+                DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
+                if (address(trade) != address(0)) {
+                    canStart = true;
+                    sell = trade.sell();
+                    buy = trade.buy();
+                    sellAmount = trade.sellAmount();
                 }
-                // solhint-disable-next-line no-empty-blocks
-            } catch {}
+            }
         }
     }
 
@@ -282,16 +284,13 @@ contract FacadeRead is IFacadeRead {
 
         // Forward ALL revenue
         {
-            address bm = address(revenueTrader.main().backingManager());
+            IBackingManager bm = revenueTrader.main().backingManager();
 
             // First try 3.0.0 interface
-            (bool success, ) = bm.call{ value: 0 }(
-                abi.encodeWithSignature("forwardRevenue(address[])", reg.erc20s)
-            );
-
-            // Fallback to <=2.1.0 interface
-            if (!success) {
-                (success, ) = bm.call{ value: 0 }(
+            // solhint-disable-next-line no-empty-blocks
+            try bm.forwardRevenue(reg.erc20s) {} catch {
+                // try 2.1.0 interface
+                (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", reg.erc20s)
                 );
                 require(success, "failed to forward revenue");
@@ -323,17 +322,10 @@ contract FacadeRead is IFacadeRead {
 
             if (reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i]) {
                 // 3.0.0 RevenueTrader interface
-                (bool success, ) = address(revenueTrader).call{ value: 0 }(
-                    abi.encodeWithSignature(
-                        "manageToken(address,uint8)",
-                        erc20s[i],
-                        TradeKind.DUTCH_AUCTION
-                    )
-                );
-
-                // Fallback to <=2.1.0 interface
-                if (!success) {
-                    (success, ) = address(revenueTrader).call{ value: 0 }(
+                // solhint-disable-next-line no-empty-blocks
+                try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {
+                    // try 2.1.0 interface
+                    (bool success, ) = address(revenueTrader).call{ value: 0 }(
                         abi.encodeWithSignature("manageToken(address)", erc20s[i])
                     );
                     require(success, "failed to start revenue auction");

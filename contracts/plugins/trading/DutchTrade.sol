@@ -10,12 +10,13 @@ import "../../interfaces/ITrade.sol";
 uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
 uint192 constant SIXTY_PERCENT = 6e17; // {1} 0.6
 
-// A geometric price decay with base (999999/1000000). Price starts at 1000x and decays to 1x
-//  (1000000/999999)^6907752 = ~1000x
+// Exponential price decay with base (999999/1000000). Price starts at 1000x and decays to 1x
 //   A 30-minute auction on a chain with a 12-second blocktime has a ~10.87% price drop per block
-//   during the geometric period and a 0.05% drop during the linear period of the auction.
-//   This is the recommended length of auction for a chain with 12
-uint192 constant MAX_EXP = 6907752 * FIX_ONE; // {1}
+//   during the geometric/exponential period and a 0.05% drop during the linear period.
+//   30-minutes is the recommended length of auction for a chain with 12-second blocktimes, but
+//   longer and shorter times can be used as well. The pricing algorithm does not degrade
+//   beyond the degree to which less overall blocktime means necessarily larger price drops.
+uint192 constant MAX_EXP = 6907752 * FIX_ONE; // {1} (1000000/999999)^6907752 = ~1000x
 uint192 constant BASE = 999999e12; // {1} (999999/1000000)
 
 /**
@@ -34,7 +35,7 @@ uint192 constant BASE = 999999e12; // {1} (999999/1000000)
  *
  * To bid:
  * - Call `bidAmount()` view to check prices at various timestamps
- * - Wait until desirable a block is reached (hopefully not in the first 40% of the auction)
+ * - Wait until a desirable block is reached (hopefully not in the first 40% of the auction)
  * - Provide approval of buy tokens and call bid(). The swap will be atomic
  */
 contract DutchTrade is ITrade {
@@ -45,7 +46,7 @@ contract DutchTrade is ITrade {
 
     TradeStatus public status; // reentrancy protection
 
-    ITrading public origin; // initializer
+    ITrading public origin; // the address that initialized the contract
 
     // === Auction ===
     IERC20Metadata public sell;
@@ -53,7 +54,7 @@ contract DutchTrade is ITrade {
     uint192 public sellAmount; // {sellTok}
 
     // The auction runs from [startTime, endTime], inclusive
-    uint48 public startTime; // {s} when the dutch auction begins (1 block after init())
+    uint48 public startTime; // {s} when the dutch auction begins (12s after init())
     uint48 public endTime; // {s} when the dutch auction ends if no bids are received
 
     // highPrice is always 1000x the middlePrice, so we don't need to track it explicitly
@@ -85,7 +86,7 @@ contract DutchTrade is ITrade {
         // {buyTok/sellTok}
         uint192 price = _price(timestamp);
 
-        // {qBuyTok} = {sellTok} * {buyTok/sellTok}
+        // {qBuyTok} = {sellTok} * {buyTok/sellTok} * {qBuyTok/buyTok}
         return sellAmount.mul(price, CEIL).shiftl_toUint(int8(buy.decimals()), CEIL);
     }
 
@@ -131,10 +132,10 @@ contract DutchTrade is ITrade {
             fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume()) // maxTradeVolume
         );
 
-        // {buyTok/sellTok} = {1} * {UoA/sellTok} / {UoA/buyTok}
+        // {buyTok/sellTok} = {UoA/sellTok} * {1} / {UoA/buyTok}
         lowPrice = sellLow.mulDiv(FIX_ONE - slippage, buyHigh, FLOOR);
         middlePrice = sellHigh.div(buyLow, CEIL); // no additional slippage
-        // highPrice = 1.5 * middlePrice
+        // highPrice = 1000 * middlePrice
 
         assert(lowPrice <= middlePrice);
     }
@@ -240,7 +241,7 @@ contract DutchTrade is ITrade {
             uint192 exp = MAX_EXP.mulDiv(FORTY_PERCENT - progression, FORTY_PERCENT, ROUND);
 
             // middlePrice * ((1000000/999999) ^ exp) = middlePrice / ((999999/1000000) ^ exp)
-            // safe uint48 downcast: exp is at-most 69075
+            // safe uint48 downcast: exp is at-most 6907752
             // {buyTok/sellTok} = {buyTok/sellTok} / {1} ^ {1}
             return middlePrice.div(BASE.powu(uint48(exp.toUint(ROUND))), CEIL);
             // this reverts for middlePrice >= 6.21654046e36 * FIX_ONE

@@ -54,7 +54,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public override(ITrading, TradingP0) returns (ITrade trade) {
+    function settleTrade(IERC20 sell)
+        public
+        override(ITrading, TradingP0)
+        notTradingPausedOrFrozen
+        returns (ITrade trade)
+    {
         trade = super.settleTrade(sell);
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
@@ -70,9 +75,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    /// @custom:interaction RCEI
+    /// @custom:interaction
     function rebalance(TradeKind kind) external notTradingPausedOrFrozen {
-        // == Refresh ==
         main.assetRegistry().refresh();
         main.furnace().melt();
 
@@ -125,9 +129,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             }
 
             // Execute Trade
-            tradeEnd[kind] = uint48(block.timestamp) + ONE_BLOCK;
             ITrade trade = tryTrade(kind, req);
-            if (trade.endTime() > tradeEnd[kind]) tradeEnd[kind] = trade.endTime();
+            tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time
             compromiseBasketsNeeded(basketsHeld.bottom);
@@ -136,11 +139,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     /// Forward revenue to RevenueTraders; reverts if not fully collateralized
     /// @param erc20s The tokens to forward
-    /// @custom:interaction RCEI
+    /// @custom:interaction
     function forwardRevenue(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
-        // == Refresh ==
         main.assetRegistry().refresh();
         main.furnace().melt();
 
@@ -162,23 +164,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
 
         // Mint revenue RToken
+        // Keep backingBuffer worth of collateral before recognizing revenue
         uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
-        {
-            IRToken rToken = main.rToken();
-            if (basketsHeld.bottom.gt(needed)) {
-                int8 decimals = int8(rToken.decimals());
-                uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
-
-                // {BU} = {BU} - {BU}
-                uint192 extraBUs = basketsHeld.bottom.minus(needed);
-
-                // {qRTok: Fix} = {BU} * {qRTok / BU} (if needed == 0, conv rate is 1 qRTok/BU)
-                uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
-
-                rToken.mint(address(this), rTok);
-                rToken.setBasketsNeeded(basketsHeld.bottom);
-                needed = basketsHeld.bottom;
-            }
+        if (basketsHeld.bottom.gt(needed)) {
+            main.rToken().mint(basketsHeld.bottom.minus(needed));
+            needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // keep buffer
         }
 
         // Handout excess assets above what is needed, including any newly minted RToken
