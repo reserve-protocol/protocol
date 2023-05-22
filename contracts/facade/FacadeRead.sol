@@ -230,7 +230,7 @@ contract FacadeRead is IFacadeRead {
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 ITrade trade = bm.trades(erc20s[i]);
                 if (address(trade) != address(0) && trade.canSettle()) {
-                    trade.settle();
+                    bm.settleTrade(erc20s[i]);
                     break; // backingManager can only have 1 trade open at a time
                 }
             }
