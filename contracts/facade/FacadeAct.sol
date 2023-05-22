@@ -51,7 +51,7 @@ contract FacadeAct is IFacadeAct, Multicall {
             if (majorVersion == MAJOR_VERSION_3) {
                 // solhint-disable-next-line no-empty-blocks
                 try bm.forwardRevenue(toStart) {} catch {}
-            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_2) {
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
                 (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", toStart)
                 );
@@ -68,7 +68,7 @@ contract FacadeAct is IFacadeAct, Multicall {
             if (majorVersion == MAJOR_VERSION_3) {
                 // solhint-disable-next-line no-empty-blocks
                 try revenueTrader.manageToken(toStart[i], kind) {} catch {}
-            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_2) {
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
                 (bool success, ) = address(revenueTrader).call{ value: 0 }(
                     abi.encodeWithSignature("manageToken(address)", toStart[i])
                 );

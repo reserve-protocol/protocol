@@ -243,7 +243,7 @@ contract FacadeRead is IFacadeRead {
             if (majorVersion == MAJOR_VERSION_3) {
                 // solhint-disable-next-line no-empty-blocks
                 try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
-            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_2) {
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
                 IERC20[] memory emptyERC20s = new IERC20[](0);
                 (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
@@ -294,7 +294,7 @@ contract FacadeRead is IFacadeRead {
             if (majorVersion == MAJOR_VERSION_3) {
                 // solhint-disable-next-line no-empty-blocks
                 try bm.forwardRevenue(reg.erc20s) {} catch {}
-            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_2) {
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
                 (bool success, ) = address(bm).call{ value: 0 }(
                     abi.encodeWithSignature("manageTokens(address[])", reg.erc20s)
                 );
@@ -335,7 +335,7 @@ contract FacadeRead is IFacadeRead {
                 if (majorVersion == MAJOR_VERSION_3) {
                     // solhint-disable-next-line no-empty-blocks
                     try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
-                } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_2) {
+                } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
                     (bool success, ) = address(revenueTrader).call{ value: 0 }(
                         abi.encodeWithSignature("manageToken(address)", erc20s[i])
                     );
