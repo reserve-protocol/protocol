@@ -2240,6 +2240,19 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('furnace only')
     })
 
+    it('Should not allow transfer/transferFrom to address(this)', async () => {
+      // transfer
+      await expect(rToken.connect(addr1).transfer(rToken.address, 1)).to.be.revertedWith(
+        'RToken transfer to self'
+      )
+
+      // transferFrom
+      await rToken.connect(addr1).approve(addr2.address, 1)
+      await expect(
+        rToken.connect(addr2).transferFrom(addr1.address, rToken.address, 1)
+      ).to.be.revertedWith('RToken transfer to self')
+    })
+
     it('Should only allow to mint tokens when called by backing manager', async () => {
       // Mint tokens
       const mintAmount: BigNumber = bn('10e18')
