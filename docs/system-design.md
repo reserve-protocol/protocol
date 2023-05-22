@@ -45,7 +45,7 @@ The protocol (weakly) assumes a 12-second blocktime. This section documents the 
 
 #### Should-be-changed if blocktime different
 
-- The `Furnace` melts RToken in periods of 12 seconds. If the protocol is deployed to a chain with shorter blocktime, it is possible it may be rational to issue right before melting and redeem directly after, in order to selfishly benefit. The `Furnace` shouild be updated to melt more often. 
+- The `Furnace` melts RToken in periods of 12 seconds. If the protocol is deployed to a chain with shorter blocktime, it is possible it may be rational to issue right before melting and redeem directly after, in order to selfishly benefit. The `Furnace` shouild be updated to melt more often.
 
 #### Probably fine if blocktime different
 
@@ -313,8 +313,8 @@ The fraction of RSR stake that should be permitted to withdraw without a refresh
 
 Setting this number larger allows unstakers to save more on gas at the cost of allowing more RSR to exit improperly prior to a default.
 
-Default value: `0.005e18` = 0.5%
-Mainnet reasonable range: 0 to 0.1e18 (0 to 10%)
+Default value: `1e16` = 1%
+Mainnet reasonable range: 0 to 1e17 (0 to 10%)
 
 ### `RToken Supply Throttles`
 
