@@ -20,6 +20,7 @@ import "./mixins/Component.sol";
 contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using BasketLibP1 for Basket;
     using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
     using CollateralStatusComparator for CollateralStatus;
     using FixLib for uint192;
 
