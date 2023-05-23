@@ -233,6 +233,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Begins a delayed unstaking for `amount` StRSR
     /// @param stakeAmount {qStRSR}
+    /// @custom:interaction
     // checks:
     //   not paused (trading) or frozen
     //   0 < stakeAmount <= bal[caller]
@@ -333,6 +334,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         require(basketHandler.isReady(), "basket not ready");
     }
 
+    /// Cancel an ongoing unstaking; resume staking
+    /// @custom:interaction CEI
     function cancelUnstake(uint256 endId) external {
         requireNotFrozen();
         address account = _msgSender();
@@ -408,7 +411,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // other properties:
     //   seized >= rsrAmount, which should be a logical consequence of the above effects
-
     function seizeRSR(uint256 rsrAmount) external {
         requireNotTradingPausedOrFrozen();
 
