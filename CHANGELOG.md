@@ -2,6 +2,15 @@
 
 ## 3.0.0 - Unreleased
 
+Warning: RTokens upgrading to this major release should proceed carefully. In addition to updating all component addresses:
+
+- `cacheComponents()` MUST be called to prevent certain functions from reverting, on both the BackingManager and both RevenueTraders
+- `setWarmupPeriod()` can be called on the BasketHandler to turn on the warmup period, optionally
+- `setWithdrawalLeak()` can be called on StRSR to start saving gas on withdrawals, optionally
+- `setDutchAuctionLength()` can be called (with a value such as 1800) or left at duration 0s to keep dutch auctions disabled
+
+Collateral / Asset plugins from 2.1.0 do not need to be upgraded
+
 #### Core Protocol Contracts
 
 - `AssetRegistry` [+1 slot]
