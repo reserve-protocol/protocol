@@ -321,6 +321,7 @@ contract FacadeRead is IFacadeRead {
             surpluses[i] = reg.erc20s[i].balanceOf(address(revenueTrader));
 
             (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
+            if (lotLow == 0) continue;
 
             // {qTok} = {UoA} / {UoA/tok}
             minTradeAmounts[i] = minTradeVolume.div(lotLow).shiftl_toUint(

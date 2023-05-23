@@ -406,6 +406,12 @@ describe('FacadeRead contract', () => {
         const tokenSurplus = bn('0.5e18')
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
+        // Set lotLow to 0 == revenueOverview() should not revert
+        await setOraclePrice(usdcAsset.address, bn('0'))
+        await usdcAsset.refresh()
+        const [lotLow] = await usdcAsset.lotPrice()
+        expect(lotLow).to.equal(0)
+
         // revenue
         const [erc20s, canStart, surpluses, minTradeAmounts] =
           await facade.callStatic.revenueOverview(trader.address)
@@ -424,7 +430,7 @@ describe('FacadeRead contract', () => {
           const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
           const [low] = await asset.price()
           expect(minTradeAmounts[i]).to.equal(
-            minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low)
+            low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
           ) // 1% oracleError
         }
 
