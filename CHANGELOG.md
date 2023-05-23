@@ -1,13 +1,15 @@
 # Changelog
 
-## 3.0.0
+## 3.0.0 - Unreleased
 
 #### Core Protocol Contracts
 
 - `AssetRegistry` [+1 slot]
+  Summary: Other component contracts need to know when refresh() was last called
   - Add last refresh timestamp tracking and expose via `lastRefresh()` getter
   - Add `size()` getter for number of registered assets
 - `BackingManager` [+2 slots]
+  Summary: manageTokens was broken out into rebalancing and surplus-forwarding functions to allow users to more precisely call the protocol
 
   - Replace `manageTokens(IERC20[] memory erc20s)` with:
     - `rebalance(TradeKind)` + `RecollateralizationLibP1`
@@ -26,6 +28,7 @@
   - Bugfix: consider `maxTradeVolume()` from both assets on a trade, not just 1
 
 - `BasketHandler` [+5 slots]
+  Summary: Introduces a notion of basket warmup to defend against short-term oracle manipulation attacks. Prevent RTokens from changing in value due to governance
 
   - Add new gov param: `warmupPeriod` with setter `setWarmupPeriod(..)` and event `WarmupPeriodSet()`
   - Add `isReady()` view
@@ -35,6 +38,7 @@
   - Add `getHistoricalBasket(uint48 basketNonce)` view
 
 - `Broker` [+1 slot]
+  Summary: Add a new trading plugin that performs single-lot dutch auctions. Batch auctions via Gnosis EasyAuction are expected to be the backup auction (can be faster if more gas costly) going forward.
 
   - Add `TradeKind` enum to track multiple trading types
   - Add new dutch auction `DutchTrade`
@@ -48,13 +52,19 @@
     - Allow when paused / frozen, since caller must be in-system
 
 - `Deployer` [+0 slots]
+  Summary: Support new governance params
+
   - Modify to handle new gov params: `warmupPeriod`, `dutchAuctionLength`, and `withdrawalLeak`
   - Do not grant OWNER any of the roles other than ownership
+
 - `Distributor` [+0 slots]
-  - Remove `notPausedOrFrozen` modifier from `distribute()`; caller only hurts themselves
+  Summary: Waste of gas to double-check this, since caller is another component
+  - Remove `notPausedOrFrozen` modifier from `distribute()`
 - `Furnace` [+0 slots]
+  Summary: Should be able to melting while redeeming when frozen
   - Modify `melt()` modifier: `notPausedOrFrozen` -> `notFrozen`
 - `Main` [+0 slots]
+  Summary: Breakup pausing into two types of pausing: issuance and trading
 
   - Break `paused` into `issuancePaused` and `tradingPaused`
   - `pause()` -> `pauseTrading()` and `pauseIssuance()`
@@ -63,6 +73,7 @@
   - `PausedSet()` event -> `TradingPausedSet()` and `IssuancePausedSet()`
 
 - `RevenueTrader` [+3 slots]
+  Summary: QoL improvements. Make compatible with new dutch auction trading method
 
   - Remove `delegatecall` during reward claiming
   - Add `cacheComponents()` refresher to be called on upgrade
@@ -73,6 +84,8 @@
   - `settleTrade(IERC20)` now distributes `tokenToBuy`, instead of requiring separate `manageToken(IERC20)` call
 
 - `RToken` [+0 slots]
+  Summary: Provide multiple redemption methods for when fullyCollateralized vs not. Should support a higher RToken price during basket changes.
+
   - Remove `exchangeRateIsValidAfter` modifier from all functions except `setBasketsNeeded()`
   - Modify `issueTo()` to revert before `warmupPeriod`
   - Modify `redeem(uint256 amount, uint48 basketNonce)` -> `redeem(uint256 amount)`. Redemptions are on the current basket nonce and revert under partial redemption
@@ -81,34 +94,47 @@
   - `mint(address recipient, uint256 amtRToken)` -> `mint(uint256 amtRToken)`, since recipient is _always_ BackingManager. Expand scope to include adjustments to `basketsNeeded`
   - Add `dissolve(uint256 amount)`: burns RToken and reduces `basketsNeeded`, similar to redemption. Only callable by BackingManager
   - Modify `setBasketsNeeded(..)` to revert when supply is 0
+
 - `StRSR` [+2 slots]
+  Summary: Add the ability to cancel unstakings and a withdrawal() gas-saver to allow small RSR amounts to be exempt from refreshes
+
   - Remove duplicate `stakeRate()` getter (same as `1 / exchangeRate()`)
   - Add `withdrawalLeak` gov param, with `setWithdrawalLeak(..)` setter and `WithdrawalLeakSet()` event
   - Modify `withdraw()` to allow a small % of RSR too exit without paying to refresh all assets
   - Modify `withdraw()` to check for `warmupPeriod`
   - Add ability to re-stake during a withdrawal via `cancelUnstake(uint256 endId)`
   - Add `UnstakingCancelled()` event
+
 - `StRSRVotes` [+0 slots]
   - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function, to encourage people to receive voting weight upon staking
 
 #### Facades
 
 - `FacadeWrite`
+  Summary: More expressive and fine-grained control over the set of pausers and freezers
+
   - Do not automatically grant Guardian PAUSER/SHORT_FREEZER/LONG_FREEZER
   - Do not automatically grant Owner PAUSER/SHORT_FREEZER/LONG_FREEZER
   - Add ability to initialize with multiple pausers, short freezers, and long freezers
   - Modify `setupGovernance(.., address owner, address guardian, address pauser)` -> `setupGovernance(.., GovernanceRoles calldata govRoles)`
   - Update `DeploymentParams` and `Implementations` struct to contain new gov params and dutch trade plugin
+
 - `FacadeAct`
+  Summary: Remove unused getActCalldata and add way to run revenue auctions
+
   - Remove `getActCalldata(..)`
   - Modify `runRevenueAuctions(..)` to work with both 3.0.0 and 2.1.0 interfaces
+
 - `FacadeRead`
+  Summary: Add new data summary views frontends may be interested in
+
   - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
   - Remove `traderBalances(..)`
   - `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
   - Add `nextRecollateralizationAuction(..) returns (bool canStart, IERC20 sell, IERC20 buy, uint256 sellAmount)`
   - Add `revenueOverview(IRevenueTrader) returns ( IERC20[] memory erc20s, bool[] memory canStart, uint256[] memory surpluses, uint256[] memory minTradeAmounts)`
-- Remove `FacadeMonitor`
+
+- Remove `FacadeMonitor` - redundant with `nextRecollateralizationAuction()` and `revenueOverview()`
 
 ### Plugins
 
