@@ -9,17 +9,17 @@
   - Add `size()` getter for number of registered assets
 - `BackingManager` [+2 slots]
 
-  - Remove `delegatecall` during reward claiming
-  - Modify `settleTrade(IERC20 sell)` to call `rebalance()` when caller is a trade it deployed.
-  - Remove `manageTokensSortedOrder(IERC20[] memory erc20s)`
   - Replace `manageTokens(IERC20[] memory erc20s)` with:
-    - `rebalance() ` - the argument-agnostic trading part of the logic
+    - `rebalance(TradeKind)` + `RecollateralizationLibP1`
       - Modify trading algorithm to not trade RToken, and instead dissolve it when it has a balance above ~1e6. "dissolve" = melt() with a basketsNeeded change, like redemption.
-      - Add significant caching of asset state to `RecollateralizationLibP1` in addition to removing RToken trading (due to dissolve)
-    - `forwardRevenue(IERC20[] memory erc20s)` - the revenue distributing part
-      - Modify backingBuffer logic to keep the backing buffer in collateral tokens only. Fix subtle and inconsequential bug that resulted in not maximizing RToken minting locally.
+      - Add significant caching to save gas
+    - `forwardRevenue(IERC20[] memory erc20s)`
+      - Modify backingBuffer logic to keep the backing buffer in collateral tokens only. Fix subtle and inconsequential bug that resulted in not maximizing RToken minting locally, though overall RToken production would not have been lower.
       - Use `nonReentrant` over CEI pattern for gas improvement. related to discussion of [this](https://github.com/code-423n4/2023-01-reserve-findings/issues/347) cross-contract reentrancy risk
     - move `nonReentrant` up outside `tryTrade` internal helper
+  - Remove `manageTokensSortedOrder(IERC20[] memory erc20s)`
+  - Modify `settleTrade(IERC20 sell)` to call `rebalance()` when caller is a trade it deployed.
+  - Remove all `delegatecall` during reward claiming
   - Functions now revert on unproductive executions, instead of no-op
   - Do not trade until a warmupPeriod (last time SOUND was newly attained) has passed
   - Add `cacheComponents()` refresher to be called on upgrade
@@ -27,11 +27,11 @@
 
 - `BasketHandler` [+5 slots]
 
-  - Add new gov param: `warmupPeriod`. Has `setWarmupPeriod(..)`
+  - Add new gov param: `warmupPeriod` with setter `setWarmupPeriod(..)` and event `WarmupPeriodSet()`
   - Add `isReady()` view
   - Extract basket switching logic out into external library `BasketLibP1`
   - Enforce `setPrimeBasket()` does not change the net value of a basket in terms of its target units
-  - Add `quoteCustomRedemption(uint48[] basketNonces, uint192[] memory portions, ..)` to quote a linear combination of current-or-previous baskets.
+  - Add `quoteCustomRedemption(uint48[] basketNonces, uint192[] memory portions, ..)` to quote a linear combination of current-or-previous baskets for redemption
   - Add `getHistoricalBasket(uint48 basketNonce)` view
 
 - `Broker` [+1 slot]
@@ -39,8 +39,13 @@
   - Add `TradeKind` enum to track multiple trading types
   - Add new dutch auction `DutchTrade`
   - Add minimum auction length of 24s; applies to all auction types
-  - Add `setDutchAuctionLength(..)` governance setter
+  - Rename variable `auctionLength` -> `batchAuctionLength`
+  - Rename setter `setAuctionLength()` -> `setBatchAuctionLength()`
+  - Rename event `AuctionLengthSet()` -> `BatchAuctionLengthSet()`
+  - Add `dutchAuctionLength` and `setDutchAuctionLength()` setter and `DutchAuctionLengthSet()` event
+  - Add `dutchTradeImplementation` and `setDutchTradeImplementation()` setter and `DutchTradeImplementationSet()` event
   - Modify `openTrade(TradeRequest memory reg)` -> `openTrade(TradeKind kind, TradeRequest memory req)`
+    - Allow when paused / frozen, since caller must be in-system
 
 - `Deployer` [+0 slots]
   - Modify to handle new gov params: `warmupPeriod`, `dutchAuctionLength`, and `withdrawalLeak`
@@ -55,6 +60,7 @@
   - `pause()` -> `pauseTrading()` and `pauseIssuance()`
   - `unpause()` -> `unpauseTrading()` and `unpauseIssuance()`
   - `pausedOrFrozen()` -> `tradingPausedOrFrozen()` and `issuancePausedOrFrozen()`
+  - `PausedSet()` event -> `TradingPausedSet()` and `IssuancePausedSet()`
 
 - `RevenueTrader` [+3 slots]
 
@@ -63,28 +69,36 @@
   - `manageToken(IERC20 sell)` -> `manageToken(IERC20 sell, TradeKind kind)`
     - Allow `manageToken(..)` to open dust auctions
     - Revert on 0 balance or collision auction, instead of no-op
-    - Refresh buy and sell asset
+    - Refresh buy and sell asset before trade
+  - `settleTrade(IERC20)` now distributes `tokenToBuy`, instead of requiring separate `manageToken(IERC20)` call
 
 - `RToken` [+0 slots]
   - Remove `exchangeRateIsValidAfter` modifier from all functions except `setBasketsNeeded()`
   - Modify `issueTo()` to revert before `warmupPeriod`
-  - Remove `redeem(uint256 amount, uint48 basketNonce)` and `redeemTo(address recipient, uint256 amount, uint48 basketNonce)`
-  - Add `redeem(uint256 amount)` and `redeemTo(address recipient, uint256 amount)` - always on current basket nonce; reverts on partial redemption
-  - Add new `redeemCustom(.., uint256 amount, uint48[] memory basketNonces, uint192[] memory portions, ..)` function to allow redemption from a linear combination of current and previous baskets. All non-standard possibly lossy redemptions must go through this function
+  - Modify `redeem(uint256 amount, uint48 basketNonce)` -> `redeem(uint256 amount)`. Redemptions are on the current basket nonce and revert under partial redemption
+  - Modify `redeemTo(address recipient, uint256 amount, uint48 basketNonce)` -> `redeemTo(address recipient, uint256 amount)`. Redemptions are on the current basket nonce and revert under partial redemption
+  - Add new `redeemCustom(.., uint256 amount, uint48[] memory basketNonces, uint192[] memory portions, ..)` function to allow redemption from a linear combination of current and previous baskets. During rebalancing this method of redemption will provide a higher overall redemption value than prorata redemption on the current basket nonce would.
   - `mint(address recipient, uint256 amtRToken)` -> `mint(uint256 amtRToken)`, since recipient is _always_ BackingManager. Expand scope to include adjustments to `basketsNeeded`
   - Add `dissolve(uint256 amount)`: burns RToken and reduces `basketsNeeded`, similar to redemption. Only callable by BackingManager
   - Modify `setBasketsNeeded(..)` to revert when supply is 0
 - `StRSR` [+2 slots]
-  - Remove duplicate `stakeRate()` getter (it's 1 / exchangeRate())
-  - Add `withdrawalLeak` gov param, with `setWithdrawalLeak(..)` setter and `leakyRefresh()` helper
+  - Remove duplicate `stakeRate()` getter (same as `1 / exchangeRate()`)
+  - Add `withdrawalLeak` gov param, with `setWithdrawalLeak(..)` setter and `WithdrawalLeakSet()` event
   - Modify `withdraw()` to allow a small % of RSR too exit without paying to refresh all assets
   - Modify `withdraw()` to check for `warmupPeriod`
   - Add ability to re-stake during a withdrawal via `cancelUnstake(uint256 endId)`
+  - Add `UnstakingCancelled()` event
 - `StRSRVotes` [+0 slots]
   - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function, to encourage people to receive voting weight upon staking
 
 #### Facades
 
+- `FacadeWrite`
+  - Do not automatically grant Guardian PAUSER/SHORT_FREEZER/LONG_FREEZER
+  - Do not automatically grant Owner PAUSER/SHORT_FREEZER/LONG_FREEZER
+  - Add ability to initialize with multiple pausers, short freezers, and long freezers
+  - Modify `setupGovernance(.., address owner, address guardian, address pauser)` -> `setupGovernance(.., GovernanceRoles calldata govRoles)`
+  - Update `DeploymentParams` and `Implementations` struct to contain new gov params and dutch trade plugin
 - `FacadeAct`
   - Remove `getActCalldata(..)`
   - Modify `runRevenueAuctions(..)` to work with both 3.0.0 and 2.1.0 interfaces
@@ -100,7 +114,7 @@
 
 #### DutchTrade
 
-Implements a new, simpler, trading method. Intended to be the new dominant trading method, with GnosisTrade (batch auctions) available as a faster-but-more-gas-expensive backup option.
+A cheaper, simpler, trading method. Intended to be the new dominant trading method, with GnosisTrade (batch auctions) available as a faster-but-more-gas-expensive backup option.
 
 DutchTrade implements a two-stage, single-lot, falling price dutch auction. In the first 40% of the auction, the price falls from 1000x to the best-case price in a geometric/exponential decay as a price manipulation defense mechanism. Bids are not expected to occur (but note: unlike the GnosisTrade batch auction, this mechanism is not resistant to _arbitrary_ price manipulation).
 
@@ -111,7 +125,8 @@ Duration: 30 min (default)
 #### Assets and Collateral
 
 - Add `version() return (string)` getter to pave way for separation of asset versioning and core protocol versioning
-- Remove expectation of `delegatecall` during `claimRewards()` call, though assets can still do it and it won't break anything
+- Update `claimRewards()` on all assets to 3.0.0-style, without `delegatecall`
+- Add `lastSave()` to `RTokenAsset`
 
 ## 2.1.0
 
@@ -235,8 +250,6 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Add `FacadeRead.redeem(IRToken rToken, uint256 amount, uint48 basketNonce)` to return the expected redemption quantities on the basketNonce, or revert
 - Integrate with OZ 4.7.3 Governance (changes to `quorum()`/t`proposalThreshold()`)
 
-TODO
-
 ## 1.1.0
 
 - Introduce semantic versioning to the Deployer and RToken
@@ -267,20 +280,17 @@ event RTokenCreated(
 
 - Add `version()` getter on Deployer, Main, and all Components, via mix-in. To be updated with each subsequent release.
 
-Deploy commit [d757d3a5a6097ae42c71fc03a7c787ec001d2efc](https://github.com/reserve-protocol/protocol/commit/d757d3a5a6097ae42c71fc03a7c787ec001d2efc)
+[d757d3a5a6097ae42c71fc03a7c787ec001d2efc](https://github.com/reserve-protocol/protocol/commit/d757d3a5a6097ae42c71fc03a7c787ec001d2efc)
 
 ## 1.0.0
 
 (This release is the one from the canonical lauch onstage in Bogota. We were missing semantic versioning at the time, but we call this the 1.0.0 release retroactively.)
 
-Deploy commit [eda322894a5ed379bbda2b399c9d1cc65aa8c132](https://github.com/reserve-protocol/protocol/commit/eda322894a5ed379bbda2b399c9d1cc65aa8c132)
+[eda322894a5ed379bbda2b399c9d1cc65aa8c132](https://github.com/reserve-protocol/protocol/commit/eda322894a5ed379bbda2b399c9d1cc65aa8c132)
 
 # Links
 
-<!-- - [[Unreleased]](https://github.com/reserve-protocol/protocol) -->
-  <!-- - https://github.com/reserve-protocol/protocol/compare/3.0.0-rc1...HEAD -->
-
-- [[3.0.0]](https://github.com/reserve-protocol/protocol/releases/tag/3.0.0)
+- [[Unreleased]](https://github.com/reserve-protocol/protocol/releases/tag/3.0.0-rc1)
   - https://github.com/reserve-protocol/protocol/compare/2.1.0-rc4...3.0.0
 - [[2.1.0]](https://github.com/reserve-protocol/protocol/releases/tag/2.1.0-rc4)
   - https://github.com/reserve-protocol/protocol/compare/2.0.0-candidate-4...2.1.0-rc4
