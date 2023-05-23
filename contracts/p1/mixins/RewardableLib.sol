@@ -21,7 +21,7 @@ library RewardableLibP1 {
     /// Claim all rewards
     /// @custom:interaction mostly CEI but see comments
     // actions:
-    //   do asset.claimRewards() for asset in assets
+    //   try erc20.claimRewards() for erc20 in erc20s
     function claimRewards(IAssetRegistry reg) internal {
         Registry memory registry = reg.getRegistry();
         for (uint256 i = 0; i < registry.erc20s.length; ++i) {
@@ -34,7 +34,7 @@ library RewardableLibP1 {
     /// Claim rewards for a single ERC20
     /// @custom:interaction mostly CEI but see comments
     // actions:
-    //   do asset.claimRewards()
+    //   try erc20.claimRewards()
     function claimRewardsSingle(IAsset asset) internal {
         // empty try/catch because not every erc20 will be wrapped & have a claimRewards func
         // solhint-disable-next-line
