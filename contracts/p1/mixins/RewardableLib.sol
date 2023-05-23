@@ -16,8 +16,6 @@ library RewardableLibP1 {
     using Address for address;
     using SafeERC20 for IERC20;
 
-    event Complete();
-
     // === Used by Traders + RToken ===
 
     /// Claim all rewards
