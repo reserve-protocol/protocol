@@ -42,8 +42,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
-    //
-    // ... and the *much* more complicated temporal properties for _manageTokens()
 
     function init(
         IMain main_,

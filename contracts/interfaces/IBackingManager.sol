@@ -10,12 +10,9 @@ import "./ITrading.sol";
  * @title IBackingManager
  * @notice The BackingManager handles changes in the ERC20 balances that back an RToken.
  *   - It computes which trades to perform, if any, and initiates these trades with the Broker.
+ *     - rebalance()
  *   - If already collateralized, excess assets are transferred to RevenueTraders.
- *
- * `manageTokens(erc20s)` and `manageTokensSortedOrder(erc20s)` are handles for getting at the
- *   same underlying functionality. The former allows an ERC20 list in any order, while the
- *   latter requires a sorted array, and executes in O(n) rather than O(n^2) time. In the
- *   vast majority of cases we expect the the O(n^2) function to be acceptable.
+ *     - forwardRevenue(IERC20[] calldata erc20s)
  */
 interface IBackingManager is IComponent, ITrading {
     /// Emitted when the trading delay is changed

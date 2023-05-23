@@ -2662,7 +2662,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 100)).to.equal(true)
       })
 
-      it('Should not overspend if backingManager.manageTokens() is called with duplicate tokens', async () => {
+      it('Should not oversend if backingManager.forwardRevenue() is called with duplicate tokens', async () => {
         expect(await basketHandler.fullyCollateralized()).to.be.true
 
         // Change redemption rate for AToken and CToken to double

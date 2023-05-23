@@ -1,4 +1,5 @@
 import { bn } from '#/common/numbers'
+import { TradeKind } from '#/common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber } from 'ethers'
 import { Interface, LogDescription, formatEther } from 'ethers/lib/utils'
@@ -53,7 +54,7 @@ export const redeemRTokens = async (
 
   const preRedeemRTokenBal = await rToken.balanceOf(user.address)
   const preRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
-  await rToken.connect(user).redeem(redeemAmount, await basketHandler.nonce())
+  await rToken.connect(user).redeem(redeemAmount)
   const postRedeemRTokenBal = await rToken.balanceOf(user.address)
   const postRedeemErc20Bals = await getAccountBalances(hre, user.address, expectedTokens)
 
@@ -81,10 +82,6 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
   console.log(`\n\n* * * * * Recollateralizing RToken ${rtokenAddress}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
-  const assetRegistry = await hre.ethers.getContractAt(
-    'AssetRegistryP1',
-    await main.assetRegistry()
-  )
   const backingManager = await hre.ethers.getContractAt(
     'BackingManagerP1',
     await main.backingManager()
@@ -94,8 +91,7 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
     await main.basketHandler()
   )
 
-  const registeredERC20s = await assetRegistry.erc20s()
-  let r = await backingManager.manageTokens(registeredERC20s)
+  let r = await backingManager.rebalance(TradeKind.BATCH_AUCTION)
 
   const iface: Interface = backingManager.interface
   let tradesRemain = true
@@ -119,7 +115,7 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
         await runTrade(hre, backingManager, parsedLog.args.sell, false)
       }
     }
-    r = await backingManager.manageTokens(registeredERC20s)
+    r = await backingManager.rebalance(TradeKind.BATCH_AUCTION)
   }
 
   const basketStatus = await basketHandler.status()
