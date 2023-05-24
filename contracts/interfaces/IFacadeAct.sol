@@ -5,6 +5,10 @@ import "../interfaces/IBackingManager.sol";
 import "../interfaces/IRevenueTrader.sol";
 import "../interfaces/IRToken.sol";
 
+bytes1 constant MAJOR_VERSION_1 = bytes1("1");
+bytes1 constant MAJOR_VERSION_2 = bytes1("2");
+bytes1 constant MAJOR_VERSION_3 = bytes1("3");
+
 /**
  * @title IFacadeAct
  * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely. 

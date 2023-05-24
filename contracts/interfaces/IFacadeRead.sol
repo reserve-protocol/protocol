@@ -5,10 +5,6 @@ import "../p1/RToken.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 
-bytes1 constant MAJOR_VERSION_1 = bytes1("1");
-bytes1 constant MAJOR_VERSION_2 = bytes1("2");
-bytes1 constant MAJOR_VERSION_3 = bytes1("3");
-
 /**
  * @title IFacadeRead
  * @notice A UX-friendly layer for read operations, especially those that first require refresh()
