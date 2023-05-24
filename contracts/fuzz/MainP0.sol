@@ -190,7 +190,8 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
             "Staked RSR",
             "stRSR",
             params.unstakingDelay,
-            params.rewardRatio
+            params.rewardRatio,
+            params.withdrawalLeak
         );
 
         backingManager.init(

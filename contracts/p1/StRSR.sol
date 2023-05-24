@@ -59,9 +59,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // Typically: "balances". These are the tokenized staking positions!
     // era => ({account} => {qStRSR})
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
-    uint256 private totalStakes; // Total of all stakes {qStRSR}
-    uint256 private stakeRSR; // Amount of RSR backing all stakes {qRSR}
-    uint192 private stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
+    uint256 internal totalStakes; // Total of all stakes {qStRSR}
+    uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
+    uint192 internal stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
 
     uint192 internal constant MAX_STAKE_RATE = 1e9 * FIX_ONE; // 1e9 D18{qStRSR/qRSR}
 
@@ -81,9 +81,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // draftEra => ({account} => {drafts})
     mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {drafts}
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
-    uint256 private totalDrafts; // Total of all drafts {qDrafts}
-    uint256 private draftRSR; // Amount of RSR backing all drafts {qRSR}
-    uint192 public draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
+    uint256 internal totalDrafts; // Total of all drafts {qDrafts}
+    uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
+    uint192 internal draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
 
     uint192 internal constant MAX_DRAFT_RATE = 1e9 * FIX_ONE; // 1e9 D18{qDrafts/qRSR}
 

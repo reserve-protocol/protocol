@@ -20,6 +20,7 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         longFreeze: 1814400, // 3 weeks
         rewardRatio: FixLib.divu(toFix(22840), (1_000_000)), // approx. half life of 30 pay periods
         unstakingDelay: 1209600, // 2 weeks
+        withdrawalLeak: 5e16, // 5%
         tradingDelay: 0, // (the delay _after_ default has been confirmed)
         batchAuctionLength: 1800, // 30 minutes
         dutchAuctionLength: 300, // 5 minutes

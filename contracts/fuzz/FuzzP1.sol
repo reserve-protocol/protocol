@@ -128,15 +128,23 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
     }
 
     function saveSurplusAndDeficitTokens() external {
+        Registry memory reg = IMainFuzz(address(main)).assetRegistry().getRegistry();
+        uint192[] memory quantities = new uint192[](reg.erc20s.length);
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            quantities[i] = IMainFuzz(address(main)).basketHandler().quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+        }
+
         TradingContext memory components = TradingContext({
             basketsHeld: IMainFuzz(address(main)).basketHandler().basketsHeldBy(address(this)),
             bm: IBackingManager(address(this)),
+            bh: IMainFuzz(address(main)).basketHandler(),
             ar: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
             rsr: IMainFuzz(address(main)).rsr(),
             rToken: IMainFuzz(address(main)).rToken(),
             minTradeVolume: ITrading(address(this)).minTradeVolume(),
-            maxTradeSlippage: ITrading(address(this)).maxTradeSlippage()
+            maxTradeSlippage: ITrading(address(this)).maxTradeSlippage(),
+            quantities: quantities
         });
 
         IERC20[] memory erc20s = components.ar.erc20s();
@@ -193,28 +201,28 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         view
         returns (BasketRange memory)
     {
+        Registry memory reg = IMainFuzz(address(main)).assetRegistry().getRegistry();
+        uint192[] memory quantities = new uint192[](reg.erc20s.length);
+        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            quantities[i] = IMainFuzz(address(main)).basketHandler().quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+        }
+
         TradingContext memory components = TradingContext({
             basketsHeld: IMainFuzz(address(main)).basketHandler().basketsHeldBy(address(this)),
             bm: IBackingManager(address(this)),
+            bh: IMainFuzz(address(main)).basketHandler(),
             ar: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
             rsr: IMainFuzz(address(main)).rsr(),
             rToken: IMainFuzz(address(main)).rToken(),
             minTradeVolume: ITrading(address(this)).minTradeVolume(),
-            maxTradeSlippage: ITrading(address(this)).maxTradeSlippage()
+            maxTradeSlippage: ITrading(address(this)).maxTradeSlippage(),
+            quantities: quantities
         });
-        IBasketHandler bh = IMainFuzz(address(main)).basketHandler();
-        Registry memory reg = components.ar.getRegistry();
-        uint192[] memory quantities = new uint192[](reg.erc20s.length);
-        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            quantities[i] = bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
-        }
-        (Price memory buPrice, Price memory buLotPrice) = bh.prices();
+
         return RecollateralizationLibP1.basketRange(
             components,
-            reg,
-            quantities,
-            buPrice
+            reg
         );
     }
 
