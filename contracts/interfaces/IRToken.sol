@@ -109,15 +109,21 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
         uint256[] memory minAmounts
     ) external returns (address[] memory erc20sOut, uint256[] memory amountsOut);
 
-    /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
-    /// @param recipient The recipient of the newly minted RToken
-    /// @param amount {qRTok} The amount to be minted
+    /// Mint an amount of RToken equivalent to baskets BUs, scaling basketsNeeded up
+    /// Callable only by BackingManager
+    /// @param baskets {BU} The number of baskets to mint RToken for
     /// @custom:protected
-    function mint(address recipient, uint256 amount) external;
+    function mint(uint192 baskets) external;
 
     /// Melt a quantity of RToken from the caller's account
     /// @param amount {qRTok} The amount to be melted
+    /// @custom:protected
     function melt(uint256 amount) external;
+
+    /// Burn an amount of RToken from caller's account and scale basketsNeeded down
+    /// Callable only by BackingManager
+    /// @custom:protected
+    function dissolve(uint256 amount) external;
 
     /// Set the number of baskets needed directly, callable only by the BackingManager
     /// @param basketsNeeded {BU} The number of baskets to target

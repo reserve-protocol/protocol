@@ -38,33 +38,6 @@ contract RTokenAsset is IAsset, VersionedAsset {
         maxTradeVolume = maxTradeVolume_;
     }
 
-    /// Calculates price() & lotPrice() in a gas-optimized way using a cached BasketRange
-    /// Used by RecollateralizationLib for efficient price calculation
-    /// @param buRange {BU} The top and bottom of the bu band; how many BUs we expect to hold
-    /// @param buPrice {UoA/BU} The low and high price estimate of a basket unit
-    /// @param buLotPrice {UoA/BU} The low and high lotprice of a basket unit
-    /// @return price_ {UoA/tok} The low and high price estimate of an RToken
-    /// @return lotPrice_ {UoA/tok} The low and high lotprice of an RToken
-    function prices(
-        BasketRange memory buRange,
-        Price memory buPrice,
-        Price memory buLotPrice
-    ) public view returns (Price memory price_, Price memory lotPrice_) {
-        // Here we take advantage of the fact that we know RToken has 18 decimals
-        // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
-        uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
-
-        if (supply == 0) return (buPrice, buLotPrice);
-
-        // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        price_.low = buRange.bottom.mulDiv(buPrice.low, supply, FLOOR);
-        price_.high = buRange.top.mulDiv(buPrice.high, supply, CEIL);
-        lotPrice_.low = buRange.bottom.mulDiv(buLotPrice.low, supply, FLOOR);
-        lotPrice_.high = buRange.top.mulDiv(buLotPrice.high, supply, CEIL);
-        assert(price_.low <= price_.high);
-        assert(lotPrice_.low <= lotPrice_.high);
-    }
-
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
@@ -158,9 +131,6 @@ contract RTokenAsset is IAsset, VersionedAsset {
 
     /// Computationally expensive basketRange calculation; used in price() & lotPrice()
     function basketRange() private view returns (BasketRange memory range) {
-        Price memory buPrice;
-        (buPrice.low, buPrice.high) = basketHandler.price(); // {UoA/BU}
-
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(backingManager));
         uint192 basketsNeeded = IRToken(address(erc20)).basketsNeeded(); // {BU}
 
@@ -175,26 +145,27 @@ contract RTokenAsset is IAsset, VersionedAsset {
             // should switch over to an asset with a price feed.
 
             IMain main = backingManager.main();
-            TradingContext memory ctx = TradingContext({
-                basketsHeld: basketsHeld,
-                bm: backingManager,
-                ar: main.assetRegistry(),
-                stRSR: main.stRSR(),
-                rsr: main.rsr(),
-                rToken: main.rToken(),
-                minTradeVolume: backingManager.minTradeVolume(),
-                maxTradeSlippage: backingManager.maxTradeSlippage()
-            });
+            TradingContext memory ctx;
 
-            Registry memory reg = assetRegistry.getRegistry();
+            ctx.basketsHeld = basketsHeld;
+            ctx.bm = backingManager;
+            ctx.bh = basketHandler;
+            ctx.ar = assetRegistry;
+            ctx.stRSR = main.stRSR();
+            ctx.rsr = main.rsr();
+            ctx.rToken = main.rToken();
+            ctx.minTradeVolume = backingManager.minTradeVolume();
+            ctx.maxTradeSlippage = backingManager.maxTradeSlippage();
 
-            uint192[] memory quantities = new uint192[](reg.erc20s.length);
+            // Calculate quantities
+            Registry memory reg = ctx.ar.getRegistry();
+            ctx.quantities = new uint192[](reg.erc20s.length);
             for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-                quantities[i] = basketHandler.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+                ctx.quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
             }
 
             // will exclude UoA value from RToken balances at BackingManager
-            range = RecollateralizationLibP1.basketRange(ctx, reg, quantities, buPrice);
+            range = RecollateralizationLibP1.basketRange(ctx, reg);
         }
     }
 }

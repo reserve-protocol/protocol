@@ -86,11 +86,7 @@ contract FacadeRead is IFacadeRead {
     /// @return withdrawals The balances necessary to issue `amount` RToken
     /// @return isProrata True if the redemption is prorata and not full
     /// @custom:static-call
-    function redeem(
-        IRToken rToken,
-        uint256 amount,
-        uint48 basketNonce
-    )
+    function redeem(IRToken rToken, uint256 amount)
         external
         returns (
             address[] memory tokens,
@@ -103,7 +99,6 @@ contract FacadeRead is IFacadeRead {
         IRToken rTok = rToken;
         IBasketHandler bh = main.basketHandler();
         uint256 supply = rTok.totalSupply();
-        require(bh.nonce() == basketNonce, "non-current basket nonce");
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         uint192 basketsRedeemed = rTok.basketsNeeded().muluDivu(amount, supply);
@@ -235,7 +230,7 @@ contract FacadeRead is IFacadeRead {
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 ITrade trade = bm.trades(erc20s[i]);
                 if (address(trade) != address(0) && trade.canSettle()) {
-                    trade.settle();
+                    bm.settleTrade(erc20s[i]);
                     break; // backingManager can only have 1 trade open at a time
                 }
             }
@@ -243,20 +238,32 @@ contract FacadeRead is IFacadeRead {
 
         // If no auctions ongoing, try to find a new auction to start
         if (bm.tradesOpen() == 0) {
-            // Try to launch auctions
-            try bm.rebalance(TradeKind.DUTCH_AUCTION) {
-                // Find the started auction
-                for (uint256 i = 0; i < erc20s.length; ++i) {
-                    DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
-                    if (address(trade) != address(0)) {
-                        canStart = true;
-                        sell = trade.sell();
-                        buy = trade.buy();
-                        sellAmount = trade.sellAmount();
-                    }
-                }
+            bytes1 majorVersion = bytes(bm.version())[0];
+
+            if (majorVersion == MAJOR_VERSION_3) {
                 // solhint-disable-next-line no-empty-blocks
-            } catch {}
+                try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                IERC20[] memory emptyERC20s = new IERC20[](0);
+                // solhint-disable-next-line avoid-low-level-calls
+                (bool success, ) = address(bm).call{ value: 0 }(
+                    abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
+                );
+                success = success; // hush warning
+            } else {
+                revert("unrecognized version");
+            }
+
+            // Find the started auction
+            for (uint256 i = 0; i < erc20s.length; ++i) {
+                DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
+                if (address(trade) != address(0)) {
+                    canStart = true;
+                    sell = trade.sell();
+                    buy = trade.buy();
+                    sellAmount = trade.sellAmount();
+                }
+            }
         }
     }
 
@@ -279,7 +286,23 @@ contract FacadeRead is IFacadeRead {
         Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
 
         // Forward ALL revenue
-        revenueTrader.main().backingManager().forwardRevenue(reg.erc20s);
+        {
+            IBackingManager bm = revenueTrader.main().backingManager();
+            bytes1 majorVersion = bytes(bm.version())[0];
+
+            if (majorVersion == MAJOR_VERSION_3) {
+                // solhint-disable-next-line no-empty-blocks
+                try bm.forwardRevenue(reg.erc20s) {} catch {}
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                // solhint-disable-next-line avoid-low-level-calls
+                (bool success, ) = address(bm).call{ value: 0 }(
+                    abi.encodeWithSignature("manageTokens(address[])", reg.erc20s)
+                );
+                success = success; // hush warning
+            } else {
+                revert("unrecognized version");
+            }
+        }
 
         erc20s = new IERC20[](reg.erc20s.length);
         canStart = new bool[](reg.erc20s.length);
@@ -304,13 +327,27 @@ contract FacadeRead is IFacadeRead {
                 int8(reg.assets[i].erc20Decimals())
             );
 
-            if (reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i]) {
-                try revenueTrader.manageToken(reg.erc20s[i], TradeKind.DUTCH_AUCTION) {
-                    if (revenueTrader.tradesOpen() - tradesOpen > 0) {
-                        canStart[i] = true;
-                    }
+            bytes1 majorVersion = bytes(revenueTrader.version())[0];
+            if (
+                reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i] &&
+                revenueTrader.trades(reg.erc20s[i]) == ITrade(address(0))
+            ) {
+                if (majorVersion == MAJOR_VERSION_3) {
                     // solhint-disable-next-line no-empty-blocks
-                } catch {}
+                    try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
+                } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                    // solhint-disable-next-line avoid-low-level-calls
+                    (bool success, ) = address(revenueTrader).call{ value: 0 }(
+                        abi.encodeWithSignature("manageToken(address)", erc20s[i])
+                    );
+                    success = success; // hush warning
+                } else {
+                    revert("unrecognized version");
+                }
+
+                if (revenueTrader.tradesOpen() - tradesOpen > 0) {
+                    canStart[i] = true;
+                }
             }
         }
     }

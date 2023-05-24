@@ -2,15 +2,15 @@ import { whileImpersonating } from '#/utils/impersonation'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { ProposalBuilder, buildProposal } from '../governance'
 import { Proposal } from '#/utils/subgraph'
-import { overrideOracle, pushOracleForward, pushOraclesForward } from '../oracles'
+import { overrideOracle, pushOracleForward } from '../oracles'
 import { networkConfig } from '#/common/configuration'
 import { recollateralize } from '../rtokens'
+import { TradeKind } from '#/common/constants'
 import { bn, fp } from '#/common/numbers'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '#/utils/time'
 import { LogDescription, Interface } from 'ethers/lib/utils'
 import { logToken } from '../logs'
-import { runTrade } from '../trades'
-import { CollateralStatus, QUEUE_START } from '#/common/constants'
+import { QUEUE_START } from '#/common/constants'
 import { getTrade } from '#/utils/trades'
 import { whales } from '../constants'
 import { BigNumber } from 'ethers'
@@ -34,7 +34,7 @@ export default async (
   // check Broker updates
   const broker = await hre.ethers.getContractAt('BrokerP1', await main.broker())
   const preGnosis = await broker.gnosis()
-  const preTrade = await broker.tradeImplementation()
+  const preTrade = await broker.batchTradeImplementation()
 
   const gnosisFactory = await hre.ethers.getContractFactory('EasyAuction')
   const newGnosis = await gnosisFactory.deploy()
@@ -43,11 +43,11 @@ export default async (
 
   await whileImpersonating(hre, timelock.address, async (govSigner) => {
     await broker.connect(govSigner).setGnosis(newGnosis.address)
-    await broker.connect(govSigner).setTradeImplementation(newTrade.address)
+    await broker.connect(govSigner).setBatchTradeImplementation(newTrade.address)
   })
 
   const postGnosis = await broker.gnosis()
-  const postTrade = await broker.tradeImplementation()
+  const postTrade = await broker.batchTradeImplementation()
 
   if (postGnosis != newGnosis.address) {
     throw new Error(`setGnosis() failure: received: ${postGnosis} / expected: ${newGnosis.address}`)
@@ -55,13 +55,13 @@ export default async (
 
   if (postTrade != newTrade.address) {
     throw new Error(
-      `setTradeImplementation() failure: received: ${postTrade} / expected: ${newTrade.address}`
+      `setBatchTradeImplementation() failure: received: ${postTrade} / expected: ${newTrade.address}`
     )
   }
 
   await whileImpersonating(hre, timelock.address, async (govSigner) => {
     await broker.connect(govSigner).setGnosis(preGnosis)
-    await broker.connect(govSigner).setTradeImplementation(preTrade)
+    await broker.connect(govSigner).setBatchTradeImplementation(preTrade)
   })
 
   // check stRSR updates
@@ -121,8 +121,7 @@ export default async (
   // buy half of the auction for the absolute minimum price
 
   console.log('\n* * * * * Try to break broker...')
-  const registeredERC20s = await ar.erc20s()
-  let r = await backingManager.manageTokens(registeredERC20s)
+  const r = await backingManager.rebalance(TradeKind.BATCH_AUCTION)
   const resp = await r.wait()
   for (const event of resp.events!) {
     let parsedLog: LogDescription | undefined
@@ -196,8 +195,7 @@ export default async (
 
 export const proposal_2_1_0: ProposalBuilder = async (
   hre: HardhatRuntimeEnvironment,
-  rTokenAddress: string,
-  governorAddress: string
+  rTokenAddress: string
 ): Promise<Proposal> => {
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
@@ -213,7 +211,7 @@ export const proposal_2_1_0: ProposalBuilder = async (
     await stRSR.populateTransaction.upgradeTo('0xfDa8C62d86E426D5fB653B6c44a455Bb657b693f'),
     await basketHandler.populateTransaction.upgradeTo('0x5c13b3b6f40aD4bF7aa4793F844BA24E85482030'),
     await rToken.populateTransaction.upgradeTo('0x5643D5AC6b79ae8467Cf2F416da6D465d8e7D9C1'),
-    await broker.populateTransaction.setTradeImplementation(
+    await broker.populateTransaction.setBatchTradeImplementation(
       '0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439'
     ),
   ]

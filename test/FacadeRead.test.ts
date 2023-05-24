@@ -195,11 +195,9 @@ describe('FacadeRead contract', () => {
     })
 
     it('Should return redeemable quantities correctly', async () => {
-      const nonce = await basketHandler.nonce()
       const [toks, quantities, isProrata] = await facade.callStatic.redeem(
         rToken.address,
-        issueAmount,
-        nonce
+        issueAmount
       )
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
@@ -216,17 +214,11 @@ describe('FacadeRead contract', () => {
       await token.burn(await main.backingManager(), issueAmount.div(8))
       const [newToks, newQuantities, newIsProrata] = await facade.callStatic.redeem(
         rToken.address,
-        issueAmount,
-        nonce
+        issueAmount
       )
       expect(newToks[0]).to.equal(token.address)
       expect(newQuantities[0]).to.equal(issueAmount.div(8))
       expect(newIsProrata).to.equal(true)
-
-      // Wrong nonce
-      await expect(
-        facade.callStatic.redeem(rToken.address, issueAmount, nonce - 1)
-      ).to.be.revertedWith('non-current basket nonce')
     })
 
     it('Should return backingOverview correctly', async () => {
@@ -410,7 +402,7 @@ describe('FacadeRead contract', () => {
         const trader = traders[traderIndex]
 
         const minTradeVolume = await trader.minTradeVolume()
-        const auctionLength = await broker.batchAuctionLength()
+        const auctionLength = await broker.dutchAuctionLength()
         const tokenSurplus = bn('0.5e18')
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
@@ -429,7 +421,6 @@ describe('FacadeRead contract', () => {
             expect(canStart[i]).to.equal(false)
             expect(surpluses[i]).to.equal(0)
           }
-
           const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
           const [low] = await asset.price()
           expect(minTradeAmounts[i]).to.equal(
@@ -437,19 +428,20 @@ describe('FacadeRead contract', () => {
           ) // 1% oracleError
         }
 
-        // Run revenue auctions
-        await facadeAct.runRevenueAuctions(
-          trader.address,
-          [],
-          erc20sToStart,
-          TradeKind.DUTCH_AUCTION
+        // Run revenue auctions via multicall
+        const funcSig = ethers.utils.id('runRevenueAuctions(address,address[],address[],uint8)')
+        const args = ethers.utils.defaultAbiCoder.encode(
+          ['address', 'address[]', 'address[]', 'uint8'],
+          [trader.address, [], erc20sToStart, TradeKind.DUTCH_AUCTION]
         )
+        const data = funcSig.substring(0, 10) + args.slice(2)
+        await expect(facadeAct.multicall([data])).to.emit(trader, 'TradeStarted')
 
         // Nothing should be settleable
         expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
 
         // Advance time till auction ended
-        await advanceTime(auctionLength + 100)
+        await advanceTime(auctionLength + 13)
 
         // Now should be settleable
         const settleable = await facade.auctionsSettleable(trader.address)

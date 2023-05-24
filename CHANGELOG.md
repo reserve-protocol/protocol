@@ -1,42 +1,223 @@
 # Changelog
 
-## 1.0.0
+## 3.0.0 - Unreleased
 
-(This release is the one from the canonical lauch onstage in Bogota. We were missing semantic versioning at the time, but we call this the 1.0.0 release retroactively.)
+Warning: RTokens upgrading to this major release should proceed carefully. In addition to updating all component addresses:
 
-Deploy commit [eda322894a5ed379bbda2b399c9d1cc65aa8c132](https://github.com/reserve-protocol/protocol/commit/eda322894a5ed379bbda2b399c9d1cc65aa8c132)
+- `cacheComponents()` MUST be called to prevent certain functions from reverting, on both the BackingManager and both RevenueTraders
+- `setWarmupPeriod()` can be called on the BasketHandler to turn on the warmup period, optionally
+- `setWithdrawalLeak()` can be called on StRSR to start saving gas on withdrawals, optionally
+- `setDutchAuctionLength()` can be called (with a value such as 1800) or left at duration 0s to keep dutch auctions disabled
 
-## 1.1.0
+Collateral / Asset plugins from 2.1.0 do not need to be upgraded
 
-- Introduce semantic versioning to the Deployer and RToken
-- `RTokenCreated` event: added `version` argument
+#### Core Protocol Contracts
 
-```
-event RTokenCreated(
-        IMain indexed main,
-        IRToken indexed rToken,
-        IStRSR stRSR,
-        address indexed owner
-    );
+- `AssetRegistry` [+1 slot]
+  Summary: Other component contracts need to know when refresh() was last called
+  - Add last refresh timestamp tracking and expose via `lastRefresh()` getter
+  - Add `size()` getter for number of registered assets
+- `BackingManager` [+2 slots]
+  Summary: manageTokens was broken out into rebalancing and surplus-forwarding functions to allow users to more precisely call the protocol
 
-```
+  - Replace `manageTokens(IERC20[] memory erc20s)` with:
+    - `rebalance(TradeKind)` + `RecollateralizationLibP1`
+      - Modify trading algorithm to not trade RToken, and instead dissolve it when it has a balance above ~1e6. "dissolve" = melt() with a basketsNeeded change, like redemption.
+      - Add significant caching to save gas
+    - `forwardRevenue(IERC20[] memory erc20s)`
+      - Modify backingBuffer logic to keep the backing buffer in collateral tokens only. Fix subtle and inconsequential bug that resulted in not maximizing RToken minting locally, though overall RToken production would not have been lower.
+      - Use `nonReentrant` over CEI pattern for gas improvement. related to discussion of [this](https://github.com/code-423n4/2023-01-reserve-findings/issues/347) cross-contract reentrancy risk
+    - move `nonReentrant` up outside `tryTrade` internal helper
+  - Remove `manageTokensSortedOrder(IERC20[] memory erc20s)`
+  - Modify `settleTrade(IERC20 sell)` to call `rebalance()` when caller is a trade it deployed.
+  - Remove all `delegatecall` during reward claiming
+  - Functions now revert on unproductive executions, instead of no-op
+  - Do not trade until a warmupPeriod (last time SOUND was newly attained) has passed
+  - Add `cacheComponents()` refresher to be called on upgrade
+  - Bugfix: consider `maxTradeVolume()` from both assets on a trade, not just 1
 
-=>
+- `BasketHandler` [+5 slots]
+  Summary: Introduces a notion of basket warmup to defend against short-term oracle manipulation attacks. Prevent RTokens from changing in value due to governance
 
-```
-event RTokenCreated(
-        IMain indexed main,
-        IRToken indexed rToken,
-        IStRSR stRSR,
-        address indexed owner,
-        string version
-    );
+  - Add new gov param: `warmupPeriod` with setter `setWarmupPeriod(..)` and event `WarmupPeriodSet()`
+  - Add `isReady()` view
+  - Extract basket switching logic out into external library `BasketLibP1`
+  - Enforce `setPrimeBasket()` does not change the net value of a basket in terms of its target units
+  - Add `quoteCustomRedemption(uint48[] basketNonces, uint192[] memory portions, ..)` to quote a linear combination of current-or-previous baskets for redemption
+  - Add `getHistoricalBasket(uint48 basketNonce)` view
 
-```
+- `Broker` [+1 slot]
+  Summary: Add a new trading plugin that performs single-lot dutch auctions. Batch auctions via Gnosis EasyAuction are expected to be the backup auction (can be faster if more gas costly) going forward.
 
-- Add `version()` getter on Deployer, Main, and all Components, via mix-in. To be updated with each subsequent release.
+  - Add `TradeKind` enum to track multiple trading types
+  - Add new dutch auction `DutchTrade`
+  - Add minimum auction length of 24s; applies to all auction types
+  - Rename variable `auctionLength` -> `batchAuctionLength`
+  - Rename setter `setAuctionLength()` -> `setBatchAuctionLength()`
+  - Rename event `AuctionLengthSet()` -> `BatchAuctionLengthSet()`
+  - Add `dutchAuctionLength` and `setDutchAuctionLength()` setter and `DutchAuctionLengthSet()` event
+  - Add `dutchTradeImplementation` and `setDutchTradeImplementation()` setter and `DutchTradeImplementationSet()` event
+  - Modify `openTrade(TradeRequest memory reg)` -> `openTrade(TradeKind kind, TradeRequest memory req)`
+    - Allow when paused / frozen, since caller must be in-system
 
-Deploy commit [d757d3a5a6097ae42c71fc03a7c787ec001d2efc](https://github.com/reserve-protocol/protocol/commit/d757d3a5a6097ae42c71fc03a7c787ec001d2efc)
+- `Deployer` [+0 slots]
+  Summary: Support new governance params
+
+  - Modify to handle new gov params: `warmupPeriod`, `dutchAuctionLength`, and `withdrawalLeak`
+  - Do not grant OWNER any of the roles other than ownership
+
+- `Distributor` [+0 slots]
+  Summary: Waste of gas to double-check this, since caller is another component
+  - Remove `notPausedOrFrozen` modifier from `distribute()`
+- `Furnace` [+0 slots]
+  Summary: Should be able to melting while redeeming when frozen
+  - Modify `melt()` modifier: `notPausedOrFrozen` -> `notFrozen`
+- `Main` [+0 slots]
+  Summary: Breakup pausing into two types of pausing: issuance and trading
+
+  - Break `paused` into `issuancePaused` and `tradingPaused`
+  - `pause()` -> `pauseTrading()` and `pauseIssuance()`
+  - `unpause()` -> `unpauseTrading()` and `unpauseIssuance()`
+  - `pausedOrFrozen()` -> `tradingPausedOrFrozen()` and `issuancePausedOrFrozen()`
+  - `PausedSet()` event -> `TradingPausedSet()` and `IssuancePausedSet()`
+
+- `RevenueTrader` [+3 slots]
+  Summary: QoL improvements. Make compatible with new dutch auction trading method
+
+  - Remove `delegatecall` during reward claiming
+  - Add `cacheComponents()` refresher to be called on upgrade
+  - `manageToken(IERC20 sell)` -> `manageToken(IERC20 sell, TradeKind kind)`
+    - Allow `manageToken(..)` to open dust auctions
+    - Revert on 0 balance or collision auction, instead of no-op
+    - Refresh buy and sell asset before trade
+  - `settleTrade(IERC20)` now distributes `tokenToBuy`, instead of requiring separate `manageToken(IERC20)` call
+
+- `RToken` [+0 slots]
+  Summary: Provide multiple redemption methods for when fullyCollateralized vs not. Should support a higher RToken price during basket changes.
+
+  - Remove `exchangeRateIsValidAfter` modifier from all functions except `setBasketsNeeded()`
+  - Modify `issueTo()` to revert before `warmupPeriod`
+  - Modify `redeem(uint256 amount, uint48 basketNonce)` -> `redeem(uint256 amount)`. Redemptions are on the current basket nonce and revert under partial redemption
+  - Modify `redeemTo(address recipient, uint256 amount, uint48 basketNonce)` -> `redeemTo(address recipient, uint256 amount)`. Redemptions are on the current basket nonce and revert under partial redemption
+  - Add new `redeemCustom(.., uint256 amount, uint48[] memory basketNonces, uint192[] memory portions, ..)` function to allow redemption from a linear combination of current and previous baskets. During rebalancing this method of redemption will provide a higher overall redemption value than prorata redemption on the current basket nonce would.
+  - `mint(address recipient, uint256 amtRToken)` -> `mint(uint256 amtRToken)`, since recipient is _always_ BackingManager. Expand scope to include adjustments to `basketsNeeded`
+  - Add `dissolve(uint256 amount)`: burns RToken and reduces `basketsNeeded`, similar to redemption. Only callable by BackingManager
+  - Modify `setBasketsNeeded(..)` to revert when supply is 0
+
+- `StRSR` [+2 slots]
+  Summary: Add the ability to cancel unstakings and a withdrawal() gas-saver to allow small RSR amounts to be exempt from refreshes
+
+  - Remove duplicate `stakeRate()` getter (same as `1 / exchangeRate()`)
+  - Add `withdrawalLeak` gov param, with `setWithdrawalLeak(..)` setter and `WithdrawalLeakSet()` event
+  - Modify `withdraw()` to allow a small % of RSR too exit without paying to refresh all assets
+  - Modify `withdraw()` to check for `warmupPeriod`
+  - Add ability to re-stake during a withdrawal via `cancelUnstake(uint256 endId)`
+  - Add `UnstakingCancelled()` event
+
+- `StRSRVotes` [+0 slots]
+  - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function, to encourage people to receive voting weight upon staking
+
+#### Facades
+
+- `FacadeWrite`
+  Summary: More expressive and fine-grained control over the set of pausers and freezers
+
+  - Do not automatically grant Guardian PAUSER/SHORT_FREEZER/LONG_FREEZER
+  - Do not automatically grant Owner PAUSER/SHORT_FREEZER/LONG_FREEZER
+  - Add ability to initialize with multiple pausers, short freezers, and long freezers
+  - Modify `setupGovernance(.., address owner, address guardian, address pauser)` -> `setupGovernance(.., GovernanceRoles calldata govRoles)`
+  - Update `DeploymentParams` and `Implementations` struct to contain new gov params and dutch trade plugin
+
+- `FacadeAct`
+  Summary: Remove unused getActCalldata and add way to run revenue auctions
+
+  - Remove `getActCalldata(..)`
+  - Modify `runRevenueAuctions(..)` to work with both 3.0.0 and 2.1.0 interfaces
+
+- `FacadeRead`
+  Summary: Add new data summary views frontends may be interested in
+
+  - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
+  - Remove `traderBalances(..)`
+  - `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
+  - Add `nextRecollateralizationAuction(..) returns (bool canStart, IERC20 sell, IERC20 buy, uint256 sellAmount)`
+  - Add `revenueOverview(IRevenueTrader) returns ( IERC20[] memory erc20s, bool[] memory canStart, uint256[] memory surpluses, uint256[] memory minTradeAmounts)`
+
+- Remove `FacadeMonitor` - redundant with `nextRecollateralizationAuction()` and `revenueOverview()`
+
+### Plugins
+
+#### DutchTrade
+
+A cheaper, simpler, trading method. Intended to be the new dominant trading method, with GnosisTrade (batch auctions) available as a faster-but-more-gas-expensive backup option.
+
+DutchTrade implements a two-stage, single-lot, falling price dutch auction. In the first 40% of the auction, the price falls from 1000x to the best-case price in a geometric/exponential decay as a price manipulation defense mechanism. Bids are not expected to occur (but note: unlike the GnosisTrade batch auction, this mechanism is not resistant to _arbitrary_ price manipulation).
+
+Over the last 60% of the auction, the price falls linearly from the best-case price to the worst-case price. Only a single bidder can bid fill the auction, and settlement is atomic. If no bids are received, the capital cycles back to the BackingManager and no loss is taken.
+
+Duration: 30 min (default)
+
+#### Assets and Collateral
+
+- Add `version() return (string)` getter to pave way for separation of asset versioning and core protocol versioning
+- Update `claimRewards()` on all assets to 3.0.0-style, without `delegatecall`
+- Add `lastSave()` to `RTokenAsset`
+
+## 2.1.0
+
+### Core protocol contracts
+
+- `BasketHandler`
+  - Bugfix for `getPrimeBasket()` view
+  - Minor change to `_price()` rounding
+  - Minor natspec improvement to `refreshBasket()`
+- `Broker`
+  - Fix `GnosisTrade` trade implemention to treat defensive rounding by EasyAuction correctly
+  - Add `setGnosis()` and `setTradeImplementation()` governance functions
+- `RToken`
+  - Minor gas optimization added to `redeemTo` to use saved `assetRegistry` variable
+- `StRSR`
+  - Expose RSR variables via `getDraftRSR()`, `getStakeRSR()`, and `getTotalDrafts()` views
+
+### Facades
+
+- `FacadeRead`
+  - Extend `issue()` to return the estimated USD value of deposits as `depositsUoA`
+  - Add `traderBalances()`
+  - Add `auctionsSettleable()`
+  - Add `nextRecollateralizationAuction()`
+  - Modify `backingOverview() to handle unpriced cases`
+- `FacadeAct`
+  - Add `runRevenueAuctions()`
+
+### Plugins
+
+#### Assets and Collateral
+
+Across all collateral, `tryPrice()` was updated to exclude revenueHiding considerations
+
+- Deploy CRV + CVX plugins
+- Add `AnkrStakedEthCollateral` + tests + deployment/verification scripts for ankrETH
+- Add FluxFinance collateral tests + deployment/verification scripts for fUSDC, fUSDT, fDAI, and fFRAX
+- Add CompoundV3 `CTokenV3Collateral` + tests + deployment/verification scripts for cUSDCV3
+- Add Convex `CvxStableCollateral` + tests + deployment/verification scripts for 3Pool
+- Add Convex `CvxVolatileCollateral` + tests + deployment/verification scripts for Tricrypto
+- Add Convex `CvxStableMetapoolCollateral` + tests + deployment/verification scripts for MIM/3Pool
+- Add Convex `CvxStableRTokenMetapoolCollateral` + tests + deployment/verification scripts for eUSD/fraxBP
+- Add Frax `SFraxEthCollateral` + tests + deployment/verification scripts for sfrxETH
+- Add Lido `LidoStakedEthCollateral` + tests + deployment/verification scripts for wstETH
+- Add RocketPool `RethCollateral` + tests + deployment/verification scripts for rETH
+
+### Testing
+
+- Add generic collateral testing suite at `test/plugins/individual-collateral/collateralTests.ts`
+- Add EasyAuction regression test for Broker false positive (observed during USDC de-peg)
+- Add EasyAuction extreme tests
+
+### Documentation
+
+- Add `docs/plugin-addresses.md` as well as accompanying script for generation at `scripts/collateral-params.ts`
+- Add `docs/exhaustive-tests.md` to document running exhaustive tests on GCP
 
 ## 2.0.0
 
@@ -104,59 +285,53 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Add `FacadeRead.redeem(IRToken rToken, uint256 amount, uint48 basketNonce)` to return the expected redemption quantities on the basketNonce, or revert
 - Integrate with OZ 4.7.3 Governance (changes to `quorum()`/t`proposalThreshold()`)
 
-## 2.1.0
+## 1.1.0
 
-#### Core protocol contracts
+- Introduce semantic versioning to the Deployer and RToken
+- `RTokenCreated` event: added `version` argument
 
-- `BasketHandler`
-  - Bugfix for `getPrimeBasket()` view
-  - Minor change to `_price()` rounding
-  - Minor natspec improvement to `refreshBasket()`
-- `Broker`
-  - Fix `GnosisTrade` trade implemention to treat defensive rounding by EasyAuction correctly
-  - Add `setGnosis()` and `setTradeImplementation()` governance functions
-- `RToken`
-  - Minor gas optimization added to `redeemTo` to use saved `assetRegistry` variable
-- `StRSR`
-  - Expose RSR variables via `getDraftRSR()`, `getStakeRSR()`, and `getTotalDrafts()` views
+```
+event RTokenCreated(
+        IMain indexed main,
+        IRToken indexed rToken,
+        IStRSR stRSR,
+        address indexed owner
+    );
 
-#### Facades
+```
 
-- `FacadeRead`
-  - Extend `issue()` to return the estimated USD value of deposits as `depositsUoA`
-  - Add `traderBalances()`
-  - Add `auctionsSettleable()`
-  - Add `nextRecollateralizationAuction()`
-  - Modify `backingOverview() to handle unpriced cases`
-- `FacadeAct`
-  - Add `runRevenueAuctions()`
+=>
 
-#### Assets
+```
+event RTokenCreated(
+        IMain indexed main,
+        IRToken indexed rToken,
+        IStRSR stRSR,
+        address indexed owner,
+        string version
+    );
 
-- Deploy CRV + CVX plugins
+```
 
-#### Collateral
+- Add `version()` getter on Deployer, Main, and all Components, via mix-in. To be updated with each subsequent release.
 
-Across all collateral, `tryPrice()` was updated to exclude revenueHiding considerations
+[d757d3a5a6097ae42c71fc03a7c787ec001d2efc](https://github.com/reserve-protocol/protocol/commit/d757d3a5a6097ae42c71fc03a7c787ec001d2efc)
 
-- Add `AnkrStakedEthCollateral` + tests + deployment/verification scripts for ankrETH
-- Add FluxFinance collateral tests + deployment/verification scripts for fUSDC, fUSDT, fDAI, and fFRAX
-- Add CompoundV3 `CTokenV3Collateral` + tests + deployment/verification scripts for cUSDCV3
-- Add Convex `CvxStableCollateral` + tests + deployment/verification scripts for 3Pool
-- Add Convex `CvxVolatileCollateral` + tests + deployment/verification scripts for Tricrypto
-- Add Convex `CvxStableMetapoolCollateral` + tests + deployment/verification scripts for MIM/3Pool
-- Add Convex `CvxStableRTokenMetapoolCollateral` + tests + deployment/verification scripts for eUSD/fraxBP
-- Add Frax `SFraxEthCollateral` + tests + deployment/verification scripts for sfrxETH
-- Add Lido `LidoStakedEthCollateral` + tests + deployment/verification scripts for wstETH
-- Add RocketPool `RethCollateral` + tests + deployment/verification scripts for rETH
+## 1.0.0
 
-#### Testing
+(This release is the one from the canonical lauch onstage in Bogota. We were missing semantic versioning at the time, but we call this the 1.0.0 release retroactively.)
 
-- Add generic collateral testing suite at `test/plugins/individual-collateral/collateralTests.ts`
-- Add EasyAuction regression test for Broker false positive (observed during USDC de-peg)
-- Add EasyAuction extreme tests
+[eda322894a5ed379bbda2b399c9d1cc65aa8c132](https://github.com/reserve-protocol/protocol/commit/eda322894a5ed379bbda2b399c9d1cc65aa8c132)
 
-#### Documentation
+# Links
 
-- Add `docs/plugin-addresses.md` as well as accompanying script for generation at `scripts/collateral-params.ts`
-- Add `docs/exhaustive-tests.md` to document running exhaustive tests on GCP
+- [[Unreleased]](https://github.com/reserve-protocol/protocol/releases/tag/3.0.0-rc1)
+  - https://github.com/reserve-protocol/protocol/compare/2.1.0-rc4...3.0.0
+- [[2.1.0]](https://github.com/reserve-protocol/protocol/releases/tag/2.1.0-rc4)
+  - https://github.com/reserve-protocol/protocol/compare/2.0.0-candidate-4...2.1.0-rc4
+- [[2.0.0]](https://github.com/reserve-protocol/protocol/releases/tag/2.0.0-candidate-4)
+  - https://github.com/reserve-protocol/protocol/compare/1.1.0...2.0.0-candidate-4
+- [[1.1.0]](https://github.com/reserve-protocol/protocol/releases/tag/1.1.0)
+  - https://github.com/reserve-protocol/protocol/compare/1.0.0...1.1.0
+- [[1.0.0]](https://github.com/reserve-protocol/protocol/releases/tag/1.0.0)
+  - https://github.com/reserve-protocol/protocol/releases/tag/1.0.0

@@ -1,8 +1,9 @@
+import { Decimal } from 'decimal.js'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { TestITrading, GnosisTrade } from '../../typechain'
-import { bn, fp, divCeil } from '../../common/numbers'
+import { bn, fp, divCeil, divRound } from '../../common/numbers'
 
 export const expectTrade = async (trader: TestITrading, auctionInfo: Partial<ITradeInfo>) => {
   if (!auctionInfo.sell) throw new Error('Must provide sell token to find trade')
@@ -105,16 +106,19 @@ export const dutchBuyAmount = async (
 
   const lowPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
   const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
-  const highPrice = middlePrice.add(divCeil(middlePrice, bn('2'))) // 50% above middlePrice
 
-  const price = progression.lt(fp('0.15'))
-    ? highPrice.sub(highPrice.sub(middlePrice).mul(progression).div(fp('0.15')))
-    : middlePrice.sub(
-        middlePrice
-          .sub(lowPrice)
-          .mul(progression.sub(fp('0.15')))
-          .div(fp('0.85'))
-      )
+  const FORTY_PERCENT = fp('0.4') // 40%
+  const SIXTY_PERCENT = fp('0.6') // 60%
 
+  let price: BigNumber
+  if (progression.lt(FORTY_PERCENT)) {
+    const exp = divRound(bn('6907752').mul(FORTY_PERCENT.sub(progression)), FORTY_PERCENT)
+    const divisor = new Decimal('999999').div('1000000').pow(exp.toString())
+    price = divCeil(middlePrice.mul(fp('1')), fp(divisor.toString()))
+  } else {
+    price = middlePrice.sub(
+      middlePrice.sub(lowPrice).mul(progression.sub(FORTY_PERCENT)).div(SIXTY_PERCENT)
+    )
+  }
   return divCeil(outAmount.mul(price), fp('1'))
 }

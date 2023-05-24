@@ -5,6 +5,10 @@ import "../p1/RToken.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 
+bytes1 constant MAJOR_VERSION_1 = bytes1("1");
+bytes1 constant MAJOR_VERSION_2 = bytes1("2");
+bytes1 constant MAJOR_VERSION_3 = bytes1("3");
+
 /**
  * @title IFacade
  * @notice A UX-friendly layer for non-governance protocol interactions
@@ -35,11 +39,7 @@ interface IFacadeRead {
     /// @return withdrawals The balances necessary to issue `amount` RToken
     /// @return isProrata True if the redemption is prorata and not full
     /// @custom:static-call
-    function redeem(
-        IRToken rToken,
-        uint256 amount,
-        uint48 basketNonce
-    )
+    function redeem(IRToken rToken, uint256 amount)
         external
         returns (
             address[] memory tokens,

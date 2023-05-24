@@ -153,12 +153,15 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 
 - stRSR.stake()
 - stRSR.unstake()
+- stRSR.cancelUnstaking()
+- stRSR.withdraw()
 - rToken.issue()
 - rToken.redeem()
 - {rsrTrader,rTokenTrader,backingManager}.claimRewards()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.grantRTokenAllowances()
-- backingManager.manageTokens\*()
+- backingManager.rebalance\*()
+- backingManager.forwardRevenue\*()
 - {rsrTrader,rTokenTrader}.manageToken()
 
 ### `@custom:governance`

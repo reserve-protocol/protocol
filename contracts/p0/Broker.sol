@@ -55,11 +55,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @dev Requires setting an allowance in advance
     /// @custom:protected
-    function openTrade(TradeKind kind, TradeRequest memory req)
-        external
-        notTradingPausedOrFrozen
-        returns (ITrade)
-    {
+    function openTrade(TradeKind kind, TradeRequest memory req) external returns (ITrade) {
         require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
 

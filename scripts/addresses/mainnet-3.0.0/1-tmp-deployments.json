@@ -1,0 +1,35 @@
+{
+  "prerequisites": {
+    "RSR": "0x320623b8e4ff03373931769a31fc52a4e78b5d70",
+    "RSR_FEED": "0x759bBC1be8F90eE6457C44abc7d443842a976d02",
+    "GNOSIS_EASY_AUCTION": "0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101"
+  },
+  "tradingLib": "",
+  "cvxMiningLib": "",
+  "facadeRead": "0xad0BFAEE863B1102e9fD4e6330A02B08d885C715",
+  "facadeAct": "0xBe70970a10C186185b1bc1bE980eA09BD68fD97A",
+  "facadeWriteLib": "",
+  "basketLib": "",
+  "facadeWrite": "",
+  "deployer": "",
+  "rsrAsset": "0x9cd0F8387672fEaaf7C269b62c34C53590d7e948",
+  "implementations": {
+    "main": "",
+    "trading": {
+      "gnosisTrade": "",
+      "dutchTrade": ""
+    },
+    "components": {
+      "assetRegistry": "",
+      "backingManager": "",
+      "basketHandler": "",
+      "broker": "",
+      "distributor": "",
+      "furnace": "",
+      "rsrTrader": "",
+      "rTokenTrader": "",
+      "rToken": "",
+      "stRSR": ""
+    }
+  }
+}

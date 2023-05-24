@@ -29,7 +29,7 @@ import {
   IMPLEMENTATION,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
 
@@ -381,48 +381,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await expect(
           broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest)
         ).to.be.revertedWith('broker disabled')
-      })
-    })
-
-    it('Should not allow to open trade if trading paused', async () => {
-      await main.connect(owner).pauseTrading()
-
-      // Attempt to open trade
-      const tradeRequest: ITradeRequest = {
-        sell: collateral0.address,
-        buy: collateral1.address,
-        sellAmount: bn('100e18'),
-        minBuyAmount: bn('0'),
-      }
-
-      await whileImpersonating(backingManager.address, async (bmSigner) => {
-        await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
-        ).to.be.revertedWith('frozen or trading paused')
-        await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest)
-        ).to.be.revertedWith('frozen or trading paused')
-      })
-    })
-
-    it('Should not allow to open trade if frozen', async () => {
-      await main.connect(owner).freezeShort()
-
-      // Attempt to open trade
-      const tradeRequest: ITradeRequest = {
-        sell: collateral0.address,
-        buy: collateral1.address,
-        sellAmount: bn('100e18'),
-        minBuyAmount: bn('0'),
-      }
-
-      await whileImpersonating(backingManager.address, async (bmSigner) => {
-        await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
-        ).to.be.revertedWith('frozen or trading paused')
-        await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest)
-        ).to.be.revertedWith('frozen or trading paused')
       })
     })
 
@@ -923,7 +881,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
 
         // Advance time till trade can be settled
-        await advanceTime(config.batchAuctionLength.add(100).toString())
+        await advanceToTimestamp(await trade.endTime())
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -992,9 +950,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.sell()).to.equal(token0.address)
         expect(await trade.buy()).to.equal(token1.address)
         expect(await trade.sellAmount()).to.equal(amount)
-        expect(await trade.startTime()).to.equal(await getLatestBlockTimestamp())
+        expect(await trade.startTime()).to.equal((await getLatestBlockTimestamp()) + 12)
         expect(await trade.endTime()).to.equal(
-          (await getLatestBlockTimestamp()) + Number(config.dutchAuctionLength)
+          (await trade.startTime()) + config.dutchAuctionLength.toNumber()
         )
         const [sellLow, sellHigh] = await collateral0.price()
         const [buyLow, buyHigh] = await collateral1.price()
@@ -1076,7 +1034,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
 
         // Advance time till trade can be settled
-        await advanceTime(config.batchAuctionLength.add(100).toString())
+        await advanceTime(config.dutchAuctionLength.add(100).toString())
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {

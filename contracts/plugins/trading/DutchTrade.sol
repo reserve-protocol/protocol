@@ -7,22 +7,36 @@ import "../../libraries/Fixed.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/ITrade.sol";
 
-uint192 constant FIFTEEN_PERCENT = 15e16; // {1}
-uint192 constant FIFTY_PERCENT = 50e16; // {1}
-uint192 constant EIGHTY_FIVE_PERCENT = 85e16; // {1}
+uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
+uint192 constant SIXTY_PERCENT = 6e17; // {1} 0.6
+
+// Exponential price decay with base (999999/1000000). Price starts at 1000x and decays to 1x
+//   A 30-minute auction on a chain with a 12-second blocktime has a ~10.87% price drop per block
+//   during the geometric/exponential period and a 0.05% drop during the linear period.
+//   30-minutes is the recommended length of auction for a chain with 12-second blocktimes, but
+//   longer and shorter times can be used as well. The pricing algorithm does not degrade
+//   beyond the degree to which less overall blocktime means necessarily larger price drops.
+uint192 constant MAX_EXP = 6907752 * FIX_ONE; // {1} (1000000/999999)^6907752 = ~1000x
+uint192 constant BASE = 999999e12; // {1} (999999/1000000)
 
 /**
  * @title DutchTrade
  * @notice Implements a wholesale dutch auction via a piecewise falling-price mechansim.
- *   Over the first 15% of the auction the price falls from the ~150% pricepoint to the
- *   best price, as given by the price range. Over the last 85% of the auction it falls
- *   from the best price to the worst price. The worst price is additionally discounted by
- *   the maxTradeSlippage based on how far between minTradeVolume and maxTradeVolume the trade is.
+ *   Over the first 40% of the auction the price falls from ~1000x the best plausible price
+ *   down to the best plausible price in a geometric series. The price decreases by the same %
+ *   each time. At 30 minutes the decreases are 10.87% per block. Longer auctions have
+ *   smaller price decreases, and shorter auctions have larger price decreases.
+ *   This period DOES NOT expect to receive a bid; it just defends against manipulated prices.
+ *
+ *   Over the last 60% of the auction the price falls from the best plausible price to the worst
+ *   price, linearly. The worst price is further discounted by the maxTradeSlippage as a fraction
+ *   of how far from minTradeVolume to maxTradeVolume the trade lies.
+ *   At maxTradeVolume, no further discount is applied.
  *
  * To bid:
- * - Call `bidAmount()` to check price at various timestamps
- * - Wait until desirable block is reached
- * - Provide approval of buy tokens and call bid(). Swap will be atomic
+ * - Call `bidAmount()` view to check prices at various timestamps
+ * - Wait until a desirable block is reached (hopefully not in the first 40% of the auction)
+ * - Provide approval of buy tokens and call bid(). The swap will be atomic
  */
 contract DutchTrade is ITrade {
     using FixLib for uint192;
@@ -32,19 +46,20 @@ contract DutchTrade is ITrade {
 
     TradeStatus public status; // reentrancy protection
 
-    ITrading public origin; // creator
+    ITrading public origin; // the address that initialized the contract
 
     // === Auction ===
     IERC20Metadata public sell;
     IERC20Metadata public buy;
     uint192 public sellAmount; // {sellTok}
 
-    uint48 public startTime; // {s} when the dutch auction began
-    uint48 public endTime; // {s} when the dutch auction ends, if no bids are received
+    // The auction runs from [startTime, endTime], inclusive
+    uint48 public startTime; // {s} when the dutch auction begins (12s after init())
+    uint48 public endTime; // {s} when the dutch auction ends if no bids are received
 
+    // highPrice is always 1000x the middlePrice, so we don't need to track it explicitly
     uint192 public middlePrice; // {buyTok/sellTok} The price at which the function is piecewise
     uint192 public lowPrice; // {buyTok/sellTok} The price the auction ends at
-    // highPrice is always 1.5x the middlePrice
 
     // === Bid ===
     address public bidder;
@@ -59,6 +74,24 @@ contract DutchTrade is ITrade {
         status = end;
     }
 
+    // === Public Bid Helper ===
+
+    /// Calculates how much buy token is needed to purchase the lot, at a particular timestamp
+    /// @param timestamp {s} The block timestamp to get price for
+    /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
+    function bidAmount(uint48 timestamp) public view returns (uint256) {
+        require(timestamp >= startTime, "auction not started");
+        require(timestamp <= endTime, "auction over");
+
+        // {buyTok/sellTok}
+        uint192 price = _price(timestamp);
+
+        // {qBuyTok} = {sellTok} * {buyTok/sellTok} * {qBuyTok/buyTok}
+        return sellAmount.mul(price, CEIL).shiftl_toUint(int8(buy.decimals()), CEIL);
+    }
+
+    // === External ===
+
     /// @param origin_ The Trader that originated the trade
     /// @param sell_ The asset being sold by the protocol
     /// @param buy_ The asset being bought by the protocol
@@ -71,11 +104,13 @@ contract DutchTrade is ITrade {
         uint256 sellAmount_,
         uint48 auctionLength
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
-        assert(address(sell_) != address(0) && address(buy_) != address(0)); // misuse of contract
+        assert(
+            address(sell_) != address(0) &&
+                address(buy_) != address(0) &&
+                auctionLength >= 2 * ONE_BLOCK
+        ); // misuse by caller
 
         // Only start dutch auctions under well-defined prices
-        //
-        // In the BackingManager this may end up recalculating the RToken price
         (uint192 sellLow, uint192 sellHigh) = sell_.price(); // {UoA/sellTok}
         (uint192 buyLow, uint192 buyHigh) = buy_.price(); // {UoA/buyTok}
         require(sellLow > 0 && sellHigh < FIX_MAX, "bad sell pricing");
@@ -87,58 +122,44 @@ contract DutchTrade is ITrade {
 
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
-        startTime = uint48(block.timestamp);
-        endTime = uint48(block.timestamp) + auctionLength;
+        startTime = uint48(block.timestamp) + ONE_BLOCK; // start in the next block
+        endTime = startTime + auctionLength;
 
-        // {UoA}
-        uint192 maxTradeVolume = fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume());
-        uint192 minTradeVolume = origin.minTradeVolume();
+        // {1}
+        uint192 slippage = _slippage(
+            sellAmount.mul(sellHigh, FLOOR), // auctionVolume
+            origin.minTradeVolume(), // minTradeVolume
+            fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume()) // maxTradeVolume
+        );
 
-        // Apply sliding slippage from 0% at maxTradeVolume to maxTradeSlippage() at minTradeVolume
-        uint192 slippage = origin.maxTradeSlippage(); // {1}
-        if (minTradeVolume < maxTradeVolume) {
-            // {UoA} = {sellTok} * {UoA/sellTok}
-            uint192 auctionVolume = sellAmount.mul(sellHigh, FLOOR);
-
-            if (auctionVolume > minTradeVolume && auctionVolume <= maxTradeVolume) {
-                // {1} = {1} * ({UoA} - {UoA}} / ({UoA} - {UoA})
-                slippage = slippage.mul(
-                    FIX_ONE - divuu(auctionVolume - minTradeVolume, maxTradeVolume - minTradeVolume)
-                );
-            } else if (auctionVolume > maxTradeVolume) {
-                slippage = 0;
-            }
-        }
-        // {buyTok/sellTok} = {1} * {UoA/sellTok} / {UoA/buyTok}
+        // {buyTok/sellTok} = {UoA/sellTok} * {1} / {UoA/buyTok}
         lowPrice = sellLow.mulDiv(FIX_ONE - slippage, buyHigh, FLOOR);
         middlePrice = sellHigh.div(buyLow, CEIL); // no additional slippage
-        // highPrice = 1.5 * middlePrice
+        // highPrice = 1000 * middlePrice
 
-        require(lowPrice <= middlePrice, "asset inverted pricing");
+        assert(lowPrice <= middlePrice);
     }
 
     /// Bid for the auction lot at the current price; settling atomically via a callback
     /// @dev Caller must have provided approval
     /// @return amountIn {qBuyTok} The quantity of tokens the bidder paid
     function bid() external returns (uint256 amountIn) {
-        require(bidder == address(0), "bid received");
+        require(bidder == address(0), "bid already received");
 
         // {qBuyTok}
-        amountIn = bidAmount(uint48(block.timestamp));
+        amountIn = bidAmount(uint48(block.timestamp)); // enforces auction ongoing
 
         // Transfer in buy tokens
         bidder = msg.sender;
         buy.safeTransferFrom(bidder, address(this), amountIn);
 
-        // TODO examine reentrancy - think it's probably ok
-        // the other candidate design is ditch the bid() function entirely and have them transfer
-        // tokens directly into this contract followed by origin.settleTrade(), but I don't like
-        // that pattern because it means humans cannot bid without a smart contract helper.
-        // also requires changing the function signature of settle() to accept the caller address
-
-        // settle() via callback; may also start a new Trade
+        // status must begin OPEN
         assert(status == TradeStatus.OPEN);
+
+        // settle() via callback
         origin.settleTrade(sell);
+
+        // confirm callback succeeded
         assert(status == TradeStatus.CLOSED);
     }
 
@@ -150,7 +171,7 @@ contract DutchTrade is ITrade {
         stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
-        require(msg.sender == address(origin), "only origin can settle"); // origin.settleTrade()
+        require(msg.sender == address(origin), "only origin can settle");
 
         // Received bid
         if (bidder != address(0)) {
@@ -179,41 +200,56 @@ contract DutchTrade is ITrade {
     /// @return True if the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
-        return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp >= endTime);
+        return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp > endTime);
     }
 
-    // === Bid Helper ===
+    // === Private ===
 
-    /// Calculates how much buy token is needed to purchase the lot, at a particular timestamp
-    /// Price Curve:
-    ///   - 1.5 * middlePrice down to the middlePrice for first 15% of auction
-    ///   - middlePrice down to lowPrice for the last 85% of auction
-    /// @param timestamp {s} The block timestamp to get price for
-    /// @return {qBuyTok} The amount of buy tokens required to purchase the lot
-    function bidAmount(uint48 timestamp) public view returns (uint256) {
-        require(timestamp > startTime, "cannot bid block auction was created");
-        require(timestamp < endTime, "auction over");
+    /// Return a sliding % from 0 (at maxTradeVolume) to maxTradeSlippage (at minTradeVolume)
+    /// @param auctionVolume {UoA} The actual auction volume
+    /// @param minTradeVolume {UoA} The minimum trade volume
+    /// @param maxTradeVolume {UoA} The maximum trade volume
+    /// @return slippage {1} The fraction of auctionVolume that should be permitted as slippage
+    function _slippage(
+        uint192 auctionVolume,
+        uint192 minTradeVolume,
+        uint192 maxTradeVolume
+    ) private view returns (uint192 slippage) {
+        slippage = origin.maxTradeSlippage(); // {1}
+        if (maxTradeVolume <= minTradeVolume || auctionVolume < minTradeVolume) return slippage;
+        if (auctionVolume > maxTradeVolume) return 0; // 0% slippage beyond maxTradeVolume
 
-        uint192 progression = divuu(timestamp - startTime, endTime - startTime);
-        // assert(progression <= FIX_ONE);
+        // {1} = {1} * ({UoA} - {UoA}} / ({UoA} - {UoA})
+        return
+            slippage.mul(
+                FIX_ONE - divuu(auctionVolume - minTradeVolume, maxTradeVolume - minTradeVolume)
+            );
+    }
 
-        // {buyTok/sellTok}
-        uint192 price;
+    /// Return the price of the auction at a particular timestamp
+    /// @param timestamp {s} The block timestamp
+    /// @return {buyTok/sellTok}
+    function _price(uint48 timestamp) private view returns (uint192) {
+        /// Price Curve:
+        ///   - first 40%: geometrically decrease the price from 1000x the middlePrice to 1x
+        ///   - last 60: decrease linearly from middlePrice to lowPrice
 
-        if (progression < FIFTEEN_PERCENT) {
-            // Fast decay -- 15th percentile case
+        uint192 progression = divuu(timestamp - startTime, endTime - startTime); // {1}
 
-            // highPrice is 1.5x middlePrice
-            uint192 highPrice = middlePrice + middlePrice.mul(FIFTY_PERCENT);
-            price = highPrice - (highPrice - middlePrice).mulDiv(progression, FIFTEEN_PERCENT);
-        } else {
-            // Slow decay -- 85th percentile case
-            price =
-                middlePrice -
-                (middlePrice - lowPrice).mulDiv(progression - FIFTEEN_PERCENT, EIGHTY_FIVE_PERCENT);
+        // Fast geometric decay -- 0%-40% of auction
+        if (progression < FORTY_PERCENT) {
+            uint192 exp = MAX_EXP.mulDiv(FORTY_PERCENT - progression, FORTY_PERCENT, ROUND);
+
+            // middlePrice * ((1000000/999999) ^ exp) = middlePrice / ((999999/1000000) ^ exp)
+            // safe uint48 downcast: exp is at-most 6907752
+            // {buyTok/sellTok} = {buyTok/sellTok} / {1} ^ {1}
+            return middlePrice.div(BASE.powu(uint48(exp.toUint(ROUND))), CEIL);
+            // this reverts for middlePrice >= 6.21654046e36 * FIX_ONE
         }
 
-        // {qBuyTok} = {sellTok} * {buyTok/sellTok}
-        return sellAmount.mul(price, CEIL).shiftl_toUint(int8(buy.decimals()), CEIL);
+        // Slow linear decay -- 40%-100% of auction
+        return
+            middlePrice -
+            (middlePrice - lowPrice).mulDiv(progression - FORTY_PERCENT, SIXTY_PERCENT);
     }
 }

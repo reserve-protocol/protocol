@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
-import "./IAnkrETH.sol";
+import "./vendor/IAnkrETH.sol";
 
 /**
  * @title Ankr Staked Eth Collateral

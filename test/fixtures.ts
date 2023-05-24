@@ -78,7 +78,7 @@ export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
 
 // This will have to be updated on each release
-export const VERSION = '2.1.0'
+export const VERSION = '3.0.0'
 
 export type Collateral =
   | FiatCollateral
@@ -442,7 +442,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
     batchAuctionLength: bn('900'), // 15 minutes
-    dutchAuctionLength: bn('600'), // 10 minutes
+    dutchAuctionLength: bn('1800'), // 30 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     issuanceThrottle: {
