@@ -10,11 +10,10 @@ bytes1 constant MAJOR_VERSION_2 = bytes1("2");
 bytes1 constant MAJOR_VERSION_3 = bytes1("3");
 
 /**
- * @title IFacade
- * @notice A UX-friendly layer for non-governance protocol interactions
+ * @title IFacadeRead
+ * @notice A UX-friendly layer for read operations, especially those that first require refresh()
  *
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
- * - @custom:view - Regular view
 v */
 interface IFacadeRead {
     // === Static Calls ===
@@ -71,38 +70,6 @@ interface IFacadeRead {
             uint256[] memory balancesNeededByBackingManager
         );
 
-    /// To use this, call via callStatic.
-    /// If canStart is true, call backingManager.rebalance(). May require settling a
-    /// trade first; see auctionsSettleable.
-    /// @return canStart true iff a recollateralization auction can be started
-    /// @return sell The sell token in the auction
-    /// @return buy The buy token in the auction
-    /// @return sellAmount {qSellTok} How much would be sold
-    /// @custom:static-call
-    function nextRecollateralizationAuction(IBackingManager bm)
-        external
-        returns (
-            bool canStart,
-            IERC20 sell,
-            IERC20 buy,
-            uint256 sellAmount
-        );
-
-    /// To use this, call via callStatic.
-    /// @return erc20s The ERC20s that have auctions that can be started
-    /// @return canStart If the ERC20 auction can be started
-    /// @return surpluses {qTok} The surplus amount
-    /// @return minTradeAmounts {qTok} The minimum amount worth trading
-    /// @custom:static-call
-    function revenueOverview(IRevenueTrader revenueTrader)
-        external
-        returns (
-            IERC20[] memory erc20s,
-            bool[] memory canStart,
-            uint256[] memory surpluses,
-            uint256[] memory minTradeAmounts
-        );
-
     // === Views ===
 
     struct Pending {
@@ -113,7 +80,6 @@ interface IFacadeRead {
 
     /// @param account The account for the query
     /// @return All the pending StRSR unstakings for an account
-    /// @custom:view
     function pendingUnstakings(RTokenP1 rToken, address account)
         external
         view
@@ -143,11 +109,9 @@ interface IFacadeRead {
         returns (IERC20[] memory erc20s, uint256 max);
 
     /// @return tokens The ERC20s backing the RToken
-    /// @custom:view
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens);
 
     /// @return stTokenAddress The address of the corresponding stToken address
-    /// @custom:view
     function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress);
 
     /// @return backing The worst-case collaterazation % the protocol will have after done trading

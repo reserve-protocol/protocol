@@ -37,7 +37,7 @@ import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { CollateralStatus, TradeKind, MAX_UINT256 } from '#/common/constants'
 import { mintCollaterals } from './utils/tokens'
 
-describe('FacadeRead contract', () => {
+describe('FacadeRead + FacadeAct contracts', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -414,7 +414,7 @@ describe('FacadeRead contract', () => {
 
         // revenue
         const [erc20s, canStart, surpluses, minTradeAmounts] =
-          await facade.callStatic.revenueOverview(trader.address)
+          await facadeAct.callStatic.revenueOverview(trader.address)
         expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
 
         const erc20sToStart = []
@@ -470,7 +470,7 @@ describe('FacadeRead contract', () => {
 
       // Confirm nextRecollateralizationAuction is true
       const [canStart, sell, buy, sellAmount] =
-        await facade.callStatic.nextRecollateralizationAuction(backingManager.address)
+        await facadeAct.callStatic.nextRecollateralizationAuction(backingManager.address)
       expect(canStart).to.equal(true)
       expect(sell).to.equal(token.address)
       expect(buy).to.equal(usdc.address)
