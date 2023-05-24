@@ -33,6 +33,7 @@ import { bn, fp } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
+  BasketHandlerP1,
   CTokenFiatCollateral,
   DutchTrade,
   CTokenVaultMock,
@@ -76,6 +77,8 @@ import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
+
+const itP1 = IMPLEMENTATION == Implementation.P1 ? it : it.skip
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -1667,6 +1670,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     let eurToken: ERC20Mock
 
     beforeEach(async () => {
+      await upgrades.silenceWarnings()
+
       if (IMPLEMENTATION == Implementation.P0) {
         const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP0')
         freshBasketHandler = <TestIBasketHandler>((await BasketHandlerFactory.deploy()) as unknown)
@@ -2243,6 +2248,61 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           )
         const balsAfter = await getBalances(addr1.address, expectedTokens)
         expectDelta(balsBefore, quote.quantities, balsAfter)
+      })
+
+      itP1('Should return historical basket correctly', async () => {
+        const bskHandlerP1: BasketHandlerP1 = <BasketHandlerP1>(
+          await ethers.getContractAt('BasketHandlerP1', basketHandler.address)
+        )
+
+        // Returns the current prime basket
+        let [erc20s, quantities] = await bskHandlerP1.getHistoricalBasket(1)
+        expect(erc20s.length).to.equal(4)
+        expect(quantities.length).to.equal(4)
+        const prevERC20s = [token0.address, token1.address, token2.address, token3.address]
+        const prevQtys = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('1.25e9')]
+
+        for (let i = 0; i < 4; i++) {
+          expect(erc20s[i]).to.equal(prevERC20s[i])
+          expect(quantities[i]).to.equal(prevQtys[i])
+        }
+
+        // add 2nd token to backup config
+        await basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
+            backupToken1.address,
+            backupToken2.address,
+          ])
+        // default usdc & refresh basket to use backup collateral
+        await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
+        await daiChainlink.updateAnswer(bn('0.8e8')) // default token0, token2, token3
+        await basketHandler.refreshBasket()
+        await advanceTime(Number(config.warmupPeriod) + 1)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+
+        // Get basket for current nonce
+        ;[erc20s, quantities] = await bskHandlerP1.getHistoricalBasket(2)
+        expect(erc20s.length).to.equal(2)
+        expect(quantities.length).to.equal(2)
+        const newERC20s = [backupToken1.address, backupToken2.address]
+        const newQtys = [bn('0.5e18'), bn('0.5e18')]
+
+        for (let i = 0; i < 2; i++) {
+          expect(erc20s[i]).to.equal(newERC20s[i])
+          expect(quantities[i]).to.equal(newQtys[i])
+        }
+
+        // Get basket for prior nonce - will get full quantities
+        ;[erc20s, quantities] = await bskHandlerP1.getHistoricalBasket(1)
+        expect(erc20s.length).to.equal(4)
+        expect(quantities.length).to.equal(4)
+
+        for (let i = 0; i < 4; i++) {
+          expect(erc20s[i]).to.equal(prevERC20s[i])
+          expect(quantities[i]).to.equal(prevQtys[i])
+        }
       })
     })
 
