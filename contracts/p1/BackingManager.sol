@@ -88,6 +88,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             // solhint-disable-next-line no-empty-blocks
             try this.rebalance(trade.KIND()) {} catch (bytes memory errData) {
                 // prevent MEV searchers from providing less gas on purpose by reverting if OOG
+                // untested:
+                //     OOG pattern tested in other contracts, cost to test here is high
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }

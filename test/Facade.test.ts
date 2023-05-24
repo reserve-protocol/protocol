@@ -37,7 +37,7 @@ import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { CollateralStatus, TradeKind, MAX_UINT256 } from '#/common/constants'
 import { mintCollaterals } from './utils/tokens'
 
-describe('FacadeRead contract', () => {
+describe('FacadeRead + FacadeAct contracts', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -406,9 +406,15 @@ describe('FacadeRead contract', () => {
         const tokenSurplus = bn('0.5e18')
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
+        // Set lotLow to 0 == revenueOverview() should not revert
+        await setOraclePrice(usdcAsset.address, bn('0'))
+        await usdcAsset.refresh()
+        const [lotLow] = await usdcAsset.lotPrice()
+        expect(lotLow).to.equal(0)
+
         // revenue
         const [erc20s, canStart, surpluses, minTradeAmounts] =
-          await facade.callStatic.revenueOverview(trader.address)
+          await facadeAct.callStatic.revenueOverview(trader.address)
         expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
 
         const erc20sToStart = []
@@ -424,7 +430,7 @@ describe('FacadeRead contract', () => {
           const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
           const [low] = await asset.price()
           expect(minTradeAmounts[i]).to.equal(
-            minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low)
+            low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
           ) // 1% oracleError
         }
 
@@ -464,7 +470,7 @@ describe('FacadeRead contract', () => {
 
       // Confirm nextRecollateralizationAuction is true
       const [canStart, sell, buy, sellAmount] =
-        await facade.callStatic.nextRecollateralizationAuction(backingManager.address)
+        await facadeAct.callStatic.nextRecollateralizationAuction(backingManager.address)
       expect(canStart).to.equal(true)
       expect(sell).to.equal(token.address)
       expect(buy).to.equal(usdc.address)

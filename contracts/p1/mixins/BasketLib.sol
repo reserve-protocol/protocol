@@ -288,6 +288,8 @@ library BasketLibP1 {
         IERC20 erc20,
         IAssetRegistry assetRegistry
     ) private view returns (bool) {
+        // untestable:
+        //      ERC20 is not address(0), validated when setting prime/backup baskets
         if (address(erc20) == address(0)) return false;
         // P1 gas optimization
         // We do not need to check that the ERC20 is not a system token
