@@ -73,6 +73,8 @@ contract FacadeRead is IFacadeRead {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IAsset asset = reg.toAsset(IERC20(tokens[i]));
             (uint192 low, uint192 high) = asset.price();
+            // untestable:
+            //      if high == FIX_MAX then low has to be zero, so this check will not be reached
             if (low == 0 || high == FIX_MAX) continue;
 
             uint192 mid = (low + high) / 2;

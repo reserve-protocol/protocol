@@ -207,6 +207,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         while (start < endId && queue[start].rsrAmount == 0 && queue[start].stakeAmount == 0)
             start++;
 
+        // Return if nothing to process
+        if (start == endId) return;
+
         // Accumulate and zero executable withdrawals
         uint256 total = 0;
         uint256 i = start;
