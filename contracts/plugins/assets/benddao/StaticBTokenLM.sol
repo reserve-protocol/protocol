@@ -13,8 +13,7 @@ import { IScaledBalanceToken } from "./vendor/interfaces/IScaledBalanceToken.sol
 
 import { StaticBTokenErrors } from "./StaticBTokenErrors.sol";
 
-import { ReentrancyGuard } from "./ReentrancyGuard.sol";
-
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { WadRayMath } from "./vendor/libraries/WadRayMath.sol";
 import { RayMathNoRounding } from "./RayMathNoRounding.sol";
