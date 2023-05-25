@@ -2304,7 +2304,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const amount = fp('10000')
         const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
 
-        console.log(quote)
         expect(quote.erc20s.length).equal(4)
         expect(quote.quantities.length).equal(4)
 
