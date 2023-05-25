@@ -401,6 +401,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // Add-in refAmts contribution from historical basket
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
                 IERC20 erc20 = b.erc20s[j];
+                // untestable:
+                //     previous baskets erc20s do not contain the zero address
                 if (address(erc20) == address(0)) continue;
 
                 // Ugly search through erc20sAll
@@ -531,12 +533,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         IERC20[] calldata newERC20s,
         uint192[] calldata newTargetAmts
     ) private {
-        // Empty _targetAmts mapping
-        while (_targetAmts.length() > 0) {
-            (bytes32 key, ) = _targetAmts.at(0);
-            _targetAmts.remove(key);
-        }
-
         // Populate _targetAmts mapping with old basket config
         uint256 len = config.erc20s.length;
         for (uint256 i = 0; i < len; ++i) {

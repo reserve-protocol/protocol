@@ -1009,6 +1009,20 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
       })
 
+      it('Should not settle trades if trading paused', async () => {
+        await main.connect(owner).pauseTrading()
+        await expect(backingManager.settleTrade(token0.address)).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+      })
+
+      it('Should not settle trades if frozen', async () => {
+        await main.connect(owner).freezeShort()
+        await expect(backingManager.settleTrade(token0.address)).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+      })
+
       context('Should successfully recollateralize after governance basket switch', () => {
         afterEach(async () => {
           // Should be fully capitalized again
