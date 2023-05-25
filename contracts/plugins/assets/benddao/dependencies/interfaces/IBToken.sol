@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity 0.8.4;
+pragma solidity 0.8.17;
 
 import { ILendPoolAddressesProvider } from "./ILendPoolAddressesProvider.sol";
 import { IIncentivesController } from "./IIncentivesController.sol";

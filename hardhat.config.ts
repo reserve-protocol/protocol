@@ -75,7 +75,7 @@ const config: HardhatUserConfig = {
       },
       // gasPrice: 10_000_000_000,
       gasMultiplier: 1.015, // 1.5% buffer; seen failures on RToken deployment and asset refreshes
-    }
+    },
   },
   solidity: {
     compilers: [
@@ -84,13 +84,9 @@ const config: HardhatUserConfig = {
         settings,
       },
       {
-        version: '0.8.4',
-        settings,
-      },
-      {
         version: '0.6.12',
         settings,
-      }
+      },
     ],
     overrides: {
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
