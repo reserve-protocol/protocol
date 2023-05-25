@@ -4,7 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
-import { IConfig } from '../common/configuration'
+import { IConfig, GNOSIS_MAX_TOKENS } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
   FURNACE_DEST,
@@ -12,6 +12,7 @@ import {
   ZERO_ADDRESS,
   CollateralStatus,
   TradeKind,
+  MAX_UINT192,
 } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, fp, near } from '../common/numbers'
@@ -449,6 +450,119 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .withArgs(anyValue, token0.address, rToken.address, issueAmount, withinQuad(minBuyAmt))
       })
 
+      it('Should forward revenue to traders', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.emit(
+          aaveToken,
+          'Transfer'
+        )
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmt.mul(60).div(100))
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmt.mul(40).div(100))
+      })
+
+      it('Should not forward revenue if basket not ready', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Default a token and update basket status
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        await collateral0.refresh()
+        expect(await collateral0.status()).to.equal(CollateralStatus.IFFY)
+        await basketHandler.trackStatus()
+
+        // Cannot forward if not SOUND
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'basket not ready'
+        )
+
+        // Regain SOUND
+        await setOraclePrice(collateral0.address, bn('1e8'))
+        await collateral0.refresh()
+        expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
+        await basketHandler.trackStatus()
+
+        // Still cannot forward revenue, in warmup period
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'basket not ready'
+        )
+
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Advance time post warmup period
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
+        // Now we can forward revenue successfully
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.emit(
+          aaveToken,
+          'Transfer'
+        )
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmt.mul(60).div(100))
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmt.mul(40).div(100))
+      })
+
+      it('Should not forward revenue if paused', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Pause
+        await main.connect(owner).pauseTrading()
+
+        // Cannot forward revenue
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+      })
+
+      it('Should not forward revenue if frozen', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Pause
+        await main.connect(owner).freezeShort()
+
+        // Cannot forward revenue
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+      })
+
+      it('Should forward RSR revenue directly to StRSR', async () => {
+        const amount = bn('2000e18')
+        await rsr.connect(owner).mint(backingManager.address, amount)
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(amount)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        await expect(backingManager.forwardRevenue([rsr.address])).to.emit(rsr, 'Transfer')
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
+      })
+
       it('Should not launch revenue auction if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
@@ -800,6 +914,53 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check destinations, nothing still -  Auctions need to be completed
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
+      it('Should handle GNOSIS_MAX_TOKENS cap in BATCH_AUCTION', async () => {
+        // Set Max trade volume very high for both assets in trade
+        const chainlinkFeed = <MockV3Aggregator>(
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+        )
+        const newSellAsset: Asset = <Asset>(
+          await AssetFactory.deploy(
+            PRICE_TIMEOUT,
+            chainlinkFeed.address,
+            ORACLE_ERROR,
+            aaveToken.address,
+            MAX_UINT192,
+            ORACLE_TIMEOUT
+          )
+        )
+
+        const newRSRAsset: Asset = <Asset>(
+          await AssetFactory.deploy(
+            PRICE_TIMEOUT,
+            await rsrAsset.chainlinkFeed(),
+            ORACLE_ERROR,
+            rsr.address,
+            MAX_UINT192,
+            ORACLE_TIMEOUT
+          )
+        )
+
+        // Perform asset swap
+        await assetRegistry.connect(owner).swapRegistered(newSellAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
+        await basketHandler.refreshBasket()
+
+        // Set rewards manually
+        const amount = MAX_UINT192
+        await aaveToken.connect(owner).mint(rsrTrader.address, amount)
+
+        const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rsrTrader.address)
+
+        await expect(
+          p1RevenueTrader.manageToken(aaveToken.address, TradeKind.BATCH_AUCTION)
+        ).to.emit(rsrTrader, 'TradeStarted')
+
+        // Check trade is using the GNOSIS limits
+        const trade = await getTrade(rsrTrader, aaveToken.address)
+        expect(await trade.initBal()).to.equal(GNOSIS_MAX_TOKENS)
       })
 
       it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -3113,6 +3274,46 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(backingManager.forwardRevenue([])).to.emit(rToken, 'Transfer')
         expect(await rToken.totalSupply()).to.equal(mintAmt.mul(2))
         expect(await rToken.basketsNeeded()).to.equal(mintAmt.mul(2))
+      })
+
+      it('Should not forward revenue before trading delay', async () => {
+        // Set trading delay
+        const newDelay = 3600
+        await backingManager.connect(owner).setTradingDelay(newDelay) // 1 hour
+
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Switch basket
+        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+        await expect(basketHandler.connect(owner).refreshBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(3, [token1.address], [fp('1')], false)
+
+        // Cannot forward revenue yet
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'trading delayed'
+        )
+
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Advance time post trading delay
+        await advanceTime(newDelay + 1)
+
+        // Now we can forward revenue successfully
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.emit(
+          aaveToken,
+          'Transfer'
+        )
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmt.mul(60).div(100))
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmt.mul(40).div(100))
       })
     })
   })
