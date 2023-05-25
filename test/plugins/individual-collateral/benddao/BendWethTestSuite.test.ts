@@ -16,6 +16,7 @@ import {
   REVENUE_HIDING,
   WETH,
 } from './constants'
+import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from '../../../utils/time'
 import {
   ERC20Mock,
   IStaticBToken,
@@ -125,12 +126,9 @@ const mintCollateralTo: MintCollateralFunc<BendCollateralFixtureContext> = async
   await mintStaticBendWeth(ctx.weth, ctx.staticBendWeth, user, amount, recipient)
 }
 
-// const increaseRefPerTok = async (ctx: BendCollateralFixtureContext, pctIncrease: BigNumberish) => {
 const increaseRefPerTok = async () => {
-  // TODO
-  // get current normalized income
-  // estimate how long it would take to reach pctIncrease
-  // forward time
+  await advanceBlocks(1000)
+  await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12000)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
