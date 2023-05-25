@@ -326,7 +326,7 @@ const scenarioSpecificTests = () => {
 
   it('can manage scenario states - basket switch - covered by RSR', async () => {
     await warmup()
-    await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('30000'), pctRate: fp('0.5')})
+    await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('300000'), pctRate: fp('0.5')})
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
@@ -335,8 +335,10 @@ const scenarioSpecificTests = () => {
     const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
 
     // Setup a simple basket of two tokens, only target type A
-    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.5').sub(1))
-    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA2') as number, fp('0.5').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.2').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB0') as number, fp('0.3').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC0') as number, fp('0.3').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA2') as number, fp('0.2').sub(1))
     await scenario.setPrimeBasket()
 
     // Switch basket
@@ -347,13 +349,13 @@ const scenarioSpecificTests = () => {
 
     // Issue some RTokens
     // As Alice, make allowances
-    const [tokenAddrs, amts] = await comp.rToken.quote(30000n * exa, RoundingMode.CEIL)
+    const [tokenAddrs, amts] = await comp.rToken.quote(300000n * exa, RoundingMode.CEIL)
     for (let i = 0; i < amts.length; i++) {
       const token = await ConAt('ERC20Fuzz', tokenAddrs[i])
       await token.connect(alice).approve(comp.rToken.address, amts[i])
     }
     // Issue RTokens
-    await scenario.connect(alice).justIssue(30000n * exa)
+    await scenario.connect(alice).justIssue(300000n * exa)
 
     // No c0 tokens in backing manager
     expect(await c0.balanceOf(comp.backingManager.address)).to.equal(0)
@@ -363,7 +365,7 @@ const scenarioSpecificTests = () => {
 
     // Perform another basket switch - CA0 enters for CA2
     await scenario.popBackingForPrimeBasket()
-    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA0') as number, fp('0.5').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA0') as number, fp('0.2').sub(1))
     await scenario.setPrimeBasket()
 
     // We are still in initial state
@@ -376,7 +378,7 @@ const scenarioSpecificTests = () => {
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
     // ======== Begin rebalancing ========
-    // Refresh basket - will perform basket switch - New basket: CA1 and CA0
+    // Refresh basket - will perform basket switch - New basket: CA1, CB0, CC0, CA0
     await scenario.refreshBasket()
 
     // Rebalancing has started
@@ -433,6 +435,7 @@ const scenarioSpecificTests = () => {
       expect(await trade.canSettle()).to.be.false
 
       if (iteration == 1) {
+        const sellToken = await ConAt('ERC20Mock', await trade.sell())
         // The first trade is for C2 tokens.
         expect(await comp.backingManager.trades(c2.address)).to.equal(trade.address)
         // All c2 tokens have moved to trader
@@ -512,8 +515,10 @@ const scenarioSpecificTests = () => {
     const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
 
     // Setup a simple basket of two tokens, only target type A
-    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.5').sub(1))
-    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA2') as number, fp('0.5').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.2').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA2') as number, fp('0.2').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB0') as number, fp('0.3').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC0') as number, fp('0.3').sub(1))
     await scenario.setPrimeBasket()
 
     // Switch basket
@@ -685,8 +690,8 @@ const scenarioSpecificTests = () => {
     await expect(scenario.connect(alice).justIssueTo(1, 0)).revertedWith("Not valid for current state")
     await expect(scenario.connect(alice).issue(1)).revertedWith("Not valid for current state")
     await expect(scenario.connect(alice).issueTo(1, 0)).revertedWith("Not valid for current state")
-    await expect(scenario.connect(alice).redeem(1, await comp.basketHandler.nonce())).revertedWith("Not valid for current state")
-    await expect(scenario.connect(alice).redeemTo(1, 0, await comp.basketHandler.nonce())).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).redeem(1)).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).redeemTo(1, 0)).revertedWith("Not valid for current state")
   })
 
   it('uses the current basket to run the rebalancingProperties invariant', async () => {
