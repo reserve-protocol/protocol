@@ -702,12 +702,23 @@ describe('FacadeRead + FacadeAct contracts', () => {
     itP1('Should handle invalid versions when running revenueOverview', async () => {
       // Use P1 specific versions
       rsrTrader = <RevenueTraderP1>await ethers.getContractAt('RevenueTraderP1', rsrTrader.address)
+      backingManager = <BackingManagerP1>(
+        await ethers.getContractAt('BackingManagerP1', backingManager.address)
+      )
 
       const revTraderInvalidVer: RevenueTraderInvalidVersion = <RevenueTraderInvalidVersion>(
         await RevenueTraderInvalidVerImplFactory.deploy()
       )
 
-      // Upgrade RevenueTraders to V2 - Use RSR as an example
+      const bckMgrInvalidVer: BackingMgrInvalidVersion = <BackingMgrInvalidVersion>(
+        await BackingMgrInvalidVerImplFactory.deploy()
+      )
+
+      const revTraderV2: RevenueTraderCompatibleV2 = <RevenueTraderCompatibleV2>(
+        await RevenueTraderV2ImplFactory.deploy()
+      )
+
+      // Upgrade RevenueTrader to V0 - Use RSR as an example
       await rsrTrader.connect(owner).upgradeTo(revTraderInvalidVer.address)
 
       const tokenSurplus = bn('0.5e18')
@@ -729,6 +740,15 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
       // No auction can be started
       expect(canStart).to.eql(Array(8).fill(false))
+
+      // Set revenue trader to a valid version but have an invalid Backing Manager
+      await rsrTrader.connect(owner).upgradeTo(revTraderV2.address)
+      await backingManager.connect(owner).upgradeTo(bckMgrInvalidVer.address)
+
+      // Reverts due to invalid version when forwarding revenue
+      await expect(facadeAct.callStatic.revenueOverview(rsrTrader.address)).to.be.revertedWith(
+        'unrecognized version'
+      )
     })
 
     it('Should return nextRecollateralizationAuction', async () => {

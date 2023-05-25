@@ -2489,6 +2489,37 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           expect(erc20s[i]).to.equal(prevERC20s[i])
           expect(quantities[i]).to.equal(prevQtys[i])
         }
+
+        // Swap collateral for asset in previous basket
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+        const newAsset1: Asset = <Asset>(
+          await AssetFactory.deploy(
+            PRICE_TIMEOUT,
+            await collateral1.chainlinkFeed(),
+            ORACLE_ERROR,
+            token1.address,
+            config.rTokenMaxTradeVolume,
+            1
+          )
+        )
+
+        await assetRegistry.connect(owner).swapRegistered(newAsset1.address)
+
+        // Get basket for prior nonce - returns 0 qty for the non-collateral
+        ;[erc20s, quantities] = await bskHandlerP1.getHistoricalBasket(1)
+        expect(erc20s.length).to.equal(4)
+        expect(quantities.length).to.equal(4)
+
+        expect(erc20s).to.eql(prevERC20s)
+        expect(quantities).to.eql([prevQtys[0], bn(0), prevQtys[2], prevQtys[3]])
+
+        // Unregister that same asset
+        await assetRegistry.connect(owner).unregister(newAsset1.address)
+
+        // Returns same result as before
+        ;[erc20s, quantities] = await bskHandlerP1.getHistoricalBasket(1)
+        expect(erc20s).to.eql(prevERC20s)
+        expect(quantities).to.eql([prevQtys[0], bn(0), prevQtys[2], prevQtys[3]])
       })
     })
 

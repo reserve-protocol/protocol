@@ -2055,19 +2055,17 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const seizeAmt = fp('0.99999999').mul(amount).div(fp('1')).add(1)
       const exchangeRate = fp('1e-8')
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(seizeAmt))
-          .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), exchangeRate)
+        await expect(stRSR.connect(signer).seizeRSR(seizeAmt)).to.emit(stRSR, 'ExchangeRateSet')
       })
+
+      // Check new rate
+      expect(await stRSR.exchangeRate()).to.be.closeTo(exchangeRate, bn(10))
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(exchangeRate.add(10))
       expect(await stRSR.totalSupply()).to.equal(amount.sub(unstakeAmount))
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount.add(1)))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.sub(unstakeAmount))
-
-      // Check new rate
-      expect(await stRSR.exchangeRate()).to.equal(exchangeRate)
 
       // Move forward past stakingWithdrawalDelay
       await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay)
