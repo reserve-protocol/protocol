@@ -5,25 +5,26 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { expectEvents } from '../../common/events'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp, divCeil } from '../../common/numbers'
 import {
   BadCollateralPlugin,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRToken,
 } from '../../typechain'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
+import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -60,7 +61,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
@@ -79,7 +80,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       basketHandler,
       aaveToken,
       rTokenAsset,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Token0
     const nonStaticERC20 = await (
@@ -124,6 +125,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       backupToken.address,
     ])
     await basketHandler.refreshBasket()
+    await advanceTime(Number(config.warmupPeriod) + 1)
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(backupToken.address)
 
@@ -159,7 +161,16 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
     it('should keep a constant redemption basket as collateral loses value', async () => {
       // Redemption should be restrained to be prorata
       expect(await token0.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
+      await rToken
+        .connect(addr1)
+        .redeemCustom(
+          addr1.address,
+          initialBal.div(2),
+          [await basketHandler.nonce()],
+          [fp('1')],
+          [],
+          []
+        )
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
       await expectRTokenPrice(
@@ -173,7 +184,16 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
     it('should increase the issuance basket as collateral loses value', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
+      await rToken
+        .connect(addr1)
+        .redeemCustom(
+          addr1.address,
+          initialBal.div(2),
+          [await basketHandler.nonce()],
+          [fp('1')],
+          [],
+          []
+        )
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
@@ -190,7 +210,10 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
     })
 
     it('should use RSR to recollateralize, breaking the economic model fundamentally', async () => {
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
       const trade = await getTrade(backingManager, rsr.address)
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(token0.address)
@@ -211,7 +234,16 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
     it('should not change the redemption basket', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
+      await rToken
+        .connect(addr1)
+        .redeemCustom(
+          addr1.address,
+          initialBal.div(2),
+          [await basketHandler.nonce()],
+          [fp('1')],
+          [],
+          []
+        )
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
@@ -238,14 +270,14 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
 
       // RToken redemption should ignore depegging
-      await rToken.connect(addr1).redeem(initialBal.div(4), await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(initialBal.div(4))
       expect(await rToken.totalSupply()).to.equal(initialBal.div(4))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.mul(3).div(4))
     })
 
     it('should not change the issuance basket', async () => {
       // Should be able to redeem half the RToken at-par
-      await rToken.connect(addr1).redeem(initialBal.div(2), await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(initialBal.div(2))
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
@@ -265,12 +297,10 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
       // Should not launch auctions or create revenue
-      await expectEvents(backingManager.manageTokens([token0.address]), [
-        {
-          contract: backingManager,
-          name: 'TradeStarted',
-          emitted: false,
-        },
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
+      )
+      await expectEvents(backingManager.forwardRevenue([token0.address]), [
         {
           contract: token0,
           name: 'Transfer',

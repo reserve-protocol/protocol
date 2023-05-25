@@ -1,4 +1,5 @@
 import hre from 'hardhat'
+import * as readline from 'readline'
 import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber, BigNumberish } from 'ethers'
@@ -56,7 +57,8 @@ export const validateImplementations = async (deployments: IDeployments) => {
   // Check implementations
   if (
     !deployments.implementations.main ||
-    !deployments.implementations.trade ||
+    !deployments.implementations.trading.gnosisTrade ||
+    !deployments.implementations.trading.dutchTrade ||
     !deployments.implementations.components.assetRegistry ||
     !deployments.implementations.components.backingManager ||
     !deployments.implementations.components.basketHandler ||
@@ -71,8 +73,10 @@ export const validateImplementations = async (deployments: IDeployments) => {
     throw new Error(`Missing deployed implementations in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.implementations.main))) {
     throw new Error(`Main implementation not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.implementations.trade))) {
-    throw new Error(`Trade implementation not found in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, deployments.implementations.trading.gnosisTrade))) {
+    throw new Error(`GnosisTrade implementation not found in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, deployments.implementations.trading.dutchTrade))) {
+    throw new Error(`DutchTrade implementation not found in network ${hre.network.name}`)
   } else if (!(await validComponents(deployments.implementations.components))) {
     throw new Error(`Component implementation(s) not found in network ${hre.network.name}`)
   }
@@ -145,4 +149,57 @@ export const getEtherscanBaseURL = (chainId: number, api = false) => {
   if (api) prefix = chainId == 1 ? 'api.' : `api-${hre.network.name}.`
   else prefix = chainId == 1 ? '' : `${hre.network.name}.`
   return `https://${prefix}etherscan.io`
+}
+
+export const getEmptyDeployment = (): IDeployments => {
+  return {
+    prerequisites: {
+      RSR: '',
+      RSR_FEED: '',
+      GNOSIS_EASY_AUCTION: '',
+    },
+    tradingLib: '',
+    basketLib: '',
+    facadeRead: '',
+    facadeWriteLib: '',
+    cvxMiningLib: '',
+    facadeWrite: '',
+    facadeAct: '',
+    deployer: '',
+    rsrAsset: '',
+    implementations: {
+      main: '',
+      trading: { gnosisTrade: '', dutchTrade: '' },
+      components: {
+        assetRegistry: '',
+        backingManager: '',
+        basketHandler: '',
+        broker: '',
+        distributor: '',
+        furnace: '',
+        rsrTrader: '',
+        rTokenTrader: '',
+        rToken: '',
+        stRSR: '',
+      },
+    },
+  }
+}
+
+export const prompt = async (query: string): Promise<string> => {
+  if (!useEnv('SKIP_PROMPT')) {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    })
+
+    return new Promise<string>((resolve) =>
+      rl.question(query, (ans) => {
+        rl.close()
+        resolve(ans)
+      })
+    )
+  } else {
+    return ''
+  }
 }

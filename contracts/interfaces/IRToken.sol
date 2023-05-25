@@ -79,31 +79,51 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     function issueTo(address recipient, uint256 amount) external;
 
     /// Redeem RToken for basket collateral
+    /// @dev Use redeemCustom for non-current baskets
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
-    function redeem(uint256 amount, uint48 basketNonce) external;
+    function redeem(uint256 amount) external;
 
     /// Redeem RToken for basket collateral to a particular recipient
+    /// @dev Use redeemCustom for non-current baskets
     /// @param recipient The address to receive the backing collateral tokens
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @param basketNonce The nonce of the basket the redemption should be from; else reverts
     /// @custom:interaction
-    function redeemTo(
+    function redeemTo(address recipient, uint256 amount) external;
+
+    /// Redeem RToken for a linear combination of historical baskets, to a particular recipient
+    /// @dev Allows partial redemptions up to the minAmounts
+    /// @param recipient The address to receive the backing collateral tokens
+    /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
+    /// @param basketNonces An array of basket nonces to do redemption from
+    /// @param portions {1} An array of Fix quantities that must add up to FIX_ONE
+    /// @param expectedERC20sOut An array of ERC20s expected out
+    /// @param minAmounts {qTok} The minimum ERC20 quantities the caller should receive
+    /// @custom:interaction
+    function redeemCustom(
         address recipient,
         uint256 amount,
-        uint48 basketNonce
-    ) external;
+        uint48[] memory basketNonces,
+        uint192[] memory portions,
+        address[] memory expectedERC20sOut,
+        uint256[] memory minAmounts
+    ) external returns (address[] memory erc20sOut, uint256[] memory amountsOut);
 
-    /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
-    /// @param recipient The recipient of the newly minted RToken
-    /// @param amount {qRTok} The amount to be minted
+    /// Mint an amount of RToken equivalent to baskets BUs, scaling basketsNeeded up
+    /// Callable only by BackingManager
+    /// @param baskets {BU} The number of baskets to mint RToken for
     /// @custom:protected
-    function mint(address recipient, uint256 amount) external;
+    function mint(uint192 baskets) external;
 
     /// Melt a quantity of RToken from the caller's account
     /// @param amount {qRTok} The amount to be melted
+    /// @custom:protected
     function melt(uint256 amount) external;
+
+    /// Burn an amount of RToken from caller's account and scale basketsNeeded down
+    /// Callable only by BackingManager
+    /// @custom:protected
+    function dissolve(uint256 amount) external;
 
     /// Set the number of baskets needed directly, callable only by the BackingManager
     /// @param basketsNeeded {BU} The number of baskets to target

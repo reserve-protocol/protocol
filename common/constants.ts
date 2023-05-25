@@ -44,11 +44,16 @@ export enum RoundingMode {
   CEIL,
 }
 
-// @dev Must match `GnosisTrade.TradeStatus`.
+// @dev Must match `ITrade.TradeStatus`.
 export enum TradeStatus {
   NOT_STARTED,
   OPEN,
   CLOSED,
+}
+
+export enum TradeKind {
+  DUTCH_AUCTION,
+  BATCH_AUCTION,
 }
 
 export const FURNACE_DEST = '0x0000000000000000000000000000000000000001'

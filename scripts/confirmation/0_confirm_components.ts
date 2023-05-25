@@ -32,7 +32,8 @@ async function main() {
   if (isMainnet) {
     // Confirm Main is paused
     console.log('Checking main is configured correctly')
-    if (!(await mainComponent.paused())) throw new Error('main is unpaused')
+    if (!(await mainComponent.tradingPaused())) throw new Error('main is unpaused for trading')
+    if (!(await mainComponent.issuancePaused())) throw new Error('main is unpaused for issuance')
 
     // Confirm governance is configured correctly
     const timelock = await hre.ethers.getContractAt(

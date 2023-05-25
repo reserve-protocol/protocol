@@ -37,6 +37,22 @@ Some of the core contracts in our system regularly own ERC20 tokens. In each cas
 2. At vesting time, the `RToken` contract mints new RToken to the recipient and transfers the held collateral to the `BackingManager`. If the `BasketHandler` has updated the basket since issuance began, then the collateral is instead returned to the recipient and no RToken is minted.
 3. During redemption, RToken is burnt from the redeemer's account and they are transferred a prorata share of backing collateral from the `BackingManager`.
 
+## Protocol Assumptions
+
+### Blocktime = 12s
+
+The protocol (weakly) assumes a 12-second blocktime. This section documents the places where this assumption is made and whether changes would be required if blocktime were different.
+
+#### Should-be-changed if blocktime different
+
+- The `Furnace` melts RToken in periods of 12 seconds. If the protocol is deployed to a chain with shorter blocktime, it is possible it may be rational to issue right before melting and redeem directly after, in order to selfishly benefit. The `Furnace` shouild be updated to melt more often.
+
+#### Probably fine if blocktime different
+
+- `DutchTrade` price curve can handle 1s blocktimes as-is, as well as longer blocktimes
+- The `StRSR` contract hands out RSR rewards in periods of 12 seconds. Since the unstaking period is usually much larger than this, it is fine to deploy StRSR to another chain without changing anything, with shorter or longer blocktimes
+- `BackingManager` spaces out same-kind auctions by 12s. No change is required is blocktime is less; some change required is blocktime is longer
+
 ## Some Monetary Units
 
 Our system refers to units of financial value in a handful of different ways, and treats them as different dimensions. Some of these distinctions may seem like splitting hairs if you're just thinking about one or two example RTokens, but the differences are crucial to understanding how the protocol works in a wide variety of different settings.
@@ -110,7 +126,8 @@ On the other hand, while a redemption is pending in the mempool, the quantities 
 
 ## System States
 
-- `paused`: all interactions disabled EXCEPT ERC20 functions + RToken.redeem + StRSR.stake + StRSR.payoutRewards
+- `tradingPaused`: all interactions disabled EXCEPT ERC20 functions + RToken.issue + RToken.redeem + StRSR.stake + StRSR.payoutRewards
+- `issuancePaused`: all interactions enabled EXCEPT RToken.issue
 - `frozen`: all interactions disabled EXCEPT ERC20 functions + StRSR.stake
 
 Freezing can occur over two timescales: short freezing + long freezing.
@@ -131,14 +148,28 @@ Design intentions:
 
 The Reserve Protocol makes a few different types of trades:
 
-- from collateral to RSR or RToken, in order to distribute collateral yields. These happen often.
-- from reward tokens to RSR or RToken, in order to distribute tokens rewards from collateral. These also happen often.
-- collateral to collateral, in order to change the distribution of collateral due to a basket change. Basket changes should be rare, happening only when governance changes the basket, or when some collateral token defaults.
-- RSR to collateral, in order to recollateralize the protocol from stRSR over-collateralization, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using the over-collateralization buffer.
+- from collateral to RSR or RToken, in order to distribute collateral yields. These happen often in a RevenueTrader.
+- from reward tokens to RSR or RToken, in order to distribute tokens rewards from collateral. These also happen often in a RevenueTrader.
+- collateral to collateral, in order to change the distribution of collateral due to a basket change. Basket changes should be rare, happening only when governance changes the basket, or when some collateral token defaults. This only happens in the BackingManager.
+- RSR to collateral, in order to recollateralize the protocol from stRSR over-collateralization, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using the over-collateralization buffer. These auctions also happen in the BackingManager.
 
-Each type of trade can currently happen in only one way; the protocol launches a Gnosis EasyAuction. The Reserve Protocol is designed to make it easy to add other trading methods, but none others are currently supported.
+Each type of trade can happen two ways: either by a falling-price ductch auction (DutchTrade) or by a batch auction via Gnosis EasyAuction (GnosisTrade). More trading methods can be added in the future.
+
+### Gnosis EasyAuction Batch Auctions (GnosisTrade)
 
 A good explainer for how Gnosis auctions work can be found (on their github)[https://github.com/gnosis/ido-contracts].
+
+### Dutch Auctions (DutchTrade)
+
+The Dutch auction occurs in two phases:
+
+Geometric/Exponential Phase (first 40% of auction): The price starts at about 1000x the best plausible price and decays down to the best plausible price following a geometric/exponential series. The price decreases by the same percentage each time. This phase is primarily defensive, and it's not expected to receive a bid; it merely protects against manipulated prices.
+
+Linear Phase (last 60% of auction): During this phase, the price decreases linearly from the best plausible price to the worst plausible price. The worst price is further discounted based on maxTradeSlippage, which considers how far from minTradeVolume to maxTradeVolume the trade lies. No further discount is applied at maxTradeVolume.
+
+The `dutchAuctionLength` can be configured to be any value. The suggested default is 30 minutes for a blockchain with a 12-second blocktime. At this ratio of blocktime to auction length, there is a 10.87% price drop per block during the geometric/exponential period and a 0.05% drop during the linear period. The duration of the auction can be adjusted, which will impact the size of the price decreases per block.
+
+The "best plausible price" is equal to the exchange rate at the high price of the sell token and the low price of the buy token. The "worst-case price" is equal to the exchange rate at the low price of the sell token and the high price of the sell token, plus an additional discount ranging from 0 to `maxTradeSlippage()`. At minimum auction size the full `maxTradeSlippage()` is applied, while at max auction size no further discount is applied.
 
 ## Deployment Parameters
 
@@ -157,7 +188,7 @@ The minimum sized trade that can be performed, in terms of the unit of account.
 
 Setting this too high will result in auctions happening infrequently or the RToken taking a haircut when it cannot be sure it has enough staked RSR to succeed in rebalancing at par.
 
-Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `auctionLength` seconds.
+Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `batchAuctionLength` seconds.
 
 This variable should NOT be interpreted to mean that auction sizes above this value will necessarily clear. It could be the case that gas frictions are so high that auctions launched at this size are not worthy of bids.
 
@@ -207,7 +238,16 @@ The trading delay is how many seconds should pass after the basket has been chan
 Default value: `7200` = 2 hours
 Mainnet reasonable range: 0 to 604800
 
-### `auctionLength`
+### `warmupPeriod`
+
+Dimension: `{seconds}`
+
+The warmup period is how many seconds should pass after the basket regained the SOUND status before an RToken can be issued and/or a trade can be opened.
+
+Default value: `900` = 15 minutes
+Mainnet reasonable range: 0 to 604800
+
+### `batchAuctionLength`
 
 Dimension: `{seconds}`
 
@@ -216,11 +256,24 @@ The auction length is how many seconds long Gnosis EasyAuctions should be.
 Default value: `900` = 15 minutes
 Mainnet reasonable range: 60 to 3600
 
+### `dutchAuctionLength`
+
+Dimension: `{seconds}`
+
+The dutch auction length is how many seconds long falling-price dutch auctions should be. A longer period will result in less slippage due to better price granularity, and a shorter period will result in more slippage.
+
+In general, the dutchAuctionLength should be a multiple of the blocktime. This is not enforced at a smart-contract level.
+
+Default value: `1800` = 30 minutes
+Mainnet reasonable range: 300 to 3600
+
+At 30 minutes, a 12-second blocktime chain would have 10.87% price drops during the first 40% of the auction, and 0.055% price drops during the second 60%.
+
 ### `backingBuffer`
 
 Dimension: `{1}`
 
-The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This buffer allows collateral tokens to be periodically converted into the RToken, which is a more efficient form of revenue production than trading each individual collateral for the desired RToken. It also adds a small buffer that can prevent RSR from being seized when there are small losses due to slippage during rebalancing.
+The backing buffer is a percentage value that describes how much overcollateralization to hold in the form of RToken. This buffer allows collateral tokens to be converted into RToken, which is a more efficient form of revenue production than trading each individual collateral for the desired RToken, and also adds a small buffer that can prevent RSR from being seized when there are small losses due to slippage during rebalancing.
 
 Default value: `1e15` = 0.1%
 Mainnet reasonable range: 1e12 to 1e18
@@ -251,6 +304,17 @@ The number of seconds a long freeze lasts. Long freezes can be disabled by remov
 
 Default value: `604800` = 7 days
 Mainnet reasonable range: 86400 to 31536000 (1 day to 1 year)
+
+### `withdrawalLeak`
+
+Dimension: `{1}`
+
+The fraction of RSR stake that should be permitted to withdraw without a refresh. When cumulative withdrawals (or a single withdrawal) exceed this fraction, gas must be paid to refresh all assets.
+
+Setting this number larger allows unstakers to save more on gas at the cost of allowing more RSR to exit improperly prior to a default.
+
+Default value: `5e16` = 5%
+Mainnet reasonable range: 0 to 25e16 (0 to 25%)
 
 ### `RToken Supply Throttles`
 

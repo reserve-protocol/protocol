@@ -40,10 +40,12 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
+    /// @param sell The sell token in the trade
+    /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public notPausedOrFrozen {
-        ITrade trade = trades[sell];
-        if (address(trade) == address(0)) return;
+    function settleTrade(IERC20 sell) public virtual returns (ITrade trade) {
+        trade = trades[sell];
+        require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
 
         delete trades[sell];
@@ -53,7 +55,9 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    function tryTrade(TradeRequest memory req) internal {
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    /// @return trade The trade contract created
+    function tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
         IBroker broker = main.broker();
         assert(address(trades[req.sell.erc20()]) == address(0));
         require(!broker.disabled(), "broker disabled");
@@ -61,8 +65,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         req.sell.erc20().safeApprove(address(broker), 0);
         req.sell.erc20().safeApprove(address(broker), req.sellAmount);
 
-        ITrade trade = broker.openTrade(req);
-
+        trade = broker.openTrade(kind, req);
         trades[req.sell.erc20()] = trade;
         tradesOpen++;
         emit TradeStarted(
@@ -93,11 +96,12 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     // === FixLib Helper ===
 
     /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDivCeil(
+    function mulDiv(
         uint192 x,
         uint192 y,
-        uint192 z
+        uint192 z,
+        RoundingMode rounding
     ) external pure returns (uint192) {
-        return x.mulDiv(y, z, CEIL);
+        return x.mulDiv(y, z, rounding);
     }
 }

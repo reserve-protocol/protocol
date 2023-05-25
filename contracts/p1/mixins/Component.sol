@@ -38,8 +38,13 @@ abstract contract ComponentP1 is
 
     // === See docs/security.md ===
 
-    modifier notPausedOrFrozen() {
-        require(!main.pausedOrFrozen(), "paused or frozen");
+    modifier notTradingPausedOrFrozen() {
+        require(!main.tradingPausedOrFrozen(), "frozen or trading paused");
+        _;
+    }
+
+    modifier notIssuancePausedOrFrozen() {
+        require(!main.issuancePausedOrFrozen(), "frozen or issuance paused");
         _;
     }
 

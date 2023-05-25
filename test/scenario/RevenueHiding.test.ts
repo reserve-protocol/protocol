@@ -5,24 +5,24 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp, divCeil } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
-  CTokenMock,
+  CTokenVaultMock,
   CTokenFiatCollateral,
-  ComptrollerMock,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   SelfReferentialCollateral,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
 } from '../../typechain'
+import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -41,13 +41,10 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
   // Assets
   let collateral: Collateral[]
 
-  // Non-backing assets
-  let compoundMock: ComptrollerMock
-
   // Tokens and Assets
   let dai: ERC20Mock
   let daiCollateral: SelfReferentialCollateral
-  let cDAI: CTokenMock
+  let cDAI: CTokenVaultMock
   let cDAICollateral: CTokenFiatCollateral
 
   // Config values
@@ -59,7 +56,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
@@ -95,7 +92,6 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     ;({
       rsr,
       stRSR,
-      compoundMock,
       erc20s,
       collateral,
       config,
@@ -105,12 +101,12 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       basketHandler,
       rsrTrader,
       rTokenTrader,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     dai = <ERC20Mock>erc20s[0]
     daiCollateral = collateral[0]
-    cDAI = <CTokenMock>erc20s[4]
+    cDAI = <CTokenVaultMock>erc20s[4]
     cDAICollateral = await (
       await ethers.getContractFactory('CTokenFiatCollateral')
     ).deploy(
@@ -125,8 +121,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
         defaultThreshold: DEFAULT_THRESHOLD,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       },
-      REVENUE_HIDING,
-      compoundMock.address
+      REVENUE_HIDING
     )
 
     // Basket configuration
@@ -137,6 +132,9 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       .connect(owner)
       .setBackupConfig(await ethers.utils.formatBytes32String('USD'), 1, [dai.address])
     await basketHandler.refreshBasket()
+
+    // Advance time post warmup period - SOUND just regained
+    await advanceTime(Number(config.warmupPeriod) + 1)
 
     await backingManager.grantRTokenAllowance(cDAI.address)
     await backingManager.grantRTokenAllowance(dai.address)
@@ -192,7 +190,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       // Redeem half
       const balBefore = await cDAI.balanceOf(addr1.address)
       const redeemAmt = issueAmt.div(2)
-      await rToken.connect(addr1).redeem(redeemAmt, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(redeemAmt)
       const balAfter = await cDAI.balanceOf(addr1.address)
       const cTokenRedeemAmt = q2.mul(redeemAmt.div(bn('1e10'))).div(fp('1'))
       expect(balAfter).to.equal(balBefore.add(cTokenRedeemAmt))
@@ -253,9 +251,15 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     it('auction should be launched at low price ignoring revenueHiding', async () => {
       // Double exchange rate and launch auctions
       await cDAI.setExchangeRate(fp('2')) // double rate
-      await backingManager.manageTokens([cDAI.address]) // transfers tokens to Traders
-      await expect(rTokenTrader.manageToken(cDAI.address)).to.emit(rTokenTrader, 'TradeStarted')
-      await expect(rsrTrader.manageToken(cDAI.address)).to.emit(rsrTrader, 'TradeStarted')
+      await backingManager.forwardRevenue([cDAI.address]) // transfers tokens to Traders
+      await expect(rTokenTrader.manageToken(cDAI.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rTokenTrader,
+        'TradeStarted'
+      )
+      await expect(rsrTrader.manageToken(cDAI.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rsrTrader,
+        'TradeStarted'
+      )
 
       // Auctions launched should be at discounted low price
       const t = await getTrade(rsrTrader, cDAI.address)

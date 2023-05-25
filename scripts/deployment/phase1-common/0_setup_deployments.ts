@@ -54,15 +54,20 @@ async function main() {
       GNOSIS_EASY_AUCTION: gnosisAddr,
     },
     tradingLib: '',
+    cvxMiningLib: '',
     facadeRead: '',
     facadeAct: '',
     facadeWriteLib: '',
+    basketLib: '',
     facadeWrite: '',
     deployer: '',
     rsrAsset: '',
     implementations: {
       main: '',
-      trade: '',
+      trading: {
+        gnosisTrade: '',
+        dutchTrade: '',
+      },
       components: {
         assetRegistry: '',
         backingManager: '',

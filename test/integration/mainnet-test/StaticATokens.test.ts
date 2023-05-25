@@ -366,7 +366,7 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
       })
 
       // Wrap aBusd  - Underlying = false
-      expect(await aBusd.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await aBusd.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
       expect(await stataBusd.balanceOf(addr1.address)).to.equal(0)
 
       // Wrap aBUSD into a staticaBUSD

@@ -273,6 +273,15 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x528FdEd7CC39209ed67B4edA11937A9ABe1f6249',
       EURT: '0xD6da5A7ADE2a906d9992612752A339E3485dB508',
       RSR: '0xB58b5530332D2E9e15bfd1f2525E6fD84e830307',
+      CVX: '0x7f7B77e49d5b30445f222764a794AFE14af062eB',
+      CRV: '0xaA91d24c2F7DBb6487f61869cD8cd8aFd5c5Cab2',
+      ankrETH: '0xE2b16e14dB6216e33082D5A8Be1Ef01DF7511bBb',
+      frxETH: '0xe0E1d3c6f09DA01399e84699722B11308607BBfC',
+      sfrxETH: '0x291ed25eB61fcc074156eE79c5Da87e5DA94198F',
+      stETH: '0x97F9d5ed17A0C99B279887caD5254d15fb1B619B',
+      wstETH: '0xd000a79BD2a07EB6D2e02ECAd73437De40E52d69',
+      rETH: '0x2304E98cD1E2F0fd3b4E30A1Bc6E9594dE2ea9b7',
+      cUSDCv3: '0x719fbae9e2Dcd525bCf060a8D5DBC6C9fE104A50',
     },
     chainlinkFeeds: {
       ETH: '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e', // canonical chainlink
@@ -316,8 +325,11 @@ export interface IConfig {
   longFreeze: BigNumber
   rewardRatio: BigNumber
   unstakingDelay: BigNumber
+  withdrawalLeak: BigNumber
+  warmupPeriod: BigNumber
   tradingDelay: BigNumber
-  auctionLength: BigNumber
+  batchAuctionLength: BigNumber
+  dutchAuctionLength: BigNumber
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
   issuanceThrottle: ThrottleParams
@@ -347,9 +359,14 @@ export interface IComponents {
   stRSR: string
 }
 
+export interface ITradePlugins {
+  gnosisTrade: string
+  dutchTrade: string
+}
+
 export interface IImplementations {
   main: string
-  trade: string
+  trading: ITradePlugins
   components: IComponents
 }
 
@@ -387,6 +404,14 @@ export interface IGovParams {
   timelockDelay: BigNumber
 }
 
+export interface IGovRoles {
+  owner: string
+  guardian: string
+  pausers: string[]
+  shortFreezers: string[]
+  longFreezers: string[]
+}
+
 // System constants
 export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
 export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)
@@ -401,6 +426,8 @@ export const MAX_THROTTLE_PCT_RATE = BigNumber.from(10).pow(18)
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)
 export const MAX_TRADING_DELAY = 31536000 // 1 year
+export const MIN_WARMUP_PERIOD = 60 // 1 minute
+export const MAX_WARMUP_PERIOD = 31536000 // 1 year
 export const MAX_AUCTION_LENGTH = 604800 // 1 week
 export const MAX_UNSTAKING_DELAY = 31536000 // 1 year
 export const MAX_DELAY_UNTIL_DEFAULT = 1209600 // 2 weeks

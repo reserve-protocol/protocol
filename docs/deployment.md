@@ -219,7 +219,7 @@ yarn deploy:run:confirm --network mainnet
 This checks that:
 
 - For each asset, confirm `lotPrice()` and `price()` are close.
-- `main.paused()` is true
+- `main.tradingPaused()` and `main.issuancePaused()` are true
 - `timelockController.minDelay()` is > 1e12
 
 End state: All addresses are verified, the contracts are in the correct state, and it's time to verify the contracts on Etherscan.

@@ -34,10 +34,15 @@ struct DeploymentParams {
     //
     // === StRSR ===
     uint48 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
+    uint192 withdrawalLeak; // {1} fraction of RSR that can be withdrawn without refresh
+    //
+    // === BasketHandler ===
+    uint48 warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
     //
     // === BackingManager ===
     uint48 tradingDelay; // {s} how long to wait until starting auctions after switching basket
-    uint48 auctionLength; // {s} the length of an auction
+    uint48 batchAuctionLength; // {s} the length of a Gnosis EasyAuction
+    uint48 dutchAuctionLength; // {s} the length of a falling-price dutch auction
     uint192 backingBuffer; // {1} how much extra backing collateral to keep
     uint192 maxTradeSlippage; // {1} max slippage acceptable in a trade
     //
@@ -53,7 +58,12 @@ struct DeploymentParams {
 struct Implementations {
     IMain main;
     Components components;
-    ITrade trade;
+    TradePlugins trading;
+}
+
+struct TradePlugins {
+    ITrade gnosisTrade;
+    ITrade dutchTrade;
 }
 
 /**

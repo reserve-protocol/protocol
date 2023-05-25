@@ -1,6 +1,6 @@
-import { setCode } from "@nomicfoundation/hardhat-network-helpers"
-import { EACAggregatorProxyMock } from "@typechain/EACAggregatorProxyMock"
-import { HardhatRuntimeEnvironment } from "hardhat/types"
+import { setCode } from '@nomicfoundation/hardhat-network-helpers'
+import { EACAggregatorProxyMock } from '@typechain/EACAggregatorProxyMock'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
 
 export const overrideOracle = async (
   hre: HardhatRuntimeEnvironment,
@@ -16,7 +16,6 @@ export const overrideOracle = async (
   await setCode(oracleAddress, bytecode)
   return hre.ethers.getContractAt('EACAggregatorProxyMock', oracleAddress)
 }
-  
 export const pushOraclesForward = async (hre: HardhatRuntimeEnvironment, rTokenAddress: string) => {
   console.log(`\nPushing oracles forward for RToken ${rTokenAddress}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)

@@ -34,7 +34,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint48 public constant PERIOD = 12; // {s} 12 seconds; 1 block on PoS Ethereum
+    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
     uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = FIX_ONE; // {1} 100%
@@ -59,9 +59,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // Typically: "balances". These are the tokenized staking positions!
     // era => ({account} => {qStRSR})
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
-    uint256 internal totalStakes; // Total of all stakes {qStRSR}
-    uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
-    uint192 public stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
+    uint256 private totalStakes; // Total of all stakes {qStRSR}
+    uint256 private stakeRSR; // Amount of RSR backing all stakes {qRSR}
+    uint192 private stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
 
     uint192 private constant MAX_STAKE_RATE = 1e9 * FIX_ONE; // 1e9 D18{qStRSR/qRSR}
 
@@ -75,14 +75,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // Drafts: share of the withdrawing tokens. Not transferrable and not revenue-earning.
     struct CumulativeDraft {
         // Avoid re-using uint192 in order to avoid confusion with our type system; 176 is enough
-        uint176 drafts; // Total amount of drafts that will become available // {qDraft}
+        uint176 drafts; // Total amount of drafts that will become available // {qDrafts}
         uint64 availableAt; // When the last of the drafts will become available
     }
     // draftEra => ({account} => {drafts})
     mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {drafts}
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
-    uint256 internal totalDrafts; // Total of all drafts {qDrafts}
-    uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
+    uint256 private totalDrafts; // Total of all drafts {qDrafts}
+    uint256 private draftRSR; // Amount of RSR backing all drafts {qRSR}
     uint192 public draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
 
     uint192 private constant MAX_DRAFT_RATE = 1e9 * FIX_ONE; // 1e9 D18{qDrafts/qRSR}
@@ -148,7 +148,15 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint48 public payoutLastPaid;
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
-    uint256 internal rsrRewardsAtLastPayout;
+    uint256 private rsrRewardsAtLastPayout;
+
+    // === 3.0.0 ===
+    // The fraction of draftRSR + stakeRSR that may exit without a refresh
+    uint192 private constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
+
+    uint192 private leaked; // {1} stake fraction that has withdrawn without a refresh
+    uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
+    uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
 
     // ======================
 
@@ -163,7 +171,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         string calldata name_,
         string calldata symbol_,
         uint48 unstakingDelay_,
-        uint192 rewardRatio_
+        uint192 rewardRatio_,
+        uint192 withdrawalLeak_
     ) external initializer {
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
@@ -181,6 +190,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         setUnstakingDelay(unstakingDelay_);
         setRewardRatio(rewardRatio_);
+        setWithdrawalLeak(withdrawalLeak_);
 
         beginEra();
         beginDraftEra();
@@ -188,7 +198,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notFrozen {
+    function payoutRewards() external {
+        requireNotFrozen();
         _payoutRewards();
     }
 
@@ -208,37 +219,23 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // actions:
     //   rsr.transferFrom(account, this, rsrAmount)
-    function stake(uint256 rsrAmount) external {
+    function stake(uint256 rsrAmount) public {
         require(rsrAmount > 0, "Cannot stake zero");
 
         if (!main.frozen()) _payoutRewards();
 
-        // Compute stake amount
-        // This is not an overflow risk according to our expected ranges:
-        //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
-        // stakeAmount: how many stRSR the user shall receive.
-        // pick stakeAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
-        uint256 newStakeRSR = stakeRSR + rsrAmount;
-        // newTotalStakes: {qStRSR} = D18{qStRSR/qRSR} * {qRSR} / D18
-        uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
-        uint256 stakeAmount = newTotalStakes - totalStakes;
-
-        // Update staked
-        address account = _msgSender();
-        stakeRSR += rsrAmount;
-        _mint(account, stakeAmount);
-
-        // Transfer RSR from account to this contract
-        emit Staked(era, account, rsrAmount, stakeAmount);
+        // Mint new stakes
+        mintStakes(_msgSender(), rsrAmount);
 
         // == Interactions ==
-        IERC20Upgradeable(address(rsr)).safeTransferFrom(account, address(this), rsrAmount);
+        IERC20Upgradeable(address(rsr)).safeTransferFrom(_msgSender(), address(this), rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` StRSR
     /// @param stakeAmount {qStRSR}
+    /// @custom:interaction
     // checks:
-    //   not paused or frozen
+    //   not paused (trading) or frozen
     //   0 < stakeAmount <= bal[caller]
     //
     // effects:
@@ -253,7 +250,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     //   A draft for (totalDrafts' - totalDrafts) drafts
     //   is freshly appended to the caller's draft record.
-    function unstake(uint256 stakeAmount) external notPausedOrFrozen {
+    function unstake(uint256 stakeAmount) external {
+        requireNotTradingPausedOrFrozen();
+
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
@@ -276,14 +275,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// Complete an account's unstaking; callable by anyone
-    /// @custom:interaction RCEI
+    /// @custom:interaction CEIC - Warning: violates CEI; has checks at the end
     // Let:
     //   r = draft[account]
     //   draftAmount = r.queue[endId - 1].drafts - r.queue[r.left-1].drafts
     //
     // checks:
     //   RToken is fully collateralized and the basket is sound.
-    //   The system is not paused or frozen.
+    //   The system is not paused (trading) or frozen.
     //   endId <= r.right
     //   r.queue[endId - 1].availableAt <= now
     //
@@ -296,20 +295,65 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // actions:
     //   rsr.transfer(account, rsrOut)
-    function withdraw(address account, uint256 endId) external notPausedOrFrozen {
-        // == Refresh ==
-        assetRegistry.refresh();
+    function withdraw(address account, uint256 endId) external {
+        requireNotTradingPausedOrFrozen();
+
+        uint256 firstId = firstRemainingDraft[draftEra][account];
+        CumulativeDraft[] storage queue = draftQueues[draftEra][account];
+        if (endId == 0 || firstId >= endId) return;
 
         // == Checks + Effects ==
+        require(endId <= queue.length, "index out-of-bounds");
+        require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
+
+        // untestable:
+        //      firstId will never be zero, due to previous checks against endId
+        uint192 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
+        uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
+
+        // advance queue past withdrawal
+        firstRemainingDraft[draftEra][account] = endId;
+
+        // ==== Compute RSR amount
+        uint256 newTotalDrafts = totalDrafts - draftAmount;
+        // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
+        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
+        uint256 rsrAmount = draftRSR - newDraftRSR;
+
+        if (rsrAmount == 0) return;
+
+        // ==== Transfer RSR from the draft pool
+        totalDrafts = newTotalDrafts;
+        draftRSR = newDraftRSR;
+
+        // == Interactions ==
+        leakyRefresh(rsrAmount);
+        IERC20Upgradeable(address(rsr)).safeTransfer(account, rsrAmount);
+        emit UnstakingCompleted(firstId, endId, draftEra, account, rsrAmount);
+
+        // == Checks ==
         require(basketHandler.fullyCollateralized(), "RToken uncollateralized");
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket defaulted");
+        require(basketHandler.isReady(), "basket not ready");
+    }
+
+    /// Cancel an ongoing unstaking; resume staking
+    /// @custom:interaction CEI
+    function cancelUnstake(uint256 endId) external {
+        requireNotFrozen();
+        address account = _msgSender();
+
+        // We specifically allow unstaking when under collateralized
+        // require(basketHandler.fullyCollateralized(), "RToken uncollateralized");
+        // require(basketHandler.isReady(), "basket not ready");
 
         uint256 firstId = firstRemainingDraft[draftEra][account];
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];
         if (endId == 0 || firstId >= endId) return;
 
         require(endId <= queue.length, "index out-of-bounds");
-        require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
+
+        // Cancelling unstake does not require checking if the unstaking was available
+        // require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
 
         uint192 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
         uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
@@ -329,10 +373,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         totalDrafts = newTotalDrafts;
         draftRSR = newDraftRSR;
 
-        emit UnstakingCompleted(firstId, endId, draftEra, account, rsrAmount);
+        emit UnstakingCancelled(firstId, endId, draftEra, account, rsrAmount);
 
-        // == Interaction ==
-        IERC20Upgradeable(address(rsr)).safeTransfer(account, rsrAmount);
+        // Mint new stakes
+        mintStakes(account, rsrAmount);
     }
 
     /// @param rsrAmount {qRSR}
@@ -343,7 +387,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // checks:
     //   0 < rsrAmount <= rsr.balanceOf(this)
-    //   not paused or frozen
+    //   not paused (trading) or frozen
     //   caller is backingManager
     //
     // effects, in two phases. Phase 1: (from x to x')
@@ -369,8 +413,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //
     // other properties:
     //   seized >= rsrAmount, which should be a logical consequence of the above effects
+    function seizeRSR(uint256 rsrAmount) external {
+        requireNotTradingPausedOrFrozen();
 
-    function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
         require(_msgSender() == address(backingManager), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
 
@@ -614,6 +659,59 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         return rsr.balanceOf(address(this)) - stakeRSR - draftRSR;
     }
 
+    /// Refresh if too much RSR has exited since the last refresh occurred
+    /// @param rsrWithdrawal {qRSR} How much RSR is being withdrawn
+    /// Effects-Refresh
+    function leakyRefresh(uint256 rsrWithdrawal) private {
+        uint48 lastRefresh = assetRegistry.lastRefresh(); // {s}
+
+        // Assumption: rsrWithdrawal has already been taken out of draftRSR
+        uint256 totalRSR = stakeRSR + draftRSR + rsrWithdrawal; // {qRSR}
+        uint192 withdrawal = _safeWrap((rsrWithdrawal * FIX_ONE + totalRSR - 1) / totalRSR); // {1}
+
+        // == Effects ==
+        leaked = lastWithdrawRefresh != lastRefresh ? withdrawal : leaked + withdrawal;
+        lastWithdrawRefresh = lastRefresh;
+
+        if (leaked > withdrawalLeak) {
+            leaked = 0;
+            lastWithdrawRefresh = uint48(block.timestamp);
+
+            /// == Refresh ==
+            assetRegistry.refresh();
+        }
+    }
+
+    /// Mint stakes corresponding to rsrAmount to an account
+    /// @param rsrAmount {qRSR} The RSR amount being staked
+    function mintStakes(address account, uint256 rsrAmount) private {
+        // This is not an overflow risk according to our expected ranges:
+        //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
+        // stakeAmount: how many stRSR the user shall receive.
+        // pick stakeAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
+        uint256 newStakeRSR = stakeRSR + rsrAmount;
+        // newTotalStakes: {qStRSR} = D18{qStRSR/qRSR} * {qRSR} / D18
+        uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
+        uint256 stakeAmount = newTotalStakes - totalStakes;
+
+        // Transfer RSR from account to this contract
+        stakeRSR += rsrAmount;
+        _mint(account, stakeAmount);
+        emit Staked(era, account, rsrAmount, stakeAmount);
+    }
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function requireNotTradingPausedOrFrozen() private notTradingPausedOrFrozen {}
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function requireNotFrozen() private notFrozen {}
+
+    // contract-size-saver
+    // solhint-disable-next-line no-empty-blocks
+    function requireGovernanceOnly() private governance {}
+
     // ==== ERC20 ====
     // This section extracted from ERC20; adjusted to work with stakes/eras
     // name(), symbol(), and decimals() are all auto-generated
@@ -828,18 +926,28 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // ==== Gov Param Setters ====
 
     /// @custom:governance
-    function setUnstakingDelay(uint48 val) public governance {
+    function setUnstakingDelay(uint48 val) public {
+        requireGovernanceOnly();
         require(val > MIN_UNSTAKING_DELAY && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
     }
 
     /// @custom:governance
-    function setRewardRatio(uint192 val) public governance {
+    function setRewardRatio(uint192 val) public {
+        requireGovernanceOnly();
         if (!main.frozen()) _payoutRewards();
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
+    }
+
+    /// @custom:governance
+    function setWithdrawalLeak(uint192 val) public {
+        requireGovernanceOnly();
+        require(val <= MAX_WITHDRAWAL_LEAK, "invalid withdrawalLeak");
+        emit WithdrawalLeakSet(withdrawalLeak, val);
+        withdrawalLeak = val;
     }
 
     /**
@@ -847,5 +955,5 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[30] private __gap;
+    uint256[28] private __gap;
 }

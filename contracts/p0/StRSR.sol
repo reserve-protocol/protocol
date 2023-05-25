@@ -31,10 +31,11 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
 
-    uint48 public constant PERIOD = 12; // {s} 12 seconds; 1 block on PoS Ethereum
+    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
     uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e18;
+    uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
 
     // ==== ERC20Permit ====
 
@@ -94,16 +95,22 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // Min exchange rate {qRSR/qStRSR} (compile-time constant)
     uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9
 
+    // Withdrawal Leak
+    uint192 private leaked; // {1} stake fraction that has withdrawn without a refresh
+    uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
+
     // ==== Gov Params ====
     uint48 public unstakingDelay;
     uint192 public rewardRatio;
+    uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
 
     function init(
         IMain main_,
         string memory name_,
         string memory symbol_,
         uint48 unstakingDelay_,
-        uint192 rewardRatio_
+        uint192 rewardRatio_,
+        uint192 withdrawalLeak_
     ) public initializer {
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
@@ -115,6 +122,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         setUnstakingDelay(unstakingDelay_);
         setRewardRatio(rewardRatio_);
+        setWithdrawalLeak(withdrawalLeak_);
         era = 1;
     }
 
@@ -155,7 +163,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param stakeAmount {qStRSR}
     /// @custom:interaction
-    function unstake(uint256 stakeAmount) external notPausedOrFrozen {
+    function unstake(uint256 stakeAmount) external notTradingPausedOrFrozen {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
@@ -186,13 +194,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
     /// @custom:interaction
-    function withdraw(address account, uint256 endId) external notPausedOrFrozen {
-        // Call state keepers
-        main.poke();
-
+    function withdraw(address account, uint256 endId) external notTradingPausedOrFrozen {
         IBasketHandler bh = main.basketHandler();
-        require(bh.fullyCollateralized(), "RToken uncollateralized");
-        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         Withdrawal[] storage queue = withdrawals[account];
         if (endId == 0) return;
@@ -204,6 +207,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         while (start < endId && queue[start].rsrAmount == 0 && queue[start].stakeAmount == 0)
             start++;
 
+        // Return if nothing to process
+        if (start == endId) return;
+
         // Accumulate and zero executable withdrawals
         uint256 total = 0;
         uint256 i = start;
@@ -213,9 +219,57 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             queue[i].stakeAmount = 0;
         }
 
+        // Refresh
+        leakyRefresh(total);
+
+        // Checks
+        require(bh.fullyCollateralized(), "RToken uncollateralized");
+        require(bh.isReady(), "basket not ready");
+
         // Execute accumulated withdrawals
         emit UnstakingCompleted(start, i, era, account, total);
         main.rsr().safeTransfer(account, total);
+    }
+
+    function cancelUnstake(uint256 endId) external notFrozen {
+        address account = _msgSender();
+
+        // IBasketHandler bh = main.basketHandler();
+        // require(bh.fullyCollateralized(), "RToken uncollateralized");
+        // require(bh.isReady(), "basket not ready");
+
+        Withdrawal[] storage queue = withdrawals[account];
+        if (endId == 0) return;
+        require(endId <= queue.length, "index out-of-bounds");
+        // require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
+
+        // Skip executed withdrawals - Both amounts should be 0
+        uint256 start = 0;
+        while (start < endId && queue[start].rsrAmount == 0 && queue[start].stakeAmount == 0)
+            start++;
+
+        // Accumulate and zero executable withdrawals
+        uint256 total = 0;
+        uint256 i = start;
+        for (; i < endId; i++) {
+            total += queue[i].rsrAmount;
+            queue[i].rsrAmount = 0;
+            queue[i].stakeAmount = 0;
+        }
+
+        // Execute accumulated withdrawals
+        emit UnstakingCancelled(start, i, era, account, total);
+
+        uint256 stakeAmount = total;
+        if (totalStaked > 0) stakeAmount = (total * totalStaked) / rsrBacking;
+
+        // Create stRSR balance
+        if (balances[account] == 0) accounts.add(account);
+        balances[account] += stakeAmount;
+        totalStaked += stakeAmount;
+
+        // Move deposited RSR to backing
+        rsrBacking += total;
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
@@ -230,7 +284,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR will _not_ be smaller than rsrAmount.
     /// @custom:protected
-    function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
+    function seizeRSR(uint256 rsrAmount) external notTradingPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         main.poke();
@@ -306,6 +360,27 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             address account = accounts.at(i);
             delete withdrawals[account];
         }
+    }
+
+    /// Refresh if too much RSR has exited since the last refresh occurred
+    /// @param rsrWithdrawal {qRSR} How much RSR is being withdrawn
+    function leakyRefresh(uint256 rsrWithdrawal) private {
+        uint48 lastRefresh = main.assetRegistry().lastRefresh(); // {s}
+
+        // {1} Assumption: rsrWithdrawal has already been taken out of draftRSR
+        uint192 withdrawal = toFix(rsrWithdrawal).divu(
+            rsrBacking + rsrBeingWithdrawn() + rsrWithdrawal,
+            CEIL
+        );
+
+        bool refreshedElsewhere = lastWithdrawRefresh != lastRefresh;
+        leaked = refreshedElsewhere ? withdrawal : leaked + withdrawal;
+
+        if (leaked > withdrawalLeak) {
+            leaked = 0;
+            main.assetRegistry().refresh();
+        }
+        lastWithdrawRefresh = main.assetRegistry().lastRefresh();
     }
 
     function exchangeRate() public view returns (uint192) {
@@ -530,5 +605,11 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
+    }
+
+    function setWithdrawalLeak(uint192 val) public governance {
+        require(val <= MAX_WITHDRAWAL_LEAK, "invalid withdrawalLeak");
+        emit WithdrawalLeakSet(withdrawalLeak, val);
+        withdrawalLeak = val;
     }
 }

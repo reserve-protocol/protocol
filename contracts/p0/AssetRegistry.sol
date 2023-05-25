@@ -20,6 +20,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     // Registered Assets
     mapping(IERC20 => IAsset) private assets;
 
+    uint48 public lastRefresh; // {s}
+
     function init(IMain main_, IAsset[] memory assets_) public initializer {
         __Component_init(main_);
         for (uint256 i = 0; i < assets_.length; i++) {
@@ -27,13 +29,17 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         }
     }
 
-    /// Force updates in all collateral assets
+    /// Force updates in all collateral assets. Track basket status.
     /// @custom:refresher
     function refresh() public {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         for (uint256 i = 0; i < _erc20s.length(); i++) {
             assets[IERC20(_erc20s.at(i))].refresh();
         }
+
+        IBasketHandler basketHandler = main.basketHandler();
+        basketHandler.trackStatus();
+        lastRefresh = uint48(block.timestamp);
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
@@ -105,6 +111,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         }
     }
 
+    /// @return reg The list of registered ERC20s and Assets, in the same order
     function getRegistry() external view returns (Registry memory reg) {
         uint256 length = _erc20s.length();
         reg.erc20s = new IERC20[](length);
@@ -116,6 +123,11 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
             assert(address(reg.assets[i]) != address(0));
         }
         assert(reg.erc20s.length == reg.assets.length);
+    }
+
+    /// @return The number of registered ERC20s
+    function size() external view returns (uint256) {
+        return _erc20s.length();
     }
 
     //

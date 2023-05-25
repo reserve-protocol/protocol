@@ -45,8 +45,10 @@ interface ITrading is IComponent, IRewardableComponent {
     );
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
+    /// @param sell The sell token in the trade
+    /// @return The trade settled
     /// @custom:refresher
-    function settleTrade(IERC20 sell) external;
+    function settleTrade(IERC20 sell) external returns (ITrade);
 
     /// @return {%} The maximum trade slippage acceptable
     function maxTradeSlippage() external view returns (uint192);
@@ -61,10 +63,11 @@ interface ITrading is IComponent, IRewardableComponent {
     function tradesOpen() external view returns (uint48);
 
     /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDivCeil(
+    function mulDiv(
         uint192 x,
         uint192 y,
-        uint192 z
+        uint192 z,
+        RoundingMode rounding
     ) external pure returns (uint192);
 }
 

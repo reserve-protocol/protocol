@@ -1,13 +1,13 @@
-import { whileImpersonating } from "#/utils/impersonation"
-import { advanceTime, getLatestBlockTimestamp } from "#/utils/time"
-import { getTrade } from "#/utils/trades"
-import { TestITrading } from "@typechain/TestITrading"
-import { BigNumber } from "ethers"
-import { HardhatRuntimeEnvironment } from "hardhat/types"
+import { whileImpersonating } from '#/utils/impersonation'
+import { advanceTime, getLatestBlockTimestamp } from '#/utils/time'
+import { getTrade } from '#/utils/trades'
+import { TestITrading } from '@typechain/TestITrading'
+import { BigNumber } from 'ethers'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { QUEUE_START } from '#/common/constants'
-import { whales } from "./constants"
-import { bn, fp } from "#/common/numbers"
-import { logToken } from "./logs"
+import { whales } from './constants'
+import { bn, fp } from '#/common/numbers'
+import { logToken } from './logs'
 
 export const runTrade = async (
   hre: HardhatRuntimeEnvironment,
@@ -33,11 +33,11 @@ export const runTrade = async (
   const buyDecimals = await buytoken.decimals()
   let buyAmount = bidExact ? sellAmount : sellAmount.mul(worstPrice).div(fp('1'))
   if (buyDecimals > sellDecimals) {
-    buyAmount = buyAmount.mul(bn(10**(buyDecimals - sellDecimals)))
+    buyAmount = buyAmount.mul(bn(10 ** (buyDecimals - sellDecimals)))
   } else if (sellDecimals > buyDecimals) {
-    buyAmount = buyAmount.div(bn(10**(sellDecimals - buyDecimals)))
+    buyAmount = buyAmount.div(bn(10 ** (sellDecimals - buyDecimals)))
   }
-  buyAmount = buyAmount.add(fp('1').div(bn(10**(18 - buyDecimals))))
+  buyAmount = buyAmount.add(fp('1').div(bn(10 ** (18 - buyDecimals))))
 
   const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
   await whileImpersonating(hre, whales[buyTokenAddress.toLowerCase()], async (whale) => {

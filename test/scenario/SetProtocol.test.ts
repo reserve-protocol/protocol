@@ -4,24 +4,25 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { expectPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
+import { advanceTime } from '../utils/time'
 import {
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   SelfReferentialCollateral,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
   WETH9,
 } from '../../typechain'
 import {
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -56,7 +57,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
@@ -74,7 +75,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       basketHandler,
       rTokenTrader,
       rsrTrader,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     await backingManager.connect(owner).setBackingBuffer(0)
 
@@ -138,6 +139,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       [fp('1'), fp('3'), fp('9')] // powers of 3
     )
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
 
     // Mint initial balances
     await token1.connect(owner).mint(addr1.address, initialBal)
@@ -175,10 +177,13 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     await expectPrice(basketHandler.address, price, ORACLE_ERROR, true)
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+    await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+      'already collateralized'
+    )
     await expectEvents(
       backingManager
         .connect(owner)
-        .manageTokens([
+        .forwardRevenue([
           token0.address,
           token1.address,
           token2.address,
@@ -186,11 +191,6 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
           rToken.address,
         ]),
       [
-        {
-          contract: backingManager,
-          name: 'TradeStarted',
-          emitted: false,
-        },
         {
           contract: token0,
           name: 'Transfer',
@@ -231,7 +231,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     await expectPrice(basketHandler.address, price.div(2), ORACLE_ERROR, true)
 
     // Redeem
-    await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+    await rToken.connect(addr1).redeem(issueAmt)
     expect(await token0.balanceOf(backingManager.address)).to.equal(0)
     expect(await token1.balanceOf(backingManager.address)).to.equal(0)
     expect(await token2.balanceOf(backingManager.address)).to.equal(0)
@@ -257,7 +257,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
 
     // Should send donated token to revenue traders
     await expectEvents(
-      backingManager.manageTokens([
+      backingManager.forwardRevenue([
         token0.address,
         token1.address,
         token2.address,

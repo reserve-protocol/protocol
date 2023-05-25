@@ -1,8 +1,9 @@
+import { Decimal } from 'decimal.js'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { TestITrading, GnosisTrade } from '../../typechain'
-import { fp, divCeil } from '../../common/numbers'
+import { bn, fp, divCeil, divRound } from '../../common/numbers'
 
 export const expectTrade = async (trader: TestITrading, auctionInfo: Partial<ITradeInfo>) => {
   if (!auctionInfo.sell) throw new Error('Must provide sell token to find trade')
@@ -72,4 +73,52 @@ export const toMinBuyAmt = (
     .mul(lowSellPrice) // (b)
 
   return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+}
+
+// Returns the buy amount in the auction for the given progression
+export const dutchBuyAmount = async (
+  progression: BigNumber,
+  assetInAddr: string,
+  assetOutAddr: string,
+  outAmount: BigNumber,
+  minTradeVolume: BigNumber,
+  maxTradeSlippage: BigNumber
+): Promise<BigNumber> => {
+  const assetIn = await ethers.getContractAt('IAsset', assetInAddr)
+  const assetOut = await ethers.getContractAt('IAsset', assetOutAddr)
+  const [sellLow, sellHigh] = await assetOut.price() // {UoA/sellTok}
+  const [buyLow, buyHigh] = await assetIn.price() // {UoA/buyTok}
+
+  const inMaxTradeVolume = await assetIn.maxTradeVolume()
+  let maxTradeVolume = await assetOut.maxTradeVolume()
+  if (inMaxTradeVolume.lt(maxTradeVolume)) maxTradeVolume = inMaxTradeVolume
+
+  const auctionVolume = outAmount.mul(sellHigh).div(fp('1'))
+  const slippage1e18 = maxTradeSlippage.mul(
+    fp('1').sub(
+      auctionVolume.sub(minTradeVolume).mul(fp('1')).div(maxTradeVolume.sub(minTradeVolume))
+    )
+  )
+
+  // Adjust for rounding
+  const leftover = slippage1e18.mod(fp('1'))
+  const slippage = slippage1e18.div(fp('1')).add(leftover.gte(fp('0.5')) ? 1 : 0)
+
+  const lowPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
+  const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
+
+  const FORTY_PERCENT = fp('0.4') // 40%
+  const SIXTY_PERCENT = fp('0.6') // 60%
+
+  let price: BigNumber
+  if (progression.lt(FORTY_PERCENT)) {
+    const exp = divRound(bn('6907752').mul(FORTY_PERCENT.sub(progression)), FORTY_PERCENT)
+    const divisor = new Decimal('999999').div('1000000').pow(exp.toString())
+    price = divCeil(middlePrice.mul(fp('1')), fp(divisor.toString()))
+  } else {
+    price = middlePrice.sub(
+      middlePrice.sub(lowPrice).mul(progression.sub(FORTY_PERCENT)).div(SIXTY_PERCENT)
+    )
+  }
+  return divCeil(outAmount.mul(price), fp('1'))
 }

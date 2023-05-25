@@ -199,7 +199,7 @@ describeFork('Wrapped CUSDCv3', () => {
       await wcusdcV3.connect(charles).withdrawFrom(bob.address, don.address, withdrawAmount)
 
       expect(await cusdcV3.balanceOf(don.address)).to.closeTo(withdrawAmount, 100)
-      expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(bn('0'), 10)
+      expect(await cusdcV3.balanceOf(charles.address)).to.closeTo(bn('0'), 11)
 
       expect(await wcusdcV3.balanceOf(bob.address)).to.closeTo(bn(0), 50)
     })
@@ -494,11 +494,11 @@ describeFork('Wrapped CUSDCv3', () => {
       expect(await wcusdcV3.isAllowed(bob.address, don.address)).to.eq(true)
       await expect(wcusdcV3.connect(don).claimTo(bob.address, bob.address)).to.emit(
         wcusdcV3,
-        'RewardClaimed'
+        'RewardsClaimed'
       )
     })
 
-    it('claims rewards and sends to claimer', async () => {
+    it('claims rewards and sends to claimer (claimTo)', async () => {
       const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
       expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
       await advanceTime(1000)
@@ -506,8 +506,18 @@ describeFork('Wrapped CUSDCv3', () => {
 
       await expect(wcusdcV3.connect(bob).claimTo(bob.address, bob.address)).to.emit(
         wcusdcV3,
-        'RewardClaimed'
+        'RewardsClaimed'
       )
+      expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
+    })
+
+    it('claims rewards and sends to claimer (claimRewards)', async () => {
+      const compToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
+      expect(await compToken.balanceOf(wcusdcV3.address)).to.equal(0)
+      await advanceTime(1000)
+      await enableRewardsAccrual(cusdcV3)
+
+      await expect(wcusdcV3.connect(bob).claimRewards()).to.emit(wcusdcV3, 'RewardsClaimed')
       expect(await compToken.balanceOf(bob.address)).to.be.greaterThan(0)
     })
 

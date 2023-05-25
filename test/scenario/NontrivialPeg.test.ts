@@ -3,23 +3,24 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
+import { advanceTime } from '../utils/time'
 import {
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   FiatCollateral,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRToken,
 } from '../../typechain'
 import {
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -56,14 +57,14 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   beforeEach(async () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
     ;({ rsr, stRSR, config, rToken, assetRegistry, backingManager, basketHandler, rTokenAsset } =
-      await loadFixture(defaultFixture))
+      await loadFixture(defaultFixtureNoBasket))
 
     // Variable-peg ERC20
     token0 = await (await ethers.getContractFactory('ERC20Mock')).deploy('Peg ERC20', 'PERC20')
@@ -136,6 +137,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
 
         await basketHandler.setPrimeBasket([token0.address, token1.address], [fp('1'), fp('1')])
         await basketHandler.refreshBasket()
+        await advanceTime(config.warmupPeriod.toNumber() + 1)
 
         // Issue
         await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -155,7 +157,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
       })
 
       it('should respect differing scales during redemption', async () => {
-        await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+        await rToken.connect(addr1).redeem(issueAmt)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
       })
@@ -171,16 +173,14 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
           await backingManager.maxTradeSlippage(),
           config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
         )
+        await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+          'already collateralized'
+        )
         await expectEvents(
           backingManager
             .connect(owner)
-            .manageTokens([token0.address, token1.address, rsr.address, rToken.address]),
+            .forwardRevenue([token0.address, token1.address, rsr.address, rToken.address]),
           [
-            {
-              contract: backingManager,
-              name: 'TradeStarted',
-              emitted: false,
-            },
             {
               contract: token0,
               name: 'Transfer',
@@ -203,6 +203,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
             },
           ]
         )
+
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
         // sum of target amounts

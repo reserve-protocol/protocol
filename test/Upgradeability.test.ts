@@ -14,17 +14,18 @@ import {
   BackingManagerP1V2,
   BasketHandlerP1,
   BasketHandlerP1V2,
+  BasketLibP1,
   BrokerP1,
   BrokerP1V2,
   DistributorP1,
   DistributorP1V2,
+  DutchTrade,
   ERC20Mock,
   FurnaceP1,
   FurnaceP1V2,
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
-  IBasketHandler,
   MainP1,
   MainP1V2,
   RevenueTraderP1,
@@ -35,6 +36,7 @@ import {
   StRSRP1Votes,
   StRSRP1VotesV2,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDistributor,
   TestIFurnace,
@@ -70,11 +72,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let main: TestIMain
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let tradingLib: RecollateralizationLibP1
+  let basketLib: BasketLibP1
 
   // Factories
   let MainFactory: ContractFactory
@@ -86,7 +89,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let BasketHandlerFactory: ContractFactory
   let DistributorFactory: ContractFactory
   let BrokerFactory: ContractFactory
-  let TradeFactory: ContractFactory
+  let GnosisTradeFactory: ContractFactory
+  let DutchTradeFactory: ContractFactory
   let StRSRFactory: ContractFactory
 
   let notWallet: Wallet
@@ -124,6 +128,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     )
     tradingLib = <RecollateralizationLibP1>await TradingLibFactory.deploy()
 
+    // Deploy BasketLib external library
+    const BasketLibFactory: ContractFactory = await ethers.getContractFactory('BasketLibP1')
+    basketLib = <BasketLibP1>await BasketLibFactory.deploy()
+
     // Setup factories
     MainFactory = await ethers.getContractFactory('MainP1')
     RTokenFactory = await ethers.getContractFactory('RTokenP1')
@@ -135,10 +143,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       },
     })
     AssetRegistryFactory = await ethers.getContractFactory('AssetRegistryP1')
-    BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1')
+    BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1', {
+      libraries: { BasketLibP1: basketLib.address },
+    })
     DistributorFactory = await ethers.getContractFactory('DistributorP1')
     BrokerFactory = await ethers.getContractFactory('BrokerP1')
-    TradeFactory = await ethers.getContractFactory('GnosisTrade')
+    GnosisTradeFactory = await ethers.getContractFactory('GnosisTrade')
+    DutchTradeFactory = await ethers.getContractFactory('DutchTrade')
     StRSRFactory = await ethers.getContractFactory('StRSRP1Votes')
 
     // Import deployed proxies
@@ -237,10 +248,11 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - BasketHandler', async () => {
       const newBasketHandler: BasketHandlerP1 = <BasketHandlerP1>await upgrades.deployProxy(
         BasketHandlerFactory,
-        [main.address],
+        [main.address, config.warmupPeriod],
         {
           initializer: 'init',
           kind: 'uups',
+          unsafeAllow: ['external-library-linking'],
         }
       )
       await newBasketHandler.deployed()
@@ -249,11 +261,19 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should deploy valid implementation - Broker / Trade', async () => {
-      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+      const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeFactory.deploy()
+      const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeFactory.deploy()
 
       const newBroker: BrokerP1 = <BrokerP1>await upgrades.deployProxy(
         BrokerFactory,
-        [main.address, gnosis.address, trade.address, config.auctionLength],
+        [
+          main.address,
+          gnosis.address,
+          gnosisTrade.address,
+          config.batchAuctionLength,
+          dutchTrade.address,
+          config.dutchAuctionLength,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
@@ -262,7 +282,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       await newBroker.deployed()
 
       expect(await newBroker.gnosis()).to.equal(gnosis.address)
-      expect(await newBroker.auctionLength()).to.equal(config.auctionLength)
+      expect(await newBroker.batchAuctionLength()).to.equal(config.batchAuctionLength)
+      expect(await newBroker.dutchAuctionLength()).to.equal(config.dutchAuctionLength)
       expect(await newBroker.disabled()).to.equal(false)
       expect(await newBroker.main()).to.equal(main.address)
     })
@@ -345,7 +366,14 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - StRSR', async () => {
       const newStRSR: StRSRP1Votes = <StRSRP1Votes>await upgrades.deployProxy(
         StRSRFactory,
-        [main.address, 'rtknRSR Token', 'rtknRSR', config.unstakingDelay, config.rewardRatio],
+        [
+          main.address,
+          'rtknRSR Token',
+          'rtknRSR',
+          config.unstakingDelay,
+          config.rewardRatio,
+          config.withdrawalLeak,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
@@ -390,9 +418,11 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(mainV2.address).to.equal(main.address)
 
       // Check state is preserved
-      expect(await mainV2.paused()).to.equal(false)
+      expect(await mainV2.tradingPaused()).to.equal(false)
+      expect(await mainV2.issuancePaused()).to.equal(false)
       expect(await mainV2.frozen()).to.equal(false)
-      expect(await mainV2.pausedOrFrozen()).to.equal(false)
+      expect(await mainV2.tradingPausedOrFrozen()).to.equal(false)
+      expect(await mainV2.issuancePausedOrFrozen()).to.equal(false)
       expect(await mainV2.hasRole(OWNER, owner.address)).to.equal(true)
       expect(await mainV2.hasRole(OWNER, main.address)).to.equal(false)
       expect(await mainV2.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)
@@ -485,10 +515,15 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should upgrade correctly - BasketHandler', async () => {
       // Upgrading
       const BasketHandlerV2Factory: ContractFactory = await ethers.getContractFactory(
-        'BasketHandlerP1V2'
+        'BasketHandlerP1V2',
+        { libraries: { BasketLibP1: basketLib.address } }
       )
-      const bskHndlrV2: BasketHandlerP1V2 = <BasketHandlerP1V2>(
-        await upgrades.upgradeProxy(basketHandler.address, BasketHandlerV2Factory)
+      const bskHndlrV2: BasketHandlerP1V2 = <BasketHandlerP1V2>await upgrades.upgradeProxy(
+        basketHandler.address,
+        BasketHandlerV2Factory,
+        {
+          unsafeAllow: ['external-library-linking'], // BasketLibP1
+        }
       )
 
       // Check address is maintained
@@ -517,7 +552,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       // Check state is preserved
       expect(await brokerV2.gnosis()).to.equal(gnosis.address)
-      expect(await brokerV2.auctionLength()).to.equal(config.auctionLength)
+      expect(await brokerV2.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await brokerV2.disabled()).to.equal(false)
       expect(await brokerV2.main()).to.equal(main.address)
 

@@ -13,7 +13,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     using FixLib for uint192;
 
     uint192 public constant MAX_RATIO = FIX_ONE; // {1} 100%
-    uint48 public constant PERIOD = 12; // {s} 12 seconds; 1 block on PoS Ethereum
+    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
 
     IRToken private rToken;
 
@@ -63,7 +63,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     // actions:
     //   rToken.melt(payoutAmount), paying payoutAmount to RToken holders
 
-    function melt() external notPausedOrFrozen {
+    function melt() external notFrozen {
         if (uint48(block.timestamp) < uint64(lastPayout) + PERIOD) return;
 
         // # of whole periods that have passed since lastPayout

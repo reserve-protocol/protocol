@@ -5,10 +5,11 @@ import "../../p1/mixins/RecollateralizationLib.sol";
 import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
 import "./Asset.sol";
+import "./VersionedAsset.sol";
 
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
-contract RTokenAsset is IAsset {
+contract RTokenAsset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -21,7 +22,7 @@ contract RTokenAsset is IAsset {
 
     uint8 public immutable erc20Decimals;
 
-    uint192 public immutable override maxTradeVolume; // {UoA}
+    uint192 public immutable maxTradeVolume; // {UoA}
 
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(IRToken erc20_, uint192 maxTradeVolume_) {
@@ -58,7 +59,7 @@ contract RTokenAsset is IAsset {
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = range.bottom.mulDiv(lowBUPrice, supply, FLOOR);
         high = range.top.mulDiv(highBUPrice, supply, CEIL);
-        // assert(low <= high); // obviously true at this point just by inspection
+        assert(low <= high); // not obviously true
     }
 
     // solhint-disable no-empty-blocks
@@ -73,7 +74,6 @@ contract RTokenAsset is IAsset {
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
         try this.tryPrice() returns (uint192 low, uint192 high) {
-            assert(low <= high);
             return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -98,8 +98,9 @@ contract RTokenAsset is IAsset {
         BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        lotLow = range.bottom.mulDiv(buLow, supply);
-        lotHigh = range.top.mulDiv(buHigh, supply);
+        lotLow = range.bottom.mulDiv(buLow, supply, FLOOR);
+        lotHigh = range.top.mulDiv(buHigh, supply, CEIL);
+        assert(lotLow <= lotHigh); // not obviously true
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
@@ -107,6 +108,11 @@ contract RTokenAsset is IAsset {
         // The RToken has 18 decimals, so there's no reason to waste gas here doing a shiftl_toFix
         // return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
         return _safeWrap(erc20.balanceOf(account));
+    }
+
+    /// @return {s} The timestamp of the last refresh; always 0 since prices are never saved
+    function lastSave() external pure returns (uint48) {
+        return 0;
     }
 
     /// @return If the asset is an instance of ICollateral or not
@@ -117,13 +123,14 @@ contract RTokenAsset is IAsset {
     // solhint-disable no-empty-blocks
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev Use delegatecall
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks
 
     // ==== Private ====
 
+    /// Computationally expensive basketRange calculation; used in price() & lotPrice()
     function basketRange() private view returns (BasketRange memory range) {
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(backingManager));
         uint192 basketsNeeded = IRToken(address(erc20)).basketsNeeded(); // {BU}
@@ -139,19 +146,24 @@ contract RTokenAsset is IAsset {
             // should switch over to an asset with a price feed.
 
             IMain main = backingManager.main();
-            TradingContext memory ctx = TradingContext({
-                basketsHeld: basketsHeld,
-                bm: backingManager,
-                bh: main.basketHandler(),
-                reg: main.assetRegistry(),
-                stRSR: main.stRSR(),
-                rsr: main.rsr(),
-                rToken: main.rToken(),
-                minTradeVolume: backingManager.minTradeVolume(),
-                maxTradeSlippage: backingManager.maxTradeSlippage()
-            });
+            TradingContext memory ctx;
 
-            Registry memory reg = assetRegistry.getRegistry();
+            ctx.basketsHeld = basketsHeld;
+            ctx.bm = backingManager;
+            ctx.bh = basketHandler;
+            ctx.ar = assetRegistry;
+            ctx.stRSR = main.stRSR();
+            ctx.rsr = main.rsr();
+            ctx.rToken = main.rToken();
+            ctx.minTradeVolume = backingManager.minTradeVolume();
+            ctx.maxTradeSlippage = backingManager.maxTradeSlippage();
+
+            // Calculate quantities
+            Registry memory reg = ctx.ar.getRegistry();
+            ctx.quantities = new uint192[](reg.erc20s.length);
+            for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+                ctx.quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            }
 
             // will exclude UoA value from RToken balances at BackingManager
             range = RecollateralizationLibP1.basketRange(ctx, reg);

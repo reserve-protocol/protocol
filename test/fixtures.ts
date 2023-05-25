@@ -5,21 +5,23 @@ import { getChainId } from '../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { CollateralStatus } from '../common/constants'
+import { CollateralStatus, PAUSER, LONG_FREEZER, SHORT_FREEZER } from '../common/constants'
 import {
   Asset,
   AssetRegistryP1,
   ATokenFiatCollateral,
   BackingManagerP1,
   BasketHandlerP1,
+  BasketLibP1,
   BrokerP1,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenSelfReferentialCollateral,
-  CTokenMock,
+  CTokenVaultMock,
   ERC20Mock,
   DeployerP0,
   DeployerP1,
+  DutchTrade,
   FacadeRead,
   FacadeAct,
   FacadeTest,
@@ -30,7 +32,6 @@ import {
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
-  IBasketHandler,
   MainP1,
   MockV3Aggregator,
   RevenueTraderP1,
@@ -40,6 +41,7 @@ import {
   StaticATokenMock,
   StRSRP1Votes,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
@@ -52,10 +54,9 @@ import {
   RecollateralizationLibP1,
   USDCMock,
   NonFiatCollateral,
-  FacadeMonitor,
   ZeroDecimalMock,
 } from '../typechain'
-import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
+import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { useEnv } from '#/utils/env'
 
 export enum Implementation {
@@ -77,7 +78,7 @@ export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 export const REVENUE_HIDING = fp('0') // no revenue hiding by default; test individually
 
 // This will have to be updated on each release
-export const VERSION = '2.1.0'
+export const VERSION = '3.0.0'
 
 export type Collateral =
   | FiatCollateral
@@ -156,6 +157,7 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
+  compToken: ERC20Mock,
   comptroller: ComptrollerMock,
   aaveToken: ERC20Mock,
   config: IConfig
@@ -163,7 +165,7 @@ async function collateralFixture(
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
-  const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+  const CTokenVaultMockFactory: ContractFactory = await ethers.getContractFactory('CTokenVaultMock')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
@@ -236,10 +238,17 @@ async function collateralFixture(
   const makeCTokenCollateral = async (
     symbol: string,
     referenceERC20: ERC20Mock,
-    chainlinkAddr: string
-  ): Promise<[CTokenMock, CTokenFiatCollateral]> => {
-    const erc20: CTokenMock = <CTokenMock>(
-      await CTokenMockFactory.deploy(symbol + ' Token', symbol, referenceERC20.address)
+    chainlinkAddr: string,
+    compToken: ERC20Mock
+  ): Promise<[CTokenVaultMock, CTokenFiatCollateral]> => {
+    const erc20: CTokenVaultMock = <CTokenVaultMock>(
+      await CTokenVaultMockFactory.deploy(
+        symbol + ' Token',
+        symbol,
+        referenceERC20.address,
+        compToken.address,
+        comptroller.address
+      )
     )
     const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
@@ -253,8 +262,7 @@ async function collateralFixture(
         defaultThreshold: defaultThreshold,
         delayUntilDefault: delayUntilDefault,
       },
-      REVENUE_HIDING,
-      comptroller.address
+      REVENUE_HIDING
     )
     await coll.refresh()
     return [erc20, coll]
@@ -293,9 +301,19 @@ async function collateralFixture(
   const usdc = await makeSixDecimalCollateral('USDC')
   const usdt = await makeVanillaCollateral('USDT')
   const busd = await makeVanillaCollateral('BUSD')
-  const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed())
-  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0], await usdc[1].chainlinkFeed())
-  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0], await usdt[1].chainlinkFeed())
+  const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed(), compToken)
+  const cusdc = await makeCTokenCollateral(
+    'cUSDC',
+    usdc[0],
+    await usdc[1].chainlinkFeed(),
+    compToken
+  )
+  const cusdt = await makeCTokenCollateral(
+    'cUSDT',
+    usdt[0],
+    await usdt[1].chainlinkFeed(),
+    compToken
+  )
   const adai = await makeATokenCollateral('aDAI', dai[0], await dai[1].chainlinkFeed(), aaveToken)
   const ausdc = await makeATokenCollateral(
     'aUSDC',
@@ -369,7 +387,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   main: TestIMain
   assetRegistry: IAssetRegistry
   backingManager: TestIBackingManager
-  basketHandler: IBasketHandler
+  basketHandler: TestIBasketHandler
   distributor: TestIDistributor
   rsrAsset: Asset
   compAsset: Asset
@@ -381,7 +399,6 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   facade: FacadeRead
   facadeAct: FacadeAct
   facadeTest: FacadeTest
-  facadeMonitor: FacadeMonitor
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -389,7 +406,18 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
 
 type Fixture<T> = () => Promise<T>
 
+// Use this fixture when the prime basket will be constant at 1 USD
 export const defaultFixture: Fixture<DefaultFixture> = async function (): Promise<DefaultFixture> {
+  return await makeDefaultFixture(true)
+}
+
+// Use this fixture when the prime basket needs to be set away from 1 USD
+export const defaultFixtureNoBasket: Fixture<DefaultFixture> =
+  async function (): Promise<DefaultFixture> {
+    return makeDefaultFixture(false)
+  }
+
+const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> => {
   const signers = await ethers.getSigners()
   const owner = signers[0]
   const { rsr } = await rsrFixture()
@@ -410,8 +438,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     longFreeze: bn('2592000'), // 30 days
     rewardRatio: bn('1069671574938'), // approx. half life of 90 days
     unstakingDelay: bn('1209600'), // 2 weeks
+    withdrawalLeak: fp('0'), // 0%; always refresh
+    warmupPeriod: bn('60'), // (the delay _after_ SOUND was regained)
     tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
-    auctionLength: bn('900'), // 15 minutes
+    batchAuctionLength: bn('900'), // 15 minutes
+    dutchAuctionLength: bn('1800'), // 30 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     issuanceThrottle: {
@@ -435,10 +466,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   // Deploy FacadeAct
   const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
   const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
-
-  // Deploy FacadeMonitor
-  const FacadeMonitorFactory: ContractFactory = await ethers.getContractFactory('FacadeMonitor')
-  const facadeMonitor = <FacadeMonitor>await FacadeMonitorFactory.deploy()
 
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
@@ -487,6 +514,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
       await TradingLibFactory.deploy()
     )
 
+    // Deploy BasketLib external library
+    const BasketLibFactory: ContractFactory = await ethers.getContractFactory('BasketLibP1')
+    const basketLib: BasketLibP1 = <BasketLibP1>await BasketLibFactory.deploy()
+
     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
 
@@ -501,7 +532,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
 
     const BskHandlerImplFactory: ContractFactory = await ethers.getContractFactory(
-      'BasketHandlerP1'
+      'BasketHandlerP1',
+      { libraries: { BasketLibP1: basketLib.address } }
     )
     const bskHndlrImpl: BasketHandlerP1 = <BasketHandlerP1>await BskHandlerImplFactory.deploy()
 
@@ -514,8 +546,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
     const furnaceImpl: FurnaceP1 = <FurnaceP1>await FurnaceImplFactory.deploy()
 
-    const TradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
-    const tradeImpl: GnosisTrade = <GnosisTrade>await TradeImplFactory.deploy()
+    const GnosisTradeImplFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+    const gnosisTrade: GnosisTrade = <GnosisTrade>await GnosisTradeImplFactory.deploy()
+
+    const DutchTradeImplFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
+    const dutchTrade: DutchTrade = <DutchTrade>await DutchTradeImplFactory.deploy()
 
     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
@@ -541,7 +576,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
         rsrTrader: revTraderImpl.address,
         rTokenTrader: revTraderImpl.address,
       },
-      trade: tradeImpl.address,
+      trading: {
+        gnosisTrade: gnosisTrade.address,
+        dutchTrade: dutchTrade.address,
+      },
     }
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
@@ -565,8 +603,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   const backingManager: TestIBackingManager = <TestIBackingManager>(
     await ethers.getContractAt('TestIBackingManager', await main.backingManager())
   )
-  const basketHandler: IBasketHandler = <IBasketHandler>(
-    await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+  const basketHandler: TestIBasketHandler = <TestIBasketHandler>(
+    await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
   )
   const distributor: TestIDistributor = <TestIDistributor>(
     await ethers.getContractAt('TestIDistributor', await main.distributor())
@@ -624,6 +662,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
+    compToken,
     compoundMock,
     aaveToken,
     config
@@ -646,9 +685,14 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
   // Basket should begin disabled at 0 len
   expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
-  // Set non-empty basket
-  await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
-  await basketHandler.connect(owner).refreshBasket()
+  if (setBasket) {
+    // Set non-empty basket
+    await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
+    await basketHandler.connect(owner).refreshBasket()
+
+    // Advance time post warmup period
+    await advanceTime(Number(config.warmupPeriod) + 1)
+  }
 
   // Set up allowances
   for (let i = 0; i < basket.length; i++) {
@@ -657,6 +701,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
 
   // Charge throttle
   await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
+
+  // Set Owner as Pauser/Freezer for tests
+  await main.connect(owner).grantRole(PAUSER, owner.address)
+  await main.connect(owner).grantRole(SHORT_FREEZER, owner.address)
+  await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
 
   return {
     rsr,
@@ -688,7 +737,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function (): Promis
     easyAuction,
     facade,
     facadeAct,
-    facadeMonitor,
     facadeTest,
     rsrTrader,
     rTokenTrader,

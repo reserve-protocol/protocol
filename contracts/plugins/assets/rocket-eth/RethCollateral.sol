@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
-import "./IReth.sol";
+import "./vendor/IReth.sol";
 
 /**
  * @title RethCollateral

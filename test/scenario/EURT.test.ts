@@ -6,16 +6,16 @@ import { ethers } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
   ERC20Mock,
   EURFiatCollateral,
   IAssetRegistry,
-  IBasketHandler,
   IFacadeTest,
   MockV3Aggregator,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
@@ -23,7 +23,7 @@ import {
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -61,7 +61,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let facadeTest: IFacadeTest
@@ -86,7 +86,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       rsrTrader,
       rTokenTrader,
       facadeTest,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     token0 = <StaticATokenMock>erc20s[7] // aDAI
@@ -122,6 +122,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
     await assetRegistry.connect(owner).register(eurtCollateral.address)
     await basketHandler.setPrimeBasket([token0.address, eurt.address], [fp('0.5'), fp('0.5')])
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
 
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(eurt.address)
@@ -156,22 +157,32 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
 
     it('should sell appreciating stable collateral and ignore eurt', async () => {
       await token0.setExchangeRate(fp('1.1')) // 10% appreciation
-      await expect(backingManager.manageTokens([token0.address])).to.not.emit(
-        backingManager,
-        'TradeStarted'
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
       )
+      await backingManager.forwardRevenue([eurt.address, token0.address])
       expect(await eurt.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await eurt.balanceOf(rsrTrader.address)).to.equal(0)
-      await expect(rTokenTrader.manageToken(eurt.address)).to.not.emit(rTokenTrader, 'TradeStarted')
-      await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
+      await expect(
+        rTokenTrader.manageToken(eurt.address, TradeKind.BATCH_AUCTION)
+      ).to.be.revertedWith('0 balance')
+      await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rTokenTrader,
+        'TradeStarted'
+      )
 
       // RTokenTrader should be selling token0 and buying RToken
       const trade = await getTrade(rTokenTrader, token0.address)
       expect(await trade.sell()).to.equal(token0.address)
       expect(await trade.buy()).to.equal(rToken.address)
 
-      await expect(rsrTrader.manageToken(eurt.address)).to.not.emit(rsrTrader, 'TradeStarted')
-      await expect(rsrTrader.manageToken(token0.address)).to.emit(rsrTrader, 'TradeStarted')
+      await expect(rsrTrader.manageToken(eurt.address, TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        '0 balance'
+      )
+      await expect(rsrTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+        rsrTrader,
+        'TradeStarted'
+      )
 
       // RSRTrader should be selling token0 and buying RToken
       const trade2 = await getTrade(rsrTrader, token0.address)
@@ -190,7 +201,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       await targetUnitOracle.updateAnswer(bn('1e8'))
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
+      expect(await rToken.connect(addr1).redeem(issueAmt))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await eurt.balanceOf(addr1.address)).to.equal(initialBal)
     })

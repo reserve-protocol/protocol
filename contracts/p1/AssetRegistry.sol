@@ -24,6 +24,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // Registered Assets
     mapping(IERC20 => IAsset) private assets;
 
+    // === 3.0.0 ===
+
+    uint48 public lastRefresh; // {s}
+
     /* ==== Contract Invariants ====
        The contract state is just the mapping assets; _erc20s is ignored in properties.
 
@@ -46,13 +50,18 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     /// Update the state of all assets
     /// @custom:refresher
-    // actions: calls refresh(c) for c in keys(assets) when c.isCollateral()
+    // actions:
+    //   calls refresh(c) for c in keys(assets) when c.isCollateral()
+    //   tracks basket status on basketHandler
     function refresh() public {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
             assets[IERC20(_erc20s.at(i))].refresh();
         }
+
+        basketHandler.trackStatus();
+        lastRefresh = uint48(block.timestamp); // safer to do this at end than start, actually
     }
 
     /// Register `asset`
@@ -140,6 +149,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     /// Returns keys(assets), values(assets) as (duplicate-free) lists.
     // returns: [keys(assets)], [values(assets)] without duplicates.
+    /// @return reg The list of registered ERC20s and Assets, in the same order
     function getRegistry() external view returns (Registry memory reg) {
         uint256 length = _erc20s.length();
         reg.erc20s = new IERC20[](length);
@@ -148,6 +158,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             reg.erc20s[i] = IERC20(_erc20s.at(i));
             reg.assets[i] = assets[IERC20(_erc20s.at(i))];
         }
+    }
+
+    /// @return The number of registered ERC20s
+    function size() external view returns (uint256) {
+        return _erc20s.length();
     }
 
     /// Register an asset
@@ -201,5 +216,5 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[47] private __gap;
+    uint256[46] private __gap;
 }

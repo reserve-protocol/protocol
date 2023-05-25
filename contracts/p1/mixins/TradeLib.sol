@@ -53,13 +53,10 @@ library TradeLib {
 
         (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
 
-        // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume)) {
-            return (false, req);
-        }
+        notDust = isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume);
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, lotHigh); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, lotHigh); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
@@ -77,7 +74,7 @@ library TradeLib {
         req.sell = trade.sell;
         req.buy = trade.buy;
 
-        return (true, req);
+        return (notDust, req);
     }
 
     /// Assuming we have `trade.sellAmount` sell tokens available, prepare a trade to cover as
@@ -159,7 +156,7 @@ library TradeLib {
         uint192 y,
         uint192 z
     ) internal pure returns (uint192) {
-        try trader.mulDivCeil(x, y, z) returns (uint192 result) {
+        try trader.mulDiv(x, y, z, CEIL) returns (uint192 result) {
             return result;
         } catch Panic(uint256 errorCode) {
             // 0x11: overflow
@@ -185,12 +182,18 @@ library TradeLib {
         return size > 0 ? size : 1;
     }
 
-    /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
-    /// @return {tok} The max trade size for the asset in whole tokens
-    function maxTradeSize(IAsset asset, uint192 price) private view returns (uint192) {
+    /// Calculates the maximum trade size for a trade pair of tokens
+    /// @return {tok} The max trade size for the trade overall
+    function maxTradeSize(
+        IAsset sell,
+        IAsset buy,
+        uint192 price
+    ) private view returns (uint192) {
         // untestable:
         //       Price cannot be 0, it would've been filtered before in `prepareTradeSell`
-        uint192 size = price == 0 ? FIX_MAX : asset.maxTradeVolume().div(price, FLOOR);
+        uint192 size = price == 0
+            ? FIX_MAX
+            : fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).div(price, FLOOR);
         return size > 0 ? size : 1;
     }
 }

@@ -7,6 +7,12 @@ import "../libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
 
+// Not used directly in the IAsset interface, but used by many consumers to save stack space
+struct Price {
+    uint192 low; // {UoA/tok}
+    uint192 high; // {UoA/tok}
+}
+
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
@@ -43,8 +49,11 @@ interface IAsset is IRewardable {
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external view returns (bool);
 
-    /// @param {UoA} The max trade volume, in UoA
+    /// @return {UoA} The max trade volume, in UoA
     function maxTradeVolume() external view returns (uint192);
+
+    /// @return {s} The timestamp of the last refresh() that saved prices
+    function lastSave() external view returns (uint48);
 }
 
 // Used only in Testing. Strictly speaking an Asset does not need to adhere to this interface

@@ -37,6 +37,7 @@ async function main() {
   const deployments: IAssetCollDeployments = {
     assets: {},
     collateral: {},
+    erc20s: {},
   }
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 

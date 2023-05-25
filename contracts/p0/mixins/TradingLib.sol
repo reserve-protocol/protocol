@@ -50,13 +50,10 @@ library TradingLibP0 {
 
         (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
 
-        // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume)) {
-            return (false, req);
-        }
+        notDust = isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume);
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, lotHigh); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, lotHigh); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
@@ -73,7 +70,7 @@ library TradingLibP0 {
         req.minBuyAmount = b.shiftl_toUint(int8(trade.buy.erc20Decimals()), CEIL);
         req.sell = trade.sell;
         req.buy = trade.buy;
-        return (true, req);
+        return (notDust, req);
     }
 
     /// Assuming we have `trade.sellAmount` sell tokens available, prepare a trade to cover as
@@ -261,7 +258,7 @@ library TradingLibP0 {
         view
         returns (BasketRange memory range)
     {
-        (uint192 basketPriceLow, uint192 basketPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
 
         // Cap ctx.basketsHeld.top
         if (ctx.basketsHeld.top > ctx.rToken.basketsNeeded()) {
@@ -315,14 +312,14 @@ library TradingLibP0 {
                     // deficit: deduct optimistic estimate of baskets missing
 
                     // {BU} = {UoA/tok} * {tok} / {UoA/BU}
-                    deltaTop -= int256(uint256(low.mulDiv(anchor - bal, basketPriceHigh, FLOOR)));
+                    deltaTop -= int256(uint256(low.mulDiv(anchor - bal, buPriceHigh, FLOOR)));
                     // does not need underflow protection: using low price of asset
                 } else {
                     // surplus: add-in optimistic estimate of baskets purchaseable
 
                     // {BU} = {UoA/tok} * {tok} / {UoA/BU}
                     deltaTop += int256(
-                        uint256(ctx.bm.safeMulDivCeil(high, bal - anchor, basketPriceLow))
+                        uint256(ctx.bm.safeMulDivCeil(high, bal - anchor, buPriceLow))
                     );
                     // needs overflow protection: using high price of asset which can be FIX_MAX
                 }
@@ -350,11 +347,7 @@ library TradingLibP0 {
                 // (3) Buy BUs at their high price with the remaining value
                 // (4) Assume maximum slippage in trade
                 // {BU} = {UoA} * {1} / {UoA/BU}
-                range.bottom += val.mulDiv(
-                    FIX_ONE.minus(ctx.maxTradeSlippage),
-                    basketPriceHigh,
-                    FLOOR
-                );
+                range.bottom += val.mulDiv(FIX_ONE.minus(ctx.maxTradeSlippage), buPriceHigh, FLOOR);
             }
         }
 
@@ -430,7 +423,7 @@ library TradingLibP0 {
 
         // No space on the stack to cache erc20s.length
         for (uint256 i = 0; i < erc20s.length; ++i) {
-            if (erc20s[i] == ctx.rsr) continue;
+            if (erc20s[i] == ctx.rsr || address(erc20s[i]) == address(ctx.rToken)) continue;
 
             IAsset asset = ctx.reg.toAsset(erc20s[i]);
 
@@ -558,7 +551,7 @@ library TradingLibP0 {
         uint192 y,
         uint192 z
     ) internal pure returns (uint192) {
-        try trader.mulDivCeil(x, y, z) returns (uint192 result) {
+        try trader.mulDiv(x, y, z, CEIL) returns (uint192 result) {
             return result;
         } catch Panic(uint256 errorCode) {
             // 0x11: overflow
@@ -581,10 +574,18 @@ library TradingLibP0 {
         return size > 0 ? size : 1;
     }
 
-    /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
-    /// @return {tok} The max trade size for the asset in whole tokens
-    function maxTradeSize(IAsset asset, uint192 price) private view returns (uint192) {
-        uint192 size = price == 0 ? FIX_MAX : asset.maxTradeVolume().div(price, FLOOR);
+    /// Calculates the maximum trade size for a trade pair of tokens
+    /// @return {tok} The max trade size for the trade overall
+    function maxTradeSize(
+        IAsset sell,
+        IAsset buy,
+        uint192 price
+    ) private view returns (uint192) {
+        // untestable:
+        //       Price cannot be 0, it would've been filtered before in `prepareTradeSell`
+        uint192 size = price == 0
+            ? FIX_MAX
+            : fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).div(price, FLOOR);
         return size > 0 ? size : 1;
     }
 }

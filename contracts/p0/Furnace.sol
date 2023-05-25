@@ -13,7 +13,7 @@ contract FurnaceP0 is ComponentP0, IFurnace {
     using FixLib for uint192;
 
     uint192 public constant MAX_RATIO = FIX_ONE; // {1} 100%
-    uint48 public constant PERIOD = 12; // {s} 12 seconds; 1 block on PoS Ethereum
+    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
 
     uint192 public ratio; // {1} What fraction of balance to melt each PERIOD
 
@@ -30,7 +30,7 @@ contract FurnaceP0 is ComponentP0, IFurnace {
 
     /// Performs any melting that has vested since last call.
     /// @custom:refresher
-    function melt() public notPausedOrFrozen {
+    function melt() public notFrozen {
         if (uint48(block.timestamp) < uint64(lastPayout) + PERIOD) return;
 
         // # of whole periods that have passed since lastPayout

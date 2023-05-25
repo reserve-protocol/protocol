@@ -73,9 +73,7 @@ interface AggregatorV3Interface_ {
     // getRoundData and latestRoundData should both raise "No data present"
     // if they do not have data to report, instead of returning unset values
     // which could be misinterpreted as actual reported values.
-    function getRoundData(
-        uint80 _roundId
-    )
+    function getRoundData(uint80 _roundId)
         external
         view
         returns (
@@ -117,7 +115,7 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
 
     uint256 private constant PHASE_OFFSET = 64;
     uint256 private constant PHASE_SIZE = 16;
-    uint256 private constant MAX_ID = 2 ** (PHASE_OFFSET + PHASE_SIZE) - 1;
+    uint256 private constant MAX_ID = 2**(PHASE_OFFSET + PHASE_SIZE) - 1;
 
     constructor(address _aggregator) Owned() {
         setAggregator(_aggregator);
@@ -175,9 +173,13 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
      * an already answered Aggregator or use the recommended getRoundData
      * instead which includes better verification information.
      */
-    function getTimestamp(
-        uint256 _roundId
-    ) public view virtual override returns (uint256 updatedAt) {
+    function getTimestamp(uint256 _roundId)
+        public
+        view
+        virtual
+        override
+        returns (uint256 updatedAt)
+    {
         if (_roundId > MAX_ID) return 0;
 
         (uint16 _phaseId, uint64 aggregatorRoundId) = parseIds(_roundId);
@@ -227,9 +229,7 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
      * (Only some AggregatorV3Interface_ implementations return meaningful values)
      * @dev Note that answer and updatedAt may change between queries.
      */
-    function getRoundData(
-        uint80 _roundId
-    )
+    function getRoundData(uint80 _roundId)
         public
         view
         virtual
@@ -315,9 +315,7 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
      * @return answeredInRound is the round ID of the round in which the answer
      * was computed.
      */
-    function proposedGetRoundData(
-        uint80 _roundId
-    )
+    function proposedGetRoundData(uint80 _roundId)
         public
         view
         virtual
@@ -445,7 +443,17 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
         uint256 updatedAt,
         uint80 answeredInRound,
         uint16 _phaseId
-    ) internal pure returns (uint80, int256, uint256, uint256, uint80) {
+    )
+        internal
+        pure
+        returns (
+            uint80,
+            int256,
+            uint256,
+            uint256,
+            uint80
+        )
+    {
         return (
             addPhase(_phaseId, uint64(roundId)),
             answer,
@@ -481,10 +489,7 @@ interface AccessControllerInterface {
 contract EACAggregatorProxy is AggregatorProxy {
     AccessControllerInterface public accessController;
 
-    constructor(
-        address _aggregator,
-        address _accessController
-    ) AggregatorProxy(_aggregator) {
+    constructor(address _aggregator, address _accessController) AggregatorProxy(_aggregator) {
         setController(_accessController);
     }
 
@@ -587,9 +592,7 @@ contract EACAggregatorProxy is AggregatorProxy {
      * (Only some AggregatorV3Interface_ implementations return meaningful values)
      * @dev Note that answer and updatedAt may change between queries.
      */
-    function getRoundData(
-        uint80 _roundId
-    )
+    function getRoundData(uint80 _roundId)
         public
         view
         virtual
@@ -657,9 +660,7 @@ contract EACAggregatorProxy is AggregatorProxy {
      * @return answeredInRound is the round ID of the round in which the answer
      * was computed.
      */
-    function proposedGetRoundData(
-        uint80 _roundId
-    )
+    function proposedGetRoundData(uint80 _roundId)
         public
         view
         override
@@ -764,9 +765,7 @@ contract EACAggregatorProxyMock is EACAggregatorProxy {
         __latestAnsweredRound = _roundId;
     }
 
-    function getRoundData(
-        uint80 _roundId
-    )
+    function getRoundData(uint80 _roundId)
         public
         view
         override
