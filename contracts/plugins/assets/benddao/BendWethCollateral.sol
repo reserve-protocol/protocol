@@ -84,11 +84,8 @@ contract BendWethCollateral is AppreciatingFiatCollateral {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev Use delegatecall
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external virtual override(Asset, IRewardable) {
-        IERC20 bend = IStaticBToken(address(erc20)).REWARD_TOKEN();
-        uint256 oldBal = bend.balanceOf(address(this));
-        IStaticBToken(address(erc20)).claimRewardsToSelf(true);
-        emit RewardsClaimed(bend, bend.balanceOf(address(this)) - oldBal);
+        IRewardable(address(erc20)).claimRewards();
     }
 }

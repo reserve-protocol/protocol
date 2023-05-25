@@ -127,12 +127,12 @@ export default function fn<X extends CollateralFixtureContext>(
 
           const aliceBal = await collateral.bal(alice.address)
 
-          // +/- 10,000 for an 18 decimal token; +/- 100 for a 6 decimal token
           const decimals = await ctx.tok.decimals()
           const precisionDecimals = fp('0.8').mul(decimals).div(fp('1'))
           expect(aliceBal).to.closeTo(
             amount.mul(bn(10).pow(18 - decimals)),
             bn(10).pow(decimals - precisionDecimals.toNumber())
+            // +/- 10,000 for an 18 decimal token; +/- 100 for a 6 decimal token
           )
         })
       })

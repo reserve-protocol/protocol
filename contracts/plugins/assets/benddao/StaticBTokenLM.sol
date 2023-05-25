@@ -34,6 +34,9 @@ contract StaticBTokenLM is ReentrancyGuard, ERC20, IStaticBTokenLM {
     using WadRayMath for uint256;
     using RayMathNoRounding for uint256;
 
+    /// Emitted whenever a reward token balance is claimed
+    event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
+
     ILendPool public override LEND_POOL;
     IIncentivesController public override INCENTIVES_CONTROLLER;
     IERC20 public override BTOKEN;
@@ -323,6 +326,15 @@ contract StaticBTokenLM is ReentrancyGuard, ERC20, IStaticBTokenLM {
             return;
         }
         _claimRewardsOnBehalf(msg.sender, msg.sender, forceUpdate);
+    }
+
+    function claimRewards() external virtual nonReentrant {
+        if (address(INCENTIVES_CONTROLLER) == address(0)) {
+            return;
+        }
+        uint256 oldBal = REWARD_TOKEN.balanceOf(msg.sender);
+        _claimRewardsOnBehalf(msg.sender, msg.sender, true);
+        emit RewardsClaimed(REWARD_TOKEN, REWARD_TOKEN.balanceOf(msg.sender) - oldBal);
     }
 
     /**
