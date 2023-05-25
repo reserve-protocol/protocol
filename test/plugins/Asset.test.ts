@@ -389,7 +389,7 @@ describe('Assets contracts #fast', () => {
       await invalidFiatCollateral.setSimplyRevert(false)
       await expect(invalidFiatCollateral.price()).to.be.reverted
 
-      //  Check RToken price reverrts
+      //  Check RToken price reverts
       await expect(rTokenAsset.price()).to.be.reverted
     })
 
