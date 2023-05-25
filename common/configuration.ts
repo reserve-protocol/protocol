@@ -422,6 +422,7 @@ export const MAX_MIN_TRADE_VOLUME = BigNumber.from(10).pow(29)
 export const MIN_THROTTLE_AMT_RATE = BigNumber.from(10).pow(18)
 export const MAX_THROTTLE_AMT_RATE = BigNumber.from(10).pow(48)
 export const MAX_THROTTLE_PCT_RATE = BigNumber.from(10).pow(18)
+export const GNOSIS_MAX_TOKENS = BigNumber.from(7).mul(BigNumber.from(10).pow(28))
 
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)
