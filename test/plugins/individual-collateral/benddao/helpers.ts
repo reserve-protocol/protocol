@@ -12,6 +12,7 @@ import { ethers } from 'hardhat'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumberish } from 'ethers'
 import { whileImpersonating } from '../../../utils/impersonation'
+import { fp } from '../../../../common/numbers'
 
 export const resetFork = getResetFork(FORK_BLOCK)
 
@@ -43,15 +44,11 @@ export const mintStaticBendWeth = async (
   amount: BigNumberish,
   recipient: string
 ) => {
-  // const dynamicAmount = await staticBendWeth.staticToDynamicAmount(amount)
-  // await whileImpersonating(WETH_WHALE, async (wethWhale) => {
-  //   await weth.connect(wethWhale).approve(staticBendWeth.address, dynamicAmount)
-  //   await staticBendWeth.connect(wethWhale).deposit(recipient, dynamicAmount, 0, true)
-  // })
-  
   const dynamicAmount = await staticBendWeth.staticToDynamicAmount(amount)
   await whileImpersonating(WETH_WHALE, async (wethWhale) => {
-    await weth.connect(wethWhale).approve(staticBendWeth.address, dynamicAmount)
-    await staticBendWeth.connect(wethWhale).deposit(recipient, dynamicAmount, 0, true)
+    const discountFromTimeDelay = fp('0.999999997932295219')
+    const adjDynamicAmount = dynamicAmount.mul(fp('1')).div(discountFromTimeDelay)
+    await weth.connect(wethWhale).approve(staticBendWeth.address, adjDynamicAmount)
+    await staticBendWeth.connect(wethWhale).deposit(recipient, adjDynamicAmount, 0, true)
   })
 }
