@@ -134,8 +134,17 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(await token8.symbol()).to.equal(expectedSyms[8])
 
       // Update backing for prime basket
-      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('1').sub(1))
-      await scenario.pushBackingForPrimeBasket(tokenIDs.get('SA1') as number, fp('2').sub(1))
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.4').sub(1))
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB1') as number, fp('0.3').sub(1))
+
+      // no `C` weights
+      await expect(scenario.setPrimeBasket()).revertedWith('new basket missing target weights')
+
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC1') as number, fp('0.3').sub(1))
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('SA1') as number, fp('0.1').sub(1))
+
+      // over-weighted to `A`
+      await expect(scenario.setPrimeBasket()).revertedWith('new basket adds target weights')
 
       // Remove the last one added
       await scenario.popBackingForPrimeBasket()
@@ -148,12 +157,14 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
       const [newTokenAddrs, amts] = await comp.basketHandler.quote(1n * exa, RoundingMode.CEIL)
       expect(await comp.basketHandler.prevEqualsCurr()).to.be.false
-      expect(newTokenAddrs.length).to.equal(1)
+      expect(newTokenAddrs.length).to.equal(3)
 
       const tokenInBasket = await ConAt('ERC20Fuzz', newTokenAddrs[0])
       expect(await tokenInBasket.symbol()).to.equal('CA1')
       // 1/1,000,000% revenue hiding
-      expect(amts[0]).to.closeTo(fp('1.000001'), fp('0.0000001'))
+      expect(amts[0]).to.closeTo(fp('0.4000004'), fp('0.00000001'))
+      expect(amts[1]).to.closeTo(fp('0.3000003'), fp('0.00000001'))
+      expect(amts[2]).to.closeTo(fp('0.3000003'), fp('0.00000001'))
     })
 
     it('can set backup basket and refresh', async () => {
