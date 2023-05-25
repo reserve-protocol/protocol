@@ -2,24 +2,26 @@
 pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
-import { ILendPool } from "./dependencies/interfaces/ILendPool.sol";
+import { ILendPool } from "./vendor/interfaces/ILendPool.sol";
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import { IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import { IBToken } from "./dependencies/interfaces/IBToken.sol";
-import { IStaticBTokenLM } from "./IStaticBTokenLM.sol";
-import { IIncentivesController } from "./dependencies/interfaces/IIncentivesController.sol";
-import { IScaledBalanceToken } from "./dependencies/interfaces/IScaledBalanceToken.sol";
+import { IBToken } from "./vendor/interfaces/IBToken.sol";
+import { IStaticBTokenLM } from "./vendor/interfaces/IStaticBTokenLM.sol";
+import { IIncentivesController } from "./vendor/interfaces/IIncentivesController.sol";
+import { IScaledBalanceToken } from "./vendor/interfaces/IScaledBalanceToken.sol";
 
 import { StaticBTokenErrors } from "./StaticBTokenErrors.sol";
 
-import { ERC20 } from "./ERC20.sol";
 import { ReentrancyGuard } from "./ReentrancyGuard.sol";
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { WadRayMath } from "./dependencies/libraries/WadRayMath.sol";
+import { WadRayMath } from "./vendor/libraries/WadRayMath.sol";
 import { RayMathNoRounding } from "./RayMathNoRounding.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import { ERC20 } from "./vendor/ERC20.sol";
+
+// solhint-disable var-name-mixedcase
 
 /**
  * @title StaticBTokenLM
@@ -27,11 +29,7 @@ import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
  * The token support claiming liquidity mining rewards from the Aave system.
  **/
-contract StaticBTokenLM is
-    ReentrancyGuard,
-    ERC20("STATIC_BTOKEN_IMPL", "STATIC_BTOKEN_IMPL"),
-    IStaticBTokenLM
-{
+contract StaticBTokenLM is ReentrancyGuard, ERC20, IStaticBTokenLM {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using WadRayMath for uint256;
@@ -58,12 +56,10 @@ contract StaticBTokenLM is
         address bToken,
         string memory staticBTokenName,
         string memory staticBTokenSymbol
-    ) public {
+    ) ERC20(staticBTokenName, staticBTokenSymbol) {
         LEND_POOL = pool;
         BTOKEN = IERC20(bToken);
 
-        _name = staticBTokenName;
-        _symbol = staticBTokenSymbol;
         _setupDecimals(IERC20Metadata(bToken).decimals());
 
         try IBToken(bToken).getIncentivesController() returns (
@@ -73,6 +69,7 @@ contract StaticBTokenLM is
                 INCENTIVES_CONTROLLER = incentivesController;
                 REWARD_TOKEN = IERC20(address(INCENTIVES_CONTROLLER.REWARD_TOKEN()));
             }
+            // solhint-disable-next-line no-empty-blocks
         } catch {}
 
         ASSET = IERC20(IBToken(bToken).UNDERLYING_ASSET_ADDRESS());
@@ -202,7 +199,8 @@ contract StaticBTokenLM is
     }
 
     /**
-     * @notice Updates rewards for senders and receiver in a transfer (not updating rewards for address(0))
+     * @notice Updates rewards for senders and receiver in a transfer
+     *         (not updating rewards for address(0))
      * @param from The address of the sender of tokens
      * @param to The address of the receiver of tokens
      */
@@ -350,7 +348,8 @@ contract StaticBTokenLM is
     }
 
     /**
-     * @notice Compute the pending in RAY (rounded down). Pending is the amount to add (not yet unclaimed) rewards in RAY (rounded down).
+     * @notice Compute the pending in RAY (rounded down).
+     *         Pending is the amount to add (not yet unclaimed) rewards in RAY (rounded down).
      * @param user The user to compute for
      * @param balance The balance of the user
      * @param fresh Flag to account for rewards not claimed by contract yet
@@ -395,7 +394,8 @@ contract StaticBTokenLM is
      * @param user The address of the user
      * @param balance The balance of the user in WAD
      * @param fresh Flag to account for rewards not claimed by contract yet
-     * @return The total rewards that can be claimed by the user (if `fresh` flag true, after updating rewards)
+     * @return The total rewards that can be claimed by the user
+     *         (if `fresh` flag true, after updating rewards)
      */
     function _getClaimableRewards(
         address user,
@@ -448,6 +448,7 @@ contract StaticBTokenLM is
         return INCENTIVES_CONTROLLER;
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function UNDERLYING_ASSET_ADDRESS() external view override returns (address) {
         return address(ASSET);
     }

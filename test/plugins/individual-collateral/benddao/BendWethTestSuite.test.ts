@@ -125,7 +125,8 @@ const mintCollateralTo: MintCollateralFunc<BendCollateralFixtureContext> = async
   await mintStaticBendWeth(ctx.weth, ctx.staticBendWeth, user, amount, recipient)
 }
 
-const increaseRefPerTok = async (ctx: BendCollateralFixtureContext, pctIncrease: BigNumberish) => {
+// const increaseRefPerTok = async (ctx: BendCollateralFixtureContext, pctIncrease: BigNumberish) => {
+const increaseRefPerTok = async () => {
   // TODO
   // get current normalized income
   // estimate how long it would take to reach pctIncrease

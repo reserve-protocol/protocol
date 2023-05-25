@@ -2,9 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
   ERC20Mock,
   IBToken,
-  IIncentivesController,
   ILendPool,
-  IStaticBTokenLM,
   IWETH,
   StaticBTokenLM,
   StaticBTokenLM__factory,
@@ -14,11 +12,10 @@ import { resetFork } from './helpers'
 import hre, { ethers } from 'hardhat'
 import { BEND, BEND_WETH, INCENTIVES_CONTROLLER, LENDPOOL, WETH } from './constants'
 import { expect } from 'chai'
-import { buildPermitParams, evmRevert, evmSnapshot, waitForTx } from '../../../integration/utils'
+import { evmRevert, evmSnapshot, waitForTx } from '../../../integration/utils'
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../common/constants'
 import { rayMul } from '../../../integration/ray-math'
 import bnjs from 'bignumber.js'
-import { whileImpersonating } from '../../../utils/impersonation'
 import { advanceTime } from '../../../utils/time'
 import { formatEther } from 'ethers/lib/utils'
 
@@ -146,7 +143,6 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
   let userSigner: providers.JsonRpcSigner
   let user2Signer: providers.JsonRpcSigner
   let lendPool: ILendPool
-  let incentivesController: IIncentivesController
   let weth: IWETH
   let bendWeth: IBToken
   let bend: ERC20Mock
@@ -163,9 +159,6 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
     user2Signer = hre.ethers.provider.getSigner(await user2.getAddress())
 
     lendPool = <ILendPool>await ethers.getContractAt('ILendPool', LENDPOOL, userSigner)
-    incentivesController = <IIncentivesController>(
-      await ethers.getContractAt('IIncentivesController', INCENTIVES_CONTROLLER, userSigner)
-    )
 
     weth = <IWETH>await ethers.getContractAt('IWETH', WETH, userSigner)
     bendWeth = <IBToken>await ethers.getContractAt('IBToken', BEND_WETH, userSigner)

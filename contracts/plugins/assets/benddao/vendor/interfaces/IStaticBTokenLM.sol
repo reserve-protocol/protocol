@@ -3,8 +3,8 @@ pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import { ILendPool } from "./dependencies/interfaces/ILendPool.sol";
-import { IIncentivesController } from "./dependencies/interfaces/IIncentivesController.sol";
+import { ILendPool } from "./ILendPool.sol";
+import { IIncentivesController } from "./IIncentivesController.sol";
 
 interface IStaticBTokenLM is IERC20 {
     struct SignatureParams {
