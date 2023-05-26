@@ -601,7 +601,8 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(furnace_bal_init).to.equal(0)
 
       // Manage token in RToken Trader
-      await scenario.manageTokenInRTokenTrader(25, 1) // BATCH_AUCTION
+      console.log(numTokens)
+      await scenario.manageTokenInRTokenTrader(numTokens + 1, 1) // BATCH_AUCTION
 
       const rTokenTrader_bal = await comp.rToken.balanceOf(rTokenTraderAddr)
       const furnace_bal = await comp.rToken.balanceOf(furnaceAddr)

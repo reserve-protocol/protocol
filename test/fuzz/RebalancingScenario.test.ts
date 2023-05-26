@@ -334,7 +334,7 @@ const scenarioSpecificTests = () => {
     const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
     const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
 
-    // Setup a simple basket of two tokens, only target type A
+    // Setup a new basket
     await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.2').sub(1))
     await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB0') as number, fp('0.3').sub(1))
     await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC0') as number, fp('0.3').sub(1))

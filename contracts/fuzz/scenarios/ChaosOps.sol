@@ -50,6 +50,8 @@ contract ChaosOpsScenario {
     mapping(bytes32 => IERC20[]) public backupTokens;
 
     bytes32[] public targetNames = [bytes32("A"), bytes32("B"), bytes32("C")];
+    mapping(bytes32 => uint256) public targetWeightsByName;
+    mapping(address => bytes32) public targetNameByToken;
 
     // Used to create unique asset/col symbols - Starts with 3 to avoid collisions
     uint256 internal tokenIdNonce = 3;
@@ -70,6 +72,10 @@ contract ChaosOpsScenario {
 
         uint192 maxTradeVolume = defaultParams().rTokenMaxTradeVolume;
 
+        targetWeightsByName[bytes32("A")] = 0.4e18;
+        targetWeightsByName[bytes32("B")] = 0.3e18;
+        targetWeightsByName[bytes32("C")] = 0.3e18;
+
         // Process each target name - Create collaterals and reward assets
         for (uint256 i = 0; i < 3; i++) {
             bytes32 targetName = targetNames[i];
@@ -87,6 +93,7 @@ contract ChaosOpsScenario {
                     concat(concat("C", targetNameStr), num),
                     main
                 );
+                targetNameByToken[address(token)] = targetName;
                 main.addToken(token);
 
                 if (k < 2) {
@@ -98,6 +105,7 @@ contract ChaosOpsScenario {
                     main.addToken(reward);
                     token.setRewardToken(reward);
                     main.assetRegistry().register(createAsset(reward));
+                    targetNameByToken[address(reward)] = targetName;
                 }
 
                 // Register Collateral
@@ -147,6 +155,7 @@ contract ChaosOpsScenario {
                         revenueHiding: 0
                     })
                 );
+                targetNameByToken[address(token)] = targetName;
                 backupTokens[targetName].push(IERC20(token));
             }
         }
@@ -639,7 +648,33 @@ contract ChaosOpsScenario {
         }
     }
 
+    function _validateWeights() internal view {
+        uint256 totalWeight = 0;
+        uint256 weightA = 0;
+        uint256 weightB = 0;
+        uint256 weightC = 0;
+
+        for (uint256 i = 0; i < targetAmtsForPrimeBasket.length; i++) {
+            bytes32 nameGroup = targetNameByToken[address(backingForPrimeBasket[i])];
+            if (nameGroup == bytes32("A")) {
+                weightA += targetAmtsForPrimeBasket[i];
+            } else if (nameGroup == bytes32("B")) {
+                weightB += targetAmtsForPrimeBasket[i];
+            } else if (nameGroup == bytes32("C")) {
+                weightC += targetAmtsForPrimeBasket[i];
+            }
+            totalWeight += targetAmtsForPrimeBasket[i];
+        }
+        require(
+            weightA * 1e18 / totalWeight == targetWeightsByName[bytes32("A")]
+            && weightB * 1e18 / totalWeight == targetWeightsByName[bytes32("B")]
+            && weightC * 1e18 / totalWeight == targetWeightsByName[bytes32("C")],
+            "can't rebalance bad weights"
+        );
+    }
+
     function setPrimeBasket() public {
+        _validateWeights();
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
         bh.setPrimeBasket(backingForPrimeBasket, targetAmtsForPrimeBasket);
     }
@@ -711,6 +746,10 @@ contract ChaosOpsScenario {
 
     function unpauseTrading() public asSender {
         main.unpauseTrading();
+    }
+
+    function setIssuanceThrottleParamsDirect(ThrottleLib.Params calldata params) public {
+        TestIRToken(address(main.rToken())).setIssuanceThrottleParams(params);
     }
 
     // ==== governance changes ====

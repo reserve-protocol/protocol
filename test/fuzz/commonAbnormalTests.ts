@@ -138,13 +138,13 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB1') as number, fp('0.3').sub(1))
 
       // no `C` weights
-      await expect(scenario.setPrimeBasket()).revertedWith('new basket missing target weights')
+      await expect(scenario.setPrimeBasket()).revertedWith("can't rebalance bad weights")
 
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC1') as number, fp('0.3').sub(1))
       await scenario.pushBackingForPrimeBasket(tokenIDs.get('SA1') as number, fp('0.1').sub(1))
 
       // over-weighted to `A`
-      await expect(scenario.setPrimeBasket()).revertedWith('new basket adds target weights')
+      await expect(scenario.setPrimeBasket()).revertedWith("can't rebalance bad weights")
 
       // Remove the last one added
       await scenario.popBackingForPrimeBasket()
@@ -367,8 +367,9 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(p3.high).to.equal(p3.curr.add(fp('0.8')))
     })
 
-    it.only('can perform a recollateralization', async () => {
+    it('can perform a recollateralization', async () => {
       await warmup()
+      await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('150000'), pctRate: fp('0.5')})
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
       const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
 
@@ -376,9 +377,11 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       await scenario.pushBackingForBackup(tokenIDs.get('CA0') as number)
       await scenario.setBackupConfig(0)
 
-      // Setup a simple basket of two tokens, only target type A
-      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.5').sub(1))
-      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA2') as number, fp('0.5').sub(1))
+      // Setup a new basket
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.2').sub(1))
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CB0') as number, fp('0.3').sub(1))
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CC0') as number, fp('0.3').sub(1))
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA2') as number, fp('0.2').sub(1))
       await scenario.setPrimeBasket()
 
       // Switch basket
@@ -386,13 +389,13 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
       // Issue some RTokens
       // As Alice, make allowances
-      const [tokenAddrs, amts] = await comp.rToken.quote(15000n * exa, RoundingMode.CEIL)
+      const [tokenAddrs, amts] = await comp.rToken.quote(150000n * exa, RoundingMode.CEIL)
       for (let i = 0; i < amts.length; i++) {
         const token = await ConAt('ERC20Fuzz', tokenAddrs[i])
         await token.connect(alice).approve(comp.rToken.address, amts[i])
       }
       // Issue RTokens
-      await scenario.connect(alice).justIssue(15000n * exa)
+      await scenario.connect(alice).justIssue(150000n * exa)
 
       // No c0 tokens in backing manager
       expect(await c0.balanceOf(comp.backingManager.address)).to.equal(0)
