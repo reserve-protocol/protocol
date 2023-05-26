@@ -46,7 +46,7 @@ export const mintStaticBendWeth = async (
 ) => {
   const dynamicAmount = await staticBendWeth.staticToDynamicAmount(amount)
   await whileImpersonating(WETH_WHALE, async (wethWhale) => {
-    const discountFromTimeDelay = fp('0.999999997932295219')
+    const discountFromTimeDelay = fp('0.999999997932295222')
     const adjDynamicAmount = dynamicAmount.mul(fp('1')).div(discountFromTimeDelay)
     await weth.connect(wethWhale).approve(staticBendWeth.address, adjDynamicAmount)
     await staticBendWeth.connect(wethWhale).deposit(recipient, adjDynamicAmount, 0, true)

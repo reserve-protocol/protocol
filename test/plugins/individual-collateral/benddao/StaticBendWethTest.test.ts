@@ -234,13 +234,17 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
 
     // Claiming the rewards
     await waitForTx(
-      await staticBendWeth.connect(userSigner).claimRewards(userSigner._address, false)
+      await staticBendWeth
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, false)
     )
 
     const ctxtAfterClaimNoForce = await getContext(ctxtParams)
 
     await waitForTx(
-      await staticBendWeth.connect(userSigner).claimRewards(userSigner._address, true)
+      await staticBendWeth
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, true)
     )
 
     const ctxtAfterClaimForce = await getContext(ctxtParams)
@@ -330,7 +334,9 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
 
     // Claim
     await waitForTx(
-      await staticBendWeth.connect(userSigner).claimRewards(userSigner._address, false)
+      await staticBendWeth
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, false)
     )
     const ctxtAfterClaim = await getContext(ctxtParams)
 
@@ -338,7 +344,9 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
     const ctxtAfterUpdate = await getContext(ctxtParams)
 
     await waitForTx(
-      await staticBendWeth.connect(userSigner).claimRewards(userSigner._address, false)
+      await staticBendWeth
+        .connect(userSigner)
+        ['claimRewards(address,bool)'](userSigner._address, false)
     )
     const ctxtAfterClaim2 = await getContext(ctxtParams)
 
@@ -420,7 +428,9 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
 
     // Claim
     await waitForTx(
-      await staticBendWeth.connect(user2Signer).claimRewards(user2Signer._address, false)
+      await staticBendWeth
+        .connect(user2Signer)
+        ['claimRewards(address,bool)'](user2Signer._address, false)
     )
     const ctxtAfterClaim = await getContext(ctxtParams)
 
@@ -428,7 +438,9 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
     const ctxtAfterUpdate = await getContext(ctxtParams)
 
     await waitForTx(
-      await staticBendWeth.connect(user2Signer).claimRewards(user2Signer._address, false)
+      await staticBendWeth
+        .connect(user2Signer)
+        ['claimRewards(address,bool)'](user2Signer._address, false)
     )
     const ctxtAfterClaim2 = await getContext(ctxtParams)
 
@@ -733,7 +745,9 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
 
     // Claim
     await waitForTx(
-      await staticBendWeth.connect(user2Signer).claimRewards(user2Signer._address, true)
+      await staticBendWeth
+        .connect(user2Signer)
+        ['claimRewards(address,bool)'](user2Signer._address, true)
     )
     const ctxtAfterClaim = await getContext(ctxtParams)
 
@@ -875,7 +889,9 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
 
     // Claim to user1
     await waitForTx(
-      await staticBendWeth.connect(user2Signer).claimRewards(userSigner._address, true)
+      await staticBendWeth
+        .connect(user2Signer)
+        ['claimRewards(address,bool)'](userSigner._address, true)
     )
     const ctxtAfterClaim = await getContext(ctxtParams)
 
@@ -1233,11 +1249,15 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
       const pendingRewards3 = await staticBendWeth.getClaimableRewards(userSigner._address)
 
       const userBalance3 = await bend.balanceOf(userSigner._address)
-      await staticBendWeth.connect(user2Signer).claimRewards(userSigner._address, true)
+      await staticBendWeth
+        .connect(user2Signer)
+        ['claimRewards(address,bool)'](userSigner._address, true)
       const userBalance4 = await bend.balanceOf(userSigner._address)
 
       await waitForTx(
-        await staticBendWeth.connect(userSigner).claimRewards(user2Signer._address, true)
+        await staticBendWeth
+          .connect(userSigner)
+          ['claimRewards(address,bool)'](user2Signer._address, true)
       )
 
       const pendingRewards5 = await staticBendWeth.getClaimableRewards(userSigner._address)
@@ -1690,7 +1710,9 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
       pendingRewards.push(pendingReward)
     }
     for (let i = 0; i < users.length; i++) {
-      await waitForTx(await staticBendWeth.connect(users[i]).claimRewards(receiverAddress, false))
+      await waitForTx(
+        await staticBendWeth.connect(users[i])['claimRewards(address,bool)'](receiverAddress, false)
+      )
       sum = sum.add(pendingRewards[i])
       expect(await bend.balanceOf(await receiverAddress)).to.be.eq(sum)
     }

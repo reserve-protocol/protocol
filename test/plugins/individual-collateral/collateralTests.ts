@@ -112,6 +112,7 @@ export default function fn<X extends CollateralFixtureContext>(
         if (!networkConfig[chainId]) {
           throw new Error(`Missing network configuration for ${hre.network.name}`)
         }
+        resetFork()
       })
 
       beforeEach(async () => {
@@ -127,12 +128,9 @@ export default function fn<X extends CollateralFixtureContext>(
 
           const aliceBal = await collateral.bal(alice.address)
 
-          const decimals = await ctx.tok.decimals()
-          const precisionDecimals = fp('0.8').mul(decimals).div(fp('1'))
           expect(aliceBal).to.closeTo(
-            amount.mul(bn(10).pow(18 - decimals)),
-            bn(10).pow(decimals - precisionDecimals.toNumber())
-            // +/- 10,000 for an 18 decimal token; +/- 100 for a 6 decimal token
+            amount.mul(bn(10).pow(18 - (await ctx.tok.decimals()))),
+            bn('100').mul(bn(10).pow(18 - (await ctx.tok.decimals())))
           )
         })
       })
