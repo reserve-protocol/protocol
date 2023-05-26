@@ -741,8 +741,15 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
 
-  it('does not revert if trading delay has not passed when checking echidna_rebalancingProperties', async () => {
+  it('reverts when trying to set a prime basket with bad target weights', async () => {
     await scenario.connect(alice).pushBackingForPrimeBasket(bn('2534475810960463152805528040151'), 0)
+    await expect(scenario.connect(alice).setPrimeBasket()).revertedWith("can't rebalance bad weights")
+  })
+
+  it('does not revert if trading delay has not passed when checking echidna_rebalancingProperties', async () => {
+    await scenario.connect(alice).pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.4').sub(1))
+    await scenario.connect(alice).pushBackingForPrimeBasket(tokenIDs.get('CB1') as number, fp('0.3').sub(1))
+    await scenario.connect(alice).pushBackingForPrimeBasket(tokenIDs.get('CC1') as number, fp('0.3').sub(1))
     await scenario.connect(alice).setPrimeBasket()
     await advanceTime(261386)
     await advanceBlocks(405)

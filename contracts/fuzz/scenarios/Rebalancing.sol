@@ -59,6 +59,8 @@ contract RebalancingScenario {
     mapping(bytes32 => IERC20[]) public backupTokens;
 
     bytes32[] public targetNames = [bytes32("A"), bytes32("B"), bytes32("C")];
+    mapping(bytes32 => uint256) public targetWeightsByName;
+    mapping(address => bytes32) public targetNameByToken;
 
     // Register and track priceModels that can be used in new assets/collateral
     PriceModel[] public priceModels;
@@ -84,6 +86,10 @@ contract RebalancingScenario {
 
         uint192 maxTradeVolume = defaultParams().rTokenMaxTradeVolume;
 
+        targetWeightsByName[bytes32("A")] = 0.4e18;
+        targetWeightsByName[bytes32("B")] = 0.3e18;
+        targetWeightsByName[bytes32("C")] = 0.3e18;
+
         // Process each target name - Create collaterals and reward assets
         for (uint256 i = 0; i < 3; i++) {
             bytes32 targetName = targetNames[i];
@@ -101,6 +107,7 @@ contract RebalancingScenario {
                     concat(concat("C", targetNameStr), num),
                     main
                 );
+                targetNameByToken[address(token)] = targetName;
                 main.addToken(token);
 
                 if (k < 2) {
@@ -120,6 +127,7 @@ contract RebalancingScenario {
                             model_: volatile
                         })
                     );
+                    targetNameByToken[address(reward)] = targetName;
                 }
 
                 // Register Collateral
@@ -169,6 +177,7 @@ contract RebalancingScenario {
                         revenueHiding: 0
                     })
                 );
+                targetNameByToken[address(token)] = targetName;
                 backupTokens[targetName].push(IERC20(token));
             }
         }
@@ -697,7 +706,10 @@ contract RebalancingScenario {
     IERC20[] internal backingForPrimeBasket;
     uint192[] internal targetAmtsForPrimeBasket;
 
-    function pushBackingForPrimeBasket(uint256 tokenID, uint256 seed)
+    function pushBackingForPrimeBasket(
+        uint256 tokenID,
+        uint256 seed
+    )
         public
         onlyDuringState(ScenarioStatus.BEFORE_REBALANCING)
     {
@@ -713,7 +725,33 @@ contract RebalancingScenario {
         }
     }
 
+    function _validateWeights() internal view {
+        uint256 totalWeight = 0;
+        uint256 weightA = 0;
+        uint256 weightB = 0;
+        uint256 weightC = 0;
+
+        for (uint256 i = 0; i < targetAmtsForPrimeBasket.length; i++) {
+            bytes32 nameGroup = targetNameByToken[address(backingForPrimeBasket[i])];
+            if (nameGroup == bytes32("A")) {
+                weightA += targetAmtsForPrimeBasket[i];
+            } else if (nameGroup == bytes32("B")) {
+                weightB += targetAmtsForPrimeBasket[i];
+            } else if (nameGroup == bytes32("C")) {
+                weightC += targetAmtsForPrimeBasket[i];
+            }
+            totalWeight += targetAmtsForPrimeBasket[i];
+        }
+        require(
+            weightA * 1e18 / totalWeight == targetWeightsByName[bytes32("A")]
+            && weightB * 1e18 / totalWeight == targetWeightsByName[bytes32("B")]
+            && weightC * 1e18 / totalWeight == targetWeightsByName[bytes32("C")],
+            "can't rebalance bad weights"
+        );
+    }
+
     function setPrimeBasket() public onlyDuringState(ScenarioStatus.BEFORE_REBALANCING) {
+        _validateWeights();
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
         bh.setPrimeBasket(backingForPrimeBasket, targetAmtsForPrimeBasket);
     }

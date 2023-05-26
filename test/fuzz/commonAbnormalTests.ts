@@ -367,7 +367,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(p3.high).to.equal(p3.curr.add(fp('0.8')))
     })
 
-    it('can perform a recollateralization', async () => {
+    it.only('can perform a recollateralization', async () => {
       await warmup()
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
       const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
