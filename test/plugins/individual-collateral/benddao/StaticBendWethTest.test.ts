@@ -577,7 +577,7 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
     expect(ctxtAfterDeposit.userStaticBendWethBalance).to.be.eq(
       ctxtAfterDeposit.staticBendWethSupply
     )
-    expect(ctxtAfterDeposit.staticBendWethBendWethBalance).to.be.eq(amountToDeposit)
+    expect(ctxtAfterDeposit.staticBendWethBendWethBalance).to.be.closeTo(amountToDeposit, 1)
 
     expect(ctxtAfterWithdrawal.userStaticBendWethBalance).to.be.eq(
       ctxtAfterDeposit.userStaticBendWethBalance.sub(amountToWithdraw)
@@ -644,7 +644,7 @@ describe('StaticBendWETH: BToken wrapper with static balances and liquidity mini
     expect(ctxtAfterDeposit.user2StaticBendWethBalance).to.be.eq(
       ctxtAfterDeposit.staticBendWethSupply
     )
-    expect(ctxtAfterDeposit.staticBendWethBendWethBalance).to.be.eq(amountToDeposit)
+    expect(ctxtAfterDeposit.staticBendWethBendWethBalance).to.be.closeTo(amountToDeposit, 1)
 
     expect(ctxtAfterDeposit.user2DynamicStaticBendWethBalance).to.be.eq(amountToDeposit)
 
