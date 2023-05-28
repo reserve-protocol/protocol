@@ -1208,7 +1208,13 @@ contract RebalancingScenario {
         return true;
     }
 
-    function bidDutchAuction(DutchTrade trade) internal {
+    function bidOpenDutchAuction() external mayEndRebalancing {
+        BrokerP1Fuzz broker = BrokerP1Fuzz(address(main.broker()));
+        DutchTrade trade = DutchTrade(address(broker.lastOpenedTrade()));
+        _bidDutchAuction(trade);
+    }
+
+    function _bidDutchAuction(DutchTrade trade) internal {
         uint256 bidAmount = trade.bidAmount(uint48(block.timestamp));
         ERC20Fuzz buy = ERC20Fuzz(address(trade.buy()));
         buy.mint(address(this), bidAmount);
@@ -1254,7 +1260,7 @@ contract RebalancingScenario {
 
                 if (broker.tradeKindSet(address(trade)) == uint256(TradeKind.DUTCH_AUCTION)) {
                     // Bid & settle the auction
-                    bidDutchAuction(trade);
+                    _bidDutchAuction(trade);
                     require(trade.status() == TradeStatus.CLOSED, "trade not closed");
 
                     // Check Range
