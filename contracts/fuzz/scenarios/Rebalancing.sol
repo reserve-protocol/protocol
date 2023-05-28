@@ -499,6 +499,46 @@ contract RebalancingScenario {
         main.rToken().redeemTo(recipient, amount);
     }
 
+    uint48[] internal redeemableBasketNonces;
+    uint192[] internal redeemablePortions;
+    uint192 internal totalPortions;
+
+    function pushRedeemableBasketNonce(uint256 portionSeed) public {
+        redeemableBasketNonces.push(main.basketHandler().nonce());
+        uint192 portion = uint192(between(0, 1e18, portionSeed));
+        totalPortions += portion;
+        redeemablePortions.push(portion);
+    }
+
+    function redeemCustom(
+        uint8 recipientID,
+        uint192 amount
+    ) public asSender {
+        _saveRTokenRate();
+        address recipient = main.someAddr(recipientID);
+        uint192[] memory portions = new uint192[](redeemablePortions.length);
+        
+        for (uint256 i = 0; i < redeemablePortions.length; i++) {
+            portions[i] = redeemablePortions[i] * 1e18 / totalPortions;
+        }
+
+        (address[] memory erc20sOut, uint256[] memory amountsOut) 
+            = main.basketHandler().quoteCustomRedemption(
+                redeemableBasketNonces,
+                portions,
+                amount
+            );
+
+        main.rToken().redeemCustom(
+            recipient,
+            amount,
+            redeemableBasketNonces,
+            portions,
+            erc20sOut,
+            amountsOut
+        );
+    }
+
     function monetizeDonations(uint8 tokenID) public {
         IERC20 erc20 = main.someToken(tokenID);
         TestIRToken(address(main.rToken())).monetizeDonations(erc20);

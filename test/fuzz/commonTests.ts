@@ -673,6 +673,16 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(await comp.rsr.balanceOf(comp.rsrTrader.address)).to.be.gt(0)
     })
 
+    it('can redeemCustom', async () => {
+      await warmup()
+      const rtoken = await ConAt('IRTokenFuzz', comp.rToken.address)
+      const issueAmt = 7n * exa
+      await scenario.connect(alice).issueTo(issueAmt, 0)
+      await scenario.pushRedeemableBasketNonce(fp(1));
+      await scenario.connect(alice).redeemCustom(1, issueAmt / 2n)
+      expect(await rtoken.balanceOf(await alice.getAddress())).equal(issueAmt / 2n)
+    })
+
     // after('stop impersonations', async () => {
     //   await stopImpersonatingAccount(aliceAddr)
     //   await stopImpersonatingAccount(bobAddr)
