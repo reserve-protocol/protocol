@@ -26,7 +26,6 @@ import "contracts/p1/RToken.sol";
 import "contracts/p1/RevenueTrader.sol";
 import "contracts/p1/StRSR.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
-import "hardhat/console.sol";
 
 // Every component must override _msgSender() in this one, common way!
 

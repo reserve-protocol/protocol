@@ -21,7 +21,6 @@ import "contracts/fuzz/Utils.sol";
 import "contracts/fuzz/FuzzP1.sol";
 
 import "contracts/fuzz/MainP1.sol";
-import "hardhat/console.sol";
 
 // solhint-disable max-states-count
 
