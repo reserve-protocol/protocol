@@ -637,7 +637,7 @@ const scenarioSpecificTests = () => {
     expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
   })
 
-  it.only('can manage scenario states - basket switch - covered by RSR [Dutch auction]', async () => {
+  it('can manage scenario states - basket switch - covered by RSR [Dutch auction]', async () => {
     await warmup()
     await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('300000'), pctRate: fp('0.5')})
     // Scenario starts in BEFORE_REBALANCING
@@ -819,7 +819,7 @@ const scenarioSpecificTests = () => {
     expect(await scenario.echidna_isFullyCollateralizedAfterRebalancing()).to.be.true
   })
 
-  it('can manage scenario states - collateral default - partially covered by RSR [Dutch auction]', async () => {
+  it.only('can manage scenario states - collateral default - partially covered by RSR [Dutch auction]', async () => {
     await warmup()
     await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('400000'), pctRate: fp('0.05')})
     // Scenario starts in BEFORE_REBALANCING
@@ -923,15 +923,15 @@ const scenarioSpecificTests = () => {
       expect(await trade.canSettle()).to.be.false
 
       // Wait and settle the trade
-      await advanceTime(await comp.broker.batchAuctionLength())
-      expect(await trade.canSettle()).to.be.true
+      await advanceTime(await comp.broker.dutchAuctionLength() / 3)
+      expect(await trade.canSettle()).to.be.false
 
       expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
       // Settle trades - will use previous seed > 0
-      await scenario.settleTrades()
+      await scenario.bidOpenDutchAuction()
 
       expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
