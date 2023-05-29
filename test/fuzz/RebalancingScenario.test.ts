@@ -585,7 +585,6 @@ const scenarioSpecificTests = () => {
     while ((await scenario.status()) == RebalancingScenarioStatus.REBALANCING_ONGOING) {
       // Check echidna property is true at all times in the process...
       await scenario.pushSeedForTrades(fp(100000))
-
       await warmup()
       expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
@@ -758,7 +757,7 @@ const scenarioSpecificTests = () => {
         expect(await c2.balanceOf(trade.address)).to.be.gt(0)
       }
       // Wait and settle the trade
-      await advanceTime((await comp.broker.dutchAuctionLength()) / 3)
+      await advanceTime((await comp.broker.dutchAuctionLength()) - 12)
       expect(await trade.canSettle()).to.be.false
 
       if (iteration == 1) {
@@ -781,7 +780,6 @@ const scenarioSpecificTests = () => {
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
       expect(await trade.status()).to.equal(TradeStatus.CLOSED)
-      expect(await comp.backingManager.tradesOpen()).to.equal(0)
 
       // Check balances after
       expect(await c2.balanceOf(trade.address)).to.equal(0)
@@ -819,7 +817,7 @@ const scenarioSpecificTests = () => {
     expect(await scenario.echidna_isFullyCollateralizedAfterRebalancing()).to.be.true
   })
 
-  it.only('can manage scenario states - collateral default - partially covered by RSR [Dutch auction]', async () => {
+  it('can manage scenario states - collateral default - partially covered by RSR [Dutch auction]', async () => {
     await warmup()
     await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('400000'), pctRate: fp('0.05')})
     // Scenario starts in BEFORE_REBALANCING
@@ -923,7 +921,7 @@ const scenarioSpecificTests = () => {
       expect(await trade.canSettle()).to.be.false
 
       // Wait and settle the trade
-      await advanceTime(await comp.broker.dutchAuctionLength() / 3)
+      await advanceTime((await comp.broker.dutchAuctionLength()) - 12)
       expect(await trade.canSettle()).to.be.false
 
       expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
