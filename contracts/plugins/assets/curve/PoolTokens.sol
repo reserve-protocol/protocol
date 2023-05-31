@@ -32,9 +32,7 @@ interface ICurvePool {
     ) external;
 }
 
-// solhint-enable func-name-mixedcase
-
-/// Supports CvxCurve non-meta pools for up to 4 tokens
+/// Supports Curve base pools for up to 4 tokens
 contract PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
@@ -44,8 +42,7 @@ contract PoolTokens {
 
     enum CurvePoolType {
         Plain,
-        Lending,
-        Metapool // not supported via this class. parent class handles metapool math
+        Lending
     }
 
     // === State (Immutable) ===
@@ -129,7 +126,7 @@ contract PoolTokens {
             } else if (config.poolType == CurvePoolType.Lending) {
                 tokens[i] = IERC20Metadata(curvePool.underlying_coins(i));
             } else {
-                revert("Use MetaPoolTokens class");
+                revert("invalid poolType");
             }
         }
 
