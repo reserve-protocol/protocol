@@ -1308,12 +1308,12 @@ contract RebalancingScenario {
                     uint256 bal = IERC20(tokens[i]).balanceOf(address(main.backingManager()));
                     if (bal < amts[i]) return false;
                 }
-            } catch (bytes memory errData) {
-                if (keccak256(abi.encodePacked(errData)) ==
+            } catch Error(string memory reason) {
+                if (keccak256(abi.encodePacked(reason)) ==
                     keccak256(abi.encodePacked("erc20 unregistered"))) {
                         return true;
                 } else {
-                    revert(errData);
+                    revert(reason);
                 }
             }
         }
