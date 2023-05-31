@@ -1072,6 +1072,11 @@ const scenarioSpecificTests = () => {
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
   })
+
+  it('does not revert when quoting an unregistered asset', async () => {
+    await scenario.unregisterAsset(0)
+    await scenario.echidna_quoteProportionalWhenFullyCollateralized()
+  })
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {
