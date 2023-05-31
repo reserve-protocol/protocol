@@ -1309,8 +1309,12 @@ contract RebalancingScenario {
                     if (bal < amts[i]) return false;
                 }
             } catch (bytes memory errData) {
-                return (keccak256(abi.encodePacked(errData)) ==
-                    keccak256(abi.encodePacked("erc20 unregistered")));
+                if (keccak256(abi.encodePacked(errData)) ==
+                    keccak256(abi.encodePacked("erc20 unregistered"))) {
+                        return true;
+                } else {
+                    revert(errData);
+                }
             }
         }
         return true;
