@@ -73,6 +73,8 @@ contract FacadeRead is IFacadeRead {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IAsset asset = reg.toAsset(IERC20(tokens[i]));
             (uint192 low, uint192 high) = asset.price();
+            // untestable:
+            //      if high == FIX_MAX then low has to be zero, so this check will not be reached
             if (low == 0 || high == FIX_MAX) continue;
 
             uint192 mid = (low + high) / 2;
@@ -206,157 +208,10 @@ contract FacadeRead is IFacadeRead {
         }
     }
 
-    /// To use this, call via callStatic.
-    /// If canStart is true, call backingManager.rebalance(). May require settling a
-    /// trade first; see auctionsSettleable.
-    /// @return canStart true iff a recollateralization auction can be started
-    /// @return sell The sell token in the auction
-    /// @return buy The buy token in the auction
-    /// @return sellAmount {qSellTok} How much would be sold
-    /// @custom:static-call
-    function nextRecollateralizationAuction(IBackingManager bm)
-        external
-        returns (
-            bool canStart,
-            IERC20 sell,
-            IERC20 buy,
-            uint256 sellAmount
-        )
-    {
-        IERC20[] memory erc20s = bm.main().assetRegistry().erc20s();
-
-        // Settle any settle-able open trades
-        if (bm.tradesOpen() > 0) {
-            for (uint256 i = 0; i < erc20s.length; ++i) {
-                ITrade trade = bm.trades(erc20s[i]);
-                if (address(trade) != address(0) && trade.canSettle()) {
-                    bm.settleTrade(erc20s[i]);
-                    break; // backingManager can only have 1 trade open at a time
-                }
-            }
-        }
-
-        // If no auctions ongoing, try to find a new auction to start
-        if (bm.tradesOpen() == 0) {
-            bytes1 majorVersion = bytes(bm.version())[0];
-
-            if (majorVersion == MAJOR_VERSION_3) {
-                // solhint-disable-next-line no-empty-blocks
-                try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
-            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-                IERC20[] memory emptyERC20s = new IERC20[](0);
-                // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = address(bm).call{ value: 0 }(
-                    abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
-                );
-                success = success; // hush warning
-            } else {
-                revert("unrecognized version");
-            }
-
-            // Find the started auction
-            for (uint256 i = 0; i < erc20s.length; ++i) {
-                DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
-                if (address(trade) != address(0)) {
-                    canStart = true;
-                    sell = trade.sell();
-                    buy = trade.buy();
-                    sellAmount = trade.sellAmount();
-                }
-            }
-        }
-    }
-
-    /// To use this, call via callStatic.
-    /// @return erc20s The ERC20s that have auctions that can be started
-    /// @return canStart If the ERC20 auction can be started
-    /// @return surpluses {qTok} The surplus amount
-    /// @return minTradeAmounts {qTok} The minimum amount worth trading
-    /// @custom:static-call
-    function revenueOverview(IRevenueTrader revenueTrader)
-        external
-        returns (
-            IERC20[] memory erc20s,
-            bool[] memory canStart,
-            uint256[] memory surpluses,
-            uint256[] memory minTradeAmounts
-        )
-    {
-        uint192 minTradeVolume = revenueTrader.minTradeVolume(); // {UoA}
-        Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
-
-        // Forward ALL revenue
-        {
-            IBackingManager bm = revenueTrader.main().backingManager();
-            bytes1 majorVersion = bytes(bm.version())[0];
-
-            if (majorVersion == MAJOR_VERSION_3) {
-                // solhint-disable-next-line no-empty-blocks
-                try bm.forwardRevenue(reg.erc20s) {} catch {}
-            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-                // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = address(bm).call{ value: 0 }(
-                    abi.encodeWithSignature("manageTokens(address[])", reg.erc20s)
-                );
-                success = success; // hush warning
-            } else {
-                revert("unrecognized version");
-            }
-        }
-
-        erc20s = new IERC20[](reg.erc20s.length);
-        canStart = new bool[](reg.erc20s.length);
-        surpluses = new uint256[](reg.erc20s.length);
-        minTradeAmounts = new uint256[](reg.erc20s.length);
-        // Calculate which erc20s can have auctions started
-        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            // Settle first if possible. Required so we can assess full available balance
-            ITrade trade = revenueTrader.trades(reg.erc20s[i]);
-            if (address(trade) != address(0) && trade.canSettle()) {
-                revenueTrader.settleTrade(reg.erc20s[i]);
-            }
-
-            uint48 tradesOpen = revenueTrader.tradesOpen();
-            erc20s[i] = reg.erc20s[i];
-            surpluses[i] = reg.erc20s[i].balanceOf(address(revenueTrader));
-
-            (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
-
-            // {qTok} = {UoA} / {UoA/tok}
-            minTradeAmounts[i] = minTradeVolume.div(lotLow).shiftl_toUint(
-                int8(reg.assets[i].erc20Decimals())
-            );
-
-            bytes1 majorVersion = bytes(revenueTrader.version())[0];
-            if (
-                reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i] &&
-                revenueTrader.trades(reg.erc20s[i]) == ITrade(address(0))
-            ) {
-                if (majorVersion == MAJOR_VERSION_3) {
-                    // solhint-disable-next-line no-empty-blocks
-                    try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
-                } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-                    // solhint-disable-next-line avoid-low-level-calls
-                    (bool success, ) = address(revenueTrader).call{ value: 0 }(
-                        abi.encodeWithSignature("manageToken(address)", erc20s[i])
-                    );
-                    success = success; // hush warning
-                } else {
-                    revert("unrecognized version");
-                }
-
-                if (revenueTrader.tradesOpen() - tradesOpen > 0) {
-                    canStart[i] = true;
-                }
-            }
-        }
-    }
-
     // === Views ===
 
     /// @param account The account for the query
     /// @return unstakings All the pending StRSR unstakings for an account
-    /// @custom:view
     function pendingUnstakings(RTokenP1 rToken, address account)
         external
         view

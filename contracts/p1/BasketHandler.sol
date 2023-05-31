@@ -445,6 +445,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 // marginally more penalizing than its sibling calculation that uses _quantity()
                 // because does not intermediately CEIL as part of the division
             } catch (bytes memory errData) {
+                // untested:
+                //     OOG pattern tested in other contracts, cost to test here is high
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
@@ -590,11 +592,21 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < b.erc20s.length; ++i) {
             erc20s[i] = b.erc20s[i];
 
-            // {qTok/BU} = {tok/BU} * {qTok/tok}
-            quantities[i] = quantity(basket.erc20s[i]).shiftl_toUint(
-                int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
-                FLOOR
-            );
+            try assetRegistry.toAsset(IERC20(erc20s[i])) returns (IAsset asset) {
+                if (!asset.isCollateral()) continue; // skip token if no longer registered
+
+                // {tok} = {BU} * {ref/BU} / {ref/tok}
+                quantities[i] = safeMulDivFloor(
+                    FIX_ONE,
+                    b.refAmts[erc20s[i]],
+                    ICollateral(address(asset)).refPerTok()
+                ).shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
+            } catch (bytes memory errData) {
+                // untested:
+                //     OOG pattern tested in other contracts, cost to test here is high
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            }
         }
     }
 
