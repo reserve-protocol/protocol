@@ -1300,14 +1300,11 @@ contract RebalancingScenario {
         if (main.basketHandler().fullyCollateralized()) {
             RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
 
-            
-            try rtoken.quote(rtoken.totalSupply(), RoundingMode.FLOOR) 
-                returns (address[] memory tokens, uint256[] memory amts)
-            {
-                for (uint256 i = 0; i < tokens.length; i++) {
-                    uint256 bal = IERC20(tokens[i]).balanceOf(address(main.backingManager()));
-                    if (bal < amts[i]) return false;
-                }
+            address[] memory tokens;
+            uint256[] memory amts;
+            try rtoken.quote(rtoken.totalSupply(), RoundingMode.FLOOR) returns (address[] memory t, uint256[] memory a) {
+                tokens = t;
+                amts = a;
             } catch Error(string memory reason) {
                 if (keccak256(abi.encodePacked(reason)) ==
                     keccak256(abi.encodePacked("erc20 unregistered"))) {
@@ -1315,6 +1312,11 @@ contract RebalancingScenario {
                 } else {
                     revert(reason);
                 }
+            }
+
+            for (uint256 i = 0; i < tokens.length; i++) {
+                uint256 bal = IERC20(tokens[i]).balanceOf(address(main.backingManager()));
+                if (bal < amts[i]) return false;
             }
         }
         return true;
