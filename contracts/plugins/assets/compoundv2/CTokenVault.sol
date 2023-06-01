@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.17;
 
-import "../vaults/RewardableERC20Vault.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "../RewardableERC20Vault.sol";
 import "./ICToken.sol";
 
 contract CTokenVault is RewardableERC20Vault {
