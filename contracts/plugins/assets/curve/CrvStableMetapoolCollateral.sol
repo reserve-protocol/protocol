@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "./CvxStableCollateral.sol";
+import "./CrvStableCollateral.sol";
 
 // solhint-disable no-empty-blocks
 interface ICurveMetaPool is ICurvePool, IERC20Metadata {
 
 }
 
+// solhint-enable no-empty-blocks
+
 /**
- * @title CvxStableMetapoolCollateral
- *  This plugin contract is intended for 2-token stable metapools that
+ * @title CrvStableMetapoolCollateral
+ *  This plugin contract is intended for 2-fiattoken stable metapools that
  *  DO NOT involve RTokens, such as LUSD-fraxBP or MIM-3CRV.
  *
  * tok = ConvexStakingWrapper(PairedUSDToken/USDBasePool)
@@ -18,7 +20,7 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
  * tar = USD
  * UoA = USD
  */
-contract CvxStableMetapoolCollateral is CvxStableCollateral {
+contract CrvStableMetapoolCollateral is CrvStableCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -32,14 +34,14 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
 
     /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout should be set for paired token
-    /// @dev config.erc20 should be a IConvexStakingWrapper
+    /// @dev config.erc20 should be an ERC20 wrapper from the `curve/vault` folder (sibling)
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig,
         ICurveMetaPool metapoolToken_,
         uint192 pairedTokenDefaultThreshold_
-    ) CvxStableCollateral(config, revenueHiding, ptConfig) {
+    ) CrvStableCollateral(config, revenueHiding, ptConfig) {
         require(address(metapoolToken_) != address(0), "metapoolToken address is zero");
         require(
             pairedTokenDefaultThreshold_ > 0 && pairedTokenDefaultThreshold_ < FIX_ONE,

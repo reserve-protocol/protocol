@@ -7,25 +7,26 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
-import "./vendor/IConvexStakingWrapper.sol";
 import "../curve/PoolTokens.sol";
 
 /**
- * @title CvxStableCollateral
- *  This plugin contract is fully general to any number of tokens in a plain stable pool,
- *  with between 1 and 2 oracles per each token. Stable means only like-kind pools.
+ * @title CrvStableCollateral
+ *  This plugin contract is fully general to any number of (fiat) tokens in a Curve stable pool,
+ *  whether this LP token ends up staked in Curve, Convex, Frax, or somewhere else.
+ *  Each token in the pool can have between 1 and 2 oracles per each token.
+ *  Stable means only like-kind pools.
  *
  * tok = ConvexStakingWrapper(cvxStablePlainPool)
  * ref = cvxStablePlainPool pool invariant
  * tar = USD
  * UoA = USD
  */
-contract CvxStableCollateral is AppreciatingFiatCollateral, PoolTokens {
+contract CrvStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
-    /// @dev config.erc20 should be a IConvexStakingWrapper
+    /// @dev config.erc20 should be an ERC20 wrapper from the `curve/vault` folder (sibling)
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,

@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "./CvxStableMetapoolCollateral.sol";
+import "./CrvStableMetapoolCollateral.sol";
 
 /**
- * @title CvxStableRTokenMetapoolCollateral
- *  This plugin contract is intended for 2-token stable metapools that
+ * @title CrvStableRTokenMetapoolCollateral
+ *  This plugin contract is intended for 2-fiattoken stable metapools that
  *  involve RTokens, such as eUSD-fraxBP.
  *
- * tok = ConvexStakingWrapper(cvxPairedUSDRToken/USDBasePool)
+ * tok = ConvexStakingWrapper(crvPairedUSDRToken/USDBasePool)
  * ref = PairedUSDRToken/USDBasePool pool invariant
  * tar = USD
  * UoA = USD
  */
-contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
+contract CrvStableRTokenMetapoolCollateral is CrvStableMetapoolCollateral {
     using FixLib for uint192;
 
     IAssetRegistry internal immutable pairedAssetRegistry; // AssetRegistry of pairedToken
 
     /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout are unused; set chainlinkFeed to 0x1
-    /// @dev config.erc20 should be a IConvexStakingWrapper
+    /// @dev config.erc20 should be an ERC20 wrapper from the `curve/vault` folder (sibling)
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
@@ -28,7 +28,7 @@ contract CvxStableRTokenMetapoolCollateral is CvxStableMetapoolCollateral {
         ICurveMetaPool metapoolToken_,
         uint192 pairedTokenDefaultThreshold_
     )
-        CvxStableMetapoolCollateral(
+        CrvStableMetapoolCollateral(
             config,
             revenueHiding,
             ptConfig,
