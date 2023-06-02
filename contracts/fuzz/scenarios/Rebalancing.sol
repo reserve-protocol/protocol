@@ -1307,7 +1307,9 @@ contract RebalancingScenario {
                 amts = a;
             } catch Error(string memory reason) {
                 if (keccak256(abi.encodePacked(reason)) ==
-                    keccak256(abi.encodePacked("erc20 unregistered"))) {
+                    keccak256(abi.encodePacked("erc20 unregistered"))
+                    || keccak256(abi.encodePacked(reason)) ==
+                    keccak256(abi.encodePacked("erc20 is not collateral"))) {
                         return true;
                 } else {
                     revert(reason);
