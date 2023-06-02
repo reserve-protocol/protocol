@@ -283,8 +283,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         [MIN_RTOKENS, MAX_RTOKENS, bn('1.205e24')], // toIssue
         [MIN_RTOKENS, MAX_RTOKENS, bn('4.4231e24')], // toRedeem
         [MAX_RTOKENS, bn('7.907e24')], // totalSupply
-        // [bn(1), bn(3), bn(100)], // numAssets
-        [bn(3)], // numAssets
+        [bn(1), bn(3), bn(100)], // numAssets
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.1')], // weightFirst
         [MIN_WEIGHT, MAX_WEIGHT, fp('0.2')], // weightRest
         [MIN_ISSUANCE_PCT, fp('1e-2'), fp(1)], // issuanceThrottle.pctRate
