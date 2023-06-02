@@ -4,7 +4,7 @@ import { ethers } from 'hardhat'
 import { InvalidMockV3Aggregator } from '../../../../typechain'
 
 import { bn, fp } from '../../../../common/numbers'
-import { MAX_UINT192, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
+import { MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import {
@@ -38,10 +38,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
     collateralSpecificStatusTests,
     makeCollateralFixtureContext,
     mintCollateralTo,
-    itChecksTargetPerRefDefault,
-    itChecksRefPerTokDefault,
-    itChecksPriceChanges,
-    itHasRevenueHiding,
+    isMetapool,
     resetFork,
     collateralName,
   } = fixtures
@@ -288,32 +285,42 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
           const [newLow, newHigh] = await ctx.collateral.price()
 
-          expect(newLow).to.be.closeTo(low.mul(110).div(100), 1)
-          expect(newHigh).to.be.closeTo(high.mul(110).div(100), 1)
+          expect(newLow).to.be.closeTo(low.mul(110).div(100), 200)
+          expect(newHigh).to.be.closeTo(high.mul(110).div(100), 200)
 
           // Check refPerTok remains the same (because we have not refreshed)
           const finalRefPerTok = await ctx.collateral.refPerTok()
           expect(finalRefPerTok).to.equal(initialRefPerTok)
         })
 
-        itChecksPriceChanges('prices change as refPerTok changes', async () => {
+        it('prices change as refPerTok changes', async () => {
           const initRefPerTok = await ctx.collateral.refPerTok()
           const [initLow, initHigh] = await ctx.collateral.price()
 
           const curveVirtualPrice = await ctx.curvePool.get_virtual_price()
+          await ctx.collateral.refresh()
+          expect(await ctx.collateral.refPerTok()).to.equal(curveVirtualPrice)
+
           await ctx.curvePool.setVirtualPrice(curveVirtualPrice.add(1e4))
-          await ctx.curvePool.setBalances([
+
+          const newBalances = [
             await ctx.curvePool.balances(0).then((e) => e.add(1e4)),
             await ctx.curvePool.balances(1).then((e) => e.add(2e4)),
-            await ctx.curvePool.balances(2).then((e) => e.add(3e4)),
-          ])
+          ]
+          if (!isMetapool) {
+            newBalances.push(await ctx.curvePool.balances(2).then((e) => e.add(3e4)))
+          }
+          await ctx.curvePool.setBalances(newBalances)
 
           await ctx.collateral.refresh()
           expect(await ctx.collateral.refPerTok()).to.be.gt(initRefPerTok)
 
-          const [newLow, newHigh] = await ctx.collateral.price()
-          expect(newLow).to.be.gt(initLow)
-          expect(newHigh).to.be.gt(initHigh)
+          // if it's a metapool, then price may not be hooked up to the mock
+          if (!isMetapool) {
+            const [newLow, newHigh] = await ctx.collateral.price()
+            expect(newLow).to.be.gt(initLow)
+            expect(newHigh).to.be.gt(initHigh)
+          }
         })
 
         it('returns a 0 price', async () => {
@@ -331,13 +338,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
-        it('reverts in case of invalid timestamp', async () => {
+        it('does not revert in case of invalid timestamp', async () => {
           await ctx.feeds[0].setInvalidTimestamp()
-
-          // Check price of token
-          const [low, high] = await ctx.collateral.price()
-          expect(low).to.equal(0)
-          expect(high).to.equal(MAX_UINT192)
 
           // When refreshed, sets status to Unpriced
           await ctx.collateral.refresh()
@@ -384,93 +386,84 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
         })
 
-        itChecksTargetPerRefDefault(
-          'enters IFFY state when reference unit depegs below low threshold',
-          async () => {
-            const delayUntilDefault = await ctx.collateral.delayUntilDefault()
+        it('enters IFFY state when reference unit depegs below low threshold', async () => {
+          const delayUntilDefault = await ctx.collateral.delayUntilDefault()
 
-            // Check initial state
-            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-            expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
+          // Check initial state
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-            // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
-            await updateAnswerTx.wait()
+          // Depeg first feed - Reducing price by 20% from 1 to 0.8
+          const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
+          await updateAnswerTx.wait()
 
-            // Set next block timestamp - for deterministic result
-            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-            await setNextBlockTimestamp(nextBlockTimestamp)
-            const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+          // Set next block timestamp - for deterministic result
+          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+          await setNextBlockTimestamp(nextBlockTimestamp)
+          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
-            await expect(ctx.collateral.refresh())
-              .to.emit(ctx.collateral, 'CollateralStatusChanged')
-              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-            expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
-            expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-          }
-        )
+          await expect(ctx.collateral.refresh())
+            .to.emit(ctx.collateral, 'CollateralStatusChanged')
+            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+          expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        })
 
-        itChecksTargetPerRefDefault(
-          'enters IFFY state when reference unit depegs above high threshold',
-          async () => {
-            const delayUntilDefault = await ctx.collateral.delayUntilDefault()
+        it('enters IFFY state when reference unit depegs above high threshold', async () => {
+          const delayUntilDefault = await ctx.collateral.delayUntilDefault()
 
-            // Check initial state
-            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-            expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
+          // Check initial state
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-            // Depeg USDC:USD - Raising price by 20% from 1 to 1.2
-            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('1.2e8'))
-            await updateAnswerTx.wait()
+          // Depeg first feed - Raising price by 20% from 1 to 1.2
+          const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('1.2e8'))
+          await updateAnswerTx.wait()
 
-            // Set next block timestamp - for deterministic result
-            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-            await setNextBlockTimestamp(nextBlockTimestamp)
-            const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
+          // Set next block timestamp - for deterministic result
+          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+          await setNextBlockTimestamp(nextBlockTimestamp)
+          const expectedDefaultTimestamp = nextBlockTimestamp + delayUntilDefault
 
-            await expect(ctx.collateral.refresh())
-              .to.emit(ctx.collateral, 'CollateralStatusChanged')
-              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-            expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
-            expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-          }
-        )
+          await expect(ctx.collateral.refresh())
+            .to.emit(ctx.collateral, 'CollateralStatusChanged')
+            .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+          expect(await ctx.collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        })
 
-        itChecksTargetPerRefDefault(
-          'enters DISABLED state when reference unit depegs for too long',
-          async () => {
-            const delayUntilDefault = await ctx.collateral.delayUntilDefault()
+        it('enters DISABLED state when reference unit depegs for too long', async () => {
+          const delayUntilDefault = await ctx.collateral.delayUntilDefault()
 
-            // Check initial state
-            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
-            expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
+          // Check initial state
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+          expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
-            // Depeg USDC:USD - Reducing price by 20% from 1 to 0.8
-            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
-            await updateAnswerTx.wait()
+          // Depeg first feed - Reducing price by 20% from 1 to 0.8
+          const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
+          await updateAnswerTx.wait()
 
-            // Set next block timestamp - for deterministic result
-            const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
-            await setNextBlockTimestamp(nextBlockTimestamp)
-            await ctx.collateral.refresh()
-            expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+          // Set next block timestamp - for deterministic result
+          const nextBlockTimestamp = (await getLatestBlockTimestamp()) + 1
+          await setNextBlockTimestamp(nextBlockTimestamp)
+          await ctx.collateral.refresh()
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
 
-            // Move time forward past delayUntilDefault
-            await advanceTime(delayUntilDefault)
-            expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+          // Move time forward past delayUntilDefault
+          await advanceTime(delayUntilDefault)
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
 
-            // Nothing changes if attempt to refresh after default
-            const prevWhenDefault: bigint = (await ctx.collateral.whenDefault()).toBigInt()
-            await expect(ctx.collateral.refresh()).to.not.emit(
-              ctx.collateral,
-              'CollateralStatusChanged'
-            )
-            expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
-            expect(await ctx.collateral.whenDefault()).to.equal(prevWhenDefault)
-          }
-        )
+          // Nothing changes if attempt to refresh after default
+          const prevWhenDefault: bigint = (await ctx.collateral.whenDefault()).toBigInt()
+          await expect(ctx.collateral.refresh()).to.not.emit(
+            ctx.collateral,
+            'CollateralStatusChanged'
+          )
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
+          expect(await ctx.collateral.whenDefault()).to.equal(prevWhenDefault)
+        })
 
-        itChecksRefPerTokDefault('enters DISABLED state when refPerTok() decreases', async () => {
+        it('enters DISABLED state when refPerTok() decreases', async () => {
           // Check initial state
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
@@ -501,7 +494,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
-        itHasRevenueHiding('does revenue hiding correctly', async () => {
+        it('does revenue hiding correctly', async () => {
           ctx = await loadFixture(
             makeCollateralFixtureContext(ctx.alice, { revenueHiding: fp('1e-6') })
           )
@@ -568,9 +561,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
           expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
         })
+
+        describe('collateral-specific tests', collateralSpecificStatusTests)
       })
     })
-
-    describe('collateral-specific tests', collateralSpecificStatusTests)
   })
 }

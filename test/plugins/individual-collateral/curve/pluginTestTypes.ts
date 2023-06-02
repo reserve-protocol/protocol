@@ -1,5 +1,6 @@
 import { BigNumberish } from 'ethers'
 import {
+  ConvexStakingWrapper,
   CurvePoolMock,
   ERC20Mock,
   RewardableERC20Vault,
@@ -14,8 +15,7 @@ type Fixture<T> = () => Promise<T>
 
 export interface CurveBase {
   curvePool: CurvePoolMock
-  lpToken: ERC20Mock
-  wrapper: RewardableERC20Vault
+  wrapper: RewardableERC20Vault | ConvexStakingWrapper
 }
 
 // The basic fixture context used in the Curve collateral plugin tests
@@ -72,17 +72,7 @@ export interface CurveCollateralTestSuiteFixtures<T extends CurveCollateralFixtu
   // a function to mint a certain amount of collateral to a target address
   mintCollateralTo: MintCurveCollateralFunc<T>
 
-  // toggle on or off: tests that focus on a targetPerRef default
-  itChecksTargetPerRefDefault: Mocha.TestFunction | Mocha.PendingTestFunction
-
-  // toggle on or off: tests that focus on a refPerTok default
-  itChecksRefPerTokDefault: Mocha.TestFunction | Mocha.PendingTestFunction
-
-  // toggle on or off: tests that focus on price changes
-  itChecksPriceChanges: Mocha.TestFunction | Mocha.PendingTestFunction
-
-  // toggle on or off: tests that focus on revenue hiding (off if plugin does not hide revenue)
-  itHasRevenueHiding: Mocha.TestFunction | Mocha.PendingTestFunction
+  isMetapool: boolean
 
   // a function to reset the fork to a desired block
   resetFork: () => void

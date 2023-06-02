@@ -1,8 +1,8 @@
 import { ethers } from 'hardhat'
 import { BigNumberish } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { whileImpersonating } from '../../../utils/impersonation'
-import { bn, fp } from '../../../../common/numbers'
+import { whileImpersonating } from '../../../../utils/impersonation'
+import { bn, fp } from '../../../../../common/numbers'
 import {
   ConvexStakingWrapper,
   CurvePoolMock,
@@ -10,21 +10,20 @@ import {
   ERC20Mock,
   ICurvePool,
   MockV3Aggregator,
-} from '../../../../typechain'
-import { getResetFork } from '../helpers'
+  RewardableERC20Vault,
+} from '../../../../../typechain'
+import { getResetFork } from '../../helpers'
 import {
   DAI,
   USDC,
   USDT,
   MIM,
   THREE_POOL,
-  THREE_POOL_TOKEN,
   THREE_POOL_CVX_POOL_ID,
   FORK_BLOCK,
   WBTC,
   WETH,
   TRI_CRYPTO,
-  TRI_CRYPTO_TOKEN,
   TRI_CRYPTO_CVX_POOL_ID,
   FRAX,
   FRAX_BP,
@@ -35,15 +34,10 @@ import {
   MIM_THREE_POOL,
   MIM_THREE_POOL_POOL_ID,
   MIM_THREE_POOL_HOLDER,
-} from './constants'
+} from '../constants'
+import { CurveBase } from '../pluginTestTypes'
 
-interface WrappedPoolBase {
-  curvePool: CurvePoolMock
-  crv3Pool: ERC20Mock
-  w3Pool: ConvexStakingWrapper
-}
-
-export interface Wrapped3PoolFixtureStable extends WrappedPoolBase {
+export interface Wrapped3PoolFixtureStable extends CurveBase {
   dai: ERC20Mock
   usdc: ERC20Mock
   usdt: ERC20Mock
@@ -70,9 +64,6 @@ export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => 
   )
   await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-  // Use real Curve/Convex contracts
-  const crv3Pool = <ERC20Mock>await ethers.getContractAt('ERC20Mock', THREE_POOL_TOKEN)
-
   // Deploy external cvxMining lib
   const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
   const cvxMining = await CvxMiningFactory.deploy()
@@ -81,13 +72,19 @@ export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => 
   const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
     libraries: { CvxMining: cvxMining.address },
   })
-  const w3Pool = await wrapperFactory.deploy()
-  await w3Pool.initialize(THREE_POOL_CVX_POOL_ID)
+  const wrapper = await wrapperFactory.deploy()
+  await wrapper.initialize(THREE_POOL_CVX_POOL_ID)
 
-  return { dai, usdc, usdt, curvePool, crv3Pool, w3Pool }
+  return {
+    dai,
+    usdc,
+    usdt,
+    curvePool,
+    wrapper: wrapper as unknown as RewardableERC20Vault,
+  }
 }
 
-export interface Wrapped3PoolFixtureVolatile extends WrappedPoolBase {
+export interface Wrapped3PoolFixtureVolatile extends CurveBase {
   usdt: ERC20Mock
   wbtc: ERC20Mock
   weth: ERC20Mock
@@ -114,9 +111,6 @@ export const makeW3PoolVolatile = async (): Promise<Wrapped3PoolFixtureVolatile>
   )
   await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-  // Use real Curve/Convex contracts
-  const crv3Pool = <ERC20Mock>await ethers.getContractAt('ERC20Mock', TRI_CRYPTO_TOKEN)
-
   // Deploy external cvxMining lib
   const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
   const cvxMining = await CvxMiningFactory.deploy()
@@ -125,25 +119,36 @@ export const makeW3PoolVolatile = async (): Promise<Wrapped3PoolFixtureVolatile>
   const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
     libraries: { CvxMining: cvxMining.address },
   })
-  const w3Pool = await wrapperFactory.deploy()
-  await w3Pool.initialize(TRI_CRYPTO_CVX_POOL_ID)
+  const wrapper = await wrapperFactory.deploy()
+  await wrapper.initialize(TRI_CRYPTO_CVX_POOL_ID)
 
-  return { usdt, wbtc, weth, curvePool, crv3Pool, w3Pool }
+  return {
+    usdt,
+    wbtc,
+    weth,
+    curvePool,
+    wrapper: wrapper as unknown as RewardableERC20Vault,
+  }
 }
 
 export const mintW3Pool = async (
-  ctx: WrappedPoolBase,
+  ctx: CurveBase,
   amount: BigNumberish,
   user: SignerWithAddress,
   recipient: string,
   holder: string
 ) => {
+  const cvxWrapper = ctx.wrapper as ConvexStakingWrapper
+  const lpToken = await ethers.getContractAt(
+    '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
+    await cvxWrapper.curveToken()
+  )
   await whileImpersonating(holder, async (signer) => {
-    await ctx.crv3Pool.connect(signer).transfer(user.address, amount)
+    await lpToken.connect(signer).transfer(user.address, amount)
   })
 
-  await ctx.crv3Pool.connect(user).approve(ctx.w3Pool.address, amount)
-  await ctx.w3Pool.connect(user).deposit(amount, recipient)
+  await lpToken.connect(user).approve(ctx.wrapper.address, amount)
+  await ctx.wrapper.connect(user).deposit(amount, recipient)
 }
 
 export const resetFork = getResetFork(FORK_BLOCK)
@@ -293,16 +298,21 @@ export const makeWMIM3Pool = async (): Promise<WrappedMIM3PoolFixture> => {
 }
 
 export const mintWMIM3Pool = async (
-  ctx: WrappedMIM3PoolFixture,
+  ctx: CurveBase,
   amount: BigNumberish,
   user: SignerWithAddress,
   recipient: string,
   holder: string
 ) => {
+  const cvxWrapper = ctx.wrapper as ConvexStakingWrapper
+  const lpToken = await ethers.getContractAt(
+    '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
+    await cvxWrapper.curveToken()
+  )
   await whileImpersonating(holder, async (signer) => {
-    await ctx.realMetapool.connect(signer).transfer(user.address, amount)
+    await lpToken.connect(signer).transfer(user.address, amount)
   })
 
-  await ctx.realMetapool.connect(user).approve(ctx.wPool.address, amount)
-  await ctx.wPool.connect(user).deposit(amount, recipient)
+  await lpToken.connect(user).approve(ctx.wrapper.address, amount)
+  await ctx.wrapper.connect(user).deposit(amount, recipient)
 }
