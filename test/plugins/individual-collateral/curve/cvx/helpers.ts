@@ -229,18 +229,23 @@ export const makeWeUSDFraxBP = async (
 }
 
 export const mintWeUSDFraxBP = async (
-  ctx: WrappedEUSDFraxBPFixture,
+  ctx: CurveBase,
   amount: BigNumberish,
   user: SignerWithAddress,
   recipient: string,
   holder: string
 ) => {
+  const cvxWrapper = ctx.wrapper as ConvexStakingWrapper
+  const lpToken = await ethers.getContractAt(
+    '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
+    await cvxWrapper.curveToken()
+  )
   await whileImpersonating(holder, async (signer) => {
-    await ctx.realMetapool.connect(signer).transfer(user.address, amount)
+    await lpToken.connect(signer).transfer(user.address, amount)
   })
 
-  await ctx.realMetapool.connect(user).approve(ctx.wPool.address, amount)
-  await ctx.wPool.connect(user).deposit(amount, recipient)
+  await lpToken.connect(user).approve(ctx.wrapper.address, amount)
+  await ctx.wrapper.connect(user).deposit(amount, recipient)
 }
 
 // === MIM + 3Pool

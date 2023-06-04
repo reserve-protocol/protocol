@@ -81,42 +81,18 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       it('requires non-zero-address feeds', async () => {
-        await expect(
-          deployCollateral({
-            erc20: mockERC20.address, // can be anything.
-            feeds: [[ZERO_ADDRESS], [ONE_ADDRESS], [ONE_ADDRESS]],
-          })
-        ).to.be.revertedWith('t0feed0 empty')
-        await expect(
-          deployCollateral({
-            erc20: mockERC20.address, // can be anything.
-            feeds: [[ONE_ADDRESS, ZERO_ADDRESS], [ONE_ADDRESS], [ONE_ADDRESS]],
-          })
-        ).to.be.revertedWith('t0feed1 empty')
-        await expect(
-          deployCollateral({
-            erc20: mockERC20.address, // can be anything.
-            feeds: [[ONE_ADDRESS], [ZERO_ADDRESS], [ONE_ADDRESS]],
-          })
-        ).to.be.revertedWith('t1feed0 empty')
-        await expect(
-          deployCollateral({
-            erc20: mockERC20.address, // can be anything.
-            feeds: [[ONE_ADDRESS], [ONE_ADDRESS, ZERO_ADDRESS], [ONE_ADDRESS]],
-          })
-        ).to.be.revertedWith('t1feed1 empty')
-        await expect(
-          deployCollateral({
-            erc20: mockERC20.address, // can be anything.
-            feeds: [[ONE_ADDRESS], [ONE_ADDRESS], [ZERO_ADDRESS]],
-          })
-        ).to.be.revertedWith('t2feed0 empty')
-        await expect(
-          deployCollateral({
-            erc20: mockERC20.address, // can be anything.
-            feeds: [[ONE_ADDRESS], [ONE_ADDRESS], [ONE_ADDRESS, ZERO_ADDRESS]],
-          })
-        ).to.be.revertedWith('t2feed1 empty')
+        for (let i = 0; i < defaultOpts.feeds!.length; i++) {
+          for (let j = 0; j < defaultOpts.feeds![i].length; j++) {
+            const feeds = defaultOpts.feeds!.map((f) => f.map(() => ONE_ADDRESS))
+            feeds[i][j] = ZERO_ADDRESS
+            await expect(
+              deployCollateral({
+                erc20: mockERC20.address, // can be anything.
+                feeds,
+              })
+            ).to.be.revertedWith(`t${i}feed${j} empty`)
+          }
+        }
       })
 
       it('requires non-zero oracleTimeouts', async () => {
@@ -136,19 +112,17 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
       it('requires non-zero oracleErrors', async () => {
         const nonzeroError = fp('0.01') // 1%
-        await expect(
-          deployCollateral({
-            oracleErrors: [[fp('1')], [nonzeroError], [nonzeroError]],
-          })
-        ).to.be.revertedWith('t0error0 too large')
-        await expect(
-          deployCollateral({
-            oracleErrors: [[nonzeroError], [fp('1')], [nonzeroError]],
-          })
-        ).to.be.revertedWith('t1error0 too large')
-        await expect(
-          deployCollateral({ oracleErrors: [[nonzeroError], [nonzeroError], [fp('1')]] })
-        ).to.be.revertedWith('t2error0 too large')
+        for (let i = 0; i < defaultOpts.feeds!.length; i++) {
+          for (let j = 0; j < defaultOpts.feeds![i].length; j++) {
+            const oracleErrors = defaultOpts.feeds!.map((f) => f.map(() => nonzeroError))
+            oracleErrors[i][j] = fp('1')
+            await expect(
+              deployCollateral({
+                oracleErrors,
+              })
+            ).to.be.revertedWith(`t${i}error${j} too large`)
+          }
+        }
       })
 
       it('validates targetName', async () => {
@@ -535,14 +509,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           )
 
           ctx = await loadFixture(makeCollateralFixtureContext(ctx.alice, {}))
-
           const [invalidCollateral] = await deployCollateral({
             erc20: ctx.wrapper.address,
-            feeds: [
-              [invalidChainlinkFeed.address],
-              [invalidChainlinkFeed.address],
-              [invalidChainlinkFeed.address],
-            ],
+            feeds: defaultOpts.feeds!.map((f) => f.map(() => invalidChainlinkFeed.address)),
           })
 
           // Reverting with no reason

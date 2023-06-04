@@ -38,6 +38,11 @@ export interface CurveCollateralOpts extends CollateralOpts {
   lpToken?: string
 }
 
+export interface CurveMetapoolCollateralOpts extends CurveCollateralOpts {
+  metapoolToken?: string
+  pairedTokenDefaultThreshold?: BigNumberish
+}
+
 // A function to deploy the collateral plugin and return the deployed instance of the contract
 export type DeployCurveCollateralFunc = (
   opts: CurveCollateralOpts
