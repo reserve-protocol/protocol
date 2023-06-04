@@ -207,7 +207,7 @@ const opts = {
   itHasRevenueHiding: it,
   isMetapool: true,
   resetFork,
-  collateralName: 'CrvStableMetapoolCollateral',
+  collateralName: 'CrvStableMetapoolCollateral - ConvexStakingWrapper',
 }
 
 collateralTests(opts)
