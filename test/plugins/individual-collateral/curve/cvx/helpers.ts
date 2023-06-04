@@ -131,7 +131,7 @@ export const makeW3PoolVolatile = async (): Promise<Wrapped3PoolFixtureVolatile>
   }
 }
 
-export const mintW3Pool = async (
+export const mintWPool = async (
   ctx: CurveBase,
   amount: BigNumberish,
   user: SignerWithAddress,

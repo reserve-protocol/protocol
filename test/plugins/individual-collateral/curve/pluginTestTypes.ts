@@ -39,7 +39,9 @@ export interface CurveCollateralOpts extends CollateralOpts {
 }
 
 // A function to deploy the collateral plugin and return the deployed instance of the contract
-export type DeployCurveCollateralFunc = (opts: CurveCollateralOpts) => Promise<TestICollateral>
+export type DeployCurveCollateralFunc = (
+  opts: CurveCollateralOpts
+) => Promise<[TestICollateral, CurveCollateralOpts]>
 
 // A function to deploy and return the plugin-specific test suite context
 export type MakeCurveCollateralFixtureFunc<T extends CurveCollateralFixtureContext> = (

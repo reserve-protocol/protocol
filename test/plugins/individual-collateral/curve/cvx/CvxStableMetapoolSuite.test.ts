@@ -84,7 +84,7 @@ export const defaultCvxStableCollateralOpts: CvxStableMetapoolCollateralOpts = {
 
 export const deployCollateral = async (
   opts: CvxStableMetapoolCollateralOpts = {}
-): Promise<TestICollateral> => {
+): Promise<[TestICollateral, CurveCollateralOpts]> => {
   if (!opts.erc20 && !opts.feeds && !opts.chainlinkFeed) {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
       await ethers.getContractFactory('MockV3Aggregator')
@@ -137,7 +137,7 @@ export const deployCollateral = async (
   // fortunately this syntax fails silently because our tools are terrible
   await expect(collateral.refresh())
 
-  return collateral as unknown as TestICollateral
+  return [collateral as unknown as TestICollateral, opts]
 }
 
 const makeCollateralFixtureContext = (
@@ -164,7 +164,7 @@ const makeCollateralFixtureContext = (
     collateralOpts.curvePool = fix.curvePool.address
     collateralOpts.metapoolToken = fix.metapoolToken.address
 
-    const collateral = <TestICollateral>((await deployCollateral(collateralOpts)) as unknown)
+    const collateral = <TestICollateral>((await deployCollateral(collateralOpts))[0] as unknown)
     const cvx = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CVX)
     const crv = <ERC20Mock>await ethers.getContractAt('ERC20Mock', CRV)
 
@@ -220,7 +220,7 @@ const opts = {
   itHasRevenueHiding: it,
   isMetapool: true,
   resetFork,
-  collateralName: 'CvxStableMetapoolCollateral',
+  collateralName: 'CrvStableMetapoolCollateral',
 }
 
 collateralTests(opts)

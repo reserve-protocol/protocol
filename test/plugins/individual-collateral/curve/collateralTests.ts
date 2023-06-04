@@ -1,24 +1,16 @@
-import { CurveCollateralFixtureContext, CurveCollateralTestSuiteFixtures } from './pluginTestTypes'
+import {
+  CurveCollateralFixtureContext,
+  CurveCollateralOpts,
+  CurveCollateralTestSuiteFixtures,
+} from './pluginTestTypes'
 import { CollateralStatus } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
-import { InvalidMockV3Aggregator } from '../../../../typechain'
+import { ERC20Mock, InvalidMockV3Aggregator } from '../../../../typechain'
 
 import { bn, fp } from '../../../../common/numbers'
-import { MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
+import { MAX_UINT48, ZERO_ADDRESS, ONE_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
-import {
-  THREE_POOL_TOKEN,
-  DAI_USD_FEED,
-  DAI_ORACLE_TIMEOUT,
-  DAI_ORACLE_ERROR,
-  USDC_USD_FEED,
-  USDC_ORACLE_TIMEOUT,
-  USDC_ORACLE_ERROR,
-  USDT_USD_FEED,
-  USDT_ORACLE_TIMEOUT,
-  USDT_ORACLE_ERROR,
-} from './constants'
 import { useEnv } from '#/utils/env'
 import {
   advanceBlocks,
@@ -44,7 +36,14 @@ export default function fn<X extends CurveCollateralFixtureContext>(
   } = fixtures
 
   describeFork(`Collateral: ${collateralName}`, () => {
-    before(resetFork)
+    let defaultOpts: CurveCollateralOpts
+    let mockERC20: ERC20Mock
+
+    before(async () => {
+      ;[, defaultOpts] = await deployCollateral({})
+      const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
+      mockERC20 = await ERC20Factory.deploy('Mock ERC20', 'ERC20')
+    })
 
     describe('constructor validation', () => {
       it('does not allow 0 defaultThreshold', async () => {
@@ -66,8 +65,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       it('does not allow more than 2 price feeds', async () => {
         await expect(
           deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            feeds: [[DAI_USD_FEED, DAI_USD_FEED, DAI_USD_FEED], [], []],
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS], [], []],
           })
         ).to.be.revertedWith('price feeds limited to 2')
       })
@@ -75,8 +74,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       it('requires at least 1 price feed per token', async () => {
         await expect(
           deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            feeds: [[DAI_USD_FEED, DAI_USD_FEED], [USDC_USD_FEED], []],
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[ONE_ADDRESS, ONE_ADDRESS], [ONE_ADDRESS], []],
           })
         ).to.be.revertedWith('each token needs at least 1 price feed')
       })
@@ -84,76 +83,71 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       it('requires non-zero-address feeds', async () => {
         await expect(
           deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            feeds: [[ZERO_ADDRESS], [USDC_USD_FEED], [USDT_USD_FEED]],
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[ZERO_ADDRESS], [ONE_ADDRESS], [ONE_ADDRESS]],
           })
         ).to.be.revertedWith('t0feed0 empty')
         await expect(
           deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            feeds: [[DAI_USD_FEED, ZERO_ADDRESS], [USDC_USD_FEED], [USDT_USD_FEED]],
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[ONE_ADDRESS, ZERO_ADDRESS], [ONE_ADDRESS], [ONE_ADDRESS]],
           })
         ).to.be.revertedWith('t0feed1 empty')
         await expect(
           deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            feeds: [[USDC_USD_FEED], [ZERO_ADDRESS], [USDT_USD_FEED]],
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[ONE_ADDRESS], [ZERO_ADDRESS], [ONE_ADDRESS]],
           })
         ).to.be.revertedWith('t1feed0 empty')
         await expect(
           deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            feeds: [[DAI_USD_FEED], [USDC_USD_FEED, ZERO_ADDRESS], [USDT_USD_FEED]],
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[ONE_ADDRESS], [ONE_ADDRESS, ZERO_ADDRESS], [ONE_ADDRESS]],
           })
         ).to.be.revertedWith('t1feed1 empty')
         await expect(
           deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [ZERO_ADDRESS]],
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[ONE_ADDRESS], [ONE_ADDRESS], [ZERO_ADDRESS]],
           })
         ).to.be.revertedWith('t2feed0 empty')
         await expect(
           deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED, ZERO_ADDRESS]],
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[ONE_ADDRESS], [ONE_ADDRESS], [ONE_ADDRESS, ZERO_ADDRESS]],
           })
         ).to.be.revertedWith('t2feed1 empty')
       })
 
       it('requires non-zero oracleTimeouts', async () => {
-        await expect(
-          deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            oracleTimeouts: [[bn('0')], [USDC_ORACLE_TIMEOUT], [USDT_ORACLE_TIMEOUT]],
-          })
-        ).to.be.revertedWith('t0timeout0 zero')
-        await expect(
-          deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            oracleTimeouts: [[USDC_ORACLE_TIMEOUT], [bn('0')], [USDT_ORACLE_TIMEOUT]],
-          })
-        ).to.be.revertedWith('t1timeout0 zero')
-        await expect(
-          deployCollateral({
-            erc20: THREE_POOL_TOKEN, // can be anything.
-            oracleTimeouts: [[DAI_ORACLE_TIMEOUT], [USDC_ORACLE_TIMEOUT], [bn('0')]],
-          })
-        ).to.be.revertedWith('t2timeout0 zero')
+        for (let i = 0; i < defaultOpts.feeds!.length; i++) {
+          for (let j = 0; j < defaultOpts.feeds![i].length; j++) {
+            const oracleTimeouts = defaultOpts.feeds!.map((f) => f.map(() => bn('1')))
+            oracleTimeouts[i][j] = bn('0')
+            await expect(
+              deployCollateral({
+                erc20: mockERC20.address, // can be anything.
+                oracleTimeouts,
+              })
+            ).to.be.revertedWith(`t${i}timeout${j} zero`)
+          }
+        }
       })
 
       it('requires non-zero oracleErrors', async () => {
+        const nonzeroError = fp('0.01') // 1%
         await expect(
           deployCollateral({
-            oracleErrors: [[fp('1')], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR]],
+            oracleErrors: [[fp('1')], [nonzeroError], [nonzeroError]],
           })
         ).to.be.revertedWith('t0error0 too large')
         await expect(
           deployCollateral({
-            oracleErrors: [[USDC_ORACLE_ERROR], [fp('1')], [USDT_ORACLE_ERROR]],
+            oracleErrors: [[nonzeroError], [fp('1')], [nonzeroError]],
           })
         ).to.be.revertedWith('t1error0 too large')
         await expect(
-          deployCollateral({ oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [fp('1')]] })
+          deployCollateral({ oracleErrors: [[nonzeroError], [nonzeroError], [fp('1')]] })
         ).to.be.revertedWith('t2error0 too large')
       })
 
@@ -272,21 +266,21 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       describe('prices', () => {
         before(resetFork)
         it('prices change as feed price changes', async () => {
-          const feedData = await ctx.feeds[0].latestRoundData()
           const initialRefPerTok = await ctx.collateral.refPerTok()
-
           const [low, high] = await ctx.collateral.price()
 
           // Update values in Oracles increase by 10%
-          const newPrice = feedData.answer.mul(110).div(100)
-          for (const feed of ctx.feeds) {
-            await feed.updateAnswer(newPrice).then((e) => e.wait())
+          const initialPrices = await Promise.all(ctx.feeds.map((f) => f.latestRoundData()))
+          for (const [i, feed] of ctx.feeds.entries()) {
+            await feed.updateAnswer(initialPrices[i].answer.mul(110).div(100)).then((e) => e.wait())
           }
 
           const [newLow, newHigh] = await ctx.collateral.price()
 
-          expect(newLow).to.be.closeTo(low.mul(110).div(100), 200)
-          expect(newHigh).to.be.closeTo(high.mul(110).div(100), 200)
+          // with 18 decimals of price precision a 1e-9 tolerance seems fine for a 10% change
+          // and without this kind of tolerance the Volatile pool tests fail due to small movements
+          expect(newLow).to.be.closeTo(low.mul(110).div(100), fp('1e-9'))
+          expect(newHigh).to.be.closeTo(high.mul(110).div(100), fp('1e-9'))
 
           // Check refPerTok remains the same (because we have not refreshed)
           const finalRefPerTok = await ctx.collateral.refPerTok()
@@ -488,8 +482,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         })
 
         it('enters IFFY state when price becomes stale', async () => {
-          const oracleTimeout = DAI_ORACLE_TIMEOUT.toNumber()
-          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+          const oracleTimeout = bn(defaultOpts.oracleTimeouts![0][0])
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout.toNumber())
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
         })
@@ -526,7 +520,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)
 
           // One quanta more of decrease results in default
-          await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(1))
+          await ctx.curvePool.setVirtualPrice(newVirtualPrice.sub(2)) // sub 2 to compenstate for rounding
           await expect(ctx.collateral.refresh()).to.emit(ctx.collateral, 'CollateralStatusChanged')
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
           expect(await ctx.collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
@@ -542,7 +536,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
           ctx = await loadFixture(makeCollateralFixtureContext(ctx.alice, {}))
 
-          const invalidCollateral = await deployCollateral({
+          const [invalidCollateral] = await deployCollateral({
             erc20: ctx.wrapper.address,
             feeds: [
               [invalidChainlinkFeed.address],
