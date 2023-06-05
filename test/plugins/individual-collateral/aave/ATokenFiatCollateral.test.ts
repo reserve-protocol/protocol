@@ -167,7 +167,12 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
     )
     // aDAI token
-    aDai = <IAToken>await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
+    aDai = <IAToken>(
+      await ethers.getContractAt(
+        'contracts/plugins/assets/aave/vendor/IAToken.sol:IAToken',
+        networkConfig[chainId].tokens.aDAI || ''
+      )
+    )
 
     // stkAAVE
     stkAave = <ERC20Mock>(
