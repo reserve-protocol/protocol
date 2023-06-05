@@ -189,7 +189,23 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
 */
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {}
+const collateralSpecificConstructorTests = () => {
+  it('does not allow empty metaPoolToken', async () => {
+    await expect(deployCollateral({ metapoolToken: ZERO_ADDRESS })).to.be.revertedWith(
+      'metapoolToken address is zero'
+    )
+  })
+
+  it('does not allow invalid pairedTokenDefaultThreshold', async () => {
+    await expect(deployCollateral({ pairedTokenDefaultThreshold: bn(0) })).to.be.revertedWith(
+      'pairedTokenDefaultThreshold out of bounds'
+    )
+
+    await expect(
+      deployCollateral({ pairedTokenDefaultThreshold: bn('1.1e18') })
+    ).to.be.revertedWith('pairedTokenDefaultThreshold out of bounds')
+  })
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {}

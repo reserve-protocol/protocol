@@ -12,6 +12,7 @@ import { MAX_UINT48, ZERO_ADDRESS, ONE_ADDRESS } from '../../../../common/consta
 import { expect } from 'chai'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { useEnv } from '#/utils/env'
+import { expectUnpriced } from '../../../utils/oracles'
 import {
   advanceBlocks,
   advanceTime,
@@ -310,6 +311,17 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await ctx.feeds[0].setInvalidTimestamp()
 
           // When refreshed, sets status to Unpriced
+          await ctx.collateral.refresh()
+          expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
+        })
+
+        it('Handles stale price', async () => {
+          await advanceTime(await ctx.collateral.priceTimeout())
+
+          // (0, FIX_MAX) is returned
+          await expectUnpriced(ctx.collateral.address)
+
+          // Refresh should mark status IFFY
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
         })

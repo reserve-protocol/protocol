@@ -77,7 +77,7 @@ export interface CurveCollateralTestSuiteFixtures<T extends CurveCollateralFixtu
   makeCollateralFixtureContext: MakeCurveCollateralFixtureFunc<T>
 
   // a function to mint a certain amount of collateral to a target address
-  mintCollateralTo: MintCurveCollateralFunc<T>
+  mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext>
 
   isMetapool: boolean
 
