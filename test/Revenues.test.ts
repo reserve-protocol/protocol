@@ -2397,6 +2397,29 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await rTokenTrader.manageToken(token1.address, TradeKind.DUTCH_AUCTION)
         })
 
+        it('Should not return bid amount before auction starts', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+
+          // Cannot get bid amount yet
+          await expect(
+            trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
+          ).to.be.revertedWith('auction not started')
+
+          // Advance to start time
+          const start = await trade.startTime()
+          await advanceToTimestamp(start)
+
+          // Now we can get bid amount
+          const actual = await trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
+          expect(actual).to.be.gt(bn(0))
+        })
+
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
           issueAmount = issueAmount.div(10000)
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
@@ -2438,6 +2461,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             await rTokenTrader.trades(token0.address)
           )
           await rToken.connect(addr1).approve(trade.address, initialBal)
+
           await advanceToTimestamp((await trade.endTime()) + 1)
           await expect(
             trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
@@ -2483,6 +2507,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await rTokenTrader.tradesOpen()).to.equal(0)
           expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 100)
           expect(await rToken.balanceOf(furnace.address)).to.equal(expected)
+
+          // Cannot bid once is settled
+          await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
         })
       })
     })
