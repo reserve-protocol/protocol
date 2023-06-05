@@ -8,8 +8,6 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
 
 }
 
-// solhint-enable no-empty-blocks
-
 /**
  * @title CrvStableMetapoolCollateral
  *  This plugin contract is intended for 2-fiattoken stable metapools that

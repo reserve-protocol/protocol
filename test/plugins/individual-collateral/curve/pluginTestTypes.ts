@@ -55,7 +55,7 @@ export type MakeCurveCollateralFixtureFunc<T extends CurveCollateralFixtureConte
 ) => Fixture<T>
 
 // A function to mint a certain amount of collateral to a target address
-export type MintCurveCollateralFunc<T extends CurveCollateralFixtureContext> = (
+export type MintCurveCollateralFunc<CurveCollateralFixtureContext> = (
   ctx: CurveCollateralFixtureContext,
   amount: BigNumberish,
   user: SignerWithAddress,
