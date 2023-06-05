@@ -252,33 +252,33 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Get plain aTokens
       aDai = <IAToken>(
         await ethers.getContractAt(
-          'contracts/plugins/assets/aave/vendor/IAToken.sol:IAToken',
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
           networkConfig[chainId].tokens.aDAI || ''
         )
       )
 
       aUsdc = <IAToken>(
         await ethers.getContractAt(
-          'contracts/plugins/assets/aave/vendor/IAToken.sol:IAToken',
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
           networkConfig[chainId].tokens.aUSDC || ''
         )
       )
       aUsdt = <IAToken>(
         await ethers.getContractAt(
-          'contracts/plugins/assets/aave/vendor/IAToken.sol:IAToken',
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
           networkConfig[chainId].tokens.aUSDT || ''
         )
       )
       aBusd = <IAToken>(
         await ethers.getContractAt(
-          'contracts/plugins/assets/aave/vendor/IAToken.sol:IAToken',
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
           networkConfig[chainId].tokens.aBUSD || ''
         )
       )
 
       aUsdp = <IAToken>(
         await ethers.getContractAt(
-          'contracts/plugins/assets/aave/vendor/IAToken.sol:IAToken',
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
           networkConfig[chainId].tokens.aUSDP || ''
         )
       )
@@ -317,7 +317,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Get plain aToken
       aDai = <IAToken>(
         await ethers.getContractAt(
-          'contracts/plugins/assets/aave/vendor/IAToken.sol:IAToken',
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
           networkConfig[chainId].tokens.aDAI || ''
         )
       )
@@ -2519,7 +2519,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Get plain aToken
       aDai = <IAToken>(
         await ethers.getContractAt(
-          'contracts/plugins/assets/aave/vendor/IAToken.sol:IAToken',
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
           networkConfig[chainId].tokens.aDAI || ''
         )
       )

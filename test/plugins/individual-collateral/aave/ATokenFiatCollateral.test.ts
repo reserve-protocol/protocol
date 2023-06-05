@@ -169,7 +169,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // aDAI token
     aDai = <IAToken>(
       await ethers.getContractAt(
-        'contracts/plugins/assets/aave/vendor/IAToken.sol:IAToken',
+        '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
         networkConfig[chainId].tokens.aDAI || ''
       )
     )
