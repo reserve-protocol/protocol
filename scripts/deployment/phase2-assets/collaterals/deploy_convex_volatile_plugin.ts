@@ -13,7 +13,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { CvxVolatileCollateral } from '../../../../typechain'
+import { CrvVolatileCollateral } from '../../../../typechain'
 import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CurvePoolType,
@@ -36,7 +36,7 @@ import {
   USDT_ORACLE_ERROR,
   USDT_ORACLE_TIMEOUT,
   USDT_USD_FEED,
-} from '../../../../test/plugins/individual-collateral/convex/constants'
+} from '../../../../test/plugins/individual-collateral/curve/constants'
 
 // This file specifically deploys Convex Volatile Plugin for Tricrypto
 
@@ -69,7 +69,7 @@ async function main() {
   /********  Deploy Convex Volatile Pool for 3pool  **************************/
 
   const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
-  const CvxVolatileCollateralFactory = await hre.ethers.getContractFactory('CvxVolatileCollateral')
+  const CrvVolatileCollateralFactory = await hre.ethers.getContractFactory('CrvVolatileCollateral')
   const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
     libraries: { CvxMining: CvxMining.address },
   })
@@ -82,7 +82,7 @@ async function main() {
     `Deployed wrapper for Convex Volatile TriCrypto on ${hre.network.name} (${chainId}): ${w3Pool.address} `
   )
 
-  const collateral = <CvxVolatileCollateral>await CvxVolatileCollateralFactory.connect(
+  const collateral = <CrvVolatileCollateral>await CrvVolatileCollateralFactory.connect(
     deployer
   ).deploy(
     {

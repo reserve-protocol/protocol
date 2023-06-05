@@ -30,7 +30,7 @@ import {
   USDT_ORACLE_ERROR,
   USDT_ORACLE_TIMEOUT,
   USDT_USD_FEED,
-} from '../../../test/plugins/individual-collateral/convex/constants'
+} from '../../../test/plugins/individual-collateral/curve/constants'
 
 let deployments: IAssetCollDeployments
 
@@ -49,7 +49,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const wPoolCollateral = await ethers.getContractAt(
-    'CvxStableMetapoolCollateral',
+    'CrvStableMetapoolCollateral',
     deployments.collateral.cvxMIM3Pool as string
   )
 
@@ -86,7 +86,7 @@ async function main() {
       MIM_THREE_POOL,
       MIM_DEFAULT_THRESHOLD,
     ],
-    'contracts/plugins/assets/convex/CvxStableMetapoolCollateral.sol:CvxStableMetapoolCollateral'
+    'contracts/plugins/assets/convex/CrvStableMetapoolCollateral.sol:CrvStableMetapoolCollateral'
   )
 }
 

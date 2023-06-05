@@ -25,7 +25,7 @@ import {
   USDC_ORACLE_ERROR,
   USDC_ORACLE_TIMEOUT,
   USDC_USD_FEED,
-} from '../../../test/plugins/individual-collateral/convex/constants'
+} from '../../../test/plugins/individual-collateral/curve/constants'
 
 let deployments: IAssetCollDeployments
 
@@ -44,7 +44,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const eUSDPlugin = await ethers.getContractAt(
-    'CvxStableRTokenMetapoolCollateral',
+    'CrvStableRTokenMetapoolCollateral',
     deployments.collateral.cvxeUSDFRAXBP as string
   )
 
@@ -80,7 +80,7 @@ async function main() {
       eUSD_FRAX_BP,
       DEFAULT_THRESHOLD, // 2%
     ],
-    'contracts/plugins/assets/convex/CvxStableRTokenMetapoolCollateral.sol:CvxStableRTokenMetapoolCollateral'
+    'contracts/plugins/assets/convex/CrvStableRTokenMetapoolCollateral.sol:CrvStableRTokenMetapoolCollateral'
   )
 }
 

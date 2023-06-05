@@ -30,7 +30,7 @@ import {
   USDT_ORACLE_ERROR,
   USDT_ORACLE_TIMEOUT,
   USDT_USD_FEED,
-} from '../../../test/plugins/individual-collateral/convex/constants'
+} from '../../../test/plugins/individual-collateral/curve/constants'
 
 let deployments: IAssetCollDeployments
 
@@ -49,7 +49,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const wTriCrypto = await ethers.getContractAt(
-    'CvxVolatileCollateral',
+    'CrvVolatileCollateral',
     deployments.collateral.cvxTriCrypto as string
   )
 
@@ -88,7 +88,7 @@ async function main() {
         lpToken: TRI_CRYPTO_TOKEN,
       },
     ],
-    'contracts/plugins/assets/convex/CvxVolatileCollateral.sol:CvxVolatileCollateral'
+    'contracts/plugins/assets/convex/CrvVolatileCollateral.sol:CrvVolatileCollateral'
   )
 }
 

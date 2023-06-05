@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { CvxStableMetapoolCollateral } from '../../../../typechain'
+import { CrvStableMetapoolCollateral } from '../../../../typechain'
 import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CurvePoolType,
@@ -37,7 +37,7 @@ import {
   USDT_ORACLE_ERROR,
   USDT_ORACLE_TIMEOUT,
   USDT_USD_FEED,
-} from '../../../../test/plugins/individual-collateral/convex/constants'
+} from '../../../../test/plugins/individual-collateral/curve/constants'
 
 // This file specifically deploys Convex Metapool Plugin for MIM/3Pool
 
@@ -47,7 +47,7 @@ async function main() {
 
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying CvxStableMetapoolCollateral to network ${hre.network.name} (${chainId})
+  console.log(`Deploying CrvStableMetapoolCollateral to network ${hre.network.name} (${chainId})
     with burner account: ${deployer.address}`)
 
   if (!networkConfig[chainId]) {
@@ -70,8 +70,8 @@ async function main() {
   /********  Deploy Convex Stable Metapool for MIM/3Pool  **************************/
 
   const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
-  const CvxStableCollateralFactory = await hre.ethers.getContractFactory(
-    'CvxStableMetapoolCollateral'
+  const CrvStableCollateralFactory = await hre.ethers.getContractFactory(
+    'CrvStableMetapoolCollateral'
   )
   const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
     libraries: { CvxMining: CvxMining.address },
@@ -85,7 +85,7 @@ async function main() {
     `Deployed wrapper for Convex Stable MIM/3Pool on ${hre.network.name} (${chainId}): ${wPool.address} `
   )
 
-  const collateral = <CvxStableMetapoolCollateral>await CvxStableCollateralFactory.connect(
+  const collateral = <CrvStableMetapoolCollateral>await CrvStableCollateralFactory.connect(
     deployer
   ).deploy(
     {
