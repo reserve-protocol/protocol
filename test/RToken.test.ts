@@ -45,6 +45,7 @@ import {
 import { expectEqualArrays } from './utils/matchers'
 import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
+import { expectEvents } from '#/common/events'
 
 const BLOCKS_PER_HOUR = bn(300)
 
