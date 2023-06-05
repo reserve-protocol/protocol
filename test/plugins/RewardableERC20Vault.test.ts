@@ -121,6 +121,12 @@ const runTests = (assetDecimals: number, rewardDecimals: number) => {
         const seenRewardToken = await rewardableVault.rewardToken()
         expect(seenRewardToken).equal(rewardToken.address)
       })
+
+      it('no rewards yet', async () => {
+        await rewardableVault.connect(alice).claimRewards()
+        expect(await rewardableVault.rewardsPerShare()).to.equal(bn(0))
+        expect(await rewardableVault.lastRewardsPerShare(alice.address)).to.equal(bn(0))
+      })
     })
 
     describe('alice deposit, accrue, alice deposit, bob deposit', () => {
