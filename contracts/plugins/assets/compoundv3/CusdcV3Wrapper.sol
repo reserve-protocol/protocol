@@ -161,6 +161,8 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         // occasionally comet will withdraw 1-10 wei more than we asked for.
         // this is ok because 9 times out of 10 we are rounding in favor of the wrapper.
         // safe because we have already capped the comet withdraw amount to src underlying bal.
+        // untested:
+        //      difficult to trigger, depends on comet rules regarding rounding
         if (srcBalPre <= burnAmt) burnAmt = srcBalPre;
 
         accrueAccountRewards(src);
