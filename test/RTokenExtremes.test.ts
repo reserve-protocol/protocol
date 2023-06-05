@@ -1,67 +1,32 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, ContractFactory } from 'ethers'
-import hre, { ethers } from 'hardhat'
-import { getChainId } from '../common/blockchain-utils'
-import { IConfig, ThrottleParams, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
+import { ethers } from 'hardhat'
+import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
+import { bn, fp, shortString } from '../common/numbers'
 import {
-  BN_SCALE_FACTOR,
-  CollateralStatus,
-  MAX_UINT256,
-  ONE_PERIOD,
-  ZERO_ADDRESS,
-} from '../common/constants'
-import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
-import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
-import {
-  ATokenFiatCollateral,
-  CTokenFiatCollateral,
   ERC20Mock,
-  ERC1271Mock,
-  FacadeTest,
   FiatCollateral,
   IAssetRegistry,
   MockV3Aggregator,
-  RTokenAsset,
-  StaticATokenMock,
   TestIBackingManager,
   TestIBasketHandler,
-  TestIMain,
   TestIRToken,
-  USDCMock,
-  CTokenVaultMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import snapshotGasCost from './utils/snapshotGasCost'
+import { advanceTime } from './utils/time'
 import {
-  advanceTime,
-  advanceBlocks,
-  getLatestBlockTimestamp,
-  setNextBlockTimestamp,
-} from './utils/time'
-import {
-  Collateral,
-  defaultFixture,
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
   SLOW,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
-  VERSION,
   defaultFixtureNoBasket,
 } from './fixtures'
-import { expectEqualArrays } from './utils/matchers'
 import { cartesianProduct } from './utils/cases'
 import { useEnv } from '#/utils/env'
-import { mintCollaterals } from './utils/tokens'
-
-const BLOCKS_PER_HOUR = bn(300)
-
-const describeGas =
-  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 const describeExtreme =
   IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
@@ -70,68 +35,20 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
-  let other: SignerWithAddress
-
-  // Tokens and Assets
-  let initialBal: BigNumber
-  let token0: ERC20Mock
-  let token1: USDCMock
-  let token2: StaticATokenMock
-  let token3: CTokenVaultMock
-  let tokens: ERC20Mock[]
-
-  let collateral0: Collateral
-  let collateral1: Collateral
-  let collateral2: ATokenFiatCollateral
-  let collateral3: CTokenFiatCollateral
-  let basket: Collateral[]
-  let rTokenAsset: RTokenAsset
-
-  // Config values
-  let config: IConfig
 
   // Main
-  let main: TestIMain
   let rToken: TestIRToken
-  let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
 
   beforeEach(async () => {
-    ;[owner, addr1, addr2, other] = await ethers.getSigners()
+    ;[owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({
-      assetRegistry,
-      backingManager,
-      basket,
-      basketHandler,
-      config,
-      facadeTest,
-      main,
-      rToken,
-      rTokenAsset,
-    } = await loadFixture(defaultFixtureNoBasket))
-
-    // // Get assets and tokens
-    // collateral0 = <Collateral>basket[0]
-    // collateral1 = <Collateral>basket[1]
-    // collateral2 = <ATokenFiatCollateral>basket[2]
-    // collateral3 = <CTokenFiatCollateral>basket[3]
-    // token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
-    // token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
-    // token2 = <StaticATokenMock>(
-    //   await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
-    // )
-    // token3 = <CTokenVaultMock>(
-    //   await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
-    // )
-    // tokens = [token0, token1, token2, token3]
-
-    // // Mint initial balances
-    // initialBal = fp('1e7') // 10x the issuance throttle amount
-    // await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
+    ;({ assetRegistry, backingManager, basketHandler, rToken } = await loadFixture(
+      defaultFixtureNoBasket
+    ))
   })
 
   describeExtreme(`Extreme Values ${SLOW ? 'slow mode' : 'fast mode'}`, () => {
@@ -237,7 +154,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
 
       await advanceTime(await basketHandler.warmupPeriod())
-      
+
       // ==== Issue the "initial" rtoken supply to owner
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
       if (toIssue0.gt(0)) {

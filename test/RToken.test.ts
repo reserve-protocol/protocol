@@ -2,28 +2,20 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, ContractFactory } from 'ethers'
+import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { IConfig, ThrottleParams, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
-import {
-  BN_SCALE_FACTOR,
-  CollateralStatus,
-  MAX_UINT256,
-  ONE_PERIOD,
-  ZERO_ADDRESS,
-} from '../common/constants'
+import { CollateralStatus, MAX_UINT256, ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
-import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
+import { bn, fp, toBNDecimals } from '../common/numbers'
 import {
   ATokenFiatCollateral,
   CTokenFiatCollateral,
   ERC20Mock,
   ERC1271Mock,
   FacadeTest,
-  FiatCollateral,
   IAssetRegistry,
-  MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -47,13 +39,10 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  SLOW,
   ORACLE_TIMEOUT,
-  PRICE_TIMEOUT,
   VERSION,
 } from './fixtures'
 import { expectEqualArrays } from './utils/matchers'
-import { cartesianProduct } from './utils/cases'
 import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
 
@@ -61,9 +50,6 @@ const BLOCKS_PER_HOUR = bn(300)
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
-
-const describeExtreme =
-  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
 
 describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
