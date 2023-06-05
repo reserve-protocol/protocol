@@ -49,7 +49,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const wPoolCollateral = await ethers.getContractAt(
-    'CrvStableMetapoolCollateral',
+    'CurveStableMetapoolCollateral',
     deployments.collateral.cvxMIM3Pool as string
   )
 
@@ -86,7 +86,7 @@ async function main() {
       MIM_THREE_POOL,
       MIM_DEFAULT_THRESHOLD,
     ],
-    'contracts/plugins/assets/convex/CrvStableMetapoolCollateral.sol:CrvStableMetapoolCollateral'
+    'contracts/plugins/assets/convex/CurveStableMetapoolCollateral.sol:CurveStableMetapoolCollateral'
   )
 }
 

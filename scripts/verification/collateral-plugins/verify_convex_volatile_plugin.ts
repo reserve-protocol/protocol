@@ -49,7 +49,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const wTriCrypto = await ethers.getContractAt(
-    'CrvVolatileCollateral',
+    'CurveVolatileCollateral',
     deployments.collateral.cvxTriCrypto as string
   )
 
@@ -88,7 +88,7 @@ async function main() {
         lpToken: TRI_CRYPTO_TOKEN,
       },
     ],
-    'contracts/plugins/assets/convex/CrvVolatileCollateral.sol:CrvVolatileCollateral'
+    'contracts/plugins/assets/convex/CurveVolatileCollateral.sol:CurveVolatileCollateral'
   )
 }
 

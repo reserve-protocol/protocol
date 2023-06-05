@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "./CrvStableCollateral.sol";
+import "./CurveStableCollateral.sol";
 
 // solhint-disable no-empty-blocks
 interface ICurveMetaPool is ICurvePool, IERC20Metadata {
@@ -9,7 +9,7 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
 }
 
 /**
- * @title CrvStableMetapoolCollateral
+ * @title CurveStableMetapoolCollateral
  *  This plugin contract is intended for 2-fiattoken stable metapools that
  *  DO NOT involve RTokens, such as LUSD-fraxBP or MIM-3CRV.
  *
@@ -18,7 +18,7 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
  * tar = USD
  * UoA = USD
  */
-contract CrvStableMetapoolCollateral is CrvStableCollateral {
+contract CurveStableMetapoolCollateral is CurveStableCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -39,7 +39,7 @@ contract CrvStableMetapoolCollateral is CrvStableCollateral {
         PTConfiguration memory ptConfig,
         ICurveMetaPool metapoolToken_,
         uint192 pairedTokenDefaultThreshold_
-    ) CrvStableCollateral(config, revenueHiding, ptConfig) {
+    ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         require(address(metapoolToken_) != address(0), "metapoolToken address is zero");
         require(
             pairedTokenDefaultThreshold_ > 0 && pairedTokenDefaultThreshold_ < FIX_ONE,

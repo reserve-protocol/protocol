@@ -44,7 +44,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const eUSDPlugin = await ethers.getContractAt(
-    'CrvStableRTokenMetapoolCollateral',
+    'CurveStableRTokenMetapoolCollateral',
     deployments.collateral.cvxeUSDFRAXBP as string
   )
 
@@ -80,7 +80,7 @@ async function main() {
       eUSD_FRAX_BP,
       DEFAULT_THRESHOLD, // 2%
     ],
-    'contracts/plugins/assets/convex/CrvStableRTokenMetapoolCollateral.sol:CrvStableRTokenMetapoolCollateral'
+    'contracts/plugins/assets/convex/CurveStableRTokenMetapoolCollateral.sol:CurveStableRTokenMetapoolCollateral'
   )
 }
 

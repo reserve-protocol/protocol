@@ -51,7 +51,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const w3PoolCollateral = await ethers.getContractAt(
-    'CrvStableCollateral',
+    'CurveStableCollateral',
     deployments.collateral.cvx3Pool as string
   )
 
@@ -104,7 +104,7 @@ async function main() {
         lpToken: THREE_POOL_TOKEN,
       },
     ],
-    'contracts/plugins/assets/convex/CrvStableCollateral.sol:CrvStableCollateral'
+    'contracts/plugins/assets/convex/CurveStableCollateral.sol:CurveStableCollateral'
   )
 }
 

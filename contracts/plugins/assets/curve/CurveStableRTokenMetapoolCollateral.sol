@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "./CrvStableMetapoolCollateral.sol";
+import "./CurveStableMetapoolCollateral.sol";
 
 /**
- * @title CrvStableRTokenMetapoolCollateral
+ * @title CurveStableRTokenMetapoolCollateral
  *  This plugin contract is intended for 2-fiattoken stable metapools that
  *  involve RTokens, such as eUSD-fraxBP.
  *
@@ -13,7 +13,7 @@ import "./CrvStableMetapoolCollateral.sol";
  * tar = USD
  * UoA = USD
  */
-contract CrvStableRTokenMetapoolCollateral is CrvStableMetapoolCollateral {
+contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
     using FixLib for uint192;
 
     IAssetRegistry internal immutable pairedAssetRegistry; // AssetRegistry of pairedToken
@@ -28,7 +28,7 @@ contract CrvStableRTokenMetapoolCollateral is CrvStableMetapoolCollateral {
         ICurveMetaPool metapoolToken_,
         uint192 pairedTokenDefaultThreshold_
     )
-        CrvStableMetapoolCollateral(
+        CurveStableMetapoolCollateral(
             config,
             revenueHiding,
             ptConfig,

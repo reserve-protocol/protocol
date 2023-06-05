@@ -10,7 +10,7 @@ import "contracts/plugins/assets/AppreciatingFiatCollateral.sol";
 import "../curve/PoolTokens.sol";
 
 /**
- * @title CrvStableCollateral
+ * @title CurveStableCollateral
  *  This plugin contract is fully general to any number of (fiat) tokens in a Curve stable pool,
  *  whether this LP token ends up staked in Curve, Convex, Frax, or somewhere else.
  *  Each token in the pool can have between 1 and 2 oracles per each token.
@@ -21,7 +21,7 @@ import "../curve/PoolTokens.sol";
  * tar = USD
  * UoA = USD
  */
-contract CrvStableCollateral is AppreciatingFiatCollateral, PoolTokens {
+contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 

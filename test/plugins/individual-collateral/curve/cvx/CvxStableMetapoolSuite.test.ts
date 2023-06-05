@@ -8,7 +8,7 @@ import { makeWMIM3Pool, mintWMIM3Pool, resetFork } from './helpers'
 import { ethers } from 'hardhat'
 import { BigNumberish } from 'ethers'
 import {
-  CrvStableMetapoolCollateral,
+  CurveStableMetapoolCollateral,
   ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
@@ -91,9 +91,11 @@ export const deployCollateral = async (
 
   opts = { ...defaultCvxStableCollateralOpts, ...opts }
 
-  const CvxStableCollateralFactory = await ethers.getContractFactory('CrvStableMetapoolCollateral')
+  const CvxStableCollateralFactory = await ethers.getContractFactory(
+    'CurveStableMetapoolCollateral'
+  )
 
-  const collateral = <CrvStableMetapoolCollateral>await CvxStableCollateralFactory.deploy(
+  const collateral = <CurveStableMetapoolCollateral>await CvxStableCollateralFactory.deploy(
     {
       erc20: opts.erc20!,
       targetName: opts.targetName!,
@@ -207,7 +209,7 @@ const opts = {
   itHasRevenueHiding: it,
   isMetapool: true,
   resetFork,
-  collateralName: 'CrvStableMetapoolCollateral - ConvexStakingWrapper',
+  collateralName: 'CurveStableMetapoolCollateral - ConvexStakingWrapper',
 }
 
 collateralTests(opts)

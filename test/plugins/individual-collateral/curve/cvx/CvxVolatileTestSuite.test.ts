@@ -111,7 +111,7 @@ export const deployCollateral = async (
   opts = { ...defaultCvxVolatileCollateralOpts, ...opts }
 
   const CvxVolatileCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'CrvVolatileCollateral'
+    'CurveVolatileCollateral'
   )
 
   const collateral = <TestICollateral>await CvxVolatileCollateralFactory.deploy(
@@ -221,7 +221,7 @@ const opts = {
   itHasRevenueHiding: it,
   isMetapool: false,
   resetFork,
-  collateralName: 'CrvVolatileCollateral  - ConvexStakingWrapper',
+  collateralName: 'CurveVolatileCollateral  - ConvexStakingWrapper',
 }
 
 collateralTests(opts)

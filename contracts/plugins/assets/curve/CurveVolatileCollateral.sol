@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "./CrvStableCollateral.sol";
+import "./CurveStableCollateral.sol";
 
 /**
- * @title CrvVolatileCollateral
+ * @title CurveVolatileCollateral
  *  This plugin contract extends CrvCurveStableCollateral to work for
  *  volatile pools like TriCrypto.
  *
@@ -13,7 +13,7 @@ import "./CrvStableCollateral.sol";
  * tar = crvVolatilePlainPool pool invariant
  * UoA = USD
  */
-contract CrvVolatileCollateral is CrvStableCollateral {
+contract CurveVolatileCollateral is CurveStableCollateral {
     using FixLib for uint192;
 
     // this isn't saved by our parent classes, but we'll need to track it
@@ -24,7 +24,7 @@ contract CrvVolatileCollateral is CrvStableCollateral {
         CollateralConfig memory config,
         uint192 revenueHiding,
         PTConfiguration memory ptConfig
-    ) CrvStableCollateral(config, revenueHiding, ptConfig) {
+    ) CurveStableCollateral(config, revenueHiding, ptConfig) {
         _defaultThreshold = config.defaultThreshold;
     }
 

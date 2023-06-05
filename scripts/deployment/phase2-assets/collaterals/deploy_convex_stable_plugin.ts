@@ -13,7 +13,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { CrvStableCollateral } from '../../../../typechain'
+import { CurveStableCollateral } from '../../../../typechain'
 import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CurvePoolType,
@@ -66,7 +66,7 @@ async function main() {
   /********  Deploy Convex Stable Pool for 3pool  **************************/
 
   const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
-  const CrvStableCollateralFactory = await hre.ethers.getContractFactory('CrvStableCollateral')
+  const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
   const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
     libraries: { CvxMining: CvxMining.address },
   })
@@ -79,7 +79,9 @@ async function main() {
     `Deployed wrapper for Convex Stable 3Pool on ${hre.network.name} (${chainId}): ${w3Pool.address} `
   )
 
-  const collateral = <CrvStableCollateral>await CrvStableCollateralFactory.connect(deployer).deploy(
+  const collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(
+    deployer
+  ).deploy(
     {
       erc20: w3Pool.address,
       targetName: ethers.utils.formatBytes32String('USD'),
