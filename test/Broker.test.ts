@@ -10,9 +10,11 @@ import { bn, fp, divCeil, toBNDecimals } from '../common/numbers'
 import {
   DutchTrade,
   ERC20Mock,
+  FiatCollateral,
   GnosisMock,
   GnosisMockReentrant,
   GnosisTrade,
+  IAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIMain,
@@ -27,11 +29,18 @@ import {
   defaultFixture,
   Implementation,
   IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
+import { setOraclePrice } from './utils/oracles'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
+
+const DEFAULT_THRESHOLD = fp('0.01') // 1%
+const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -59,6 +68,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
   // Main contracts
   let main: TestIMain
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
@@ -73,6 +83,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       basket,
       config,
       main,
+      assetRegistry,
       backingManager,
       broker,
       gnosis,
@@ -972,6 +983,43 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('Invalid trade state')
       })
 
+      it('Should not initialize DutchTrade with bad prices', async () => {
+        // Fund trade
+        await token0.connect(owner).mint(trade.address, amount)
+
+        // Set bad price for sell token
+        await setOraclePrice(collateral0.address, bn(0))
+        await collateral0.refresh()
+
+        // Attempt to initialize with bad sell price
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength
+          )
+        ).to.be.revertedWith('bad sell pricing')
+
+        // Fix sell price, set bad buy price
+        await setOraclePrice(collateral0.address, bn(1e8))
+        await collateral0.refresh()
+
+        await setOraclePrice(collateral1.address, bn(0))
+        await collateral1.refresh()
+
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength
+          )
+        ).to.be.revertedWith('bad buy pricing')
+      })
+
       it('Should apply full maxTradeSlippage to lowPrice at minTradeVolume', async () => {
         amount = config.minTradeVolume
 
@@ -998,6 +1046,48 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
       })
 
+      it('Should apply full maxTradeSlippage with low maxTradeVolume', async () => {
+        // Set low maxTradeVolume for collateral
+        const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
+        const newCollateral0: FiatCollateral = <FiatCollateral>await FiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral0.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: token0.address,
+          maxTradeVolume: bn(500),
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
+
+        // Refresh and swap collateral
+        await newCollateral0.refresh()
+        await assetRegistry.connect(owner).swapRegistered(newCollateral0.address)
+
+        // Fund trade and initialize
+        await token0.connect(owner).mint(trade.address, amount)
+        await expect(
+          trade.init(
+            backingManager.address,
+            newCollateral0.address,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength
+          )
+        ).to.not.be.reverted
+
+        // Check trade values
+        const [sellLow, sellHigh] = await newCollateral0.price()
+        const [buyLow, buyHigh] = await collateral1.price()
+        expect(await trade.middlePrice()).to.equal(divCeil(sellHigh.mul(fp('1')), buyLow))
+        const withoutSlippage = sellLow.mul(fp('1')).div(buyHigh)
+        const withSlippage = withoutSlippage.sub(
+          withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
+        )
+        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
+      })
+
       it('Should not allow to initialize an unfunded trade', async () => {
         // Attempt to initialize without funding
         await expect(
@@ -1009,6 +1099,40 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             config.dutchAuctionLength
           )
         ).to.be.revertedWith('unfunded trade')
+      })
+
+      it('Should not allow to settle until auction is over', async () => {
+        // Fund trade and initialize
+        await token0.connect(owner).mint(trade.address, amount)
+        await expect(
+          trade.init(
+            backingManager.address,
+            collateral0.address,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength
+          )
+        ).to.not.be.reverted
+
+        // Should not be able to settle
+        expect(await trade.canSettle()).to.equal(false)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('auction not over')
+        })
+
+        // Advance time till trade can be settled
+        await advanceTime(config.dutchAuctionLength.add(100).toString())
+
+        // Settle trade
+        expect(await trade.canSettle()).to.equal(true)
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(trade.connect(bmSigner).settle()).to.not.be.reverted
+        })
+
+        // Cannot settle again with trade closed
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('Invalid trade state')
+        })
       })
 
       it('Should allow anyone to transfer to origin after a DutchTrade is complete', async () => {

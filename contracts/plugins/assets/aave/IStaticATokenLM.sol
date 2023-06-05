@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import { IERC20 } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
 import { ILendingPool } from "@aave/protocol-v2/contracts/interfaces/ILendingPool.sol";
-import { IAaveIncentivesController } from "./IAaveIncentivesController.sol";
+import { IAaveIncentivesController } from "./vendor/IAaveIncentivesController.sol";
 
 interface IStaticATokenLM is IERC20 {
     struct SignatureParams {

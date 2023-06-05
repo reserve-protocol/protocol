@@ -1018,6 +1018,40 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
+      it('Should handle an extremely small redeem #fast', async function () {
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+        const reedemAmt = bn(10)
+
+        // Skips transfers for tokens with less than 18 decimals
+        await expectEvents(rToken.connect(addr1).redeem(reedemAmt), [
+          {
+            contract: token0,
+            name: 'Transfer',
+            emitted: true,
+          },
+          {
+            contract: token1,
+            name: 'Transfer',
+            emitted: false,
+          },
+          {
+            contract: token2,
+            name: 'Transfer',
+            emitted: true,
+          },
+          {
+            contract: token3,
+            name: 'Transfer',
+            emitted: false,
+          },
+        ])
+
+        // Checkbalances
+        expect(await rToken.totalSupply()).to.equal(issueAmount.sub(reedemAmt))
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(reedemAmt))
+      })
+
       it('Should redeem if paused #fast', async function () {
         await main.connect(owner).pauseTrading()
         await main.connect(owner).pauseIssuance()

@@ -239,6 +239,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         // require(bh.isReady(), "basket not ready");
 
         Withdrawal[] storage queue = withdrawals[account];
+
         if (endId == 0) return;
         require(endId <= queue.length, "index out-of-bounds");
         // require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
@@ -247,6 +248,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 start = 0;
         while (start < endId && queue[start].rsrAmount == 0 && queue[start].stakeAmount == 0)
             start++;
+
+        // Return if nothing to process
+        if (start == endId) return;
 
         // Accumulate and zero executable withdrawals
         uint256 total = 0;

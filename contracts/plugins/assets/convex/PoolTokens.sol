@@ -307,6 +307,8 @@ contract PoolTokens {
     // === Private ===
 
     function getToken(uint8 index) private view returns (IERC20Metadata) {
+        // untestable:
+        //      getToken is always called with a valid index
         if (index >= nTokens) revert WrongIndex(nTokens - 1);
         if (index == 0) return token0;
         if (index == 1) return token1;

@@ -251,21 +251,36 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aTokens
       aDai = <IAToken>(
-        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
+        await ethers.getContractAt(
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
       )
 
       aUsdc = <IAToken>(
-        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDC || '')
+        await ethers.getContractAt(
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aUSDC || ''
+        )
       )
       aUsdt = <IAToken>(
-        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDT || '')
+        await ethers.getContractAt(
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aUSDT || ''
+        )
       )
       aBusd = <IAToken>(
-        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aBUSD || '')
+        await ethers.getContractAt(
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aBUSD || ''
+        )
       )
 
       aUsdp = <IAToken>(
-        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aUSDP || '')
+        await ethers.getContractAt(
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aUSDP || ''
+        )
       )
       // Get collaterals
       daiCollateral = <FiatCollateral>collateral[0] // DAI
@@ -301,7 +316,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aToken
       aDai = <IAToken>(
-        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
+        await ethers.getContractAt(
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
       )
 
       // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
@@ -2500,7 +2518,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aToken
       aDai = <IAToken>(
-        await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
+        await ethers.getContractAt(
+          '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
       )
 
       // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
