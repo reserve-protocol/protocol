@@ -17,7 +17,7 @@ interface ILiquidityGauge {
     function withdraw(uint256 _value) external;
 }
 
-contract CrvVault is RewardableERC20Vault {
+contract CurveVault is RewardableERC20Vault {
     using SafeERC20 for IERC20;
 
     IMinter public immutable minter;
