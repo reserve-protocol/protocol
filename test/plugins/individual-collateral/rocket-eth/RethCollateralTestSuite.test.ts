@@ -273,7 +273,19 @@ const getExpectedPrice = async (ctx: RethCollateralFixtureContext): Promise<BigN
 */
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {}
+const collateralSpecificConstructorTests = () => {
+  it('does not allow missing refPerTok chainlink feed', async () => {
+    await expect(
+      deployCollateral({ refPerTokChainlinkFeed: ethers.constants.AddressZero })
+    ).to.be.revertedWith('missing refPerTok feed')
+  })
+
+  it('does not allow refPerTok oracle timeout at 0', async () => {
+    await expect(deployCollateral({ refPerTokChainlinkTimeout: 0 })).to.be.revertedWith(
+      'refPerTokChainlinkTimeout zero'
+    )
+  })
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {}

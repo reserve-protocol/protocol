@@ -40,7 +40,6 @@ import {
   IAssetRegistry,
   InvalidMockV3Aggregator,
   MockV3Aggregator,
-  RewardableERC20Vault,
   RTokenAsset,
   TestIBackingManager,
   TestIBasketHandler,
@@ -81,7 +80,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   // Tokens/Assets
   let dai: ERC20Mock
   let cDai: CTokenMock
-  let cDaiVault: RewardableERC20Vault
+  let cDaiVault: CTokenVault
   let cDaiCollateral: CTokenFiatCollateral
   let compToken: ERC20Mock
   let compAsset: Asset
@@ -341,6 +340,10 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         .to.emit(cDaiVault, 'RewardsClaimed')
         .withArgs(compToken.address, anyValue)
       expect(await cDaiCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+
+      // Exchange rate
+      await cDaiVault.exchangeRateCurrent()
+      expect(await cDaiVault.exchangeRateStored()).to.equal(await cDai.exchangeRateStored())
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)

@@ -12,13 +12,10 @@ contract CometHelpers {
     error NegativeNumber();
 
     function safe64(uint256 n) internal pure returns (uint64) {
+        // untested:
+        //     comet code, overflow is hard to cover
         if (n > type(uint64).max) revert InvalidUInt64();
         return uint64(n);
-    }
-
-    function signed256(uint256 n) internal pure returns (int256) {
-        if (n > uint256(type(int256).max)) revert InvalidInt256();
-        return int256(n);
     }
 
     function presentValueSupply(uint64 baseSupplyIndex_, uint104 principalValue_)
@@ -38,13 +35,10 @@ contract CometHelpers {
     }
 
     function safe104(uint256 n) internal pure returns (uint104) {
+        // untested:
+        //     comet code, overflow is hard to cover
         if (n > type(uint104).max) revert InvalidUInt104();
         return uint104(n);
-    }
-
-    function unsigned256(int256 n) internal pure returns (uint256) {
-        if (n < 0) revert NegativeNumber();
-        return uint256(n);
     }
 
     /**

@@ -6,18 +6,18 @@ import { ILendingPool } from "@aave/protocol-v2/contracts/interfaces/ILendingPoo
 import { IERC20 } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
 
 import { IERC20Detailed } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20Detailed.sol";
-import { IAToken } from "./IAToken.sol";
+import { IAToken } from "./vendor/IAToken.sol";
 import { IStaticATokenLM } from "./IStaticATokenLM.sol";
-import { IAaveIncentivesController } from "./IAaveIncentivesController.sol";
+import { IAaveIncentivesController } from "./vendor/IAaveIncentivesController.sol";
 
 import { StaticATokenErrors } from "./StaticATokenErrors.sol";
 
-import { ERC20 } from "./ERC20.sol";
-import { ReentrancyGuard } from "./ReentrancyGuard.sol";
+import { ERC20 } from "./vendor/ERC20.sol";
+import { ReentrancyGuard } from "./vendor/ReentrancyGuard.sol";
 
 import { SafeERC20 } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeERC20.sol";
 import { WadRayMath } from "@aave/protocol-v2/contracts/protocol/libraries/math/WadRayMath.sol";
-import { RayMathNoRounding } from "./RayMathNoRounding.sol";
+import { RayMathNoRounding } from "./vendor/RayMathNoRounding.sol";
 import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeMath.sol";
 
 /**
@@ -106,6 +106,8 @@ contract StaticATokenLM is
     }
 
     ///@inheritdoc IStaticATokenLM
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function deposit(
         address recipient,
         uint256 amount,
@@ -116,6 +118,8 @@ contract StaticATokenLM is
     }
 
     ///@inheritdoc IStaticATokenLM
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function withdraw(
         address recipient,
         uint256 amount,
@@ -125,6 +129,8 @@ contract StaticATokenLM is
     }
 
     ///@inheritdoc IStaticATokenLM
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function withdrawDynamicAmount(
         address recipient,
         uint256 amount,
@@ -162,6 +168,8 @@ contract StaticATokenLM is
     }
 
     ///@inheritdoc IStaticATokenLM
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function metaDeposit(
         address depositor,
         address recipient,
@@ -202,6 +210,8 @@ contract StaticATokenLM is
     }
 
     ///@inheritdoc IStaticATokenLM
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function metaWithdraw(
         address owner,
         address recipient,
@@ -436,6 +446,8 @@ contract StaticATokenLM is
     }
 
     ///@inheritdoc IStaticATokenLM
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function collectAndUpdateRewards() external override nonReentrant {
         _collectAndUpdateRewards();
     }
@@ -469,6 +481,8 @@ contract StaticATokenLM is
         }
     }
 
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function claimRewardsOnBehalf(
         address onBehalfOf,
         address receiver,
@@ -485,6 +499,8 @@ contract StaticATokenLM is
         _claimRewardsOnBehalf(onBehalfOf, receiver, forceUpdate);
     }
 
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function claimRewards(address receiver, bool forceUpdate) external override nonReentrant {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
@@ -492,6 +508,8 @@ contract StaticATokenLM is
         _claimRewardsOnBehalf(msg.sender, receiver, forceUpdate);
     }
 
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function claimRewardsToSelf(bool forceUpdate) external override nonReentrant {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
@@ -499,6 +517,8 @@ contract StaticATokenLM is
         _claimRewardsOnBehalf(msg.sender, msg.sender, forceUpdate);
     }
 
+    // untested:
+    //      nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function claimRewards() external virtual nonReentrant {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
