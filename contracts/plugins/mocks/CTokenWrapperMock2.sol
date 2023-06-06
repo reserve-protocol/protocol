@@ -8,7 +8,7 @@ import "./CTokenMock.sol";
 
 contract CTokenWrapperMock is ERC20Mock, IRewardable {
     ERC20Mock public comp;
-    CTokenMock public asset;
+    CTokenMock public underlying;
     IComptroller public comptroller;
 
     bool public revertClaimRewards;
@@ -20,25 +20,13 @@ contract CTokenWrapperMock is ERC20Mock, IRewardable {
         ERC20Mock _comp,
         IComptroller _comptroller
     ) ERC20Mock(_name, _symbol) {
-        asset = new CTokenMock("cToken Mock", "cMOCK", _underlyingToken);
+        underlying = new CTokenMock("cToken Mock", "cMOCK", _underlyingToken);
         comp = _comp;
         comptroller = _comptroller;
     }
 
-    // function mint(uint256 amount, address recipient) external {
-    //     _mint(recipient, amount);
-    // }
-
     function decimals() public pure override returns (uint8) {
         return 8;
-    }
-
-    function exchangeRateCurrent() external returns (uint256) {
-        return asset.exchangeRateCurrent();
-    }
-
-    function exchangeRateStored() external view returns (uint256) {
-        return asset.exchangeRateStored();
     }
 
     function claimRewards() external {
@@ -51,7 +39,7 @@ contract CTokenWrapperMock is ERC20Mock, IRewardable {
     }
 
     function setExchangeRate(uint192 fiatcoinRedemptionRate) external {
-        asset.setExchangeRate(fiatcoinRedemptionRate);
+        underlying.setExchangeRate(fiatcoinRedemptionRate);
     }
 
     function setRevertClaimRewards(bool newVal) external {
