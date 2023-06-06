@@ -316,7 +316,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await cDaiCollateral.referenceERC20Decimals()).to.equal(await dai.decimals())
       expect(await cDaiCollateral.erc20()).to.equal(cDaiVault.address)
       expect(await cDai.decimals()).to.equal(8)
-      expect(await cDaiVault.decimals()).to.equal(18)
+      expect(await cDaiVault.decimals()).to.equal(8)
       expect(await cDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await cDaiCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
       expect(await cDaiCollateral.targetPerRef()).to.equal(fp('1'))
@@ -536,12 +536,12 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const newBalanceAddr1cDai: BigNumber = await cDaiVault.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e17'), bn('8e16')) // ~0.03294 * 303571 ~= 10K (100% of basket)
+      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
 
       // Check remainders in Backing Manager
       expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
-        bn('150663e17'),
-        bn('5e16')
+        bn('150663e8'),
+        bn('5e7')
       ) // ~= 4962.8 usd in value
 
       //  Check total asset value (remainder)
