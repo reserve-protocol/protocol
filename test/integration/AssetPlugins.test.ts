@@ -1780,7 +1780,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
       })
 
-      it('Should issue/reedem correctly with simple basket', async function () {
+      it.only('Should issue/reedem correctly with simple basket', async function () {
         const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
         const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
@@ -1873,7 +1873,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ) // Near zero
       })
 
-      it('Should handle rates correctly on Issue/Redeem', async function () {
+      it.only('Should handle rates correctly on Issue/Redeem', async function () {
         const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
         const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 

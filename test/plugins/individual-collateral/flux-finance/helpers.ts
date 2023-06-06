@@ -17,7 +17,7 @@ export const mintFToken = async (
     await underlying.connect(signer).approve(fToken.address, balUnderlying)
     await fToken.connect(signer).mint(balUnderlying)
     await fToken.connect(signer).approve(fTokenVault.address, amount)
-    await fTokenVault.connect(signer).mint(amount, recipient)
+    await fTokenVault.connect(signer).deposit(amount, recipient)
   })
 }
 
