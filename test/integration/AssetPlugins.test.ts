@@ -46,7 +46,7 @@ import {
   TestIRToken,
   USDCMock,
   WETH9,
-  CTokenWrapperMock,
+  CTokenWrapper,
 } from '../../typechain'
 import { useEnv } from '#/utils/env'
 
@@ -110,20 +110,20 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let stataUsdp: StaticATokenLM
 
   let cDai: CTokenMock
-  let cDaiVault: CTokenWrapperMock
+  let cDaiVault: CTokenWrapper
   let cUsdc: CTokenMock
-  let cUsdcVault: CTokenWrapperMock
+  let cUsdcVault: CTokenWrapper
   let cUsdt: CTokenMock
-  let cUsdtVault: CTokenWrapperMock
+  let cUsdtVault: CTokenWrapper
   let cUsdp: CTokenMock
-  let cUsdpVault: CTokenWrapperMock
+  let cUsdpVault: CTokenWrapper
 
   let wbtc: ERC20Mock
   let cWBTC: CTokenMock
-  let cWBTCVault: CTokenWrapperMock
+  let cWBTCVault: CTokenWrapper
   let weth: ERC20Mock
   let cETH: CTokenMock
-  let cETHVault: CTokenWrapperMock
+  let cETHVault: CTokenWrapper
   let eurt: ERC20Mock
 
   let daiCollateral: FiatCollateral
@@ -228,13 +228,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       busd = <ERC20Mock>erc20s[3] // BUSD
       usdp = <ERC20Mock>erc20s[4] // USDP
       tusd = <ERC20Mock>erc20s[5] // TUSD
-      cDaiVault = <CTokenWrapperMock>erc20s[6] // cDAI
+      cDaiVault = <CTokenWrapper>erc20s[6] // cDAI
       cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiVault.underlying()) // cDAI
-      cUsdcVault = <CTokenWrapperMock>erc20s[7] // cUSDC
+      cUsdcVault = <CTokenWrapper>erc20s[7] // cUSDC
       cUsdc = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdcVault.underlying()) // cUSDC
-      cUsdtVault = <CTokenWrapperMock>erc20s[8] // cUSDT
+      cUsdtVault = <CTokenWrapper>erc20s[8] // cUSDT
       cUsdt = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdtVault.underlying()) // cUSDT
-      cUsdpVault = <CTokenWrapperMock>erc20s[9] // cUSDT
+      cUsdpVault = <CTokenWrapper>erc20s[9] // cUSDT
       cUsdp = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdpVault.underlying()) // cUSDT
       stataDai = <StaticATokenLM>erc20s[10] // static aDAI
       stataUsdc = <StaticATokenLM>erc20s[11] // static aUSDC
@@ -242,10 +242,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       stataBusd = <StaticATokenLM>erc20s[13] // static aBUSD
       stataUsdp = <StaticATokenLM>erc20s[14] // static aUSDP
       wbtc = <ERC20Mock>erc20s[15] // wBTC
-      cWBTCVault = <CTokenWrapperMock>erc20s[16] // cWBTC
+      cWBTCVault = <CTokenWrapper>erc20s[16] // cWBTC
       cWBTC = <CTokenMock>await ethers.getContractAt('CTokenMock', await cWBTCVault.underlying()) // cWBTC
       weth = <ERC20Mock>erc20s[17] // wETH
-      cETHVault = <CTokenWrapperMock>erc20s[18] // cETH
+      cETHVault = <CTokenWrapper>erc20s[18] // cETH
       cETH = <CTokenMock>await ethers.getContractAt('CTokenMock', await cETHVault.underlying()) // cETH
       eurt = <ERC20Mock>erc20s[19] // eurt
 
@@ -339,7 +339,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await whileImpersonating(holderCDAI, async (cdaiSigner) => {
         await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
         await cDai.connect(addr1).approve(cDaiVault.address, toBNDecimals(initialBal, 8).mul(100))
-        await cDaiVault.connect(addr1).mint(addr1.address, toBNDecimals(initialBal, 8).mul(100))
+        await cDaiVault.connect(addr1).deposit(toBNDecimals(initialBal, 8).mul(100), addr1.address)
       })
 
       // Setup balances for USDT
@@ -364,7 +364,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           .approve(cWBTCVault.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
         await cWBTCVault
           .connect(addr1)
-          .mint(addr1.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
+          .deposit(toBNDecimals(initialBalBtcEth, 8).mul(1000), addr1.address)
       })
 
       // WETH
@@ -382,7 +382,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           .approve(cETHVault.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
         await cETHVault
           .connect(addr1)
-          .mint(addr1.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
+          .deposit(toBNDecimals(initialBalBtcEth, 8).mul(1000), addr1.address)
       })
 
       //EURT
@@ -531,7 +531,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           token: ERC20Mock
           tokenAddress: string
           cToken: CTokenMock
-          cTokenVault: CTokenWrapperMock
+          cTokenVault: CTokenWrapper
           cTokenAddress: string
           cTokenCollateral: CTokenFiatCollateral
           pegPrice: BigNumber
@@ -592,7 +592,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
           expect(await ctkInf.cTokenVault.underlying()).to.equal(ctkInf.cTokenAddress)
           expect(await ctkInf.cToken.decimals()).to.equal(8)
-          expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
+          expect(await ctkInf.cTokenVault.decimals()).to.equal(8)
           expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
             ethers.utils.formatBytes32String('USD')
           )
@@ -820,7 +820,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           token: ERC20Mock
           tokenAddress: string
           cToken: CTokenMock
-          cTokenVault: CTokenWrapperMock
+          cTokenVault: CTokenWrapper
           cTokenAddress: string
           cTokenCollateral: CTokenNonFiatCollateral
           targetPrice: BigNumber
@@ -855,7 +855,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
           expect(await ctkInf.cTokenVault.underlying()).to.equal(ctkInf.cTokenAddress)
           expect(await ctkInf.cToken.decimals()).to.equal(8)
-          expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
+          expect(await ctkInf.cTokenVault.decimals()).to.equal(8)
           expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
             ethers.utils.formatBytes32String(ctkInf.targetName)
           )
@@ -951,7 +951,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           token: ERC20Mock
           tokenAddress: string
           cToken: CTokenMock
-          cTokenVault: CTokenWrapperMock
+          cTokenVault: CTokenWrapper
           cTokenAddress: string
           cTokenCollateral: CTokenSelfReferentialCollateral
           price: BigNumber
@@ -984,7 +984,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenVault.address)
           expect(await ctkInf.cTokenVault.underlying()).to.equal(ctkInf.cTokenAddress)
           expect(await ctkInf.cToken.decimals()).to.equal(8)
-          expect(await ctkInf.cTokenVault.decimals()).to.equal(17)
+          expect(await ctkInf.cTokenVault.decimals()).to.equal(8)
           expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
             ethers.utils.formatBytes32String(ctkInf.targetName)
           )
@@ -2511,8 +2511,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       stataDai = <StaticATokenLM>(
         await ethers.getContractAt('StaticATokenLM', await aDaiCollateral.erc20())
       )
-      cDaiVault = <CTokenWrapperMock>(
-        await ethers.getContractAt('CTokenWrapperMock', await cDaiCollateral.erc20())
+      cDaiVault = <CTokenWrapper>(
+        await ethers.getContractAt('CTokenWrapper', await cDaiCollateral.erc20())
       )
       cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiVault.underlying())
 
@@ -2541,7 +2541,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await whileImpersonating(holderCDAI, async (cdaiSigner) => {
         await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
         await cDai.connect(addr1).approve(cDaiVault.address, toBNDecimals(initialBal, 8).mul(100))
-        await cDaiVault.connect(addr1).mint(addr1.address, toBNDecimals(initialBal, 8).mul(100))
+        await cDaiVault.connect(addr1).deposit(toBNDecimals(initialBal, 8).mul(100), addr1.address)
       })
     })
 
