@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../RewardableERC20Vault.sol";
+import "../erc20/RewardableERC20Vault.sol";
 import "./ICToken.sol";
 
 contract CTokenVault is RewardableERC20Vault {

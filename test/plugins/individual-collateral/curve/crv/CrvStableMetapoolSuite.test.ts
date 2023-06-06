@@ -223,7 +223,7 @@ const opts = {
   itHasRevenueHiding: it,
   isMetapool: true,
   resetFork,
-  collateralName: 'CurveStableMetapoolCollateral - CurveVault',
+  collateralName: 'CurveStableMetapoolCollateral - CurveGaugeWrapper',
 }
 
 collateralTests(opts)

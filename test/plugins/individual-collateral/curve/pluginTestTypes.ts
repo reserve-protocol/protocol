@@ -3,7 +3,7 @@ import {
   ConvexStakingWrapper,
   CurvePoolMock,
   ERC20Mock,
-  RewardableERC20Vault,
+  RewardableERC20,
   MockV3Aggregator,
   TestICollateral,
 } from '../../../../typechain'
@@ -15,7 +15,7 @@ type Fixture<T> = () => Promise<T>
 
 export interface CurveBase {
   curvePool: CurvePoolMock
-  wrapper: RewardableERC20Vault | ConvexStakingWrapper
+  wrapper: RewardableERC20 | ConvexStakingWrapper
 }
 
 // The basic fixture context used in the Curve collateral plugin tests

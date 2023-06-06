@@ -90,7 +90,7 @@ export interface Wrapped3PoolFixtureVolatile extends CurveBase {
   weth: ERC20Mock
 }
 
-export const makeW3PoolVolatile = async (): Promise<Wrapped3PoolFixtureVolatile> => {
+export const makeWTricryptoPoolVolatile = async (): Promise<Wrapped3PoolFixtureVolatile> => {
   // Use real reference ERC20s
   const usdt = await ethers.getContractAt('ERC20Mock', USDT)
   const wbtc = await ethers.getContractAt('ERC20Mock', WBTC)

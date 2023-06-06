@@ -4,7 +4,7 @@ import {
   CurveCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
-import { mintWPool, makeW3PoolVolatile, resetFork } from './helpers'
+import { mintWPool, makeWTricryptoPoolVolatile, resetFork } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
@@ -102,7 +102,7 @@ export const deployCollateral = async (
   if (!opts.erc20 && !opts.feeds) {
     const { wethFeed, wbtcFeed, btcFeed, usdtFeed } = await makeFeeds()
 
-    const fix = await makeW3PoolVolatile()
+    const fix = await makeWTricryptoPoolVolatile()
 
     opts.feeds = [[wethFeed.address], [wbtcFeed.address, btcFeed.address], [usdtFeed.address]]
     opts.erc20 = fix.wrapper.address
@@ -161,7 +161,7 @@ const makeCollateralFixtureContext = (
       [wethFeed.address],
     ]
 
-    const fix = await makeW3PoolVolatile()
+    const fix = await makeWTricryptoPoolVolatile()
 
     collateralOpts.erc20 = fix.wrapper.address
     collateralOpts.curvePool = fix.curvePool.address

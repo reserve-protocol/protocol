@@ -3,17 +3,17 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../../interfaces/IRewardable.sol";
-import "../../vendor/oz/ERC4626.sol";
+import "../../../interfaces/IRewardable.sol";
 
 /**
- * @title RewardableERC20Vault
- * @notice A transferrable vault token wrapping an inner ERC20 that earns rewards.
- *   Holding the vault token for a period of time earns the holder the right to
- *   their prorata share of the global rewards earned during that time.
- * @dev To inherit, override _claimAssetRewards()
+ * @title RewardableERC20
+ * @notice A transferrable ERC20 token wrapping an inner position that
+ *   may not be transferrable, and earns rewards.
+ * @dev To inherit:
+ *   - override _claimAssetRewards()
+ *   - call ERC20 constructor
  */
-abstract contract RewardableERC20Vault is IRewardable, ERC4626 {
+abstract contract RewardableERC20 is IRewardable, ERC20 {
     using SafeERC20 for ERC20;
 
     uint256 public immutable one; // {qShare/share}
@@ -24,12 +24,8 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626 {
     mapping(address => uint256) public accumulatedRewards; // {qRewards}
     mapping(address => uint256) public claimedRewards; // {qRewards}
 
-    constructor(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol,
-        ERC20 _rewardToken
-    ) ERC4626(_asset, _name, _symbol) {
+    /// Parent must ensure ERC20 constructor is called
+    constructor(ERC20 _rewardToken) {
         rewardToken = _rewardToken;
         one = 10**decimals();
     }
@@ -85,9 +81,5 @@ abstract contract RewardableERC20Vault is IRewardable, ERC4626 {
         _claimAndSyncRewards();
         _syncAccount(from);
         _syncAccount(to);
-    }
-
-    function _decimalsOffset() internal view virtual override returns (uint8) {
-        return 9;
     }
 }

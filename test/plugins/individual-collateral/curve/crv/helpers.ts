@@ -4,7 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { whileImpersonating } from '../../../../utils/impersonation'
 import { bn, fp } from '../../../../../common/numbers'
 import {
-  ConvexStakingWrapper,
+  CurveGaugeWrapper,
   CurvePoolMock,
   CurveMetapoolMock,
   ERC20Mock,
@@ -14,25 +14,28 @@ import {
 } from '../../../../../typechain'
 import { getResetFork } from '../../helpers'
 import {
+  CRV,
   DAI,
   USDC,
   USDT,
   MIM,
   THREE_POOL,
-  THREE_POOL_CVX_POOL_ID,
+  THREE_POOL_GAUGE,
+  THREE_POOL_TOKEN,
   FORK_BLOCK,
   WBTC,
   WETH,
   TRI_CRYPTO,
-  TRI_CRYPTO_CVX_POOL_ID,
+  TRI_CRYPTO_GAUGE,
+  TRI_CRYPTO_TOKEN,
   FRAX,
   FRAX_BP,
   eUSD,
   eUSD_FRAX_BP,
-  eUSD_FRAX_BP_POOL_ID,
+  eUSD_GAUGE,
   eUSD_FRAX_HOLDER,
   MIM_THREE_POOL,
-  MIM_THREE_POOL_POOL_ID,
+  MIM_THREE_POOL_GAUGE,
   MIM_THREE_POOL_HOLDER,
 } from '../constants'
 import { CurveBase } from '../pluginTestTypes'
@@ -64,16 +67,15 @@ export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => 
   )
   await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-  // Deploy external cvxMining lib
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const cvxMining = await CvxMiningFactory.deploy()
-
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: cvxMining.address },
-  })
-  const wrapper = await wrapperFactory.deploy()
-  await wrapper.initialize(THREE_POOL_CVX_POOL_ID)
+  const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
+  const wrapper = await wrapperFactory.deploy(
+    THREE_POOL_TOKEN,
+    'Mock w3Pool Token',
+    'w3Pool',
+    CRV,
+    THREE_POOL_GAUGE
+  )
 
   return {
     dai,
@@ -90,7 +92,7 @@ export interface Wrapped3PoolFixtureVolatile extends CurveBase {
   weth: ERC20Mock
 }
 
-export const makeW3PoolVolatile = async (): Promise<Wrapped3PoolFixtureVolatile> => {
+export const makeWTricryptoPoolVolatile = async (): Promise<Wrapped3PoolFixtureVolatile> => {
   // Use real reference ERC20s
   const usdt = await ethers.getContractAt('ERC20Mock', USDT)
   const wbtc = await ethers.getContractAt('ERC20Mock', WBTC)
@@ -111,16 +113,15 @@ export const makeW3PoolVolatile = async (): Promise<Wrapped3PoolFixtureVolatile>
   )
   await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
 
-  // Deploy external cvxMining lib
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const cvxMining = await CvxMiningFactory.deploy()
-
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: cvxMining.address },
-  })
-  const wrapper = await wrapperFactory.deploy()
-  await wrapper.initialize(TRI_CRYPTO_CVX_POOL_ID)
+  const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
+  const wrapper = await wrapperFactory.deploy(
+    TRI_CRYPTO_TOKEN,
+    'Mock tricryptoLP Token',
+    'tricryptoLP',
+    CRV,
+    TRI_CRYPTO_GAUGE
+  )
 
   return {
     usdt,
@@ -138,17 +139,17 @@ export const mintWPool = async (
   recipient: string,
   holder: string
 ) => {
-  const cvxWrapper = ctx.wrapper as ConvexStakingWrapper
+  const wrapper = ctx.wrapper as CurveGaugeWrapper
   const lpToken = await ethers.getContractAt(
     '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
-    await cvxWrapper.curveToken()
+    await wrapper.lpToken()
   )
   await whileImpersonating(holder, async (signer) => {
     await lpToken.connect(signer).transfer(user.address, amount)
   })
 
-  await lpToken.connect(user).approve(ctx.wrapper.address, amount)
-  await ctx.wrapper.connect(user).deposit(amount, recipient)
+  await lpToken.connect(user).approve(wrapper.address, amount)
+  await wrapper.connect(user).deposit(amount, recipient)
 }
 
 export const resetFork = getResetFork(FORK_BLOCK)
@@ -168,7 +169,7 @@ export interface WrappedEUSDFraxBPFixture {
   metapoolToken: CurveMetapoolMock
   realMetapool: CurveMetapoolMock
   curvePool: ICurvePool
-  wPool: ConvexStakingWrapper
+  wPool: CurveGaugeWrapper
 }
 
 export const makeWeUSDFraxBP = async (
@@ -214,18 +215,17 @@ export const makeWeUSDFraxBP = async (
   await metapoolToken.setVirtualPrice(await realMetapool.get_virtual_price())
   await metapoolToken.mint(eUSD_FRAX_HOLDER, await realMetapool.balanceOf(eUSD_FRAX_HOLDER))
 
-  // Deploy external cvxMining lib
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const cvxMining = await CvxMiningFactory.deploy()
-
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: cvxMining.address },
-  })
-  const wPool = await wrapperFactory.deploy()
-  await wPool.initialize(eUSD_FRAX_BP_POOL_ID)
+  const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
+  const wrapper = await wrapperFactory.deploy(
+    eUSD_FRAX_BP,
+    'Mock eUSDLP Token',
+    'eUSDLP',
+    CRV,
+    eUSD_GAUGE
+  )
 
-  return { usdc, frax, eusd, metapoolToken, realMetapool, curvePool, wPool }
+  return { usdc, frax, eusd, metapoolToken, realMetapool, curvePool, wPool: wrapper }
 }
 
 export const mintWeUSDFraxBP = async (
@@ -235,17 +235,17 @@ export const mintWeUSDFraxBP = async (
   recipient: string,
   holder: string
 ) => {
-  const cvxWrapper = ctx.wrapper as ConvexStakingWrapper
+  const wrapper = ctx.wrapper as CurveGaugeWrapper
   const lpToken = await ethers.getContractAt(
     '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
-    await cvxWrapper.curveToken()
+    await wrapper.lpToken()
   )
   await whileImpersonating(holder, async (signer) => {
     await lpToken.connect(signer).transfer(user.address, amount)
   })
 
-  await lpToken.connect(user).approve(ctx.wrapper.address, amount)
-  await ctx.wrapper.connect(user).deposit(amount, recipient)
+  await lpToken.connect(user).approve(wrapper.address, amount)
+  await wrapper.connect(user).deposit(amount, recipient)
 }
 
 // === MIM + 3Pool
@@ -258,7 +258,7 @@ export interface WrappedMIM3PoolFixture {
   metapoolToken: CurveMetapoolMock
   realMetapool: CurveMetapoolMock
   curvePool: ICurvePool
-  wPool: ConvexStakingWrapper
+  wPool: CurveGaugeWrapper
 }
 
 export const makeWMIM3Pool = async (): Promise<WrappedMIM3PoolFixture> => {
@@ -287,19 +287,17 @@ export const makeWMIM3Pool = async (): Promise<WrappedMIM3PoolFixture> => {
     MIM_THREE_POOL_HOLDER,
     await realMetapool.balanceOf(MIM_THREE_POOL_HOLDER)
   )
-
-  // Deploy external cvxMining lib
-  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
-  const cvxMining = await CvxMiningFactory.deploy()
-
   // Deploy Wrapper
-  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { CvxMining: cvxMining.address },
-  })
-  const wPool = await wrapperFactory.deploy()
-  await wPool.initialize(MIM_THREE_POOL_POOL_ID)
+  const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
+  const wrapper = await wrapperFactory.deploy(
+    MIM_THREE_POOL,
+    'Mock mimLP Token',
+    'mimLP',
+    CRV,
+    MIM_THREE_POOL_GAUGE
+  )
 
-  return { dai, usdc, usdt, mim, metapoolToken, realMetapool, curvePool, wPool }
+  return { dai, usdc, usdt, mim, metapoolToken, realMetapool, curvePool, wPool: wrapper }
 }
 
 export const mintWMIM3Pool = async (
@@ -309,15 +307,15 @@ export const mintWMIM3Pool = async (
   recipient: string,
   holder: string
 ) => {
-  const cvxWrapper = ctx.wrapper as ConvexStakingWrapper
+  const wrapper = ctx.wrapper as CurveGaugeWrapper
   const lpToken = await ethers.getContractAt(
     '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
-    await cvxWrapper.curveToken()
+    await wrapper.lpToken()
   )
   await whileImpersonating(holder, async (signer) => {
     await lpToken.connect(signer).transfer(user.address, amount)
   })
 
   await lpToken.connect(user).approve(ctx.wrapper.address, amount)
-  await ctx.wrapper.connect(user).deposit(amount, recipient)
+  await wrapper.connect(user).deposit(amount, recipient)
 }
