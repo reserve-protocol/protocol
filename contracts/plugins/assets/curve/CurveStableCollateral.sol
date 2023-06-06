@@ -16,8 +16,8 @@ import "../curve/PoolTokens.sol";
  *  Each token in the pool can have between 1 and 2 oracles per each token.
  *  Stable means only like-kind pools.
  *
- * tok = ConvexStakingWrapper(cvxStablePlainPool)
- * ref = cvxStablePlainPool pool invariant
+ * tok = ConvexStakingWrapper(stablePlainPool)
+ * ref = stablePlainPool pool invariant
  * tar = USD
  * UoA = USD
  */
@@ -26,7 +26,7 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using FixLib for uint192;
 
     /// @dev config Unused members: chainlinkFeed, oracleError, oracleTimeout
-    /// @dev config.erc20 should be an ERC20 wrapper from the `curve/vault` folder (sibling)
+    /// @dev config.erc20 should be a RewardableERC20
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,

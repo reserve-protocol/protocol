@@ -27,7 +27,7 @@ abstract contract RewardableERC20 is IRewardable, ERC20 {
     /// @dev Extending class must ensure ERC20 constructor is called
     constructor(IERC20 _rewardToken, uint8 _decimals) {
         rewardToken = _rewardToken;
-        one = 10**_decimals;
+        one = 10**_decimals; // set via pass-in to prevent inheritance issues
     }
 
     function claimRewards() external {

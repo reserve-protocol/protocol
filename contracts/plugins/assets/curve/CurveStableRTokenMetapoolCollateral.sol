@@ -8,7 +8,7 @@ import "./CurveStableMetapoolCollateral.sol";
  *  This plugin contract is intended for 2-fiattoken stable metapools that
  *  involve RTokens, such as eUSD-fraxBP.
  *
- * tok = ConvexStakingWrapper(crvPairedUSDRToken/USDBasePool)
+ * tok = ConvexStakingWrapper(pairedUSDRToken/USDBasePool)
  * ref = PairedUSDRToken/USDBasePool pool invariant
  * tar = USD
  * UoA = USD
@@ -20,7 +20,7 @@ contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
 
     /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout are unused; set chainlinkFeed to 0x1
-    /// @dev config.erc20 should be an ERC20 wrapper from the `curve/vault` folder (sibling)
+    /// @dev config.erc20 should be a RewardableERC20
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,

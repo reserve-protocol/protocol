@@ -8,9 +8,9 @@ import "./CurveStableCollateral.sol";
  *  This plugin contract extends CrvCurveStableCollateral to work for
  *  volatile pools like TriCrypto.
  *
- * tok = ConvexStakingWrapper(crvVolatilePlainPool)
- * ref = crvVolatilePlainPool pool invariant
- * tar = crvVolatilePlainPool pool invariant
+ * tok = ConvexStakingWrapper(volatilePlainPool)
+ * ref = volatilePlainPool pool invariant
+ * tar = volatilePlainPool pool invariant
  * UoA = USD
  */
 contract CurveVolatileCollateral is CurveStableCollateral {

@@ -32,7 +32,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
 
     /// @param config.chainlinkFeed Feed units: {UoA/pairedTok}
     /// @dev config.chainlinkFeed/oracleError/oracleTimeout should be set for paired token
-    /// @dev config.erc20 should be an ERC20 wrapper from the `curve/vault` folder (sibling)
+    /// @dev config.erc20 should be a RewardableERC20
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
