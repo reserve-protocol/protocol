@@ -109,6 +109,8 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
                 lastSave = uint48(block.timestamp);
             } else {
                 // must be unpriced
+                // untested:
+                //      validated in other plugins, cost to test here is high
                 assert(low == 0);
             }
 
@@ -157,6 +159,8 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
                 if (mid < pegBottom || mid > pegTop) return true;
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data
+                // untested:
+                //      pattern validated in other plugins, cost to test is high
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 return true;
             }
