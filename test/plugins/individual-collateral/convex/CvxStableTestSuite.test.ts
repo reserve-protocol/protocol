@@ -50,6 +50,7 @@ import {
   getLatestBlockTimestamp,
   setNextBlockTimestamp,
 } from '#/test/utils/time'
+import { expectUnpriced } from '../../../utils/oracles'
 
 type Fixture<T> = () => Promise<T>
 
@@ -529,12 +530,23 @@ describeFork(`Collateral: Convex - Stable (3Pool)`, () => {
           usdtFeed.updateAnswer(0).then((e) => e.wait()),
         ])
 
-        // (0, FIX_MAX) is returned
+        // (0, 0) is returned
         const [low, high] = await collateral.price()
         expect(low).to.equal(0)
         expect(high).to.equal(0)
 
         // When refreshed, sets status to Unpriced
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+      })
+
+      it('Handles stale price', async () => {
+        await advanceTime(await collateral.priceTimeout())
+
+        // (0, FIX_MAX) is returned
+        await expectUnpriced(collateral.address)
+
+        // Refresh should mark status IFFY
         await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
       })

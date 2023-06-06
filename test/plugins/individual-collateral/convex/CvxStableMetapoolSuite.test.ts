@@ -55,6 +55,7 @@ import {
   getLatestBlockTimestamp,
   setNextBlockTimestamp,
 } from '#/test/utils/time'
+import { expectUnpriced } from '../../../utils/oracles'
 
 type Fixture<T> = () => Promise<T>
 
@@ -351,6 +352,22 @@ const collateralSpecificConstructorTests = () => {
       deployCollateral({ oracleErrors: [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [fp('1')]] })
     ).to.be.revertedWith('t2error0 too large')
   })
+
+  it('does not allow empty metaPoolToken', async () => {
+    await expect(deployCollateral({ metapoolToken: ZERO_ADDRESS })).to.be.revertedWith(
+      'metapoolToken address is zero'
+    )
+  })
+
+  it('does not allow invalid pairedTokenDefaultThreshold', async () => {
+    await expect(deployCollateral({ pairedTokenDefaultThreshold: bn(0) })).to.be.revertedWith(
+      'pairedTokenDefaultThreshold out of bounds'
+    )
+
+    await expect(
+      deployCollateral({ pairedTokenDefaultThreshold: bn('1.1e18') })
+    ).to.be.revertedWith('pairedTokenDefaultThreshold out of bounds')
+  })
 }
 
 /*
@@ -526,12 +543,23 @@ describeFork(`Collateral: Convex - Stable Metapool (MIM+3Pool)`, () => {
           chainlinkFeed.updateAnswer(0).then((e) => e.wait()),
         ])
 
-        // (0, FIX_MAX) is returned
+        // (0, 0) is returned
         const [low, high] = await collateral.price()
         expect(low).to.equal(0)
         expect(high).to.equal(0)
 
         // When refreshed, sets status to Unpriced
+        await collateral.refresh()
+        expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+      })
+
+      it('Handles stale price', async () => {
+        await advanceTime(await collateral.priceTimeout())
+
+        // (0, FIX_MAX) is returned
+        await expectUnpriced(collateral.address)
+
+        // Refresh should mark status IFFY
         await collateral.refresh()
         expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
       })
