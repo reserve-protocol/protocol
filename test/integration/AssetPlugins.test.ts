@@ -1780,7 +1780,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
       })
 
-      it('Should issue/reedem correctly with simple basket ', async function () {
+      it('Should issue/reedem correctly with simple basket', async function () {
         const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
         const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
@@ -1819,10 +1819,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           issueAmtAToken,
           fp('1')
         )
-        const requiredCTokens: BigNumber = bn('227116e17') // approx 227K needed (~5K, 50% of basket) - Price: ~0.022
+        const requiredCTokens: BigNumber = bn('227116e8') // approx 227K needed (~5K, 50% of basket) - Price: ~0.022
         expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
           requiredCTokens,
-          bn('1e17')
+          bn('1e8')
         )
 
         // Balances for user
@@ -1833,7 +1833,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
         expect(await cDaiVault.balanceOf(addr1.address)).to.be.closeTo(
           toBNDecimals(initialBal, 8).mul(100).sub(requiredCTokens),
-          bn('1e17')
+          bn('1e8')
         )
         // Check RTokens issued to user
         expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -2030,7 +2030,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Check received tokens represent ~10K in value at current prices
         expect(newBalanceAddr1Dai.sub(balanceAddr1Dai)).to.equal(issueAmount.div(4)) // = 2.5K (25% of basket)
         expect(newBalanceAddr1aDai.sub(balanceAddr1aDai)).to.be.closeTo(fp('2110.5'), fp('0.5')) // ~1.1873 * 2110.5  ~= 2.5K (25% of basket)
-        expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('151785e17'), bn('5e16')) // ~0.03294 * 151785.3 ~= 5K (50% of basket)
+        expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('151785e8'), bn('5e16')) // ~0.03294 * 151785.3 ~= 5K (50% of basket)
 
         // Check remainders in Backing Manager
         expect(await dai.balanceOf(backingManager.address)).to.equal(0)
@@ -2039,7 +2039,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('0.01')
         )
         expect(await cDaiVault.balanceOf(backingManager.address)).to.be.closeTo(
-          bn('75331e17'),
+          bn('75331e8'),
           bn('5e16')
         ) // ~= 2481 usd in value
 
