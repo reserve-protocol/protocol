@@ -8,7 +8,7 @@ import "../../../interfaces/IRewardable.sol";
 
 /**
  * @title RewardableERC20
- * @notice An abstract class that can be extended to create rewardable wrapper ERC20s
+ * @notice An abstract class that can be extended to create rewardable wrapper
  * @dev To inherit:
  *   - override _claimAssetRewards()
  *   - call ERC20 constructor elsewhere during construction

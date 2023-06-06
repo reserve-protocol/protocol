@@ -18,6 +18,8 @@ abstract contract RewardableERC20Wrapper is RewardableERC20 {
 
     IERC20 public immutable underlying;
 
+    uint8 private immutable underlyingDecimals;
+
     event Deposited(address indexed _user, address indexed _account, uint256 _amount);
     event Withdrawn(address indexed _user, address indexed _account, uint256 _amount);
 
@@ -29,6 +31,11 @@ abstract contract RewardableERC20Wrapper is RewardableERC20 {
         IERC20 _rewardToken
     ) ERC20(_name, _symbol) RewardableERC20(_rewardToken, _underlying.decimals()) {
         underlying = _underlying;
+        underlyingDecimals = _underlying.decimals();
+    }
+
+    function decimals() public view virtual override returns (uint8) {
+        return underlyingDecimals;
     }
 
     /// Deposit the underlying token and optionally take an action such as staking in a gauge
