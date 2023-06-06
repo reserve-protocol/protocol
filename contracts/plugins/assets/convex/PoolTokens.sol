@@ -44,7 +44,7 @@ contract PoolTokens {
 
     enum CurvePoolType {
         Plain,
-        Lending,
+        Lending, // not supported in this version
         Metapool // not supported via this class. parent class handles metapool math
     }
 
@@ -126,8 +126,6 @@ contract PoolTokens {
         for (uint8 i = 0; i < nTokens; ++i) {
             if (config.poolType == CurvePoolType.Plain) {
                 tokens[i] = IERC20Metadata(curvePool.coins(i));
-            } else if (config.poolType == CurvePoolType.Lending) {
-                tokens[i] = IERC20Metadata(curvePool.underlying_coins(i));
             } else {
                 revert("Use MetaPoolTokens class");
             }
