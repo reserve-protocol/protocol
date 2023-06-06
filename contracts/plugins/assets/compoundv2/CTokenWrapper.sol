@@ -11,13 +11,28 @@ contract CTokenWrapper is RewardableERC20Wrapper {
     IComptroller public immutable comptroller;
 
     constructor(
-        ERC20 _asset,
+        ERC20 _underlying,
         string memory _name,
         string memory _symbol,
         IComptroller _comptroller
-    ) RewardableERC20Wrapper(_asset, _name, _symbol, ERC20(_comptroller.getCompAddress())) {
+    ) RewardableERC20Wrapper(_underlying, _name, _symbol, ERC20(_comptroller.getCompAddress())) {
         comptroller = _comptroller;
     }
+
+    /// === Exchange rate pass-throughs ===
+
+    // While these are included in the wrapper, it should probably not be used directly
+    // by the collateral plugin for gas optimization reasons
+
+    function exchangeRateCurrent() external returns (uint256) {
+        return ICToken(address(underlying)).exchangeRateCurrent();
+    }
+
+    function exchangeRateStored() external view returns (uint256) {
+        return ICToken(address(underlying)).exchangeRateStored();
+    }
+
+    // === Overrides ===
 
     function _claimAssetRewards() internal virtual override {
         comptroller.claimComp(address(this));

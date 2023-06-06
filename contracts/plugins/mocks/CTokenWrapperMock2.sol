@@ -29,6 +29,14 @@ contract CTokenWrapperMock is ERC20Mock, IRewardable {
         return 8;
     }
 
+    function exchangeRateCurrent() external returns (uint256) {
+        return underlying.exchangeRateCurrent();
+    }
+
+    function exchangeRateStored() external view returns (uint256) {
+        return underlying.exchangeRateStored();
+    }
+
     function claimRewards() external {
         if (revertClaimRewards) {
             revert("reverting claim rewards");
