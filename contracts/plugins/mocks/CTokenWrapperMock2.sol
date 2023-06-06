@@ -2,11 +2,11 @@
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../assets/compoundv2/CTokenVault.sol";
+import "../assets/compoundv2/CTokenWrapper.sol";
 import "../assets/compoundv2/ICToken.sol";
 import "./CTokenMock.sol";
 
-contract CTokenVaultMock is ERC20Mock, IRewardable {
+contract CTokenWrapperMock is ERC20Mock, IRewardable {
     ERC20Mock public comp;
     CTokenMock public asset;
     IComptroller public comptroller;

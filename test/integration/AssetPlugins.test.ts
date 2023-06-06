@@ -46,7 +46,7 @@ import {
   TestIRToken,
   USDCMock,
   WETH9,
-  CTokenVault,
+  CTokenWrapper,
 } from '../../typechain'
 import { useEnv } from '#/utils/env'
 
@@ -110,20 +110,20 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let stataUsdp: StaticATokenLM
 
   let cDai: CTokenMock
-  let cDaiVault: CTokenVault
+  let cDaiVault: CTokenWrapper
   let cUsdc: CTokenMock
-  let cUsdcVault: CTokenVault
+  let cUsdcVault: CTokenWrapper
   let cUsdt: CTokenMock
-  let cUsdtVault: CTokenVault
+  let cUsdtVault: CTokenWrapper
   let cUsdp: CTokenMock
-  let cUsdpVault: CTokenVault
+  let cUsdpVault: CTokenWrapper
 
   let wbtc: ERC20Mock
   let cWBTC: CTokenMock
-  let cWBTCVault: CTokenVault
+  let cWBTCVault: CTokenWrapper
   let weth: ERC20Mock
   let cETH: CTokenMock
-  let cETHVault: CTokenVault
+  let cETHVault: CTokenWrapper
   let eurt: ERC20Mock
 
   let daiCollateral: FiatCollateral
@@ -228,13 +228,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       busd = <ERC20Mock>erc20s[3] // BUSD
       usdp = <ERC20Mock>erc20s[4] // USDP
       tusd = <ERC20Mock>erc20s[5] // TUSD
-      cDaiVault = <CTokenVault>erc20s[6] // cDAI
+      cDaiVault = <CTokenWrapper>erc20s[6] // cDAI
       cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiVault.asset()) // cDAI
-      cUsdcVault = <CTokenVault>erc20s[7] // cUSDC
+      cUsdcVault = <CTokenWrapper>erc20s[7] // cUSDC
       cUsdc = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdcVault.asset()) // cUSDC
-      cUsdtVault = <CTokenVault>erc20s[8] // cUSDT
+      cUsdtVault = <CTokenWrapper>erc20s[8] // cUSDT
       cUsdt = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdtVault.asset()) // cUSDT
-      cUsdpVault = <CTokenVault>erc20s[9] // cUSDT
+      cUsdpVault = <CTokenWrapper>erc20s[9] // cUSDT
       cUsdp = <CTokenMock>await ethers.getContractAt('CTokenMock', await cUsdpVault.asset()) // cUSDT
       stataDai = <StaticATokenLM>erc20s[10] // static aDAI
       stataUsdc = <StaticATokenLM>erc20s[11] // static aUSDC
@@ -242,10 +242,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       stataBusd = <StaticATokenLM>erc20s[13] // static aBUSD
       stataUsdp = <StaticATokenLM>erc20s[14] // static aUSDP
       wbtc = <ERC20Mock>erc20s[15] // wBTC
-      cWBTCVault = <CTokenVault>erc20s[16] // cWBTC
+      cWBTCVault = <CTokenWrapper>erc20s[16] // cWBTC
       cWBTC = <CTokenMock>await ethers.getContractAt('CTokenMock', await cWBTCVault.asset()) // cWBTC
       weth = <ERC20Mock>erc20s[17] // wETH
-      cETHVault = <CTokenVault>erc20s[18] // cETH
+      cETHVault = <CTokenWrapper>erc20s[18] // cETH
       cETH = <CTokenMock>await ethers.getContractAt('CTokenMock', await cETHVault.asset()) // cETH
       eurt = <ERC20Mock>erc20s[19] // eurt
 
@@ -531,7 +531,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           token: ERC20Mock
           tokenAddress: string
           cToken: CTokenMock
-          cTokenVault: CTokenVault
+          cTokenVault: CTokenWrapper
           cTokenAddress: string
           cTokenCollateral: CTokenFiatCollateral
           pegPrice: BigNumber
@@ -820,7 +820,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           token: ERC20Mock
           tokenAddress: string
           cToken: CTokenMock
-          cTokenVault: CTokenVault
+          cTokenVault: CTokenWrapper
           cTokenAddress: string
           cTokenCollateral: CTokenNonFiatCollateral
           targetPrice: BigNumber
@@ -951,7 +951,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           token: ERC20Mock
           tokenAddress: string
           cToken: CTokenMock
-          cTokenVault: CTokenVault
+          cTokenVault: CTokenWrapper
           cTokenAddress: string
           cTokenCollateral: CTokenSelfReferentialCollateral
           price: BigNumber
@@ -2511,8 +2511,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       stataDai = <StaticATokenLM>(
         await ethers.getContractAt('StaticATokenLM', await aDaiCollateral.erc20())
       )
-      cDaiVault = <CTokenVault>(
-        await ethers.getContractAt('CTokenVault', await cDaiCollateral.erc20())
+      cDaiVault = <CTokenWrapper>(
+        await ethers.getContractAt('CTokenWrapper', await cDaiCollateral.erc20())
       )
       cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiVault.asset())
 

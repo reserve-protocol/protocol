@@ -9,7 +9,7 @@ import { bn, fp, pow10, toBNDecimals } from '../../common/numbers'
 import {
   Asset,
   ComptrollerMock,
-  CTokenVaultMock,
+  CTokenWrapperMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -83,11 +83,11 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
   let usdToken: ERC20Mock
   let eurToken: ERC20Mock
-  let cUSDTokenVault: CTokenVaultMock
+  let cUSDTokenVault: CTokenWrapperMock
   let aUSDToken: StaticATokenMock
   let wbtc: ERC20Mock
-  let cWBTCVault: CTokenVaultMock
-  let cETHVault: CTokenVaultMock
+  let cWBTCVault: CTokenWrapperMock
+  let cETHVault: CTokenWrapperMock
 
   let weth: WETH9
 
@@ -156,7 +156,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Setup Factories
     const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
     const WETH: ContractFactory = await ethers.getContractFactory('WETH9')
-    const CToken: ContractFactory = await ethers.getContractFactory('CTokenVaultMock')
+    const CToken: ContractFactory = await ethers.getContractFactory('CTokenWrapperMock')
     const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
       'MockV3Aggregator'
     )
@@ -241,7 +241,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     collateral.push(<Collateral>await ethers.getContractAt('EURFiatCollateral', fiatEUR))
 
     // 3. CTokenFiatCollateral against USD
-    cUSDTokenVault = <CTokenVaultMock>erc20s[4] // cDAI Token
+    cUSDTokenVault = <CTokenWrapperMock>erc20s[4] // cDAI Token
     const { collateral: cUSDCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
       priceTimeout: PRICE_TIMEOUT.toString(),
       priceFeed: usdFeed.address,
@@ -307,7 +307,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     collateral.push(<Collateral>await ethers.getContractAt('NonFiatCollateral', wBTCCollateral))
 
     // 6. CTokenNonFiatCollateral cWBTCVault against BTC
-    cWBTCVault = <CTokenVaultMock>(
+    cWBTCVault = <CTokenWrapperMock>(
       await CToken.deploy(
         'cWBTCVault Token',
         'cWBTCVault',
@@ -363,7 +363,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // 8. CTokenSelfReferentialCollateral cETHVault against ETH
     // Give higher maxTradeVolume: MAX_TRADE_VOLUME.toString(),
-    cETHVault = <CTokenVaultMock>(
+    cETHVault = <CTokenWrapperMock>(
       await CToken.deploy(
         'cETHVault Token',
         'cETHVault',

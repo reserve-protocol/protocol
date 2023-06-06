@@ -6,7 +6,7 @@ import { bn, fp } from '../../common/numbers'
 import {
   ERC20MockDecimals,
   ERC20MockRewarding,
-  RewardableERC20Vault,
+  RewardableERC4626Vault,
   RewardableERC20VaultTest,
 } from '../../typechain'
 import { cartesianProduct } from '../utils/cases'
@@ -16,8 +16,8 @@ import snapshotGasCost from '../utils/snapshotGasCost'
 
 type Fixture<T> = () => Promise<T>
 
-interface RewardableERC20VaultFixture {
-  rewardableVault: RewardableERC20Vault
+interface RewardableERC4626VaultFixture {
+  rewardableVault: RewardableERC4626Vault
   rewardableAsset: ERC20MockRewarding
   rewardToken: ERC20MockDecimals
 }
@@ -25,9 +25,9 @@ interface RewardableERC20VaultFixture {
 const getFixture = (
   assetDecimals: number,
   rewardDecimals: number
-): Fixture<RewardableERC20VaultFixture> => {
-  const fixture: Fixture<RewardableERC20VaultFixture> =
-    async function (): Promise<RewardableERC20VaultFixture> {
+): Fixture<RewardableERC4626VaultFixture> => {
+  const fixture: Fixture<RewardableERC4626VaultFixture> =
+    async function (): Promise<RewardableERC4626VaultFixture> {
       const rewardTokenFactory: ContractFactory = await ethers.getContractFactory(
         'ERC20MockDecimals'
       )
@@ -73,12 +73,12 @@ const toShares = (assets: BigNumber, assetDecimals: number, shareDecimals: numbe
 }
 
 const runTests = (assetDecimals: number, rewardDecimals: number) => {
-  describe('RewardableERC20Vault', () => {
+  describe('RewardableERC4626Vault', () => {
     // Decimals
     let shareDecimals: number
 
     // Assets
-    let rewardableVault: RewardableERC20Vault
+    let rewardableVault: RewardableERC4626Vault
     let rewardableAsset: ERC20MockRewarding
     let rewardToken: ERC20MockDecimals
 
@@ -517,7 +517,7 @@ const describeGas =
 
 describeGas('Gas Reporting', () => {
   // Assets
-  let rewardableVault: RewardableERC20Vault
+  let rewardableVault: RewardableERC4626Vault
   let rewardableAsset: ERC20MockRewarding
 
   // Main
@@ -540,7 +540,7 @@ describeGas('Gas Reporting', () => {
     await rewardableAsset.connect(alice).approve(rewardableVault.address, initBalance)
   })
 
-  describe('RewardableERC20Vault', () => {
+  describe('RewardableERC4626Vault', () => {
     it('deposit', async function () {
       // Deposit
       await snapshotGasCost(

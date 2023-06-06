@@ -7,7 +7,7 @@ import { bn, fp, divCeil } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
-  CTokenVaultMock,
+  CTokenWrapperMock,
   CTokenFiatCollateral,
   ERC20Mock,
   IAssetRegistry,
@@ -44,7 +44,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
   // Tokens and Assets
   let dai: ERC20Mock
   let daiCollateral: SelfReferentialCollateral
-  let cDAI: CTokenVaultMock
+  let cDAI: CTokenWrapperMock
   let cDAICollateral: CTokenFiatCollateral
 
   // Config values
@@ -106,7 +106,7 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
     // Main ERC20
     dai = <ERC20Mock>erc20s[0]
     daiCollateral = collateral[0]
-    cDAI = <CTokenVaultMock>erc20s[4]
+    cDAI = <CTokenWrapperMock>erc20s[4]
     cDAICollateral = await (
       await ethers.getContractFactory('CTokenFiatCollateral')
     ).deploy(

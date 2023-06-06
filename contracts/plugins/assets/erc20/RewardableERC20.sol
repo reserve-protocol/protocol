@@ -1,33 +1,33 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../../interfaces/IRewardable.sol";
 
 /**
  * @title RewardableERC20
- * @notice A transferrable ERC20 token wrapping an inner position that
- *   may not be transferrable, and earns rewards.
+ * @notice An abstract class that can be extended to create rewardable wrapper ERC20s
  * @dev To inherit:
  *   - override _claimAssetRewards()
- *   - call ERC20 constructor
+ *   - call ERC20 constructor elsewhere during construction
  */
 abstract contract RewardableERC20 is IRewardable, ERC20 {
-    using SafeERC20 for ERC20;
+    using SafeERC20 for IERC20;
 
     uint256 public immutable one; // {qShare/share}
-    ERC20 public immutable rewardToken;
+    IERC20 public immutable rewardToken;
 
     uint256 public rewardsPerShare; // {qRewards/share}
     mapping(address => uint256) public lastRewardsPerShare; // {qRewards/share}
     mapping(address => uint256) public accumulatedRewards; // {qRewards}
     mapping(address => uint256) public claimedRewards; // {qRewards}
 
-    /// Parent must ensure ERC20 constructor is called
-    constructor(ERC20 _rewardToken) {
+    /// @dev Extending class must ensure ERC20 constructor is called
+    constructor(IERC20 _rewardToken, uint8 _decimals) {
         rewardToken = _rewardToken;
-        one = 10**decimals();
+        one = 10**_decimals;
     }
 
     function claimRewards() external {
@@ -63,8 +63,6 @@ abstract contract RewardableERC20 is IRewardable, ERC20 {
         }
     }
 
-    function _claimAssetRewards() internal virtual;
-
     function _claimAccountRewards(address account) internal {
         uint256 claimableRewards = accumulatedRewards[account] - claimedRewards[account];
         emit RewardsClaimed(IERC20(address(rewardToken)), claimableRewards);
@@ -82,4 +80,8 @@ abstract contract RewardableERC20 is IRewardable, ERC20 {
         _syncAccount(from);
         _syncAccount(to);
     }
+
+    /// === Must override ===
+
+    function _claimAssetRewards() internal virtual;
 }

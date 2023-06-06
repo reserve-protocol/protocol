@@ -1,27 +1,33 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../../../interfaces/IRewardable.sol";
 import "../../../vendor/oz/ERC4626.sol";
 import "./RewardableERC20.sol";
 
 /**
- * @title RewardableERC20Vault
- * @notice A transferrable vault token wrapping an inner ERC4626 that earns rewards.
+ * @title RewardableERC4626Vault
+ * @notice A transferrable ERC4626 vault wrapping an inner position that earns rewards.
  *   Holding the vault token for a period of time earns the holder the right to
  *   their prorata share of the global rewards earned during that time.
- * @dev To inherit, override _claimAssetRewards()
+ * @dev To inherit:
+ *   - override _claimAssetRewards()
+ *   - consider overriding _afterDeposit() and _beforeWithdraw()
  */
-abstract contract RewardableERC20Vault is ERC4626, RewardableERC20 {
+abstract contract RewardableERC4626Vault is ERC4626, RewardableERC20 {
     // solhint-disable no-empty-blocks
     constructor(
-        ERC20 _asset,
+        IERC20Metadata _asset,
         string memory _name,
         string memory _symbol,
         ERC20 _rewardToken
-    ) ERC4626(_asset, _name, _symbol) RewardableERC20(_rewardToken) {}
+    )
+        ERC4626(_asset, _name, _symbol)
+        RewardableERC20(_rewardToken, _asset.decimals() + _decimalsOffset())
+    {}
 
     // solhint-enable no-empty-blocks
 
@@ -42,4 +48,8 @@ abstract contract RewardableERC20Vault is ERC4626, RewardableERC20 {
     function _decimalsOffset() internal view virtual override returns (uint8) {
         return 9;
     }
+
+    /// === Must override ===
+
+    // function _claimAssetRewards() internal virtual;
 }

@@ -10,7 +10,7 @@ import {
   ERC20Mock,
   ICurvePool,
   MockV3Aggregator,
-  RewardableERC20Vault,
+  RewardableERC4626Vault,
 } from '../../../../../typechain'
 import { getResetFork } from '../../helpers'
 import {
@@ -82,7 +82,7 @@ export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => 
     usdc,
     usdt,
     curvePool,
-    wrapper: wrapper as unknown as RewardableERC20Vault,
+    wrapper: wrapper as unknown as RewardableERC4626Vault,
   }
 }
 
@@ -128,7 +128,7 @@ export const makeWTricryptoPoolVolatile = async (): Promise<Wrapped3PoolFixtureV
     wbtc,
     weth,
     curvePool,
-    wrapper: wrapper as unknown as RewardableERC20Vault,
+    wrapper: wrapper as unknown as RewardableERC4626Vault,
   }
 }
 
@@ -142,7 +142,7 @@ export const mintWPool = async (
   const wrapper = ctx.wrapper as CurveGaugeWrapper
   const lpToken = await ethers.getContractAt(
     '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
-    await wrapper.lpToken()
+    await wrapper.underlying()
   )
   await whileImpersonating(holder, async (signer) => {
     await lpToken.connect(signer).transfer(user.address, amount)
@@ -238,7 +238,7 @@ export const mintWeUSDFraxBP = async (
   const wrapper = ctx.wrapper as CurveGaugeWrapper
   const lpToken = await ethers.getContractAt(
     '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
-    await wrapper.lpToken()
+    await wrapper.underlying()
   )
   await whileImpersonating(holder, async (signer) => {
     await lpToken.connect(signer).transfer(user.address, amount)
@@ -310,7 +310,7 @@ export const mintWMIM3Pool = async (
   const wrapper = ctx.wrapper as CurveGaugeWrapper
   const lpToken = await ethers.getContractAt(
     '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
-    await wrapper.lpToken()
+    await wrapper.underlying()
   )
   await whileImpersonating(holder, async (signer) => {
     await lpToken.connect(signer).transfer(user.address, amount)
