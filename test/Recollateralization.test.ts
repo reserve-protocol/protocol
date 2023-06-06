@@ -176,7 +176,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
     token3Vault = <CTokenWrapperMock>(
       await ethers.getContractAt('CTokenWrapperMock', await basket[3].erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await token3Vault.asset())
+    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await token3Vault.underlying())
 
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)

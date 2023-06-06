@@ -256,7 +256,7 @@ all.forEach((curr: FTokenEnumeration) => {
     recipient: string
   ) => {
     const tok = ctx.tok as CTokenWrapper
-    const fToken = await ethers.getContractAt('ICToken', await tok.asset())
+    const fToken = await ethers.getContractAt('ICToken', await tok.underlying())
     const underlying = await ethers.getContractAt('IERC20Metadata', await fToken.underlying())
     await mintFToken(underlying, curr.holderUnderlying, fToken, tok, amount, recipient)
   }
