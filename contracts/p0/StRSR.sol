@@ -16,6 +16,7 @@ import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
+import "../mixins/NetworkConfigLib.sol";
 
 /*
  * @title StRSRP0
@@ -31,8 +32,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
 
-    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
-    uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable PERIOD; // {s} 1 block based on network
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e18;
     uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
@@ -103,6 +106,11 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     uint48 public unstakingDelay;
     uint192 public rewardRatio;
     uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
+
+    constructor() {
+        PERIOD = NetworkConfigLib.blocktime();
+        MIN_UNSTAKING_DELAY = PERIOD * 2;
+    }
 
     function init(
         IMain main_,

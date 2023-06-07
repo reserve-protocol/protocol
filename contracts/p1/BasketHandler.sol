@@ -17,6 +17,8 @@ import "./mixins/Component.sol";
  * @title BasketHandler
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
+
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using BasketLibP1 for Basket;
     using EnumerableMap for EnumerableMap.Bytes32ToUintMap;

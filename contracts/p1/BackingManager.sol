@@ -10,6 +10,7 @@ import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/Trading.sol";
 import "./mixins/RecollateralizationLib.sol";
+import "../mixins/NetworkConfigLib.sol";
 
 /**
  * @title BackingManager
@@ -20,6 +21,10 @@ import "./mixins/RecollateralizationLib.sol";
 contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
+
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
 
     // Cache of peer components
     IAssetRegistry private assetRegistry;
@@ -42,6 +47,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        ONE_BLOCK = NetworkConfigLib.blocktime();
+    }
 
     function init(
         IMain main_,
@@ -107,7 +117,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         furnace.melt();
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
-        // Assumption: chain has <= 12s blocktimes
         require(
             _msgSender() == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
             "already rebalancing"

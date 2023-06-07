@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import "../../../p1/BasketHandler.sol";
 
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BasketHandlerP1V2 is BasketHandlerP1 {
     uint256 public newValue;
 

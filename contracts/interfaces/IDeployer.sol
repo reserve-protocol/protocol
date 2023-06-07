@@ -30,7 +30,7 @@ struct DeploymentParams {
     uint48 longFreeze; // {s} how long each freeze extension lasts
     //
     // === Rewards (Furnace + StRSR) ===
-    uint192 rewardRatio; // the fraction of available revenues that are paid out each 12s period
+    uint192 rewardRatio; // the fraction of available revenues that are paid out each block period
     //
     // === StRSR ===
     uint48 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
