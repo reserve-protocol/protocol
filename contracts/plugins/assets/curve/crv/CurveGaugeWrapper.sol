@@ -41,9 +41,8 @@ contract CurveGaugeWrapper is RewardableERC20Wrapper {
     }
 
     // withdraw to curve token
-    function _beforeWithdraw(uint256 _amount, address _to) internal override {
+    function _beforeWithdraw(uint256 _amount, address) internal override {
         gauge.withdraw(_amount);
-        underlying.safeTransfer(_to, _amount);
     }
 
     function _claimAssetRewards() internal virtual override {
