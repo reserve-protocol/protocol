@@ -10,7 +10,6 @@ import {
   ERC20Mock,
   ICurvePool,
   MockV3Aggregator,
-  RewardableERC4626Vault,
 } from '../../../../../typechain'
 import { getResetFork } from '../../helpers'
 import {
@@ -82,7 +81,7 @@ export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => 
     usdc,
     usdt,
     curvePool,
-    wrapper: wrapper as unknown as RewardableERC4626Vault,
+    wrapper,
   }
 }
 
@@ -128,7 +127,7 @@ export const makeWTricryptoPoolVolatile = async (): Promise<Wrapped3PoolFixtureV
     wbtc,
     weth,
     curvePool,
-    wrapper: wrapper as unknown as RewardableERC4626Vault,
+    wrapper,
   }
 }
 
