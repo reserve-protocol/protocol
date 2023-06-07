@@ -38,11 +38,9 @@ abstract contract RewardableERC4626Vault is ERC4626, RewardableERC20 {
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256
+        uint256 amount
     ) internal virtual override(RewardableERC20, ERC20) {
-        _claimAndSyncRewards();
-        _syncAccount(from);
-        _syncAccount(to);
+        RewardableERC20._beforeTokenTransfer(from, to, amount);
     }
 
     function _decimalsOffset() internal view virtual override returns (uint8) {
