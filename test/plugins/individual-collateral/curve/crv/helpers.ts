@@ -70,8 +70,8 @@ export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => 
   const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
   const wrapper = await wrapperFactory.deploy(
     THREE_POOL_TOKEN,
-    'Mock w3Pool Token',
-    'w3Pool',
+    'Wrapped Staked Curve.fi DAI/USDC/USDT',
+    'ws3Crv',
     CRV,
     THREE_POOL_GAUGE
   )
@@ -116,8 +116,8 @@ export const makeWTricryptoPoolVolatile = async (): Promise<Wrapped3PoolFixtureV
   const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
   const wrapper = await wrapperFactory.deploy(
     TRI_CRYPTO_TOKEN,
-    'Mock tricryptoLP Token',
-    'tricryptoLP',
+    'Wrapped Curve.fi USD-BTC-ETH',
+    'wcrv3crypto',
     CRV,
     TRI_CRYPTO_GAUGE
   )
@@ -218,8 +218,8 @@ export const makeWeUSDFraxBP = async (
   const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
   const wrapper = await wrapperFactory.deploy(
     eUSD_FRAX_BP,
-    'Mock eUSDLP Token',
-    'eUSDLP',
+    'Wrapped Curve eUSD+FRAX/USDC',
+    'weUSDFRAXBP',
     CRV,
     eUSD_GAUGE
   )
@@ -290,8 +290,8 @@ export const makeWMIM3Pool = async (): Promise<WrappedMIM3PoolFixture> => {
   const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
   const wrapper = await wrapperFactory.deploy(
     MIM_THREE_POOL,
-    'Mock mimLP Token',
-    'mimLP',
+    'Wrapped Curve MIM+3Pool',
+    'wMIM3CRV',
     CRV,
     MIM_THREE_POOL_GAUGE
   )
