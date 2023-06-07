@@ -14,8 +14,9 @@ contract CTokenVault is RewardableERC20Vault {
         ERC20 _asset,
         string memory _name,
         string memory _symbol,
-        IComptroller _comptroller
-    ) RewardableERC20Vault(_asset, _name, _symbol, ERC20(_comptroller.getCompAddress())) {
+        IComptroller _comptroller,
+        address compAddress
+    ) RewardableERC20Vault(_asset, _name, _symbol, ERC20(compAddress)) {
         comptroller = _comptroller;
     }
 

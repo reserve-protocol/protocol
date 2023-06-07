@@ -268,7 +268,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       fDAI: '0x7e1e077b289c0153b5ceAD9F264d66215341c9Ab',
       AAVE: '0xc47324262e1C7be67270Da717e1a0e7b0191c449',
       stkAAVE: '0x3Db8b170DA19c45B63B959789f20f397F22767D4',
-      COMP: '0x1b4449895037f25b102B28B45b8bD50c8C44Aca1',
+      COMP: '0xe16c7165c8fea64069802ae4c4c9c320783f2b6e', // canonical COMP
       WETH: '0xB5B58F0a853132EA8cB614cb17095dE87AF3E98b',
       WBTC: '0x528FdEd7CC39209ed67B4edA11937A9ABe1f6249',
       EURT: '0xD6da5A7ADE2a906d9992612752A339E3485dB508',
@@ -303,7 +303,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     },
     AAVE_LENDING_POOL: '0x3e9E33B84C1cD9037be16AA45A0B296ae5F185AD', // mock
     GNOSIS_EASY_AUCTION: '0x1fbab40c338e2e7243da945820ba680c92ef8281', // canonical
-    COMPTROLLER: '0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b', // canonical
+    COMPTROLLER: '0x627ea49279fd0de89186a58b8758ad02b6be2867', // canonical
   },
 }
 
