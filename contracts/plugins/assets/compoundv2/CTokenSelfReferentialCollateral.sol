@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../AppreciatingFiatCollateral.sol";
 import "./ICToken.sol";
