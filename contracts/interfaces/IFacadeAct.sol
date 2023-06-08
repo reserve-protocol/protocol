@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import "../interfaces/IBackingManager.sol";
+import "../interfaces/IStRSRVotes.sol";
 import "../interfaces/IRevenueTrader.sol";
 import "../interfaces/IRToken.sol";
 
@@ -14,6 +15,21 @@ bytes1 constant MAJOR_VERSION_3 = bytes1("3");
  * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely. 
 v */
 interface IFacadeAct {
+    /// Stake RSR on the StRSR instance and send StRSR token and voting weight back to the caller
+    /// @dev Expected to be used as the second step of a multicall after RSR.permit()
+    /// @param rsrAmount {qRSR} The amount of RSR to stake
+    /// @param delegatee  The address that should have (entirety of) the caller's voting weight
+    function stakeAndDelegate(
+        IERC20 stRSR,
+        uint256 rsrAmount,
+        address delegatee,
+        uint256 nonce,
+        uint256 expiry,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+
     /// Claims rewards from all places they can accrue.
     function claimRewards(IRToken rToken) external;
 

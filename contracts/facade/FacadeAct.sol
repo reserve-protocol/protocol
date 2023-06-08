@@ -14,7 +14,36 @@ import "../interfaces/IFacadeRead.sol";
  *   For use with ^3.0.0 RTokens.
  */
 contract FacadeAct is IFacadeAct, Multicall {
+    using SafeERC20 for IERC20;
     using FixLib for uint192;
+
+    /// Stake RSR on the StRSR instance and send StRSR token and voting weight back to the caller
+    /// @dev Expected to be used as the second step of a multicall after RSR.permit()
+    /// @param rsrAmount {qRSR} The amount of RSR to stake
+    /// @param delegatee  The address that should have (entirety of) the caller's voting weight
+    function stakeAndDelegate(
+        IERC20 stRSR,
+        uint256 rsrAmount,
+        address delegatee,
+        uint256 nonce,
+        uint256 expiry,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        // Take in RSR from caller
+        stRSR.safeTransferFrom(msg.sender, address(this), rsrAmount); // requires approvals first
+
+        // Stake RSR
+        stRSR.approve(address(stRSR), type(uint256).max); // safeApprove worse
+        IStRSR(address(stRSR)).stake(rsrAmount);
+
+        // Send StRSR to caller
+        stRSR.safeTransfer(msg.sender, stRSR.balanceOf(address(this))); // give all StRSR!
+
+        // Delegate by sig
+        IStRSRVotes(address(stRSR)).delegateBySig(delegatee, nonce, expiry, v, r, s);
+    }
 
     function claimRewards(IRToken rToken) public {
         IMain main = rToken.main();
