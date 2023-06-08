@@ -41,7 +41,7 @@ async function main() {
   const deployedCollateral: string[] = []
 
   /********  Deploy FToken Fiat Collateral - fUSDC  **************************/
-  const FTokenFactory = await ethers.getContractFactory('CTokenVault')
+  const FTokenFactory = await ethers.getContractFactory('CTokenWrapper')
   const fUsdc = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.fUSDC!)
 
   const fUsdcVault = await FTokenFactory.deploy(

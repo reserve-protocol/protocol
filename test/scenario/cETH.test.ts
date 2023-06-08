@@ -21,7 +21,7 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   WETH9,
-  CTokenVaultMock,
+  CTokenWrapperMock,
 } from '../../typechain'
 import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
@@ -53,7 +53,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
   // Tokens and Assets
   let weth: WETH9
   let wethCollateral: SelfReferentialCollateral
-  let cETH: CTokenVaultMock
+  let cETH: CTokenWrapperMock
   let cETHCollateral: CTokenSelfReferentialCollateral
   let token0: CTokenMock
   let collateral0: Collateral
@@ -123,7 +123,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
 
     // cETH
     cETH = await (
-      await ethers.getContractFactory('CTokenVaultMock')
+      await ethers.getContractFactory('CTokenWrapperMock')
     ).deploy('cETH Token', 'cETH', weth.address, compToken.address, compoundMock.address)
 
     cETHCollateral = await (

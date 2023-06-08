@@ -15,7 +15,7 @@ import {
   BackingMgrCompatibleV2,
   BackingMgrInvalidVersion,
   ComptrollerMock,
-  CTokenVaultMock,
+  CTokenWrapperMock,
   ERC20Mock,
   FacadeAct,
   FacadeRead,
@@ -67,7 +67,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cTokenVault: CTokenVaultMock
+  let cTokenVault: CTokenWrapperMock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
@@ -145,8 +145,8 @@ describe('FacadeRead + FacadeAct contracts', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
-    cTokenVault = <CTokenVaultMock>(
-      await ethers.getContractAt('CTokenVaultMock', await cTokenAsset.erc20())
+    cTokenVault = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await cTokenAsset.erc20())
     )
 
     // Factories used in tests
