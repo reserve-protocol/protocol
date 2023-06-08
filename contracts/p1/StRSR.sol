@@ -798,8 +798,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address to,
         uint256 amount
     ) internal {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
+        require(
+            from != address(0) && to != address(0),
+            "ERC20: transfer from or to the zero address"
+        );
 
         mapping(address => uint256) storage eraStakes = stakes[era];
         uint256 fromBalance = eraStakes[from];
@@ -855,8 +857,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address spender,
         uint256 amount
     ) internal {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+        require(
+            owner != address(0) && spender != address(0),
+            "ERC20: approve from or to the zero address"
+        );
 
         _allowances[era][owner][spender] = amount;
         emit Approval(owner, spender, amount);
