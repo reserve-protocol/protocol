@@ -129,6 +129,8 @@ contract CvxStableMetapoolCollateral is CvxStableCollateral {
             if (mid < pairedTokenPegBottom || mid > pairedTokenPegTop) return true;
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
+            // untested:
+            //      pattern validated in other plugins, cost to test is high
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             return true;
         }
