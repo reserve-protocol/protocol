@@ -71,6 +71,7 @@ const all = [
     fToken: config.tokens.fUSDC as string,
     oracleError: USDC_ORACLE_ERROR,
     chainlinkFeed: config.chainlinkFeeds.USDC as string,
+    rewardToken: config.tokens.ONDO as string,
   },
   {
     testName: 'fUSDT Collateral',
@@ -79,6 +80,7 @@ const all = [
     fToken: config.tokens.fUSDT as string,
     oracleError: USDT_ORACLE_ERROR,
     chainlinkFeed: config.chainlinkFeeds.USDT as string,
+    rewardToken: config.tokens.ONDO as string,
   },
   {
     testName: 'fFRAX Collateral',
@@ -87,6 +89,7 @@ const all = [
     fToken: config.tokens.fFRAX as string,
     oracleError: FRAX_ORACLE_ERROR,
     chainlinkFeed: config.chainlinkFeeds.FRAX as string,
+    rewardToken: config.tokens.ONDO as string,
   },
   {
     testName: 'fDAI Collateral',
@@ -95,6 +98,7 @@ const all = [
     fToken: config.tokens.fDAI as string,
     oracleError: DAI_ORACLE_ERROR,
     chainlinkFeed: config.chainlinkFeeds.DAI as string,
+    rewardToken: config.tokens.ONDO as string,
   },
 ]
 all.forEach((curr: FTokenEnumeration) => {
@@ -125,7 +129,8 @@ all.forEach((curr: FTokenEnumeration) => {
           opts.erc20,
           await erc20.name(),
           await erc20.symbol(),
-          opts.comptroller!
+          opts.comptroller!,
+          opts.rewardERC20!
         )
       )
       erc20Address = fTokenVault.address
