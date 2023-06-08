@@ -21,7 +21,7 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenVaultMock,
+  CTokenWrapperMock,
   ERC20Mock,
   FacadeTest,
   GnosisMock,
@@ -89,7 +89,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenVaultMock
+  let token3: CTokenWrapperMock
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
@@ -183,8 +183,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock>(
-      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    token3 = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
     )
 
     // Mint initial balances

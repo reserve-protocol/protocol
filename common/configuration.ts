@@ -55,11 +55,15 @@ export interface IFeeds {
   stETHUSD?: string
 }
 
-export interface IPlugins {
+export interface IPools {
   cvx3Pool?: string
   cvxeUSDFRAXBP?: string
   cvxTriCrypto?: string
   cvxMIM3Pool?: string
+  crv3Pool?: string
+  crveUSDFRAXBP?: string
+  crvTriCrypto?: string
+  crvMIM3Pool?: string
 }
 
 interface INetworkConfig {

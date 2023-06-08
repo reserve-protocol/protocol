@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../../../interfaces/IRewardable.sol";
+import "../erc20/RewardableERC20Wrapper.sol";
 import "./ICToken.sol";
-import "../../../vendor/oz/IERC4626.sol";
 
 /**
  * @title CTokenFiatCollateral
@@ -22,14 +22,16 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
     uint8 public immutable referenceERC20Decimals;
 
-    ICToken public immutable cToken;
+    ICToken public immutable cToken; // gas-optimization: access underlying cToken directly
 
+    /// @param config.erc20 Should be a CTokenWrapper
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
-        cToken = ICToken(address(IERC4626(address(config.erc20)).asset()));
+        cToken = ICToken(address(RewardableERC20Wrapper(address(config.erc20)).underlying()));
         referenceERC20Decimals = IERC20Metadata(cToken.underlying()).decimals();
+        require(referenceERC20Decimals > 0, "referenceERC20Decimals missing");
     }
 
     /// Refresh exchange rates and update default status.
