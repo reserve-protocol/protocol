@@ -20,7 +20,7 @@ contract SDaiCollateral is AppreciatingFiatCollateral {
 
     IPot public immutable pot;
 
-    /// @param config.erc20 ISavingsDai()
+    /// @param config.erc20 ISavingsDai
     /// @param config.chainlinkFeed {UoA/ref} price of DAI in USD terms
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)

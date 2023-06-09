@@ -49,9 +49,9 @@ async function main() {
   const collateral = <SDaiCollateral>await SDaiCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
-      priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI,
       oracleError: fp('0.0025').toString(), // 0.25%
-      tokenAddress: networkConfig[chainId].tokens.sDAI,
+      erc20: networkConfig[chainId].tokens.sDAI,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
