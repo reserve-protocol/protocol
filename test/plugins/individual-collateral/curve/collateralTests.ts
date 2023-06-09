@@ -80,17 +80,17 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         const nonzeroError = fp('0.01') // 1%
         const nTokens = defaultOpts.nTokens || 0
 
-        let feeds: string[][] = []
+        const feeds: string[][] = []
         for (let i = 0; i < nTokens; i++) {
           feeds.push([ONE_ADDRESS, ONE_ADDRESS])
         }
 
-        let oracleTimeouts: BigNumber[][] = []
+        const oracleTimeouts: BigNumber[][] = []
         for (let i = 0; i < nTokens; i++) {
           oracleTimeouts.push([bn('1'), bn('1')])
         }
 
-        let oracleErrors: BigNumber[][] = []
+        const oracleErrors: BigNumber[][] = []
         for (let i = 0; i < nTokens; i++) {
           oracleErrors.push([nonzeroError, nonzeroError])
         }
@@ -403,17 +403,17 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             await MockV3AggregatorFactory.deploy(8, bn('1e8'))
           )
 
-          let feeds: string[][] = []
+          const feeds: string[][] = []
           for (let i = 0; i < nTokens; i++) {
             feeds.push([ctx.feeds[i].address, newChainlinkFeed.address])
           }
 
-          let oracleTimeouts: BigNumber[][] = []
+          const oracleTimeouts: BigNumber[][] = []
           for (let i = 0; i < nTokens; i++) {
             oracleTimeouts.push([nonzeroTimeout, nonzeroTimeout])
           }
 
-          let oracleErrors: BigNumber[][] = []
+          const oracleErrors: BigNumber[][] = []
           for (let i = 0; i < nTokens; i++) {
             oracleErrors.push([bn(defaultOpts.oracleErrors![i][0]), fp('1e-17')])
           }
