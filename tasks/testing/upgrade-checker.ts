@@ -117,6 +117,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     // get cUsdt
     await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!.toLowerCase()], async (usdtSigner) => {
+      console.log(cUsdt.address, usdt.address, usdtSigner.address)
       await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
       await cUsdt.connect(usdtSigner).mint(initialBal)
       const bal = await cUsdt.balanceOf(usdtSigner.address)
@@ -158,7 +159,30 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     console.log('successfully minted RTokens')
 
 
+    // get saUsdt
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!.toLowerCase()], async (usdtSigner) => {
+      await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal.mul(20))
+      await saUsdt.connect(usdtSigner).deposit(usdtSigner.address, initialBal.mul(20), 0, true)
+    })
 
+    // get cUsdt
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDT!.toLowerCase()], async (usdtSigner) => {
+      console.log(cUsdt.address, usdt.address, usdtSigner.address)
+      await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal.mul(20))
+      await cUsdt.connect(usdtSigner).mint(initialBal.mul(20))
+    })
+
+    // get saUsdc
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!.toLowerCase()], async (usdcSigner) => {
+      await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal.mul(20))
+      await saUsdc.connect(usdcSigner).deposit(usdcSigner.address, initialBal.mul(20), 0, true)
+    })
+
+    // get cUsdc
+    await whileImpersonating(hre, whales[networkConfig['1'].tokens.USDC!.toLowerCase()], async (usdcSigner) => {
+      await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal.mul(20))
+      await cUsdc.connect(usdcSigner).mint(initialBal.mul(20))
+    })
     /*
 
       redeem
