@@ -201,7 +201,8 @@ async function collateralFixture(
 
   const makeCTokenCollateral = async (
     tokenAddress: string,
-    chainlinkAddr: string
+    chainlinkAddr: string,
+    compAddress: string
   ): Promise<[IERC20Metadata, CTokenFiatCollateral]> => {
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
@@ -210,7 +211,8 @@ async function collateralFixture(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
-      comptroller.address
+      comptroller.address,
+      compAddress
     )
     const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
@@ -296,7 +298,8 @@ async function collateralFixture(
     tokenAddress: string,
     referenceUnitOracleAddr: string,
     targetUnitOracleAddr: string,
-    targetName: string
+    targetName: string,
+    compAddress: string
   ): Promise<[IERC20Metadata, CTokenNonFiatCollateral]> => {
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
@@ -305,7 +308,8 @@ async function collateralFixture(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
-      comptroller.address
+      comptroller.address,
+      compAddress
     )
     const coll = <CTokenNonFiatCollateral>await CTokenNonFiatCollateralFactory.deploy(
       {
@@ -352,7 +356,8 @@ async function collateralFixture(
     tokenAddress: string,
     chainlinkAddr: string,
     targetName: string,
-    referenceERC20Decimals: number
+    referenceERC20Decimals: number,
+    compAddress: string
   ): Promise<[IERC20Metadata, CTokenSelfReferentialCollateral]> => {
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
@@ -361,7 +366,8 @@ async function collateralFixture(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
-      comptroller.address
+      comptroller.address,
+      compAddress
     )
     const coll = <CTokenSelfReferentialCollateral>(
       await CTokenSelfReferentialCollateralFactory.deploy(
@@ -450,20 +456,25 @@ async function collateralFixture(
 
   const cdai = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cDAI as string,
-    DAI_USD_PRICE_FEED
+    DAI_USD_PRICE_FEED,
+    networkConfig[chainId].tokens.COMP as string
+    
   )
   const cusdc = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cUSDC as string,
-    USDC_USD_PRICE_FEED
+    USDC_USD_PRICE_FEED,
+    networkConfig[chainId].tokens.COMP as string
   )
   const cusdt = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cUSDT as string,
-    USDT_USD_PRICE_FEED
+    USDT_USD_PRICE_FEED,
+    networkConfig[chainId].tokens.COMP as string
   )
 
   const cusdp = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cUSDP as string,
-    USDP_USD_PRICE_FEED
+    USDP_USD_PRICE_FEED,
+    networkConfig[chainId].tokens.COMP as string
   )
 
   const adai = await makeATokenCollateral(
@@ -499,7 +510,8 @@ async function collateralFixture(
     networkConfig[chainId].tokens.cWBTC as string,
     networkConfig[chainId].chainlinkFeeds.WBTC as string,
     networkConfig[chainId].chainlinkFeeds.BTC as string,
-    'BTC'
+    'BTC',
+    networkConfig[chainId].tokens.COMP as string
   )
 
   const weth = await makeSelfReferentialCollateral(
@@ -512,7 +524,8 @@ async function collateralFixture(
     networkConfig[chainId].tokens.cETH as string,
     networkConfig[chainId].chainlinkFeeds.ETH as string,
     'ETH',
-    18
+    18,
+    networkConfig[chainId].tokens.COMP as string
   )
 
   const eurt = await makeEURFiatCollateral(
