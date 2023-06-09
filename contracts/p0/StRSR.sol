@@ -430,8 +430,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address to,
         uint256 amount
     ) private {
-        require(from != address(0), "ERC20: transfer from or to the zero address");
-        require(to != address(0), "ERC20: transfer from or to the zero address");
+        require(from != address(0), "ERC20: transfer to or from the zero address");
+        require(to != address(0), "ERC20: transfer to or from the zero address");
         require(to != address(this), "StRSR transfer to self");
 
         uint256 fromBalance = balances[from];
@@ -487,8 +487,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address spender,
         uint256 amount
     ) private {
-        require(owner != address(0), "ERC20: approve from or to the zero address");
-        require(spender != address(0), "ERC20: approve from or to the zero address");
+        require(owner != address(0), "ERC20: approve to or from the zero address");
+        require(spender != address(0), "ERC20: approve to or from the zero address");
 
         allowances[owner][spender] = amount;
 

@@ -802,7 +802,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     ) internal {
         require(
             from != address(0) && to != address(0),
-            "ERC20: transfer from or to the zero address"
+            "ERC20: transfer to or from the zero address"
         );
 
         mapping(address => uint256) storage eraStakes = stakes[era];
@@ -861,7 +861,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     ) internal {
         require(
             owner != address(0) && spender != address(0),
-            "ERC20: approve from or to the zero address"
+            "ERC20: approve to or from the zero address"
         );
 
         _allowances[era][owner][spender] = amount;

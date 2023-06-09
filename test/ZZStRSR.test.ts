@@ -2385,13 +2385,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to set allowance to zero address
       await expect(stRSR.connect(addr1).approve(ZERO_ADDRESS, amount)).to.be.revertedWith(
-        'ERC20: approve from or to the zero address'
+        'ERC20: approve to or from the zero address'
       )
 
       // Attempt set allowance from zero address - Impersonation is the only way to get to this validation
       await whileImpersonating(ZERO_ADDRESS, async (signer) => {
         await expect(stRSR.connect(signer).approve(addr2.address, amount)).to.be.revertedWith(
-          'ERC20: approve from or to the zero address'
+          'ERC20: approve to or from the zero address'
         )
       })
 
