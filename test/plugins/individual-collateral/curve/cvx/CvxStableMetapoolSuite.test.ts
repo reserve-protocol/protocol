@@ -205,6 +205,12 @@ const collateralSpecificConstructorTests = () => {
       deployCollateral({ pairedTokenDefaultThreshold: bn('1.1e18') })
     ).to.be.revertedWith('pairedTokenDefaultThreshold out of bounds')
   })
+
+  it('does not allow invalid Pool Type', async () => {
+    await expect(deployCollateral({ metapoolToken: ZERO_ADDRESS })).to.be.revertedWith(
+      'metapoolToken address is zero'
+    )
+  })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function

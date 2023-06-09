@@ -4,7 +4,7 @@ import {
   CurveCollateralOpts,
   MintCurveCollateralFunc,
 } from '../pluginTestTypes'
-import { mintWPool, makeW3PoolStable, resetFork } from './helpers'
+import { mintWPool, makeW3PoolStable, makeWSUSDPoolStable, resetFork } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
@@ -13,7 +13,7 @@ import {
   MockV3Aggregator__factory,
   TestICollateral,
 } from '../../../../../typechain'
-import { bn } from '../../../../../common/numbers'
+import { bn, fp } from '../../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -21,6 +21,7 @@ import {
   PRICE_TIMEOUT,
   THREE_POOL,
   THREE_POOL_TOKEN,
+  SUSD_POOL_TOKEN,
   CVX,
   DAI_USD_FEED,
   DAI_ORACLE_TIMEOUT,
@@ -31,6 +32,9 @@ import {
   USDT_USD_FEED,
   USDT_ORACLE_TIMEOUT,
   USDT_ORACLE_ERROR,
+  SUSD_USD_FEED,
+  SUSD_ORACLE_TIMEOUT,
+  SUSD_ORACLE_ERROR,
   MAX_TRADE_VOL,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
@@ -80,6 +84,73 @@ export const deployCollateral = async (
   }
 
   opts = { ...defaultCvxStableCollateralOpts, ...opts }
+
+  const CvxStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
+    'CurveStableCollateral'
+  )
+
+  const collateral = <TestICollateral>await CvxStableCollateralFactory.deploy(
+    {
+      erc20: opts.erc20,
+      targetName: opts.targetName,
+      priceTimeout: opts.priceTimeout,
+      chainlinkFeed: opts.chainlinkFeed,
+      oracleError: opts.oracleError,
+      oracleTimeout: opts.oracleTimeout,
+      maxTradeVolume: opts.maxTradeVolume,
+      defaultThreshold: opts.defaultThreshold,
+      delayUntilDefault: opts.delayUntilDefault,
+    },
+    opts.revenueHiding,
+    {
+      nTokens: opts.nTokens,
+      curvePool: opts.curvePool,
+      poolType: opts.poolType,
+      feeds: opts.feeds,
+      oracleTimeouts: opts.oracleTimeouts,
+      oracleErrors: opts.oracleErrors,
+      lpToken: opts.lpToken,
+    }
+  )
+  await collateral.deployed()
+
+  // sometimes we are trying to test a negative test case and we want this to fail silently
+  // fortunately this syntax fails silently because our tools are terrible
+  await expect(collateral.refresh())
+
+  return [collateral, opts]
+}
+
+export const deployMaxTokensCollateral = async (
+  opts: CurveCollateralOpts = {}
+): Promise<[TestICollateral, CurveCollateralOpts]> => {
+  const fix = await makeWSUSDPoolStable()
+
+  // Set default options for max tokens case
+  const maxTokenCollOpts = {
+    ...defaultCvxStableCollateralOpts,
+    ...{
+      nTokens: bn('4'),
+      erc20: fix.wrapper.address,
+      curvePool: fix.curvePool.address,
+      lpToken: SUSD_POOL_TOKEN,
+      feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED], [SUSD_USD_FEED]],
+      oracleTimeouts: [
+        [DAI_ORACLE_TIMEOUT],
+        [USDC_ORACLE_TIMEOUT],
+        [USDT_ORACLE_TIMEOUT],
+        [SUSD_ORACLE_TIMEOUT],
+      ],
+      oracleErrors: [
+        [DAI_ORACLE_ERROR],
+        [USDC_ORACLE_ERROR],
+        [USDT_ORACLE_ERROR],
+        [SUSD_ORACLE_ERROR],
+      ],
+    },
+  }
+
+  opts = { ...maxTokenCollOpts, ...opts }
 
   const CvxStableCollateralFactory: ContractFactory = await ethers.getContractFactory(
     'CurveStableCollateral'
@@ -174,7 +245,97 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
 */
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {}
+const collateralSpecificConstructorTests = () => {
+  describe('Handles constructor with 4 tokens (max allowed) - sUSD', () => {
+    let collateral: TestICollateral
+
+    it('deploys plugin successfully', async () => {
+      ;[collateral] = await deployMaxTokensCollateral()
+      await collateral.deployed()
+      await expect(collateral.refresh())
+      expect(await collateral.address).to.not.equal(ZERO_ADDRESS)
+      const [low, high] = await collateral.price()
+      expect(low).to.be.closeTo(fp('1.06'), fp('0.01')) // close to $1
+      expect(high).to.be.closeTo(fp('1.07'), fp('0.01'))
+      expect(high).to.be.gt(low)
+    })
+
+    it('validates non-zero-address for final token - edge case', async () => {
+      // Set empty the final feed
+      let feeds = [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED], [ZERO_ADDRESS, ZERO_ADDRESS]]
+      await expect(deployMaxTokensCollateral({ feeds })).to.be.revertedWith('t3feed0 empty')
+
+      feeds = [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED], [SUSD_USD_FEED, ZERO_ADDRESS]]
+      await expect(deployMaxTokensCollateral({ feeds })).to.be.revertedWith('t3feed1 empty')
+    })
+
+    it('validates non-zero oracle timeout for final token - edge case', async () => {
+      // Set empty the final oracle timeouts
+      let oracleTimeouts = [
+        [DAI_ORACLE_TIMEOUT],
+        [USDC_ORACLE_TIMEOUT],
+        [USDT_ORACLE_TIMEOUT],
+        [bn(0), bn(0)],
+      ]
+      await expect(deployMaxTokensCollateral({ oracleTimeouts })).to.be.revertedWith(
+        't3timeout0 zero'
+      )
+
+      const feeds = [
+        [DAI_USD_FEED],
+        [USDC_USD_FEED],
+        [USDT_USD_FEED],
+        [SUSD_USD_FEED, SUSD_USD_FEED],
+      ]
+      oracleTimeouts = [
+        [DAI_ORACLE_TIMEOUT],
+        [USDC_ORACLE_TIMEOUT],
+        [USDT_ORACLE_TIMEOUT],
+        [SUSD_ORACLE_TIMEOUT, bn(0)],
+      ]
+
+      await expect(deployMaxTokensCollateral({ feeds, oracleTimeouts })).to.be.revertedWith(
+        't3timeout1 zero'
+      )
+    })
+
+    it('validates non-zero oracle error for final token - edge case', async () => {
+      // Set empty the final oracle errors
+      let oracleErrors = [
+        [DAI_ORACLE_ERROR],
+        [USDC_ORACLE_ERROR],
+        [USDT_ORACLE_ERROR],
+        [fp('1'), fp('1')],
+      ]
+      await expect(deployMaxTokensCollateral({ oracleErrors })).to.be.revertedWith(
+        't3error0 too large'
+      )
+
+      const feeds = [
+        [DAI_USD_FEED],
+        [USDC_USD_FEED],
+        [USDT_USD_FEED],
+        [SUSD_USD_FEED, SUSD_USD_FEED],
+      ]
+      const oracleTimeouts = [
+        [DAI_ORACLE_TIMEOUT],
+        [USDC_ORACLE_TIMEOUT],
+        [USDT_ORACLE_TIMEOUT],
+        [SUSD_ORACLE_TIMEOUT, SUSD_ORACLE_TIMEOUT],
+      ]
+
+      oracleErrors = [
+        [DAI_ORACLE_ERROR],
+        [USDC_ORACLE_ERROR],
+        [USDT_ORACLE_ERROR],
+        [SUSD_ORACLE_ERROR, fp('1')],
+      ]
+      await expect(
+        deployMaxTokensCollateral({ feeds, oracleTimeouts, oracleErrors })
+      ).to.be.revertedWith('t3error1 too large')
+    })
+  })
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {}
