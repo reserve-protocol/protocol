@@ -458,7 +458,6 @@ async function collateralFixture(
     networkConfig[chainId].tokens.cDAI as string,
     DAI_USD_PRICE_FEED,
     networkConfig[chainId].tokens.COMP as string
-    
   )
   const cusdc = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cUSDC as string,
