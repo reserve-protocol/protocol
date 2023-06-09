@@ -6,7 +6,7 @@ import {
 import { CollateralStatus } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
 import { ERC20Mock, InvalidMockV3Aggregator, MockV3Aggregator } from '../../../../typechain'
-
+import { BigNumber } from 'ethers'
 import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48, ZERO_ADDRESS, ONE_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
@@ -78,24 +78,29 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
       it('supports up to 2 price feeds per token', async () => {
         const nonzeroError = fp('0.01') // 1%
+        const nTokens = defaultOpts.nTokens || 0
+
+        let feeds: string[][] = []
+        for (let i = 0; i < nTokens; i++) {
+          feeds.push([ONE_ADDRESS, ONE_ADDRESS])
+        }
+
+        let oracleTimeouts: BigNumber[][] = []
+        for (let i = 0; i < nTokens; i++) {
+          oracleTimeouts.push([bn('1'), bn('1')])
+        }
+
+        let oracleErrors: BigNumber[][] = []
+        for (let i = 0; i < nTokens; i++) {
+          oracleErrors.push([nonzeroError, nonzeroError])
+        }
+
         await expect(
           deployCollateral({
             erc20: mockERC20.address, // can be anything.
-            feeds: [
-              [ONE_ADDRESS, ONE_ADDRESS],
-              [ONE_ADDRESS, ONE_ADDRESS],
-              [ONE_ADDRESS, ONE_ADDRESS],
-            ],
-            oracleTimeouts: [
-              [bn('1'), bn('1')],
-              [bn('1'), bn('1')],
-              [bn('1'), bn('1')],
-            ],
-            oracleErrors: [
-              [nonzeroError, nonzeroError],
-              [nonzeroError, nonzeroError],
-              [nonzeroError, nonzeroError],
-            ],
+            feeds,
+            oracleTimeouts,
+            oracleErrors,
           })
         ).to.not.be.reverted
       })
@@ -391,36 +396,33 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         })
 
         it('handles properly multiple price feeds', async () => {
-          const feedToken0 = ctx.feeds[0]
-          const feedToken1 = ctx.feeds[1]
-          const feedToken2 = ctx.feeds[2]
+          const nTokens = defaultOpts.nTokens || 0
           const nonzeroTimeout = bn(defaultOpts.oracleTimeouts![0][0])
-          const errorToken0 = bn(defaultOpts.oracleErrors![0][0])
-          const errorToken1 = bn(defaultOpts.oracleErrors![1][0])
-          const errorToken2 = bn(defaultOpts.oracleErrors![2][0])
-
           const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
           const newChainlinkFeed = <MockV3Aggregator>(
             await MockV3AggregatorFactory.deploy(8, bn('1e8'))
           )
 
+          let feeds: string[][] = []
+          for (let i = 0; i < nTokens; i++) {
+            feeds.push([ctx.feeds[i].address, newChainlinkFeed.address])
+          }
+
+          let oracleTimeouts: BigNumber[][] = []
+          for (let i = 0; i < nTokens; i++) {
+            oracleTimeouts.push([nonzeroTimeout, nonzeroTimeout])
+          }
+
+          let oracleErrors: BigNumber[][] = []
+          for (let i = 0; i < nTokens; i++) {
+            oracleErrors.push([bn(defaultOpts.oracleErrors![i][0]), fp('1e-17')])
+          }
+
           const [multiFeedCollateral] = await deployCollateral({
             erc20: ctx.wrapper.address,
-            feeds: [
-              [feedToken0.address, newChainlinkFeed.address],
-              [feedToken1.address, newChainlinkFeed.address],
-              [feedToken2.address, newChainlinkFeed.address],
-            ],
-            oracleTimeouts: [
-              [nonzeroTimeout, nonzeroTimeout],
-              [nonzeroTimeout, nonzeroTimeout],
-              [nonzeroTimeout, nonzeroTimeout],
-            ],
-            oracleErrors: [
-              [errorToken0, fp('1e-17')],
-              [errorToken1, fp('1e-17')],
-              [errorToken2, fp('1e-17')],
-            ],
+            feeds,
+            oracleTimeouts,
+            oracleErrors,
           })
 
           const initialRefPerTok = await multiFeedCollateral.refPerTok()

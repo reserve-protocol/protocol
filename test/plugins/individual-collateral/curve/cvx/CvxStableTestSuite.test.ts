@@ -249,10 +249,10 @@ const collateralSpecificConstructorTests = () => {
   describe('Handles constructor with 4 tokens (max allowed) - sUSD', () => {
     let collateral: TestICollateral
 
+    before(resetFork)
+
     it('deploys plugin successfully', async () => {
       ;[collateral] = await deployMaxTokensCollateral()
-      await collateral.deployed()
-      await expect(collateral.refresh())
       expect(await collateral.address).to.not.equal(ZERO_ADDRESS)
       const [low, high] = await collateral.price()
       expect(low).to.be.closeTo(fp('1.06'), fp('0.01')) // close to $1
