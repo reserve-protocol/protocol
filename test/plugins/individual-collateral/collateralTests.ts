@@ -240,7 +240,6 @@ export default function fn<X extends CollateralFixtureContext>(
 
           // need to deposit in order to get an exchange rate
           const amount = bn('200').mul(bn(10).pow(await ctx.tok.decimals()))
-          console.log('amount', amount)
           await mintCollateralTo(ctx, amount, alice, alice.address)
           await increaseRefPerTok(ctx, 5)
 
