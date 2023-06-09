@@ -13,7 +13,7 @@ import {
   fileExists,
 } from '../../common'
 import { priceTimeout, oracleTimeout, combinedError } from '../../utils'
-import { RethCollateral } from '../../../../typechain'
+import { MockV3Aggregator, RethCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
 async function main() {
@@ -40,6 +40,21 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
+  const deployedOracle: string[] = []
+
+  /********  Deploy Mock Oracle (if needed)  **************************/
+  let rethOracleAddress: string = networkConfig[chainId].chainlinkFeeds.rETH!
+  if (chainId == 5) {
+    const MockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
+    const mockOracle = await MockOracleFactory.connect(deployer).deploy(8, fp(2000))
+    await mockOracle.deployed()
+    console.log(
+      `Deployed MockV3Aggregator on ${hre.network.name} (${chainId}): ${mockOracle.address} `
+    )
+    deployedOracle.push(mockOracle.address)
+    rethOracleAddress = mockOracle.address
+  }
+
   /********  Deploy Rocket Pool ETH Collateral - rETH  **************************/
 
   const RethCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
@@ -59,7 +74,7 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
-    networkConfig[chainId].chainlinkFeeds.rETH, // refPerTokChainlinkFeed
+    rethOracleAddress, // refPerTokChainlinkFeed
     oracleTimeout(chainId, '86400').toString() // refPerTokChainlinkTimeout
   )
   await collateral.deployed()
