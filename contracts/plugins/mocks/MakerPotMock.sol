@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.17;
 
-import "./vendor/IDSR.sol";
+import "../assets/dsr/vendor/IPot.sol";
 
 contract PotMock is IPot {
     IPot public immutable pot;

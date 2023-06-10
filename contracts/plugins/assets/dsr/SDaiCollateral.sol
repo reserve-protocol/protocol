@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
-import "./vendor/IDSR.sol";
+import "./vendor/IPot.sol";
 
 /**
  * @title SDAI Collateral
@@ -20,7 +20,6 @@ contract SDaiCollateral is AppreciatingFiatCollateral {
 
     IPot public immutable pot;
 
-    /// @param config.erc20 ISavingsDai
     /// @param config.chainlinkFeed {UoA/ref} price of DAI in USD terms
     constructor(
         CollateralConfig memory config,

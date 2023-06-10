@@ -6,7 +6,7 @@ import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
   ERC20Mock,
-  ISavingsDai,
+  IERC20Metadata,
   MockV3Aggregator,
   MockV3Aggregator__factory,
   PotMock,
@@ -96,7 +96,7 @@ const makeCollateralFixtureContext = (
     )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
-    const sdai = (await ethers.getContractAt('ISavingsDai', SDAI)) as ISavingsDai
+    const sdai = (await ethers.getContractAt('IERC20Metadata', SDAI)) as IERC20Metadata
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
     const tok = await ethers.getContractAt('IERC20Metadata', await collateral.erc20())
