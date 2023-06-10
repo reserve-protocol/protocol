@@ -9,12 +9,14 @@ import {
   ISavingsDai,
   MockV3Aggregator,
   MockV3Aggregator__factory,
+  PotMock,
   TestICollateral,
 } from '../../../../typechain'
 import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
+  POT,
   SDAI,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -24,11 +26,6 @@ import {
   DELAY_UNTIL_DEFAULT,
   DAI_USD_PRICE_FEED,
 } from './constants'
-import { advanceTime } from '#/test/utils/time'
-
-interface SDaiCollateralFixtureContext extends CollateralFixtureContext {
-  sdai: ISavingsDai
-}
 
 /*
   Define deployment functions
@@ -51,8 +48,10 @@ export const defaultSDaiCollateralOpts: CollateralOpts = {
 export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
   opts = { ...defaultSDaiCollateralOpts, ...opts }
 
-  const SDaiCollateralFactory: ContractFactory = await ethers.getContractFactory('SDaiCollateral')
+  const PotFactory: ContractFactory = await ethers.getContractFactory('PotMock')
+  const pot = <PotMock>await PotFactory.deploy(POT)
 
+  const SDaiCollateralFactory: ContractFactory = await ethers.getContractFactory('SDaiCollateral')
   const collateral = <TestICollateral>await SDaiCollateralFactory.deploy(
     {
       erc20: opts.erc20,
@@ -66,6 +65,7 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
       delayUntilDefault: opts.delayUntilDefault,
     },
     opts.revenueHiding,
+    pot.address,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -83,7 +83,7 @@ type Fixture<T> = () => Promise<T>
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
   opts: CollateralOpts = {}
-): Fixture<SDaiCollateralFixtureContext> => {
+): Fixture<CollateralFixtureContext> => {
   const collateralOpts = { ...defaultSDaiCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
@@ -99,12 +99,13 @@ const makeCollateralFixtureContext = (
     const sdai = (await ethers.getContractAt('ISavingsDai', SDAI)) as ISavingsDai
     const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
+    const tok = await ethers.getContractAt('IERC20Metadata', await collateral.erc20())
 
     return {
       alice,
       collateral,
       chainlinkFeed,
-      tok: sdai,
+      tok,
       sdai,
       rewardToken,
     }
@@ -113,8 +114,8 @@ const makeCollateralFixtureContext = (
   return makeCollateralFixtureContext
 }
 
-const mintCollateralTo: MintCollateralFunc<SDaiCollateralFixtureContext> = async (
-  ctx: SDaiCollateralFixtureContext,
+const mintCollateralTo: MintCollateralFunc<CollateralFixtureContext> = async (
+  ctx: CollateralFixtureContext,
   amount: BigNumberish,
   user: SignerWithAddress,
   recipient: string
@@ -130,25 +131,34 @@ const increaseTargetPerRef = async () => {}
 
 // prettier-ignore
 const reduceRefPerTok = async (
-  // ctx: SDaiCollateralFixtureContext,
-  // pctDecrease: BigNumberish 
+  ctx: CollateralFixtureContext,
+  pctDecrease: BigNumberish 
 ) => {
-  // await whileImpersonating(await ctx.sdai.pot(), async (signer) => {
-  //   console.log("burning", potBal.mul(fp(pctDecrease)).div(bn('100')))
-  //   await dai.connect(signer).burn(signer.address, potBal.mul(pctDecrease).div(bn('100')))
-  // })
+  const collateral = await ethers.getContractAt('SDaiCollateral', ctx.collateral.address)
+  const pot = await ethers.getContractAt('PotMock', await collateral.pot())
+  await pot.drip()
+
+  const chi = await pot.chi()
+  const newChi = chi.sub(chi.mul(bn(pctDecrease)).div(bn('100')))
+  await pot.setChi(newChi)
 }
 
 // prettier-ignore
 const increaseRefPerTok = async (
-  ctx: SDaiCollateralFixtureContext,
+  ctx: CollateralFixtureContext,
+  pctIncrease: BigNumberish 
+
 ) => {
-  await advanceTime(3600)
-  const pot = await ethers.getContractAt('IPot', await ctx.sdai.pot())
-  await pot.drip();
+  const collateral = await ethers.getContractAt('SDaiCollateral', ctx.collateral.address)
+  const pot = await ethers.getContractAt('PotMock', await collateral.pot())
+  await pot.drip()
+
+  const chi = await pot.chi()
+  const newChi = chi.add(chi.mul(bn(pctIncrease)).div(bn('100')))
+  await pot.setChi(newChi)
 }
 
-const getExpectedPrice = async (ctx: SDaiCollateralFixtureContext): Promise<BigNumber> => {
+const getExpectedPrice = async (ctx: CollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
@@ -190,9 +200,9 @@ const opts = {
   getExpectedPrice,
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
-  itChecksRefPerTokDefault: it.skip, // TODO make reduceRefPerTok work
+  itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
-  itHasRevenueHiding: it.skip, // TODO make reduceRefPerTok work
+  itHasRevenueHiding: it,
   resetFork,
   collateralName: 'SDaiCollateral',
   chainlinkDefaultAnswer,

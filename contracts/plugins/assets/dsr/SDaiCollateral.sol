@@ -22,10 +22,12 @@ contract SDaiCollateral is AppreciatingFiatCollateral {
 
     /// @param config.erc20 ISavingsDai
     /// @param config.chainlinkFeed {UoA/ref} price of DAI in USD terms
-    constructor(CollateralConfig memory config, uint192 revenueHiding)
-        AppreciatingFiatCollateral(config, revenueHiding)
-    {
-        pot = ISavingsDai(address(config.erc20)).pot();
+    constructor(
+        CollateralConfig memory config,
+        uint192 revenueHiding,
+        IPot _pot
+    ) AppreciatingFiatCollateral(config, revenueHiding) {
+        pot = _pot;
     }
 
     /// Refresh exchange rates and update default status.
@@ -34,7 +36,7 @@ contract SDaiCollateral is AppreciatingFiatCollateral {
         // == Refresh ==
         // Update the DSR contract
 
-        (block.timestamp > pot.rho()) ? pot.drip() : pot.chi();
+        if (block.timestamp > pot.rho()) pot.drip();
 
         // Intentional and correct for the super call to be last!
         super.refresh(); // already handles all necessary default checks

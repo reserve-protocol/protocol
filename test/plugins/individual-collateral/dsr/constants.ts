@@ -7,6 +7,7 @@ export const DAI_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.DAI as s
 export const DAI = networkConfig['31337'].tokens.DAI as string
 export const SDAI = networkConfig['31337'].tokens.sDAI as string
 export const SDAI_HOLDER = '0xa4108aA1Ec4967F8b52220a4f7e94A8201F2D906'
+export const POT = '0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7'
 
 export const PRICE_TIMEOUT = bn('604800') // 1 week
 export const ORACLE_TIMEOUT = bn(86400) // 24 hours in seconds
