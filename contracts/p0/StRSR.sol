@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC1271Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
@@ -16,6 +16,7 @@ import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
+import "../mixins/NetworkConfigLib.sol";
 
 /*
  * @title StRSRP0
@@ -31,8 +32,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
 
-    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
-    uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable PERIOD; // {s} 1 block based on network
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e18;
     uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
@@ -103,6 +106,11 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     uint48 public unstakingDelay;
     uint192 public rewardRatio;
     uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
+
+    constructor() {
+        PERIOD = NetworkConfigLib.blocktime();
+        MIN_UNSTAKING_DELAY = PERIOD * 2;
+    }
 
     function init(
         IMain main_,
@@ -422,8 +430,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address to,
         uint256 amount
     ) private {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
+        require(from != address(0), "ERC20: transfer to or from the zero address");
+        require(to != address(0), "ERC20: transfer to or from the zero address");
         require(to != address(this), "StRSR transfer to self");
 
         uint256 fromBalance = balances[from];
@@ -479,8 +487,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address spender,
         uint256 amount
     ) private {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+        require(owner != address(0), "ERC20: approve to or from the zero address");
+        require(spender != address(0), "ERC20: approve to or from the zero address");
 
         allowances[owner][spender] = amount;
 
