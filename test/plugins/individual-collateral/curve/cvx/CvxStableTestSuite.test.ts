@@ -256,6 +256,23 @@ const collateralSpecificConstructorTests = () => {
       expect(low).to.be.closeTo(fp('1.06'), fp('0.01')) // close to $1
       expect(high).to.be.closeTo(fp('1.07'), fp('0.01'))
       expect(high).to.be.gt(low)
+
+      // Token price
+      const cvxMultiFeedStableCollateral = await ethers.getContractAt(
+        'CurveStableCollateral',
+        collateral.address
+      )
+      for (let i = 0; i < 4; i++) {
+        const [lowTkn, highTkn] = await cvxMultiFeedStableCollateral.tokenPrice(i)
+        expect(lowTkn).to.be.closeTo(fp('1'), fp('0.01')) // close to $1
+        expect(highTkn).to.be.closeTo(fp('1'), fp('0.01'))
+        expect(highTkn).to.be.gt(lowTkn)
+      }
+
+      await expect(cvxMultiFeedStableCollateral.tokenPrice(5)).to.be.revertedWithCustomError(
+        cvxMultiFeedStableCollateral,
+        'WrongIndex'
+      )
     })
 
     it('validates non-zero-address for final token - edge case', async () => {
@@ -299,12 +316,7 @@ const collateralSpecificConstructorTests = () => {
 
     it('validates non-zero oracle error for final token - edge case', async () => {
       // Set empty the final oracle errors
-      let oracleErrors = [
-        [DAI_ORACLE_ERROR],
-        [USDC_ORACLE_ERROR],
-        [USDT_ORACLE_ERROR],
-        [fp('1'), fp('1')],
-      ]
+      let oracleErrors = [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR], [fp('1')]]
       await expect(deployMaxTokensCollateral({ oracleErrors })).to.be.revertedWith(
         't3error0 too large'
       )
@@ -328,6 +340,7 @@ const collateralSpecificConstructorTests = () => {
         [USDT_ORACLE_ERROR],
         [SUSD_ORACLE_ERROR, fp('1')],
       ]
+
       await expect(
         deployMaxTokensCollateral({ feeds, oracleTimeouts, oracleErrors })
       ).to.be.revertedWith('t3error1 too large')
