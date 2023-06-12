@@ -26,6 +26,10 @@ contract BadERC20 is ERC20Mock {
         _decimals = newVal;
     }
 
+    function setRevertDecimals(bool newVal) external {
+        revertDecimals = newVal;
+    }
+
     function setCensored(address account, bool val) external {
         censored[account] = val;
     }
