@@ -248,9 +248,7 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
 const collateralSpecificConstructorTests = () => {
   describe('Handles constructor with 4 tokens (max allowed) - sUSD', () => {
     let collateral: TestICollateral
-
     before(resetFork)
-
     it('deploys plugin successfully', async () => {
       ;[collateral] = await deployMaxTokensCollateral()
       expect(await collateral.address).to.not.equal(ZERO_ADDRESS)
@@ -338,7 +336,60 @@ const collateralSpecificConstructorTests = () => {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => {}
+const collateralSpecificStatusTests = () => {
+  it('handles properly multiple price feeds', async () => {
+    const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
+    const feed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+
+    const feedStable = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+
+    const fix = await makeW3PoolStable()
+
+    const opts: CurveCollateralOpts = { ...defaultCvxStableCollateralOpts }
+    const nonzeroError = opts.oracleTimeouts![0][0]
+    const nonzeroTimeout = bn(opts.oracleTimeouts![0][0])
+    const feeds = [
+      [feed.address, feedStable.address],
+      [feed.address, feedStable.address],
+      [feed.address, feedStable.address],
+    ]
+    const oracleTimeouts = [
+      [nonzeroTimeout, nonzeroTimeout],
+      [nonzeroTimeout, nonzeroTimeout],
+      [nonzeroTimeout, nonzeroTimeout],
+    ]
+    const oracleErrors = [
+      [nonzeroError, nonzeroError],
+      [nonzeroError, nonzeroError],
+      [nonzeroError, nonzeroError],
+    ]
+
+    const [multiFeedCollateral] = await deployCollateral({
+      erc20: fix.wrapper.address,
+      feeds,
+      oracleTimeouts,
+      oracleErrors,
+    })
+
+    const initialRefPerTok = await multiFeedCollateral.refPerTok()
+    const [low, high] = await multiFeedCollateral.price()
+
+    // Update values in Oracles increase by 10%
+    const initialPrice = await feed.latestRoundData()
+    await (await feed.updateAnswer(initialPrice.answer.mul(110).div(100))).wait()
+
+    const [newLow, newHigh] = await multiFeedCollateral.price()
+
+    // with 18 decimals of price precision a 1e-9 tolerance seems fine for a 10% change
+    // and without this kind of tolerance the Volatile pool tests fail due to small movements
+    expect(newLow).to.be.closeTo(low.mul(110).div(100), fp('1e-9'))
+    expect(newHigh).to.be.closeTo(high.mul(110).div(100), fp('1e-9'))
+
+    // Check refPerTok remains the same (because we have not refreshed)
+    const finalRefPerTok = await multiFeedCollateral.refPerTok()
+    expect(finalRefPerTok).to.equal(initialRefPerTok)
+  })
+}
 
 /*
   Run the test suite

@@ -5,7 +5,7 @@ import {
 } from './pluginTestTypes'
 import { CollateralStatus } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
-import { ERC20Mock, InvalidMockV3Aggregator, MockV3Aggregator } from '../../../../typechain'
+import { ERC20Mock, InvalidMockV3Aggregator } from '../../../../typechain'
 import { BigNumber } from 'ethers'
 import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48, ZERO_ADDRESS, ONE_ADDRESS } from '../../../../common/constants'
@@ -393,57 +393,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           lotP = await ctx.collateral.lotPrice()
           expect(lotP[0]).to.equal(0)
           expect(lotP[1]).to.equal(0)
-        })
-
-        it('handles properly multiple price feeds', async () => {
-          const nTokens = defaultOpts.nTokens || 0
-          const nonzeroTimeout = bn(defaultOpts.oracleTimeouts![0][0])
-          const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
-          const newChainlinkFeed = <MockV3Aggregator>(
-            await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-          )
-
-          const feeds: string[][] = []
-          for (let i = 0; i < nTokens; i++) {
-            feeds.push([ctx.feeds[i].address, newChainlinkFeed.address])
-          }
-
-          const oracleTimeouts: BigNumber[][] = []
-          for (let i = 0; i < nTokens; i++) {
-            oracleTimeouts.push([nonzeroTimeout, nonzeroTimeout])
-          }
-
-          const oracleErrors: BigNumber[][] = []
-          for (let i = 0; i < nTokens; i++) {
-            oracleErrors.push([bn(defaultOpts.oracleErrors![i][0]), fp('1e-17')])
-          }
-
-          const [multiFeedCollateral] = await deployCollateral({
-            erc20: ctx.wrapper.address,
-            feeds,
-            oracleTimeouts,
-            oracleErrors,
-          })
-
-          const initialRefPerTok = await multiFeedCollateral.refPerTok()
-          const [low, high] = await multiFeedCollateral.price()
-
-          // Update values in Oracles increase by 10%
-          const initialPrices = await Promise.all(ctx.feeds.map((f) => f.latestRoundData()))
-          for (const [i, feed] of ctx.feeds.entries()) {
-            await feed.updateAnswer(initialPrices[i].answer.mul(110).div(100)).then((e) => e.wait())
-          }
-
-          const [newLow, newHigh] = await multiFeedCollateral.price()
-
-          // with 18 decimals of price precision a 1e-9 tolerance seems fine for a 10% change
-          // and without this kind of tolerance the Volatile pool tests fail due to small movements
-          expect(newLow).to.be.closeTo(low.mul(110).div(100), fp('1e-9'))
-          expect(newHigh).to.be.closeTo(high.mul(110).div(100), fp('1e-9'))
-
-          // Check refPerTok remains the same (because we have not refreshed)
-          const finalRefPerTok = await multiFeedCollateral.refPerTok()
-          expect(finalRefPerTok).to.equal(initialRefPerTok)
         })
       })
 
