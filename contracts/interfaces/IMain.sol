@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -15,10 +15,6 @@ import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrading.sol";
 import "./IVersioned.sol";
-
-// Warning, assumption: Chain should have blocktimes of 12s
-// See docs/system-design.md for discussion of handling longer or shorter times
-uint48 constant ONE_BLOCK = 12; //{s}
 
 // === Auth roles ===
 

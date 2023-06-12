@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
@@ -14,6 +14,7 @@ import "../interfaces/IFacadeRead.sol";
  *   For use with ^3.0.0 RTokens.
  */
 contract FacadeAct is IFacadeAct, Multicall {
+    using SafeERC20 for IERC20;
     using FixLib for uint192;
 
     function claimRewards(IRToken rToken) public {
