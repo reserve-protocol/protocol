@@ -203,8 +203,10 @@ export const prompt = async (query: string): Promise<string> => {
 
     return new Promise<string>((resolve) =>
       rl.question(query, (ans) => {
+        console.log(ans)
         rl.close()
         resolve(ans)
+        return ans
       })
     )
   } else {
