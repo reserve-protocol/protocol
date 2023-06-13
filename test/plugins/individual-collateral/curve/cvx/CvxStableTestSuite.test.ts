@@ -134,12 +134,12 @@ export const deployMaxTokensCollateral = async (
       erc20: fix.wrapper.address,
       curvePool: fix.curvePool.address,
       lpToken: SUSD_POOL_TOKEN,
-      feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED], [SUSD_USD_FEED]],
+      feeds: [[DAI_USD_FEED], [USDC_USD_FEED], [USDT_USD_FEED], [SUSD_USD_FEED, SUSD_USD_FEED]],
       oracleTimeouts: [
         [DAI_ORACLE_TIMEOUT],
         [USDC_ORACLE_TIMEOUT],
         [USDT_ORACLE_TIMEOUT],
-        [SUSD_ORACLE_TIMEOUT],
+        [SUSD_ORACLE_TIMEOUT, SUSD_ORACLE_TIMEOUT],
       ],
       oracleErrors: [
         [DAI_ORACLE_ERROR],
@@ -314,7 +314,7 @@ const collateralSpecificConstructorTests = () => {
       )
     })
 
-    it('validates non-zero oracle error for final token - edge case', async () => {
+    it('validates non-large oracle error for final token - edge case', async () => {
       // Set empty the final oracle errors
       let oracleErrors = [[DAI_ORACLE_ERROR], [USDC_ORACLE_ERROR], [USDT_ORACLE_ERROR], [fp('1')]]
       await expect(deployMaxTokensCollateral({ oracleErrors })).to.be.revertedWith(
@@ -344,6 +344,17 @@ const collateralSpecificConstructorTests = () => {
       await expect(
         deployMaxTokensCollateral({ feeds, oracleTimeouts, oracleErrors })
       ).to.be.revertedWith('t3error1 too large')
+
+      // If we don't specify it it will use 0
+      oracleErrors = [
+        [DAI_ORACLE_ERROR],
+        [USDC_ORACLE_ERROR],
+        [USDT_ORACLE_ERROR],
+        [SUSD_ORACLE_ERROR],
+      ]
+
+      await expect(deployMaxTokensCollateral({ feeds, oracleTimeouts, oracleErrors })).to.not.be
+        .reverted
     })
   })
 }

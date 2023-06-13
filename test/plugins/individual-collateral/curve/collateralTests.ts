@@ -92,7 +92,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
         const oracleErrors: BigNumber[][] = []
         for (let i = 0; i < nTokens; i++) {
-          oracleErrors.push([nonzeroError, nonzeroError])
+          oracleErrors.push([nonzeroError, bn(0)])
         }
 
         await expect(
@@ -191,8 +191,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         }
       })
 
-      it('requires non-zero oracleErrors', async () => {
-        const nonzeroError = fp('0.01') // 1%
+      it('requires non-large oracleErrors', async () => {
+        const nonlargeError = fp('0.01') // 1%
 
         // Complete all possible feeds
         const allFeeds: string[][] = []
@@ -202,12 +202,12 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         for (let i = 0; i < defaultOpts.nTokens!; i++) {
           allFeeds[i] = [ONE_ADDRESS, ONE_ADDRESS]
           allOracleTimeouts[i] = [bn('1'), bn('1')]
-          allOracleErrors[i] = [nonzeroError, nonzeroError]
+          allOracleErrors[i] = [nonlargeError, nonlargeError]
         }
 
         for (let i = 0; i < allFeeds.length; i++) {
           for (let j = 0; j < allFeeds[i].length; j++) {
-            const oracleErrors = allOracleErrors.map((f) => f.map(() => nonzeroError))
+            const oracleErrors = allOracleErrors.map((f) => f.map(() => nonlargeError))
             oracleErrors[i][j] = fp('1')
 
             await expect(
