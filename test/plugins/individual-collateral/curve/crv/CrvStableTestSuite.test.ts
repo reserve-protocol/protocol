@@ -15,6 +15,7 @@ import {
 } from '../../../../../typechain'
 import { bn } from '../../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../../common/constants'
+import { whileImpersonating } from '../../../../utils/impersonation'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -36,6 +37,9 @@ import {
   CurvePoolType,
   CRV,
   THREE_POOL_HOLDER,
+  TRI_CRYPTO_TOKEN,
+  TRI_CRYPTO_GAUGE,
+  TRI_CRYPTO_HOLDER,
 } from '../constants'
 
 type Fixture<T> = () => Promise<T>
@@ -175,7 +179,43 @@ const mintCollateralTo: MintCurveCollateralFunc<CurveCollateralFixtureContext> =
 const collateralSpecificConstructorTests = () => {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => {}
+const collateralSpecificStatusTests = () => {
+  it('wrapper allows to deposit and withdraw', async () => {
+    const [alice] = await ethers.getSigners()
+
+    // Deploy Wrapper
+    const wrapperFactory = await ethers.getContractFactory('CurveGaugeWrapper')
+    const wrapper = await wrapperFactory.deploy(
+      TRI_CRYPTO_TOKEN,
+      'Wrapped Curve.fi USD-BTC-ETH',
+      'wcrv3crypto',
+      CRV,
+      TRI_CRYPTO_GAUGE
+    )
+
+    const amount = bn('20000').mul(bn(10).pow(await wrapper.decimals()))
+
+    const lpToken = await ethers.getContractAt(
+      '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
+      await wrapper.underlying()
+    )
+    await whileImpersonating(TRI_CRYPTO_HOLDER, async (signer) => {
+      await lpToken.connect(signer).transfer(alice.address, amount)
+    })
+
+    // Initial Balance
+    expect(await lpToken.balanceOf(alice.address)).to.equal(amount)
+
+    // Deposit
+    await lpToken.connect(alice).approve(wrapper.address, amount)
+    await wrapper.connect(alice).deposit(amount, alice.address)
+    expect(await lpToken.balanceOf(alice.address)).to.equal(0)
+
+    // Withdraw
+    await wrapper.connect(alice).withdraw(amount, alice.address)
+    expect(await lpToken.balanceOf(alice.address)).to.equal(amount)
+  })
+}
 
 /*
   Run the test suite
