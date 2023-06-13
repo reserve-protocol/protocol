@@ -2285,7 +2285,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expectDelta(balsBefore, quote.quantities, balsAfter)
       })
 
-      it('Should correctly quote a historical redemption with unregistered asset', async () => {
+      it('Should correctly quote historical redemption with almost all assets unregistered', async () => {
         // default usdc & refresh basket to use backup collateral
         await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
         await daiChainlink.updateAnswer(bn('0.8e8')) // default token0, token2, token3
@@ -2294,8 +2294,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
-        // Unregister asset in previous basket
-        await assetRegistry.connect(owner).unregister(collateral1.address)
+        // Unregister everything except token0
+        const erc20s = await assetRegistry.erc20s()
+        for (const erc20 of erc20s) {
+          if (erc20 != token0.address) {
+            await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
+          }
+        }
+
         /*
           Test Quote
         */
@@ -2304,35 +2310,24 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const amount = fp('10000')
         const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
 
-        expect(quote.erc20s.length).equal(4)
-        expect(quote.quantities.length).equal(4)
+        expect(quote.erc20s.length).equal(1)
+        expect(quote.quantities.length).equal(1)
 
-        const expectedTokens = [token0, token1, token2, token3]
-        const expectedAddresses = expectedTokens.map((t) => t.address)
+        const expectedAddresses = [token0.address]
         const expectedQuantities = [
           fp('0.25')
             .mul(issueAmount)
             .div(await collateral0.refPerTok())
             .div(bn(`1e${18 - (await token0.decimals())}`)),
-          bn('0')
-            .mul(issueAmount)
-            .div(await collateral1.refPerTok())
-            .div(bn(`1e${18 - (await token1.decimals())}`)),
-          fp('0.25')
-            .mul(issueAmount)
-            .div(await collateral2.refPerTok())
-            .div(bn(`1e${18 - (await token2.decimals())}`)),
-          fp('0.25')
-            .mul(issueAmount)
-            .div(await collateral3.refPerTok())
-            .div(bn(`1e${18 - (await token3.decimals())}`)),
         ]
+
         expectEqualArrays(quote.erc20s, expectedAddresses)
         expectEqualArrays(quote.quantities, expectedQuantities)
 
         /*
           Test Custom Redemption
         */
+        const expectedTokens = [token0, token1, token2, token3]
         const balsBefore = await getBalances(addr1.address, expectedTokens)
         await backupToken1.mint(backingManager.address, issueAmount)
 
@@ -2345,13 +2340,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
               amount,
               basketNonces,
               portions,
-              quote.erc20s,
-              quote.quantities
+              expectedAddresses,
+              expectedQuantities
             )
         ).to.not.be.reverted
 
         const balsAfter = await getBalances(addr1.address, expectedTokens)
-        expectDelta(balsBefore, quote.quantities, balsAfter)
+        const expectedDelta = [expectedQuantities[0], bn('0'), bn('0'), bn('0')]
+        expectDelta(balsBefore, expectedDelta, balsAfter)
       })
 
       it('Should correctly quote a historical redemption with an non-collateral asset', async () => {
@@ -2386,20 +2382,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const amount = fp('10000')
         const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
 
-        expect(quote.erc20s.length).equal(4)
-        expect(quote.quantities.length).equal(4)
+        expect(quote.erc20s.length).equal(3)
+        expect(quote.quantities.length).equal(3)
 
-        const expectedTokens = [token0, token1, token2, token3]
+        const expectedTokens = [token0, token2, token3]
         const expectedAddresses = expectedTokens.map((t) => t.address)
         const expectedQuantities = [
           fp('0.25')
             .mul(issueAmount)
             .div(await collateral0.refPerTok())
             .div(bn(`1e${18 - (await token0.decimals())}`)),
-          bn('0')
-            .mul(issueAmount)
-            .div(await collateral1.refPerTok())
-            .div(bn(`1e${18 - (await token1.decimals())}`)),
           fp('0.25')
             .mul(issueAmount)
             .div(await collateral2.refPerTok())
