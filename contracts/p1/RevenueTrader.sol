@@ -67,81 +67,89 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         _distributeTokenToBuy();
     }
 
-    /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
-    /// @dev Intended to be used with multicall
-    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    /// Process some number of tokens
+    /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered
+    /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
     /// @custom:interaction RCEI and nonReentrant
     // let bal = this contract's balance of erc20
     // checks: !paused (trading), !frozen
     // does nothing if erc20 == addr(0) or bal == 0
     //
-    // If erc20 is tokenToBuy:
-    //   actions:
-    //     erc20.increaseAllowance(distributor, bal) - two safeApprove calls to support USDT
-    //     distributor.distribute(erc20, this, bal)
-    //
-    // If erc20 is any other registered asset (checked):
-    //   actions:
-    //     tryTrade(kind, prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
-    //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
+    // For each ERC20:
+    //   if erc20 is tokenToBuy: distribute it
+    //   else: sell it for tokenToBuy
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function manageToken(IERC20 erc20, TradeKind kind)
+    function manageTokens(IERC20[] memory erc20s, TradeKind[] memory kinds)
         external
         nonReentrant
         notTradingPausedOrFrozen
     {
-        if (erc20 == tokenToBuy) {
-            _distributeTokenToBuy();
-            return;
-        }
+        uint256 len = erc20s.length;
+        IAsset assetToBuy = assetRegistry.toAsset(tokenToBuy);
 
         // == Refresh ==
-        // Skip refresh() if data is from current block
-        if (erc20 != IERC20(address(rToken)) && tokenToBuy != IERC20(address(rToken))) {
-            IAsset sell_ = assetRegistry.toAsset(erc20);
-            IAsset buy_ = assetRegistry.toAsset(tokenToBuy);
-            if (sell_.lastSave() != uint48(block.timestamp)) sell_.refresh();
-            if (buy_.lastSave() != uint48(block.timestamp)) buy_.refresh();
-        } else if (assetRegistry.lastRefresh() != uint48(block.timestamp)) {
-            // Refresh everything only if RToken is being traded
-            assetRegistry.refresh();
-            furnace.melt();
+        {
+            bool containsRToken = tokenToBuy == IERC20(address(rToken));
+            if (!containsRToken) {
+                for (uint256 i = 0; i < len; ++i) {
+                    if (erc20s[i] == IERC20(address(rToken))) containsRToken = true;
+                }
+            }
+
+            if (containsRToken) {
+                // Refresh everything
+                assetRegistry.refresh();
+                furnace.melt();
+            } else {
+                // Refresh erc20s and tokenToBuy selectively
+                for (uint256 i = 0; i < len; ++i) {
+                    assetRegistry.toAsset(erc20s[i]).refresh();
+                }
+                assetToBuy.refresh();
+            }
         }
 
-        // == Checks/Effects ==
-        // Above calls should not have changed registered assets, but just to be safe...
-        IAsset sell = assetRegistry.toAsset(erc20);
-        IAsset buy = assetRegistry.toAsset(tokenToBuy);
+        // For each ERC20: start auction of given kind
+        for (uint256 i = 0; i < len; ++i) {
+            IERC20 erc20 = erc20s[i];
+            if (erc20 == tokenToBuy) {
+                _distributeTokenToBuy();
+                continue;
+            }
 
-        require(address(trades[erc20]) == address(0), "trade open");
-        require(erc20.balanceOf(address(this)) > 0, "0 balance");
+            // == Checks/Effects ==
+            IAsset assetToSell = assetRegistry.toAsset(erc20);
 
-        (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
-        (, uint192 buyPrice) = buy.price(); // {UoA/tok}
+            require(address(trades[erc20]) == address(0), "trade open");
+            require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
-        require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
+            (uint192 sellPrice, ) = assetToSell.price(); // {UoA/tok}
+            (, uint192 buyPrice) = assetToBuy.price(); // {UoA/tok}
 
-        TradeInfo memory trade = TradeInfo({
-            sell: sell,
-            buy: buy,
-            sellAmount: sell.bal(address(this)),
-            buyAmount: 0,
-            sellPrice: sellPrice,
-            buyPrice: buyPrice
-        });
+            require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
 
-        // Whether dust or not, trade the non-target asset for the target asset
-        // Any asset with a broken price feed will trigger a revert here
-        (, TradeRequest memory req) = TradeLib.prepareTradeSell(
-            trade,
-            minTradeVolume,
-            maxTradeSlippage
-        );
-        require(req.sellAmount > 1, "sell amount too low");
+            TradeInfo memory trade = TradeInfo({
+                sell: assetToSell,
+                buy: assetToBuy,
+                sellAmount: assetToSell.bal(address(this)),
+                buyAmount: 0,
+                sellPrice: sellPrice,
+                buyPrice: buyPrice
+            });
 
-        // == Interactions ==
-        tryTrade(kind, req);
+            // Whether dust or not, trade the non-target asset for the target asset
+            // Any asset with a broken price feed will trigger a revert here
+            (, TradeRequest memory req) = TradeLib.prepareTradeSell(
+                trade,
+                minTradeVolume,
+                maxTradeSlippage
+            );
+            require(req.sellAmount > 1, "sell amount too low");
+
+            // == Interactions ==
+            tryTrade(kinds[i], req);
+        }
     }
 
     // === Internal ===

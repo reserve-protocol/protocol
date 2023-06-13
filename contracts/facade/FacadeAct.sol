@@ -64,21 +64,28 @@ contract FacadeAct is IFacadeAct, Multicall {
             }
         }
 
-        // Start auctions
-        for (uint256 i = 0; i < toStart.length; ++i) {
+        // Start RevenueTrader auctions
+        {
             bytes1 majorVersion = bytes(revenueTrader.version())[0];
-
             if (majorVersion == MAJOR_VERSION_3) {
+                TradeKind[] memory kinds = new TradeKind[](toStart.length);
+                for (uint256 j = 0; j < toStart.length; ++j) {
+                    kinds[j] = kind;
+                }
                 // solhint-disable-next-line no-empty-blocks
-                try revenueTrader.manageToken(toStart[i], kind) {} catch {}
-            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-                // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = address(revenueTrader).call{ value: 0 }(
-                    abi.encodeWithSignature("manageToken(address)", toStart[i])
-                );
-                success = success; // hush warning
+                try revenueTrader.manageTokens(toStart, kinds) {} catch {}
             } else {
-                revertUnrecognizedVersion();
+                for (uint256 i = 0; i < toStart.length; ++i) {
+                    if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                        // solhint-disable-next-line avoid-low-level-calls
+                        (bool success, ) = address(revenueTrader).call{ value: 0 }(
+                            abi.encodeWithSignature("manageToken(address)", toStart[i])
+                        );
+                        success = success; // hush warning
+                    } else {
+                        revertUnrecognizedVersion();
+                    }
+                }
             }
         }
     }
@@ -153,15 +160,23 @@ contract FacadeAct is IFacadeAct, Multicall {
             ) {
                 if (majorVersion == MAJOR_VERSION_3) {
                     // solhint-disable-next-line no-empty-blocks
-                    try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
-                } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-                    // solhint-disable-next-line avoid-low-level-calls
-                    (bool success, ) = address(revenueTrader).call{ value: 0 }(
-                        abi.encodeWithSignature("manageToken(address)", erc20s[i])
-                    );
-                    success = success; // hush warning
+                    TradeKind[] memory kinds = new TradeKind[](erc20s.length);
+                    for (uint256 j = 0; j < erc20s.length; ++j) {
+                        kinds[j] = TradeKind.DUTCH_AUCTION;
+                    }
+                    try revenueTrader.manageTokens(erc20s, kinds) {} catch {}
                 } else {
-                    revertUnrecognizedVersion();
+                    for (uint256 j = 0; j < erc20s.length; ++i) {
+                        if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
+                            // solhint-disable-next-line avoid-low-level-calls
+                            (bool success, ) = address(revenueTrader).call{ value: 0 }(
+                                abi.encodeWithSignature("manageToken(address)", erc20s[i])
+                            );
+                            success = success; // hush warning
+                        } else {
+                            revertUnrecognizedVersion();
+                        }
+                    }
                 }
 
                 if (revenueTrader.tradesOpen() - tradesOpen > 0) {
