@@ -342,7 +342,7 @@ describeFork('Wrapped CUSDCv3', () => {
 
       await whileImpersonating(ZERO_ADDRESS, async (signer) => {
         await expect(
-          wcusdcV3.connect(signer).allow(don.address, true)
+          wcusdcV3.connect(signer).transfer(don.address, bn('100e6'))
         ).to.be.revertedWithCustomError(wcusdcV3, 'ZeroAddress')
       })
     })
