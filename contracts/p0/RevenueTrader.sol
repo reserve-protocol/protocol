@@ -39,18 +39,15 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         returns (ITrade trade)
     {
         trade = super.settleTrade(sell);
-        distributeTokenToBuy();
+        _distributeTokenToBuy();
         // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
 
     /// Distribute tokenToBuy to its destinations
     /// @dev Special-case of manageToken(tokenToBuy, *)
     /// @custom:interaction
-    function distributeTokenToBuy() public {
-        uint256 bal = tokenToBuy.balanceOf(address(this));
-        tokenToBuy.safeApprove(address(main.distributor()), 0);
-        tokenToBuy.safeApprove(address(main.distributor()), bal);
-        main.distributor().distribute(tokenToBuy, bal);
+    function distributeTokenToBuy() external notTradingPausedOrFrozen {
+        _distributeTokenToBuy();
     }
 
     /// Processes a single token; unpermissioned
@@ -59,7 +56,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// @custom:interaction
     function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
         if (erc20 == tokenToBuy) {
-            distributeTokenToBuy();
+            _distributeTokenToBuy();
             return;
         }
 
@@ -96,5 +93,16 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         require(req.sellAmount > 1, "sell amount too low");
 
         tryTrade(kind, req);
+    }
+
+    // === Internal ===
+
+    /// Distribute tokenToBuy to its destinations
+    /// @dev Assumes notTradingPausedOrFrozen has already been checked!
+    function _distributeTokenToBuy() internal {
+        uint256 bal = tokenToBuy.balanceOf(address(this));
+        tokenToBuy.safeApprove(address(main.distributor()), 0);
+        tokenToBuy.safeApprove(address(main.distributor()), bal);
+        main.distributor().distribute(tokenToBuy, bal);
     }
 }

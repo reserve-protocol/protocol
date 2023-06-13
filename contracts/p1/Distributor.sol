@@ -37,14 +37,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
     IERC20 private rToken;
     address private furnace;
     address private stRSR;
+    address private rTokenTrader;
+    address private rsrTrader;
 
     function init(IMain main_, RevenueShare calldata dist) external initializer {
         __Component_init(main_);
-
-        rsr = main_.rsr();
-        rToken = IERC20(address(main_.rToken()));
-        furnace = address(main_.furnace());
-        stRSR = address(main_.stRSR());
+        cacheComponents();
 
         _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
@@ -73,6 +71,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
+    /// Intentionally allowed when frozen, since handled by caller.
     /// @custom:interaction CEI
     // let:
     //   w = the map such that w[dest] = distribution[dest].{erc20}Shares
@@ -85,6 +84,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
     //   for dest where w[dest] != 0:
     //     erc20.transferFrom(from, addrOf(dest), tokensPerShare * w[dest])
     function distribute(IERC20 erc20, uint256 amount) external {
+        address caller = _msgSender();
+        require(caller == rsrTrader || caller == rTokenTrader, "RevenueTraders only");
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;
@@ -123,12 +124,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
             });
             numTransfers++;
         }
-        emit RevenueDistributed(erc20, _msgSender(), amount);
+        emit RevenueDistributed(erc20, caller, amount);
 
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; i++) {
             Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(_msgSender(), t.addrTo, t.amount);
+            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
         }
     }
 
@@ -180,6 +181,16 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // checks: at least one of its arguments is nonzero
     function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
         require(rTokenDist > 0 || rsrDist > 0, "no distribution defined");
+    }
+
+    /// Call after upgrade to >= 3.0.0
+    function cacheComponents() public {
+        rsr = main.rsr();
+        rToken = IERC20(address(main.rToken()));
+        furnace = address(main.furnace());
+        stRSR = address(main.stRSR());
+        rTokenTrader = address(main.rTokenTrader());
+        rsrTrader = address(main.rsrTrader());
     }
 
     /**

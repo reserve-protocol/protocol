@@ -36,6 +36,15 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         cacheComponents();
     }
 
+    /// Call after upgrade to >= 3.0.0
+    function cacheComponents() public {
+        assetRegistry = main.assetRegistry();
+        distributor = main.distributor();
+        backingManager = main.backingManager();
+        furnace = main.furnace();
+        rToken = main.rToken();
+    }
+
     /// Settle a single trade + distribute revenue
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
@@ -47,18 +56,15 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         returns (ITrade trade)
     {
         trade = super.settleTrade(sell); // nonReentrant
-        distributeTokenToBuy();
+        _distributeTokenToBuy();
         // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
     }
 
     /// Distribute tokenToBuy to its destinations
     /// @dev Special-case of manageToken(tokenToBuy, *)
     /// @custom:interaction
-    function distributeTokenToBuy() public {
-        uint256 bal = tokenToBuy.balanceOf(address(this));
-        tokenToBuy.safeApprove(address(distributor), 0);
-        tokenToBuy.safeApprove(address(distributor), bal);
-        distributor.distribute(tokenToBuy, bal);
+    function distributeTokenToBuy() external notTradingPausedOrFrozen {
+        _distributeTokenToBuy();
     }
 
     /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
@@ -86,7 +92,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         notTradingPausedOrFrozen
     {
         if (erc20 == tokenToBuy) {
-            distributeTokenToBuy();
+            _distributeTokenToBuy();
             return;
         }
 
@@ -138,13 +144,15 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         tryTrade(kind, req);
     }
 
-    /// Call after upgrade to >= 3.0.0
-    function cacheComponents() public {
-        assetRegistry = main.assetRegistry();
-        distributor = main.distributor();
-        backingManager = main.backingManager();
-        furnace = main.furnace();
-        rToken = main.rToken();
+    // === Internal ===
+
+    /// Distribute tokenToBuy to its destinations
+    /// @dev Assumes notTradingPausedOrFrozen has already been checked!
+    function _distributeTokenToBuy() internal {
+        uint256 bal = tokenToBuy.balanceOf(address(this));
+        tokenToBuy.safeApprove(address(distributor), 0);
+        tokenToBuy.safeApprove(address(distributor), bal);
+        distributor.distribute(tokenToBuy, bal);
     }
 
     /**
