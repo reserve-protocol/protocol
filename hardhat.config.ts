@@ -8,6 +8,9 @@ import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
+import * as tdly from "@tenderly/hardhat-tenderly";
+
+tdly.setup();
 
 import { useEnv } from '#/utils/env'
 import { HardhatUserConfig } from 'hardhat/types'
@@ -121,6 +124,12 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: useEnv('ETHERSCAN_API_KEY'),
   },
+  tenderly: {
+    // see https://github.com/Tenderly/hardhat-tenderly/tree/master/packages/tenderly-hardhat for details
+    username: "Reserveslug", // project name
+    project: "testnet", // project name
+    privateVerification: false // must be false to verify contracts on a testnet or devnet
+  }
 }
 
 if (useEnv('ONLY_FAST')) {
