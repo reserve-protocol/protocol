@@ -1999,7 +1999,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const amount = fp('10000')
         await expect(
           basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
-        ).to.be.revertedWith('portions does not mirror basketNonces')
+        ).to.be.revertedWith('bad portions len')
       })
 
       it('Should correctly quote the current basket, same as quote()', async () => {
