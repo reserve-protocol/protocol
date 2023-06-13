@@ -71,8 +71,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
-    /// Intentionally allowed when frozen, since handled by caller.
-    /// @custom:interaction CEI
+    /// Only callable by RevenueTraders
+    /// @custom:protected CEI
     // let:
     //   w = the map such that w[dest] = distribution[dest].{erc20}Shares
     //   tokensPerShare = floor(amount / sum(values(w)))
@@ -84,6 +84,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
     //   for dest where w[dest] != 0:
     //     erc20.transferFrom(from, addrOf(dest), tokensPerShare * w[dest])
     function distribute(IERC20 erc20, uint256 amount) external {
+        // Intentionally do not check notTradingPausedOrFrozen, since handled by caller
+
         address caller = _msgSender();
         require(caller == rsrTrader || caller == rTokenTrader, "RevenueTraders only");
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
