@@ -1802,7 +1802,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
       })
 
-      it('Should not revert when redeeming unregistered collateral #fast', async function () {
+      it('Should not revert when redeeming mostly unregistered collateral #fast', async function () {
         // Unregister everything except token0
         const erc20s = await assetRegistry.erc20s()
         for (const erc20 of erc20s) {
