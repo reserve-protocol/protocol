@@ -382,10 +382,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         if (rsrAmount == 0) return;
 
+        // Payout rewards before updating draftRSR
+        _payoutRewards();
+
         // ==== Transfer RSR from the draft pool
         totalDrafts = newTotalDrafts;
         draftRSR = newDraftRSR;
-
         emit UnstakingCancelled(firstId, endId, draftEra, account, rsrAmount);
 
         // Mint new stakes

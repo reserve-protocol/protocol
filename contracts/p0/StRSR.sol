@@ -242,6 +242,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     function cancelUnstake(uint256 endId) external notFrozen {
         address account = _msgSender();
 
+        // Call state keepers
+        _payoutRewards();
+
+        // We specifically allow unstaking when under collateralized
         // IBasketHandler bh = main.basketHandler();
         // require(bh.fullyCollateralized(), "RToken uncollateralized");
         // require(bh.isReady(), "basket not ready");
@@ -250,6 +254,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         if (endId == 0) return;
         require(endId <= queue.length, "index out-of-bounds");
+
+        // Cancelling unstake does not require checking if the unstaking was available
         // require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
 
         // Skip executed withdrawals - Both amounts should be 0
