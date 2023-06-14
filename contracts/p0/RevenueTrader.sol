@@ -44,7 +44,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     }
 
     /// Distribute tokenToBuy to its destinations
-    /// @dev Special-case of manageToken(tokenToBuy, *)
+    /// @dev Special-case of manageTokens([tokenToBuy], *)
     /// @custom:interaction
     function distributeTokenToBuy() external notTradingPausedOrFrozen {
         _distributeTokenToBuy();

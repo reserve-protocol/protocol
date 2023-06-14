@@ -27,7 +27,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // === 3.0.0 ===
 
     uint48 public lastRefresh; // {s}
-    IFurnace private furnace;
 
     /* ==== Contract Invariants ====
        The contract state is just the mapping assets; _erc20s is ignored in properties.
@@ -41,19 +40,13 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = {a.erc20(): a for a in assets_}
     function init(IMain main_, IAsset[] calldata assets_) external initializer {
         __Component_init(main_);
-        cacheComponents();
+        basketHandler = main_.basketHandler();
+        backingManager = main_.backingManager();
 
         uint256 length = assets_.length;
         for (uint256 i = 0; i < length; ++i) {
             _register(assets_[i]);
         }
-    }
-
-    /// Call after upgrade to >= 3.0.0
-    function cacheComponents() public {
-        basketHandler = main.basketHandler();
-        backingManager = main.backingManager();
-        furnace = main.furnace();
     }
 
     /// Update the state of all assets
@@ -68,7 +61,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             assets[IERC20(_erc20s.at(i))].refresh();
         }
 
-        furnace.melt();
         basketHandler.trackStatus();
         lastRefresh = uint48(block.timestamp); // safer to do this at end than start, actually
     }

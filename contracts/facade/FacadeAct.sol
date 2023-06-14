@@ -38,7 +38,7 @@ contract FacadeAct is IFacadeAct, Multicall {
         IRevenueTrader revenueTrader,
         IERC20[] memory toSettle,
         IERC20[] memory toStart,
-        TradeKind kind
+        TradeKind[] memory kinds
     ) external {
         // Settle auctions
         for (uint256 i = 0; i < toSettle.length; ++i) {
@@ -68,10 +68,6 @@ contract FacadeAct is IFacadeAct, Multicall {
         {
             bytes1 majorVersion = bytes(revenueTrader.version())[0];
             if (majorVersion == MAJOR_VERSION_3) {
-                TradeKind[] memory kinds = new TradeKind[](toStart.length);
-                for (uint256 j = 0; j < toStart.length; ++j) {
-                    kinds[j] = kind;
-                }
                 // solhint-disable-next-line no-empty-blocks
                 try revenueTrader.manageTokens(toStart, kinds) {} catch {}
             } else {

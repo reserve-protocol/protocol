@@ -61,23 +61,26 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     }
 
     /// Distribute tokenToBuy to its destinations
-    /// @dev Special-case of manageToken(tokenToBuy, *)
+    /// @dev Special-case of manageTokens([tokenToBuy], *)
     /// @custom:interaction
     function distributeTokenToBuy() external notTradingPausedOrFrozen {
         _distributeTokenToBuy();
     }
 
     /// Process some number of tokens
+    /// Any blocking auctions that can be settled will be, automatically
+    /// If the tokenToBuy is included in erc20s, RevenueTrader will distribute it at end of the tx
     /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered
     /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
-    /// @custom:interaction RCEI and nonReentrant
+    /// @custom:interaction not strictly RCEI; nonReentrant
     // let bal = this contract's balance of erc20
     // checks: !paused (trading), !frozen
     // does nothing if erc20 == addr(0) or bal == 0
     //
     // For each ERC20:
+    //   if an open trade can be settled, settle it
     //   if erc20 is tokenToBuy: distribute it
-    //   else: sell it for tokenToBuy
+    //   else: sell erc20 for tokenToBuy
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
     function manageTokens(IERC20[] memory erc20s, TradeKind[] memory kinds)
@@ -91,31 +94,39 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         // == Refresh ==
         {
             bool containsRToken = tokenToBuy == IERC20(address(rToken));
-            if (!containsRToken) {
+            if (containsRToken) {
                 for (uint256 i = 0; i < len; ++i) {
-                    if (erc20s[i] == IERC20(address(rToken))) containsRToken = true;
+                    if (erc20s[i] == IERC20(address(rToken))) {
+                        containsRToken = true;
+                        break;
+                    }
                 }
             }
 
+            // Refresh everything if RToken is involved, otherwise be precise
             if (containsRToken) {
-                // Refresh everything
                 assetRegistry.refresh();
                 furnace.melt();
             } else {
-                // Refresh erc20s and tokenToBuy selectively
                 for (uint256 i = 0; i < len; ++i) {
                     assetRegistry.toAsset(erc20s[i]).refresh();
                 }
-                assetToBuy.refresh();
+                assetToBuy.refresh(); // can never be the RTokenAsset
             }
         }
 
         // For each ERC20: start auction of given kind
+        bool shouldDistribute;
         for (uint256 i = 0; i < len; ++i) {
             IERC20 erc20 = erc20s[i];
             if (erc20 == tokenToBuy) {
-                _distributeTokenToBuy();
+                shouldDistribute = true;
                 continue;
+            } else if (address(trades[erc20]) != address(0)) {
+                shouldDistribute = true;
+
+                // Settle open trades
+                _settleTrade(erc20);
             }
 
             // == Checks/Effects ==
@@ -148,8 +159,11 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             require(req.sellAmount > 1, "sell amount too low");
 
             // == Interactions ==
-            tryTrade(kinds[i], req);
+            _tryTrade(kinds[i], req);
         }
+
+        // Must go last in case settling any trades
+        if (shouldDistribute) _distributeTokenToBuy();
     }
 
     // === Internal ===

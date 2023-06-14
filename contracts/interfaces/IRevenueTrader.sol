@@ -26,6 +26,8 @@ interface IRevenueTrader is IComponent, ITrading {
     function distributeTokenToBuy() external;
 
     /// Process some number of tokens
+    /// Any blocking auctions that can be settled will be, automatically
+    /// If the tokenToBuy is included in erc20s, RevenueTrader will distribute it at end of the tx
     /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered
     /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
     /// @custom:interaction

@@ -37,7 +37,6 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
             assets[IERC20(_erc20s.at(i))].refresh();
         }
 
-        main.furnace().melt();
         main.basketHandler().trackStatus();
         lastRefresh = uint48(block.timestamp);
     }

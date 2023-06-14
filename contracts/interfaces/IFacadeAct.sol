@@ -32,7 +32,7 @@ interface IFacadeAct {
         IRevenueTrader revenueTrader,
         IERC20[] memory toSettle,
         IERC20[] memory toStart,
-        TradeKind kind
+        TradeKind[] memory kinds
     ) external;
 
     /// To use this, call via callStatic.

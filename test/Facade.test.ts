@@ -558,12 +558,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
         }
 
         // Settle and start new auction
-        await facadeAct.runRevenueAuctions(
-          trader.address,
-          erc20sToStart,
-          erc20sToStart,
-          TradeKind.DUTCH_AUCTION
-        )
+        await facadeAct.runRevenueAuctions(trader.address, erc20sToStart, erc20sToStart, [
+          TradeKind.DUTCH_AUCTION,
+        ])
 
         // Send additional revenues
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
@@ -682,12 +679,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
         }
 
         // Settle and start new auction
-        await facadeAct.runRevenueAuctions(
-          trader.address,
-          erc20sToStart,
-          erc20sToStart,
-          TradeKind.DUTCH_AUCTION
-        )
+        await facadeAct.runRevenueAuctions(trader.address, erc20sToStart, erc20sToStart, [
+          TradeKind.DUTCH_AUCTION,
+        ])
 
         // Send additional revenues
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
@@ -1141,7 +1135,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rsrTrader.address,
           [],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         )
       )
         .to.emit(rsrTrader, 'TradeStarted')
@@ -1159,7 +1153,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rsrTrader.address,
           [token.address],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         ),
         [
           {
@@ -1209,7 +1203,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rTokenTrader.address,
           [],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         )
       )
         .to.emit(rTokenTrader, 'TradeStarted')
@@ -1231,7 +1225,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rTokenTrader.address,
           [token.address],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         ),
         [
           {
@@ -1270,7 +1264,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rsrTrader.address,
           [],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         )
       ).to.be.revertedWith('unrecognized version')
 
@@ -1282,7 +1276,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rsrTrader.address,
           [],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         )
       ).to.be.revertedWith('unrecognized version')
     })
