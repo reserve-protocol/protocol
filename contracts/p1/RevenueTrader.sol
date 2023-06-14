@@ -68,7 +68,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     }
 
     /// Process some number of tokens
-    /// Any blocking auctions that can be settled will be, automatically
     /// If the tokenToBuy is included in erc20s, RevenueTrader will distribute it at end of the tx
     /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered
     /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
@@ -94,7 +93,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         // == Refresh ==
         {
             bool containsRToken = tokenToBuy == IERC20(address(rToken));
-            if (containsRToken) {
+            if (!containsRToken) {
                 for (uint256 i = 0; i < len; ++i) {
                     if (erc20s[i] == IERC20(address(rToken))) {
                         containsRToken = true;
@@ -115,18 +114,12 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             }
         }
 
-        // For each ERC20: start auction of given kind
-        bool shouldDistribute;
+        // For each ERC20 that isn't the tokenToBuy, start an auction of the given kind
         for (uint256 i = 0; i < len; ++i) {
             IERC20 erc20 = erc20s[i];
             if (erc20 == tokenToBuy) {
-                shouldDistribute = true;
+                _distributeTokenToBuy();
                 continue;
-            } else if (address(trades[erc20]) != address(0)) {
-                shouldDistribute = true;
-
-                // Settle open trades
-                _settleTrade(erc20);
             }
 
             // == Checks/Effects ==
@@ -161,9 +154,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             // == Interactions ==
             _tryTrade(kinds[i], req);
         }
-
-        // Must go last in case settling any trades
-        if (shouldDistribute) _distributeTokenToBuy();
     }
 
     // === Internal ===

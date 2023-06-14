@@ -96,7 +96,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// Issue an RToken on the current basket, to a particular recipient
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
-    /// @custom:interaction
+    /// @custom:interaction RCEI
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function issueTo(address recipient, uint256 amount) public notIssuancePausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
