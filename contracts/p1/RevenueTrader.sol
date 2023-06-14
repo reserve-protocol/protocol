@@ -102,7 +102,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
                 }
             }
 
-            // Refresh everything if RToken is involved, otherwise be precise
+            // Refresh everything if RToken is involved
             if (containsRToken) {
                 assetRegistry.refresh();
                 furnace.melt();
@@ -115,6 +115,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         }
 
         // For each ERC20 that isn't the tokenToBuy, start an auction of the given kind
+        (, uint192 buyPrice) = assetToBuy.price(); // {UoA/tok}
         for (uint256 i = 0; i < len; ++i) {
             IERC20 erc20 = erc20s[i];
             if (erc20 == tokenToBuy) {
@@ -129,7 +130,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
             (uint192 sellPrice, ) = assetToSell.price(); // {UoA/tok}
-            (, uint192 buyPrice) = assetToBuy.price(); // {UoA/tok}
 
             require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
 
