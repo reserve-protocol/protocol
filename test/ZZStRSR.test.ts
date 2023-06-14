@@ -1129,7 +1129,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
         const prevAddr2Balance = await rsr.balanceOf(addr2.address)
 
-        // Create withdrawal for user 2
+        // Create 1st withdrawal for user 2
         await stRSR.connect(addr2).unstake(amount2)
 
         // Move time forward to half of first period
@@ -1137,25 +1137,37 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 2
         )
 
-        // Create additional withdrawal for user 2
+        // Send reward RSR -- bn('3e18')
+        await rsr.connect(addr1).transfer(stRSR.address, amount3)
+        await stRSR.connect(owner).setRewardRatio(fp('1')) // 100%; handout everything
+
+        // Create 2nd withdrawal for user 2 -- should unstake at 1:1 rate
+        expect(await stRSR.exchangeRate()).to.equal(fp('1'))
         await stRSR.connect(addr2).unstake(amount3)
+        expect(await stRSR.exchangeRate()).to.equal(fp('1'))
 
         // Check withdrawals - Nothing available yet
         expect(await stRSR.endIdForWithdraw(addr1.address)).to.equal(0)
         expect(await stRSR.endIdForWithdraw(addr2.address)).to.equal(0)
 
-        // Cancel withdrawal
+        // Move time forward 3/4 of way to first period complete
+        await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 4)
+
+        // Cancel 1st withdrawal
         await stRSR.connect(addr2).cancelUnstake(1)
 
         // Move time forward to first period complete
-        await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 2)
+        await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 4)
 
         // Check withdrawals - We can withdraw the first stakes for each
         expect(await stRSR.endIdForWithdraw(addr1.address)).to.equal(1)
         expect(await stRSR.endIdForWithdraw(addr2.address)).to.equal(1)
 
-        // Create additional withdrawal for user 2
+        // Create 3rd withdrawal for user 2 --
+        // Regression test -- should payout rewards first at elevated exchange rate, not 1:1
+        expect(await stRSR.exchangeRate()).to.equal(fp('2')) // doubled the exchange rate
         await stRSR.connect(addr2).unstake(amount3)
+        expect(await stRSR.exchangeRate()).to.equal(fp('2'))
 
         // Move time forward to end of second period
         await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 2)
@@ -1177,26 +1189,24 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           'index out-of-bounds'
         )
 
-        // Withdraw
-        await stRSR
-          .connect(addr1)
-          .withdraw(addr1.address, await stRSR.endIdForWithdraw(addr1.address))
-        await stRSR
-          .connect(addr2)
-          .withdraw(addr2.address, await stRSR.endIdForWithdraw(addr2.address))
+        // Withdraw everything
+        await stRSR.connect(addr1).withdraw(addr1.address, 1)
+        await stRSR.connect(addr2).withdraw(addr2.address, 3)
 
         // Withdrawals completed
-        expect(await stRSR.totalSupply()).to.equal(amount2)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-        expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
+        expect(await stRSR.totalSupply()).to.equal(amount1)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(amount1.mul(2)) // 2:1 exchange rate
+        expect(await rsr.balanceOf(addr1.address)).to.equal(
+          prevAddr1Balance.add(amount1).sub(amount3)
+        )
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
         expect(await rsr.balanceOf(addr2.address)).to.equal(
-          prevAddr2Balance.add(amount3).add(amount3)
+          prevAddr2Balance.add(amount1).add(amount2).add(amount3).add(amount3)
         )
-        expect(await stRSR.balanceOf(addr2.address)).to.equal(amount2)
+        expect(await stRSR.balanceOf(addr2.address)).to.equal(amount1) // amount1 at 2:1 rate
 
         /// Exchange rate remains steady
-        expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+        expect(await stRSR.exchangeRate()).to.equal(fp('2'))
       })
 
       it('Should handle changes in stakingWithdrawalDelay correctly', async function () {
