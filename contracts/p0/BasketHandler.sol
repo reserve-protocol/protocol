@@ -461,8 +461,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
             // Add-in refAmts contribution from historical basket
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
-                // untestable:
-                //     previous baskets erc20s do not contain the zero address
                 if (address(b.erc20s[j]) == address(0)) continue;
 
                 // Search through erc20sAll
