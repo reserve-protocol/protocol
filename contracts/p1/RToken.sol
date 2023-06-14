@@ -111,8 +111,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // Ensure basket is ready, SOUND and not in warmup period
         require(basketHandler.isReady(), "basket not ready");
-
-        furnace.melt();
         uint256 supply = totalSupply();
 
         // Revert if issuance exceeds either supply throttle
@@ -178,10 +176,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction RCEI
     function redeemTo(address recipient, uint256 amount) public notFrozen {
         // == Refresh ==
-
         assetRegistry.refresh();
-        // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -251,10 +246,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint256[] memory minAmounts
     ) external notFrozen returns (address[] memory erc20sOut, uint256[] memory amountsOut) {
         // == Refresh ==
-
         assetRegistry.refresh();
-        // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {}
 
         // == Checks and Effects ==
 

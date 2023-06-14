@@ -106,7 +106,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         } else if (assetRegistry.lastRefresh() != uint48(block.timestamp)) {
             // Refresh everything only if RToken is being traded
             assetRegistry.refresh();
-            furnace.melt();
         }
 
         // == Checks/Effects ==
