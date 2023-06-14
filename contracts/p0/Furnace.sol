@@ -13,7 +13,7 @@ import "../mixins/NetworkConfigLib.sol";
 contract FurnaceP0 is ComponentP0, IFurnace {
     using FixLib for uint192;
 
-    uint192 public constant MAX_RATIO = FIX_ONE; // {1} 100%
+    uint192 public constant MAX_RATIO = 1e14; // {1} 0.01%
     // solhint-disable-next-line var-name-mixedcase
     uint48 public immutable PERIOD; // {seconds} 1 block based on network
 
