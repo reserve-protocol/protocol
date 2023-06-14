@@ -1,6 +1,6 @@
 import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from "../pluginTestTypes"
-import { CB_ETH, DEFAULT_THRESHOLD, DELAY_UNTIL_DEFAULT, ETH_USD_PRICE_FEED, MAX_TRADE_VOL, ORACLE_ERROR, ORACLE_TIMEOUT, PRICE_TIMEOUT, WETH } from "./constants"
+import { CB_ETH, CB_ETH_ORACLE, DEFAULT_THRESHOLD, DELAY_UNTIL_DEFAULT, ETH_USD_PRICE_FEED, MAX_TRADE_VOL, ORACLE_ERROR, ORACLE_TIMEOUT, PRICE_TIMEOUT, WETH } from "./constants"
 import { BigNumber, BigNumberish, ContractFactory } from "ethers"
 import { bn, fp } from "#/common/numbers"
 import { TestICollateral } from "@typechain/TestICollateral"
@@ -8,21 +8,21 @@ import { ethers } from "hardhat"
 import { expect } from "chai"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { MockV3Aggregator } from "@typechain/MockV3Aggregator"
-import { ERC20Mock, MockV3Aggregator__factory } from "@typechain/index"
+import { CBEth, ERC20Mock, MockV3Aggregator__factory } from "@typechain/index"
 import { mintCBETH, resetFork } from "./helpers"
-
+import { impersonateAccount } from '@nomicfoundation/hardhat-network-helpers'
+import { whileImpersonating } from '#/utils/impersonation'
 import hre from "hardhat"
 
-
 interface CbEthCollateralFixtureContext extends CollateralFixtureContext {
-    cbETH: ERC20Mock
+    cbETH: CBEth
 }
 
 export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
     opts = { ...defaultRethCollateralOpts, ...opts }
 
     const CBETHCollateralFactory: ContractFactory = await ethers.getContractFactory(
-        'CBETHCollateral'
+        'CBEthCollateral'
     )
 
     const collateral = <TestICollateral>await CBETHCollateralFactory.deploy(
@@ -67,7 +67,7 @@ const makeCollateralFixtureContext = (
         )
         collateralOpts.chainlinkFeed = chainlinkFeed.address
 
-        const cbETH = (await ethers.getContractAt('ERC20Mock', CB_ETH)) as ERC20Mock
+        const cbETH = (await ethers.getContractAt('CBEth', CB_ETH)) as unknown as CBEth
         const collateral = await deployCollateral(collateralOpts)
 
         return {
@@ -75,7 +75,7 @@ const makeCollateralFixtureContext = (
             collateral,
             chainlinkFeed,
             cbETH,
-            tok: cbETH,
+            tok: cbETH as unknown as ERC20Mock,
         }
     }
 
@@ -98,11 +98,21 @@ const mintCollateralTo: MintCollateralFunc<CbEthCollateralFixtureContext> = asyn
 const reduceTargetPerRef = async () => { }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const increaseTargetPerRef = async () => { }
+const increaseTargetPerRef = async (
+) => { }
 
 // prettier-ignore
-const reduceRefPerTok = async () => {
-    await hre.network.provider.send('evm_mine', [])
+const reduceRefPerTok = async (
+    ctx: CbEthCollateralFixtureContext,
+    pctDecrease: BigNumberish
+) => {
+    await whileImpersonating(hre, CB_ETH_ORACLE, async oracleSigner => {
+        const rate = await ctx.cbETH.exchangeRate()
+        await ctx.cbETH.connect(oracleSigner).updateExchangeRate(
+            rate.sub(rate.mul(bn(pctDecrease)).div(bn('100')))
+        )
+    })
+
 }
 
 // prettier-ignore
@@ -110,7 +120,12 @@ const increaseRefPerTok = async (
     ctx: CbEthCollateralFixtureContext,
     pctIncrease: BigNumberish
 ) => {
-
+    await whileImpersonating(hre, CB_ETH_ORACLE, async oracleSigner => {
+        const rate = await ctx.cbETH.exchangeRate()
+        await ctx.cbETH.connect(oracleSigner).updateExchangeRate(
+            rate.add(rate.mul(bn(pctIncrease)).div(bn('100')))
+        )
+    })
 }
 
 const getExpectedPrice = async (ctx: CbEthCollateralFixtureContext): Promise<BigNumber> => {

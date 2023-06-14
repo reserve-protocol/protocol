@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20Metadata, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { _safeWrap } from "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 
-interface CBEth {
-    function exchangeRate() external view returns (uint256);
-    function mint(
-        address account,
-        uint256 amount
-    ) external returns (bool);
+interface CBEth is IERC20, IERC20Metadata {
+    function mint(address account, uint256 amount) external returns (bool);
+
+    function updateExchangeRate(uint256 exchangeRate) external;
+
+    function oracle() external view returns (address);
+
+    function configureMinter(address minter, uint256 minterAllowedAmount) external returns (bool);
+
+    function exchangeRate() external view returns (uint256 _exchangeRate);
 }
 
 contract CBEthCollateral is AppreciatingFiatCollateral {
