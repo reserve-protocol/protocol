@@ -10,8 +10,12 @@ interface IRevenueTraderComp {
 // RevenueTrader compatible with version 2
 contract RevenueTraderCompatibleV2 is RevenueTraderP1, IRevenueTraderComp {
     function manageToken(IERC20 sell) external notTradingPausedOrFrozen {
+        IERC20[] memory erc20s = new IERC20[](1);
+        erc20s[0] = sell;
+        TradeKind[] memory kinds = new TradeKind[](1);
+        kinds[0] = TradeKind.DUTCH_AUCTION;
         // Mirror V3 logic (only the section relevant to tests)
-        this.manageToken(sell, TradeKind.DUTCH_AUCTION);
+        this.manageTokens(erc20s, kinds);
     }
 
     function version() public pure virtual override(Versioned, IVersioned) returns (string memory) {
