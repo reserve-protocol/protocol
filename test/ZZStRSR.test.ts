@@ -3236,7 +3236,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       }
 
       // Do accretion
-      // TODO: Review now that reward ratio is 1e14
       if (rsrAccreted.gt(0)) {
         await rsr.connect(owner).mint(stRSR.address, rsrAccreted)
         await stRSR.connect(owner).setRewardRatio(bn('1e14')) // this pays out rewards
