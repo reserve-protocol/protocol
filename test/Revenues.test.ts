@@ -1713,11 +1713,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it('Should allow anyone to call distribute', async () => {
+      it('Should only allow RevenueTraders to call distribute()', async () => {
         const distAmount: BigNumber = bn('100e18')
 
-        // Transfer some RSR to BackingManager
-        await rsr.connect(addr1).transfer(backingManager.address, distAmount)
+        // Transfer some RSR to RevenueTraders
+        await rsr.connect(addr1).transfer(rTokenTrader.address, distAmount)
+        await rsr.connect(addr1).transfer(rsrTrader.address, distAmount)
 
         // Set f = 1
         await expect(
@@ -1736,24 +1737,36 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(STRSR_DEST, bn(0), bn(1))
 
-        // Check funds in Backing Manager and destinations
-        expect(await rsr.balanceOf(backingManager.address)).to.equal(distAmount)
+        // Check funds in RevenueTraders and destinations
+        expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(distAmount)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.equal(distAmount)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        // Distribute the RSR
+        // Try and fail to distribute the RSR from random account and BackingManager
+        await expect(
+          distributor.connect(owner).distribute(rsr.address, distAmount)
+        ).to.be.revertedWith('RevenueTraders only')
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           await rsr.connect(bmSigner).approve(distributor.address, distAmount)
 
-          await expect(distributor.connect(bmSigner).distribute(rsr.address, distAmount))
-            .to.emit(distributor, 'RevenueDistributed')
-            .withArgs(rsr.address, backingManager.address, distAmount)
+          await expect(
+            distributor.connect(bmSigner).distribute(rsr.address, distAmount)
+          ).to.be.revertedWith('RevenueTraders only')
         })
 
-        //  Check all funds distributed to StRSR
-        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(distAmount)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+        // Should succeed for RevenueTraders
+        await whileImpersonating(rTokenTrader.address, async (bmSigner) => {
+          await rsr.connect(bmSigner).approve(distributor.address, distAmount)
+          await distributor.connect(bmSigner).distribute(rsr.address, distAmount)
+        })
+        await whileImpersonating(rsrTrader.address, async (bmSigner) => {
+          await rsr.connect(bmSigner).approve(distributor.address, distAmount)
+          await distributor.connect(bmSigner).distribute(rsr.address, distAmount)
+        })
+
+        // RSR should be in staking pool
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(distAmount.mul(2))
       })
 
       it('Should revert if no distribution exists for a specific token', async () => {
@@ -1778,9 +1791,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(STRSR_DEST, bn(0), bn(0))
 
-        await expect(distributor.distribute(rsr.address, bn(100))).to.be.revertedWith(
-          'nothing to distribute'
-        )
+        await whileImpersonating(rTokenTrader.address, async (bmSigner) => {
+          await expect(
+            distributor.connect(bmSigner).distribute(rsr.address, bn(100))
+          ).to.be.revertedWith('nothing to distribute')
+        })
 
         //  Check funds, nothing changed
         expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
@@ -2060,7 +2075,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Attempt to distribute AAVE token
-        await whileImpersonating(basketHandler.address, async (signer) => {
+        await whileImpersonating(rTokenTrader.address, async (signer) => {
           await expect(
             distributor.connect(signer).distribute(aaveToken.address, rewardAmountAAVE)
           ).to.be.revertedWith('RSR or RToken')
