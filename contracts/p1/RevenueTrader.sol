@@ -152,7 +152,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             require(req.sellAmount > 1, "sell amount too low");
 
             // == Interactions ==
-            _tryTrade(kinds[i], req);
+            tryTrade(kinds[i], req);
         }
     }
 

@@ -69,17 +69,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
     }
 
-    /// Settle a single trade; nonReentrant
-    /// @param sell The sell token in the trade
-    /// @return trade The ITrade contract settled
-    /// @custom:interaction (only reads or writes trades, and is marked `nonReentrant`)
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) public virtual nonReentrant returns (ITrade trade) {
-        return _settleTrade(sell);
-    }
-
-    /// Settle a single trade; not nonReentrant
+    /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction (only reads or writes trades, and is marked `nonReentrant`)
@@ -92,7 +82,9 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades.set(sell, 0)
     //   tradesOpen' = tradesOpen - 1
-    function _settleTrade(IERC20 sell) internal returns (ITrade trade) {
+    // untested:
+    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
+    function settleTrade(IERC20 sell) public virtual nonReentrant returns (ITrade trade) {
         trade = trades[sell];
         require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
@@ -118,10 +110,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
-    function _tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
+    function tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
         /*  */
         IERC20 sell = req.sell.erc20();
-        require(address(trades[sell]) == address(0), "trade already open");
+        assert(address(trades[sell]) == address(0));
 
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);

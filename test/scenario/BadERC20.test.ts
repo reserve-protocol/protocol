@@ -382,10 +382,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     it('should be able to process any uncensored assets already accumulated at RevenueTraders', async () => {
       await rToken.connect(addr1).transfer(rTokenTrader.address, issueAmt.div(2))
       await rToken.connect(addr1).transfer(rsrTrader.address, issueAmt.div(2))
-      await expect(rTokenTrader.manageToken(rToken.address, TradeKind.BATCH_AUCTION))
+      await expect(rTokenTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION]))
         .to.emit(rToken, 'Transfer')
         .withArgs(rTokenTrader.address, furnace.address, issueAmt.div(2))
-      await expect(rsrTrader.manageToken(rToken.address, TradeKind.BATCH_AUCTION))
+      await expect(rsrTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION]))
         .to.emit(rsrTrader, 'TradeStarted')
         .withArgs(
           anyValue,

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IAsset.sol";
@@ -19,7 +18,7 @@ import "../mixins/NetworkConfigLib.sol";
  */
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
-contract BackingManagerP1 is ReentrancyGuardUpgradeable, TradingP1, IBackingManager {
+contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
@@ -162,7 +161,7 @@ contract BackingManagerP1 is ReentrancyGuardUpgradeable, TradingP1, IBackingMana
             }
 
             // Execute Trade
-            ITrade trade = _tryTrade(kind, req);
+            ITrade trade = tryTrade(kind, req);
             tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time

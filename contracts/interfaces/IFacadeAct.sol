@@ -25,9 +25,9 @@ interface IFacadeAct {
     /// Logic:
     ///   For each ERC20 in `toSettle`:
     ///     - Settle any open ERC20 trades
-    ///   For each ERC20 in `toStart`:
+    ///   Then:
     ///     - Transfer any revenue for that ERC20 from the backingManager to revenueTrader
-    ///     - Call `revenueTrader.manageToken(ERC20)` to start an auction, if possible
+    ///     - Call `revenueTrader.manageTokens(ERC20)` to start an auction
     function runRevenueAuctions(
         IRevenueTrader revenueTrader,
         IERC20[] memory toSettle,
