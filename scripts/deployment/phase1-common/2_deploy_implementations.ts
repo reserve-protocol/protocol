@@ -105,7 +105,7 @@ async function main() {
   if (!upgrade) {
     mainImplAddr = await upgrades.deployImplementation(MainImplFactory, {
       kind: 'uups',
-    })
+    }) as string
   } else {
     mainImplAddr = await upgrades.prepareUpgrade(
       prevDeployments.implementations.main,
@@ -113,7 +113,7 @@ async function main() {
       {
         kind: 'uups',
       }
-    )
+    ) as string
   }
   mainImpl = <MainP1>await ethers.getContractAt('MainP1', mainImplAddr)
 
@@ -158,7 +158,7 @@ async function main() {
   if (!upgrade) {
     assetRegImplAddr = await upgrades.deployImplementation(AssetRegImplFactory, {
       kind: 'uups',
-    })
+    }) as string
   } else {
     assetRegImplAddr = await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.assetRegistry,
@@ -166,7 +166,7 @@ async function main() {
       {
         kind: 'uups',
       }
-    )
+    ) as string
   }
 
   assetRegImpl = await ethers.getContractAt('AssetRegistryP1', assetRegImplAddr)
@@ -191,7 +191,7 @@ async function main() {
     backingMgrImplAddr = await upgrades.deployImplementation(BackingMgrImplFactory, {
       kind: 'uups',
       unsafeAllow: ['external-library-linking', 'delegatecall'],
-    })
+    }) as string
   } else {
     backingMgrImplAddr = await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.backingManager,
@@ -200,7 +200,7 @@ async function main() {
         kind: 'uups',
         unsafeAllow: ['external-library-linking', 'delegatecall'],
       }
-    )
+    ) as string
   }
 
   backingMgrImpl = <BackingManagerP1>(
@@ -225,7 +225,7 @@ async function main() {
     bskHndlrImplAddr = await upgrades.deployImplementation(BskHandlerImplFactory, {
       kind: 'uups',
       unsafeAllow: ['external-library-linking'],
-    })
+    }) as string
   } else {
     bskHndlrImplAddr = await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.basketHandler,
@@ -234,7 +234,7 @@ async function main() {
         kind: 'uups',
         unsafeAllow: ['external-library-linking'],
       }
-    )
+    ) as string
   }
 
   bskHndlrImpl = <BasketHandlerP1>await ethers.getContractAt('BasketHandlerP1', bskHndlrImplAddr)
@@ -254,7 +254,7 @@ async function main() {
   if (!upgrade) {
     brokerImplAddr = await upgrades.deployImplementation(BrokerImplFactory, {
       kind: 'uups',
-    })
+    }) as string
   } else {
     brokerImplAddr = await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.broker,
@@ -262,7 +262,7 @@ async function main() {
       {
         kind: 'uups',
       }
-    )
+    ) as string
   }
 
   brokerImpl = <BrokerP1>await ethers.getContractAt('BrokerP1', brokerImplAddr)
@@ -282,7 +282,7 @@ async function main() {
   if (!upgrade) {
     distribImplAddr = await upgrades.deployImplementation(DistribImplFactory, {
       kind: 'uups',
-    })
+    }) as string
   } else {
     distribImplAddr = await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.distributor,
@@ -290,7 +290,7 @@ async function main() {
       {
         kind: 'uups',
       }
-    )
+    ) as string
   }
 
   distribImpl = <DistributorP1>await ethers.getContractAt('DistributorP1', distribImplAddr)
@@ -310,7 +310,7 @@ async function main() {
   if (!upgrade) {
     furnaceImplAddr = await upgrades.deployImplementation(FurnaceImplFactory, {
       kind: 'uups',
-    })
+    }) as string
   } else {
     furnaceImplAddr = await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.furnace,
@@ -318,7 +318,7 @@ async function main() {
       {
         kind: 'uups',
       }
-    )
+    ) as string
   }
 
   furnaceImpl = <FurnaceP1>await ethers.getContractAt('FurnaceP1', furnaceImplAddr)
@@ -341,7 +341,7 @@ async function main() {
     rsrTraderImplAddr = await upgrades.deployImplementation(RevTraderImplFactory, {
       kind: 'uups',
       unsafeAllow: ['delegatecall'],
-    })
+    }) as string
     rTokenTraderImplAddr = rsrTraderImplAddr // Both equal in initial deployment
   } else {
     // RSR Trader
@@ -352,7 +352,7 @@ async function main() {
         kind: 'uups',
         unsafeAllow: ['delegatecall'],
       }
-    )
+    ) as string
 
     // If Traders have different implementations, upgrade separately
     if (
@@ -367,7 +367,7 @@ async function main() {
           kind: 'uups',
           unsafeAllow: ['delegatecall'],
         }
-      )
+      ) as string
     } else {
       // Both use the same implementation
       rTokenTraderImplAddr = rsrTraderImplAddr
@@ -402,7 +402,7 @@ async function main() {
   if (!upgrade) {
     rTokenImplAddr = await upgrades.deployImplementation(RTokenImplFactory, {
       kind: 'uups',
-    })
+    }) as string
   } else {
     rTokenImplAddr = await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.rToken,
@@ -410,7 +410,7 @@ async function main() {
       {
         kind: 'uups',
       }
-    )
+    ) as string
   }
 
   rTokenImpl = <RTokenP1>await ethers.getContractAt('RTokenP1', rTokenImplAddr)
@@ -431,7 +431,7 @@ async function main() {
   if (!upgrade) {
     stRSRImplAddr = await upgrades.deployImplementation(StRSRImplFactory, {
       kind: 'uups',
-    })
+    }) as string
   } else {
     stRSRImplAddr = await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.stRSR,
@@ -439,7 +439,7 @@ async function main() {
       {
         kind: 'uups',
       }
-    )
+    ) as string
   }
 
   stRSRImpl = <StRSRP1Votes>await ethers.getContractAt('StRSRP1Votes', stRSRImplAddr)
