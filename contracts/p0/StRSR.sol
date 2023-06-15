@@ -14,9 +14,9 @@ import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
-import "../mixins/NetworkConfigLib.sol";
 
 /*
  * @title StRSRP0

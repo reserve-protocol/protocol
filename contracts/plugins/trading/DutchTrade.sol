@@ -4,9 +4,9 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libraries/Fixed.sol";
+import "../../libraries/NetworkConfigLib.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/ITrade.sol";
-import "../../mixins/NetworkConfigLib.sol";
 
 uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
 uint192 constant SIXTY_PERCENT = 6e17; // {1} 0.6

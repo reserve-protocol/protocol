@@ -48,7 +48,12 @@ library ThrottleLib {
         // Calculate available amount before supply change
         uint256 available = currentlyAvailable(throttle, limit);
 
-        // Calculate available amount after supply change
+        // Update throttle.timestamp if available amount changed or at limit
+        if (available != throttle.lastAvailable || available == limit) {
+            throttle.lastTimestamp = uint48(block.timestamp);
+        }
+
+        // Update throttle.lastAvailable
         if (amount > 0) {
             require(uint256(amount) <= available, "supply change throttled");
             available -= uint256(amount);
@@ -56,10 +61,7 @@ library ThrottleLib {
         } else if (amount < 0) {
             available += uint256(-amount);
         }
-
-        // Update cached values
         throttle.lastAvailable = available;
-        throttle.lastTimestamp = uint48(block.timestamp);
     }
 
     /// @param limit {qRTok/hour} The hourly limit
