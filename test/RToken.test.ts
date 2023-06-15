@@ -1802,12 +1802,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
       })
 
-      it('Should not revert when redeeming unregistered collateral #fast', async function () {
-        // Unregister collateral2
+      it('Should not revert when redeeming mostly unregistered collateral #fast', async function () {
+        // Unregister everything except token0
+        const erc20s = await assetRegistry.erc20s()
+        for (const erc20 of erc20s) {
+          if (erc20 != token0.address) {
+            await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
+          }
+        }
 
         const basketNonces = [1]
         const portions = [fp('1')]
-        await assetRegistry.connect(owner).unregister(collateral2.address)
         const quote = await basketHandler.quoteCustomRedemption(
           basketNonces,
           portions,
