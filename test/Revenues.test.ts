@@ -590,6 +590,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.not.be.revertedWith('length mismatch')
       })
 
+      it('Should distribute tokenToBuy', async () => {
+        // Use distributeTokenToBuy()
+        let stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsrTrader.distributeTokenToBuy()
+        let expectedAmount = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+
+        // Use manageTokens()
+        stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsrTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+        expectedAmount = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+      })
+
       it('Should launch revenue auction if DISABLED with nonzero minBuyAmount', async () => {
         await setOraclePrice(collateral0.address, bn('0.5e8'))
         await collateral0.refresh()
