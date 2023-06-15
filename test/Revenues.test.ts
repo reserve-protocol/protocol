@@ -571,6 +571,25 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('buy asset price unknown')
       })
 
+      it('Should not launch revenue auction if 0 erc20s len', async () => {
+        await expect(rTokenTrader.manageTokens([], [])).to.be.revertedWith('empty erc20s list')
+      })
+
+      it('Should not launch revenue auction with uneven length lists', async () => {
+        await expect(rTokenTrader.manageTokens([rsr.address], [])).to.be.revertedWith(
+          'length mismatch'
+        )
+        await expect(
+          rTokenTrader.manageTokens(
+            [rsr.address],
+            [TradeKind.BATCH_AUCTION, TradeKind.DUTCH_AUCTION]
+          )
+        ).to.be.revertedWith('length mismatch')
+        await expect(
+          rTokenTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+        ).to.not.be.revertedWith('length mismatch')
+      })
+
       it('Should launch revenue auction if DISABLED with nonzero minBuyAmount', async () => {
         await setOraclePrice(collateral0.address, bn('0.5e8'))
         await collateral0.refresh()
