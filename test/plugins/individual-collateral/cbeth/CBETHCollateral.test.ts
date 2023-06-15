@@ -10,15 +10,22 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { MockV3Aggregator } from "@typechain/MockV3Aggregator"
 import { CBEth, ERC20Mock, MockV3Aggregator__factory } from "@typechain/index"
 import { mintCBETH, resetFork } from "./helpers"
-import { impersonateAccount } from '@nomicfoundation/hardhat-network-helpers'
 import { whileImpersonating } from '#/utils/impersonation'
 import hre from "hardhat"
 
 interface CbEthCollateralFixtureContext extends CollateralFixtureContext {
     cbETH: CBEth
+    refPerTokChainlinkFeed: MockV3Aggregator
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
+
+interface CbEthCollateralOpts extends CollateralOpts {
+    refPerTokChainlinkFeed?: string
+    refPerTokChainlinkTimeout?: BigNumberish
+}
+
+
+export const deployCollateral = async (opts: CbEthCollateralOpts = {}): Promise<TestICollateral> => {
     opts = { ...defaultRethCollateralOpts, ...opts }
 
     const CBETHCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -38,6 +45,8 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
             delayUntilDefault: opts.delayUntilDefault,
         },
         opts.revenueHiding,
+        opts.refPerTokChainlinkFeed ?? ethers.constants.AddressZero,
+        opts.refPerTokChainlinkTimeout ?? ethers.constants.Zero,
         { gasLimit: 2000000000 }
     )
     await collateral.deployed()
@@ -48,12 +57,13 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
+const refPerTokChainlinkDefaultAnswer = fp('1')
 
 type Fixture<T> = () => Promise<T>
 
 const makeCollateralFixtureContext = (
     alice: SignerWithAddress,
-    opts: CollateralOpts = {}
+    opts: CbEthCollateralOpts = {}
 ): Fixture<CbEthCollateralFixtureContext> => {
     const collateralOpts = { ...defaultRethCollateralOpts, ...opts }
 
@@ -66,6 +76,12 @@ const makeCollateralFixtureContext = (
             await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
         )
         collateralOpts.chainlinkFeed = chainlinkFeed.address
+        const refPerTokChainlinkFeed = <MockV3Aggregator>(
+            await MockV3AggregatorFactory.deploy(18, refPerTokChainlinkDefaultAnswer)
+        )
+
+        collateralOpts.refPerTokChainlinkFeed = refPerTokChainlinkFeed.address
+        collateralOpts.refPerTokChainlinkTimeout = PRICE_TIMEOUT
 
         const cbETH = (await ethers.getContractAt('CBEth', CB_ETH)) as unknown as CBEth
         const collateral = await deployCollateral(collateralOpts)
@@ -74,6 +90,7 @@ const makeCollateralFixtureContext = (
             alice,
             collateral,
             chainlinkFeed,
+            refPerTokChainlinkFeed,
             cbETH,
             tok: cbETH as unknown as ERC20Mock,
         }
@@ -112,7 +129,9 @@ const reduceRefPerTok = async (
             rate.sub(rate.mul(bn(pctDecrease)).div(bn('100')))
         )
     })
-
+    const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
+    await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
 // prettier-ignore
@@ -126,16 +145,21 @@ const increaseRefPerTok = async (
             rate.add(rate.mul(bn(pctIncrease)).div(bn('100')))
         )
     })
+    const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
+    await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
-
 const getExpectedPrice = async (ctx: CbEthCollateralFixtureContext): Promise<BigNumber> => {
-    // Peg Feed
     const clData = await ctx.chainlinkFeed.latestRoundData()
     const clDecimals = await ctx.chainlinkFeed.decimals()
 
-    const refPerTok = await ctx.collateral.refPerTok()
-    const expectedPegPrice = clData.answer.mul(bn(10).pow(18 - clDecimals))
-    return expectedPegPrice.mul(refPerTok).div(fp('1'))
+    const clRptData = await ctx.refPerTokChainlinkFeed.latestRoundData()
+    const clRptDecimals = await ctx.refPerTokChainlinkFeed.decimals()
+
+    return clData.answer
+        .mul(bn(10).pow(18 - clDecimals))
+        .mul(clRptData.answer.mul(bn(10).pow(18 - clRptDecimals)))
+        .div(fp('1'))
 }
 
 /*
@@ -148,7 +172,6 @@ const collateralSpecificConstructorTests = () => { }
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {
     it('does revenue hiding', async () => {
-
     })
 }
 
