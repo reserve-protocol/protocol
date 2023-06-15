@@ -11,9 +11,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
-import "../mixins/NetworkConfigLib.sol";
 
 /*
  * @title StRSRP1
@@ -42,7 +42,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // solhint-disable-next-line var-name-mixedcase
     uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint192 public constant MAX_REWARD_RATIO = FIX_ONE; // {1} 100%
+    uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
 
     // === ERC20 ===
     string public name; // immutable

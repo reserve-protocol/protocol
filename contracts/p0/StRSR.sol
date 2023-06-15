@@ -14,9 +14,9 @@ import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
-import "../mixins/NetworkConfigLib.sol";
 
 /*
  * @title StRSRP0
@@ -37,7 +37,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // solhint-disable-next-line var-name-mixedcase
     uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint192 public constant MAX_REWARD_RATIO = 1e18;
+    uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
     uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
 
     // ==== ERC20Permit ====

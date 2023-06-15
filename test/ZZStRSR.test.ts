@@ -335,7 +335,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await rsr.connect(addr2).transfer(stRSR.address, bn('10e18'))
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1200)
 
-      await stRSR.setRewardRatio(bn('1e17'))
+      await stRSR.setRewardRatio(bn('1e13'))
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1200)
 
       await stRSR.connect(addr1).unstake(stakeAmt)
@@ -360,7 +360,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).freezeShort()
 
       // Set reward ratio - no rewards payout
-      await expectEvents(stRSR.setRewardRatio(bn('1e17')), [
+      await expectEvents(stRSR.setRewardRatio(bn('1e13')), [
         {
           contract: stRSR,
           name: 'ExchangeRateSet',
@@ -1125,10 +1125,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await rsr.connect(addr2).approve(stRSR.address, amount3)
         await stRSR.connect(addr2).stake(amount3)
 
-        // Get current balances for users
-        const prevAddr1Balance = await rsr.balanceOf(addr1.address)
-        const prevAddr2Balance = await rsr.balanceOf(addr2.address)
-
         // Create 1st withdrawal for user 2
         await stRSR.connect(addr2).unstake(amount2)
 
@@ -1139,7 +1135,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Send reward RSR -- bn('3e18')
         await rsr.connect(addr1).transfer(stRSR.address, amount3)
-        await stRSR.connect(owner).setRewardRatio(fp('1')) // 100%; handout everything
+        await stRSR.connect(owner).setRewardRatio(bn('1e14')) // handout max ratio
 
         // Create 2nd withdrawal for user 2 -- should unstake at 1:1 rate
         expect(await stRSR.exchangeRate()).to.equal(fp('1'))
@@ -1156,6 +1152,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Cancel 1st withdrawal
         await stRSR.connect(addr2).cancelUnstake(1)
 
+        // Calculate new exchange rate ~1.91 -- regression test
+        const decayFn = makeDecayFn(await stRSR.rewardRatio())
+        const numRounds = stkWithdrawalDelay / 4 / 12
+        const rewardHandout = amount3.sub(decayFn(amount3, numRounds))
+        const newExchangeRate = amount3.add(rewardHandout).mul(fp('1')).div(amount3).add(1)
+        expect(await stRSR.exchangeRate()).to.equal(newExchangeRate)
+
         // Move time forward to first period complete
         await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 4)
 
@@ -1163,11 +1166,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.endIdForWithdraw(addr1.address)).to.equal(1)
         expect(await stRSR.endIdForWithdraw(addr2.address)).to.equal(1)
 
-        // Create 3rd withdrawal for user 2 --
-        // Regression test -- should payout rewards first at elevated exchange rate, not 1:1
-        expect(await stRSR.exchangeRate()).to.equal(fp('2')) // doubled the exchange rate
+        // Create 3rd withdrawal for user 2
         await stRSR.connect(addr2).unstake(amount3)
-        expect(await stRSR.exchangeRate()).to.equal(fp('2'))
 
         // Move time forward to end of second period
         await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 2)
@@ -1192,21 +1192,12 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Withdraw everything
         await stRSR.connect(addr1).withdraw(addr1.address, 1)
         await stRSR.connect(addr2).withdraw(addr2.address, 3)
-
-        // Withdrawals completed
-        expect(await stRSR.totalSupply()).to.equal(amount1)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(amount1.mul(2)) // 2:1 exchange rate
-        expect(await rsr.balanceOf(addr1.address)).to.equal(
-          prevAddr1Balance.add(amount1).sub(amount3)
-        )
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
-        expect(await rsr.balanceOf(addr2.address)).to.equal(
-          prevAddr2Balance.add(amount1).add(amount2).add(amount3).add(amount3)
-        )
-        expect(await stRSR.balanceOf(addr2.address)).to.equal(amount1) // amount1 at 2:1 rate
+        expect(await stRSR.totalSupply()).to.be.gt(amount1)
+        expect(await stRSR.totalSupply()).to.be.lt(amount1.add(amount1.div(20))) // 5%
 
-        /// Exchange rate remains steady
-        expect(await stRSR.exchangeRate()).to.equal(fp('2'))
+        /// Exchange rate should increase
+        expect(await stRSR.exchangeRate()).to.be.gt(newExchangeRate)
       })
 
       it('Should handle changes in stakingWithdrawalDelay correctly', async function () {
@@ -3247,7 +3238,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Do accretion
       if (rsrAccreted.gt(0)) {
         await rsr.connect(owner).mint(stRSR.address, rsrAccreted)
-        await stRSR.connect(owner).setRewardRatio(fp('1')) // this pays out rewards
+        await stRSR.connect(owner).setRewardRatio(bn('1e14')) // this pays out rewards
         await setNextBlockTimestamp(Number(ONE_PERIOD.add(await getLatestBlockTimestamp())))
         await expect(stRSR.payoutRewards())
         // now the mint has been fully paid out
@@ -3311,7 +3302,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     // max: 1 year
     const unstakingDelays = [bn(MAX_UNSTAKING_DELAY), bn('0'), bn('604800')]
 
-    const rewardRatios = [fp('1'), fp('0'), fp('0.000001069671574938')]
+    const rewardRatios = [bn('1e14'), fp('0'), fp('0.000001069671574938')]
 
     let dimensions = [
       rsrStakes,

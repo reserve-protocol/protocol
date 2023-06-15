@@ -11,7 +11,7 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
-import "../mixins/NetworkConfigLib.sol";
+import "../libraries/NetworkConfigLib.sol";
 
 /**
  * @title BackingManager
