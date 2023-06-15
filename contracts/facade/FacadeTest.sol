@@ -56,17 +56,20 @@ contract FacadeTest is IFacadeTest {
         try main.backingManager().rebalance(TradeKind.BATCH_AUCTION) {} catch {}
         try main.backingManager().forwardRevenue(erc20s) {} catch {}
 
-        // Start exact RSR auctions
-        (IERC20[] memory rsrERC20s, TradeKind[] memory rsrKinds) = traderERC20s(rsrTrader, erc20s);
-        try main.rsrTrader().manageTokens(rsrERC20s, rsrKinds) {} catch {}
+        TradeKind[] memory kind = new TradeKind[](1);
+        IERC20[] memory rsrERC20s = new IERC20[](1);
+        kind[0] = TradeKind.BATCH_AUCTION;
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            rsrERC20s[0] = erc20s[i];
+            try main.rsrTrader().manageTokens(rsrERC20s, kind) {} catch {}
+        }
 
-        // Start exact RToken auctions
-        (IERC20[] memory rTokenERC20s, TradeKind[] memory rTokenKinds) = traderERC20s(
-            rTokenTrader,
-            erc20s
-        );
-        try main.rTokenTrader().manageTokens(rTokenERC20s, rTokenKinds) {} catch {}
-
+        IERC20[] memory rTokenERC20s = new IERC20[](1);
+        kind[0] = TradeKind.BATCH_AUCTION;
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            rTokenERC20s[0] = erc20s[i];
+            try main.rTokenTrader().manageTokens(rTokenERC20s, kind) {} catch {}
+        }
         // solhint-enable no-empty-blocks
     }
 
@@ -108,32 +111,5 @@ contract FacadeTest is IFacadeTest {
     function wholeBasketsHeldBy(IRToken rToken, address account) external view returns (uint192) {
         BasketRange memory range = rToken.main().basketHandler().basketsHeldBy(account);
         return range.bottom;
-    }
-
-    // === Private ===
-
-    function traderERC20s(IRevenueTrader trader, IERC20[] memory erc20sAll)
-        private
-        view
-        returns (IERC20[] memory erc20s, TradeKind[] memory kinds)
-    {
-        uint256 len;
-        IERC20[] memory traderERC20sAll = new IERC20[](erc20sAll.length);
-        for (uint256 i = 0; i < erc20sAll.length; ++i) {
-            if (
-                address(trader.trades(erc20sAll[i])) == address(0) &&
-                erc20sAll[i].balanceOf(address(trader)) > 0
-            ) {
-                traderERC20sAll[len] = erc20sAll[i];
-                ++len;
-            }
-        }
-
-        erc20s = new IERC20[](len);
-        kinds = new TradeKind[](len);
-        for (uint256 i = 0; i < len; ++i) {
-            erc20s[i] = traderERC20sAll[i];
-            kinds[i] = TradeKind.BATCH_AUCTION;
-        }
     }
 }

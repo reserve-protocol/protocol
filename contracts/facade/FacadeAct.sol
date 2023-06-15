@@ -87,6 +87,7 @@ contract FacadeAct is IFacadeAct, Multicall {
     // === Static Calls ===
 
     /// To use this, call via callStatic.
+    /// Includes consideration of when to distribute the RevenueTrader tokenToBuy
     /// @return erc20s The ERC20s that have auctions that can be started
     /// @return canStart If the ERC20 auction can be started
     /// @return surpluses {qTok} The surplus amount

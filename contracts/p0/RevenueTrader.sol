@@ -53,15 +53,18 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// Process some number of tokens
     /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered
     /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
-    /// @custom:interaction RCEI and nonReentrant
+    /// @custom:interaction
     function manageTokens(IERC20[] memory erc20s, TradeKind[] memory kinds)
         external
         notTradingPausedOrFrozen
     {
-        IAsset assetToBuy = main.assetRegistry().toAsset(tokenToBuy);
-
-        // == Refresh ==
+        require(erc20s.length > 0, "empty erc20s list");
+        require(erc20s.length == kinds.length, "length mismatch");
         main.assetRegistry().refresh();
+
+        IAsset assetToBuy = main.assetRegistry().toAsset(tokenToBuy);
+        (, uint192 buyPrice) = assetToBuy.price(); // {UoA/tok}
+        require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
 
         // For each ERC20: start auction of given kind
         for (uint256 i = 0; i < erc20s.length; ++i) {
@@ -71,16 +74,12 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
                 continue;
             }
 
-            // == Checks/Effects ==
             IAsset assetToSell = main.assetRegistry().toAsset(erc20);
 
             require(address(trades[erc20]) == address(0), "trade open");
             require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
             (uint192 sellPrice, ) = assetToSell.price(); // {UoA/tok}
-            (, uint192 buyPrice) = assetToBuy.price(); // {UoA/tok}
-
-            require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
 
             TradingLibP0.TradeInfo memory trade = TradingLibP0.TradeInfo({
                 sell: assetToSell,
@@ -100,7 +99,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             );
             require(req.sellAmount > 1, "sell amount too low");
 
-            // == Interactions ==
             tryTrade(kinds[i], req);
         }
     }

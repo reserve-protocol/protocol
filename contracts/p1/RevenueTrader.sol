@@ -9,7 +9,7 @@ import "./mixins/Trading.sol";
 import "./mixins/TradeLib.sol";
 
 /// Trader Component that converts all asset balances at its address to a
-/// single target asset and sends this asset to the Distributor.
+/// single target asset and distributes this asset through the Distributor.
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     using FixLib for uint192;
@@ -81,57 +81,54 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //   else: sell erc20 for tokenToBuy
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function manageTokens(IERC20[] memory erc20s, TradeKind[] memory kinds)
+    function manageTokens(IERC20[] calldata erc20s, TradeKind[] calldata kinds)
         external
         nonReentrant
         notTradingPausedOrFrozen
     {
         uint256 len = erc20s.length;
-        IAsset assetToBuy = assetRegistry.toAsset(tokenToBuy);
+        require(len > 0, "empty erc20s list");
+        require(len == kinds.length, "length mismatch");
 
-        // == Refresh ==
-        {
-            bool containsRToken = tokenToBuy == IERC20(address(rToken));
-            if (!containsRToken) {
-                for (uint256 i = 0; i < len; ++i) {
-                    if (erc20s[i] == IERC20(address(rToken))) {
-                        containsRToken = true;
-                        break;
-                    }
-                }
-            }
-
-            // Refresh everything if RToken is involved
-            if (containsRToken) {
-                assetRegistry.refresh();
-                furnace.melt();
-            } else {
-                for (uint256 i = 0; i < len; ++i) {
-                    assetRegistry.toAsset(erc20s[i]).refresh();
-                }
-                assetToBuy.refresh(); // can never be the RTokenAsset
+        // Calculate if the trade involves any RToken
+        // Distribute tokenToBuy if supplied in ERC20s list
+        bool involvesRToken = tokenToBuy == IERC20(address(rToken));
+        for (uint256 i = 0; i < len; ++i) {
+            if (erc20s[i] == IERC20(address(rToken))) involvesRToken = true;
+            if (erc20s[i] == tokenToBuy) {
+                _distributeTokenToBuy();
+                if (len == 1) return; // return early if tokenToBuy is only entry
             }
         }
 
-        // For each ERC20 that isn't the tokenToBuy, start an auction of the given kind
+        // Cache assetToBuy
+        IAsset assetToBuy = assetRegistry.toAsset(tokenToBuy);
+
+        // Refresh everything if RToken is involved
+        if (involvesRToken) {
+            assetRegistry.refresh();
+            furnace.melt();
+        } else {
+            // Otherwise: refresh just the needed assets and nothing more
+            for (uint256 i = 0; i < len; ++i) {
+                assetRegistry.toAsset(erc20s[i]).refresh();
+            }
+            assetToBuy.refresh(); // invariant: can never be the RTokenAsset
+        }
+
+        // Cache and validate buyPrice
         (, uint192 buyPrice) = assetToBuy.price(); // {UoA/tok}
+        require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
+
+        // For each ERC20 that isn't the tokenToBuy, start an auction of the given kind
         for (uint256 i = 0; i < len; ++i) {
             IERC20 erc20 = erc20s[i];
-            if (erc20 == tokenToBuy) {
-                _distributeTokenToBuy();
-                continue;
-            }
-
-            // == Checks/Effects ==
             IAsset assetToSell = assetRegistry.toAsset(erc20);
 
             require(address(trades[erc20]) == address(0), "trade open");
             require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
             (uint192 sellPrice, ) = assetToSell.price(); // {UoA/tok}
-
-            require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
-
             TradeInfo memory trade = TradeInfo({
                 sell: assetToSell,
                 buy: assetToBuy,
@@ -150,7 +147,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             );
             require(req.sellAmount > 1, "sell amount too low");
 
-            // == Interactions ==
+            // Launch trade
             tryTrade(kinds[i], req);
         }
     }
