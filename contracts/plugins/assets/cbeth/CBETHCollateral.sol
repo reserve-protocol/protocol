@@ -44,7 +44,11 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
         external
         view
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 p = chainlinkFeed.price(oracleTimeout).mul(

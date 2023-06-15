@@ -8,8 +8,8 @@ This plugin allows `CBETH` holders to use their tokens as collateral in the Rese
 
 ### Units
 
-| tok    | ref | target | UoA |
-| ----   | --- | ------ | --- |
+| tok   | ref | target | UoA |
+| ----- | --- | ------ | --- |
 | cbeth | ETH | ETH    | ETH |
 
 ### Functions
