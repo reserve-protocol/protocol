@@ -22,7 +22,7 @@ contract GnosisTrade is ITrade {
 
     // Upper bound for the max number of orders we're happy to have the auction clear in;
     // When we have good price information, this determines the minimum buy amount per order.
-    uint96 public constant MAX_ORDERS = 1e5;
+    uint96 public constant MAX_ORDERS = 5000; // bounded to avoid going beyond block gas limit
 
     // raw "/" for compile-time const
     uint192 public constant DEFAULT_MIN_BID = FIX_ONE / 100; // {tok}
