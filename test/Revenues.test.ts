@@ -590,20 +590,85 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.not.be.revertedWith('length mismatch')
       })
 
-      it('Should distribute tokenToBuy', async () => {
+      it('Should distribute tokenToBuy - distributeTokenToBuy()', async () => {
         // Use distributeTokenToBuy()
-        let stRSRBal = await rsr.balanceOf(stRSR.address)
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
         await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
         await rsrTrader.distributeTokenToBuy()
-        let expectedAmount = stRSRBal.add(issueAmount)
+        const expectedAmount = stRSRBal.add(issueAmount)
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+      })
 
+      it('Should distribute tokenToBuy - manageTokens()', async () => {
         // Use manageTokens()
-        stRSRBal = await rsr.balanceOf(stRSR.address)
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
         await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
         await rsrTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
-        expectedAmount = stRSRBal.add(issueAmount)
+        const expectedAmount = stRSRBal.add(issueAmount)
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+      })
+
+      it('Should launch multiple auctions -- has tokenToBuy', async () => {
+        // Mint AAVE, token0, and RSR to the RSRTrader
+        await aaveToken.connect(owner).mint(rsrTrader.address, issueAmount)
+        await token0.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Start auctions
+        await expectEvents(
+          rsrTrader.manageTokens(
+            [rsr.address, token0.address, aaveToken.address],
+            [TradeKind.BATCH_AUCTION, TradeKind.BATCH_AUCTION, TradeKind.BATCH_AUCTION]
+          ),
+          [
+            {
+              contract: rsr,
+              name: 'Transfer',
+              args: [rsrTrader.address, stRSR.address, anyValue],
+              emitted: true,
+            },
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, token0.address, rsr.address, issueAmount, anyValue],
+              emitted: true,
+            },
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, aaveToken.address, rsr.address, issueAmount, anyValue],
+              emitted: true,
+            },
+          ]
+        )
+      })
+
+      it('Should launch multiple auctions -- involvesRToken', async () => {
+        // Mint AAVE, token0, and RSR to the RSRTrader
+        await rToken.connect(addr1).transfer(rsrTrader.address, issueAmount)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Start auctions
+        await expectEvents(
+          rsrTrader.manageTokens(
+            [rsr.address, rToken.address],
+            [TradeKind.BATCH_AUCTION, TradeKind.BATCH_AUCTION]
+          ),
+          [
+            {
+              contract: rsr,
+              name: 'Transfer',
+              args: [rsrTrader.address, stRSR.address, anyValue],
+              emitted: true,
+            },
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, rToken.address, rsr.address, issueAmount, anyValue],
+              emitted: true,
+            },
+          ]
+        )
       })
 
       it('Should launch revenue auction if DISABLED with nonzero minBuyAmount', async () => {
