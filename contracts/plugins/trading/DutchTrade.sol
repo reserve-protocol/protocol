@@ -11,11 +11,11 @@ import "../../interfaces/ITrade.sol";
 uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
 uint192 constant SIXTY_PERCENT = 6e17; // {1} 0.6
 
-// Exponential price decay with base (999999/1000000). Price starts at 1000x and decays to 1x
+// Exponential price decay with base (999999/1000000). Price starts at 1000x and decays to <1x
 //   A 30-minute auction on a chain with a 12-second blocktime has a ~10.87% price drop per block
-//   during the geometric/exponential period and a 0.05% drop during the linear period.
+//   during the geometric/exponential period and a 0.05% drop per block during the linear period.
 //   30-minutes is the recommended length of auction for a chain with 12-second blocktimes, but
-//   longer and shorter times can be used as well. The pricing algorithm does not degrade
+//   longer and shorter times can be used as well. The pricing method does not degrade
 //   beyond the degree to which less overall blocktime means necessarily larger price drops.
 uint192 constant MAX_EXP = 6907752 * FIX_ONE; // {1} (1000000/999999)^6907752 = ~1000x
 uint192 constant BASE = 999999e12; // {1} (999999/1000000)
@@ -32,12 +32,13 @@ uint192 constant BASE = 999999e12; // {1} (999999/1000000)
  *   Over the last 60% of the auction the price falls from the best plausible price to the worst
  *   price, linearly. The worst price is further discounted by the maxTradeSlippage as a fraction
  *   of how far from minTradeVolume to maxTradeVolume the trade lies.
- *   At maxTradeVolume, no further discount is applied.
+ *   At maxTradeVolume, no additonal discount beyond the oracle errors is applied.
  *
  * To bid:
- * - Call `bidAmount()` view to check prices at various timestamps
- * - Wait until a desirable block is reached (hopefully not in the first 40% of the auction)
- * - Provide approval of buy tokens and call bid(). The swap will be atomic
+ * 1. Call `bidAmount()` view to check prices at various timestamps
+ * 2. Provide approval of sell tokens for precisely the `bidAmount()` desired
+ * 3. Wait until a desirable block is reached (hopefully not in the first 40% of the auction)
+ * 4. Call bid()
  */
 contract DutchTrade is ITrade {
     using FixLib for uint192;
