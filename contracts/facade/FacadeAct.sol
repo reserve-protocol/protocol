@@ -70,18 +70,16 @@ contract FacadeAct is IFacadeAct, Multicall {
             if (majorVersion == MAJOR_VERSION_3) {
                 // solhint-disable-next-line no-empty-blocks
                 try revenueTrader.manageTokens(toStart, kinds) {} catch {}
-            } else {
+            } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
                 for (uint256 i = 0; i < toStart.length; ++i) {
-                    if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-                        // solhint-disable-next-line avoid-low-level-calls
-                        (bool success, ) = address(revenueTrader).call{ value: 0 }(
-                            abi.encodeWithSignature("manageToken(address)", toStart[i])
-                        );
-                        success = success; // hush warning
-                    } else {
-                        revertUnrecognizedVersion();
-                    }
+                    // solhint-disable-next-line avoid-low-level-calls
+                    (bool success, ) = address(revenueTrader).call{ value: 0 }(
+                        abi.encodeWithSignature("manageToken(address)", toStart[i])
+                    );
+                    success = success; // hush warning
                 }
+            } else {
+                revertUnrecognizedVersion();
             }
         }
     }
@@ -129,18 +127,17 @@ contract FacadeAct is IFacadeAct, Multicall {
         canStart = new bool[](reg.erc20s.length);
         surpluses = new uint256[](reg.erc20s.length);
         minTradeAmounts = new uint256[](reg.erc20s.length);
-        // Calculate which erc20s can have auctions started
+        // Calculate which erc20s should have auctions started
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            erc20s[i] = reg.erc20s[i];
+
             // Settle first if possible. Required so we can assess full available balance
-            ITrade trade = revenueTrader.trades(reg.erc20s[i]);
+            ITrade trade = revenueTrader.trades(erc20s[i]);
             if (address(trade) != address(0) && trade.canSettle()) {
-                revenueTrader.settleTrade(reg.erc20s[i]);
+                revenueTrader.settleTrade(erc20s[i]);
             }
 
-            uint48 tradesOpen = revenueTrader.tradesOpen();
-            erc20s[i] = reg.erc20s[i];
-            surpluses[i] = reg.erc20s[i].balanceOf(address(revenueTrader));
-
+            surpluses[i] = erc20s[i].balanceOf(address(revenueTrader));
             (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
             if (lotLow == 0) continue;
 
@@ -149,35 +146,11 @@ contract FacadeAct is IFacadeAct, Multicall {
                 int8(reg.assets[i].erc20Decimals())
             );
 
-            bytes1 majorVersion = bytes(revenueTrader.version())[0];
             if (
-                reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i] &&
-                revenueTrader.trades(reg.erc20s[i]) == ITrade(address(0))
+                erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i] &&
+                revenueTrader.trades(erc20s[i]) == ITrade(address(0))
             ) {
-                if (majorVersion == MAJOR_VERSION_3) {
-                    // solhint-disable-next-line no-empty-blocks
-                    TradeKind[] memory kinds = new TradeKind[](erc20s.length);
-                    for (uint256 j = 0; j < erc20s.length; ++j) {
-                        kinds[j] = TradeKind.DUTCH_AUCTION;
-                    }
-                    try revenueTrader.manageTokens(erc20s, kinds) {} catch {}
-                } else {
-                    for (uint256 j = 0; j < erc20s.length; ++i) {
-                        if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-                            // solhint-disable-next-line avoid-low-level-calls
-                            (bool success, ) = address(revenueTrader).call{ value: 0 }(
-                                abi.encodeWithSignature("manageToken(address)", erc20s[i])
-                            );
-                            success = success; // hush warning
-                        } else {
-                            revertUnrecognizedVersion();
-                        }
-                    }
-                }
-
-                if (revenueTrader.tradesOpen() - tradesOpen > 0) {
-                    canStart[i] = true;
-                }
+                canStart[i] = true;
             }
         }
     }
