@@ -77,7 +77,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     // does nothing if erc20 == addr(0) or bal == 0
     //
     // For each ERC20:
-    //   if an open trade can be settled, settle it
     //   if erc20 is tokenToBuy: distribute it
     //   else: sell erc20 for tokenToBuy
     // untested:
