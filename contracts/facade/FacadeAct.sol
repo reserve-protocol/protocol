@@ -36,9 +36,9 @@ contract FacadeAct is IFacadeAct, Multicall {
     ///     - Call `revenueTrader.manageTokens(ERC20)` to start an auction
     function runRevenueAuctions(
         IRevenueTrader revenueTrader,
-        IERC20[] memory toSettle,
-        IERC20[] memory toStart,
-        TradeKind[] memory kinds
+        IERC20[] calldata toSettle,
+        IERC20[] calldata toStart,
+        TradeKind[] calldata kinds
     ) external {
         // Settle auctions
         for (uint256 i = 0; i < toSettle.length; ++i) {
