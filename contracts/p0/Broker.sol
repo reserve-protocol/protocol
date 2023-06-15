@@ -10,6 +10,7 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Component.sol";
 
 // Gnosis: uint96 ~= 7e28

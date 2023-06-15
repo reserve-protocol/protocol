@@ -2,9 +2,9 @@
 pragma solidity 0.8.19;
 
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "../interfaces/IFurnace.sol";
 import "./mixins/Component.sol";
-import "../mixins/NetworkConfigLib.sol";
 
 /**
  * @title FurnaceP0

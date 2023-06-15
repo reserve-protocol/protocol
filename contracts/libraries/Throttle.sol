@@ -47,6 +47,7 @@ library ThrottleLib {
 
         // Calculate available amount before supply change
         uint256 available = currentlyAvailable(throttle, limit);
+        bool updateThrottleTs = available != throttle.lastAvailable || available == limit;
 
         // Calculate available amount after supply change
         if (amount > 0) {
@@ -59,7 +60,7 @@ library ThrottleLib {
 
         // Update cached values
         throttle.lastAvailable = available;
-        throttle.lastTimestamp = uint48(block.timestamp);
+        if (updateThrottleTs) throttle.lastTimestamp = uint48(block.timestamp);
     }
 
     /// @param limit {qRTok/hour} The hourly limit

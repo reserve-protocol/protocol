@@ -11,9 +11,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
-import "../mixins/NetworkConfigLib.sol";
 
 /*
  * @title StRSRP1
