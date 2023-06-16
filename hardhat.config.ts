@@ -10,9 +10,6 @@ import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 import * as tdly from "@tenderly/hardhat-tenderly";
 
-if (!useEnv('CI')) {
-  tdly.setup();
-}
 
 import { useEnv } from '#/utils/env'
 import { HardhatUserConfig } from 'hardhat/types'
@@ -20,6 +17,10 @@ import forkBlockNumber from '#/test/integration/fork-block-numbers'
 
 // eslint-disable-next-line node/no-missing-require
 require('#/tasks')
+
+if (!useEnv('CI')) {
+  tdly.setup();
+}
 
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
