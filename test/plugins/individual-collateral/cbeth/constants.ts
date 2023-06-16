@@ -3,6 +3,7 @@ import { networkConfig } from '../../../../common/configuration'
 
 // Mainnet Addresses
 export const ETH_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.ETH as string
+export const CBETH_ETH_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.cbETH as string
 export const CB_ETH = networkConfig['31337'].tokens.cbETH as string
 export const WETH = networkConfig['31337'].tokens.WETH as string
 export const CB_ETH_MINTER = '0xd0F73E06E7b88c8e1da291bB744c4eEBAf9Af59f'

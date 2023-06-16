@@ -1,6 +1,7 @@
 import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import {
+  CBETH_ETH_PRICE_FEED,
   CB_ETH,
   CB_ETH_ORACLE,
   DEFAULT_THRESHOLD,
@@ -54,8 +55,8 @@ export const deployCollateral = async (
       delayUntilDefault: opts.delayUntilDefault,
     },
     opts.revenueHiding,
-    opts.refPerTokChainlinkFeed ?? ethers.constants.AddressZero,
-    opts.refPerTokChainlinkTimeout ?? ethers.constants.Zero,
+    opts.refPerTokChainlinkFeed ?? CBETH_ETH_PRICE_FEED,
+    opts.refPerTokChainlinkTimeout ?? ORACLE_TIMEOUT,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -121,41 +122,53 @@ const mintCollateralTo: MintCollateralFunc<CbEthCollateralFixtureContext> = asyn
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const reduceTargetPerRef = async () => {}
+const reduceTargetPerRef = async () => { }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const increaseTargetPerRef = async () => {}
+const increaseTargetPerRef = async () => { }
+
+const changeRefPerTok = async (
+  ctx: CbEthCollateralFixtureContext,
+  percentChange: BigNumber
+) => {
+  await whileImpersonating(hre, CB_ETH_ORACLE, async oracleSigner => {
+    const rate = await ctx.cbETH.exchangeRate()
+    await ctx.cbETH.connect(oracleSigner).updateExchangeRate(
+      rate.add(rate.mul(percentChange).div(bn('100')))
+    )
+    {
+      const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+      const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
+      await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+    }
+
+    {
+      const lastRound = await ctx.chainlinkFeed.latestRoundData()
+      const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
+      await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+    }
+  })
+}
 
 // prettier-ignore
 const reduceRefPerTok = async (
   ctx: CbEthCollateralFixtureContext,
   pctDecrease: BigNumberish
 ) => {
-  await whileImpersonating(hre, CB_ETH_ORACLE, async oracleSigner => {
-    const rate = await ctx.cbETH.exchangeRate()
-    await ctx.cbETH.connect(oracleSigner).updateExchangeRate(
-      rate.sub(rate.mul(bn(pctDecrease)).div(bn('100')))
-    )
-  })
-  const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
-  await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  await changeRefPerTok(
+    ctx,
+    bn(pctDecrease).mul(-1)
+  )
 }
-
 // prettier-ignore
 const increaseRefPerTok = async (
   ctx: CbEthCollateralFixtureContext,
   pctIncrease: BigNumberish
 ) => {
-  await whileImpersonating(hre, CB_ETH_ORACLE, async oracleSigner => {
-    const rate = await ctx.cbETH.exchangeRate()
-    await ctx.cbETH.connect(oracleSigner).updateExchangeRate(
-      rate.add(rate.mul(bn(pctIncrease)).div(bn('100')))
-    )
-  })
-  const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
-  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
-  await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  await changeRefPerTok(
+    ctx,
+    bn(pctIncrease)
+  )
 }
 const getExpectedPrice = async (ctx: CbEthCollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
@@ -175,13 +188,12 @@ const getExpectedPrice = async (ctx: CbEthCollateralFixtureContext): Promise<Big
 */
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {}
+const collateralSpecificConstructorTests = () => { }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => {}
-
+const collateralSpecificStatusTests = () => { }
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const beforeEachRewardsTest = async () => {}
+const beforeEachRewardsTest = async () => { }
 
 export const defaultRethCollateralOpts: CollateralOpts = {
   erc20: CB_ETH,
@@ -215,9 +227,9 @@ const opts = {
   getExpectedPrice,
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it.skip,
-  itChecksRefPerTokDefault: it.skip,
+  itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
-  itHasRevenueHiding: it.skip, // implemnted in this file
+  itHasRevenueHiding: it,
   resetFork: resetFork,
   collateralName: 'CBEthCollateral',
   chainlinkDefaultAnswer,
