@@ -11,7 +11,6 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
-  WETH,
 } from './constants'
 import { BigNumber, BigNumberish, ContractFactory } from 'ethers'
 import { bn, fp } from '#/common/numbers'
@@ -38,7 +37,7 @@ interface CbEthCollateralOpts extends CollateralOpts {
 export const deployCollateral = async (
   opts: CbEthCollateralOpts = {}
 ): Promise<TestICollateral> => {
-  opts = { ...defaultRethCollateralOpts, ...opts }
+  opts = { ...defaultCBEthCollateralOpts, ...opts }
 
   const CBETHCollateralFactory: ContractFactory = await ethers.getContractFactory('CBEthCollateral')
 
@@ -75,7 +74,7 @@ const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
   opts: CbEthCollateralOpts = {}
 ): Fixture<CbEthCollateralFixtureContext> => {
-  const collateralOpts = { ...defaultRethCollateralOpts, ...opts }
+  const collateralOpts = { ...defaultCBEthCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
@@ -192,10 +191,9 @@ const collateralSpecificStatusTests = () => {}
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const beforeEachRewardsTest = async () => {}
 
-export const defaultRethCollateralOpts: CollateralOpts = {
+export const defaultCBEthCollateralOpts: CollateralOpts = {
   erc20: CB_ETH,
   targetName: ethers.utils.formatBytes32String('ETH'),
-  rewardERC20: WETH,
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ETH_USD_PRICE_FEED,
   oracleTimeout: ORACLE_TIMEOUT,
