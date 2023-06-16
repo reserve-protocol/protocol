@@ -63,7 +63,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         main.assetRegistry().refresh();
 
         IAsset assetToBuy = main.assetRegistry().toAsset(tokenToBuy);
-        (, uint192 buyPrice) = assetToBuy.price(); // {UoA/tok}
+        (, uint192 buyPrice) = assetToBuy.lotPrice(); // {UoA/tok}
         require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
 
         // For each ERC20: start auction of given kind
@@ -79,7 +79,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             require(address(trades[erc20]) == address(0), "trade open");
             require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
-            (uint192 sellPrice, ) = assetToSell.price(); // {UoA/tok}
+            (uint192 sellPrice, ) = assetToSell.lotPrice(); // {UoA/tok}
 
             TradingLibP0.TradeInfo memory trade = TradingLibP0.TradeInfo({
                 sell: assetToSell,
