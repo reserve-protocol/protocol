@@ -248,4 +248,10 @@ contract DeployerP1 is IDeployer, Versioned {
         emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
         return (address(components.rToken));
     }
+
+    /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset) {
+        return new RTokenAsset(rToken, maxTradeVolume);
+    }
 }
