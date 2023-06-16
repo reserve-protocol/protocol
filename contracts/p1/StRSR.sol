@@ -210,14 +210,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
     function payoutRewards() external {
-        requireNotFrozen();
         _payoutRewards();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and over-collateralize
     /// the system
     /// @param rsrAmount {qRSR}
-    /// @dev Staking continues while paused/frozen, without reward handouts
+    /// @dev Staking continues while paused/frozen, with reward handouts
     /// @custom:interaction CEI
     // checks:
     //   0 < rsrAmount
@@ -233,7 +232,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function stake(uint256 rsrAmount) public {
         require(rsrAmount > 0, "Cannot stake zero");
 
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
 
         // Mint new stakes
         mintStakes(_msgSender(), rsrAmount);
@@ -955,7 +954,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @custom:governance
     function setRewardRatio(uint192 val) public {
         requireGovernanceOnly();
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;

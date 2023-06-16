@@ -1674,8 +1674,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     let eurToken: ERC20Mock
 
     beforeEach(async () => {
-      await upgrades.silenceWarnings()
-
       if (IMPLEMENTATION == Implementation.P0) {
         const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP0')
         freshBasketHandler = <TestIBasketHandler>((await BasketHandlerFactory.deploy()) as unknown)
