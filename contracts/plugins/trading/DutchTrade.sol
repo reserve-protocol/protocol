@@ -212,6 +212,11 @@ contract DutchTrade is ITrade {
         return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp > endTime);
     }
 
+    /// @return {qSellTok} The size of the lot being sold, in token quanta
+    function lot() external view returns (uint256) {
+        return sellAmount.shiftl_toUint(int8(sell.decimals()));
+    }
+
     // === Private ===
 
     /// Return a sliding % from 0 (at maxTradeVolume) to maxTradeSlippage (at minTradeVolume)
