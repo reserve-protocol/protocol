@@ -153,7 +153,7 @@ library RecollateralizationLibP1 {
         view
         returns (BasketRange memory range)
     {
-        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.lotPrice(); // {UoA/BU}
         uint192 basketsNeeded = ctx.rToken.basketsNeeded(); // {BU}
 
         // Cap ctx.basketsHeld.top
@@ -192,7 +192,11 @@ library RecollateralizationLibP1 {
                     !TradeLib.isEnoughToSell(reg.assets[i], bal, lotLow, ctx.minTradeVolume)
                 ) continue;
             }
+
             (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/tok}
+            // price() is better than lotPrice() here: it's important to not underestimate how
+            // much value could be in a token that is unpriced by using a decaying high lotPrice.
+            // price() will return [0, FIX_MAX] in this case, which is preferable.
 
             // throughout these sections +/- is same as Fix.plus/Fix.minus and </> is Fix.gt/.lt
 
@@ -328,18 +332,8 @@ library RecollateralizationLibP1 {
             uint192 needed = range.top.mul(ctx.quantities[i], CEIL); // {tok}
 
             if (bal.gt(needed)) {
-                uint192 low; // {UoA/sellTok}
-
-                // this wonky block is just for getting around the stack limit
-                {
-                    uint192 high; // {UoA/sellTok}
-                    (low, high) = reg.assets[i].price(); // {UoA/sellTok}
-
-                    // Skip worthless assets
-                    if (high == 0) continue;
-                }
-
-                (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/sellTok}
+                (uint192 lotLow, uint192 lotHigh) = reg.assets[i].lotPrice(); // {UoA/sellTok}
+                if (lotHigh == 0) continue; // skip over worthless assets
 
                 // {UoA} = {sellTok} * {UoA/sellTok}
                 uint192 delta = bal.minus(needed).mul(lotLow, FLOOR);
@@ -363,7 +357,7 @@ library RecollateralizationLibP1 {
                 ) {
                     trade.sell = reg.assets[i];
                     trade.sellAmount = bal.minus(needed);
-                    trade.sellPrice = low;
+                    trade.sellPrice = lotLow;
 
                     maxes.surplusStatus = status;
                     maxes.surplus = delta;
@@ -374,16 +368,16 @@ library RecollateralizationLibP1 {
 
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
-                    (, uint192 high) = reg.assets[i].price(); // {UoA/buyTok}
+                    (, uint192 lotHigh) = reg.assets[i].lotPrice(); // {UoA/buyTok}
 
                     // {UoA} = {buyTok} * {UoA/buyTok}
-                    uint192 delta = amtShort.mul(high, CEIL);
+                    uint192 delta = amtShort.mul(lotHigh, CEIL);
 
                     // The best asset to buy is whichever asset has the largest deficit
                     if (delta.gt(maxes.deficit)) {
                         trade.buy = ICollateral(address(reg.assets[i]));
                         trade.buyAmount = amtShort;
-                        trade.buyPrice = high;
+                        trade.buyPrice = lotHigh;
 
                         maxes.deficit = delta;
                     }
@@ -398,16 +392,15 @@ library RecollateralizationLibP1 {
             uint192 rsrAvailable = rsrAsset.bal(address(ctx.bm)).plus(
                 rsrAsset.bal(address(ctx.stRSR))
             );
-            (uint192 low, uint192 high) = rsrAsset.price(); // {UoA/tok}
-            (uint192 lotLow, ) = rsrAsset.lotPrice(); // {UoA/tok}
+            (uint192 lotLow, uint192 lotHigh) = rsrAsset.lotPrice(); // {UoA/tok}
 
             if (
-                high > 0 &&
+                lotHigh > 0 &&
                 TradeLib.isEnoughToSell(rsrAsset, rsrAvailable, lotLow, ctx.minTradeVolume)
             ) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
-                trade.sellPrice = low;
+                trade.sellPrice = lotLow;
             }
         }
     }

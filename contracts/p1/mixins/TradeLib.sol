@@ -51,12 +51,10 @@ library TradeLib {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
-        (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
-
-        notDust = isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume);
+        notDust = isEnoughToSell(trade.sell, trade.sellAmount, trade.sellPrice, minTradeVolume);
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, lotHigh); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.sellPrice); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]

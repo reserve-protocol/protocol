@@ -117,7 +117,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         }
 
         // Cache and validate buyPrice
-        (, uint192 buyPrice) = assetToBuy.price(); // {UoA/tok}
+        (, uint192 buyPrice) = assetToBuy.lotPrice(); // {UoA/tok}
         require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
 
         // For each ERC20 that isn't the tokenToBuy, start an auction of the given kind
@@ -129,7 +129,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
             IAsset assetToSell = assetRegistry.toAsset(erc20);
-            (uint192 sellPrice, ) = assetToSell.price(); // {UoA/tok}
+            (uint192 sellPrice, ) = assetToSell.lotPrice(); // {UoA/tok}
 
             TradeInfo memory trade = TradeInfo({
                 sell: assetToSell,
