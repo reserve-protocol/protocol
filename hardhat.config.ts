@@ -10,7 +10,7 @@ import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 import * as tdly from "@tenderly/hardhat-tenderly";
 
-tdly.setup();
+// tdly.setup();
 
 import { useEnv } from '#/utils/env'
 import { HardhatUserConfig } from 'hardhat/types'
