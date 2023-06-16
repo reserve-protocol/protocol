@@ -123,12 +123,14 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         // For each ERC20 that isn't the tokenToBuy, start an auction of the given kind
         for (uint256 i = 0; i < len; ++i) {
             IERC20 erc20 = erc20s[i];
-            IAsset assetToSell = assetRegistry.toAsset(erc20);
+            if (erc20 == tokenToBuy) continue;
 
             require(address(trades[erc20]) == address(0), "trade open");
             require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
+            IAsset assetToSell = assetRegistry.toAsset(erc20);
             (uint192 sellPrice, ) = assetToSell.price(); // {UoA/tok}
+
             TradeInfo memory trade = TradeInfo({
                 sell: assetToSell,
                 buy: assetToBuy,
