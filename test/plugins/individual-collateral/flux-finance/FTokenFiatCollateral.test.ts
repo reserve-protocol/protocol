@@ -70,7 +70,7 @@ const all = [
     holderUnderlying: USDC_HOLDER,
     fToken: config.tokens.fUSDC as string,
     oracleError: USDC_ORACLE_ERROR,
-    chainlinkFeed: config.chainlinkFeeds.USDC as string
+    chainlinkFeed: config.chainlinkFeeds.USDC as string,
   },
   {
     testName: 'fUSDT Collateral',
@@ -78,7 +78,7 @@ const all = [
     holderUnderlying: USDT_HOLDER,
     fToken: config.tokens.fUSDT as string,
     oracleError: USDT_ORACLE_ERROR,
-    chainlinkFeed: config.chainlinkFeeds.USDT as string
+    chainlinkFeed: config.chainlinkFeeds.USDT as string,
   },
   {
     testName: 'fFRAX Collateral',
@@ -86,7 +86,7 @@ const all = [
     holderUnderlying: FRAX_HOLDER,
     fToken: config.tokens.fFRAX as string,
     oracleError: FRAX_ORACLE_ERROR,
-    chainlinkFeed: config.chainlinkFeeds.FRAX as string
+    chainlinkFeed: config.chainlinkFeeds.FRAX as string,
   },
   {
     testName: 'fDAI Collateral',
@@ -94,7 +94,7 @@ const all = [
     holderUnderlying: DAI_HOLDER,
     fToken: config.tokens.fDAI as string,
     oracleError: DAI_ORACLE_ERROR,
-    chainlinkFeed: config.chainlinkFeeds.DAI as string
+    chainlinkFeed: config.chainlinkFeeds.DAI as string,
   },
 ]
 all.forEach((curr: FTokenEnumeration) => {
