@@ -41,9 +41,9 @@ async function main() {
 
   /********  Deploy Coinbase ETH Collateral - CBETH  **************************/
 
-  const CBETHCollateralFactory: CBEthCollateral__factory = await hre.ethers.getContractFactory(
-    'CBethCollateral'
-  ) as CBEthCollateral__factory
+  const CBETHCollateralFactory: CBEthCollateral__factory = (await hre.ethers.getContractFactory(
+    'CBEthCollateral'
+  )) as CBEthCollateral__factory
 
   const collateral = await CBETHCollateralFactory.connect(deployer).deploy(
     {
@@ -65,7 +65,9 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed Rocketpool cbETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(
+    `Deployed Rocketpool cbETH to ${hre.network.name} (${chainId}): ${collateral.address}`
+  )
 
   assetCollDeployments.collateral.rETH = collateral.address
   assetCollDeployments.erc20s.cbETH = networkConfig[chainId].tokens.cbETH

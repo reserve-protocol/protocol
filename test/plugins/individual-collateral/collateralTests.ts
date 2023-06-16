@@ -117,7 +117,7 @@ export default function fn<X extends CollateralFixtureContext>(
       beforeEach(async () => {
         ;[, alice] = await ethers.getSigners()
         ctx = await loadFixture(makeCollateralFixtureContext(alice, {}))
-          ; ({ chainlinkFeed, collateral } = ctx)
+        ;({ chainlinkFeed, collateral } = ctx)
       })
 
       describe('functions', () => {
