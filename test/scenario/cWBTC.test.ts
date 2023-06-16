@@ -219,9 +219,9 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       expect(await cWBTC.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await cWBTC.balanceOf(rsrTrader.address)).to.equal(0)
       await expect(
-        rTokenTrader.manageToken(cWBTC.address, TradeKind.BATCH_AUCTION)
+        rTokenTrader.manageTokens([cWBTC.address], [TradeKind.BATCH_AUCTION])
       ).to.be.revertedWith('0 balance')
-      await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rTokenTrader,
         'TradeStarted'
       )
@@ -232,9 +232,9 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       expect(await trade.buy()).to.equal(rToken.address)
 
       await expect(
-        rsrTrader.manageToken(cWBTC.address, TradeKind.BATCH_AUCTION)
+        rsrTrader.manageTokens([cWBTC.address], [TradeKind.BATCH_AUCTION])
       ).to.be.revertedWith('0 balance')
-      await expect(rsrTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rsrTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rsrTrader,
         'TradeStarted'
       )
@@ -312,7 +312,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await backingManager.forwardRevenue([cWBTC.address])
 
       // RTokenTrader should be selling cWBTC and buying RToken
-      await expect(rTokenTrader.manageToken(cWBTC.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rTokenTrader.manageTokens([cWBTC.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rTokenTrader,
         'TradeStarted'
       )

@@ -31,14 +31,14 @@ contract FacadeAct is IFacadeAct, Multicall {
     /// Logic:
     ///   For each ERC20 in `toSettle`:
     ///     - Settle any open ERC20 trades
-    ///   For each ERC20 in `toStart`:
+    ///   Then:
     ///     - Transfer any revenue for that ERC20 from the backingManager to revenueTrader
-    ///     - Call `revenueTrader.manageToken(ERC20)` to start an auction
+    ///     - Call `revenueTrader.manageTokens(ERC20)` to start an auction
     function runRevenueAuctions(
         IRevenueTrader revenueTrader,
-        IERC20[] memory toSettle,
-        IERC20[] memory toStart,
-        TradeKind kind
+        IERC20[] calldata toSettle,
+        IERC20[] calldata toStart,
+        TradeKind[] calldata kinds
     ) external {
         // Settle auctions
         for (uint256 i = 0; i < toSettle.length; ++i) {
@@ -64,19 +64,20 @@ contract FacadeAct is IFacadeAct, Multicall {
             }
         }
 
-        // Start auctions
-        for (uint256 i = 0; i < toStart.length; ++i) {
+        // Start RevenueTrader auctions
+        {
             bytes1 majorVersion = bytes(revenueTrader.version())[0];
-
             if (majorVersion == MAJOR_VERSION_3) {
                 // solhint-disable-next-line no-empty-blocks
-                try revenueTrader.manageToken(toStart[i], kind) {} catch {}
+                try revenueTrader.manageTokens(toStart, kinds) {} catch {}
             } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-                // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = address(revenueTrader).call{ value: 0 }(
-                    abi.encodeWithSignature("manageToken(address)", toStart[i])
-                );
-                success = success; // hush warning
+                for (uint256 i = 0; i < toStart.length; ++i) {
+                    // solhint-disable-next-line avoid-low-level-calls
+                    (bool success, ) = address(revenueTrader).call{ value: 0 }(
+                        abi.encodeWithSignature("manageToken(address)", toStart[i])
+                    );
+                    success = success; // hush warning
+                }
             } else {
                 revertUnrecognizedVersion();
             }
@@ -86,6 +87,7 @@ contract FacadeAct is IFacadeAct, Multicall {
     // === Static Calls ===
 
     /// To use this, call via callStatic.
+    /// Includes consideration of when to distribute the RevenueTrader tokenToBuy
     /// @return erc20s The ERC20s that have auctions that can be started
     /// @return canStart If the ERC20 auction can be started
     /// @return surpluses {qTok} The surplus amount
@@ -126,18 +128,17 @@ contract FacadeAct is IFacadeAct, Multicall {
         canStart = new bool[](reg.erc20s.length);
         surpluses = new uint256[](reg.erc20s.length);
         minTradeAmounts = new uint256[](reg.erc20s.length);
-        // Calculate which erc20s can have auctions started
+        // Calculate which erc20s should have auctions started
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            erc20s[i] = reg.erc20s[i];
+
             // Settle first if possible. Required so we can assess full available balance
-            ITrade trade = revenueTrader.trades(reg.erc20s[i]);
+            ITrade trade = revenueTrader.trades(erc20s[i]);
             if (address(trade) != address(0) && trade.canSettle()) {
-                revenueTrader.settleTrade(reg.erc20s[i]);
+                revenueTrader.settleTrade(erc20s[i]);
             }
 
-            uint48 tradesOpen = revenueTrader.tradesOpen();
-            erc20s[i] = reg.erc20s[i];
-            surpluses[i] = reg.erc20s[i].balanceOf(address(revenueTrader));
-
+            surpluses[i] = erc20s[i].balanceOf(address(revenueTrader));
             (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
             if (lotLow == 0) continue;
 
@@ -146,27 +147,11 @@ contract FacadeAct is IFacadeAct, Multicall {
                 int8(reg.assets[i].erc20Decimals())
             );
 
-            bytes1 majorVersion = bytes(revenueTrader.version())[0];
             if (
-                reg.erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i] &&
-                revenueTrader.trades(reg.erc20s[i]) == ITrade(address(0))
+                erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i] &&
+                revenueTrader.trades(erc20s[i]) == ITrade(address(0))
             ) {
-                if (majorVersion == MAJOR_VERSION_3) {
-                    // solhint-disable-next-line no-empty-blocks
-                    try revenueTrader.manageToken(erc20s[i], TradeKind.DUTCH_AUCTION) {} catch {}
-                } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-                    // solhint-disable-next-line avoid-low-level-calls
-                    (bool success, ) = address(revenueTrader).call{ value: 0 }(
-                        abi.encodeWithSignature("manageToken(address)", erc20s[i])
-                    );
-                    success = success; // hush warning
-                } else {
-                    revertUnrecognizedVersion();
-                }
-
-                if (revenueTrader.tradesOpen() - tradesOpen > 0) {
-                    canStart[i] = true;
-                }
+                canStart[i] = true;
             }
         }
     }

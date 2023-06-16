@@ -884,7 +884,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       sell: cUSDTokenVault.address,
       buy: rToken.address,
       endTime: auctionTimestamp + Number(config.batchAuctionLength),
-      externalId: bn('1'),
+      externalId: bn('3'),
     })
 
     trade = await getTrade(rTokenTrader, cUSDTokenVault.address)
@@ -936,7 +936,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       sellAmount: auctionSellAmt2,
       buyAmount: auctionbuyAmt2,
     })
-    await gnosis.placeBid(1, {
+    await gnosis.placeBid(3, {
       bidder: addr1.address,
       sellAmount: auctionSellAmtRToken2,
       buyAmount: auctionbuyAmtRToken2,
@@ -1048,7 +1048,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       sell: cWBTCVault.address,
       buy: rToken.address,
       endTime: auctionTimestamp + Number(config.batchAuctionLength),
-      externalId: bn('7'),
+      externalId: bn('8'),
     })
 
     trade = await getTrade(rTokenTrader, cWBTCVault.address)
@@ -1079,7 +1079,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       sellAmount: auctionSellAmt5,
       buyAmount: auctionbuyAmt5,
     })
-    await gnosis.placeBid(7, {
+    await gnosis.placeBid(8, {
       bidder: addr1.address,
       sellAmount: auctionSellAmtRToken5,
       buyAmount: auctionbuyAmtRToken5,

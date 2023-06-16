@@ -518,10 +518,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
         }
 
         // Run revenue auctions via multicall
-        const funcSig = ethers.utils.id('runRevenueAuctions(address,address[],address[],uint8)')
+        const funcSig = ethers.utils.id('runRevenueAuctions(address,address[],address[],uint8[])')
         const args = ethers.utils.defaultAbiCoder.encode(
-          ['address', 'address[]', 'address[]', 'uint8'],
-          [trader.address, [], erc20sToStart, TradeKind.DUTCH_AUCTION]
+          ['address', 'address[]', 'address[]', 'uint8[]'],
+          [trader.address, [], erc20sToStart, [TradeKind.DUTCH_AUCTION]]
         )
         const data = funcSig.substring(0, 10) + args.slice(2)
         await expect(facadeAct.multicall([data])).to.emit(trader, 'TradeStarted')
@@ -558,136 +558,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
         }
 
         // Settle and start new auction
-        await facadeAct.runRevenueAuctions(
-          trader.address,
-          erc20sToStart,
-          erc20sToStart,
-          TradeKind.DUTCH_AUCTION
-        )
-
-        // Send additional revenues
-        await token.connect(addr1).transfer(trader.address, tokenSurplus)
-
-        // Call revenueOverview, cannot open new auctions
-        ;[erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-        expect(canStart).to.eql(Array(8).fill(false))
-      }
-    })
-
-    itP1('Should handle other versions when running revenueOverview revenue', async () => {
-      // Use P1 specific versions
-      backingManager = <BackingManagerP1>(
-        await ethers.getContractAt('BackingManagerP1', backingManager.address)
-      )
-      rTokenTrader = <RevenueTraderP1>(
-        await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
-      )
-      rsrTrader = <RevenueTraderP1>await ethers.getContractAt('RevenueTraderP1', rsrTrader.address)
-
-      const revTraderV2: RevenueTraderCompatibleV2 = <RevenueTraderCompatibleV2>(
-        await RevenueTraderV2ImplFactory.deploy()
-      )
-
-      const revTraderV1: RevenueTraderCompatibleV1 = <RevenueTraderCompatibleV1>(
-        await RevenueTraderV1ImplFactory.deploy()
-      )
-
-      const backingManagerV2: BackingMgrCompatibleV2 = <BackingMgrCompatibleV2>(
-        await BackingMgrV2ImplFactory.deploy()
-      )
-
-      const backingManagerV1: BackingMgrCompatibleV1 = <BackingMgrCompatibleV1>(
-        await BackingMgrV1ImplFactory.deploy()
-      )
-
-      // Upgrade RevenueTraders and BackingManager to V2
-      await rsrTrader.connect(owner).upgradeTo(revTraderV2.address)
-      await rTokenTrader.connect(owner).upgradeTo(revTraderV2.address)
-      await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
-
-      const traders = [rTokenTrader, rsrTrader]
-      for (let traderIndex = 0; traderIndex < traders.length; traderIndex++) {
-        const trader = traders[traderIndex]
-
-        const minTradeVolume = await trader.minTradeVolume()
-        const auctionLength = await broker.dutchAuctionLength()
-        const tokenSurplus = bn('0.5e18')
-        await token.connect(addr1).transfer(trader.address, tokenSurplus)
-
-        // revenue
-        let [erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-        expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
-
-        const erc20sToStart = []
-        for (let i = 0; i < 8; i++) {
-          if (erc20s[i] == token.address) {
-            erc20sToStart.push(erc20s[i])
-            expect(canStart[i]).to.equal(true)
-            expect(surpluses[i]).to.equal(tokenSurplus)
-          } else {
-            expect(canStart[i]).to.equal(false)
-            expect(surpluses[i]).to.equal(0)
-          }
-          const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
-          const [low] = await asset.price()
-          expect(minTradeAmounts[i]).to.equal(
-            minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low)
-          ) // 1% oracleError
-        }
-
-        // Run revenue auctions via multicall
-        const funcSig = ethers.utils.id('runRevenueAuctions(address,address[],address[],uint8)')
-        const args = ethers.utils.defaultAbiCoder.encode(
-          ['address', 'address[]', 'address[]', 'uint8'],
-          [trader.address, [], erc20sToStart, TradeKind.DUTCH_AUCTION]
-        )
-        const data = funcSig.substring(0, 10) + args.slice(2)
-        await expect(facadeAct.multicall([data])).to.emit(trader, 'TradeStarted')
-
-        // Another call to revenueOverview should not propose any auction
-        ;[erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-        expect(canStart).to.eql(Array(8).fill(false))
-
-        // Nothing should be settleable
-        expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
-
-        // Advance time till auction ended
-        await advanceTime(auctionLength + 13)
-
-        // Now should be settleable
-        const settleable = await facade.auctionsSettleable(trader.address)
-        expect(settleable.length).to.equal(1)
-        expect(settleable[0]).to.equal(token.address)
-
-        // Upgrade to V1
-        await trader.connect(owner).upgradeTo(revTraderV1.address)
-        await backingManager.connect(owner).upgradeTo(backingManagerV1.address)
-
-        // Another call to revenueOverview should settle and propose new auction
-        ;[erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-
-        // Should repeat the same auctions
-        for (let i = 0; i < 8; i++) {
-          if (erc20s[i] == token.address) {
-            expect(canStart[i]).to.equal(true)
-            expect(surpluses[i]).to.equal(tokenSurplus)
-          } else {
-            expect(canStart[i]).to.equal(false)
-            expect(surpluses[i]).to.equal(0)
-          }
-        }
-
-        // Settle and start new auction
-        await facadeAct.runRevenueAuctions(
-          trader.address,
-          erc20sToStart,
-          erc20sToStart,
-          TradeKind.DUTCH_AUCTION
-        )
+        await facadeAct.runRevenueAuctions(trader.address, erc20sToStart, erc20sToStart, [
+          TradeKind.DUTCH_AUCTION,
+        ])
 
         // Send additional revenues
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
@@ -706,43 +579,11 @@ describe('FacadeRead + FacadeAct contracts', () => {
         await ethers.getContractAt('BackingManagerP1', backingManager.address)
       )
 
-      const revTraderInvalidVer: RevenueTraderInvalidVersion = <RevenueTraderInvalidVersion>(
-        await RevenueTraderInvalidVerImplFactory.deploy()
-      )
-
       const bckMgrInvalidVer: BackingMgrInvalidVersion = <BackingMgrInvalidVersion>(
         await BackingMgrInvalidVerImplFactory.deploy()
       )
 
-      const revTraderV2: RevenueTraderCompatibleV2 = <RevenueTraderCompatibleV2>(
-        await RevenueTraderV2ImplFactory.deploy()
-      )
-
-      // Upgrade RevenueTrader to V0 - Use RSR as an example
-      await rsrTrader.connect(owner).upgradeTo(revTraderInvalidVer.address)
-
-      const tokenSurplus = bn('0.5e18')
-      await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
-
-      await expect(facadeAct.callStatic.revenueOverview(rsrTrader.address)).to.be.revertedWith(
-        'unrecognized version'
-      )
-
-      // Upgrade to a version where manageToken reverts in Traders
-      const revTraderReverts: RevenueTraderP1InvalidReverts = <RevenueTraderP1InvalidReverts>(
-        await RevenueTraderRevertsImplFactory.deploy()
-      )
-      await rsrTrader.connect(owner).upgradeTo(revTraderReverts.address)
-
-      // revenue
-      const [erc20s, canStart, ,] = await facadeAct.callStatic.revenueOverview(rsrTrader.address)
-      expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
-
-      // No auction can be started
-      expect(canStart).to.eql(Array(8).fill(false))
-
-      // Set revenue trader to a valid version but have an invalid Backing Manager
-      await rsrTrader.connect(owner).upgradeTo(revTraderV2.address)
+      await expect(facadeAct.callStatic.revenueOverview(rsrTrader.address)).not.to.be.reverted
       await backingManager.connect(owner).upgradeTo(bckMgrInvalidVer.address)
 
       // Reverts due to invalid version when forwarding revenue
@@ -1141,7 +982,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rsrTrader.address,
           [],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         )
       )
         .to.emit(rsrTrader, 'TradeStarted')
@@ -1159,7 +1000,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rsrTrader.address,
           [token.address],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         ),
         [
           {
@@ -1209,7 +1050,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rTokenTrader.address,
           [],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         )
       )
         .to.emit(rTokenTrader, 'TradeStarted')
@@ -1231,7 +1072,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rTokenTrader.address,
           [token.address],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         ),
         [
           {
@@ -1270,7 +1111,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rsrTrader.address,
           [],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         )
       ).to.be.revertedWith('unrecognized version')
 
@@ -1282,7 +1123,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           rsrTrader.address,
           [],
           [token.address],
-          TradeKind.DUTCH_AUCTION
+          [TradeKind.DUTCH_AUCTION]
         )
       ).to.be.revertedWith('unrecognized version')
     })

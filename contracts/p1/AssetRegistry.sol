@@ -42,6 +42,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         __Component_init(main_);
         basketHandler = main_.basketHandler();
         backingManager = main_.backingManager();
+
         uint256 length = assets_.length;
         for (uint256 i = 0; i < length; ++i) {
             _register(assets_[i]);

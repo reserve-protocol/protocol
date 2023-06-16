@@ -174,9 +174,9 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       expect(await weth.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await weth.balanceOf(rsrTrader.address)).to.equal(0)
       await expect(
-        rTokenTrader.manageToken(weth.address, TradeKind.BATCH_AUCTION)
+        rTokenTrader.manageTokens([weth.address], [TradeKind.BATCH_AUCTION])
       ).to.be.revertedWith('0 balance')
-      await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rTokenTrader,
         'TradeStarted'
       )
@@ -186,10 +186,10 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       expect(await trade.sell()).to.equal(token0.address)
       expect(await trade.buy()).to.equal(rToken.address)
 
-      await expect(rsrTrader.manageToken(weth.address, TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-        '0 balance'
-      )
-      await expect(rsrTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(
+        rsrTrader.manageTokens([weth.address], [TradeKind.BATCH_AUCTION])
+      ).to.be.revertedWith('0 balance')
+      await expect(rsrTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rsrTrader,
         'TradeStarted'
       )

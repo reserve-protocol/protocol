@@ -140,8 +140,6 @@ contract FacadeRead is IFacadeRead {
         IAssetRegistry assetRegistry = rToken.main().assetRegistry();
         IBasketHandler basketHandler = rToken.main().basketHandler();
 
-        // (erc20s, deposits) = issue(rToken, FIX_ONE);
-
         // solhint-disable-next-line no-empty-blocks
         try rToken.main().furnace().melt() {} catch {}
 
