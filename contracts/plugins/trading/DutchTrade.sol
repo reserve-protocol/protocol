@@ -206,7 +206,7 @@ contract DutchTrade is ITrade {
         erc20.safeTransfer(address(origin), erc20.balanceOf(address(this)));
     }
 
-    /// @return True if the trade can be settled.
+    /// @return true iff the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
         return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp > endTime);
