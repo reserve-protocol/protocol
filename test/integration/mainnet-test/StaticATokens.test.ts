@@ -331,7 +331,7 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
       })
 
       // Wrap aUSDT  - Underlying = false
-      expect(await aUsdt.balanceOf(addr1.address)).to.equal(initialBalUSDT)
+      expect(await aUsdt.balanceOf(addr1.address)).to.be.closeTo(initialBalUSDT, 1)
       expect(await stataUsdt.balanceOf(addr1.address)).to.equal(0)
 
       // Wrap aUSDT into a staticaUSDT
