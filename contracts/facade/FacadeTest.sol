@@ -54,20 +54,16 @@ contract FacadeTest is IFacadeTest {
         try main.backingManager().rebalance(TradeKind.BATCH_AUCTION) {} catch {}
         try main.backingManager().forwardRevenue(erc20s) {} catch {}
 
-        TradeKind[] memory kind = new TradeKind[](1);
-        IERC20[] memory rsrERC20s = new IERC20[](1);
-        kind[0] = TradeKind.BATCH_AUCTION;
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            rsrERC20s[0] = erc20s[i];
-            try main.rsrTrader().manageTokens(rsrERC20s, kind) {} catch {}
-        }
+        // Start exact RSR auctions
+        (IERC20[] memory rsrERC20s, TradeKind[] memory rsrKinds) = traderERC20s(rsrTrader, erc20s);
+        try main.rsrTrader().manageTokens(rsrERC20s, rsrKinds) {} catch {}
 
-        IERC20[] memory rTokenERC20s = new IERC20[](1);
-        kind[0] = TradeKind.BATCH_AUCTION;
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            rTokenERC20s[0] = erc20s[i];
-            try main.rTokenTrader().manageTokens(rTokenERC20s, kind) {} catch {}
-        }
+        // Start exact RToken auctions
+        (IERC20[] memory rTokenERC20s, TradeKind[] memory rTokenKinds) = traderERC20s(
+            rTokenTrader,
+            erc20s
+        );
+        try main.rTokenTrader().manageTokens(rTokenERC20s, rTokenKinds) {} catch {}
         // solhint-enable no-empty-blocks
     }
 
