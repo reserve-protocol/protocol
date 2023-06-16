@@ -323,6 +323,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
+    /// @param useLotPrice Whether to use lotPrice() or price()
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
     function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
