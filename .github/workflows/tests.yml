@@ -23,6 +23,7 @@ jobs:
       - run: yarn devchain &
         env:
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          CI: true
       - run: yarn deploy:run --network localhost
         env:
           SKIP_PROMPT: 1
@@ -65,6 +66,7 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          CI: true
 
   p0-tests:
     name: 'P0 tests'
@@ -80,6 +82,7 @@ jobs:
       - run: yarn test:p0
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
+          CI: true
 
   p1-tests:
     name: 'P1 Tests'
@@ -95,6 +98,7 @@ jobs:
       - run: yarn test:p1
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
+          CI: true
 
   scenario-tests:
     name: 'Scenario Tests'
@@ -110,6 +114,7 @@ jobs:
       - run: yarn test:scenario
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
+          CI: true
 
   extreme-tests:
     name: 'Extreme Tests'
@@ -136,6 +141,7 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          CI: true
 
   integration-tests:
     name: 'Integration Tests'
@@ -163,3 +169,4 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          CI: true
