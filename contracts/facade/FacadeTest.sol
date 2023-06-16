@@ -29,7 +29,6 @@ contract FacadeTest is IFacadeTest {
         IRevenueTrader rsrTrader = main.rsrTrader();
         IRevenueTrader rTokenTrader = main.rTokenTrader();
         IERC20[] memory erc20s = main.assetRegistry().erc20s();
-        TradeKind[] memory kinds = new TradeKind[](erc20s.length);
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // BackingManager
@@ -49,7 +48,6 @@ contract FacadeTest is IFacadeTest {
             if (address(trade) != address(0) && trade.canSettle()) {
                 rTokenTrader.settleTrade(erc20s[i]);
             }
-            kinds[i] = TradeKind.BATCH_AUCTION;
         }
 
         // solhint-disable no-empty-blocks
@@ -111,5 +109,32 @@ contract FacadeTest is IFacadeTest {
     function wholeBasketsHeldBy(IRToken rToken, address account) external view returns (uint192) {
         BasketRange memory range = rToken.main().basketHandler().basketsHeldBy(account);
         return range.bottom;
+    }
+
+    // === Private ===
+
+    function traderERC20s(IRevenueTrader trader, IERC20[] memory erc20sAll)
+        private
+        view
+        returns (IERC20[] memory erc20s, TradeKind[] memory kinds)
+    {
+        uint256 len;
+        IERC20[] memory traderERC20sAll = new IERC20[](erc20sAll.length);
+        for (uint256 i = 0; i < erc20sAll.length; ++i) {
+            if (
+                address(trader.trades(erc20sAll[i])) == address(0) &&
+                erc20sAll[i].balanceOf(address(trader)) > 1
+            ) {
+                traderERC20sAll[len] = erc20sAll[i];
+                ++len;
+            }
+        }
+
+        erc20s = new IERC20[](len);
+        kinds = new TradeKind[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            erc20s[i] = traderERC20sAll[i];
+            kinds[i] = TradeKind.BATCH_AUCTION;
+        }
     }
 }
