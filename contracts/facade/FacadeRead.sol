@@ -27,9 +27,15 @@ contract FacadeRead is IFacadeRead {
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256) {
         IMain main = rToken.main();
-        main.poke();
-        // {BU}
 
+        require(!main.frozen(), "frozen");
+
+        // Poke Main
+        main.assetRegistry().refresh();
+        main.furnace().melt();
+        main.stRSR().payoutRewards();
+
+        // {BU}
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
         uint192 needed = rToken.basketsNeeded();
 
@@ -57,10 +63,17 @@ contract FacadeRead is IFacadeRead {
         )
     {
         IMain main = rToken.main();
-        main.poke();
+        require(!main.frozen(), "frozen");
+
+        // Cache components
         IRToken rTok = rToken;
         IBasketHandler bh = main.basketHandler();
         IAssetRegistry reg = main.assetRegistry();
+
+        // Poke Main
+        reg.refresh();
+        main.furnace().melt();
+        main.stRSR().payoutRewards();
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (rTok.totalSupply() > 0) // {BU}
@@ -97,9 +110,17 @@ contract FacadeRead is IFacadeRead {
         )
     {
         IMain main = rToken.main();
-        main.poke();
+        require(!main.frozen(), "frozen");
+
+        // Cache Components
         IRToken rTok = rToken;
         IBasketHandler bh = main.basketHandler();
+
+        // Poke Main
+        main.assetRegistry().refresh();
+        main.furnace().melt();
+        main.stRSR().payoutRewards();
+
         uint256 supply = rTok.totalSupply();
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}

@@ -248,6 +248,13 @@ describe('FacadeRead + FacadeAct contracts', () => {
       )
     })
 
+    it('Should revert maxIssuable when frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.be.revertedWith(
+        'frozen'
+      )
+    })
+
     it('Should return issuable quantities correctly', async () => {
       const [toks, quantities, uoas] = await facade.callStatic.issue(rToken.address, issueAmount)
       expect(toks.length).to.equal(4)
@@ -289,6 +296,13 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect(uoas[3]).to.equal(0)
     })
 
+    it('Should revert when returning issuable quantities if frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(facade.callStatic.issue(rToken.address, issueAmount)).to.be.revertedWith(
+        'frozen'
+      )
+    })
+
     it('Should return redeemable quantities correctly', async () => {
       const [toks, quantities, isProrata] = await facade.callStatic.redeem(
         rToken.address,
@@ -314,6 +328,13 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect(newToks[0]).to.equal(token.address)
       expect(newQuantities[0]).to.equal(issueAmount.div(8))
       expect(newIsProrata).to.equal(true)
+    })
+
+    it('Should revert when returning redeemable quantities if frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(facade.callStatic.redeem(rToken.address, issueAmount)).to.be.revertedWith(
+        'frozen'
+      )
     })
 
     it('Should return backingOverview correctly', async () => {
