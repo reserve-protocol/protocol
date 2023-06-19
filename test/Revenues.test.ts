@@ -563,8 +563,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it('Should not launch revenue auction if UNPRICED', async () => {
+      it('Should launch revenue auction at lotPrice if UNPRICED', async () => {
+        // After oracleTimeout the lotPrice should be the original price still
         await advanceTime(ORACLE_TIMEOUT.toString())
+        await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+        await rTokenTrader.callStatic.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+
+        // After oracleTimeout the lotPrice should be the original price still
+        await advanceTime(PRICE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(
           rTokenTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
@@ -1254,7 +1260,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Expected values based on Prices between AAVE and RSR = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to oracle error
+        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to oracle error
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         // Run auctions
@@ -1436,7 +1442,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
+        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
@@ -1634,7 +1640,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
+        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountAAVE.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
