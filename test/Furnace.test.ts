@@ -217,7 +217,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
       // Advance to the end to melt full amount
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await advanceTime(Number(ONE_PERIOD))
 
       // Melt
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
@@ -264,7 +264,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       // Advance to the end to melt full amount
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await advanceTime(Number(ONE_PERIOD))
 
       const decayFn = makeDecayFn(await furnace.ratio())
       const expAmt = decayFn(hndAmt, 1) // 1 period
