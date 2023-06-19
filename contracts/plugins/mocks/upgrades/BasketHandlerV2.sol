@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../../../p1/BasketHandler.sol";
 
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BasketHandlerP1V2 is BasketHandlerP1 {
     uint256 public newValue;
 

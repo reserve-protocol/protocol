@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC1271Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -13,6 +13,7 @@ import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
+import "../mixins/NetworkConfigLib.sol";
 
 /*
  * @title StRSRP1
@@ -34,8 +35,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
-    uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable PERIOD; // {s} 1 block based on network
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = FIX_ONE; // {1} 100%
 
@@ -159,6 +164,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
 
     // ======================
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() ComponentP1() {
+        PERIOD = NetworkConfigLib.blocktime();
+        MIN_UNSTAKING_DELAY = PERIOD * 2;
+    }
 
     // init() can only be called once (initializer)
     // ==== Financial State:
@@ -355,6 +366,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // Cancelling unstake does not require checking if the unstaking was available
         // require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
 
+        // untestable:
+        //      firstId will never be zero, due to previous checks against endId
         uint192 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
         uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
 
@@ -787,8 +800,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address to,
         uint256 amount
     ) internal {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
+        require(
+            from != address(0) && to != address(0),
+            "ERC20: transfer to or from the zero address"
+        );
 
         mapping(address => uint256) storage eraStakes = stakes[era];
         uint256 fromBalance = eraStakes[from];
@@ -844,8 +859,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         address spender,
         uint256 amount
     ) internal {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+        require(
+            owner != address(0) && spender != address(0),
+            "ERC20: approve to or from the zero address"
+        );
 
         _allowances[era][owner][spender] = amount;
         emit Approval(owner, spender, amount);

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../libraries/Fixed.sol";
 import "../interfaces/IFurnace.sol";
 import "./mixins/Component.sol";
+import "../mixins/NetworkConfigLib.sol";
 
 /**
  * @title FurnaceP1
@@ -13,7 +14,9 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     using FixLib for uint192;
 
     uint192 public constant MAX_RATIO = FIX_ONE; // {1} 100%
-    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable PERIOD; // {seconds} 1 block based on network
 
     IRToken private rToken;
 
@@ -23,6 +26,11 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     // === Cached ===
     uint48 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() ComponentP1() {
+        PERIOD = NetworkConfigLib.blocktime();
+    }
 
     // ==== Invariants ====
     // ratio <= MAX_RATIO = 1e18

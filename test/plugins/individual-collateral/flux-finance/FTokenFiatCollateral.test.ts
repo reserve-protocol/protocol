@@ -8,8 +8,8 @@ import {
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
-  CTokenVault,
-  CTokenVaultMock,
+  CTokenWrapper,
+  CTokenWrapperMock,
   ICToken,
   MockV3Aggregator,
   MockV3Aggregator__factory,
@@ -120,9 +120,9 @@ all.forEach((curr: FTokenEnumeration) => {
 
     if (erc20Address && erc20Address != ZERO_ADDRESS && erc20Address == curr.fToken) {
       const erc20 = await ethers.getContractAt('ERC20Mock', opts.erc20!)
-      const CTokenVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenVault')
-      const fTokenVault = <CTokenVault>(
-        await CTokenVaultFactory.deploy(
+      const CTokenWrapperFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
+      const fTokenVault = <CTokenWrapper>(
+        await CTokenWrapperFactory.deploy(
           opts.erc20,
           await erc20.name(),
           await erc20.symbol(),
@@ -178,7 +178,10 @@ all.forEach((curr: FTokenEnumeration) => {
       collateralOpts.chainlinkFeed = chainlinkFeed.address
 
       const collateral = await deployCollateral(collateralOpts)
-      const erc20 = await ethers.getContractAt('CTokenVault', (await collateral.erc20()) as string) // the fToken
+      const erc20 = await ethers.getContractAt(
+        'CTokenWrapper',
+        (await collateral.erc20()) as string
+      ) // the fToken
 
       return {
         alice,
@@ -213,8 +216,8 @@ all.forEach((curr: FTokenEnumeration) => {
       curr.underlying
     )
 
-    const CTokenVaultMockFactory: ContractFactory = await ethers.getContractFactory(
-      'CTokenVaultMock'
+    const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
+      'CTokenWrapperMock'
     )
 
     let compAddress = ZERO_ADDRESS
@@ -223,8 +226,8 @@ all.forEach((curr: FTokenEnumeration) => {
       // eslint-disable-next-line no-empty
     } catch {}
 
-    const fTokenVault = <CTokenVaultMock>(
-      await CTokenVaultMockFactory.deploy(
+    const fTokenVault = <CTokenWrapperMock>(
+      await CTokenWrapperMockFactory.deploy(
         await underlyingFToken.name(),
         await underlyingFToken.symbol(),
         underlyingFToken.address,
@@ -254,8 +257,8 @@ all.forEach((curr: FTokenEnumeration) => {
     user: SignerWithAddress,
     recipient: string
   ) => {
-    const tok = ctx.tok as CTokenVault
-    const fToken = await ethers.getContractAt('ICToken', await tok.asset())
+    const tok = ctx.tok as CTokenWrapper
+    const fToken = await ethers.getContractAt('ICToken', await tok.underlying())
     const underlying = await ethers.getContractAt('IERC20Metadata', await fToken.underlying())
     await mintFToken(underlying, curr.holderUnderlying, fToken, tok, amount, recipient)
   }
@@ -274,21 +277,21 @@ all.forEach((curr: FTokenEnumeration) => {
 
       const rate = fp('2')
       const rateAsRefPerTok = rate.div(50)
-      await (tok as CTokenVaultMock).setExchangeRate(rate) // above current
+      await (tok as CTokenWrapperMock).setExchangeRate(rate) // above current
       await collateral.refresh()
       const before = await collateral.refPerTok()
       expect(before).to.equal(rateAsRefPerTok.mul(fp('0.99')).div(fp('1')))
       expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Should be SOUND if drops just under 1%
-      await (tok as CTokenVaultMock).setExchangeRate(rate.mul(fp('0.99001')).div(fp('1')))
+      await (tok as CTokenWrapperMock).setExchangeRate(rate.mul(fp('0.99001')).div(fp('1')))
       await collateral.refresh()
       let after = await collateral.refPerTok()
       expect(before).to.eq(after)
       expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Should be DISABLED if drops just over 1%
-      await (tok as CTokenVaultMock).setExchangeRate(before.mul(fp('0.98999')).div(fp('1')))
+      await (tok as CTokenWrapperMock).setExchangeRate(before.mul(fp('0.98999')).div(fp('1')))
       await collateral.refresh()
       after = await collateral.refPerTok()
       expect(before).to.be.gt(after)

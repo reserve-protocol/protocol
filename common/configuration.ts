@@ -13,6 +13,7 @@ export interface ITokens {
   USDP?: string
   TUSD?: string
   BUSD?: string
+  sUSD?: string
   FRAX?: string
   MIM?: string
   eUSD?: string
@@ -49,6 +50,8 @@ export interface ITokens {
   rETH?: string
   cUSDCv3?: string
   ONDO?: string
+  sDAI?: string
+  cbETH?: string
 }
 
 export interface IFeeds {
@@ -56,11 +59,15 @@ export interface IFeeds {
   stETHUSD?: string
 }
 
-export interface IPlugins {
+export interface IPools {
   cvx3Pool?: string
   cvxeUSDFRAXBP?: string
   cvxTriCrypto?: string
   cvxMIM3Pool?: string
+  crv3Pool?: string
+  crveUSDFRAXBP?: string
+  crvTriCrypto?: string
+  crvMIM3Pool?: string
 }
 
 interface INetworkConfig {
@@ -70,6 +77,7 @@ interface INetworkConfig {
   AAVE_LENDING_POOL?: string
   AAVE_INCENTIVES?: string
   AAVE_EMISSIONS_MGR?: string
+  AAVE_RESERVE_TREASURY?: string
   COMPTROLLER?: string
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
@@ -92,6 +100,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BUSD: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
       USDP: '0x8E870D67F660D95d5be530380D0eC0bd388289E1',
       TUSD: '0x0000000000085d4780B73119b644AE5ecd22b376',
+      sUSD: '0x57Ab1ec28D129707052df4dF418D58a2D46d5f51',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
       MIM: '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3',
       eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
@@ -127,7 +136,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
-      ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3'
+      ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
+      sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
+      cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -139,6 +150,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BUSD: '0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A',
       USDP: '0x09023c0DA49Aaf8fc3fA3ADF34C6A7016D38D5e3',
       TUSD: '0xec746eCF986E2927Abd291a2A1716c940100f8Ba',
+      sUSD: '0xad35Bd71b9aFE6e4bDc266B345c198eaDEf9Ad94',
       FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
       MIM: '0x7A364e8770418566e3eb2001A96116E6138Eb32F',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
@@ -151,10 +163,12 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
+      cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
+    AAVE_RESERVE_TREASURY: '0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c',
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
@@ -178,6 +192,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BUSD: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
       USDP: '0x8E870D67F660D95d5be530380D0eC0bd388289E1',
       TUSD: '0x0000000000085d4780B73119b644AE5ecd22b376',
+      sUSD: '0x57Ab1ec28D129707052df4dF418D58a2D46d5f51',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
       MIM: '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3',
       eUSD: '0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F',
@@ -213,7 +228,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
       rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
       cUSDCv3: '0xc3d688B66703497DAA19211EEdff47f25384cdc3',
-      ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3'
+      ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
+      sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
+      cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -225,6 +242,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BUSD: '0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A',
       USDP: '0x09023c0DA49Aaf8fc3fA3ADF34C6A7016D38D5e3',
       TUSD: '0xec746eCF986E2927Abd291a2A1716c940100f8Ba',
+      sUSD: '0xad35Bd71b9aFE6e4bDc266B345c198eaDEf9Ad94',
       FRAX: '0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD',
       MIM: '0x7A364e8770418566e3eb2001A96116E6138Eb32F',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
@@ -237,8 +255,10 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHETH: '0x86392dc19c0b719886221c78ab11eb8cf5c52812', // stETH/ETH
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
+      cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
+    AAVE_RESERVE_TREASURY: '0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c',
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
@@ -428,6 +448,7 @@ export const MAX_MIN_TRADE_VOLUME = BigNumber.from(10).pow(29)
 export const MIN_THROTTLE_AMT_RATE = BigNumber.from(10).pow(18)
 export const MAX_THROTTLE_AMT_RATE = BigNumber.from(10).pow(48)
 export const MAX_THROTTLE_PCT_RATE = BigNumber.from(10).pow(18)
+export const GNOSIS_MAX_TOKENS = BigNumber.from(7).mul(BigNumber.from(10).pow(28))
 
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)

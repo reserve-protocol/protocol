@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -104,6 +104,8 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced
+                    // untested:
+                    //      validated in other plugins, cost to test here is high
                     assert(low == 0);
                 }
 

@@ -80,13 +80,13 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: '0.8.17',
+        version: '0.8.19',
         settings,
       },
       {
         version: '0.6.12',
         settings,
-      }
+      },
     ],
     overrides: {
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
@@ -94,7 +94,7 @@ const config: HardhatUserConfig = {
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
       },
       'contracts/facade/FacadeRead.sol': {
-        version: '0.8.17',
+        version: '0.8.19',
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
       },
     },

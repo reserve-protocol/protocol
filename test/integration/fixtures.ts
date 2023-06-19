@@ -156,7 +156,7 @@ async function collateralFixture(
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
-  const CTokenVaultFactory = await ethers.getContractFactory('CTokenVault')
+  const CTokenWrapperFactory = await ethers.getContractFactory('CTokenWrapper')
 
   const StaticATokenFactory: ContractFactory = await ethers.getContractFactory('StaticATokenLM')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
@@ -207,7 +207,7 @@ async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const vault = await CTokenVaultFactory.deploy(
+    const vault = await CTokenWrapperFactory.deploy(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
@@ -304,7 +304,7 @@ async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const vault = await CTokenVaultFactory.deploy(
+    const vault = await CTokenWrapperFactory.deploy(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
@@ -362,7 +362,7 @@ async function collateralFixture(
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
     )
-    const vault = await CTokenVaultFactory.deploy(
+    const vault = await CTokenWrapperFactory.deploy(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
