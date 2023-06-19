@@ -8,8 +8,7 @@ import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
-import * as tdly from "@tenderly/hardhat-tenderly";
-
+import * as tenderly from '@tenderly/hardhat-tenderly'
 
 import { useEnv } from '#/utils/env'
 import { HardhatUserConfig } from 'hardhat/types'
@@ -19,7 +18,7 @@ import forkBlockNumber from '#/test/integration/fork-block-numbers'
 require('#/tasks')
 
 if (!useEnv('CI')) {
-  tdly.setup();
+  tenderly.setup()
 }
 
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
@@ -129,10 +128,10 @@ const config: HardhatUserConfig = {
   },
   tenderly: {
     // see https://github.com/Tenderly/hardhat-tenderly/tree/master/packages/tenderly-hardhat for details
-    username: "Reserveslug", // project name
-    project: "testnet", // project name
-    privateVerification: false // must be false to verify contracts on a testnet or devnet
-  }
+    username: 'Reserveslug', // project name
+    project: 'testnet', // project name
+    privateVerification: false, // must be false to verify contracts on a testnet or devnet
+  },
 }
 
 if (useEnv('ONLY_FAST')) {
