@@ -24,7 +24,6 @@ import {
   RecollateralizationLibP1,
   RevenueTraderCompatibleV1,
   RevenueTraderCompatibleV2,
-  RevenueTraderP1InvalidReverts,
   RevenueTraderInvalidVersion,
   RevenueTraderP1,
   StaticATokenMock,
@@ -106,7 +105,6 @@ describe('FacadeRead + FacadeAct contracts', () => {
   let RevenueTraderV2ImplFactory: ContractFactory
   let RevenueTraderV1ImplFactory: ContractFactory
   let RevenueTraderInvalidVerImplFactory: ContractFactory
-  let RevenueTraderRevertsImplFactory: ContractFactory
   let BackingMgrV2ImplFactory: ContractFactory
   let BackingMgrV1ImplFactory: ContractFactory
   let BackingMgrInvalidVerImplFactory: ContractFactory
@@ -156,10 +154,6 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     RevenueTraderInvalidVerImplFactory = await ethers.getContractFactory(
       'RevenueTraderInvalidVersion'
-    )
-
-    RevenueTraderRevertsImplFactory = await ethers.getContractFactory(
-      'RevenueTraderP1InvalidReverts'
     )
 
     const tradingLib: RecollateralizationLibP1 = <RecollateralizationLibP1>(

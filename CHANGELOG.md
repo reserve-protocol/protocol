@@ -60,7 +60,7 @@ Bump solidity version to 0.8.19
   - Rename event `AuctionLengthSet()` -> `BatchAuctionLengthSet()`
   - Add `dutchAuctionLength` and `setDutchAuctionLength()` setter and `DutchAuctionLengthSet()` event
   - Add `dutchTradeImplementation` and `setDutchTradeImplementation()` setter and `DutchTradeImplementationSet()` event
-  - Modify `openTrade(TradeRequest memory reg)` -> `openTrade(TradeKind kind, TradeRequest memory req)`
+  - Modify `openTrade(TradeRequest memory reg)` -> `openTrade(TradeKind kind, TradeRequest memory req, TradePrices memory prices)`
     - Allow when paused / frozen, since caller must be in-system
 
 - `Deployer` [+0 slots]

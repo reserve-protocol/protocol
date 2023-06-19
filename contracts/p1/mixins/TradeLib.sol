@@ -98,7 +98,7 @@ library TradeLib {
     //
     // Returns prepareTradeSell(trade, rules), where
     //   req.sellAmount = min(trade.sellAmount,
-    //                trade.buyAmount * (trade.prices.buyHigh / trade.prices.sellLow) / (1-maxTradeSlippage))
+    //                trade.buyAmount * (buyHigh / sellLow) / (1-maxTradeSlippage))
     //   i.e, the minimum of trade.sellAmount and (a sale amount that, at current prices and
     //   maximum slippage, will yield at least the requested trade.buyAmount)
     //

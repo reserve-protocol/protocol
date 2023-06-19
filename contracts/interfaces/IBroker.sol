@@ -14,9 +14,9 @@ enum TradeKind {
 // Cache of all prices for a pair to prevent re-lookup
 struct TradePrices {
     uint192 sellLow; // {UoA/sellTok} can be 0
-    uint192 sellHigh; // {UoA/sellTok} can be 0
-    uint192 buyLow; // {UoA/buyTok}
-    uint192 buyHigh; // {UoA/buyTok}
+    uint192 sellHigh; // {UoA/sellTok} should not be 0
+    uint192 buyLow; // {UoA/buyTok} should not be 0
+    uint192 buyHigh; // {UoA/buyTok} should not be 0 or FIX_MAX
 }
 
 /// The data format that describes a request for trade with the Broker

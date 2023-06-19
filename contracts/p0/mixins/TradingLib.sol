@@ -89,14 +89,14 @@ library TradingLibP0 {
     ///   buy != 0
     ///   sellAmount (unused) {sellTok}
     ///   buyAmount >= 0 {buyTok}
-    ///   sellPrice > 0 {UoA/sellTok}
-    ///   buyPrice > 0 {UoA/buyTok}
+    ///   prices.sellLow > 0 {UoA/sellTok}
+    ///   prices.buyHigh > 0 {UoA/buyTok}
     /// @return notDust Whether the prepared trade is large enough to be worth trading
     /// @return req The prepared trade request to send to the Broker
     //
     // Returns prepareTradeSell(trade, rules), where
     //   req.sellAmount = min(trade.sellAmount,
-    //                trade.buyAmount * (trade.prices.buyHigh / trade.prices.sellLow) / (1-maxTradeSlippage))
+    //                trade.buyAmount * (buyHigh / sellLow) / (1-maxTradeSlippage))
     //   i.e, the minimum of trade.sellAmount and (a sale amount that, at current prices and
     //   maximum slippage, will yield at least the requested trade.buyAmount)
     //
@@ -312,7 +312,7 @@ library TradingLibP0 {
                 // Intentionally include value of IFFY/DISABLED collateral
                 if (
                     ctx.bh.quantity(erc20s[i]) == 0 &&
-                    !TradingLibP0.isEnoughToSell(asset, bal, lotLow, ctx.minTradeVolume)
+                    !isEnoughToSell(asset, bal, lotLow, ctx.minTradeVolume)
                 ) continue;
             }
 
