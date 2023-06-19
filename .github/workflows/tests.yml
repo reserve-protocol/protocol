@@ -18,8 +18,9 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
-      - run: yarn install --immutable
+      - run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
       - run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
+      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn devchain &
         env:
@@ -38,6 +39,7 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
+      - run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
       - run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn compile
       - run: yarn lint
@@ -52,6 +54,7 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
+      - run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
       - run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn compile
       - run: yarn test:plugins
@@ -79,6 +82,7 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
+      - run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
       - run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn compile
       - run: yarn test:p0
@@ -95,6 +99,7 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
+      - run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
       - run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn compile
       - run: yarn test:p1
@@ -111,6 +116,7 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
+      - run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
       - run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn compile
       - run: yarn test:scenario
@@ -127,6 +133,7 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
+      - run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
       - run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn compile
       - run: yarn test:extreme
@@ -164,6 +171,7 @@ jobs:
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
       - run: yarn install --immutable
+      - run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
       - run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn compile
       - run: yarn test:integration
