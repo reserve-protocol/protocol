@@ -18,12 +18,13 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - name: 'Tenderly login'
+        run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn devchain &
         env:
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-          CI: true
       - run: yarn deploy:run --network localhost
         env:
           SKIP_PROMPT: 1
@@ -37,6 +38,8 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - name: 'Tenderly login'
+        run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn lint
@@ -50,6 +53,8 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - name: 'Tenderly login'
+        run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:plugins
@@ -66,7 +71,6 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-          CI: true
 
   p0-tests:
     name: 'P0 tests'
@@ -77,12 +81,13 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - name: 'Tenderly login'
+        run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:p0
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
-          CI: true
 
   p1-tests:
     name: 'P1 Tests'
@@ -93,12 +98,13 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - name: 'Tenderly login'
+        run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:p1
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
-          CI: true
 
   scenario-tests:
     name: 'Scenario Tests'
@@ -109,12 +115,13 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - name: 'Tenderly login'
+        run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:scenario
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
-          CI: true
 
   extreme-tests:
     name: 'Extreme Tests'
@@ -125,6 +132,8 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - name: 'Tenderly login'
+        run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:extreme
@@ -141,7 +150,6 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-          CI: true
 
   integration-tests:
     name: 'Integration Tests'
@@ -154,6 +162,8 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - name: 'Tenderly login'
+        run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
         with:
@@ -169,4 +179,3 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
-          CI: true
