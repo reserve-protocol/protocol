@@ -18,9 +18,9 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - run: yarn install --immutable
       - name: 'Tenderly login'
         run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
-      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn devchain &
         env:
@@ -38,9 +38,9 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - run: yarn install --immutable
       - name: 'Tenderly login'
         run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
-      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn lint
 
@@ -53,9 +53,9 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - run: yarn install --immutable
       - name: 'Tenderly login'
         run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
-      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:plugins
       - name: 'Cache hardhat network fork'
@@ -81,9 +81,9 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - run: yarn install --immutable
       - name: 'Tenderly login'
         run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
-      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:p0
         env:
@@ -98,9 +98,9 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - run: yarn install --immutable
       - name: 'Tenderly login'
         run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
-      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:p1
         env:
@@ -115,9 +115,9 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - run: yarn install --immutable
       - name: 'Tenderly login'
         run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
-      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:scenario
         env:
@@ -132,9 +132,9 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - run: yarn install --immutable
       - name: 'Tenderly login'
         run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
-      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:extreme
       - name: 'Cache hardhat network fork'
@@ -162,9 +162,9 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
+      - name: 'Cache hardhat network fork'
       - name: 'Tenderly login'
         run: tenderly login --authentication-method access-key --access-key ${{ secrets.TENDERLY_ACCESS_KEY }} --force
-      - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
         with:
           path: cache/hardhat-network-fork
