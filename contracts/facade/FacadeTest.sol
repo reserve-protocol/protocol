@@ -81,7 +81,6 @@ contract FacadeTest is IFacadeTest {
         // Poke Main
         reg.refresh();
         main.furnace().melt();
-        main.stRSR().payoutRewards();
 
         address backingManager = address(main.backingManager());
         IERC20 rsr = main.rsr();

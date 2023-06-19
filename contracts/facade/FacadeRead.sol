@@ -33,7 +33,6 @@ contract FacadeRead is IFacadeRead {
         // Poke Main
         main.assetRegistry().refresh();
         main.furnace().melt();
-        main.stRSR().payoutRewards();
 
         // {BU}
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
@@ -73,7 +72,6 @@ contract FacadeRead is IFacadeRead {
         // Poke Main
         reg.refresh();
         main.furnace().melt();
-        main.stRSR().payoutRewards();
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (rTok.totalSupply() > 0) // {BU}
@@ -119,7 +117,6 @@ contract FacadeRead is IFacadeRead {
         // Poke Main
         main.assetRegistry().refresh();
         main.furnace().melt();
-        main.stRSR().payoutRewards();
 
         uint256 supply = rTok.totalSupply();
 
