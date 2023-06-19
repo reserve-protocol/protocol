@@ -3,7 +3,7 @@
 Recollateralization takes place in the central loop of [`BackingManager.rebalance()`](../contracts/p1/BackingManager). Since the BackingManager can only have open 1 trade at a time, it needs to know which tokens to try to trade and how much. This algorithm should not be gameable and should not result in unnecessary losses.
 
 ```solidity
-(bool doTrade, TradeRequest memory req) = RecollateralizationLibP1.prepareRecollateralizationTrade(...);
+(bool doTrade, TradeRequest memory req, TradePrices memory prices) = RecollateralizationLibP1.prepareRecollateralizationTrade(...);
 ```
 
 The trading algorithm is isolated in [RecollateralizationLib.sol](../contracts/p1/mixins/RecollateralizationLib.sol). This document describes the algorithm implemented by the library at a high-level, as well as the concepts required to evaluate the correctness of the implementation.
@@ -76,7 +76,7 @@ function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
 ```
 
-All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `price().low` and the buying asset's `price().high`. However, the protocol must also be able to sell assets that do not currently have known prices. This can occur either due to an oracle contract reverting, or because the oracle value is stale. In this case `price()` returns `[0, FIX_MAX]` while `lotPrice()` returns nonzero values, at least for some period of time. If an asset's oracle goes offline forever, its `lotPrice()` will eventually reach `[0, 0]` and the protocol will completely stop trading this asset.
+All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `lotPrice().low` and the buying asset's `lotPrice().high`.
 
 #### Trade Examples
 
