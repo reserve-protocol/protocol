@@ -126,8 +126,7 @@ all.forEach((curr: FTokenEnumeration) => {
           opts.erc20,
           await erc20.name(),
           await erc20.symbol(),
-          opts.comptroller!,
-          opts.rewardERC20!
+          opts.comptroller!
         )
       )
       erc20Address = fTokenVault.address

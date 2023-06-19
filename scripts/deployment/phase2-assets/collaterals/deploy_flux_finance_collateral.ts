@@ -48,8 +48,7 @@ async function main() {
     networkConfig[chainId].tokens.fUSDC!,
     `${await fUsdc.name()} Vault`,
     `${await fUsdc.symbol()}-VAULT`,
-    networkConfig[chainId].COMPTROLLER!,
-    networkConfig[chainId].tokens.ONDO!
+    networkConfig[chainId].COMPTROLLER!
   )
 
   await fUsdcVault.deployed()
@@ -87,8 +86,7 @@ async function main() {
     networkConfig[chainId].tokens.fUSDT!,
     `${await fUsdt.name()} Vault`,
     `${await fUsdt.symbol()}-VAULT`,
-    networkConfig[chainId].COMPTROLLER!,
-    networkConfig[chainId].tokens.ONDO!
+    networkConfig[chainId].COMPTROLLER!
   )
 
   await fUsdtVault.deployed()
@@ -126,8 +124,7 @@ async function main() {
     networkConfig[chainId].tokens.fDAI!,
     `${await fDai.name()} Vault`,
     `${await fDai.symbol()}-VAULT`,
-    networkConfig[chainId].COMPTROLLER!,
-    networkConfig[chainId].tokens.ONDO!
+    networkConfig[chainId].COMPTROLLER!
   )
 
   await fDaiVault.deployed()
@@ -163,8 +160,7 @@ async function main() {
     networkConfig[chainId].tokens.fFRAX!,
     `${await fFrax.name()} Vault`,
     `${await fFrax.symbol()}-VAULT`,
-    networkConfig[chainId].COMPTROLLER!,
-    networkConfig[chainId].tokens.ONDO!
+    networkConfig[chainId].COMPTROLLER!
   )
 
   await fFraxVault.deployed()
