@@ -1,0 +1,42 @@
+name: Plugin backtester
+
+on:
+  workflow_dispatch:
+    inputs:
+      blocksBetweenSamples:
+        description: 'Number of blocks to go back from current block. Use 1 for accurate but slow tests, and higher numbers for fast estimates.'
+        required: true
+        type: number
+        default: 300 # translates to 1 sample pr hour for mainnet
+
+      numberOfSamples:
+        description: 'Number of samples to take.'
+        required: true
+        type: number
+        default: 1000 # if blocksBetweenSamples it roughly translates to 41 days of history
+
+jobs:
+  run_backtests:
+    env:
+      SAMPLES: ${{ inputs.numberOfSamples }}
+      STRIDE: ${{ inputs.blocksBetweenSamples }}
+      BACKTEST_SERVICE_URL: ${{ secrets.BACKTEST_SERVICE_URL }}
+      MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+      BACKTEST_RESULT_DIR: "backtests/"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn compile
+      - run: yarn run:backtests
+      - name: Archive backtest results
+        uses: actions/upload-artifact@v3
+        with:
+          name: backtest-results
+          path: backtests/*.json

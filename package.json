@@ -35,7 +35,8 @@
     "prettier": "prettier --ignore-path .gitignore --loglevel warn --write \"./**/*.{js,ts,sol,json,md}\"",
     "size": "hardhat size-contracts",
     "slither": "python3 tools/slither.py",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "run:backtests": "npx hardhat run scripts/backtest_plugins.ts"
   },
   "repository": {
     "type": "git",
@@ -109,6 +110,8 @@
   },
   "packageManager": "yarn@3.3.1",
   "dependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^2.0.1"
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "@types/isomorphic-fetch": "^0.0.36",
+    "isomorphic-fetch": "^3.0.0"
   }
 }
