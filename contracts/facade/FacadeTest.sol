@@ -81,8 +81,14 @@ contract FacadeTest is IFacadeTest {
     /// @custom:static-call
     function totalAssetValue(IRToken rToken) external returns (uint192 total) {
         IMain main = rToken.main();
-        main.poke();
         IAssetRegistry reg = main.assetRegistry();
+
+        require(!main.frozen(), "frozen");
+
+        // Poke Main
+        reg.refresh();
+        main.furnace().melt();
+
         address backingManager = address(main.backingManager());
         IERC20 rsr = main.rsr();
 

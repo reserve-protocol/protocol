@@ -46,8 +46,7 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
         assetRegistry.refresh();
 
         // == CE block ==
-        require(!frozen(), "frozen");
-        furnace.melt();
+        if (!frozen()) furnace.melt();
         stRSR.payoutRewards();
     }
 

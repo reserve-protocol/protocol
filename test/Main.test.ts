@@ -1674,8 +1674,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     let eurToken: ERC20Mock
 
     beforeEach(async () => {
-      await upgrades.silenceWarnings()
-
       if (IMPLEMENTATION == Implementation.P0) {
         const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP0')
         freshBasketHandler = <TestIBasketHandler>((await BasketHandlerFactory.deploy()) as unknown)
@@ -2629,9 +2627,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await main.connect(other).poke()
     })
 
-    it('Should not allow to poke when frozen', async () => {
+    it('Should allow to poke when frozen', async () => {
       await main.connect(owner).freezeForever()
-      await expect(main.connect(other).poke()).to.be.revertedWith('frozen')
+      await main.connect(other).poke()
     })
 
     it('Should not allow to refresh basket if not OWNER when unfrozen and unpaused', async () => {
