@@ -28,9 +28,10 @@ scripts/addresses/31337*
 .\#*
 
 *.orig
-
 .idea
 
 # Scripts for local/test interactions
 scripts/test.ts
 scripts/playground.ts
+
+backtests/
