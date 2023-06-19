@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libraries/Fixed.sol";
 import "../../libraries/NetworkConfigLib.sol";
 import "../../interfaces/IAsset.sol";
+import "../../interfaces/IBroker.sol";
 import "../../interfaces/ITrade.sol";
 
 uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
@@ -110,7 +111,8 @@ contract DutchTrade is ITrade {
         IAsset sell_,
         IAsset buy_,
         uint256 sellAmount_,
-        uint48 auctionLength
+        uint48 auctionLength,
+        TradePrices memory prices
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         assert(
             address(sell_) != address(0) &&
@@ -119,10 +121,8 @@ contract DutchTrade is ITrade {
         ); // misuse by caller
 
         // Only start dutch auctions under well-defined prices
-        (uint192 sellLow, uint192 sellHigh) = sell_.price(); // {UoA/sellTok}
-        (uint192 buyLow, uint192 buyHigh) = buy_.price(); // {UoA/buyTok}
-        require(sellLow > 0 && sellHigh < FIX_MAX, "bad sell pricing");
-        require(buyLow > 0 && buyHigh < FIX_MAX, "bad buy pricing");
+        require(prices.sellLow > 0 && prices.sellHigh < FIX_MAX, "bad sell pricing");
+        require(prices.buyLow > 0 && prices.buyHigh < FIX_MAX, "bad buy pricing");
 
         origin = origin_;
         sell = sell_.erc20();
@@ -135,14 +135,14 @@ contract DutchTrade is ITrade {
 
         // {1}
         uint192 slippage = _slippage(
-            sellAmount.mul(sellHigh, FLOOR), // auctionVolume
+            sellAmount.mul(prices.sellHigh, FLOOR), // auctionVolume
             origin.minTradeVolume(), // minTradeVolume
             fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume()) // maxTradeVolume
         );
 
         // {buyTok/sellTok} = {UoA/sellTok} * {1} / {UoA/buyTok}
-        lowPrice = sellLow.mulDiv(FIX_ONE - slippage, buyHigh, FLOOR);
-        middlePrice = sellHigh.div(buyLow, CEIL); // no additional slippage
+        lowPrice = prices.sellLow.mulDiv(FIX_ONE - slippage, prices.buyHigh, FLOOR);
+        middlePrice = prices.sellHigh.div(prices.buyLow, CEIL); // no additional slippage
         // highPrice = 1000 * middlePrice
 
         assert(lowPrice <= middlePrice);
