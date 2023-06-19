@@ -578,11 +578,8 @@ library TradingLibP0 {
         IAsset buy,
         uint192 price
     ) private view returns (uint192) {
-        // untestable:
-        //       Price cannot be 0, it would've been filtered before in `prepareTradeSell`
-        uint192 size = price == 0
-            ? FIX_MAX
-            : fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).div(price, FLOOR);
+        // D18{tok} = D18{UoA} / D18{UoA/tok}
+        uint192 size = fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).safeDiv(price, FLOOR);
         return size > 0 ? size : 1;
     }
 }
