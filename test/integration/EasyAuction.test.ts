@@ -782,20 +782,29 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // First simulate opening the trade to get where it will be deployed
       await sellTok.connect(addr1).approve(broker.address, auctionSellAmt)
-      const tradeAddr = await broker.connect(addr1).callStatic.openTrade(TradeKind.BATCH_AUCTION, {
-        sell: sellColl.address,
-        buy: buyColl.address,
-        sellAmount: auctionSellAmt,
-        minBuyAmount: auctionBuyAmt,
-      })
+      const prices = { sellLow: fp('1'), sellHigh: fp('1'), buyLow: fp('1'), buyHigh: fp('1') }
+      const tradeAddr = await broker.connect(addr1).callStatic.openTrade(
+        TradeKind.BATCH_AUCTION,
+        {
+          sell: sellColl.address,
+          buy: buyColl.address,
+          sellAmount: auctionSellAmt,
+          minBuyAmount: auctionBuyAmt,
+        },
+        prices
+      )
 
       // Start auction!
-      await broker.connect(addr1).openTrade(TradeKind.BATCH_AUCTION, {
-        sell: sellColl.address,
-        buy: buyColl.address,
-        sellAmount: auctionSellAmt,
-        minBuyAmount: auctionBuyAmt,
-      })
+      await broker.connect(addr1).openTrade(
+        TradeKind.BATCH_AUCTION,
+        {
+          sell: sellColl.address,
+          buy: buyColl.address,
+          sellAmount: auctionSellAmt,
+          minBuyAmount: auctionBuyAmt,
+        },
+        prices
+      )
 
       // Get auctionId
       const trade = await ethers.getContractAt('GnosisTrade', tradeAddr)
