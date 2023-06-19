@@ -36,6 +36,7 @@ Bump solidity version to 0.8.19
   - Functions now revert on unproductive executions, instead of no-op
   - Do not trade until a warmupPeriod (last time SOUND was newly attained) has passed
   - Add `cacheComponents()` refresher to be called on upgrade
+  - Use the floor price (not high price) of the auction to size the maximum trade volume
   - Bugfix: consider `maxTradeVolume()` from both assets on a trade, not just 1
 
 - `BasketHandler` [+5 slots]
@@ -161,6 +162,7 @@ Duration: 30 min (default)
 
 #### Assets and Collateral
 
+- Bugfix: `lotPrice()` now begins at 100% the lastSavedPrice, instead of below 100%
 - Add `version() return (string)` getter to pave way for separation of asset versioning and core protocol versioning
 - Update `claimRewards()` on all assets to 3.0.0-style, without `delegatecall`
 - Add `lastSave()` to `RTokenAsset`
