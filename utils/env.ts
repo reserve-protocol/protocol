@@ -21,7 +21,6 @@ type IEnvVars =
   | 'SUBGRAPH_URL'
   | 'TENDERLY_RPC_URL'
   | 'SKIP_PROMPT'
-  | 'CI'
 
 export function useEnv(key: IEnvVars | IEnvVars[], _default = ''): string {
   if (typeof key === 'string') {
