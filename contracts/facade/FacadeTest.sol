@@ -77,7 +77,7 @@ contract FacadeTest is IFacadeTest {
         IAssetRegistry reg = main.assetRegistry();
 
         require(!main.frozen(), "frozen");
-      
+
         // Poke Main
         reg.refresh();
         main.furnace().melt();
