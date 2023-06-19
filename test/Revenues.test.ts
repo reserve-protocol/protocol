@@ -1019,10 +1019,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should handle GNOSIS_MAX_TOKENS cap in BATCH_AUCTION', async () => {
-        // Set Max trade volume very high for both assets in trade
+        // Halve price to trigger maxTradeSize() overflow
         const chainlinkFeed = <MockV3Aggregator>(
-          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('0.5e8'))
         )
+
+        // Set Max trade volume very high for both assets in trade
         const newSellAsset: Asset = <Asset>(
           await AssetFactory.deploy(
             PRICE_TIMEOUT,
