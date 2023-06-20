@@ -301,12 +301,12 @@ library RecollateralizationLibP1 {
     //   `trade.sell` is the token from erc20s with the greatest surplus value (in UoA),
     //   and sellAmount is the quantity of that token that it's in surplus (in qTok).
     //   if `trade.sell` == 0, then no token is in surplus by at least minTradeSize,
-    //        and `trade.sellAmount` and `trade.prices.sellLow` are unset.
+    //        and `trade.sellAmount` and `trade.sellPrice` are unset.
     //
     //   `trade.buy` is the token from erc20s with the greatest deficit value (in UoA),
     //   and buyAmount is the quantity of that token that it's in deficit (in qTok).
     //   if `trade.buy` == 0, then no token is in deficit at all,
-    //        and `trade.buyAmount` and `trade.prices.buyHigh` are unset.
+    //        and `trade.buyAmount` and `trade.buyPrice` are unset.
     //
     // Then, just if we have a buy asset and no sell asset, consider selling available RSR.
     //
