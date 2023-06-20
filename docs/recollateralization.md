@@ -3,7 +3,7 @@
 Recollateralization takes place in the central loop of [`BackingManager.rebalance()`](../contracts/p1/BackingManager). Since the BackingManager can only have open 1 trade at a time, it needs to know which tokens to try to trade and how much. This algorithm should not be gameable and should not result in unnecessary losses.
 
 ```solidity
-(bool doTrade, TradeRequest memory req) = RecollateralizationLibP1.prepareRecollateralizationTrade(...);
+(bool doTrade, TradeRequest memory req, TradePrices memory prices) = RecollateralizationLibP1.prepareRecollateralizationTrade(...);
 ```
 
 The trading algorithm is isolated in [RecollateralizationLib.sol](../contracts/p1/mixins/RecollateralizationLib.sol). This document describes the algorithm implemented by the library at a high-level, as well as the concepts required to evaluate the correctness of the implementation.
