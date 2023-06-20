@@ -78,7 +78,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
       it('supports up to 2 price feeds per token', async () => {
         const nonzeroError = fp('0.01') // 1%
-        const nTokens = defaultOpts.nTokens || 0
+        const nTokens = Number(defaultOpts.nTokens) || 0
 
         const feeds: string[][] = []
         for (let i = 0; i < nTokens; i++) {
@@ -430,7 +430,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(p[0]).to.equal(lotP[0])
           expect(p[1]).to.equal(lotP[1])
 
-          await advanceTime(await collateral.oracleTimeout())
+          await advanceTime(await ctx.collateral.oracleTimeout())
 
           // Should be roughly half, after half of priceTimeout
           const priceTimeout = await ctx.collateral.priceTimeout()
