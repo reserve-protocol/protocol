@@ -3,6 +3,33 @@ name: Plugin backtester
 on:
   workflow_dispatch:
     inputs:
+      contractName:
+        description: 'Plugin to test'
+        required: true
+        type: string
+        default: CTokenFiatCollateral
+      
+      arguments:
+        description: 'Contract constructor arguments'
+        required: true
+        type: string
+        default: |
+          [
+            {
+              "priceTimeout": "604800",
+              "chainlinkFeed": "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
+              "oracleError": "2500000000000000",
+              "erc20": "0x39AA39c021dfbaE8faC545936693aC917d5E7563",
+              "maxTradeVolume": "1000000000000000000000000",
+              "oracleTimeout": "86460",
+              "targetName": "0x5553440000000000000000000000000000000000000000000000000000000000",
+              "defaultThreshold": "12500000000000000",
+              "delayUntilDefault": "86400"
+            },
+            "0",
+            "0x95Af143a021DF745bc78e845b54591C53a8B3A51"
+          ]
+
       blocksBetweenSamples:
         description: 'Number of blocks to go back from current block. Use 1 for accurate but slow tests, and higher numbers for fast estimates.'
         required: true
@@ -14,10 +41,12 @@ on:
         required: true
         type: number
         default: 1000 # if blocksBetweenSamples it roughly translates to 41 days of history
-
+      
 jobs:
   run_backtests:
     env:
+      CONTRACT_NAME: ${{ inputs.contractName }}
+      CONSTRUCTOR_PARAMETERS: ${{ inputs.arguments }}
       SAMPLES: ${{ inputs.numberOfSamples }}
       STRIDE: ${{ inputs.blocksBetweenSamples }}
       BACKTEST_SERVICE_URL: ${{ secrets.BACKTEST_SERVICE_URL }}

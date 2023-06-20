@@ -36,7 +36,7 @@
     "size": "hardhat size-contracts",
     "slither": "python3 tools/slither.py",
     "prepare": "husky install",
-    "run:backtests": "npx hardhat run scripts/backtest_plugins.ts"
+    "run:backtests": "npx hardhat run scripts/ci_backtest_plugin.ts"
   },
   "repository": {
     "type": "git",

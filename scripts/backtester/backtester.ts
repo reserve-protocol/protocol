@@ -53,9 +53,8 @@ export const awaitBacktestJobResult = async (backtestServiceUrl: string, key: st
   }
 }
 
-export const backTestPlugin = async <TT, T>(
-  parametersToTest: { variantName: string; config: TT; additionalArgs: T }[],
-  createDeployTx: (testParams: { config: TT; additionalArgs: T }) => Promise<BytesLike>,
+export const backTestPlugin = async (
+  deployTransactions: BytesLike[],
   opts: {
     start: number
     stride: number
@@ -64,9 +63,8 @@ export const backTestPlugin = async <TT, T>(
   }
 ) => {
   return await Promise.all(
-    parametersToTest.map(async (params) => {
+    deployTransactions.map(async (deployTx) => {
       try {
-        const deployTx = await createDeployTx(params)
         const backtestJob = await submitBacktest(
           opts.backtestServiceUrl,
           deployTx,
@@ -82,23 +80,12 @@ export const backTestPlugin = async <TT, T>(
 
         return {
           status: backtestJobResult.jobStatus,
-          backtestName: params.variantName,
-          constructorArgs: {
-            config: params.config,
-            additionalArgs: params.additionalArgs,
-          },
           result: backtestJobResult,
         }
       } catch (e: any) {
-        console.error(`Failed to ${e} run backtest for ${params.variantName}`)
         console.log('Skking')
         return {
           status: 'FAILED',
-          backtestName: params.variantName,
-          constructorArgs: {
-            config: params.config,
-            additionalArgs: params.additionalArgs,
-          },
           error: e.toString(),
         }
       }
