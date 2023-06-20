@@ -38,5 +38,5 @@ jobs:
       - name: Archive backtest results
         uses: actions/upload-artifact@v3
         with:
-          name: backtest-results
-          path: backtests/*.json
+          name: backtest-data
+          path: backtests/
