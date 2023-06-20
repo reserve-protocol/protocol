@@ -31,7 +31,7 @@ contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
     using OracleLib for AggregatorV3Interface;
 
     // Component addresses are not mutable in protocol, so it's safe to cache these
-    IMain public immutable main;
+    // IMain public immutable main;
     IBasketHandler public immutable basketHandler;
     IAssetRegistry public immutable assetRegistry;
     IBackingManager public immutable backingManager;
@@ -44,15 +44,15 @@ contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
 
     // Oracle State
     int256 public cachedPrice;
-    uint256 public cachedAtNonce;
     uint256 public cachedAtTime;
+    uint48 public cachedAtNonce;
 
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(IRToken erc20_, uint192 maxTradeVolume_) {
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
 
-        main = erc20_.main();
+        IMain main = erc20_.main();
         basketHandler = main.basketHandler();
         assetRegistry = main.assetRegistry();
         backingManager = main.backingManager();
@@ -82,6 +82,7 @@ contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = range.bottom.mulDiv(lowBUPrice, supply, FLOOR);
         high = range.top.mulDiv(highBUPrice, supply, CEIL);
+
         assert(low <= high); // not obviously true
     }
 
@@ -213,6 +214,7 @@ contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
             // the absence of an external price feed. Any RToken that gets reasonably big
             // should switch over to an asset with a price feed.
 
+            IMain main = backingManager.main();
             TradingContext memory ctx;
 
             ctx.basketsHeld = basketsHeld;
