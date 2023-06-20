@@ -12,6 +12,8 @@ exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 5`] = `229460`;
 
 exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 6`] = `212360`;
 
+exports[`Revenues - P1 Gas Reporting Selling RToken 1`] = `1144696`;
+
 exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `753514`;
 
 exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `1146487`;

@@ -3632,5 +3632,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       // Settle trades
       await snapshotGasCost(rsrTrader.settleTrade(compToken.address))
     })
+
+    it('Selling RToken', async () => {
+      await rToken.connect(addr1).transfer(rsrTrader.address, fp('1'))
+      await snapshotGasCost(rsrTrader.manageTokens([rToken.address], [TradeKind.DUTCH_AUCTION]))
+    })
   })
 })
