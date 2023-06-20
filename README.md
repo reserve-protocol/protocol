@@ -154,6 +154,8 @@ If you would like to contribute, you'll need to configure a secret in your fork 
 
 Usage: `https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}`
 
+To get setup with tenderly, install the [tenderly cli](https://github.com/Tenderly/tenderly-cli). and login with `tenderly login --authentication-method access-key --access-key {your_access_key} --force`.
+
 ## External Documentation
 
 [Video overview](https://youtu.be/341MhkOWsJE)
