@@ -36,7 +36,6 @@ Bump solidity version to 0.8.19
   - Functions now revert on unproductive executions, instead of no-op
   - Do not trade until a warmupPeriod (last time SOUND was newly attained) has passed
   - Add `cacheComponents()` refresher to be called on upgrade
-  - Use the floor price (not high price) of the auction to size the maximum trade volume
   - Bugfix: consider `maxTradeVolume()` from both assets on a trade, not just 1
 
 - `BasketHandler` [+5 slots]
