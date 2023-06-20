@@ -58,11 +58,7 @@ library RecollateralizationLibP1 {
     function prepareRecollateralizationTrade(IBackingManager bm, BasketRange memory basketsHeld)
         external
         view
-        returns (
-            bool doTrade,
-            TradeRequest memory req,
-            TradePrices memory prices
-        )
+        returns (bool doTrade, TradeRequest memory req)
     {
         IMain main = bm.main();
 
@@ -96,12 +92,12 @@ library RecollateralizationLibP1 {
 
         // Don't trade if no pair is selected
         if (address(trade.sell) == address(0) || address(trade.buy) == address(0)) {
-            return (false, req, prices);
+            return (false, req);
         }
 
         // If we are selling an unpriced asset or UNSOUND collateral, do not try to cover deficit
         if (
-            trade.prices.sellLow == 0 ||
+            trade.sellPrice == 0 ||
             (trade.sell.isCollateral() &&
                 ICollateral(address(trade.sell)).status() != CollateralStatus.SOUND)
         ) {
@@ -116,7 +112,7 @@ library RecollateralizationLibP1 {
         // At this point doTrade _must_ be true, otherwise nextTradePair assumptions are broken
         assert(doTrade);
 
-        return (doTrade, req, trade.prices);
+        return (doTrade, req);
     }
 
     // Compute the target basket range
@@ -361,8 +357,7 @@ library RecollateralizationLibP1 {
                 ) {
                     trade.sell = reg.assets[i];
                     trade.sellAmount = bal.minus(needed);
-                    trade.prices.sellLow = lotLow;
-                    trade.prices.sellHigh = lotHigh;
+                    trade.sellPrice = lotLow;
 
                     maxes.surplusStatus = status;
                     maxes.surplus = delta;
@@ -373,7 +368,7 @@ library RecollateralizationLibP1 {
 
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
-                    (uint192 lotLow, uint192 lotHigh) = reg.assets[i].lotPrice(); // {UoA/buyTok}
+                    (, uint192 lotHigh) = reg.assets[i].lotPrice(); // {UoA/buyTok}
 
                     // {UoA} = {buyTok} * {UoA/buyTok}
                     uint192 delta = amtShort.mul(lotHigh, CEIL);
@@ -382,8 +377,7 @@ library RecollateralizationLibP1 {
                     if (delta.gt(maxes.deficit)) {
                         trade.buy = ICollateral(address(reg.assets[i]));
                         trade.buyAmount = amtShort;
-                        trade.prices.buyLow = lotLow;
-                        trade.prices.buyHigh = lotHigh;
+                        trade.buyPrice = lotHigh;
 
                         maxes.deficit = delta;
                     }
@@ -406,8 +400,7 @@ library RecollateralizationLibP1 {
             ) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
-                trade.prices.sellLow = lotLow;
-                trade.prices.sellHigh = lotHigh;
+                trade.sellPrice = lotLow;
             }
         }
     }

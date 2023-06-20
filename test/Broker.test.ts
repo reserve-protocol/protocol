@@ -5,14 +5,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
-import {
-  MAX_UINT96,
-  MAX_UINT192,
-  TradeKind,
-  TradeStatus,
-  ZERO_ADDRESS,
-  ONE_ADDRESS,
-} from '../common/constants'
+import { MAX_UINT96, TradeKind, TradeStatus, ZERO_ADDRESS, ONE_ADDRESS } from '../common/constants'
 import { bn, fp, divCeil, toBNDecimals } from '../common/numbers'
 import {
   DutchTrade,
@@ -41,6 +34,7 @@ import {
   PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
+import { setOraclePrice } from './utils/oracles'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
@@ -82,8 +76,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let basket: Collateral[]
   let collateral: Collateral[]
 
-  let prices: { sellLow: BigNumber; sellHigh: BigNumber; buyLow: BigNumber; buyHigh: BigNumber }
-
   beforeEach(async () => {
     ;[owner, addr1, mock, other] = await ethers.getSigners()
     // Deploy fixture
@@ -109,7 +101,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     tokenZ = <ZeroDecimalMock>(
       await ethers.getContractAt('ZeroDecimalMock', await collateralZ.erc20())
     )
-    prices = { sellLow: fp('1'), sellHigh: fp('1'), buyLow: fp('1'), buyHigh: fp('1') }
   })
 
   describe('Deployment', () => {
@@ -396,10 +387,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
         ).to.be.revertedWith('broker disabled')
         await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+          broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest)
         ).to.be.revertedWith('broker disabled')
       })
     })
@@ -423,32 +414,29 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // Attempt to open trade from non-trader
       await token0.connect(addr1).approve(broker.address, amount)
       await expect(
-        broker.connect(addr1).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+        broker.connect(addr1).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
       ).to.be.revertedWith('only traders')
 
       // Open from traders - Should work
       // Backing Manager
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await token0.connect(bmSigner).approve(broker.address, amount)
-        await expect(
-          broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
-        ).to.not.be.reverted
+        await expect(broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)).to
+          .not.be.reverted
       })
 
       // RSR Trader
       await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
         await token0.connect(rsrSigner).approve(broker.address, amount)
-        await expect(
-          broker.connect(rsrSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
-        ).to.not.be.reverted
+        await expect(broker.connect(rsrSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)).to
+          .not.be.reverted
       })
 
       // RToken Trader
       await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
         await token0.connect(rtokSigner).approve(broker.address, amount)
-        await expect(
-          broker.connect(rtokSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
-        ).to.not.be.reverted
+        await expect(broker.connect(rtokSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)).to
+          .not.be.reverted
       })
     })
 
@@ -962,8 +950,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         ).to.not.be.reverted
 
@@ -978,10 +965,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.endTime()).to.equal(
           (await trade.startTime()) + config.dutchAuctionLength.toNumber()
         )
-        expect(await trade.middlePrice()).to.equal(
-          divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
-        )
-        expect(await trade.lowPrice()).to.equal(prices.sellLow.mul(fp('1')).div(prices.buyHigh))
+        const [sellLow, sellHigh] = await collateral0.price()
+        const [buyLow, buyHigh] = await collateral1.price()
+        expect(await trade.middlePrice()).to.equal(divCeil(sellHigh.mul(fp('1')), buyLow))
+        expect(await trade.lowPrice()).to.equal(sellLow.mul(fp('1')).div(buyHigh))
         expect(await trade.canSettle()).to.equal(false)
 
         // Attempt to initialize again
@@ -991,8 +978,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         ).to.be.revertedWith('Invalid trade state')
       })
@@ -1001,21 +987,27 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Fund trade
         await token0.connect(owner).mint(trade.address, amount)
 
+        // Set bad price for sell token
+        await setOraclePrice(collateral0.address, bn(0))
+        await collateral0.refresh()
+
         // Attempt to initialize with bad sell price
-        prices.sellLow = bn('0')
         await expect(
           trade.init(
             backingManager.address,
             collateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         ).to.be.revertedWith('bad sell pricing')
 
-        prices.sellLow = fp('1')
-        prices.buyHigh = MAX_UINT192
+        // Fix sell price, set bad buy price
+        await setOraclePrice(collateral0.address, bn(1e8))
+        await collateral0.refresh()
+
+        await setOraclePrice(collateral1.address, bn(0))
+        await collateral1.refresh()
 
         await expect(
           trade.init(
@@ -1023,8 +1015,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         ).to.be.revertedWith('bad buy pricing')
       })
@@ -1040,16 +1031,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         ).to.not.be.reverted
 
         // Check trade values
-        expect(await trade.middlePrice()).to.equal(
-          divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
-        )
-        const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
+        const [sellLow, sellHigh] = await collateral0.price()
+        const [buyLow, buyHigh] = await collateral1.price()
+        expect(await trade.middlePrice()).to.equal(divCeil(sellHigh.mul(fp('1')), buyLow))
+        const withoutSlippage = sellLow.mul(fp('1')).div(buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
@@ -1083,16 +1073,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             newCollateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         ).to.not.be.reverted
 
         // Check trade values
-        expect(await trade.middlePrice()).to.equal(
-          divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
-        )
-        const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
+        const [sellLow, sellHigh] = await newCollateral0.price()
+        const [buyLow, buyHigh] = await collateral1.price()
+        expect(await trade.middlePrice()).to.equal(divCeil(sellHigh.mul(fp('1')), buyLow))
+        const withoutSlippage = sellLow.mul(fp('1')).div(buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
@@ -1107,8 +1096,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         ).to.be.revertedWith('unfunded trade')
       })
@@ -1122,8 +1110,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         ).to.not.be.reverted
 
@@ -1157,8 +1144,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         ).to.not.be.reverted
 
@@ -1240,7 +1226,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           await token0.connect(bmSigner).approve(broker.address, amount)
           await snapshotGasCost(
-            broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+            broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
           )
         })
 
@@ -1248,7 +1234,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
           await token0.connect(rsrSigner).approve(broker.address, amount)
           await snapshotGasCost(
-            broker.connect(rsrSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+            broker.connect(rsrSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
           )
         })
 
@@ -1256,7 +1242,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
           await token0.connect(rtokSigner).approve(broker.address, amount)
           await snapshotGasCost(
-            broker.connect(rtokSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+            broker.connect(rtokSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest)
           )
         })
       })
@@ -1333,7 +1319,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           await token0.connect(bmSigner).approve(broker.address, amount)
           await snapshotGasCost(
-            broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+            broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest)
           )
         })
 
@@ -1341,7 +1327,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
           await token0.connect(rsrSigner).approve(broker.address, amount)
           await snapshotGasCost(
-            broker.connect(rsrSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+            broker.connect(rsrSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest)
           )
         })
 
@@ -1349,7 +1335,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
           await token0.connect(rtokSigner).approve(broker.address, amount)
           await snapshotGasCost(
-            broker.connect(rtokSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+            broker.connect(rtokSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest)
           )
         })
       })
@@ -1363,8 +1349,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength,
-            prices
+            config.dutchAuctionLength
           )
         )
       })
@@ -1377,8 +1362,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           collateral0.address,
           collateral1.address,
           amount,
-          config.dutchAuctionLength,
-          prices
+          config.dutchAuctionLength
         )
 
         // Advance time till trade can be settled

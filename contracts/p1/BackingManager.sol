@@ -150,11 +150,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
          * rToken.basketsNeeded to the current basket holdings. Haircut time.
          */
 
-        (
-            bool doTrade,
-            TradeRequest memory req,
-            TradePrices memory prices
-        ) = RecollateralizationLibP1.prepareRecollateralizationTrade(this, basketsHeld);
+        (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
+            .prepareRecollateralizationTrade(this, basketsHeld);
 
         if (doTrade) {
             // Seize RSR if needed
@@ -164,7 +161,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             }
 
             // Execute Trade
-            ITrade trade = tryTrade(kind, req, prices);
+            ITrade trade = tryTrade(kind, req);
             tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time

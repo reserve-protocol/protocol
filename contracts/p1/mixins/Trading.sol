@@ -110,11 +110,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
-    function tryTrade(
-        TradeKind kind,
-        TradeRequest memory req,
-        TradePrices memory prices
-    ) internal returns (ITrade trade) {
+    function tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
         /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
@@ -122,7 +118,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
 
-        trade = broker.openTrade(kind, req, prices);
+        trade = broker.openTrade(kind, req);
         trades[sell] = trade;
         tradesOpen++;
 
