@@ -43,13 +43,13 @@ export const defaultCrvStableCollateralOpts: CurveMetapoolCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('USD'),
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
-  oracleTimeout: bn('1'), // unused but cannot be zero
+  oracleTimeout: USDC_ORACLE_TIMEOUT, // should be greatest of all timeouts
   oracleError: bn('1'), // unused but cannot be zero
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'), // TODO
-  nTokens: bn('2'),
+  nTokens: 2,
   curvePool: FRAX_BP,
   lpToken: FRAX_BP_TOKEN,
   poolType: CurvePoolType.Plain, // for fraxBP, not the top-level pool
