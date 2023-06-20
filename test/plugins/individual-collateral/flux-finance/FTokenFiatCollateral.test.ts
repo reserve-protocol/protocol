@@ -109,7 +109,7 @@ all.forEach((curr: FTokenEnumeration) => {
     defaultThreshold: DEFAULT_THRESHOLD,
     delayUntilDefault: DELAY_UNTIL_DEFAULT,
     comptroller: config.FLUX_FINANCE_COMPTROLLER,
-    revenueHiding: 0
+    revenueHiding: 0,
   }
 
   const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
