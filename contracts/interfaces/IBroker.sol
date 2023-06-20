@@ -11,7 +11,7 @@ enum TradeKind {
     BATCH_AUCTION
 }
 
-// Cache of all prices for a pair to prevent re-lookup
+/// Cache of all (lot) prices for a pair to prevent re-lookup
 struct TradePrices {
     uint192 sellLow; // {UoA/sellTok} can be 0
     uint192 sellHigh; // {UoA/sellTok} should not be 0
