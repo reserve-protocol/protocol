@@ -126,7 +126,7 @@ const config: HardhatUserConfig = {
   },
   tenderly: {
     // see https://github.com/Tenderly/hardhat-tenderly/tree/master/packages/tenderly-hardhat for details
-    username: 'Reserveslug', // project name
+    username: 'Reserveslug', // org name
     project: 'testnet', // project name
     privateVerification: false, // must be false to verify contracts on a testnet or devnet
   },
