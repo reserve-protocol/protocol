@@ -4,14 +4,14 @@ This document is intended to serve as a resource for MEV searchers and others lo
 
 ## Overview
 
-Like any protocol, the Reserve Protocol causes some amount of MEV. While the full extent is not known, here are some examples of known MEV opportunities:
+Like any protocol, the Reserve Protocol causes some amount of MEV. While the full extent is not necessarily described here, there are two obvious examples of MEV opportunities in the protocol:
 
 1. Issuance/Redemption
 2. Auctions
 
 ### 1. Issuance/Redemption
 
-MEV searchers can arb an RToken's issuance/redemption price against the broader market, whether that be AMM pools or CEX prices. This is a fairly standard MEV opportunity and it works the way an MEV searcher would expect. All that one needs to be able to do to participate is execute `issue()` or `redeem()` on the `RToken.sol` contract. The issuance requires approvals in advance, while the `redeem()` does not. You can find more documentation elsewhere in the repo about the properties of our `issue()`/`redeem()`/`redeemCustom()` functions.
+MEV searchers can arb an RToken's issuance/redemption price against the broader market, whether that be AMM pools or CEX prices. This is a fairly standard MEV opportunity and it works the way an MEV searcher would expect. All that one needs to be able to do to participate is execute `issue()` or `redeem()` on the `RToken.sol` contract. The issuance requires approvals in advance, while the `redeem()` does not. You can find more documentation elsewhere in the repo about the properties of our `issue()`/`redeem()`/`redeemCustom()` functions. In short, they are atomic and work the way a searcher would expect, with the caveat that `redeem()` will revert during rebalancing (`redeemCustom()` does not).
 
 ### 2. Auctions
 
