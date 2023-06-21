@@ -92,16 +92,4 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;
     }
-
-    // === FixLib Helper ===
-
-    /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDiv(
-        uint192 x,
-        uint192 y,
-        uint192 z,
-        RoundingMode rounding
-    ) external pure returns (uint192) {
-        return x.mulDiv(y, z, rounding);
-    }
 }

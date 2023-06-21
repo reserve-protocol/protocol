@@ -212,14 +212,8 @@ library RecollateralizationLibP1 {
                 } else {
                     // surplus: add-in optimistic estimate of baskets purchaseable
 
-                    // needs overflow protection: using high price of asset which can be FIX_MAX
-                    if (high == FIX_MAX) {
-                        // {BU} = {UoA/tok} * {tok} / {UoA/BU}
-                        deltaTop += int256(uint256(FIX_MAX));
-                    } else {
-                        // {BU} = {UoA/tok} * {tok} / {UoA/BU}
-                        deltaTop += int256(uint256(high.mulDiv(bal - anchor, buPriceLow, CEIL)));
-                    }
+                    //  {BU} = {UoA/tok} * {tok} / {UoA/BU}
+                    deltaTop += int256(uint256(high.safeMulDiv(bal - anchor, buPriceLow, CEIL)));
                 }
             }
 

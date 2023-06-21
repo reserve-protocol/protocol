@@ -58,11 +58,10 @@ library TradingLibP0 {
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
         // {buyTok} = {sellTok} * {1} * {UoA/sellTok} / {UoA/buyTok}
-        uint192 b = safeMulDivCeil(
-            ITrading(address(this)),
-            s.mul(FIX_ONE.minus(maxTradeSlippage)),
-            trade.sellPrice, // {UoA/sellTok}
-            trade.buyPrice // {UoA/buyTok}
+        uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage)).safeMulDiv(
+            trade.sellPrice,
+            trade.buyPrice,
+            CEIL
         );
 
         // {*tok} => {q*Tok}
@@ -545,25 +544,6 @@ library TradingLibP0 {
             // Trading platforms often don't allow token quanta trades for rounding reasons
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
-    }
-
-    /// @return The result of FixLib.mulDiv bounded from above by FIX_MAX in the case of overflow
-    function safeMulDivCeil(
-        ITrading trader,
-        uint192 x,
-        uint192 y,
-        uint192 z
-    ) internal pure returns (uint192) {
-        try trader.mulDiv(x, y, z, CEIL) returns (uint192 result) {
-            return result;
-        } catch Panic(uint256 errorCode) {
-            // 0x11: overflow
-            // 0x12: div-by-zero
-            assert(errorCode == 0x11 || errorCode == 0x12);
-        } catch (bytes memory reason) {
-            assert(keccak256(reason) == UIntOutofBoundsHash);
-        }
-        return FIX_MAX;
     }
 
     // === Private ===
