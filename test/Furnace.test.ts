@@ -237,7 +237,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       // Advance one period
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await advanceTime(Number(ONE_PERIOD))
 
       // Melt
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
@@ -256,7 +256,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
       // Get past first noop melt
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await advanceTime(Number(ONE_PERIOD))
 
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 

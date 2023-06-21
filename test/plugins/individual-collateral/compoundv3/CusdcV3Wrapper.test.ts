@@ -335,6 +335,24 @@ describeFork('Wrapped CUSDCv3', () => {
       ).to.emit(wcusdcV3, 'Transfer')
     })
 
+    it('transfer from/to zero address revert', async () => {
+      await expect(
+        wcusdcV3.connect(bob).transfer(ZERO_ADDRESS, bn('100e6'))
+      ).to.be.revertedWithCustomError(wcusdcV3, 'ZeroAddress')
+
+      await whileImpersonating(ZERO_ADDRESS, async (signer) => {
+        await expect(
+          wcusdcV3.connect(signer).transfer(don.address, bn('100e6'))
+        ).to.be.revertedWithCustomError(wcusdcV3, 'ZeroAddress')
+      })
+    })
+
+    it('performs validation on transfer amount', async () => {
+      await expect(
+        wcusdcV3.connect(bob).transfer(don.address, bn('40000e6'))
+      ).to.be.revertedWithCustomError(wcusdcV3, 'ExceedsBalance')
+    })
+
     it('supports IERC20.approve and performs validations', async () => {
       expect(await wcusdcV3.allowance(bob.address, don.address)).to.equal(bn(0))
       expect(await wcusdcV3.hasPermission(bob.address, don.address)).to.equal(false)

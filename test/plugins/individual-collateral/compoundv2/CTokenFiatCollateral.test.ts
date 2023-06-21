@@ -29,10 +29,12 @@ import {
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../../utils/time'
 import {
   Asset,
+  BadERC20,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   CTokenWrapper,
+  CTokenWrapperMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -342,8 +344,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await cDaiCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Exchange rate
-      await cDai.exchangeRateCurrent()
-      expect(await cDai.exchangeRateStored()).to.equal(await cDai.exchangeRateStored())
+      await cDaiVault.exchangeRateCurrent()
+      expect(await cDaiVault.exchangeRateStored()).to.equal(await cDaiVault.exchangeRateStored())
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
@@ -417,6 +419,42 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           REVENUE_HIDING
         )
       ).to.be.revertedWith('missing erc20')
+
+      // Check cToken with decimals = 0 in underlying
+      const token0decimals: BadERC20 = await (
+        await ethers.getContractFactory('BadERC20')
+      ).deploy('Bad ERC20', 'BERC20')
+      await token0decimals.setDecimals(0)
+
+      const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
+        'CTokenWrapperMock'
+      )
+      const vault: CTokenWrapperMock = <CTokenWrapperMock>(
+        await CTokenWrapperMockFactory.deploy(
+          '0 Decimal Token',
+          '0 Decimal Token',
+          token0decimals.address,
+          compToken.address,
+          comptroller.address
+        )
+      )
+
+      await expect(
+        CTokenCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
+            oracleError: ORACLE_ERROR,
+            erc20: vault.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
+          REVENUE_HIDING
+        )
+      ).to.be.revertedWith('referenceERC20Decimals missing')
     })
   })
 

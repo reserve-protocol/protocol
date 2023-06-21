@@ -254,6 +254,20 @@ for (const wrapperName of wrapperNames) {
         })
       })
 
+      describe('alice deposit and withdraw with 0 amount', () => {
+        beforeEach(async () => {
+          // alice deposit, accrue, and claim - 0 amount
+          await rewardableVault.connect(alice).deposit(bn(0), alice.address)
+          await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+          await withdraw(rewardableVault.connect(alice), bn(0), alice.address)
+        })
+
+        it('no rewards', async () => {
+          expect(await rewardableVault.lastRewardsPerShare(alice.address)).to.equal(bn(0))
+          expect(await rewardableVault.rewardsPerShare()).to.equal(bn(0))
+        })
+      })
+
       describe('alice deposit, accrue, bob deposit, alice withdraw', () => {
         let rewardsPerShare: BigNumber
 

@@ -6,7 +6,7 @@ import {
 import { CollateralStatus } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
 import { ERC20Mock, InvalidMockV3Aggregator } from '../../../../typechain'
-
+import { BigNumber } from 'ethers'
 import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48, ZERO_ADDRESS, ONE_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
@@ -63,6 +63,10 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         )
       })
 
+      it('does not allow invalid Pool Type', async () => {
+        await expect(deployCollateral({ poolType: 1 })).to.be.revertedWith('invalid poolType')
+      })
+
       it('does not allow more than 2 price feeds', async () => {
         await expect(
           deployCollateral({
@@ -72,6 +76,35 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         ).to.be.revertedWith('price feeds limited to 2')
       })
 
+      it('supports up to 2 price feeds per token', async () => {
+        const nonzeroError = fp('0.01') // 1%
+        const nTokens = defaultOpts.nTokens || 0
+
+        const feeds: string[][] = []
+        for (let i = 0; i < nTokens; i++) {
+          feeds.push([ONE_ADDRESS, ONE_ADDRESS])
+        }
+
+        const oracleTimeouts: BigNumber[][] = []
+        for (let i = 0; i < nTokens; i++) {
+          oracleTimeouts.push([bn('1'), bn('1')])
+        }
+
+        const oracleErrors: BigNumber[][] = []
+        for (let i = 0; i < nTokens; i++) {
+          oracleErrors.push([nonzeroError, bn(0)])
+        }
+
+        await expect(
+          deployCollateral({
+            erc20: mockERC20.address, // can be anything.
+            feeds,
+            oracleTimeouts,
+            oracleErrors,
+          })
+        ).to.not.be.reverted
+      })
+
       it('requires at least 1 price feed per token', async () => {
         await expect(
           deployCollateral({
@@ -79,17 +112,48 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             feeds: [[ONE_ADDRESS, ONE_ADDRESS], [ONE_ADDRESS], []],
           })
         ).to.be.revertedWith('each token needs at least 1 price feed')
+
+        await expect(
+          deployCollateral({
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[], [ONE_ADDRESS, ONE_ADDRESS], [ONE_ADDRESS]],
+          })
+        ).to.be.revertedWith('each token needs at least 1 price feed')
+
+        await expect(
+          deployCollateral({
+            erc20: mockERC20.address, // can be anything.
+            feeds: [[ONE_ADDRESS], [], [ONE_ADDRESS, ONE_ADDRESS]],
+          })
+        ).to.be.revertedWith('each token needs at least 1 price feed')
       })
 
       it('requires non-zero-address feeds', async () => {
-        for (let i = 0; i < defaultOpts.feeds!.length; i++) {
-          for (let j = 0; j < defaultOpts.feeds![i].length; j++) {
-            const feeds = defaultOpts.feeds!.map((f) => f.map(() => ONE_ADDRESS))
+        const nonzeroTimeout = bn(defaultOpts.oracleTimeouts![0][0])
+        const nonzeroError = bn(defaultOpts.oracleErrors![0][0])
+
+        // Complete all possible feeds
+        const allFeeds: string[][] = []
+        const allOracleTimeouts: BigNumber[][] = []
+        const allOracleErrors: BigNumber[][] = []
+
+        for (let i = 0; i < defaultOpts.nTokens!; i++) {
+          allFeeds[i] = [ONE_ADDRESS, ONE_ADDRESS]
+          allOracleTimeouts[i] = [nonzeroTimeout, nonzeroTimeout]
+          allOracleErrors[i] = [nonzeroError, nonzeroError]
+        }
+
+        for (let i = 0; i < allFeeds.length; i++) {
+          for (let j = 0; j < allFeeds[i].length; j++) {
+            const feeds = allFeeds.map((f) => f.map(() => ONE_ADDRESS))
             feeds[i][j] = ZERO_ADDRESS
+
             await expect(
               deployCollateral({
                 erc20: mockERC20.address, // can be anything.
                 feeds,
+                oracleTimeouts: allOracleTimeouts,
+                oracleErrors: allOracleErrors,
               })
             ).to.be.revertedWith(`t${i}feed${j} empty`)
           }
@@ -97,28 +161,60 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       it('requires non-zero oracleTimeouts', async () => {
-        for (let i = 0; i < defaultOpts.feeds!.length; i++) {
-          for (let j = 0; j < defaultOpts.feeds![i].length; j++) {
-            const oracleTimeouts = defaultOpts.feeds!.map((f) => f.map(() => bn('1')))
+        const nonzeroError = bn(defaultOpts.oracleErrors![0][0])
+
+        // Complete all possible feeds
+        const allFeeds: string[][] = []
+        const allOracleTimeouts: BigNumber[][] = []
+        const allOracleErrors: BigNumber[][] = []
+
+        for (let i = 0; i < defaultOpts.nTokens!; i++) {
+          allFeeds[i] = [ONE_ADDRESS, ONE_ADDRESS]
+          allOracleTimeouts[i] = [bn('1'), bn('1')]
+          allOracleErrors[i] = [nonzeroError, nonzeroError]
+        }
+
+        for (let i = 0; i < allFeeds.length; i++) {
+          for (let j = 0; j < allFeeds[i].length; j++) {
+            const oracleTimeouts = allOracleTimeouts.map((f) => f.map(() => bn('1')))
             oracleTimeouts[i][j] = bn('0')
+
             await expect(
               deployCollateral({
                 erc20: mockERC20.address, // can be anything.
+                feeds: allFeeds,
                 oracleTimeouts,
+                oracleErrors: allOracleErrors,
               })
             ).to.be.revertedWith(`t${i}timeout${j} zero`)
           }
         }
       })
 
-      it('requires non-zero oracleErrors', async () => {
-        const nonzeroError = fp('0.01') // 1%
-        for (let i = 0; i < defaultOpts.feeds!.length; i++) {
-          for (let j = 0; j < defaultOpts.feeds![i].length; j++) {
-            const oracleErrors = defaultOpts.feeds!.map((f) => f.map(() => nonzeroError))
+      it('requires non-large oracleErrors', async () => {
+        const nonlargeError = fp('0.01') // 1%
+
+        // Complete all possible feeds
+        const allFeeds: string[][] = []
+        const allOracleTimeouts: BigNumber[][] = []
+        const allOracleErrors: BigNumber[][] = []
+
+        for (let i = 0; i < defaultOpts.nTokens!; i++) {
+          allFeeds[i] = [ONE_ADDRESS, ONE_ADDRESS]
+          allOracleTimeouts[i] = [bn('1'), bn('1')]
+          allOracleErrors[i] = [nonlargeError, nonlargeError]
+        }
+
+        for (let i = 0; i < allFeeds.length; i++) {
+          for (let j = 0; j < allFeeds[i].length; j++) {
+            const oracleErrors = allOracleErrors.map((f) => f.map(() => nonlargeError))
             oracleErrors[i][j] = fp('1')
+
             await expect(
               deployCollateral({
+                erc20: mockERC20.address, // can be anything.
+                feeds: allFeeds,
+                oracleTimeouts: allOracleTimeouts,
                 oracleErrors,
               })
             ).to.be.revertedWith(`t${i}error${j} too large`)
@@ -360,7 +456,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             ctx.collateral,
             'CollateralStatusChanged'
           )
-
           // State remains the same
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
           expect(await ctx.collateral.whenDefault()).to.equal(MAX_UINT48)

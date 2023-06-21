@@ -104,6 +104,8 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced
+                    // untested:
+                    //      validated in other plugins, cost to test here is high
                     assert(low == 0);
                 }
 

@@ -6,6 +6,7 @@ import { bn, fp } from '../../../../../common/numbers'
 import {
   ConvexStakingWrapper,
   CurvePoolMock,
+  CurvePoolMockVariantInt,
   CurveMetapoolMock,
   ERC20Mock,
   ICurvePool,
@@ -17,9 +18,12 @@ import {
   DAI,
   USDC,
   USDT,
+  SUSD,
   MIM,
   THREE_POOL,
   THREE_POOL_CVX_POOL_ID,
+  SUSD_POOL,
+  SUSD_POOL_CVX_POOL_ID,
   FORK_BLOCK,
   WBTC,
   WETH,
@@ -41,6 +45,10 @@ export interface Wrapped3PoolFixtureStable extends CurveBase {
   dai: ERC20Mock
   usdc: ERC20Mock
   usdt: ERC20Mock
+}
+
+export interface WrappedSUSDPoolFixtureStable extends Wrapped3PoolFixtureStable {
+  susd: ERC20Mock
 }
 
 export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => {
@@ -82,6 +90,53 @@ export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => 
     curvePool,
     wrapper: wrapper as unknown as RewardableERC4626Vault,
   }
+}
+
+export const makeWSUSDPoolStable = async (): Promise<WrappedSUSDPoolFixtureStable> => {
+  // Use real reference ERC20s
+  const dai = await ethers.getContractAt('ERC20Mock', DAI)
+  const usdc = await ethers.getContractAt('ERC20Mock', USDC)
+  const usdt = await ethers.getContractAt('ERC20Mock', USDT)
+  const susd = await ethers.getContractAt('ERC20Mock', SUSD)
+
+  // Use mock curvePool seeded with initial balances
+  const CurvePoolMockFactory = await ethers.getContractFactory('CurvePoolMock')
+  // Requires a special interface to interact with the real sUSD Curve Pool
+  const realCurvePool = <CurvePoolMockVariantInt>(
+    await ethers.getContractAt('CurvePoolMockVariantInt', SUSD_POOL)
+  )
+
+  const curvePool = <CurvePoolMock>(
+    await CurvePoolMockFactory.deploy(
+      [
+        await realCurvePool.balances(0),
+        await realCurvePool.balances(1),
+        await realCurvePool.balances(2),
+        await realCurvePool.balances(3),
+      ],
+      [
+        await realCurvePool.coins(0),
+        await realCurvePool.coins(1),
+        await realCurvePool.coins(2),
+        await realCurvePool.coins(3),
+      ]
+    )
+  )
+
+  await curvePool.setVirtualPrice(await realCurvePool.get_virtual_price())
+
+  // Deploy external cvxMining lib
+  const CvxMiningFactory = await ethers.getContractFactory('CvxMining')
+  const cvxMining = await CvxMiningFactory.deploy()
+
+  // Deploy Wrapper
+  const wrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
+    libraries: { CvxMining: cvxMining.address },
+  })
+  const wrapper = await wrapperFactory.deploy()
+  await wrapper.initialize(SUSD_POOL_CVX_POOL_ID)
+
+  return { dai, usdc, usdt, susd, curvePool, wrapper: wrapper as unknown as RewardableERC4626Vault }
 }
 
 export interface Wrapped3PoolFixtureVolatile extends CurveBase {

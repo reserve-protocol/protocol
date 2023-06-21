@@ -5,6 +5,7 @@ import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
+import { POT } from '../../../../test/plugins/individual-collateral/dsr/constants'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
@@ -12,8 +13,8 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout, combinedError } from '../../utils'
-import { MockV3Aggregator, RethCollateral } from '../../../../typechain'
+import { priceTimeout, oracleTimeout } from '../../utils'
+import { SDaiCollateral } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
 async function main() {
@@ -40,51 +41,37 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  const deployedOracle: string[] = []
+  /********  Deploy SDAI Collateral - sDAI  **************************/
 
-  /********  Deploy Mock Oracle (if needed)  **************************/
-  let rethOracleAddress: string = networkConfig[chainId].chainlinkFeeds.rETH!
-  if (chainId == 5) {
-    const MockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
-    const mockOracle = await MockOracleFactory.connect(deployer).deploy(8, fp(2000))
-    await mockOracle.deployed()
-    console.log(
-      `Deployed MockV3Aggregator on ${hre.network.name} (${chainId}): ${mockOracle.address} `
-    )
-    deployedOracle.push(mockOracle.address)
-    rethOracleAddress = mockOracle.address
-  }
-
-  /********  Deploy Rocket Pool ETH Collateral - rETH  **************************/
-
-  const RethCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'RethCollateral'
+  const SDaiCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'SDaiCollateral'
   )
 
-  const collateral = <RethCollateral>await RethCollateralFactory.connect(deployer).deploy(
+  const collateral = <SDaiCollateral>await SDaiCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-      oracleError: combinedError(fp('0.005'), fp('0.02')).toString(), // 0.5% & 2%,
-      erc20: networkConfig[chainId].tokens.rETH,
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI,
+      oracleError: fp('0.0025').toString(), // 0.25%
+      erc20: networkConfig[chainId].tokens.sDAI,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
-      targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.15').toString(), // 15%
+      oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
+      targetName: hre.ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: fp('0.0125').toString(), // 1.25%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    fp('1e-4').toString(), // revenueHiding = 0.01%
-    rethOracleAddress, // refPerTokChainlinkFeed
-    oracleTimeout(chainId, '86400').toString() // refPerTokChainlinkTimeout
+    fp('1e-6').toString(), // revenueHiding = 0.0001%
+    POT
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed Rocketpool rETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(
+    `Deployed DSR-wrapping sDAI to ${hre.network.name} (${chainId}): ${collateral.address}`
+  )
 
-  assetCollDeployments.collateral.rETH = collateral.address
-  assetCollDeployments.erc20s.rETH = networkConfig[chainId].tokens.rETH
+  assetCollDeployments.collateral.sDAI = collateral.address
+  assetCollDeployments.erc20s.sDAI = networkConfig[chainId].tokens.sDAI
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

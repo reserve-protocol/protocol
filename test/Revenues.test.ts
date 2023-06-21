@@ -2420,6 +2420,27 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(actual).to.be.gt(bn(0))
         })
 
+        it('Should allow one bidder', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2))
+          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+
+          // Advance to auction on-going
+          await advanceToTimestamp((await trade.endTime()) - 1000)
+
+          // Bid
+          await rToken.connect(addr1).approve(trade.address, initialBal)
+          await trade.connect(addr1).bid()
+          expect(await trade.bidder()).to.equal(addr1.address)
+
+          // Cannot bid once is settled
+          await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
+        })
+
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
           issueAmount = issueAmount.div(10000)
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
@@ -2507,9 +2528,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await rTokenTrader.tradesOpen()).to.equal(0)
           expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 100)
           expect(await rToken.balanceOf(furnace.address)).to.equal(expected)
-
-          // Cannot bid once is settled
-          await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
         })
       })
     })

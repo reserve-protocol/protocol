@@ -18,6 +18,11 @@ export const USDT_USD_FEED = networkConfig['1'].chainlinkFeeds.USDT as string
 export const USDT_ORACLE_TIMEOUT = bn('86400')
 export const USDT_ORACLE_ERROR = fp('0.0025')
 
+// SUSD
+export const SUSD_USD_FEED = networkConfig['1'].chainlinkFeeds.sUSD as string
+export const SUSD_ORACLE_TIMEOUT = bn('86400')
+export const SUSD_ORACLE_ERROR = fp('0.0025')
+
 // FRAX
 export const FRAX_USD_FEED = networkConfig['1'].chainlinkFeeds.FRAX as string
 export const FRAX_ORACLE_TIMEOUT = bn('3600')
@@ -46,6 +51,7 @@ export const MIM_DEFAULT_THRESHOLD = fp('0.055') // 5.5%
 export const DAI = networkConfig['1'].tokens.DAI as string
 export const USDC = networkConfig['1'].tokens.USDC as string
 export const USDT = networkConfig['1'].tokens.USDT as string
+export const SUSD = networkConfig['1'].tokens.sUSD as string
 export const FRAX = networkConfig['1'].tokens.FRAX as string
 export const MIM = networkConfig['1'].tokens.MIM as string
 export const eUSD = networkConfig['1'].tokens.eUSD as string
@@ -70,6 +76,13 @@ export const TRI_CRYPTO_TOKEN = '0xc4ad29ba4b3c580e6d59105fff484999997675ff'
 export const TRI_CRYPTO_CVX_POOL_ID = 38
 export const TRI_CRYPTO_HOLDER = '0xDeFd8FdD20e0f34115C7018CCfb655796F6B2168'
 export const TRI_CRYPTO_GAUGE = '0xdefd8fdd20e0f34115c7018ccfb655796f6b2168'
+
+// SUSD Pool - USDC, USDT, DAI, SUSD (used for tests only)
+export const SUSD_POOL = '0xa5407eae9ba41422680e2e00537571bcc53efbfd'
+export const SUSD_POOL_TOKEN = '0xC25a3A3b969415c80451098fa907EC722572917F'
+export const SUSD_POOL_CVX_POOL_ID = 4
+export const SUSD_POOL_HOLDER = '0xDCB6A51eA3CA5d3Fd898Fd6564757c7aAeC3ca92'
+export const SUSD_POOL_DEFAULT_THRESHOLD = fp('0.0125') // 1.25%
 
 // fraxBP
 export const FRAX_BP = '0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2'

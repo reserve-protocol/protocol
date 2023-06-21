@@ -142,6 +142,8 @@ contract PoolTokens {
 
         // token0
         bool more = config.feeds[0].length > 0;
+        // untestable:
+        //     more will always be true based on previous feeds validations
         _t0feed0 = more ? config.feeds[0][0] : AggregatorV3Interface(address(0));
         _t0timeout0 = more && config.oracleTimeouts[0].length > 0 ? config.oracleTimeouts[0][0] : 0;
         _t0error0 = more && config.oracleErrors[0].length > 0 ? config.oracleErrors[0][0] : 0;
@@ -162,6 +164,8 @@ contract PoolTokens {
         }
 
         // token1
+        // untestable:
+        //     more will always be true based on previous feeds validations
         more = config.feeds[1].length > 0;
         _t1feed0 = more ? config.feeds[1][0] : AggregatorV3Interface(address(0));
         _t1timeout0 = more && config.oracleTimeouts[1].length > 0 ? config.oracleTimeouts[1][0] : 0;
