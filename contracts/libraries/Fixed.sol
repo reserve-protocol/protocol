@@ -559,15 +559,22 @@ library FixLib {
         uint192 c,
         RoundingMode rounding
     ) internal pure returns (uint192) {
+        // return safeDiv(safeMul(a, b, CEIL), c, rounding);
         // see safeMul and safeDiv for explanations
         if (a == 0 || b == 0) return 0;
         if (a == FIX_MAX || b == FIX_MAX || c == 0) return FIX_MAX;
 
-        uint256 rawDelta = uint256(b) * a; // {D36} = {D18} * {D18}
-        uint256 raw = _divrnd(rawDelta, uint256(c), rounding);
-        if (raw >= FIX_MAX) return FIX_MAX;
+        unchecked {
+            uint256 rawDelta = uint256(b) * a; // {D36} = {D18} * {D18}
+            // overflow
+            if (rawDelta / b != a) {
+                rawDelta = type(uint256).max;
+            }
+            uint256 raw = _divrnd(rawDelta, uint256(c), rounding);
+            if (raw >= FIX_MAX) return FIX_MAX;
 
-        return uint192(raw);
+            return uint192(raw);
+        }
     }
 }
 
