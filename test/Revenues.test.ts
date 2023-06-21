@@ -2640,6 +2640,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 100)
           expect(await rToken.balanceOf(furnace.address)).to.equal(expected)
         })
+
+        it('Should return lot() in {qSellTok} and sellAmount() in {sellTok}', async () => {
+          const amt = bn('1e6')
+          await token1.connect(addr1).transfer(rTokenTrader.address, amt)
+          await rTokenTrader.manageTokens([token1.address], [TradeKind.DUTCH_AUCTION])
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token1.address)
+          )
+          expect(await trade.lot()).to.equal(amt)
+          expect(await trade.sellAmount()).to.equal(amt.mul(bn('1e12')))
+        })
       })
     })
 
