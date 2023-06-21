@@ -118,6 +118,18 @@ describeFork(
           expect(surpluses[i]).to.equal(expectedSurpluses[i])
         }
       })
+
+      it('Fixed FacadeAct should run revenue auctions', async () => {
+        const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
+        newFacadeAct = await FacadeActFactory.deploy()
+
+        expect(await revenueTrader.tradesOpen()).to.equal(1)
+        const main = await ethers.getContractAt('IMain', await revenueTrader.main())
+        await expect(
+          newFacadeAct.runRevenueAuctions(revenueTrader.address, [], [await main.rToken()], [0])
+        ).to.emit(revenueTrader, 'TradeStarted')
+        expect(await revenueTrader.tradesOpen()).to.equal(2)
+      })
     })
   }
 )

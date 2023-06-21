@@ -200,7 +200,7 @@ contract FacadeAct is IFacadeAct, Multicall {
             try revenueTrader.manageTokens(toStart, kinds) {} catch {}
         } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
             for (uint256 i = 0; i < toStart.length; ++i) {
-                address(revenueTrader.main().backingManager()).functionCall(
+                address(revenueTrader).functionCall(
                     abi.encodeWithSignature("manageToken(address)", toStart[i])
                 );
             }
