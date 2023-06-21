@@ -549,7 +549,7 @@ library FixLib {
         return uint192(raw); // don't need _safeWrap
     }
 
-    /// Muliplies two fixes and divides by a third
+    /// Multiplies two fixes and divide by a third
     /// @param a First to multiply
     /// @param b Second to multiply
     /// @param c Denominator
@@ -558,23 +558,46 @@ library FixLib {
         uint192 b,
         uint192 c,
         RoundingMode rounding
-    ) internal pure returns (uint192) {
-        // return safeDiv(safeMul(a, b, CEIL), c, rounding);
-        // see safeMul and safeDiv for explanations
+    ) internal pure returns (uint192 result) {
         if (a == 0 || b == 0) return 0;
         if (a == FIX_MAX || b == FIX_MAX || c == 0) return FIX_MAX;
 
+        uint256 result_256;
         unchecked {
-            uint256 rawDelta = uint256(b) * a; // {D36} = {D18} * {D18}
-            // overflow
-            if (rawDelta / b != a) {
-                rawDelta = type(uint256).max;
-            }
-            uint256 raw = _divrnd(rawDelta, uint256(c), rounding);
-            if (raw >= FIX_MAX) return FIX_MAX;
+            (uint256 hi, uint256 lo) = fullMul(a, b);
+            if (hi >= c) return FIX_MAX;
+            uint256 mm = mulmod(a, b, c);
+            if (mm > lo) hi -= 1;
+            lo -= mm;
+            uint256 pow2 = c & (0 - c);
 
-            return uint192(raw);
+            uint256 c_256 = uint256(c);
+            // Warning: Should not access c below this line
+
+            c_256 /= pow2;
+            lo /= pow2;
+            lo += hi * ((0 - pow2) / pow2 + 1);
+            uint256 r = 1;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            result_256 = lo * r;
+
+            // Apply rounding
+            if (rounding == CEIL) {
+                if (mm > 0) result_256 += 1;
+            } else if (rounding == ROUND) {
+                if (mm > ((c_256 - 1) / 2)) result_256 += 1;
+            }
         }
+
+        if (result_256 >= FIX_MAX) return FIX_MAX;
+        return uint192(result_256);
     }
 }
 

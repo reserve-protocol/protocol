@@ -186,8 +186,7 @@ contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
             cachedAtTime + ORACLE_TIMEOUT <= block.timestamp || // Cache Timeout
             cachedAtNonce != basketHandler.nonce() // Basket nonce was updated
             // !basketHandler.fullyCollateralized() // Basket is not fully collateralized
-            // TODO: Should we also check for ready?
-            // TODO: ..or status for that matter?
+            // Basket is recapitalizing, but there's not enough RSR.
         ) {
             _updateCachedPrice();
         }

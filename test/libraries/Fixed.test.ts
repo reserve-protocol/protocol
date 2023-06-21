@@ -1053,6 +1053,36 @@ describe('In FixLib,', () => {
       expect(
         await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), fp(1), CEIL)
       ).to.equal(MAX_UINT192)
+
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, MAX_UINT192, FLOOR)).to.equal(
+        MAX_UINT192
+      )
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, MAX_UINT192, ROUND)).to.equal(
+        MAX_UINT192
+      )
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, MAX_UINT192, CEIL)).to.equal(
+        MAX_UINT192
+      )
+
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), MAX_UINT192.sub(1), FLOOR)
+      ).to.equal(MAX_UINT192.sub(10))
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), MAX_UINT192.sub(1), ROUND)
+      ).to.equal(MAX_UINT192.sub(10))
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), MAX_UINT192.sub(1), CEIL)
+      ).to.equal(MAX_UINT192.sub(10))
+
+      expect(await caller.safeMulDiv(fp(1).sub(1), fp(1).add(1), fp(1).sub(1), FLOOR)).to.equal(
+        fp(1).add(1)
+      )
+      expect(await caller.safeMulDiv(fp(1).sub(1), fp(1).add(1), fp(1).sub(1), ROUND)).to.equal(
+        fp(1).add(1)
+      )
+      expect(await caller.safeMulDiv(fp(1).sub(1), fp(1).add(1), fp(1).sub(1), CEIL)).to.equal(
+        fp(1).add(1)
+      )
     })
 
     it('rounds up to FIX_MAX', async () => {
