@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
 import { evmRevert, evmSnapshot } from '../utils'
+import { bn } from '../../../common/numbers'
 import { IMPLEMENTATION } from '../../fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
@@ -90,6 +91,32 @@ describeFork(
         await newFacadeAct.runRevenueAuctions(revenueTrader.address, [SELL_TOKEN_ADDR], [], [1])
 
         expect(await revenueTrader.tradesOpen()).to.equal(0)
+      })
+
+      it('Fixed FacadeAct should return right revenueOverview', async () => {
+        const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
+        newFacadeAct = await FacadeActFactory.deploy()
+
+        const expectedSurpluses = [
+          bn('13498155707558299290000'),
+          bn('9076'),
+          bn('0'),
+          bn('9791033088306000000'),
+          bn('0'),
+          bn('3899620000'),
+          bn('0'),
+          bn('30109289810000'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('6413550000'),
+        ]
+        const [, , surpluses] = await newFacadeAct.callStatic.revenueOverview(revenueTrader.address)
+        for (let i = 0; i < surpluses.length; i++) {
+          expect(surpluses[i]).to.equal(expectedSurpluses[i])
+        }
       })
     })
   }

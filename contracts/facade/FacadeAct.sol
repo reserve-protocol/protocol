@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../interfaces/IBackingManager.sol";
@@ -14,6 +15,7 @@ import "../interfaces/IFacadeRead.sol";
  *   For use with ^3.0.0 RTokens.
  */
 contract FacadeAct is IFacadeAct, Multicall {
+    using Address for address;
     using SafeERC20 for IERC20;
     using FixLib for uint192;
 
@@ -74,7 +76,7 @@ contract FacadeAct is IFacadeAct, Multicall {
         Registry memory reg = revenueTrader.main().assetRegistry().getRegistry();
 
         // Forward ALL revenue
-        _forwardRevenue(revenueTrader.main().backingManager(), erc20s);
+        _forwardRevenue(revenueTrader.main().backingManager(), reg.erc20s);
 
         erc20s = new IERC20[](reg.erc20s.length);
         canStart = new bool[](reg.erc20s.length);
@@ -100,7 +102,7 @@ contract FacadeAct is IFacadeAct, Multicall {
             );
 
             if (
-                erc20s[i].balanceOf(address(revenueTrader)) > minTradeAmounts[i] &&
+                surpluses[i] > minTradeAmounts[i] &&
                 revenueTrader.trades(erc20s[i]) == ITrade(address(0))
             ) {
                 canStart[i] = true;
@@ -180,11 +182,7 @@ contract FacadeAct is IFacadeAct, Multicall {
             // solhint-disable-next-line no-empty-blocks
             try bm.forwardRevenue(toStart) {} catch {}
         } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = address(bm).call{ value: 0 }(
-                abi.encodeWithSignature("manageTokens(address[])", toStart)
-            );
-            success = success; // hush warning
+            address(bm).functionCall(abi.encodeWithSignature("manageTokens(address[])", toStart));
         } else {
             _revertUnrecognizedVersion();
         }
@@ -202,11 +200,9 @@ contract FacadeAct is IFacadeAct, Multicall {
             try revenueTrader.manageTokens(toStart, kinds) {} catch {}
         } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
             for (uint256 i = 0; i < toStart.length; ++i) {
-                // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = address(revenueTrader).call{ value: 0 }(
+                address(revenueTrader.main().backingManager()).functionCall(
                     abi.encodeWithSignature("manageToken(address)", toStart[i])
                 );
-                success = success; // hush warning
             }
         } else {
             _revertUnrecognizedVersion();
@@ -221,11 +217,9 @@ contract FacadeAct is IFacadeAct, Multicall {
             try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
         } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
             IERC20[] memory emptyERC20s = new IERC20[](0);
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = address(bm).call{ value: 0 }(
+            address(bm).functionCall(
                 abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
             );
-            success = success; // hush warning
         } else {
             _revertUnrecognizedVersion();
         }
