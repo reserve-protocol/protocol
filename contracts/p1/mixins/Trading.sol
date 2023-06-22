@@ -32,8 +32,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     // === Governance param ===
     uint192 public maxTradeSlippage; // {%}
-
     uint192 public minTradeVolume; // {UoA}
+
+    // === 3.0.0 ===
+    uint256 public tradesNonce; // to keep track of how many trades have been opened in total
 
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
@@ -111,7 +113,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
     function tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
-        /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
@@ -121,6 +122,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         trade = broker.openTrade(kind, req);
         trades[sell] = trade;
         tradesOpen++;
+        tradesNonce++;
 
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
@@ -146,5 +148,5 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[45] private __gap;
 }

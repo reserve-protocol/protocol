@@ -4,34 +4,20 @@ pragma solidity 0.8.19;
 import "../../p1/mixins/RecollateralizationLib.sol";
 import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
+import "../../interfaces/IRTokenOracle.sol";
 import "./Asset.sol";
 import "./VersionedAsset.sol";
-
-// This interface is here temporarily
-interface ModifiedChainlinkInterface {
-    function latestAnswer() external returns (int256);
-
-    function latestRoundData()
-        external
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        );
-}
 
 uint256 constant ORACLE_TIMEOUT = 15 minutes;
 
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
-contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
+contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
     // Component addresses are not mutable in protocol, so it's safe to cache these
-    // IMain public immutable main;
+    IMain public immutable main;
     IBasketHandler public immutable basketHandler;
     IAssetRegistry public immutable assetRegistry;
     IBackingManager public immutable backingManager;
@@ -43,16 +29,14 @@ contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
     uint192 public immutable maxTradeVolume; // {UoA}
 
     // Oracle State
-    int256 public cachedPrice;
-    uint256 public cachedAtTime;
-    uint48 public cachedAtNonce;
+    CachedOracleData public cachedOracleData;
 
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(IRToken erc20_, uint192 maxTradeVolume_) {
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
 
-        IMain main = erc20_.main();
+        main = erc20_.main();
         basketHandler = main.basketHandler();
         assetRegistry = main.assetRegistry();
         backingManager = main.backingManager();
@@ -90,7 +74,7 @@ contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
     function refresh() public virtual override {
         // No need to save lastPrice; can piggyback off the backing collateral's lotPrice()
 
-        cachedAtTime = 0; // force oracle refresh
+        cachedOracleData.cachedAtTime = 0; // force oracle refresh
     }
 
     // solhint-enable no-empty-blocks
@@ -158,44 +142,40 @@ contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
         _updateCachedPrice();
     }
 
-    // ==== Private ====
-
-    // Update Oracle price
-    function _updateCachedPrice() internal {
-        (uint192 low, uint192 high) = price();
-
-        require(low != 0 && high != FIX_MAX, "invalid price");
-
-        cachedPrice = int256((uint256(low) + uint256(high)) / 2);
-        cachedAtTime = block.timestamp;
-        cachedAtNonce = basketHandler.nonce();
-    }
-
-    function latestRoundData()
-        external
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        )
-    {
+    function latestPrice() external returns (uint192 rTokenPrice, uint256 updatedAt) {
         // Situations that require an update, from most common to least common.
         if (
-            cachedAtTime + ORACLE_TIMEOUT <= block.timestamp || // Cache Timeout
-            cachedAtNonce != basketHandler.nonce() // Basket nonce was updated
-            // !basketHandler.fullyCollateralized() // Basket is not fully collateralized
-            // Basket is recapitalizing, but there's not enough RSR.
+            cachedOracleData.cachedAtTime + ORACLE_TIMEOUT <= block.timestamp || // Cache Timeout
+            cachedOracleData.cachedAtNonce != basketHandler.nonce() || // Basket nonce was updated
+            cachedOracleData.cachedTradesNonce != backingManager.tradesNonce() || // New trades were started..
+            cachedOracleData.cachedTradesOpen != backingManager.tradesOpen() // ..or settled (between updates)
         ) {
             _updateCachedPrice();
         }
 
-        return (0, cachedPrice, 0, cachedAtTime, 0);
+        return (cachedOracleData.cachedPrice, cachedOracleData.cachedAtTime);
     }
 
-    function latestAnswer() external returns (int256 latestPrice) {
-        (, latestPrice, , , ) = this.latestRoundData();
+    // ==== Private ====
+
+    // Update Oracle Data
+    function _updateCachedPrice() internal {
+        if (cachedOracleData.cachedAtTime == block.timestamp) {
+            // The price was updated in the same block.
+            return;
+        }
+
+        (uint192 low, uint192 high) = price();
+
+        require(low != 0 && high != FIX_MAX, "invalid price");
+
+        cachedOracleData = CachedOracleData(
+            (low + high) / 2,
+            block.timestamp,
+            basketHandler.nonce(),
+            backingManager.tradesOpen(),
+            backingManager.tradesNonce()
+        );
     }
 
     /// Computationally expensive basketRange calculation; used in price() & lotPrice()
@@ -213,7 +193,6 @@ contract RTokenAsset is IAsset, VersionedAsset, ModifiedChainlinkInterface {
             // the absence of an external price feed. Any RToken that gets reasonably big
             // should switch over to an asset with a price feed.
 
-            IMain main = backingManager.main();
             TradingContext memory ctx;
 
             ctx.basketsHeld = basketsHeld;

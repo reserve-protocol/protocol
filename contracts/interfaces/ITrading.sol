@@ -61,6 +61,9 @@ interface ITrading is IComponent, IRewardableComponent {
 
     /// @return The number of ongoing trades open
     function tradesOpen() external view returns (uint48);
+
+    /// @return The number of total trades ever opened
+    function tradesNonce() external view returns (uint256);
 }
 
 interface TestITrading is ITrading {
