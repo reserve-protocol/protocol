@@ -38,8 +38,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
             assets[IERC20(_erc20s.at(i))].refresh();
         }
 
-        IBasketHandler basketHandler = main.basketHandler();
-        basketHandler.trackStatus();
+        main.basketHandler().trackStatus();
         lastRefresh = uint48(block.timestamp);
     }
 

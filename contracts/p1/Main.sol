@@ -40,13 +40,13 @@ contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgrad
 
     /// @custom:refresher
     /// @custom:interaction CEI
+    /// @dev Not intended to be used in production, only for equivalence with P0
     function poke() external {
         // == Refresher ==
         assetRegistry.refresh();
 
         // == CE block ==
-        require(!frozen(), "frozen");
-        furnace.melt();
+        if (!frozen()) furnace.melt();
         stRSR.payoutRewards();
     }
 

@@ -93,7 +93,7 @@ async function main() {
       priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
       oracleError: bn('1'), // unused but cannot be zero
-      oracleTimeout: bn('1'), // unused but cannot be zero
+      oracleTimeout: oracleTimeout(chainId, USDT_ORACLE_TIMEOUT), // max of oracleTimeouts
       maxTradeVolume: MAX_TRADE_VOL,
       defaultThreshold: DEFAULT_THRESHOLD,
       delayUntilDefault: DELAY_UNTIL_DEFAULT,

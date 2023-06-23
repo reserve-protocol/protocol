@@ -365,4 +365,17 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await stRSR.main()).to.equal(main.address)
     })
   })
+
+  describe('deployRTokenAsset', () => {
+    it('Should deploy new RTokenAsset', async () => {
+      expect(await rTokenAsset.maxTradeVolume()).to.equal(bn('1e24')) // fp('1e6')
+      const newRTokenAssetAddr = await deployer.callStatic.deployRTokenAsset(
+        rToken.address,
+        bn('1e27')
+      )
+      await deployer.deployRTokenAsset(rToken.address, bn('1e27')) // fp('1e9')
+      const newRTokenAsset = await ethers.getContractAt('RTokenAsset', newRTokenAssetAddr)
+      expect(await newRTokenAsset.maxTradeVolume()).to.equal(bn('1e27')) // fp('1e9')
+    })
+  })
 })

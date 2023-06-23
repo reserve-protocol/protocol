@@ -20,17 +20,17 @@ interface IRevenueTrader is IComponent, ITrading {
         uint192 minTradeVolume_
     ) external;
 
-    /// Process a single token
-    /// @dev Intended to be used with multicall
-    /// @param erc20 The ERC20 token to manage; can be tokenToBuy or anything registered
-    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
-    /// @custom:interaction
-    function manageToken(IERC20 erc20, TradeKind kind) external;
-
     /// Distribute tokenToBuy to its destinations
-    /// @dev Special-case of manageToken(tokenToBuy, *)
+    /// @dev Special-case of manageTokens()
     /// @custom:interaction
     function distributeTokenToBuy() external;
+
+    /// Process some number of tokens
+    /// If the tokenToBuy is included in erc20s, RevenueTrader will distribute it at end of the tx
+    /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered
+    /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
+    /// @custom:interaction
+    function manageTokens(IERC20[] memory erc20s, TradeKind[] memory kinds) external;
 }
 
 // solhint-disable-next-line no-empty-blocks

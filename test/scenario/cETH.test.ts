@@ -211,9 +211,9 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       expect(await cETH.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await cETH.balanceOf(rsrTrader.address)).to.equal(0)
       await expect(
-        rTokenTrader.manageToken(cETH.address, TradeKind.BATCH_AUCTION)
+        rTokenTrader.manageTokens([cETH.address], [TradeKind.BATCH_AUCTION])
       ).to.be.revertedWith('0 balance')
-      await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rTokenTrader,
         'TradeStarted'
       )
@@ -223,10 +223,10 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       expect(await trade.sell()).to.equal(token0.address)
       expect(await trade.buy()).to.equal(rToken.address)
 
-      await expect(rsrTrader.manageToken(cETH.address, TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-        '0 balance'
-      )
-      await expect(rsrTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(
+        rsrTrader.manageTokens([cETH.address], [TradeKind.BATCH_AUCTION])
+      ).to.be.revertedWith('0 balance')
+      await expect(rsrTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rsrTrader,
         'TradeStarted'
       )
@@ -289,7 +289,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await backingManager.forwardRevenue([cETH.address])
 
       // RTokenTrader should be selling cETH and buying RToken
-      await expect(rTokenTrader.manageToken(cETH.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rTokenTrader.manageTokens([cETH.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rTokenTrader,
         'TradeStarted'
       )

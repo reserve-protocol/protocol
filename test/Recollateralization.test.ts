@@ -1184,10 +1184,15 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
           // Trigger recollateralization
           const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
+          const minBuyAmt: BigNumber = toBNDecimals(
+            await toMinBuyAmt(sellAmt, fp('1'), fp('1')),
+            6
+          ).add(1)
+          // since within oracleTimeout lotPrice() should still be at 100% of original price
 
           await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
             .to.emit(backingManager, 'TradeStarted')
-            .withArgs(anyValue, token0.address, token1.address, sellAmt, bn(0))
+            .withArgs(anyValue, token0.address, token1.address, sellAmt, minBuyAmt)
 
           const auctionTimestamp: number = await getLatestBlockTimestamp()
 

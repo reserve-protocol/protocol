@@ -123,10 +123,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
          */
 
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
-        (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareRecollateralizationTrade(
-            this,
-            basketsHeld
-        );
+        (bool doTrade, TradeRequest memory req, TradePrices memory prices) = TradingLibP0
+            .prepareRecollateralizationTrade(this, basketsHeld);
 
         if (doTrade) {
             // Seize RSR if needed
@@ -136,7 +134,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             }
 
             // Execute Trade
-            ITrade trade = tryTrade(kind, req);
+            ITrade trade = tryTrade(kind, req, prices);
             tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time

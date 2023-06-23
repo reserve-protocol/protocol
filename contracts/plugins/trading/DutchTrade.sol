@@ -6,16 +6,17 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libraries/Fixed.sol";
 import "../../libraries/NetworkConfigLib.sol";
 import "../../interfaces/IAsset.sol";
+import "../../interfaces/IBroker.sol";
 import "../../interfaces/ITrade.sol";
 
 uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
 uint192 constant SIXTY_PERCENT = 6e17; // {1} 0.6
 
-// Exponential price decay with base (999999/1000000). Price starts at 1000x and decays to 1x
+// Exponential price decay with base (999999/1000000). Price starts at 1000x and decays to <1x
 //   A 30-minute auction on a chain with a 12-second blocktime has a ~10.87% price drop per block
-//   during the geometric/exponential period and a 0.05% drop during the linear period.
+//   during the geometric/exponential period and a 0.05% drop per block during the linear period.
 //   30-minutes is the recommended length of auction for a chain with 12-second blocktimes, but
-//   longer and shorter times can be used as well. The pricing algorithm does not degrade
+//   longer and shorter times can be used as well. The pricing method does not degrade
 //   beyond the degree to which less overall blocktime means necessarily larger price drops.
 uint192 constant MAX_EXP = 6907752 * FIX_ONE; // {1} (1000000/999999)^6907752 = ~1000x
 uint192 constant BASE = 999999e12; // {1} (999999/1000000)
@@ -32,12 +33,13 @@ uint192 constant BASE = 999999e12; // {1} (999999/1000000)
  *   Over the last 60% of the auction the price falls from the best plausible price to the worst
  *   price, linearly. The worst price is further discounted by the maxTradeSlippage as a fraction
  *   of how far from minTradeVolume to maxTradeVolume the trade lies.
- *   At maxTradeVolume, no further discount is applied.
+ *   At maxTradeVolume, no additonal discount beyond the oracle errors is applied.
  *
  * To bid:
- * - Call `bidAmount()` view to check prices at various timestamps
- * - Wait until a desirable block is reached (hopefully not in the first 40% of the auction)
- * - Provide approval of buy tokens and call bid(). The swap will be atomic
+ * 1. Call `bidAmount()` view to check prices at various timestamps
+ * 2. Provide approval of sell tokens for precisely the `bidAmount()` desired
+ * 3. Wait until a desirable block is reached (hopefully not in the first 40% of the auction)
+ * 4. Call bid()
  */
 contract DutchTrade is ITrade {
     using FixLib for uint192;
@@ -110,7 +112,8 @@ contract DutchTrade is ITrade {
         IAsset sell_,
         IAsset buy_,
         uint256 sellAmount_,
-        uint48 auctionLength
+        uint48 auctionLength,
+        TradePrices memory prices
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         assert(
             address(sell_) != address(0) &&
@@ -119,10 +122,8 @@ contract DutchTrade is ITrade {
         ); // misuse by caller
 
         // Only start dutch auctions under well-defined prices
-        (uint192 sellLow, uint192 sellHigh) = sell_.price(); // {UoA/sellTok}
-        (uint192 buyLow, uint192 buyHigh) = buy_.price(); // {UoA/buyTok}
-        require(sellLow > 0 && sellHigh < FIX_MAX, "bad sell pricing");
-        require(buyLow > 0 && buyHigh < FIX_MAX, "bad buy pricing");
+        require(prices.sellLow > 0 && prices.sellHigh < FIX_MAX, "bad sell pricing");
+        require(prices.buyLow > 0 && prices.buyHigh < FIX_MAX, "bad buy pricing");
 
         origin = origin_;
         sell = sell_.erc20();
@@ -135,14 +136,14 @@ contract DutchTrade is ITrade {
 
         // {1}
         uint192 slippage = _slippage(
-            sellAmount.mul(sellHigh, FLOOR), // auctionVolume
+            sellAmount.mul(prices.sellHigh, FLOOR), // auctionVolume
             origin.minTradeVolume(), // minTradeVolume
             fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume()) // maxTradeVolume
         );
 
         // {buyTok/sellTok} = {UoA/sellTok} * {1} / {UoA/buyTok}
-        lowPrice = sellLow.mulDiv(FIX_ONE - slippage, buyHigh, FLOOR);
-        middlePrice = sellHigh.div(buyLow, CEIL); // no additional slippage
+        lowPrice = prices.sellLow.mulDiv(FIX_ONE - slippage, prices.buyHigh, FLOOR);
+        middlePrice = prices.sellHigh.div(prices.buyLow, CEIL); // no additional slippage
         // highPrice = 1000 * middlePrice
 
         assert(lowPrice <= middlePrice);
@@ -205,10 +206,15 @@ contract DutchTrade is ITrade {
         erc20.safeTransfer(address(origin), erc20.balanceOf(address(this)));
     }
 
-    /// @return True if the trade can be settled.
+    /// @return true iff the trade can be settled.
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
         return status == TradeStatus.OPEN && (bidder != address(0) || block.timestamp > endTime);
+    }
+
+    /// @return {qSellTok} The size of the lot being sold, in token quanta
+    function lot() external view returns (uint256) {
+        return sellAmount.shiftl_toUint(int8(sell.decimals()));
     }
 
     // === Private ===

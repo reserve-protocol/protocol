@@ -532,6 +532,22 @@ library FixLib {
             return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
         }
     }
+
+    /// Divide two fixes, rounding up to FIX_MAX and down to 0
+    /// @param a Numerator
+    /// @param b Denominator
+    function safeDiv(
+        uint192 a,
+        uint192 b,
+        RoundingMode rounding
+    ) internal pure returns (uint192) {
+        if (a == 0) return 0;
+        if (b == 0) return FIX_MAX;
+
+        uint256 raw = _divrnd(FIX_ONE_256 * a, uint256(b), rounding);
+        if (raw >= FIX_MAX) return FIX_MAX;
+        return uint192(raw); // don't need _safeWrap
+    }
 }
 
 // ================ a couple pure-uint helpers================

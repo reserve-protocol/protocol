@@ -44,7 +44,7 @@ contract RevenueTraderP1InvalidReverts is TradingP1, IRevenueTrader {
 
     /// Processes a single token; unpermissioned
     /// Reverts for testing purposes
-    function manageToken(IERC20, TradeKind) external notTradingPausedOrFrozen {
+    function manageTokens(IERC20[] memory, TradeKind[] memory) external notTradingPausedOrFrozen {
         rToken = rToken; // silence warning
         revert();
     }

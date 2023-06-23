@@ -162,7 +162,7 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 - backingManager.grantRTokenAllowances()
 - backingManager.rebalance\*()
 - backingManager.forwardRevenue\*()
-- {rsrTrader,rTokenTrader}.manageToken()
+- {rsrTrader,rTokenTrader}.manageTokens()
 
 ### `@custom:governance`
 

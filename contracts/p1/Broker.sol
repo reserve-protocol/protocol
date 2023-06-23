@@ -101,7 +101,11 @@ contract BrokerP1 is ComponentP1, IBroker {
     // actions:
     //   Transfers req.sellAmount of req.sell.erc20 from caller to `trade`
     //   Calls trade.init() with appropriate parameters
-    function openTrade(TradeKind kind, TradeRequest memory req) external returns (ITrade) {
+    function openTrade(
+        TradeKind kind,
+        TradeRequest memory req,
+        TradePrices memory prices
+    ) external returns (ITrade) {
         require(!disabled, "broker disabled");
 
         address caller = _msgSender();
@@ -116,7 +120,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         if (kind == TradeKind.BATCH_AUCTION) {
             return newBatchAuction(req, caller);
         }
-        return newDutchAuction(req, ITrading(caller));
+        return newDutchAuction(req, prices, ITrading(caller));
     }
 
     /// Disable the broker until re-enabled by governance
@@ -215,7 +219,11 @@ contract BrokerP1 is ComponentP1, IBroker {
         return trade;
     }
 
-    function newDutchAuction(TradeRequest memory req, ITrading caller) private returns (ITrade) {
+    function newDutchAuction(
+        TradeRequest memory req,
+        TradePrices memory prices,
+        ITrading caller
+    ) private returns (ITrade) {
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
         DutchTrade trade = DutchTrade(address(dutchTradeImplementation).clone());
         trades[address(trade)] = true;
@@ -227,7 +235,7 @@ contract BrokerP1 is ComponentP1, IBroker {
             req.sellAmount
         );
 
-        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength);
+        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
         return trade;
     }
 

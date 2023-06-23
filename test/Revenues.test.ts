@@ -380,14 +380,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should not trade if paused', async () => {
         await main.connect(owner).pauseTrading()
         await expect(
-          rsrTrader.manageToken(ZERO_ADDRESS, TradeKind.BATCH_AUCTION)
+          rsrTrader.manageTokens([ZERO_ADDRESS], [TradeKind.BATCH_AUCTION])
         ).to.be.revertedWith('frozen or trading paused')
       })
 
       it('Should not trade if frozen', async () => {
         await main.connect(owner).freezeShort()
         await expect(
-          rTokenTrader.manageToken(ZERO_ADDRESS, TradeKind.BATCH_AUCTION)
+          rTokenTrader.manageTokens([ZERO_ADDRESS], [TradeKind.BATCH_AUCTION])
         ).to.be.revertedWith('frozen or trading paused')
       })
 
@@ -445,7 +445,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const rtokenPrice = await basketHandler.price()
         const realRtokenPrice = rtokenPrice.low.add(rtokenPrice.high).div(2)
         const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), realRtokenPrice)
-        await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION))
+        await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION]))
           .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(anyValue, token0.address, rToken.address, issueAmount, withinQuad(minBuyAmt))
       })
@@ -563,12 +563,118 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it('Should not launch revenue auction if UNPRICED', async () => {
+      it('Should launch revenue auction at lotPrice if UNPRICED', async () => {
+        // After oracleTimeout the lotPrice should be the original price still
         await advanceTime(ORACLE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+        await rTokenTrader.callStatic.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+
+        // After oracleTimeout the lotPrice should be the original price still
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(
-          rTokenTrader.manageToken(rsr.address, TradeKind.BATCH_AUCTION)
+          rTokenTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
         ).to.be.revertedWith('buy asset price unknown')
+      })
+
+      it('Should not launch revenue auction if 0 erc20s len', async () => {
+        await expect(rTokenTrader.manageTokens([], [])).to.be.revertedWith('empty erc20s list')
+      })
+
+      it('Should not launch revenue auction with uneven length lists', async () => {
+        await expect(rTokenTrader.manageTokens([rsr.address], [])).to.be.revertedWith(
+          'length mismatch'
+        )
+        await expect(
+          rTokenTrader.manageTokens(
+            [rsr.address],
+            [TradeKind.BATCH_AUCTION, TradeKind.DUTCH_AUCTION]
+          )
+        ).to.be.revertedWith('length mismatch')
+        await expect(
+          rTokenTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+        ).to.not.be.revertedWith('length mismatch')
+      })
+
+      it('Should distribute tokenToBuy - distributeTokenToBuy()', async () => {
+        // Use distributeTokenToBuy()
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsrTrader.distributeTokenToBuy()
+        const expectedAmount = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+      })
+
+      it('Should distribute tokenToBuy - manageTokens()', async () => {
+        // Use manageTokens()
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsrTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+        const expectedAmount = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+      })
+
+      it('Should launch multiple auctions -- has tokenToBuy', async () => {
+        // Mint AAVE, token0, and RSR to the RSRTrader
+        await aaveToken.connect(owner).mint(rsrTrader.address, issueAmount)
+        await token0.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Start auctions
+        await expectEvents(
+          rsrTrader.manageTokens(
+            [rsr.address, token0.address, aaveToken.address],
+            [TradeKind.BATCH_AUCTION, TradeKind.BATCH_AUCTION, TradeKind.BATCH_AUCTION]
+          ),
+          [
+            {
+              contract: rsr,
+              name: 'Transfer',
+              args: [rsrTrader.address, stRSR.address, anyValue],
+              emitted: true,
+            },
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, token0.address, rsr.address, issueAmount, anyValue],
+              emitted: true,
+            },
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, aaveToken.address, rsr.address, issueAmount, anyValue],
+              emitted: true,
+            },
+          ]
+        )
+      })
+
+      it('Should launch multiple auctions -- involvesRToken', async () => {
+        // Mint AAVE, token0, and RSR to the RSRTrader
+        await rToken.connect(addr1).transfer(rsrTrader.address, issueAmount)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Start auctions
+        await expectEvents(
+          rsrTrader.manageTokens(
+            [rsr.address, rToken.address],
+            [TradeKind.BATCH_AUCTION, TradeKind.BATCH_AUCTION]
+          ),
+          [
+            {
+              contract: rsr,
+              name: 'Transfer',
+              args: [rsrTrader.address, stRSR.address, anyValue],
+              emitted: true,
+            },
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, rToken.address, rsr.address, issueAmount, anyValue],
+              emitted: true,
+            },
+          ]
+        )
       })
 
       it('Should launch revenue auction if DISABLED with nonzero minBuyAmount', async () => {
@@ -577,10 +683,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await advanceTime((await collateral0.delayUntilDefault()).toString())
         expect(await collateral0.status()).to.equal(CollateralStatus.DISABLED)
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
-          rTokenTrader,
-          'TradeStarted'
-        )
+        await expect(
+          rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
+        ).to.emit(rTokenTrader, 'TradeStarted')
 
         // Trade should have extremely nonzero worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
@@ -748,16 +853,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Disable batch auctions, should not start auction
         await broker.connect(owner).setBatchAuctionLength(bn(0))
         await expect(
-          p1RevenueTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
         ).to.be.revertedWith('batch auctions not enabled')
 
         // Enable batch auctions (normal flow)
         await broker.connect(owner).setBatchAuctionLength(config.batchAuctionLength)
 
-        await expect(p1RevenueTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
-          rTokenTrader,
-          'TradeStarted'
-        )
+        await expect(
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
+        ).to.emit(rTokenTrader, 'TradeStarted')
       })
 
       it('Should be able to start a dust auction DUTCH_AUCTION, if enabled', async () => {
@@ -775,16 +879,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Disable dutch auctions, should not start auction
         await broker.connect(owner).setDutchAuctionLength(bn(0))
         await expect(
-          p1RevenueTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
         ).to.be.revertedWith('dutch auctions not enabled')
 
         // Enable batch auctions (normal flow)
         await broker.connect(owner).setDutchAuctionLength(config.dutchAuctionLength)
 
-        await expect(p1RevenueTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)).to.emit(
-          rTokenTrader,
-          'TradeStarted'
-        )
+        await expect(
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+        ).to.emit(rTokenTrader, 'TradeStarted')
       })
 
       it('Should only be able to start a dust auction BATCH_AUCTION (and not DUTCH_AUCTION) if oracle has failed', async () => {
@@ -799,21 +902,20 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await setOraclePrice(collateral0.address, bn(0))
         await collateral0.refresh()
         await expect(
-          p1RevenueTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
         ).to.revertedWith('bad sell pricing')
-        await expect(p1RevenueTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
-          rTokenTrader,
-          'TradeStarted'
-        )
+        await expect(
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
+        ).to.emit(rTokenTrader, 'TradeStarted')
       })
 
       it('Should not launch an auction for 1 qTok', async () => {
         await token0.connect(addr1).transfer(rTokenTrader.address, 1)
         await expect(
-          rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
         ).to.be.revertedWith('sell amount too low')
         await expect(
-          rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
+          rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
         ).to.be.revertedWith('sell amount too low')
       })
 
@@ -917,10 +1019,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should handle GNOSIS_MAX_TOKENS cap in BATCH_AUCTION', async () => {
-        // Set Max trade volume very high for both assets in trade
+        // Halve price to trigger maxTradeSize() overflow
         const chainlinkFeed = <MockV3Aggregator>(
-          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('0.5e8'))
         )
+
+        // Set Max trade volume very high for both assets in trade
         const newSellAsset: Asset = <Asset>(
           await AssetFactory.deploy(
             PRICE_TIMEOUT,
@@ -955,7 +1059,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rsrTrader.address)
 
         await expect(
-          p1RevenueTrader.manageToken(aaveToken.address, TradeKind.BATCH_AUCTION)
+          p1RevenueTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
         ).to.emit(rsrTrader, 'TradeStarted')
 
         // Check trade is using the GNOSIS limits
@@ -1848,7 +1952,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Should revert
         await expect(
-          rsrTrader.manageToken(aaveToken.address, TradeKind.BATCH_AUCTION)
+          rsrTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
         ).to.be.revertedWith('buy asset price unknown')
 
         // Funds still in Trader
@@ -2032,10 +2136,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Attempt to run auctions
         await backingManager.forwardRevenue([aaveToken.address])
         await expect(
-          rsrTrader.manageToken(aaveToken.address, TradeKind.BATCH_AUCTION)
+          rsrTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
         ).to.be.revertedWith('broker disabled')
         await expect(
-          rTokenTrader.manageToken(aaveToken.address, TradeKind.BATCH_AUCTION)
+          rTokenTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
         ).to.be.revertedWith('broker disabled')
 
         // Check funds - remain in traders
@@ -2380,41 +2484,41 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         it('Should not trade when paused', async () => {
           await main.connect(owner).pauseTrading()
           await expect(
-            rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+            rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           ).to.be.revertedWith('frozen or trading paused')
         })
 
         it('Should not trade when frozen', async () => {
           await main.connect(owner).freezeLong()
           await expect(
-            rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+            rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           ).to.be.revertedWith('frozen or trading paused')
         })
 
         it('Should trade if issuance paused', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await main.connect(owner).pauseIssuance()
-          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
         })
 
         it('Should only run 1 trade per ERC20 at a time', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           await expect(
-            rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+            rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           ).to.be.revertedWith('trade open')
           await expect(
-            rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)
+            rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
           ).to.be.revertedWith('trade open')
 
           // Other ERC20 should be able to open trade
           await token1.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageToken(token1.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token1.address], [TradeKind.DUTCH_AUCTION])
         })
 
         it('Should not return bid amount before auction starts', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
           const trade = await ethers.getContractAt(
             'DutchTrade',
@@ -2437,7 +2541,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         it('Should allow one bidder', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2))
-          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
           const trade = await ethers.getContractAt(
             'DutchTrade',
@@ -2459,7 +2563,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
           issueAmount = issueAmount.div(10000)
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
@@ -2491,7 +2595,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         it('Should handle no bid case correctly', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
@@ -2516,7 +2620,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         it('Should bid at exactly endTime() and not launch another auction', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
@@ -2543,6 +2647,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await rTokenTrader.tradesOpen()).to.equal(0)
           expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 100)
           expect(await rToken.balanceOf(furnace.address)).to.equal(expected)
+        })
+
+        it('Should return lot() in {qSellTok} and sellAmount() in {sellTok}', async () => {
+          const amt = bn('1e6')
+          await token1.connect(addr1).transfer(rTokenTrader.address, amt)
+          await rTokenTrader.manageTokens([token1.address], [TradeKind.DUTCH_AUCTION])
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token1.address)
+          )
+          expect(await trade.lot()).to.equal(amt)
+          expect(await trade.sellAmount()).to.equal(amt.mul(bn('1e12')))
         })
       })
     })
@@ -3477,8 +3593,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       // Manage Funds
       await backingManager.forwardRevenue([compToken.address])
-      await snapshotGasCost(rsrTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION))
-      await snapshotGasCost(rTokenTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION))
+      await snapshotGasCost(rsrTrader.manageTokens([compToken.address], [TradeKind.BATCH_AUCTION]))
+      await snapshotGasCost(
+        rTokenTrader.manageTokens([compToken.address], [TradeKind.BATCH_AUCTION])
+      )
 
       // Advance time till auctions ended
       await advanceTime(config.batchAuctionLength.add(100).toString())
@@ -3508,7 +3626,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(rTokenTrader.settleTrade(compToken.address))
 
       // Manage Funds
-      await snapshotGasCost(rsrTrader.manageToken(compToken.address, TradeKind.BATCH_AUCTION))
+      await snapshotGasCost(rsrTrader.manageTokens([compToken.address], [TradeKind.BATCH_AUCTION]))
 
       // Run final auction until all funds are converted
       // Advance time till auction ended
@@ -3525,6 +3643,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       // Run auctions - Order: Settle trades, then Manage funds
       // Settle trades
       await snapshotGasCost(rsrTrader.settleTrade(compToken.address))
+    })
+
+    it('Selling RToken', async () => {
+      await rToken.connect(addr1).transfer(rsrTrader.address, fp('1'))
+      await snapshotGasCost(rsrTrader.manageTokens([rToken.address], [TradeKind.DUTCH_AUCTION]))
     })
   })
 })

@@ -1676,8 +1676,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     let eurToken: ERC20Mock
 
     beforeEach(async () => {
-      await upgrades.silenceWarnings()
-
       if (IMPLEMENTATION == Implementation.P0) {
         const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP0')
         freshBasketHandler = <TestIBasketHandler>((await BasketHandlerFactory.deploy()) as unknown)
@@ -2631,9 +2629,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await main.connect(other).poke()
     })
 
-    it('Should not allow to poke when frozen', async () => {
+    it('Should allow to poke when frozen', async () => {
       await main.connect(owner).freezeForever()
-      await expect(main.connect(other).poke()).to.be.revertedWith('frozen')
+      await main.connect(other).poke()
     })
 
     it('Should not allow to refresh basket if not OWNER when unfrozen and unpaused', async () => {
@@ -2901,13 +2899,23 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const [low, high] = await collateral0.price()
       await setOraclePrice(collateral0.address, MAX_UINT256.div(2)) // oracle error
 
-      const [lowPrice, highPrice] = await basketHandler.price()
-      const [lotLowPrice, lotHighPrice] = await basketHandler.lotPrice()
+      // lotPrice() should begin at 100%
+      let [lowPrice, highPrice] = await basketHandler.price()
+      let [lotLowPrice, lotHighPrice] = await basketHandler.lotPrice()
       expect(lowPrice).to.equal(0)
       expect(highPrice).to.equal(MAX_UINT192)
-      expect(lotLowPrice).to.be.closeTo(low, low.div(bn('1e5'))) // small decay
+      expect(lotLowPrice).to.be.eq(low)
+      expect(lotHighPrice).to.be.eq(high)
+
+      // Advance time past 100% period -- lotPrice() should begin to fall
+      await advanceTime(await collateral0.oracleTimeout())
+      ;[lowPrice, highPrice] = await basketHandler.price()
+      ;[lotLowPrice, lotHighPrice] = await basketHandler.lotPrice()
+      expect(lowPrice).to.equal(0)
+      expect(highPrice).to.equal(MAX_UINT192)
+      expect(lotLowPrice).to.be.closeTo(low, low.div(bn('1e5'))) // small decay expected
       expect(lotLowPrice).to.be.lt(low)
-      expect(lotHighPrice).to.be.closeTo(high, high.div(bn('1e5'))) // small decay
+      expect(lotHighPrice).to.be.closeTo(high, high.div(bn('1e5'))) // small decay expected
       expect(lotHighPrice).to.be.lt(high)
     })
 

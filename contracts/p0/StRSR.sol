@@ -136,7 +136,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notFrozen {
+    function payoutRewards() external {
         _payoutRewards();
     }
 
@@ -149,7 +149,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:
@@ -619,7 +619,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function setRewardRatio(uint192 val) public governance {
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;

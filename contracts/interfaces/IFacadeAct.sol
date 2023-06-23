@@ -25,14 +25,14 @@ interface IFacadeAct {
     /// Logic:
     ///   For each ERC20 in `toSettle`:
     ///     - Settle any open ERC20 trades
-    ///   For each ERC20 in `toStart`:
+    ///   Then:
     ///     - Transfer any revenue for that ERC20 from the backingManager to revenueTrader
-    ///     - Call `revenueTrader.manageToken(ERC20)` to start an auction, if possible
+    ///     - Call `revenueTrader.manageTokens(ERC20)` to start an auction
     function runRevenueAuctions(
         IRevenueTrader revenueTrader,
         IERC20[] memory toSettle,
         IERC20[] memory toStart,
-        TradeKind kind
+        TradeKind[] memory kinds
     ) external;
 
     /// To use this, call via callStatic.
@@ -53,6 +53,7 @@ interface IFacadeAct {
         );
 
     /// To use this, call via callStatic.
+    /// Includes consideration of when to distribute the RevenueTrader tokenToBuy
     /// @return erc20s The ERC20s that have auctions that can be started
     /// @return canStart If the ERC20 auction can be started
     /// @return surpluses {qTok} The surplus amount

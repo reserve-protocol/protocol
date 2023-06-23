@@ -25,18 +25,18 @@ library TradingLibP0 {
     using TradingLibP0 for IBackingManager;
 
     /// Prepare a trade to sell `trade.sellAmount` that guarantees a reasonable closing price,
-    /// without explicitly aiming at a particular quantity to purchase.
+    /// without explicitly aiming at a particular buy amount.
     /// @param trade:
-    ///   sell != 0, sellAmount >= 0 {sellTok}, sellPrice >= 0 {UoA/sellTok}
-    ///   buy != 0, buyAmount (unused) {buyTok}, buyPrice > 0 {UoA/buyTok}
+    ///   sell != 0, sellAmount >= 0 {sellTok}, prices.sellLow >= 0 {UoA/sellTok}
+    ///   buy != 0, buyAmount (unused) {buyTok}, prices.buyHigh > 0 {UoA/buyTok}
     /// @return notDust True when the trade is larger than the dust amount
     /// @return req The prepared trade request to send to the Broker
     //
     // If notDust is true, then the returned trade request satisfies:
     //   req.sell == trade.sell and req.buy == trade.buy,
-    //   req.minBuyAmount * trade.buyPrice ~=
-    //        trade.sellAmount * trade.sellPrice * (1-maxTradeSlippage),
-    //   req.sellAmount == min(trade.sell.maxTradeSize().toQTok(), trade.sellAmount.toQTok(sell)
+    //   req.minBuyAmount * trade.prices.buyHigh ~=
+    //        trade.sellAmount * trade.prices.sellLow * (1-maxTradeSlippage),
+    //   req.sellAmount == min(trade.sell.maxTradeSize(), trade.sellAmount)
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
@@ -46,14 +46,21 @@ library TradingLibP0 {
         uint192 maxTradeSlippage
     ) internal view returns (bool notDust, TradeRequest memory req) {
         // checked for in RevenueTrader / CollateralizatlionLib
-        assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
+        assert(
+            trade.prices.buyHigh > 0 &&
+                trade.prices.buyHigh < FIX_MAX &&
+                trade.prices.sellLow < FIX_MAX
+        );
 
-        (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
-
-        notDust = isEnoughToSell(trade.sell, trade.sellAmount, lotLow, minTradeVolume);
+        notDust = isEnoughToSell(
+            trade.sell,
+            trade.sellAmount,
+            trade.prices.sellLow,
+            minTradeVolume
+        );
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, lotHigh); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellHigh); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
@@ -61,8 +68,8 @@ library TradingLibP0 {
         uint192 b = safeMulDivCeil(
             ITrading(address(this)),
             s.mul(FIX_ONE.minus(maxTradeSlippage)),
-            trade.sellPrice, // {UoA/sellTok}
-            trade.buyPrice // {UoA/buyTok}
+            trade.prices.sellLow, // {UoA/sellTok}
+            trade.prices.buyHigh // {UoA/buyTok}
         );
 
         // {*tok} => {q*Tok}
@@ -70,35 +77,35 @@ library TradingLibP0 {
         req.minBuyAmount = b.shiftl_toUint(int8(trade.buy.erc20Decimals()), CEIL);
         req.sell = trade.sell;
         req.buy = trade.buy;
+
         return (notDust, req);
     }
 
     /// Assuming we have `trade.sellAmount` sell tokens available, prepare a trade to cover as
     /// much of our deficit of `trade.buyAmount` buy tokens as possible, given expected trade
-    /// slippage and the sell asset's maxTradeVolume().
+    /// slippage and maxTradeVolume().
     /// @param trade:
     ///   sell != 0
     ///   buy != 0
     ///   sellAmount (unused) {sellTok}
     ///   buyAmount >= 0 {buyTok}
-    ///   sellPrice > 0 {UoA/sellTok}
-    ///   buyPrice > 0 {UoA/buyTok}
+    ///   prices.sellLow > 0 {UoA/sellTok}
+    ///   prices.buyHigh > 0 {UoA/buyTok}
     /// @return notDust Whether the prepared trade is large enough to be worth trading
     /// @return req The prepared trade request to send to the Broker
     //
     // Returns prepareTradeSell(trade, rules), where
     //   req.sellAmount = min(trade.sellAmount,
-    //                trade.buyAmount * (trade.buyPrice / trade.sellPrice) / (1-maxTradeSlippage))
+    //                trade.buyAmount * (buyHigh / sellLow) / (1-maxTradeSlippage))
     //   i.e, the minimum of trade.sellAmount and (a sale amount that, at current prices and
     //   maximum slippage, will yield at least the requested trade.buyAmount)
     //
     // Which means we should get that, if notDust is true, then:
     //   req.sell = sell and req.buy = buy
     //
-    //   1 <= req.minBuyAmount <= max(trade.buyAmount, buy.minTradeSize()).toQTok(trade.buy)
-    //   1 < req.sellAmount <= min(trade.sellAmount.toQTok(trade.sell),
-    //                               sell.maxTradeSize().toQTok(trade.sell))
-    //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
+    //   1 <= req.minBuyAmount <= max(trade.buyAmount, buy.minTradeSize()))
+    //   1 < req.sellAmount <= min(trade.sellAmount, sell.maxTradeSize())
+    //   req.minBuyAmount ~= trade.sellAmount * sellLow / buyHigh * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
     function prepareTradeToCoverDeficit(
@@ -107,17 +114,24 @@ library TradingLibP0 {
         uint192 maxTradeSlippage
     ) internal view returns (bool notDust, TradeRequest memory req) {
         assert(
-            trade.sellPrice > 0 &&
-                trade.sellPrice < FIX_MAX &&
-                trade.buyPrice > 0 &&
-                trade.buyPrice < FIX_MAX
+            trade.prices.sellLow > 0 &&
+                trade.prices.sellLow < FIX_MAX &&
+                trade.prices.buyHigh > 0 &&
+                trade.prices.buyHigh < FIX_MAX
         );
 
         // Don't buy dust.
-        trade.buyAmount = fixMax(trade.buyAmount, minTradeSize(minTradeVolume, trade.buyPrice));
+        trade.buyAmount = fixMax(
+            trade.buyAmount,
+            minTradeSize(minTradeVolume, trade.prices.buyHigh)
+        );
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
-        uint192 exactSellAmount = trade.buyAmount.mulDiv(trade.buyPrice, trade.sellPrice, CEIL);
+        uint192 exactSellAmount = trade.buyAmount.mulDiv(
+            trade.prices.buyHigh,
+            trade.prices.sellLow,
+            CEIL
+        );
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // slippedSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
@@ -154,8 +168,7 @@ library TradingLibP0 {
         IAsset buy;
         uint192 sellAmount; // {sellTok}
         uint192 buyAmount; // {buyTok}
-        uint192 sellPrice; // {UoA/sellTok} can be 0
-        uint192 buyPrice; // {UoA/buyTok}
+        TradePrices prices;
     }
 
     /// Select and prepare a trade that moves us closer to capitalization, using the
@@ -165,11 +178,15 @@ library TradingLibP0 {
     //   let range = basketRange(all erc20s)
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
-    //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
+    //   otherwise, prepareTradeSell(...) taking the minBuyAmount as the dependent variable
     function prepareRecollateralizationTrade(IBackingManager bm, BasketRange memory basketsHeld)
         external
         view
-        returns (bool doTrade, TradeRequest memory req)
+        returns (
+            bool doTrade,
+            TradeRequest memory req,
+            TradePrices memory prices
+        )
     {
         // === Prepare cached values ===
 
@@ -197,12 +214,12 @@ library TradingLibP0 {
 
         // Don't trade if no pair is selected
         if (address(trade.sell) == address(0) || address(trade.buy) == address(0)) {
-            return (false, req);
+            return (false, req, prices);
         }
 
         // If we are selling an unpriced asset or UNSOUND collateral, do not try to cover deficit
         if (
-            trade.sellPrice == 0 ||
+            trade.prices.sellLow == 0 ||
             (trade.sell.isCollateral() &&
                 ICollateral(address(trade.sell)).status() != CollateralStatus.SOUND)
         ) {
@@ -217,16 +234,16 @@ library TradingLibP0 {
         // At this point doTrade _must_ be true, otherwise nextTradePair assumptions are broken
         assert(doTrade);
 
-        return (doTrade, req);
+        return (doTrade, req, trade.prices);
     }
 
     // Compute the target basket range
     // Algorithm intuition: Trade conservatively. Quantify uncertainty based on the proportion of
-    // token balances requiring trading vs not requiring trading. Decrease uncertainty the largest
-    // amount possible with each trade.
+    // token balances requiring trading vs not requiring trading. Seek to decrease uncertainty
+    // the largest amount possible with each trade.
     //
     // How do we know this algorithm converges?
-    // Assumption: constant prices
+    // Assumption: constant oracle prices; monotonically increasing refPerTok()
     // Any volume traded narrows the BU band. Why:
     //   - We might increase `basketsHeld.bottom` from run-to-run, but will never decrease it
     //   - We might decrease the UoA amount of excess balances beyond `basketsHeld.bottom` from
@@ -235,8 +252,8 @@ library TradingLibP0 {
     //       run-to-run, but will never increase it
     //
     // Preconditions:
-    // - ctx is correctly populated with current basketsHeld.bottom + basketsHeld.top
-    // - reg contains erc20 + asset arrays in same order and without duplicates
+    // - ctx is correctly populated, with current basketsHeld.bottom + basketsHeld.top
+    // - reg contains erc20 + asset + quantities arrays in same order and without duplicates
     // Trading Strategy:
     // - We will not aim to hold more than rToken.basketsNeeded() BUs
     // - No double trades: if we buy B in one trade, we won't sell B in another trade
@@ -251,14 +268,14 @@ library TradingLibP0 {
     // - range.top = min(rToken.basketsNeeded, basketsHeld.top - least baskets missing
     //                                                                   + most baskets surplus)
     // - range.bottom = min(rToken.basketsNeeded, basketsHeld.bottom + least baskets purchaseable)
-    //   where "least baskets purchaseable" involves trading at unfavorable prices,
-    //   incurring maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
+    //   where "least baskets purchaseable" involves trading at the worst price,
+    //   incurring the full maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
     function basketRange(TradingContext memory ctx, IERC20[] memory erc20s)
         internal
         view
         returns (BasketRange memory range)
     {
-        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.lotPrice(); // {UoA/BU}
 
         // Cap ctx.basketsHeld.top
         if (ctx.basketsHeld.top > ctx.rToken.basketsNeeded()) {
@@ -297,7 +314,11 @@ library TradingLibP0 {
                     !isEnoughToSell(asset, bal, lotLow, ctx.minTradeVolume)
                 ) continue;
             }
+
             (uint192 low, uint192 high) = asset.price(); // {UoA/tok}
+            // price() is better than lotPrice() here: it's important to not underestimate how
+            // much value could be in a token that is unpriced by using a decaying high lotPrice.
+            // price() will return [0, FIX_MAX] in this case, which is preferable.
 
             // throughout these sections +/- is same as Fix.plus/Fix.minus and </> is Fix.gt/.lt
 
@@ -391,8 +412,10 @@ library TradingLibP0 {
     ///   deficit Deficit collateral OR address(0)
     ///   sellAmount {sellTok} Surplus amount (whole tokens)
     ///   buyAmount {buyTok} Deficit amount (whole tokens)
-    ///   sellPrice {UoA/sellTok} The worst-case price of the sell token on secondary markets
-    ///   buyPrice {UoA/sellTok} The worst-case price of the buy token on secondary markets
+    ///   prices.sellLow {UoA/sellTok} The worst-case price of the sell token on secondary markets
+    ///   prices.sellHigh {UoA/sellTok} The best-case price of the sell token on secondary markets
+    ///   prices.buyLow {UoA/buyTok} The best-case price of the buy token on secondary markets
+    ///   prices.buyHigh {UoA/buyTok} The worst-case price of the buy token on secondary markets
     ///
     // Defining "sell" and "buy":
     // If bal(e) > (quantity(e) * range.top), then e is in surplus by the difference
@@ -402,16 +425,17 @@ library TradingLibP0 {
     //   `trade.sell` is the token from erc20s with the greatest surplus value (in UoA),
     //   and sellAmount is the quantity of that token that it's in surplus (in qTok).
     //   if `trade.sell` == 0, then no token is in surplus by at least minTradeSize,
-    //        and `trade.sellAmount` and `trade.sellPrice` are unset.
+    //        and `trade.sellAmount` and `trade.sellLow` / `trade.sellHigh are unset.
     //
     //   `trade.buy` is the token from erc20s with the greatest deficit value (in UoA),
     //   and buyAmount is the quantity of that token that it's in deficit (in qTok).
     //   if `trade.buy` == 0, then no token is in deficit at all,
-    //        and `trade.buyAmount` and `trade.buyPrice` are unset.
+    //        and `trade.buyAmount` and `trade.buyLow` / `trade.buyHigh` are unset.
     //
     // Then, just if we have a buy asset and no sell asset, consider selling available RSR.
     //
     // Prefer selling assets in this order: DISABLED -> SOUND -> IFFY.
+    // Sell IFFY last because it may recover value in the future.
     // All collateral in the basket have already been guaranteed to be SOUND by upstream checks.
     function nextTradePair(
         TradingContext memory ctx,
@@ -433,7 +457,8 @@ library TradingLibP0 {
             // {tok} = {BU} * {tok/BU}
             uint192 needed = range.top.mul(ctx.bh.quantity(erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
-                (uint192 lotLow, ) = asset.lotPrice(); // {UoA/sellTok}
+                (uint192 lotLow, uint192 lotHigh) = asset.lotPrice(); // {UoA/sellTok}
+                if (lotHigh == 0) continue; // Skip worthless assets
 
                 // by calculating this early we can duck the stack limit but be less gas-efficient
                 bool enoughToSell = isEnoughToSell(
@@ -442,11 +467,6 @@ library TradingLibP0 {
                     lotLow,
                     ctx.minTradeVolume
                 );
-
-                (uint192 low, uint192 high) = asset.price(); // {UoA/sellTok}
-
-                // Skip worthless assets
-                if (high == 0) continue;
 
                 // {UoA} = {sellTok} * {UoA/sellTok}
                 uint192 delta = bal.minus(needed).mul(lotLow, FLOOR);
@@ -460,7 +480,8 @@ library TradingLibP0 {
                 if (isBetterSurplus(maxes, status, delta) && enoughToSell) {
                     trade.sell = asset;
                     trade.sellAmount = bal.minus(needed);
-                    trade.sellPrice = low;
+                    trade.prices.sellLow = lotLow;
+                    trade.prices.sellHigh = lotHigh;
 
                     maxes.surplusStatus = status;
                     maxes.surplus = delta;
@@ -470,16 +491,17 @@ library TradingLibP0 {
                 needed = range.bottom.mul(ctx.bh.quantity(erc20s[i]), CEIL); // {buyTok};
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
-                    (, uint192 high) = asset.price(); // {UoA/buyTok}
+                    (uint192 lotLow, uint192 lotHigh) = asset.lotPrice(); // {UoA/buyTok}
 
                     // {UoA} = {buyTok} * {UoA/buyTok}
-                    uint192 delta = amtShort.mul(high, CEIL);
+                    uint192 delta = amtShort.mul(lotHigh, CEIL);
 
                     // The best asset to buy is whichever asset has the largest deficit
                     if (delta.gt(maxes.deficit)) {
                         trade.buy = ICollateral(address(asset));
                         trade.buyAmount = amtShort;
-                        trade.buyPrice = high;
+                        trade.prices.buyLow = lotLow;
+                        trade.prices.buyHigh = lotHigh;
 
                         maxes.deficit = delta;
                     }
@@ -494,13 +516,13 @@ library TradingLibP0 {
             uint192 rsrAvailable = rsrAsset.bal(address(ctx.bm)).plus(
                 rsrAsset.bal(address(ctx.stRSR))
             );
-            (uint192 low, uint192 high) = rsrAsset.price(); // {UoA/tok}
-            (uint192 lotLow, ) = rsrAsset.lotPrice(); // {UoA/sellTok}
+            (uint192 lotLow, uint192 lotHigh) = rsrAsset.lotPrice(); // {UoA/RSR}
 
-            if (high > 0 && isEnoughToSell(rsrAsset, rsrAvailable, lotLow, ctx.minTradeVolume)) {
+            if (lotHigh > 0 && isEnoughToSell(rsrAsset, rsrAvailable, lotLow, ctx.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
-                trade.sellPrice = low;
+                trade.prices.sellLow = lotLow;
+                trade.prices.sellHigh = lotHigh;
             }
         }
     }
@@ -581,11 +603,8 @@ library TradingLibP0 {
         IAsset buy,
         uint192 price
     ) private view returns (uint192) {
-        // untestable:
-        //       Price cannot be 0, it would've been filtered before in `prepareTradeSell`
-        uint192 size = price == 0
-            ? FIX_MAX
-            : fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).div(price, FLOOR);
+        // D18{tok} = D18{UoA} / D18{UoA/tok}
+        uint192 size = fixMin(sell.maxTradeVolume(), buy.maxTradeVolume()).safeDiv(price, FLOOR);
         return size > 0 ? size : 1;
     }
 }

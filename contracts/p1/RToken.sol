@@ -96,7 +96,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// Issue an RToken on the current basket, to a particular recipient
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
-    /// @custom:interaction
+    /// @custom:interaction RCEI
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function issueTo(address recipient, uint256 amount) public notIssuancePausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
@@ -104,6 +104,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
 
         assetRegistry.refresh();
+        furnace.melt();
 
         // == Checks-effects block ==
 
@@ -111,8 +112,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // Ensure basket is ready, SOUND and not in warmup period
         require(basketHandler.isReady(), "basket not ready");
-
-        furnace.melt();
         uint256 supply = totalSupply();
 
         // Revert if issuance exceeds either supply throttle
@@ -178,7 +177,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction RCEI
     function redeemTo(address recipient, uint256 amount) public notFrozen {
         // == Refresh ==
-
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
         try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
@@ -251,10 +249,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint256[] memory minAmounts
     ) external notFrozen returns (address[] memory erc20sOut, uint256[] memory amountsOut) {
         // == Refresh ==
-
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {}
+        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 

@@ -44,55 +44,62 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     }
 
     /// Distribute tokenToBuy to its destinations
-    /// @dev Special-case of manageToken(tokenToBuy, *)
+    /// @dev Special-case of manageTokens([tokenToBuy], *)
     /// @custom:interaction
     function distributeTokenToBuy() external notTradingPausedOrFrozen {
         _distributeTokenToBuy();
     }
 
-    /// Processes a single token; unpermissioned
-    /// @dev Intended to be used with multicall
-    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    /// Process some number of tokens
+    /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered
+    /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
     /// @custom:interaction
-    function manageToken(IERC20 erc20, TradeKind kind) external notTradingPausedOrFrozen {
-        if (erc20 == tokenToBuy) {
-            _distributeTokenToBuy();
-            return;
-        }
-
+    function manageTokens(IERC20[] memory erc20s, TradeKind[] memory kinds)
+        external
+        notTradingPausedOrFrozen
+    {
+        require(erc20s.length > 0, "empty erc20s list");
+        require(erc20s.length == kinds.length, "length mismatch");
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
-        require(address(trades[erc20]) == address(0), "trade open");
-        require(erc20.balanceOf(address(this)) > 0, "0 balance");
+        IAsset assetToBuy = main.assetRegistry().toAsset(tokenToBuy);
+        (uint192 buyLow, uint192 buyHigh) = assetToBuy.lotPrice(); // {UoA/tok}
+        require(buyHigh > 0 && buyHigh < FIX_MAX, "buy asset price unknown");
 
-        IAssetRegistry reg = main.assetRegistry();
-        IAsset sell = reg.toAsset(erc20);
-        IAsset buy = reg.toAsset(tokenToBuy);
-        (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
-        (, uint192 buyPrice) = buy.price(); // {UoA/tok}
+        // For each ERC20: start auction of given kind
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            IERC20 erc20 = erc20s[i];
+            if (erc20 == tokenToBuy) {
+                _distributeTokenToBuy();
+                continue;
+            }
 
-        require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
+            IAsset assetToSell = main.assetRegistry().toAsset(erc20);
 
-        TradingLibP0.TradeInfo memory trade = TradingLibP0.TradeInfo({
-            sell: sell,
-            buy: buy,
-            sellAmount: sell.bal(address(this)),
-            buyAmount: 0,
-            sellPrice: sellPrice,
-            buyPrice: buyPrice
-        });
+            require(address(trades[erc20]) == address(0), "trade open");
+            require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
-        // Whether dust or not, trade the non-target asset for the target asset
-        // Any asset with a broken price feed will trigger a revert here
-        (, TradeRequest memory req) = TradingLibP0.prepareTradeSell(
-            trade,
-            minTradeVolume,
-            maxTradeSlippage
-        );
-        require(req.sellAmount > 1, "sell amount too low");
+            (uint192 sellLow, uint192 sellHigh) = assetToSell.lotPrice(); // {UoA/tok}
 
-        tryTrade(kind, req);
+            TradingLibP0.TradeInfo memory trade = TradingLibP0.TradeInfo({
+                sell: assetToSell,
+                buy: assetToBuy,
+                sellAmount: assetToSell.bal(address(this)),
+                buyAmount: 0,
+                prices: TradePrices(sellLow, sellHigh, buyLow, buyHigh)
+            });
+
+            // Whether dust or not, trade the non-target asset for the target asset
+            // Any asset with a broken price feed will trigger a revert here
+            (, TradeRequest memory req) = TradingLibP0.prepareTradeSell(
+                trade,
+                minTradeVolume,
+                maxTradeSlippage
+            );
+            require(req.sellAmount > 1, "sell amount too low");
+
+            tryTrade(kinds[i], req, trade.prices);
+        }
     }
 
     // === Internal ===

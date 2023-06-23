@@ -4,7 +4,7 @@
 
 Warning: RTokens upgrading to this major release should proceed carefully. In addition to updating all component addresses:
 
-- `cacheComponents()` MUST be called to prevent certain functions from reverting, on both the BackingManager, RevenueTraders, and Distributor.
+- `cacheComponents()` MUST be called to prevent certain functions from reverting, on the BackingManager, RevenueTraders, and Distributor.
 - `setWarmupPeriod()` can be called on the BasketHandler to turn on the warmup period, optionally
 - `setWithdrawalLeak()` can be called on StRSR to start saving gas on withdrawals, optionally
 - `setDutchAuctionLength()` can be called (with a value such as 1800) or left at duration 0s to keep dutch auctions disabled
@@ -161,6 +161,7 @@ Duration: 30 min (default)
 
 #### Assets and Collateral
 
+- Bugfix: `lotPrice()` now begins at 100% the lastSavedPrice, instead of below 100%. It can be at 100% for up to the oracleTimeout in the worst-case.
 - Add `version() return (string)` getter to pave way for separation of asset versioning and core protocol versioning
 - Update `claimRewards()` on all assets to 3.0.0-style, without `delegatecall`
 - Add `lastSave()` to `RTokenAsset`

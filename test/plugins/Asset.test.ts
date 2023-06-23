@@ -559,6 +559,8 @@ describe('Assets contracts #fast', () => {
     })
 
     it('Should handle lot price correctly', async () => {
+      await rsrAsset.refresh()
+
       // Check lot prices - use RSR as example
       const currBlockTimestamp: number = await getLatestBlockTimestamp()
       await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
@@ -584,26 +586,34 @@ describe('Assets contracts #fast', () => {
       expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
       expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
 
-      // Lot price decreases a bit
+      // At first lot price doesn't decrease
       const [lotLowPrice2, lotHighPrice2] = await rsrAsset.lotPrice()
-      expect(lotLowPrice2).to.be.lt(lotLowPrice1)
-      expect(lotHighPrice2).to.be.lt(lotHighPrice1)
+      expect(lotLowPrice2).to.eq(lotLowPrice1)
+      expect(lotHighPrice2).to.eq(lotHighPrice1)
 
-      // Advance blocks, lot price keeps decreasing
-      await advanceBlocks(100)
+      // Advance past oracleTimeout
+      await advanceTime(await rsrAsset.oracleTimeout())
+
+      // Now lot price decreases
       const [lotLowPrice3, lotHighPrice3] = await rsrAsset.lotPrice()
       expect(lotLowPrice3).to.be.lt(lotLowPrice2)
       expect(lotHighPrice3).to.be.lt(lotHighPrice2)
 
-      // Advance blocks beyond PRICE_TIMEOUT
-      await advanceBlocks(PRICE_TIMEOUT)
-
-      // Lot price returns 0 once time elapses
+      // Advance block, lot price keeps decreasing
+      await advanceBlocks(1)
       const [lotLowPrice4, lotHighPrice4] = await rsrAsset.lotPrice()
       expect(lotLowPrice4).to.be.lt(lotLowPrice3)
       expect(lotHighPrice4).to.be.lt(lotHighPrice3)
-      expect(lotLowPrice4).to.be.equal(bn(0))
-      expect(lotHighPrice4).to.be.equal(bn(0))
+
+      // Advance blocks beyond PRICE_TIMEOUT
+      await advanceTime(PRICE_TIMEOUT.toNumber())
+
+      // Lot price returns 0 once time elapses
+      const [lotLowPrice5, lotHighPrice5] = await rsrAsset.lotPrice()
+      expect(lotLowPrice5).to.be.lt(lotLowPrice4)
+      expect(lotHighPrice5).to.be.lt(lotHighPrice4)
+      expect(lotLowPrice5).to.be.equal(bn(0))
+      expect(lotHighPrice5).to.be.equal(bn(0))
     })
   })
 

@@ -178,9 +178,9 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       expect(await wbtc.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await wbtc.balanceOf(rsrTrader.address)).to.equal(0)
       await expect(
-        rTokenTrader.manageToken(wbtc.address, TradeKind.BATCH_AUCTION)
+        rTokenTrader.manageTokens([wbtc.address], [TradeKind.BATCH_AUCTION])
       ).to.be.revertedWith('0 balance')
-      await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rTokenTrader,
         'TradeStarted'
       )
@@ -190,10 +190,10 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       expect(await trade.sell()).to.equal(token0.address)
       expect(await trade.buy()).to.equal(rToken.address)
 
-      await expect(rsrTrader.manageToken(wbtc.address, TradeKind.BATCH_AUCTION)).to.be.revertedWith(
-        '0 balance'
-      )
-      await expect(rsrTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(
+        rsrTrader.manageTokens([wbtc.address], [TradeKind.BATCH_AUCTION])
+      ).to.be.revertedWith('0 balance')
+      await expect(rsrTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rsrTrader,
         'TradeStarted'
       )

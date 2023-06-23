@@ -49,13 +49,13 @@ export const defaultCrvStableCollateralOpts: CurveCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('USD'),
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: DAI_USD_FEED, // unused but cannot be zero
-  oracleTimeout: bn('1'), // unused but cannot be zero
+  oracleTimeout: USDC_ORACLE_TIMEOUT, // max of oracleTimeouts
   oracleError: bn('1'), // unused but cannot be zero
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'),
-  nTokens: bn('3'),
+  nTokens: 3,
   curvePool: THREE_POOL,
   lpToken: THREE_POOL_TOKEN,
   poolType: CurvePoolType.Plain,
