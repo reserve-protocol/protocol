@@ -116,9 +116,9 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             assetToBuy.refresh(); // invariant: can never be the RTokenAsset
         }
 
-        // Cache and validate buyPrice
-        (, uint192 buyPrice) = assetToBuy.lotPrice(); // {UoA/tok}
-        require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
+        // Cache and validate buyHigh
+        (uint192 buyLow, uint192 buyHigh) = assetToBuy.lotPrice(); // {UoA/tok}
+        require(buyHigh > 0 && buyHigh < FIX_MAX, "buy asset price unknown");
 
         // For each ERC20 that isn't the tokenToBuy, start an auction of the given kind
         for (uint256 i = 0; i < len; ++i) {
@@ -129,15 +129,14 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             require(erc20.balanceOf(address(this)) > 0, "0 balance");
 
             IAsset assetToSell = assetRegistry.toAsset(erc20);
-            (uint192 sellPrice, ) = assetToSell.lotPrice(); // {UoA/tok}
+            (uint192 sellLow, uint192 sellHigh) = assetToSell.lotPrice(); // {UoA/tok}
 
             TradeInfo memory trade = TradeInfo({
                 sell: assetToSell,
                 buy: assetToBuy,
                 sellAmount: assetToSell.bal(address(this)),
                 buyAmount: 0,
-                sellPrice: sellPrice,
-                buyPrice: buyPrice
+                prices: TradePrices(sellLow, sellHigh, buyLow, buyHigh)
             });
 
             // Whether dust or not, trade the non-target asset for the target asset
@@ -150,7 +149,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             require(req.sellAmount > 1, "sell amount too low");
 
             // Launch trade
-            tryTrade(kinds[i], req);
+            tryTrade(kinds[i], req, trade.prices);
         }
     }
 

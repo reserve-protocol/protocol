@@ -11,6 +11,14 @@ enum TradeKind {
     BATCH_AUCTION
 }
 
+/// Cache of all (lot) prices for a pair to prevent re-lookup
+struct TradePrices {
+    uint192 sellLow; // {UoA/sellTok} can be 0
+    uint192 sellHigh; // {UoA/sellTok} should not be 0
+    uint192 buyLow; // {UoA/buyTok} should not be 0
+    uint192 buyHigh; // {UoA/buyTok} should not be 0 or FIX_MAX
+}
+
 /// The data format that describes a request for trade with the Broker
 struct TradeRequest {
     IAsset sell;
@@ -45,7 +53,11 @@ interface IBroker is IComponent {
     /// Request a trade from the broker
     /// @dev Requires setting an allowance in advance
     /// @custom:interaction
-    function openTrade(TradeKind kind, TradeRequest memory req) external returns (ITrade);
+    function openTrade(
+        TradeKind kind,
+        TradeRequest memory req,
+        TradePrices memory prices
+    ) external returns (ITrade);
 
     /// Only callable by one of the trading contracts the broker deploys
     function reportViolation() external;
