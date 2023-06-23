@@ -29,7 +29,7 @@ export interface CurveCollateralFixtureContext extends CurveBase {
 
 // The basic constructor arguments for a Curve collateral plugin -- extension
 export interface CurveCollateralOpts extends CollateralOpts {
-  nTokens?: BigNumberish
+  nTokens?: number
   curvePool?: string
   poolType?: CurvePoolType
   feeds?: string[][]

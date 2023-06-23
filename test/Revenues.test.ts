@@ -563,8 +563,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it('Should not launch revenue auction if UNPRICED', async () => {
+      it('Should launch revenue auction at lotPrice if UNPRICED', async () => {
+        // After oracleTimeout the lotPrice should be the original price still
         await advanceTime(ORACLE_TIMEOUT.toString())
+        await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+        await rTokenTrader.callStatic.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+
+        // After oracleTimeout the lotPrice should be the original price still
+        await advanceTime(PRICE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(
           rTokenTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
@@ -1013,10 +1019,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should handle GNOSIS_MAX_TOKENS cap in BATCH_AUCTION', async () => {
-        // Set Max trade volume very high for both assets in trade
+        // Halve price to trigger maxTradeSize() overflow
         const chainlinkFeed = <MockV3Aggregator>(
-          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('0.5e8'))
         )
+
+        // Set Max trade volume very high for both assets in trade
         const newSellAsset: Asset = <Asset>(
           await AssetFactory.deploy(
             PRICE_TIMEOUT,
@@ -3635,6 +3643,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       // Run auctions - Order: Settle trades, then Manage funds
       // Settle trades
       await snapshotGasCost(rsrTrader.settleTrade(compToken.address))
+    })
+
+    it('Selling RToken', async () => {
+      await rToken.connect(addr1).transfer(rsrTrader.address, fp('1'))
+      await snapshotGasCost(rsrTrader.manageTokens([rToken.address], [TradeKind.DUTCH_AUCTION]))
     })
   })
 })

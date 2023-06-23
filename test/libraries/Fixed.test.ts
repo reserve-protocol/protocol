@@ -600,7 +600,7 @@ describe('In FixLib,', () => {
       }
     })
   })
-  describe('div + divRnd', () => {
+  describe('div + divRnd + safeDiv', () => {
     it('correctly divides inside its range', async () => {
       // prettier-ignore
       const table: BigNumber[][] = [
@@ -615,6 +615,7 @@ describe('In FixLib,', () => {
 
       for (const [a, b, c] of table) {
         expect(await caller.div(a, b), `div(${a}, ${b})`).to.equal(c)
+        expect(await caller.safeDiv_(a, b, FLOOR), `safeDiv_(${a}, ${b}, FLOOR)`).to.equal(c)
       }
     })
     it('correctly divides at the extremes of its range', async () => {
@@ -627,6 +628,7 @@ describe('In FixLib,', () => {
 
       for (const [a, b, c] of table) {
         expect(await caller.div(a, b), `div((${a}, ${b})`).to.equal(c)
+        expect(await caller.safeDiv_(a, b, FLOOR), `safeDiv_((${a}, ${b}, FLOOR)`).to.equal(c)
       }
     })
     it('correctly rounds', async () => {
@@ -644,6 +646,9 @@ describe('In FixLib,', () => {
         expect(await caller.divRnd(a, b, FLOOR), `div((${a}, ${b}, FLOOR)`).to.equal(floor)
         expect(await caller.divRnd(a, b, ROUND), `div((${a}, ${b}, ROUND)`).to.equal(round)
         expect(await caller.divRnd(a, b, CEIL), `div((${a}, ${b}, CEIL)`).to.equal(ceil)
+        expect(await caller.safeDiv_(a, b, FLOOR), `safeDiv_((${a}, ${b}, FLOOR)`).to.equal(floor)
+        expect(await caller.safeDiv_(a, b, ROUND), `safeDiv_((${a}, ${b}, ROUND)`).to.equal(round)
+        expect(await caller.safeDiv_(a, b, CEIL), `safeDiv_((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
     it('fails outside its range', async () => {
@@ -656,6 +661,11 @@ describe('In FixLib,', () => {
 
       for (const [a, b] of table) {
         await expect(caller.div(a, b), `div((${a}, ${b})`).to.be.reverted
+        await expect(caller.safeDiv_(a, b, FLOOR), `safeDiv_((${a}, ${b}, FLOOR)`).not.to.be
+          .reverted
+        await expect(caller.safeDiv_(a, b, ROUND), `safeDiv_((${a}, ${b}, ROUND)`).not.to.be
+          .reverted
+        await expect(caller.safeDiv_(a, b, CEIL), `safeDiv_((${a}, ${b}, CEIL)`).not.to.be.reverted
       }
     })
     it('fails to divide by zero', async () => {
@@ -665,6 +675,11 @@ describe('In FixLib,', () => {
 
       for (const x of table) {
         await expect(caller.div(x, bn(0)), `div(${x}, 0`).to.be.reverted
+        await expect(caller.safeDiv_(x, bn(0), FLOOR), `safeDiv_(${x}, 0, FLOOR)`).to.not.be
+          .reverted
+        await expect(caller.safeDiv_(x, bn(0), ROUND), `safeDiv_(${x}, 0, ROUND)`).to.not.be
+          .reverted
+        await expect(caller.safeDiv_(x, bn(0), CEIL), `safeDiv_(${x}, 0, CEIL)`).to.not.be.reverted
       }
     })
   })
@@ -991,6 +1006,28 @@ describe('In FixLib,', () => {
       expect(await caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), FLOOR)).to.equal(MAX_UINT192)
       expect(await caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), ROUND)).to.equal(MAX_UINT192)
       expect(await caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), CEIL)).to.equal(MAX_UINT192)
+    })
+  })
+
+  describe('safeDiv_', () => {
+    it('rounds up to FIX_MAX', async () => {
+      expect(await caller.safeDiv_(MAX_UINT192, fp(1).sub(1), FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeDiv_(MAX_UINT192, fp(1).sub(1), ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeDiv_(MAX_UINT192, fp(1).sub(1), CEIL)).to.equal(MAX_UINT192)
+      expect(await caller.safeDiv_(MAX_UINT192, 0, FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeDiv_(MAX_UINT192, 0, ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeDiv_(MAX_UINT192, 0, CEIL)).to.equal(MAX_UINT192)
+    })
+
+    it('rounds down to 0', async () => {
+      expect(await caller.safeDiv_(0, 0, FLOOR)).to.equal(0)
+      expect(await caller.safeDiv_(0, 0, ROUND)).to.equal(0)
+      expect(await caller.safeDiv_(0, 0, CEIL)).to.equal(0)
+      expect(await caller.safeDiv_(MAX_UINT192.div(fp(1)).sub(1), MAX_UINT192, FLOOR)).to.equal(0)
+      expect(await caller.safeDiv_(MAX_UINT192.div(fp(1)).sub(1), MAX_UINT192, ROUND)).to.equal(1)
+      expect(await caller.safeDiv_(MAX_UINT192.div(fp(2)).sub(1), MAX_UINT192, ROUND)).to.equal(0)
+      expect(await caller.safeDiv_(MAX_UINT192.div(fp(1)).sub(1), MAX_UINT192, CEIL)).to.equal(1)
+      expect(await caller.safeDiv_(MAX_UINT192.div(fp(2)).sub(1), MAX_UINT192, CEIL)).to.equal(1)
     })
   })
 

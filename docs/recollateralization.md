@@ -76,7 +76,7 @@ function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
 ```
 
-All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `price().low` and the buying asset's `price().high`. However, the protocol must also be able to sell assets that do not currently have known prices. This can occur either due to an oracle contract reverting, or because the oracle value is stale. In this case `price()` returns `[0, FIX_MAX]` while `lotPrice()` returns nonzero values, at least for some period of time. If an asset's oracle goes offline forever, its `lotPrice()` will eventually reach `[0, 0]` and the protocol will completely stop trading this asset.
+All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `lotPrice().low` and the buying asset's `lotPrice().high`.
 
 #### Trade Examples
 
