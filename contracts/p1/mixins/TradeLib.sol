@@ -20,14 +20,14 @@ struct TradeInfo {
  * @title TradeLib
  * @notice An internal lib for preparing individual trades on particular asset pairs
  *   Users:
- *     - BackingManagerLib
+ *     - RecollateralizationLib
  *     - RevenueTrader
  */
 library TradeLib {
     using FixLib for uint192;
 
     /// Prepare a trade to sell `trade.sellAmount` that guarantees a reasonable closing price,
-    /// without explicitly aiming at a particular quantity to purchase.
+    /// without explicitly aiming at a particular buy amount.
     /// @param trade:
     ///   sell != 0, sellAmount >= 0 {sellTok}, prices.sellLow >= 0 {UoA/sellTok}
     ///   buy != 0, buyAmount (unused) {buyTok}, prices.buyHigh > 0 {UoA/buyTok}
@@ -38,7 +38,7 @@ library TradeLib {
     //   req.sell == trade.sell and req.buy == trade.buy,
     //   req.minBuyAmount * trade.prices.buyHigh ~=
     //        trade.sellAmount * trade.prices.sellLow * (1-maxTradeSlippage),
-    //   req.sellAmount == min(trade.sell.maxTradeSize().toQTok(), trade.sellAmount.toQTok(sell)
+    //   req.sellAmount == min(trade.sell.maxTradeSize(), trade.sellAmount)
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
@@ -85,7 +85,7 @@ library TradeLib {
 
     /// Assuming we have `trade.sellAmount` sell tokens available, prepare a trade to cover as
     /// much of our deficit of `trade.buyAmount` buy tokens as possible, given expected trade
-    /// slippage and the sell asset's maxTradeVolume().
+    /// slippage and maxTradeVolume().
     /// @param trade:
     ///   sell != 0
     ///   buy != 0
@@ -105,9 +105,8 @@ library TradeLib {
     // Which means we should get that, if notDust is true, then:
     //   req.sell = sell and req.buy = buy
     //
-    //   1 <= req.minBuyAmount <= max(trade.buyAmount, buy.minTradeSize()).toQTok(trade.buy)
-    //   1 < req.sellAmount <= min(trade.sellAmount.toQTok(trade.sell),
-    //                               sell.maxTradeSize().toQTok(trade.sell))
+    //   1 <= req.minBuyAmount <= max(trade.buyAmount, buy.minTradeSize()))
+    //   1 < req.sellAmount <= min(trade.sellAmount, sell.maxTradeSize())
     //   req.minBuyAmount ~= trade.sellAmount * sellLow / buyHigh * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions

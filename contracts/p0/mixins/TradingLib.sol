@@ -25,10 +25,10 @@ library TradingLibP0 {
     using TradingLibP0 for IBackingManager;
 
     /// Prepare a trade to sell `trade.sellAmount` that guarantees a reasonable closing price,
-    /// without explicitly aiming at a particular quantity to purchase.
+    /// without explicitly aiming at a particular buy amount.
     /// @param trade:
-    ///   sell != 0, sellAmount >= 0 {sellTok}, sellPrice >= 0 {UoA/sellTok}
-    ///   buy != 0, buyAmount (unused) {buyTok}, buyPrice > 0 {UoA/buyTok}
+    ///   sell != 0, sellAmount >= 0 {sellTok}, prices.sellLow >= 0 {UoA/sellTok}
+    ///   buy != 0, buyAmount (unused) {buyTok}, prices.buyHigh > 0 {UoA/buyTok}
     /// @return notDust True when the trade is larger than the dust amount
     /// @return req The prepared trade request to send to the Broker
     //
@@ -36,7 +36,7 @@ library TradingLibP0 {
     //   req.sell == trade.sell and req.buy == trade.buy,
     //   req.minBuyAmount * trade.prices.buyHigh ~=
     //        trade.sellAmount * trade.prices.sellLow * (1-maxTradeSlippage),
-    //   req.sellAmount == min(trade.sell.maxTradeSize().toQTok(), trade.sellAmount.toQTok(sell)
+    //   req.sellAmount == min(trade.sell.maxTradeSize(), trade.sellAmount)
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
@@ -83,7 +83,7 @@ library TradingLibP0 {
 
     /// Assuming we have `trade.sellAmount` sell tokens available, prepare a trade to cover as
     /// much of our deficit of `trade.buyAmount` buy tokens as possible, given expected trade
-    /// slippage and the sell asset's maxTradeVolume().
+    /// slippage and maxTradeVolume().
     /// @param trade:
     ///   sell != 0
     ///   buy != 0
@@ -103,10 +103,9 @@ library TradingLibP0 {
     // Which means we should get that, if notDust is true, then:
     //   req.sell = sell and req.buy = buy
     //
-    //   1 <= req.minBuyAmount <= max(trade.buyAmount, buy.minTradeSize()).toQTok(trade.buy)
-    //   1 < req.sellAmount <= min(trade.sellAmount.toQTok(trade.sell),
-    //                               sell.maxTradeSize().toQTok(trade.sell))
-    //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
+    //   1 <= req.minBuyAmount <= max(trade.buyAmount, buy.minTradeSize()))
+    //   1 < req.sellAmount <= min(trade.sellAmount, sell.maxTradeSize())
+    //   req.minBuyAmount ~= trade.sellAmount * sellLow / buyHigh * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
     function prepareTradeToCoverDeficit(
@@ -179,7 +178,7 @@ library TradingLibP0 {
     //   let range = basketRange(all erc20s)
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
-    //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
+    //   otherwise, prepareTradeSell(...) taking the minBuyAmount as the dependent variable
     function prepareRecollateralizationTrade(IBackingManager bm, BasketRange memory basketsHeld)
         external
         view
@@ -240,11 +239,11 @@ library TradingLibP0 {
 
     // Compute the target basket range
     // Algorithm intuition: Trade conservatively. Quantify uncertainty based on the proportion of
-    // token balances requiring trading vs not requiring trading. Decrease uncertainty the largest
-    // amount possible with each trade.
+    // token balances requiring trading vs not requiring trading. Seek to decrease uncertainty
+    // the largest amount possible with each trade.
     //
     // How do we know this algorithm converges?
-    // Assumption: constant prices
+    // Assumption: constant oracle prices; monotonically increasing refPerTok()
     // Any volume traded narrows the BU band. Why:
     //   - We might increase `basketsHeld.bottom` from run-to-run, but will never decrease it
     //   - We might decrease the UoA amount of excess balances beyond `basketsHeld.bottom` from
@@ -253,8 +252,8 @@ library TradingLibP0 {
     //       run-to-run, but will never increase it
     //
     // Preconditions:
-    // - ctx is correctly populated with current basketsHeld.bottom + basketsHeld.top
-    // - reg contains erc20 + asset arrays in same order and without duplicates
+    // - ctx is correctly populated, with current basketsHeld.bottom + basketsHeld.top
+    // - reg contains erc20 + asset + quantities arrays in same order and without duplicates
     // Trading Strategy:
     // - We will not aim to hold more than rToken.basketsNeeded() BUs
     // - No double trades: if we buy B in one trade, we won't sell B in another trade
@@ -269,8 +268,8 @@ library TradingLibP0 {
     // - range.top = min(rToken.basketsNeeded, basketsHeld.top - least baskets missing
     //                                                                   + most baskets surplus)
     // - range.bottom = min(rToken.basketsNeeded, basketsHeld.bottom + least baskets purchaseable)
-    //   where "least baskets purchaseable" involves trading at unfavorable prices,
-    //   incurring maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
+    //   where "least baskets purchaseable" involves trading at the worst price,
+    //   incurring the full maxTradeSlippage, and taking up to a minTradeVolume loss due to dust.
     function basketRange(TradingContext memory ctx, IERC20[] memory erc20s)
         internal
         view
@@ -413,8 +412,10 @@ library TradingLibP0 {
     ///   deficit Deficit collateral OR address(0)
     ///   sellAmount {sellTok} Surplus amount (whole tokens)
     ///   buyAmount {buyTok} Deficit amount (whole tokens)
-    ///   sellPrice {UoA/sellTok} The worst-case price of the sell token on secondary markets
-    ///   buyPrice {UoA/sellTok} The worst-case price of the buy token on secondary markets
+    ///   prices.sellLow {UoA/sellTok} The worst-case price of the sell token on secondary markets
+    ///   prices.sellHigh {UoA/sellTok} The best-case price of the sell token on secondary markets
+    ///   prices.buyLow {UoA/buyTok} The best-case price of the buy token on secondary markets
+    ///   prices.buyHigh {UoA/buyTok} The worst-case price of the buy token on secondary markets
     ///
     // Defining "sell" and "buy":
     // If bal(e) > (quantity(e) * range.top), then e is in surplus by the difference
@@ -424,16 +425,17 @@ library TradingLibP0 {
     //   `trade.sell` is the token from erc20s with the greatest surplus value (in UoA),
     //   and sellAmount is the quantity of that token that it's in surplus (in qTok).
     //   if `trade.sell` == 0, then no token is in surplus by at least minTradeSize,
-    //        and `trade.sellAmount` and `trade.prices.sellLow` are unset.
+    //        and `trade.sellAmount` and `trade.sellLow` / `trade.sellHigh are unset.
     //
     //   `trade.buy` is the token from erc20s with the greatest deficit value (in UoA),
     //   and buyAmount is the quantity of that token that it's in deficit (in qTok).
     //   if `trade.buy` == 0, then no token is in deficit at all,
-    //        and `trade.buyAmount` and `trade.prices.buyHigh` are unset.
+    //        and `trade.buyAmount` and `trade.buyLow` / `trade.buyHigh` are unset.
     //
     // Then, just if we have a buy asset and no sell asset, consider selling available RSR.
     //
     // Prefer selling assets in this order: DISABLED -> SOUND -> IFFY.
+    // Sell IFFY last because it may recover value in the future.
     // All collateral in the basket have already been guaranteed to be SOUND by upstream checks.
     function nextTradePair(
         TradingContext memory ctx,
@@ -514,7 +516,7 @@ library TradingLibP0 {
             uint192 rsrAvailable = rsrAsset.bal(address(ctx.bm)).plus(
                 rsrAsset.bal(address(ctx.stRSR))
             );
-            (uint192 lotLow, uint192 lotHigh) = rsrAsset.lotPrice(); // {UoA/sellTok}
+            (uint192 lotLow, uint192 lotHigh) = rsrAsset.lotPrice(); // {UoA/RSR}
 
             if (lotHigh > 0 && isEnoughToSell(rsrAsset, rsrAvailable, lotLow, ctx.minTradeVolume)) {
                 trade.sell = rsrAsset;
