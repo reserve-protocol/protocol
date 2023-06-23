@@ -12,7 +12,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     using FixLib for uint192;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public constant GAS_TO_RESERVE = 900000; // just enough to disable basket on n=128
+    uint256 public constant GAS_FOR_BH_QTY = 100_000; // enough to call bh.quantity
+    uint256 public constant GAS_FOR_DISABLE_BASKET = 900_000; // enough to disable basket on n=128
 
     // Registered ERC20s
     EnumerableSet.AddressSet private _erc20s;
@@ -165,7 +166,10 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     function _reserveGas() private view returns (uint256) {
         uint256 gas = gasleft();
-        require(gas > GAS_TO_RESERVE, "not enough gas to unregister safely");
-        return gas - GAS_TO_RESERVE;
+        require(
+            gas > GAS_FOR_DISABLE_BASKET + GAS_FOR_BH_QTY,
+            "not enough gas to unregister safely"
+        );
+        return gas - GAS_FOR_DISABLE_BASKET;
     }
 }

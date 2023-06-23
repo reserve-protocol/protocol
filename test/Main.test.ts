@@ -1148,10 +1148,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.isRegistered(other.address)).to.equal(false)
     })
 
-    it('Should revert with gas error if cannot reserve 900k gas', async () => {
+    it('Should revert with gas error if cannot reserve 1M gas', async () => {
       expect(await assetRegistry.isRegistered(collateral0.address))
+
       await expect(
-        assetRegistry.unregister(collateral0.address, { gasLimit: bn('9e5') })
+        assetRegistry.unregister(collateral0.address, { gasLimit: bn('1e6') })
       ).to.be.revertedWith('not enough gas to unregister safely')
     })
 
@@ -1233,15 +1234,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         delayUntilDefault: await collateral0.delayUntilDefault(),
       })
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
       await gasGuzzlingColl.setRevertRefPerTok(true)
-      await assetRegistry.swapRegistered(replacementColl.address, { gasLimit: bn('1e6') })
+      await assetRegistry.swapRegistered(replacementColl.address, { gasLimit: bn('1.1e6') })
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       await gasGuzzlingColl.setRevertRefPerTok(false)
       await basketHandler.refreshBasket()
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      await assetRegistry.swapRegistered(gasGuzzlingColl.address, { gasLimit: bn('1e6') })
+      await assetRegistry.swapRegistered(gasGuzzlingColl.address, { gasLimit: bn('1.1e6') })
       await gasGuzzlingColl.setRevertRefPerTok(true)
-      await assetRegistry.unregister(gasGuzzlingColl.address, { gasLimit: bn('1e6') })
+      await assetRegistry.unregister(gasGuzzlingColl.address, { gasLimit: bn('1.1e6') })
       expect(await assetRegistry.isRegistered(gasGuzzlingColl.address)).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       await basketHandler.refreshBasket()
