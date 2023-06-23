@@ -161,7 +161,7 @@ Duration: 30 min (default)
 
 #### Assets and Collateral
 
-- Bugfix: `lotPrice()` now begins at 100% the lastSavedPrice, instead of below 100%
+- Bugfix: `lotPrice()` now begins at 100% the lastSavedPrice, instead of below 100%. It can be at 100% for up to the oracleTimeout in the worst-case.
 - Add `version() return (string)` getter to pave way for separation of asset versioning and core protocol versioning
 - Update `claimRewards()` on all assets to 3.0.0-style, without `delegatecall`
 - Add `lastSave()` to `RTokenAsset`
