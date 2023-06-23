@@ -12,8 +12,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     using FixLib for uint192;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public constant GAS_FOR_BH_QTY = 100000; // enough to call bh.quantity
-    uint256 public constant GAS_TO_RESERVE = 900000; // enough to disable basket on n=128
+    uint256 public constant GAS_FOR_BH_QTY = 100_000; // enough to call bh.quantity
+    uint256 public constant GAS_TO_RESERVE = 900_000; // enough to disable basket on n=128
 
     // Registered ERC20s
     EnumerableSet.AddressSet private _erc20s;

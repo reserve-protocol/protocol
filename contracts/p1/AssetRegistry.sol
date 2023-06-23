@@ -12,8 +12,8 @@ import "./mixins/Component.sol";
 contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public constant GAS_FOR_BH_QTY = 100000; // enough to call bh.quantity
-    uint256 public constant GAS_TO_RESERVE = 900000; // enough to disable basket on n=128
+    uint256 public constant GAS_FOR_BH_QTY = 100_000; // enough to call bh.quantity
+    uint256 public constant GAS_TO_RESERVE = 900_000; // enough to disable basket on n=128
 
     // Peer-component addresses
     IBasketHandler private basketHandler;
