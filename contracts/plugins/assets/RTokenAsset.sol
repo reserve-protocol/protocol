@@ -12,7 +12,7 @@ uint256 constant ORACLE_TIMEOUT = 15 minutes;
 
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
-// @dev This RTokenAsset is ONLY compatible with Protocol >=3.0.0
+// @dev This RTokenAsset is ONLY compatible with Protocol ^3.0.0
 contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
@@ -148,7 +148,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         if (
             cachedOracleData.cachedAtTime + ORACLE_TIMEOUT <= block.timestamp || // Cache Timeout
             cachedOracleData.cachedAtNonce != basketHandler.nonce() || // Basket nonce was updated
-            cachedOracleData.cachedTradesNonce != backingManager.tradesNonce() || // New trades were started
+            cachedOracleData.cachedTradesNonce != backingManager.tradesNonce() || // New trades
             cachedOracleData.cachedTradesOpen != backingManager.tradesOpen() // ..or settled
         ) {
             _updateCachedPrice();
@@ -161,11 +161,6 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
     // Update Oracle Data
     function _updateCachedPrice() internal {
-        if (cachedOracleData.cachedAtTime == block.timestamp) {
-            // The price was updated in the same block.
-            return;
-        }
-
         (uint192 low, uint192 high) = price();
 
         require(low != 0 && high != FIX_MAX, "invalid price");

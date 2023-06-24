@@ -340,7 +340,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
 
-            if (high256 != FIX_MAX) {
+            if (high256 < FIX_MAX) {
                 if (highP == FIX_MAX) {
                     high256 = FIX_MAX;
                 } else {
@@ -602,12 +602,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 if (!asset.isCollateral()) continue; // skip token if no longer registered
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
-                quantities[i] = FIX_ONE
-                    .safeMulDiv(
-                        b.refAmts[erc20s[i]],
-                        ICollateral(address(asset)).refPerTok(),
-                        FLOOR
-                    )
+                quantities[i] = b
+                    .refAmts[erc20s[i]]
+                    .safeDiv(ICollateral(address(asset)).refPerTok(), FLOOR)
                     .shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
             } catch (bytes memory errData) {
                 // untested:
