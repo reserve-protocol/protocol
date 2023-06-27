@@ -747,6 +747,33 @@ describe('FacadeRead + FacadeAct contracts', () => {
       ).to.be.revertedWith('unrecognized version')
     })
 
+    itP1('Should handle invalid versions for nextRecollateralizationAuction', async () => {
+      // Use P1 specific versions
+      backingManager = <BackingManagerP1>(
+        await ethers.getContractAt('BackingManagerP1', backingManager.address)
+      )
+
+      const backingManagerInvalidVer: BackingMgrInvalidVersion = <BackingMgrInvalidVersion>(
+        await BackingMgrInvalidVerImplFactory.deploy()
+      )
+
+      // Upgrade BackingManager to Invalid version
+      await backingManager.connect(owner).upgradeTo(backingManagerInvalidVer.address)
+
+      // Setup prime basket
+      await basketHandler.connect(owner).setPrimeBasket([usdc.address], [fp('1')])
+
+      // Switch Basket
+      await expect(basketHandler.connect(owner).refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs(2, [usdc.address], [fp('1')], false)
+
+      // Attempt to trigger recollateralization
+      await expect(
+        facadeAct.callStatic.nextRecollateralizationAuction(backingManager.address)
+      ).to.be.revertedWith('unrecognized version')
+    })
+
     it('Should return basketBreakdown correctly for paused token', async () => {
       await main.connect(owner).pauseTrading()
       await expectValidBasketBreakdown(rToken)
@@ -788,6 +815,13 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     it('Should return totalAssetValue correctly - FacadeTest', async () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+    })
+
+    it('Should revert totalAssetValue when frozen - FacadeTest', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.revertedWith(
+        'frozen'
+      )
     })
 
     it('Should return RToken price correctly', async () => {
@@ -1051,10 +1085,6 @@ describe('FacadeRead + FacadeAct contracts', () => {
         await BackingMgrV1ImplFactory.deploy()
       )
 
-      // Upgrade components to V2
-      await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
-      await rTokenTrader.connect(owner).upgradeTo(revTraderV2.address)
-
       const auctionLength = await broker.dutchAuctionLength()
       const tokenSurplus = bn('0.5e18')
       await token.connect(addr1).transfer(rTokenTrader.address, tokenSurplus)
@@ -1077,11 +1107,42 @@ describe('FacadeRead + FacadeAct contracts', () => {
       // Advance time till auction ended
       await advanceTime(auctionLength + 13)
 
+      // Upgrade components to V2
+      await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
+      await rTokenTrader.connect(owner).upgradeTo(revTraderV2.address)
+
+      // Settle and start new auction - Will retry
+      await expectEvents(
+        facadeAct.runRevenueAuctions(
+          rTokenTrader.address,
+          [token.address],
+          [token.address],
+          [TradeKind.DUTCH_AUCTION]
+        ),
+        [
+          {
+            contract: rTokenTrader,
+            name: 'TradeSettled',
+            args: [anyValue, token.address, rToken.address, anyValue, anyValue],
+            emitted: true,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            args: [anyValue, token.address, rToken.address, anyValue, anyValue],
+            emitted: true,
+          },
+        ]
+      )
+
       // Upgrade to V1
       await backingManager.connect(owner).upgradeTo(backingManagerV1.address)
       await rTokenTrader.connect(owner).upgradeTo(revTraderV1.address)
 
-      // Settle and start new auction - Will retry
+      // Advance time till auction ended
+      await advanceTime(auctionLength + 13)
+
+      // Settle and start new auction - Will retry again
       await expectEvents(
         facadeAct.runRevenueAuctions(
           rTokenTrader.address,

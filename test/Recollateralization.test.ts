@@ -51,7 +51,7 @@ import {
 import snapshotGasCost from './utils/snapshotGasCost'
 import { expectTrade, getTrade, dutchBuyAmount } from './utils/trades'
 import { withinQuad } from './utils/matchers'
-import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
+import { expectRTokenPrice, expectUnpriced, setOraclePrice } from './utils/oracles'
 import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
 
@@ -1021,6 +1021,45 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expect(backingManager.settleTrade(token0.address)).to.be.revertedWith(
           'frozen or trading paused'
         )
+      })
+
+      it('Should not recollateralize when switching basket if all assets are UNPRICED', async () => {
+        // Set price to use lot price
+        await setOraclePrice(collateral0.address, MAX_UINT256.div(2))
+
+        // Setup prime basket
+        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+
+        // Switch Basket
+        await expect(basketHandler.connect(owner).refreshBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(3, [token1.address], [fp('1')], false)
+
+        // Advance time post warmup period - temporary IFFY->SOUND
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
+        // Set to sell price = 0
+        await advanceTime(Number(ORACLE_TIMEOUT.add(PRICE_TIMEOUT)))
+
+        // Check state remains SOUND
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
+
+        // RToken unpriced
+        await expectUnpriced(rTokenAsset.address)
+
+        // Attempt to recollateralize (no assets to sell)
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+          backingManager,
+          'TradeStarted'
+        )
+
+        // Nothing changes until situation is resolved
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        await expectUnpriced(rTokenAsset.address)
       })
 
       context('Should successfully recollateralize after governance basket switch', () => {

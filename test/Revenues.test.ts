@@ -614,6 +614,37 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
       })
 
+      it('Should not distribute tokenToBuy if frozen or trading paused', async () => {
+        // Use distributeTokenToBuy()
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Trading pause
+        await main.connect(owner).pauseTrading()
+
+        // Attempt to distribute
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+
+        // Revert pause and freeze
+        await main.connect(owner).unpauseTrading()
+        await main.connect(owner).freezeShort()
+
+        // Attempt to distribute again
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+
+        // Unfreeze
+        await main.connect(owner).unfreeze()
+
+        // Can distribute now
+        await rsrTrader.distributeTokenToBuy()
+        const expectedAmount = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+      })
+
       it('Should launch multiple auctions -- has tokenToBuy', async () => {
         // Mint AAVE, token0, and RSR to the RSRTrader
         await aaveToken.connect(owner).mint(rsrTrader.address, issueAmount)

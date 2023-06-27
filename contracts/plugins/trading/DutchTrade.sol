@@ -231,6 +231,9 @@ contract DutchTrade is ITrade {
     ) private view returns (uint192 slippage) {
         slippage = origin.maxTradeSlippage(); // {1}
         if (maxTradeVolume <= minTradeVolume || auctionVolume < minTradeVolume) return slippage;
+
+        // untestable:
+        //     auctionVolume already sized based on maxTradeVolume, so this will not be true
         if (auctionVolume > maxTradeVolume) return 0; // 0% slippage beyond maxTradeVolume
 
         // {1} = {1} * ({UoA} - {UoA}} / ({UoA} - {UoA})

@@ -101,6 +101,8 @@ library RecollateralizationLibP1 {
         }
 
         // If we are selling a fully unpriced asset or UNSOUND collateral, do not cover deficit
+        // untestable:
+        //     sellLow will not be zero, those assets are skipped in nextTradePair
         if (
             trade.prices.sellLow == 0 ||
             (trade.sell.isCollateral() &&

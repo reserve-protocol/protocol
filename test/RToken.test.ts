@@ -902,6 +902,44 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
     })
+
+    it('Should update issuance throttle correctly with redemptions - edge case', async function () {
+      // set fixed redemption amount
+      const redemptionThrottleParams = JSON.parse(JSON.stringify(config.redemptionThrottle))
+      redemptionThrottleParams.amtRate = fp('1e6')
+      redemptionThrottleParams.pctRate = bn(0)
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+
+      // Provide approvals
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+
+      // Issuance throttle is fully charged
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      // Issuance #1 - Full available - Will succeed
+      const fullIssuanceAmount: BigNumber = await rToken.issuanceAvailable()
+      await rToken.connect(addr1).issue(fullIssuanceAmount)
+
+      // Redemption #1 - Full amount
+      await rToken.connect(addr1).redeem(fullIssuanceAmount)
+
+      // Issuance #2 - Less than max - Will succeed
+      await rToken.connect(addr1).issue(fullIssuanceAmount.div(2))
+
+      // Mine block
+      await hre.network.provider.send('evm_mine', [])
+
+      // Issuance and redemption throttle still available for remainder
+      expect(await rToken.issuanceAvailable()).to.equal(fullIssuanceAmount.div(2))
+      expect(await rToken.redemptionAvailable()).to.equal(fullIssuanceAmount.div(2))
+
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
+    })
   })
 
   describe('Redeem', function () {

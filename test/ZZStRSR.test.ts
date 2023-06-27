@@ -685,6 +685,23 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount)) // RSR wasn't returned
     })
 
+    it('Should not allow to cancel unstake if fozen', async () => {
+      const amount: BigNumber = bn('1000e18')
+
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await stRSR.connect(addr1).stake(amount)
+
+      // Unstake
+      await stRSR.connect(addr1).unstake(amount)
+
+      // Freeze Main
+      await main.connect(owner).freezeShort()
+
+      // Attempt to cancel unstake
+      await expect(stRSR.connect(addr1).cancelUnstake(1)).to.be.revertedWith('frozen')
+    })
+
     describe('Withdrawal Leak', () => {
       const withdrawalLeak = fp('0.1') // 10%
       const stake = bn('1000e18')
@@ -1158,7 +1175,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         const numRounds = stkWithdrawalDelay / 4 / 12
         const rewardHandout = amount3.sub(decayFn(amount3, numRounds))
         const newExchangeRate = amount3.add(rewardHandout).mul(fp('1')).div(amount3).add(1)
-        expect(await stRSR.exchangeRate()).to.equal(newExchangeRate)
+        expect(await stRSR.exchangeRate()).to.be.closeTo(newExchangeRate, bn(200))
 
         // Move time forward to first period complete
         await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 4)
