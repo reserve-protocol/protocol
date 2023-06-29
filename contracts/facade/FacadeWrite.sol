@@ -127,9 +127,7 @@ contract FacadeWrite is IFacadeWrite {
         bool deployGovernance,
         bool unpause,
         GovernanceParams calldata govParams,
-        address owner,
-        address guardian,
-        address pauser
+        GovernanceRoles calldata govRoles
     ) external returns (address newOwner) {
         // Get Main
         IMain main = rToken.main();
@@ -141,7 +139,7 @@ contract FacadeWrite is IFacadeWrite {
         main.revokeRole(OWNER, msg.sender);
 
         if (deployGovernance) {
-            require(owner == address(0), "owner should be empty");
+            require(govRoles.owner == address(0), "owner should be empty");
 
             TimelockController timelock = new TimelockController(
                 govParams.timelockDelay,
@@ -162,29 +160,16 @@ contract FacadeWrite is IFacadeWrite {
 
             // Setup Roles
             timelock.grantRole(timelock.PROPOSER_ROLE(), governance); // Gov only proposer
-            timelock.grantRole(timelock.CANCELLER_ROLE(), guardian); // Guardian as canceller
+            // Set Guardian as canceller, if address(0) then no one can cancel
+            timelock.grantRole(timelock.CANCELLER_ROLE(), govRoles.guardian);
             timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0)); // Anyone as executor
             timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this)); // Revoke admin role
 
             // Set new owner to timelock
             newOwner = address(timelock);
         } else {
-            require(owner != address(0), "owner not defined");
-            newOwner = owner;
-        }
-
-        // Setup guardian as freeze starter / extender + pauser
-        if (guardian != address(0)) {
-            // As a further decentralization step it is suggested to further differentiate between
-            // these two roles. But this is what will make sense for simple system setup.
-            main.grantRole(SHORT_FREEZER, guardian);
-            main.grantRole(LONG_FREEZER, guardian);
-            main.grantRole(PAUSER, guardian);
-        }
-
-        // Setup Pauser
-        if (pauser != address(0)) {
-            main.grantRole(PAUSER, pauser);
+            require(govRoles.owner != address(0), "owner not defined");
+            newOwner = govRoles.owner;
         }
 
         // Unpause if required
@@ -192,14 +177,33 @@ contract FacadeWrite is IFacadeWrite {
             main.unpause();
         }
 
-        // Transfer Ownership and renounce roles
+        main.revokeRole(PAUSER, address(this));
+        main.revokeRole(SHORT_FREEZER, address(this));
+        main.revokeRole(LONG_FREEZER, address(this));
+
+        // Setup pausers
+        for (uint256 i = 0; i < govRoles.pausers.length; ++i) {
+            if (govRoles.pausers[i] != address(0)) {
+                main.grantRole(PAUSER, govRoles.pausers[i]);
+            }
+        }
+
+        // Setup short freezers
+        for (uint256 i = 0; i < govRoles.shortFreezers.length; ++i) {
+            if (govRoles.shortFreezers[i] != address(0)) {
+                main.grantRole(SHORT_FREEZER, govRoles.shortFreezers[i]);
+            }
+        }
+
+        // Setup long freezers
+        for (uint256 i = 0; i < govRoles.longFreezers.length; ++i) {
+            if (govRoles.longFreezers[i] != address(0)) {
+                main.grantRole(LONG_FREEZER, govRoles.longFreezers[i]);
+            }
+        }
+
+        // Transfer Ownership and renounce owner role
         main.grantRole(OWNER, newOwner);
-        main.grantRole(SHORT_FREEZER, newOwner);
-        main.grantRole(LONG_FREEZER, newOwner);
-        main.grantRole(PAUSER, newOwner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(SHORT_FREEZER, address(this));
-        main.renounceRole(LONG_FREEZER, address(this));
-        main.renounceRole(PAUSER, address(this));
     }
 }
