@@ -26,6 +26,9 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     uint192 public minTradeVolume; // {UoA}
 
+    // === 3.0.0 ===
+    uint256 public tradesNonce; // to keep track of how many trades have been opened in total
+
     // untestable:
     //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
     //      This function is only called inside other `init` functions, each of which is wrapped
@@ -68,6 +71,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         trade = broker.openTrade(kind, req);
         trades[req.sell.erc20()] = trade;
         tradesOpen++;
+        tradesNonce++;
+
         emit TradeStarted(
             trade,
             req.sell.erc20(),
@@ -91,17 +96,5 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
         emit MinTradeVolumeSet(minTradeVolume, val);
         minTradeVolume = val;
-    }
-
-    // === FixLib Helper ===
-
-    /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDiv(
-        uint192 x,
-        uint192 y,
-        uint192 z,
-        RoundingMode rounding
-    ) external pure returns (uint192) {
-        return x.mulDiv(y, z, rounding);
     }
 }

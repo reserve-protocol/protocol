@@ -4,16 +4,21 @@ pragma solidity 0.8.19;
 import "../../p1/mixins/RecollateralizationLib.sol";
 import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
+import "../../interfaces/IRTokenOracle.sol";
 import "./Asset.sol";
 import "./VersionedAsset.sol";
 
+uint256 constant ORACLE_TIMEOUT = 15 minutes;
+
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
-contract RTokenAsset is IAsset, VersionedAsset {
+// @dev This RTokenAsset is ONLY compatible with Protocol ^3.0.0
+contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
     // Component addresses are not mutable in protocol, so it's safe to cache these
+    IMain public immutable main;
     IBasketHandler public immutable basketHandler;
     IAssetRegistry public immutable assetRegistry;
     IBackingManager public immutable backingManager;
@@ -24,12 +29,15 @@ contract RTokenAsset is IAsset, VersionedAsset {
 
     uint192 public immutable maxTradeVolume; // {UoA}
 
+    // Oracle State
+    CachedOracleData public cachedOracleData;
+
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(IRToken erc20_, uint192 maxTradeVolume_) {
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
 
-        IMain main = erc20_.main();
+        main = erc20_.main();
         basketHandler = main.basketHandler();
         assetRegistry = main.assetRegistry();
         backingManager = main.backingManager();
@@ -59,12 +67,15 @@ contract RTokenAsset is IAsset, VersionedAsset {
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = range.bottom.mulDiv(lowBUPrice, supply, FLOOR);
         high = range.top.mulDiv(highBUPrice, supply, CEIL);
+
         assert(low <= high); // not obviously true
     }
 
     // solhint-disable no-empty-blocks
     function refresh() public virtual override {
         // No need to save lastPrice; can piggyback off the backing collateral's lotPrice()
+
+        cachedOracleData.cachedAtTime = 0; // force oracle refresh
     }
 
     // solhint-enable no-empty-blocks
@@ -128,7 +139,40 @@ contract RTokenAsset is IAsset, VersionedAsset {
 
     // solhint-enable no-empty-blocks
 
+    function forceUpdatePrice() external {
+        _updateCachedPrice();
+    }
+
+    function latestPrice() external returns (uint192 rTokenPrice, uint256 updatedAt) {
+        // Situations that require an update, from most common to least common.
+        if (
+            cachedOracleData.cachedAtTime + ORACLE_TIMEOUT <= block.timestamp || // Cache Timeout
+            cachedOracleData.cachedAtNonce != basketHandler.nonce() || // Basket nonce was updated
+            cachedOracleData.cachedTradesNonce != backingManager.tradesNonce() || // New trades
+            cachedOracleData.cachedTradesOpen != backingManager.tradesOpen() // ..or settled
+        ) {
+            _updateCachedPrice();
+        }
+
+        return (cachedOracleData.cachedPrice, cachedOracleData.cachedAtTime);
+    }
+
     // ==== Private ====
+
+    // Update Oracle Data
+    function _updateCachedPrice() internal {
+        (uint192 low, uint192 high) = price();
+
+        require(low != 0 && high != FIX_MAX, "invalid price");
+
+        cachedOracleData = CachedOracleData(
+            (low + high) / 2,
+            block.timestamp,
+            basketHandler.nonce(),
+            backingManager.tradesOpen(),
+            backingManager.tradesNonce()
+        );
+    }
 
     /// Computationally expensive basketRange calculation; used in price() & lotPrice()
     function basketRange() private view returns (BasketRange memory range) {
@@ -145,7 +189,6 @@ contract RTokenAsset is IAsset, VersionedAsset {
             // the absence of an external price feed. Any RToken that gets reasonably big
             // should switch over to an asset with a price feed.
 
-            IMain main = backingManager.main();
             TradingContext memory ctx;
 
             ctx.basketsHeld = basketsHeld;
