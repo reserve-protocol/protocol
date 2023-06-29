@@ -250,15 +250,21 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
     )
 
+    // Set initial governance roles
+    const govRoles = {
+      owner: owner.address,
+      guardian: ZERO_ADDRESS,
+      pausers: [],
+      shortFreezers: [],
+      longFreezers: [],
+    }
     // Setup owner and unpause
     await facadeWrite.connect(owner).setupGovernance(
       rToken.address,
       false, // do not deploy governance
       true, // unpaused
       govParams, // mock values, not relevant
-      owner.address, // owner
-      ZERO_ADDRESS, // no guardian
-      ZERO_ADDRESS // no pauser
+      govRoles
     )
 
     // Setup mock chainlink feed for some of the tests (so we can change the value)
