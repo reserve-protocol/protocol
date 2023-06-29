@@ -20,10 +20,11 @@ async function main() {
 	const newEventSignatures = new Set<string>()
 	for (const { abi } of artifactsWithAbi) {
 		const abiInterface = new hre.ethers.utils.Interface(abi)
-		const events = Object.keys(abiInterface.events);
-		const functions = Object.keys(abiInterface.functions);
-		events.filter(e => !prevEvents.has(e)).forEach(e => newEventSignatures.add(e))
-		functions.filter(e => !prevFunctions.has(e)).forEach(e => newFunctionSignatures.add(e))
+		// Events and Errors seem to be the same thing for 4bytes
+		Object.keys(abiInterface.events).filter(e => !prevEvents.has(e)).forEach(e => newEventSignatures.add(e))
+		Object.keys(abiInterface.errors).filter(e => !prevEvents.has(e)).forEach(e => newEventSignatures.add(e))
+		
+		Object.keys(abiInterface.functions).filter(e => !prevFunctions.has(e)).forEach(e => newFunctionSignatures.add(e))
 	}
 	const total = newErrorSignatures.size + newFunctionSignatures.size + newEventSignatures.size
 	if (total === 0) {
