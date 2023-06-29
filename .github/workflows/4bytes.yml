@@ -1,0 +1,34 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  deployment-scripts:
+    if: github.event.pull_request.merged == true
+    name: 'Deployment Scripts'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn compile
+      - run: yarn run:4bytes
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 4bytes-syncced.json
+          commit_options: '--no-verify --signoff'
+          file_pattern: 'scripts/4bytes-syncced.json'
+
