@@ -41,7 +41,6 @@ import {
   PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { setOraclePrice } from './utils/oracles'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
@@ -1127,7 +1126,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             newCollateral0.address,
             collateral1.address,
             amount,
-            config.dutchAuctionLength
+            config.dutchAuctionLength,
+            prices
           )
         ).to.not.be.reverted
 
