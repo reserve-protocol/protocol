@@ -238,7 +238,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
-        require(erc20s.length > 0, "cannot empty basket");
+        require(erc20s.length > 0, "empty basket");
         require(erc20s.length == targetAmts.length, "must be same length");
         requireValidCollArray(erc20s);
 
@@ -747,10 +747,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         IERC20 zero = IERC20(address(0));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            require(erc20s[i] != main.rsr(), "RSR is not valid collateral");
-            require(erc20s[i] != IERC20(address(main.rToken())), "RToken is not valid collateral");
-            require(erc20s[i] != IERC20(address(main.stRSR())), "stRSR is not valid collateral");
-            require(erc20s[i] != zero, "address zero is not valid collateral");
+            require(erc20s[i] != main.rsr(), "invalid collateral");
+            require(erc20s[i] != IERC20(address(main.rToken())), "invalid collateral");
+            require(erc20s[i] != IERC20(address(main.stRSR())), "invalid collateral");
+            require(erc20s[i] != zero, "invalid collateral");
         }
 
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
@@ -780,11 +780,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < newERC20s.length; i++) {
             bytes32 targetName = main.assetRegistry().toColl(newERC20s[i]).targetName();
             (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
-            require(contains && amt >= newTargetAmts[i], "new basket adds target weights");
+            require(contains && amt >= newTargetAmts[i], "new target weights");
             if (amt == newTargetAmts[i]) _targetAmts.remove(targetName);
             else _targetAmts.set(targetName, amt - newTargetAmts[i]);
         }
-        require(_targetAmts.length() == 0, "new basket missing target weights");
+        require(_targetAmts.length() == 0, "missing target weights");
     }
 
     /// Good collateral is registered, collateral, SOUND, has the expected targetName,

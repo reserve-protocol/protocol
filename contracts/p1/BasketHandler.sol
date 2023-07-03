@@ -176,7 +176,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         external
         governance
     {
-        require(erc20s.length > 0, "cannot empty basket");
+        require(erc20s.length > 0, "empty basket");
         require(erc20s.length == targetAmts.length, "must be same length");
         requireValidCollArray(erc20s);
 
@@ -562,22 +562,23 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < len; ++i) {
             bytes32 targetName = assetRegistry.toColl(newERC20s[i]).targetName();
             (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
-            require(contains && amt >= newTargetAmts[i], "new basket adds target weights");
+            require(contains && amt >= newTargetAmts[i], "new target weights");
             if (amt > newTargetAmts[i]) _targetAmts.set(targetName, amt - newTargetAmts[i]);
             else _targetAmts.remove(targetName);
         }
-        require(_targetAmts.length() == 0, "new basket missing target weights");
+        require(_targetAmts.length() == 0, "missing target weights");
     }
 
     /// Require that erc20s is a valid collateral array
     function requireValidCollArray(IERC20[] calldata erc20s) private view {
-        IERC20 zero = IERC20(address(0));
-
         for (uint256 i = 0; i < erc20s.length; i++) {
-            require(erc20s[i] != rsr, "RSR is not valid collateral");
-            require(erc20s[i] != IERC20(address(rToken)), "RToken is not valid collateral");
-            require(erc20s[i] != IERC20(address(stRSR)), "stRSR is not valid collateral");
-            require(erc20s[i] != zero, "address zero is not valid collateral");
+            require(
+                erc20s[i] != rsr &&
+                    erc20s[i] != IERC20(address(rToken)) &&
+                    erc20s[i] != IERC20(address(stRSR)) &&
+                    erc20s[i] != IERC20(address(0)),
+                "invalid collateral"
+            );
         }
 
         require(ArrayLib.allUnique(erc20s), "contains duplicates");

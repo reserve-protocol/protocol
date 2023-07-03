@@ -1759,19 +1759,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with 0 address tokens', async () => {
       await expect(
         freshBasketHandler.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
-      ).to.be.revertedWith('address zero is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
       await expect(
         basketHandler.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
-      ).to.be.revertedWith('address zero is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
     })
 
     it('Should not allow to set prime Basket with stRSR', async () => {
       await expect(
         freshBasketHandler.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
-      ).to.be.revertedWith('stRSR is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
       await expect(
         basketHandler.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
-      ).to.be.revertedWith('stRSR is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
     })
 
     it('Should not allow to bypass MAX_TARGET_AMT', async () => {
@@ -1785,22 +1785,22 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // not possible on freshBasketHandler
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').add(1)])
-      ).to.be.revertedWith('new basket adds target weights')
+      ).to.be.revertedWith('new target weights')
     })
 
     it('Should not allow to decrease prime Basket weights', async () => {
       // not possible on freshBasketHandler
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1').sub(1)])
-      ).to.be.revertedWith('new basket missing target weights')
+      ).to.be.revertedWith('missing target weights')
     })
 
     it('Should not allow to set prime Basket with an empty basket', async () => {
       await expect(freshBasketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
-        'cannot empty basket'
+        'empty basket'
       )
       await expect(basketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
-        'cannot empty basket'
+        'empty basket'
       )
     })
 
@@ -1810,7 +1810,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid target amount; must be nonzero')
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [0])
-      ).to.be.revertedWith('new basket missing target weights')
+      ).to.be.revertedWith('missing target weights')
     })
 
     it('Should be able to set exactly same basket', async () => {
@@ -1853,7 +1853,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, token3.address, backupToken1.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
           )
-      ).to.be.revertedWith('new basket adds target weights')
+      ).to.be.revertedWith('new target weights')
 
       await expect(
         basketHandler
@@ -1862,7 +1862,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, token3.address, eurToken.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25'), fp('0.01')]
           )
-      ).to.be.revertedWith('new basket adds target weights')
+      ).to.be.revertedWith('new target weights')
     })
 
     it('Should not allow to set prime Basket as subset of old basket', async () => {
@@ -1873,7 +1873,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, token3.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.24')]
           )
-      ).to.be.revertedWith('new basket missing target weights')
+      ).to.be.revertedWith('missing target weights')
       await expect(
         basketHandler
           .connect(owner)
@@ -1881,7 +1881,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address],
             [fp('0.25'), fp('0.25'), fp('0.25')]
           )
-      ).to.be.revertedWith('new basket missing target weights')
+      ).to.be.revertedWith('missing target weights')
     })
 
     it('Should not allow to change target unit in old basket', async () => {
@@ -1892,27 +1892,27 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, eurToken.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
           )
-      ).to.be.revertedWith('new basket adds target weights')
+      ).to.be.revertedWith('new target weights')
     })
 
     it('Should not allow to set prime Basket with RSR/RToken', async () => {
       await expect(
         freshBasketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('RSR is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
       await expect(
         basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('RSR is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
 
       await expect(
         freshBasketHandler
           .connect(owner)
           .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('RToken is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
       await expect(
         basketHandler
           .connect(owner)
           .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('RToken is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
     })
 
     it('Should allow to set prime Basket if OWNER', async () => {
@@ -1946,7 +1946,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             [token0.address, token1.address, token2.address, token3.address],
             [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
           )
-      ).to.be.revertedWith('new basket adds target weights')
+      ).to.be.revertedWith('new target weights')
     })
 
     describe('Custom Redemption', () => {
@@ -2557,7 +2557,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rsr.address])
-      ).to.be.revertedWith('RSR is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
 
       it('Should not allow to set backup Config with duplicate ERC20s', async () => {
         await expect(
@@ -2574,7 +2574,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rToken.address])
-      ).to.be.revertedWith('RToken is not valid collateral')
+      ).to.be.revertedWith('invalid collateral')
     })
 
     it('Should allow to set backup Config if OWNER', async () => {
