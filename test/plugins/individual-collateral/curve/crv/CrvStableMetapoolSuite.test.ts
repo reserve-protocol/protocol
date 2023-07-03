@@ -57,7 +57,7 @@ export const defaultCrvStableCollateralOpts: CurveMetapoolCollateralOpts = {
   defaultThreshold: THREE_POOL_DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'), // TODO
-  nTokens: bn('3'),
+  nTokens: 3,
   curvePool: THREE_POOL,
   lpToken: THREE_POOL_TOKEN,
   poolType: CurvePoolType.Plain,

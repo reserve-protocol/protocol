@@ -37,9 +37,8 @@ contract MainP0 is Versioned, Initializable, Auth, ComponentRegistry, IMain {
 
     /// @custom:refresher
     function poke() external {
-        require(!frozen(), "frozen");
         assetRegistry.refresh();
-        furnace.melt();
+        if (!frozen()) furnace.melt();
         stRSR.payoutRewards();
         // NOT basketHandler.refreshBasket
     }

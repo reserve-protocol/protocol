@@ -1,17 +1,32 @@
 # Changelog
 
-## 3.0.0 - Unreleased
+# 3.0.0 - Unreleased
 
-Warning: RTokens upgrading to this major release should proceed carefully. In addition to updating all component addresses:
+### Upgrade Steps
 
-- `cacheComponents()` MUST be called to prevent certain functions from reverting, on both the BackingManager and both RevenueTraders
-- `setWarmupPeriod()` can be called on the BasketHandler to turn on the warmup period, optionally
-- `setWithdrawalLeak()` can be called on StRSR to start saving gas on withdrawals, optionally
-- `setDutchAuctionLength()` can be called (with a value such as 1800) or left at duration 0s to keep dutch auctions disabled
+#### Required Steps
 
-Collateral / Asset plugins from 2.1.0 do not need to be upgraded
+Update _all_ component contracts, including Main.
 
-#### Core Protocol Contracts
+Call the following functions:
+
+- `BackingManager.cacheComponents()`
+- `RevenueTrader.cacheComponents()` (for both rsrTrader and rTokenTrader)
+- `Distributor.cacheComponents()`
+
+Collateral / Asset plugins from 2.1.0 do not need to be upgraded with the exception of Compound V2 cToken collateral ([CTokenFiatCollateral.sol](contracts/plugins/assets/compoundv2/CTokenFiatCollateral.sol)), which needs to be swapped in via `AssetRegistry.swapRegistered()`. Skipping this step will result in COMP rewards becoming unclaimable. Note that this will change the ERC20 for the collateral plugin, causing the protocol to trade out of the old ERC20. Since COMP rewards are claimed on every transfer, COMP does not need to be claimed beforehand.
+
+#### Optional Steps
+
+Call the following functions, once it is desired to turn on the new features:
+
+- `BaasketHandler.setWarmupPeriod()`
+- `StRSR.setWithdrawalLeak()`
+- `Broker.setDutchAuctionLength()`
+
+### Core Protocol Contracts
+
+Bump solidity version to 0.8.19
 
 Bump solidity version to 0.8.19
 
@@ -119,7 +134,7 @@ Bump solidity version to 0.8.19
 - `StRSRVotes` [+0 slots]
   - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function, to encourage people to receive voting weight upon staking
 
-#### Facades
+### Facades
 
 - `FacadeWrite`
   Summary: More expressive and fine-grained control over the set of pausers and freezers
@@ -147,9 +162,9 @@ Bump solidity version to 0.8.19
 
 - Remove `FacadeMonitor` - redundant with `nextRecollateralizationAuction()` and `revenueOverview()`
 
-### Plugins
+## Plugins
 
-#### DutchTrade
+### DutchTrade
 
 A cheaper, simpler, trading method. Intended to be the new dominant trading method, with GnosisTrade (batch auctions) available as a faster-but-more-gas-expensive backup option.
 
@@ -159,13 +174,14 @@ Over the last 60% of the auction, the price falls linearly from the best-case pr
 
 Duration: 30 min (default)
 
-#### Assets and Collateral
+### Assets and Collateral
 
+- Bugfix: `lotPrice()` now begins at 100% the lastSavedPrice, instead of below 100%. It can be at 100% for up to the oracleTimeout in the worst-case.
 - Add `version() return (string)` getter to pave way for separation of asset versioning and core protocol versioning
 - Update `claimRewards()` on all assets to 3.0.0-style, without `delegatecall`
 - Add `lastSave()` to `RTokenAsset`
 
-## 2.1.0
+# 2.1.0
 
 ### Core protocol contracts
 
@@ -221,7 +237,7 @@ Across all collateral, `tryPrice()` was updated to exclude revenueHiding conside
 - Add `docs/plugin-addresses.md` as well as accompanying script for generation at `scripts/collateral-params.ts`
 - Add `docs/exhaustive-tests.md` to document running exhaustive tests on GCP
 
-## 2.0.0
+# 2.0.0
 
 Candidate release for the "all clear" milestone. There wasn't any real usage of the 1.0.0/1.1.0 releases; this is the first release that we are going to spend real effort to remain backwards compatible with.
 
@@ -287,7 +303,7 @@ Candidate release for the "all clear" milestone. There wasn't any real usage of 
 - Add `FacadeRead.redeem(IRToken rToken, uint256 amount, uint48 basketNonce)` to return the expected redemption quantities on the basketNonce, or revert
 - Integrate with OZ 4.7.3 Governance (changes to `quorum()`/t`proposalThreshold()`)
 
-## 1.1.0
+# 1.1.0
 
 - Introduce semantic versioning to the Deployer and RToken
 - `RTokenCreated` event: added `version` argument
@@ -319,7 +335,7 @@ event RTokenCreated(
 
 [d757d3a5a6097ae42c71fc03a7c787ec001d2efc](https://github.com/reserve-protocol/protocol/commit/d757d3a5a6097ae42c71fc03a7c787ec001d2efc)
 
-## 1.0.0
+# 1.0.0
 
 (This release is the one from the canonical lauch onstage in Bogota. We were missing semantic versioning at the time, but we call this the 1.0.0 release retroactively.)
 

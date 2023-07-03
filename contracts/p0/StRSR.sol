@@ -14,6 +14,7 @@ import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
 import "../mixins/NetworkConfigLib.sol";
@@ -37,7 +38,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // solhint-disable-next-line var-name-mixedcase
     uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint192 public constant MAX_REWARD_RATIO = 1e18;
+    uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
     uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
 
     // ==== ERC20Permit ====
@@ -136,7 +137,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notFrozen {
+    function payoutRewards() external {
         _payoutRewards();
     }
 
@@ -149,7 +150,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:
@@ -242,6 +243,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     function cancelUnstake(uint256 endId) external notFrozen {
         address account = _msgSender();
 
+        // Call state keepers
+        _payoutRewards();
+
+        // We specifically allow unstaking when under collateralized
         // IBasketHandler bh = main.basketHandler();
         // require(bh.fullyCollateralized(), "RToken uncollateralized");
         // require(bh.isReady(), "basket not ready");
@@ -250,6 +255,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         if (endId == 0) return;
         require(endId <= queue.length, "index out-of-bounds");
+
+        // Cancelling unstake does not require checking if the unstaking was available
         // require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
 
         // Skip executed withdrawals - Both amounts should be 0
@@ -613,7 +620,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function setRewardRatio(uint192 val) public governance {
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;

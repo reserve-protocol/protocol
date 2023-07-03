@@ -453,9 +453,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192[] memory portions,
         uint192 amount
     ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
-        require(basketNonces.length == portions.length, "portions does not mirror basketNonces");
+        require(basketNonces.length == portions.length, "bad portions len");
 
         IERC20[] memory erc20sAll = new IERC20[](main.assetRegistry().size());
+        ICollateral[] memory collsAll = new ICollateral[](erc20sAll.length);
         uint192[] memory refAmtsAll = new uint192[](erc20sAll.length);
 
         uint256 len; // length of return arrays
@@ -467,26 +468,38 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
             // Add-in refAmts contribution from historical basket
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
-                IERC20 erc20 = b.erc20s[j];
-                if (address(erc20) == address(0)) continue;
+                if (address(b.erc20s[j]) == address(0)) continue;
 
-                // Ugly search through erc20sAll
+                // Search through erc20sAll
                 uint256 erc20Index = type(uint256).max;
                 for (uint256 k = 0; k < len; ++k) {
-                    if (erc20 == erc20sAll[k]) {
+                    if (b.erc20s[j] == erc20sAll[k]) {
                         erc20Index = k;
                         continue;
                     }
                 }
 
                 // Add new ERC20 entry if not found
-                uint192 amt = portions[i].mul(b.refAmts[erc20], FLOOR);
+                uint192 amt = portions[i].mul(b.refAmts[b.erc20s[j]], FLOOR);
                 if (erc20Index == type(uint256).max) {
-                    erc20sAll[len] = erc20;
+                    // New entry found
 
-                    // {ref} = {1} * {ref}
-                    refAmtsAll[len] = amt;
-                    ++len;
+                    try main.assetRegistry().toAsset(b.erc20s[j]) returns (IAsset asset) {
+                        if (!asset.isCollateral()) continue; // skip token if not collateral
+
+                        erc20sAll[len] = b.erc20s[j];
+                        collsAll[len] = ICollateral(address(asset));
+
+                        // {ref} = {1} * {ref}
+                        refAmtsAll[len] = amt;
+                        ++len;
+                    } catch (bytes memory errData) {
+                        // untested:
+                        //     OOG pattern tested in other contracts, cost to test here is high
+                        // see: docs/solidity-style.md#Catching-Empty-Data
+                        if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                        // skip token if no longer registered or other non-gas issue
+                    }
                 } else {
                     // {ref} = {1} * {ref}
                     refAmtsAll[erc20Index] += amt;

@@ -411,7 +411,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       const expAmt = decayFn(hndAmt, 1) // 1 period
 
       // Melt
-      await expect(furnace.setRatio(bn('1e17')))
+      await expect(furnace.setRatio(bn('1e13')))
         .to.emit(rToken, 'Melted')
         .withArgs(hndAmt.sub(expAmt))
 
@@ -458,7 +458,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     }
 
     it('Should not revert at extremes', async () => {
-      const ratios = [fp('1'), fp('0'), fp('0.000001069671574938')]
+      const ratios = [bn('1e14'), fp('0'), fp('0.000001069671574938')]
 
       const bals = [fp('1e18'), fp('0'), bn('1e9')]
 

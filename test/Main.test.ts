@@ -1148,10 +1148,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.isRegistered(other.address)).to.equal(false)
     })
 
-    it('Should revert with gas error if cannot reserve 900k gas', async () => {
+    it('Should revert with gas error if cannot reserve 1M gas', async () => {
       expect(await assetRegistry.isRegistered(collateral0.address))
+
       await expect(
-        assetRegistry.unregister(collateral0.address, { gasLimit: bn('9e5') })
+        assetRegistry.unregister(collateral0.address, { gasLimit: bn('1e6') })
       ).to.be.revertedWith('not enough gas to unregister safely')
     })
 
@@ -1233,15 +1234,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         delayUntilDefault: await collateral0.delayUntilDefault(),
       })
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+
       await gasGuzzlingColl.setRevertRefPerTok(true)
-      await assetRegistry.swapRegistered(replacementColl.address, { gasLimit: bn('1e6') })
+      await assetRegistry.swapRegistered(replacementColl.address, { gasLimit: bn('1.1e6') })
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       await gasGuzzlingColl.setRevertRefPerTok(false)
       await basketHandler.refreshBasket()
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      await assetRegistry.swapRegistered(gasGuzzlingColl.address, { gasLimit: bn('1e6') })
+      await assetRegistry.swapRegistered(gasGuzzlingColl.address, { gasLimit: bn('1.1e6') })
       await gasGuzzlingColl.setRevertRefPerTok(true)
-      await assetRegistry.unregister(gasGuzzlingColl.address, { gasLimit: bn('1e6') })
+      await assetRegistry.unregister(gasGuzzlingColl.address, { gasLimit: bn('1.1e6') })
       expect(await assetRegistry.isRegistered(gasGuzzlingColl.address)).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       await basketHandler.refreshBasket()
@@ -1674,8 +1676,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     let eurToken: ERC20Mock
 
     beforeEach(async () => {
-      await upgrades.silenceWarnings()
-
       if (IMPLEMENTATION == Implementation.P0) {
         const BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP0')
         freshBasketHandler = <TestIBasketHandler>((await BasketHandlerFactory.deploy()) as unknown)
@@ -1999,7 +1999,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const amount = fp('10000')
         await expect(
           basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
-        ).to.be.revertedWith('portions does not mirror basketNonces')
+        ).to.be.revertedWith('bad portions len')
       })
 
       it('Should correctly quote the current basket, same as quote()', async () => {
@@ -2285,7 +2285,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expectDelta(balsBefore, quote.quantities, balsAfter)
       })
 
-      it('Should correctly quote a historical redemption with unregistered asset', async () => {
+      it('Should correctly quote historical redemption with almost all assets unregistered', async () => {
         // default usdc & refresh basket to use backup collateral
         await usdcChainlink.updateAnswer(bn('0.8e8')) // default token1
         await daiChainlink.updateAnswer(bn('0.8e8')) // default token0, token2, token3
@@ -2294,8 +2294,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
-        // Unregister asset in previous basket
-        await assetRegistry.connect(owner).unregister(collateral1.address)
+        // Unregister everything except token0
+        const erc20s = await assetRegistry.erc20s()
+        for (const erc20 of erc20s) {
+          if (erc20 != token0.address) {
+            await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
+          }
+        }
+
         /*
           Test Quote
         */
@@ -2304,35 +2310,24 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const amount = fp('10000')
         const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
 
-        expect(quote.erc20s.length).equal(4)
-        expect(quote.quantities.length).equal(4)
+        expect(quote.erc20s.length).equal(1)
+        expect(quote.quantities.length).equal(1)
 
-        const expectedTokens = [token0, token1, token2, token3]
-        const expectedAddresses = expectedTokens.map((t) => t.address)
+        const expectedAddresses = [token0.address]
         const expectedQuantities = [
           fp('0.25')
             .mul(issueAmount)
             .div(await collateral0.refPerTok())
             .div(bn(`1e${18 - (await token0.decimals())}`)),
-          bn('0')
-            .mul(issueAmount)
-            .div(await collateral1.refPerTok())
-            .div(bn(`1e${18 - (await token1.decimals())}`)),
-          fp('0.25')
-            .mul(issueAmount)
-            .div(await collateral2.refPerTok())
-            .div(bn(`1e${18 - (await token2.decimals())}`)),
-          fp('0.25')
-            .mul(issueAmount)
-            .div(await collateral3.refPerTok())
-            .div(bn(`1e${18 - (await token3.decimals())}`)),
         ]
+
         expectEqualArrays(quote.erc20s, expectedAddresses)
         expectEqualArrays(quote.quantities, expectedQuantities)
 
         /*
           Test Custom Redemption
         */
+        const expectedTokens = [token0, token1, token2, token3]
         const balsBefore = await getBalances(addr1.address, expectedTokens)
         await backupToken1.mint(backingManager.address, issueAmount)
 
@@ -2345,13 +2340,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
               amount,
               basketNonces,
               portions,
-              quote.erc20s,
-              quote.quantities
+              expectedAddresses,
+              expectedQuantities
             )
         ).to.not.be.reverted
 
         const balsAfter = await getBalances(addr1.address, expectedTokens)
-        expectDelta(balsBefore, quote.quantities, balsAfter)
+        const expectedDelta = [expectedQuantities[0], bn('0'), bn('0'), bn('0')]
+        expectDelta(balsBefore, expectedDelta, balsAfter)
       })
 
       it('Should correctly quote a historical redemption with an non-collateral asset', async () => {
@@ -2386,20 +2382,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         const amount = fp('10000')
         const quote = await basketHandler.quoteCustomRedemption(basketNonces, portions, amount)
 
-        expect(quote.erc20s.length).equal(4)
-        expect(quote.quantities.length).equal(4)
+        expect(quote.erc20s.length).equal(3)
+        expect(quote.quantities.length).equal(3)
 
-        const expectedTokens = [token0, token1, token2, token3]
+        const expectedTokens = [token0, token2, token3]
         const expectedAddresses = expectedTokens.map((t) => t.address)
         const expectedQuantities = [
           fp('0.25')
             .mul(issueAmount)
             .div(await collateral0.refPerTok())
             .div(bn(`1e${18 - (await token0.decimals())}`)),
-          bn('0')
-            .mul(issueAmount)
-            .div(await collateral1.refPerTok())
-            .div(bn(`1e${18 - (await token1.decimals())}`)),
           fp('0.25')
             .mul(issueAmount)
             .div(await collateral2.refPerTok())
@@ -2637,9 +2629,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await main.connect(other).poke()
     })
 
-    it('Should not allow to poke when frozen', async () => {
+    it('Should allow to poke when frozen', async () => {
       await main.connect(owner).freezeForever()
-      await expect(main.connect(other).poke()).to.be.revertedWith('frozen')
+      await main.connect(other).poke()
     })
 
     it('Should not allow to refresh basket if not OWNER when unfrozen and unpaused', async () => {
@@ -2907,13 +2899,23 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const [low, high] = await collateral0.price()
       await setOraclePrice(collateral0.address, MAX_UINT256.div(2)) // oracle error
 
-      const [lowPrice, highPrice] = await basketHandler.price()
-      const [lotLowPrice, lotHighPrice] = await basketHandler.lotPrice()
+      // lotPrice() should begin at 100%
+      let [lowPrice, highPrice] = await basketHandler.price()
+      let [lotLowPrice, lotHighPrice] = await basketHandler.lotPrice()
       expect(lowPrice).to.equal(0)
       expect(highPrice).to.equal(MAX_UINT192)
-      expect(lotLowPrice).to.be.closeTo(low, low.div(bn('1e5'))) // small decay
+      expect(lotLowPrice).to.be.eq(low)
+      expect(lotHighPrice).to.be.eq(high)
+
+      // Advance time past 100% period -- lotPrice() should begin to fall
+      await advanceTime(await collateral0.oracleTimeout())
+      ;[lowPrice, highPrice] = await basketHandler.price()
+      ;[lotLowPrice, lotHighPrice] = await basketHandler.lotPrice()
+      expect(lowPrice).to.equal(0)
+      expect(highPrice).to.equal(MAX_UINT192)
+      expect(lotLowPrice).to.be.closeTo(low, low.div(bn('1e5'))) // small decay expected
       expect(lotLowPrice).to.be.lt(low)
-      expect(lotHighPrice).to.be.closeTo(high, high.div(bn('1e5'))) // small decay
+      expect(lotHighPrice).to.be.closeTo(high, high.div(bn('1e5'))) // small decay expected
       expect(lotHighPrice).to.be.lt(high)
     })
 

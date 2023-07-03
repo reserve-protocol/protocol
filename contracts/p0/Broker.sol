@@ -10,6 +10,7 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Component.sol";
 
 // Gnosis: uint96 ~= 7e28
@@ -62,7 +63,11 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
     /// @dev Requires setting an allowance in advance
     /// @custom:protected
-    function openTrade(TradeKind kind, TradeRequest memory req) external returns (ITrade) {
+    function openTrade(
+        TradeKind kind,
+        TradeRequest memory req,
+        TradePrices memory prices
+    ) external returns (ITrade) {
         require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
 
@@ -79,7 +84,7 @@ contract BrokerP0 is ComponentP0, IBroker {
             return newBatchAuction(req, caller);
         } else {
             // kind == TradeKind.DUTCH_AUCTION
-            return newDutchAuction(req, ITrading(caller));
+            return newDutchAuction(req, prices, ITrading(caller));
         }
     }
 
@@ -191,7 +196,11 @@ contract BrokerP0 is ComponentP0, IBroker {
         return trade;
     }
 
-    function newDutchAuction(TradeRequest memory req, ITrading caller) private returns (ITrade) {
+    function newDutchAuction(
+        TradeRequest memory req,
+        TradePrices memory prices,
+        ITrading caller
+    ) private returns (ITrade) {
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
         DutchTrade trade = new DutchTrade();
         trades[address(trade)] = true;
@@ -202,7 +211,7 @@ contract BrokerP0 is ComponentP0, IBroker {
             req.sellAmount
         );
 
-        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength);
+        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
         return trade;
     }
 

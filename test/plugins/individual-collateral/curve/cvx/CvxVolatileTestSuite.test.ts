@@ -49,13 +49,13 @@ export const defaultCvxVolatileCollateralOpts: CurveCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('TRICRYPTO'),
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: USDT_USD_FEED, // unused but cannot be zero
-  oracleTimeout: bn('1'), // unused but cannot be zero
+  oracleTimeout: USDT_ORACLE_TIMEOUT, // max of oracleTimeouts
   oracleError: bn('1'), // unused but cannot be zero
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: bn('0'),
-  nTokens: bn('3'),
+  nTokens: 3,
   curvePool: TRI_CRYPTO,
   lpToken: TRI_CRYPTO_TOKEN,
   poolType: CurvePoolType.Plain,

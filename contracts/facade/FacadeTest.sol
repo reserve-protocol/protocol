@@ -53,10 +53,17 @@ contract FacadeTest is IFacadeTest {
         // solhint-disable no-empty-blocks
         try main.backingManager().rebalance(TradeKind.BATCH_AUCTION) {} catch {}
         try main.backingManager().forwardRevenue(erc20s) {} catch {}
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            try rsrTrader.manageToken(erc20s[i], TradeKind.BATCH_AUCTION) {} catch {}
-            try rTokenTrader.manageToken(erc20s[i], TradeKind.BATCH_AUCTION) {} catch {}
-        }
+
+        // Start exact RSR auctions
+        (IERC20[] memory rsrERC20s, TradeKind[] memory rsrKinds) = traderERC20s(rsrTrader, erc20s);
+        try main.rsrTrader().manageTokens(rsrERC20s, rsrKinds) {} catch {}
+
+        // Start exact RToken auctions
+        (IERC20[] memory rTokenERC20s, TradeKind[] memory rTokenKinds) = traderERC20s(
+            rTokenTrader,
+            erc20s
+        );
+        try main.rTokenTrader().manageTokens(rTokenERC20s, rTokenKinds) {} catch {}
         // solhint-enable no-empty-blocks
     }
 
@@ -74,8 +81,14 @@ contract FacadeTest is IFacadeTest {
     /// @custom:static-call
     function totalAssetValue(IRToken rToken) external returns (uint192 total) {
         IMain main = rToken.main();
-        main.poke();
         IAssetRegistry reg = main.assetRegistry();
+
+        require(!main.frozen(), "frozen");
+
+        // Poke Main
+        reg.refresh();
+        main.furnace().melt();
+
         address backingManager = address(main.backingManager());
         IERC20 rsr = main.rsr();
 
@@ -98,5 +111,32 @@ contract FacadeTest is IFacadeTest {
     function wholeBasketsHeldBy(IRToken rToken, address account) external view returns (uint192) {
         BasketRange memory range = rToken.main().basketHandler().basketsHeldBy(account);
         return range.bottom;
+    }
+
+    // === Private ===
+
+    function traderERC20s(IRevenueTrader trader, IERC20[] memory erc20sAll)
+        private
+        view
+        returns (IERC20[] memory erc20s, TradeKind[] memory kinds)
+    {
+        uint256 len;
+        IERC20[] memory traderERC20sAll = new IERC20[](erc20sAll.length);
+        for (uint256 i = 0; i < erc20sAll.length; ++i) {
+            if (
+                address(trader.trades(erc20sAll[i])) == address(0) &&
+                erc20sAll[i].balanceOf(address(trader)) > 1
+            ) {
+                traderERC20sAll[len] = erc20sAll[i];
+                ++len;
+            }
+        }
+
+        erc20s = new IERC20[](len);
+        kinds = new TradeKind[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            erc20s[i] = traderERC20sAll[i];
+            kinds[i] = TradeKind.BATCH_AUCTION;
+        }
     }
 }

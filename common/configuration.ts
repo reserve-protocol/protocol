@@ -325,7 +325,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       EUR: '0x12336777de46b9a6Edd7176E532810149C787bcD',
       rETH: '0xeb1cDb6C2F18173eaC53fEd1DC03fe13286f86ec',
       stETHUSD: '0x6dCCE86FFb3c1FC44Ded9a6E200eF12d0D4256a3',
-      stETHETH: '0x81ff01E93F86f41d3DFf66283Be2aD0a3C284604'
+      stETHETH: '0x81ff01E93F86f41d3DFf66283Be2aD0a3C284604',
     },
     AAVE_LENDING_POOL: '0x3e9E33B84C1cD9037be16AA45A0B296ae5F185AD', // mock
     GNOSIS_EASY_AUCTION: '0x1fbab40c338e2e7243da945820ba680c92ef8281', // canonical
@@ -442,7 +442,7 @@ export interface IGovRoles {
 export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
 export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)
 export const MAX_TARGET_AMT = BigNumber.from(10).pow(21)
-export const MAX_RATIO = BigNumber.from(10).pow(18)
+export const MAX_RATIO = BigNumber.from(10).pow(14)
 export const MAX_TRADE_VOLUME = BigNumber.from(10).pow(48)
 export const MAX_MIN_TRADE_VOLUME = BigNumber.from(10).pow(29)
 export const MIN_THROTTLE_AMT_RATE = BigNumber.from(10).pow(18)

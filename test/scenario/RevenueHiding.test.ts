@@ -252,11 +252,11 @@ describe(`RevenueHiding basket collateral (/w CTokenFiatCollateral) - P${IMPLEME
       // Double exchange rate and launch auctions
       await cDAI.setExchangeRate(fp('2')) // double rate
       await backingManager.forwardRevenue([cDAI.address]) // transfers tokens to Traders
-      await expect(rTokenTrader.manageToken(cDAI.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rTokenTrader.manageTokens([cDAI.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rTokenTrader,
         'TradeStarted'
       )
-      await expect(rsrTrader.manageToken(cDAI.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rsrTrader.manageTokens([cDAI.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rsrTrader,
         'TradeStarted'
       )

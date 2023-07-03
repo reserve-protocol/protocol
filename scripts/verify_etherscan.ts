@@ -42,7 +42,7 @@ async function main() {
     '3_verify_deployer.ts',
     '4_verify_facade.ts',
     '5_verify_facadeWrite.ts',
-    '6_verify_collateral.ts',
+    '6_verify.ts',
     '7_verify_rToken.ts',
     '8_verify_governance.ts',
     'collateral-plugins/verify_convex_stable.ts',

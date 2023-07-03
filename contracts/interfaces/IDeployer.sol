@@ -101,6 +101,10 @@ interface IDeployer is IVersioned {
         address owner,
         DeploymentParams calldata params
     ) external returns (address);
+
+    /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset);
 }
 
 interface TestIDeployer is IDeployer {

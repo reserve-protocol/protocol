@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
 import "../mixins/NetworkConfigLib.sol";
@@ -42,7 +43,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // solhint-disable-next-line var-name-mixedcase
     uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint192 public constant MAX_REWARD_RATIO = FIX_ONE; // {1} 100%
+    uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
 
     // === ERC20 ===
     string public name; // immutable
@@ -210,14 +211,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
     function payoutRewards() external {
-        requireNotFrozen();
         _payoutRewards();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and over-collateralize
     /// the system
     /// @param rsrAmount {qRSR}
-    /// @dev Staking continues while paused/frozen, without reward handouts
+    /// @dev Staking continues while paused/frozen, with reward handouts
     /// @custom:interaction CEI
     // checks:
     //   0 < rsrAmount
@@ -233,7 +233,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function stake(uint256 rsrAmount) public {
         require(rsrAmount > 0, "Cannot stake zero");
 
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
 
         // Mint new stakes
         mintStakes(_msgSender(), rsrAmount);
@@ -382,10 +382,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         if (rsrAmount == 0) return;
 
+        // Payout rewards before updating draftRSR
+        _payoutRewards();
+
         // ==== Transfer RSR from the draft pool
         totalDrafts = newTotalDrafts;
         draftRSR = newDraftRSR;
-
         emit UnstakingCancelled(firstId, endId, draftEra, account, rsrAmount);
 
         // Mint new stakes
@@ -953,7 +955,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @custom:governance
     function setRewardRatio(uint192 val) public {
         requireGovernanceOnly();
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
