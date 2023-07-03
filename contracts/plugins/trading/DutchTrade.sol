@@ -8,7 +8,6 @@ import "../../libraries/NetworkConfigLib.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/IBroker.sol";
 import "../../interfaces/ITrade.sol";
-import "../../mixins/NetworkConfigLib.sol";
 
 uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
 uint192 constant SIXTY_PERCENT = 6e17; // {1} 0.6

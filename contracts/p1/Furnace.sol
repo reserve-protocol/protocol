@@ -5,7 +5,6 @@ import "../libraries/Fixed.sol";
 import "../libraries/NetworkConfigLib.sol";
 import "../interfaces/IFurnace.sol";
 import "./mixins/Component.sol";
-import "../mixins/NetworkConfigLib.sol";
 
 /**
  * @title FurnaceP1

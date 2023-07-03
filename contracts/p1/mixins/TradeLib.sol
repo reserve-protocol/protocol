@@ -68,8 +68,8 @@ library TradeLib {
         // Calculate equivalent buyAmount within [0, FIX_MAX]
         // {buyTok} = {sellTok} * {1} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage)).safeMulDiv(
-            trade.sellPrice,
-            trade.buyPrice,
+            trade.prices.sellLow,
+            trade.prices.buyHigh,
             CEIL
         );
 
