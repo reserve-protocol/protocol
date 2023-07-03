@@ -14,7 +14,7 @@ Call the following functions:
 - `RevenueTrader.cacheComponents()` (for both rsrTrader and rTokenTrader)
 - `Distributor.cacheComponents()`
 
-Collateral / Asset plugins from 2.1.0 do not need to be upgraded with the exception of Compound V2 cToken collateral ([CTokenFiatCollateral.sol](contracts/plugins/assets/compoundv2/CTokenFiatCollateral.sol)), which needs to be swapped in via `AssetRegistry.swapRegistered()`. Skipping this step will result in COMP rewards becoming unclaimable.
+Collateral / Asset plugins from 2.1.0 do not need to be upgraded with the exception of Compound V2 cToken collateral ([CTokenFiatCollateral.sol](contracts/plugins/assets/compoundv2/CTokenFiatCollateral.sol)), which needs to be swapped in via `AssetRegistry.swapRegistered()`. Skipping this step will result in COMP rewards becoming unclaimable. Note that this will change the ERC20 for the collateral plugin, causing the protocol to trade out of the old ERC20. Since COMP rewards are claimed on every transfer, COMP does not need to be claimed beforehand.
 
 #### Optional Steps
 
