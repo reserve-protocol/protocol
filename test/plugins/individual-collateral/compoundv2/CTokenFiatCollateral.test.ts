@@ -284,7 +284,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       shortFreezers: [],
       longFreezers: [],
     }
-
     // Setup owner and unpause
     await facadeWrite.connect(owner).setupGovernance(
       rToken.address,

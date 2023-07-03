@@ -28,7 +28,6 @@ scripts/addresses/31337*
 .\#*
 
 *.orig
-
 .idea
 
 # Scripts for local/test interactions
@@ -37,3 +36,4 @@ scripts/playground.ts
 
 # tenderly deployment/verification artifacts
 deployments/
+backtests/
