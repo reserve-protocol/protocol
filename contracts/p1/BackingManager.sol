@@ -11,6 +11,7 @@ import "../libraries/Fixed.sol";
 import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Trading.sol";
 import "./mixins/RecollateralizationLib.sol";
+import "../mixins/NetworkConfigLib.sol";
 
 /**
  * @title BackingManager

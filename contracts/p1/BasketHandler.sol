@@ -340,7 +340,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 : assetRegistry.toAsset(basket.erc20s[i]).price();
 
             low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
-            high256 += qty.safeMul(highP, RoundingMode.CEIL);
+
+            if (high256 < FIX_MAX) {
+                if (highP == FIX_MAX) {
+                    high256 = FIX_MAX;
+                } else {
+                    high256 += qty.safeMul(highP, RoundingMode.CEIL);
+                }
+            }
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
@@ -452,11 +459,22 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < len; ++i) {
             erc20s[i] = address(erc20sAll[i]);
 
-            // {tok} = {BU} * {ref/BU} / {ref/tok}
-            quantities[i] = safeMulDivFloor(amount, refAmtsAll[i], collsAll[i].refPerTok())
-                .shiftl_toUint(int8(collsAll[i].erc20Decimals()), FLOOR);
-            // marginally more penalizing than its sibling calculation that uses _quantity()
-            // because does not intermediately CEIL as part of the division
+            try assetRegistry.toAsset(IERC20(erc20s[i])) returns (IAsset asset) {
+                if (!asset.isCollateral()) continue; // skip token if no longer registered
+
+                // {tok} = {BU} * {ref/BU} / {ref/tok}
+                quantities[i] = amount
+                    .safeMulDiv(refAmtsAll[i], ICollateral(address(asset)).refPerTok(), FLOOR)
+                    .shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
+
+                // marginally more penalizing than its sibling calculation that uses _quantity()
+                // because does not intermediately CEIL as part of the division
+            } catch (bytes memory errData) {
+                // untested:
+                //     OOG pattern tested in other contracts, cost to test here is high
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            }
         }
     }
 
@@ -598,11 +616,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 if (!asset.isCollateral()) continue; // skip token if no longer registered
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
-                quantities[i] = safeMulDivFloor(
-                    FIX_ONE,
-                    b.refAmts[erc20s[i]],
-                    ICollateral(address(asset)).refPerTok()
-                ).shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
+                quantities[i] = b
+                    .refAmts[erc20s[i]]
+                    .safeDiv(ICollateral(address(asset)).refPerTok(), FLOOR)
+                    .shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
             } catch (bytes memory errData) {
                 // untested:
                 //     OOG pattern tested in other contracts, cost to test here is high
@@ -652,26 +669,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             erc20s[i] = backup.erc20s[i];
         }
         max = backup.max;
-    }
-
-    // === Private ===
-
-    /// @return The floored result of FixLib.mulDiv
-    function safeMulDivFloor(
-        uint192 x,
-        uint192 y,
-        uint192 z
-    ) private view returns (uint192) {
-        try backingManager.mulDiv(x, y, z, FLOOR) returns (uint192 result) {
-            return result;
-        } catch Panic(uint256 errorCode) {
-            // 0x11: overflow
-            // 0x12: div-by-zero
-            assert(errorCode == 0x11 || errorCode == 0x12);
-        } catch (bytes memory reason) {
-            assert(keccak256(reason) == UIntOutofBoundsHash);
-        }
-        return FIX_MAX;
     }
 
     // ==== Storage Gap ====

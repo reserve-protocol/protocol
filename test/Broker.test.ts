@@ -41,6 +41,7 @@ import {
   PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
+import { setOraclePrice } from './utils/oracles'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
@@ -1093,6 +1094,48 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
         const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
+        const withSlippage = withoutSlippage.sub(
+          withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
+        )
+        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
+      })
+
+      it('Should apply full maxTradeSlippage with low maxTradeVolume', async () => {
+        // Set low maxTradeVolume for collateral
+        const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
+        const newCollateral0: FiatCollateral = <FiatCollateral>await FiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral0.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: token0.address,
+          maxTradeVolume: bn(500),
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
+
+        // Refresh and swap collateral
+        await newCollateral0.refresh()
+        await assetRegistry.connect(owner).swapRegistered(newCollateral0.address)
+
+        // Fund trade and initialize
+        await token0.connect(owner).mint(trade.address, amount)
+        await expect(
+          trade.init(
+            backingManager.address,
+            newCollateral0.address,
+            collateral1.address,
+            amount,
+            config.dutchAuctionLength
+          )
+        ).to.not.be.reverted
+
+        // Check trade values
+        const [sellLow, sellHigh] = await newCollateral0.price()
+        const [buyLow, buyHigh] = await collateral1.price()
+        expect(await trade.middlePrice()).to.equal(divCeil(sellHigh.mul(fp('1')), buyLow))
+        const withoutSlippage = sellLow.mul(fp('1')).div(buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )

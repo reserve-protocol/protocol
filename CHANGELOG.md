@@ -28,6 +28,8 @@ Call the following functions, once it is desired to turn on the new features:
 
 Bump solidity version to 0.8.19
 
+Bump solidity version to 0.8.19
+
 - `AssetRegistry` [+1 slot]
   Summary: Other component contracts need to know when refresh() was last called
   - Add last refresh timestamp tracking and expose via `lastRefresh()` getter

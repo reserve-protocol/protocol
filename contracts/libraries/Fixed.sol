@@ -548,6 +548,57 @@ library FixLib {
         if (raw >= FIX_MAX) return FIX_MAX;
         return uint192(raw); // don't need _safeWrap
     }
+
+    /// Multiplies two fixes and divide by a third
+    /// @param a First to multiply
+    /// @param b Second to multiply
+    /// @param c Denominator
+    function safeMulDiv(
+        uint192 a,
+        uint192 b,
+        uint192 c,
+        RoundingMode rounding
+    ) internal pure returns (uint192 result) {
+        if (a == 0 || b == 0) return 0;
+        if (a == FIX_MAX || b == FIX_MAX || c == 0) return FIX_MAX;
+
+        uint256 result_256;
+        unchecked {
+            (uint256 hi, uint256 lo) = fullMul(a, b);
+            if (hi >= c) return FIX_MAX;
+            uint256 mm = mulmod(a, b, c);
+            if (mm > lo) hi -= 1;
+            lo -= mm;
+            uint256 pow2 = c & (0 - c);
+
+            uint256 c_256 = uint256(c);
+            // Warning: Should not access c below this line
+
+            c_256 /= pow2;
+            lo /= pow2;
+            lo += hi * ((0 - pow2) / pow2 + 1);
+            uint256 r = 1;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            r *= 2 - c_256 * r;
+            result_256 = lo * r;
+
+            // Apply rounding
+            if (rounding == CEIL) {
+                if (mm > 0) result_256 += 1;
+            } else if (rounding == ROUND) {
+                if (mm > ((c_256 - 1) / 2)) result_256 += 1;
+            }
+        }
+
+        if (result_256 >= FIX_MAX) return FIX_MAX;
+        return uint192(result_256);
+    }
 }
 
 // ================ a couple pure-uint helpers================

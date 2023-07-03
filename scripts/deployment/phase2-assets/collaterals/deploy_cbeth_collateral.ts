@@ -13,8 +13,7 @@ import {
   fileExists,
 } from '../../common'
 import { priceTimeout, oracleTimeout, combinedError } from '../../utils'
-import { MockV3Aggregator, RethCollateral } from '../../../../typechain'
-import { ContractFactory } from 'ethers'
+import { CBEthCollateral__factory } from '../../../../typechain'
 
 async function main() {
   // ==== Read Configuration ====
@@ -40,33 +39,18 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  const deployedOracle: string[] = []
+  /********  Deploy Coinbase ETH Collateral - CBETH  **************************/
 
-  /********  Deploy Mock Oracle (if needed)  **************************/
-  let rethOracleAddress: string = networkConfig[chainId].chainlinkFeeds.rETH!
-  if (chainId == 5) {
-    const MockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
-    const mockOracle = await MockOracleFactory.connect(deployer).deploy(8, fp(2000))
-    await mockOracle.deployed()
-    console.log(
-      `Deployed MockV3Aggregator on ${hre.network.name} (${chainId}): ${mockOracle.address} `
-    )
-    deployedOracle.push(mockOracle.address)
-    rethOracleAddress = mockOracle.address
-  }
+  const CBETHCollateralFactory: CBEthCollateral__factory = (await hre.ethers.getContractFactory(
+    'CBEthCollateral'
+  )) as CBEthCollateral__factory
 
-  /********  Deploy Rocket Pool ETH Collateral - rETH  **************************/
-
-  const RethCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-    'RethCollateral'
-  )
-
-  const collateral = <RethCollateral>await RethCollateralFactory.connect(deployer).deploy(
+  const collateral = await CBETHCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
       oracleError: combinedError(fp('0.005'), fp('0.02')).toString(), // 0.5% & 2%,
-      erc20: networkConfig[chainId].tokens.rETH,
+      erc20: networkConfig[chainId].tokens.cbETH!,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
@@ -74,17 +58,17 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
-    rethOracleAddress, // refPerTokChainlinkFeed
+    networkConfig[chainId].chainlinkFeeds.cbETH!, // refPerTokChainlinkFeed
     oracleTimeout(chainId, '86400').toString() // refPerTokChainlinkTimeout
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed Rocketpool rETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(`Deployed Coinbase cbETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
-  assetCollDeployments.collateral.rETH = collateral.address
-  assetCollDeployments.erc20s.rETH = networkConfig[chainId].tokens.rETH
+  assetCollDeployments.collateral.cbETH = collateral.address
+  assetCollDeployments.erc20s.cbETH = networkConfig[chainId].tokens.cbETH
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

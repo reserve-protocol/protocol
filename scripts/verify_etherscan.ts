@@ -56,6 +56,7 @@ async function main() {
     'collateral-plugins/verify_cusdcv3.ts',
     'collateral-plugins/verify_reth.ts',
     'collateral-plugins/verify_wsteth.ts',
+    'collateral-plugins/verify_cbeth.ts',
   ]
 
   for (const script of scripts) {

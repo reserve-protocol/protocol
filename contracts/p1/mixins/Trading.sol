@@ -32,8 +32,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     // === Governance param ===
     uint192 public maxTradeSlippage; // {%}
-
     uint192 public minTradeVolume; // {UoA}
+
+    // === 3.0.0 ===
+    uint256 public tradesNonce; // to keep track of how many trades have been opened in total
 
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
@@ -125,6 +127,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         trade = broker.openTrade(kind, req, prices);
         trades[sell] = trade;
         tradesOpen++;
+        tradesNonce++;
 
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
@@ -145,22 +148,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         minTradeVolume = val;
     }
 
-    // === FixLib Helper ===
-
-    /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDiv(
-        uint192 x,
-        uint192 y,
-        uint192 z,
-        RoundingMode round
-    ) external pure returns (uint192) {
-        return x.mulDiv(y, z, round);
-    }
-
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[45] private __gap;
 }

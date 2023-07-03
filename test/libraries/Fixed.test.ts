@@ -504,7 +504,7 @@ describe('In FixLib,', () => {
       const table = commutes.flatMap(([a, b, c]) => [[a, b, c]])
       for (const [a, b, c] of table) {
         expect(await caller.mul(fp(a), fp(b)), `mul(fp(${a}), fp(${b}))`).to.equal(fp(c))
-        expect(await caller.safeMul_(fp(a), fp(b), ROUND), `safeMul(fp(${a}), fp(${b}))`).to.equal(
+        expect(await caller.safeMul(fp(a), fp(b), ROUND), `safeMul(fp(${a}), fp(${b}))`).to.equal(
           fp(c)
         )
       }
@@ -513,7 +513,7 @@ describe('In FixLib,', () => {
     function mulTest(x: string, y: string, result: string) {
       it(`mul(${x}, ${y}) == ${result}`, async () => {
         expect(await caller.mul(fp(x), fp(y))).to.equal(fp(result))
-        expect(await caller.safeMul_(fp(x), fp(y), ROUND)).to.equal(fp(result))
+        expect(await caller.safeMul(fp(x), fp(y), ROUND)).to.equal(fp(result))
       })
     }
 
@@ -531,8 +531,8 @@ describe('In FixLib,', () => {
       for (const [a, b, c] of table) {
         expect(await caller.mul(a, b), `mul(${a}, ${b})`).to.equal(c)
         expect(await caller.mul(b, a), `mul(${b}, ${a})`).to.equal(c)
-        expect(await caller.safeMul_(a, b, ROUND), `safeMul(${b}, ${a})`).to.equal(c)
-        expect(await caller.safeMul_(b, a, ROUND), `safeMul(${b}, ${a})`).to.equal(c)
+        expect(await caller.safeMul(a, b, ROUND), `safeMul(${b}, ${a})`).to.equal(c)
+        expect(await caller.safeMul(b, a, ROUND), `safeMul(${b}, ${a})`).to.equal(c)
       }
     })
 
@@ -547,9 +547,9 @@ describe('In FixLib,', () => {
         expect(await caller.mulRnd(a, b, FLOOR), `mulRnd((${a}, ${b}, FLOOR)`).to.equal(floor)
         expect(await caller.mulRnd(a, b, ROUND), `mulRnd((${a}, ${b}, ROUND)`).to.equal(round)
         expect(await caller.mulRnd(a, b, CEIL), `mulRnd((${a}, ${b}, CEIL)`).to.equal(ceil)
-        expect(await caller.safeMul_(a, b, FLOOR), `safeMul((${a}, ${b}, FLOOR)`).to.equal(floor)
-        expect(await caller.safeMul_(a, b, ROUND), `safeMul((${a}, ${b}, ROUND)`).to.equal(round)
-        expect(await caller.safeMul_(a, b, CEIL), `safeMul((${a}, ${b}, CEIL)`).to.equal(ceil)
+        expect(await caller.safeMul(a, b, FLOOR), `safeMul((${a}, ${b}, FLOOR)`).to.equal(floor)
+        expect(await caller.safeMul(a, b, ROUND), `safeMul((${a}, ${b}, ROUND)`).to.equal(round)
+        expect(await caller.safeMul(a, b, CEIL), `safeMul((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
     it('fails outside its range', async () => {
@@ -558,12 +558,10 @@ describe('In FixLib,', () => {
         .reverted
 
       // SafeMul should not fail
+      await expect(caller.safeMul(MAX_UINT192.div(2).add(1), fp(2), ROUND), 'safeMul(MAX/2 + 2, 2)')
+        .to.not.be.reverted
       await expect(
-        caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), ROUND),
-        'safeMul(MAX/2 + 2, 2)'
-      ).to.not.be.reverted
-      await expect(
-        caller.safeMul_(fp(bn(2).pow(81)), fp(bn(2).pow(81)), ROUND),
+        caller.safeMul(fp(bn(2).pow(81)), fp(bn(2).pow(81)), ROUND),
         'safeMul(2^81, 2^81)'
       ).to.not.be.reverted
     })
@@ -1003,9 +1001,135 @@ describe('In FixLib,', () => {
 
   describe('safeMul', () => {
     it('rounds up to FIX_MAX', async () => {
-      expect(await caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), FLOOR)).to.equal(MAX_UINT192)
-      expect(await caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), ROUND)).to.equal(MAX_UINT192)
-      expect(await caller.safeMul_(MAX_UINT192.div(2).add(1), fp(2), CEIL)).to.equal(MAX_UINT192)
+      expect(await caller.safeMul(MAX_UINT192.div(2).add(1), fp(2), FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeMul(MAX_UINT192.div(2).add(1), fp(2), ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeMul(MAX_UINT192.div(2).add(1), fp(2), CEIL)).to.equal(MAX_UINT192)
+
+      expect(await caller.safeMul(MAX_UINT192.sub(1), MAX_UINT192.sub(1), CEIL)).to.equal(
+        MAX_UINT192
+      )
+    })
+  })
+
+  describe('safeDiv', () => {
+    it('rounds up to FIX_MAX', async () => {
+      expect(await caller.safeDiv(MAX_UINT192, fp(1).sub(1), FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeDiv(MAX_UINT192, fp(1).sub(1), ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeDiv(MAX_UINT192, fp(1).sub(1), CEIL)).to.equal(MAX_UINT192)
+
+      expect(await caller.safeDiv(MAX_UINT192, 0, FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeDiv(MAX_UINT192, 0, ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeDiv(MAX_UINT192, 0, CEIL)).to.equal(MAX_UINT192)
+    })
+
+    it('rounds down to 0', async () => {
+      expect(await caller.safeDiv(0, 0, FLOOR)).to.equal(0)
+      expect(await caller.safeDiv(0, 0, ROUND)).to.equal(0)
+      expect(await caller.safeDiv(0, 0, CEIL)).to.equal(0)
+
+      expect(await caller.safeDiv(MAX_UINT192.div(fp(1)).sub(1), MAX_UINT192, FLOOR)).to.equal(0)
+      expect(await caller.safeDiv(MAX_UINT192.div(fp(1)).sub(1), MAX_UINT192, ROUND)).to.equal(1)
+      expect(await caller.safeDiv(MAX_UINT192.div(fp(2)).sub(1), MAX_UINT192, ROUND)).to.equal(0)
+      expect(await caller.safeDiv(MAX_UINT192.div(fp(1)).sub(1), MAX_UINT192, CEIL)).to.equal(1)
+      expect(await caller.safeDiv(MAX_UINT192.div(fp(2)).sub(1), MAX_UINT192, CEIL)).to.equal(1)
+    })
+  })
+
+  describe('safeMulDiv', () => {
+    it('resolves to FIX_MAX', async () => {
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(2), fp(1), FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(2), fp(1), ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(2), fp(1), CEIL)).to.equal(MAX_UINT192)
+
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(1), fp(1).div(2), FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(1), fp(1).div(2), ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(1), fp(1).div(2), CEIL)).to.equal(MAX_UINT192)
+
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, fp(1), FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, fp(1), ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, fp(1), CEIL)).to.equal(MAX_UINT192)
+
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, fp(1).div(2), FLOOR)).to.equal(
+        MAX_UINT192
+      )
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, fp(1).div(2), ROUND)).to.equal(
+        MAX_UINT192
+      )
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, fp(1).div(2), CEIL)).to.equal(
+        MAX_UINT192
+      )
+
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), fp(1), FLOOR)
+      ).to.equal(MAX_UINT192)
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), fp(1), ROUND)
+      ).to.equal(MAX_UINT192)
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), fp(1), CEIL)
+      ).to.equal(MAX_UINT192)
+
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, MAX_UINT192, FLOOR)).to.equal(
+        MAX_UINT192
+      )
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, MAX_UINT192, ROUND)).to.equal(
+        MAX_UINT192
+      )
+      expect(await caller.safeMulDiv(MAX_UINT192, MAX_UINT192, MAX_UINT192, CEIL)).to.equal(
+        MAX_UINT192
+      )
+
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), MAX_UINT192.sub(1), FLOOR)
+      ).to.equal(MAX_UINT192.sub(10))
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), MAX_UINT192.sub(1), ROUND)
+      ).to.equal(MAX_UINT192.sub(10))
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.sub(1), MAX_UINT192.sub(10), MAX_UINT192.sub(1), CEIL)
+      ).to.equal(MAX_UINT192.sub(10))
+
+      expect(await caller.safeMulDiv(fp(1).sub(1), fp(1).add(1), fp(1).sub(1), FLOOR)).to.equal(
+        fp(1).add(1)
+      )
+      expect(await caller.safeMulDiv(fp(1).sub(1), fp(1).add(1), fp(1).sub(1), ROUND)).to.equal(
+        fp(1).add(1)
+      )
+      expect(await caller.safeMulDiv(fp(1).sub(1), fp(1).add(1), fp(1).sub(1), CEIL)).to.equal(
+        fp(1).add(1)
+      )
+    })
+
+    it('rounds up to FIX_MAX', async () => {
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(1), fp(1).sub(1), FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(1), fp(1).sub(1), ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(1), fp(1).sub(1), CEIL)).to.equal(MAX_UINT192)
+
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(1), 0, FLOOR)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(1), 0, ROUND)).to.equal(MAX_UINT192)
+      expect(await caller.safeMulDiv(MAX_UINT192, fp(1), 0, CEIL)).to.equal(MAX_UINT192)
+    })
+
+    it('rounds down to 0', async () => {
+      expect(await caller.safeMulDiv(0, fp(1), 0, FLOOR)).to.equal(0)
+      expect(await caller.safeMulDiv(0, fp(1), 0, ROUND)).to.equal(0)
+      expect(await caller.safeMulDiv(0, fp(1), 0, CEIL)).to.equal(0)
+
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.div(fp(1)).sub(1), fp(1), MAX_UINT192, FLOOR)
+      ).to.equal(0)
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.div(fp(1)).sub(1), fp(1), MAX_UINT192, ROUND)
+      ).to.equal(1)
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.div(fp(2)).sub(1), fp(1), MAX_UINT192, ROUND)
+      ).to.equal(0)
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.div(fp(1)).sub(1), fp(1), MAX_UINT192, CEIL)
+      ).to.equal(1)
+      expect(
+        await caller.safeMulDiv(MAX_UINT192.div(fp(2)).sub(1), fp(1), MAX_UINT192, CEIL)
+      ).to.equal(1)
     })
   })
 

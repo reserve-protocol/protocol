@@ -2591,6 +2591,50 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
         })
 
+        it('Should not return bid amount before auction starts', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+
+          // Cannot get bid amount yet
+          await expect(
+            trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
+          ).to.be.revertedWith('auction not started')
+
+          // Advance to start time
+          const start = await trade.startTime()
+          await advanceToTimestamp(start)
+
+          // Now we can get bid amount
+          const actual = await trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
+          expect(actual).to.be.gt(bn(0))
+        })
+
+        it('Should allow one bidder', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2))
+          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+
+          // Advance to auction on-going
+          await advanceToTimestamp((await trade.endTime()) - 1000)
+
+          // Bid
+          await rToken.connect(addr1).approve(trade.address, initialBal)
+          await trade.connect(addr1).bid()
+          expect(await trade.bidder()).to.equal(addr1.address)
+
+          // Cannot bid once is settled
+          await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
+        })
+
         it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
           issueAmount = issueAmount.div(10000)
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)

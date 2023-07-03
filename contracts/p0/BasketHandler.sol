@@ -402,7 +402,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 : reg.toAsset(basket.erc20s[i]).price();
 
             low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
-            high256 += qty.safeMul(highP, RoundingMode.CEIL);
+
+            if (high256 < FIX_MAX) {
+                if (highP == FIX_MAX) {
+                    high256 = FIX_MAX;
+                } else {
+                    high256 += qty.safeMul(highP, RoundingMode.CEIL);
+                }
+            }
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
@@ -507,11 +514,26 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < len; ++i) {
             erc20s[i] = address(erc20sAll[i]);
 
-            // {tok} = {BU} * {ref/BU} / {ref/tok}
-            quantities[i] = safeMulDivFloor(amount, refAmtsAll[i], collsAll[i].refPerTok())
-                .shiftl_toUint(int8(collsAll[i].erc20Decimals()), FLOOR);
-            // marginally more penalizing than its sibling calculation that uses _quantity()
-            // because does not intermediately CEIL as part of the division
+            try main.assetRegistry().toAsset(IERC20(erc20s[i])) returns (IAsset asset) {
+                if (!asset.isCollateral()) continue; // skip token if no longer registered
+                quantities[i] = FIX_MAX;
+
+                // prevent div-by-zero
+                uint192 refPerTok = ICollateral(address(asset)).refPerTok();
+                if (refPerTok == 0) continue;
+
+                // {tok} = {BU} * {ref/BU} / {ref/tok}
+
+                quantities[i] = amount.safeMulDiv(refAmtsAll[i], refPerTok, FLOOR).shiftl_toUint(
+                    int8(asset.erc20Decimals()),
+                    FLOOR
+                );
+                // marginally more penalizing than its sibling calculation that uses _quantity()
+                // because does not intermediately CEIL as part of the division
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            }
         }
     }
 
@@ -796,25 +818,5 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         } catch {
             return false;
         }
-    }
-
-    // === Private ===
-
-    /// @return The floored result of FixLib.mulDiv
-    function safeMulDivFloor(
-        uint192 x,
-        uint192 y,
-        uint192 z
-    ) private view returns (uint192) {
-        try main.backingManager().mulDiv(x, y, z, FLOOR) returns (uint192 result) {
-            return result;
-        } catch Panic(uint256 errorCode) {
-            // 0x11: overflow
-            // 0x12: div-by-zero
-            assert(errorCode == 0x11 || errorCode == 0x12);
-        } catch (bytes memory reason) {
-            assert(keccak256(reason) == UIntOutofBoundsHash);
-        }
-        return FIX_MAX;
     }
 }

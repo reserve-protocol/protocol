@@ -10,6 +10,7 @@ import "../interfaces/ITrade.sol";
 import "../libraries/Fixed.sol";
 import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Component.sol";
+import "../mixins/NetworkConfigLib.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../plugins/trading/GnosisTrade.sol";
 
