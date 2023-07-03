@@ -390,7 +390,7 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy CToken Fiat Collateral - cDAI  **************************/
-  const CTokenFactory = await ethers.getContractFactory('CTokenVault')
+  const CTokenFactory = await ethers.getContractFactory('CTokenWrapper')
   const cDai = await ethers.getContractAt('IERC20Metadata', networkConfig[chainId].tokens.cDAI!)
 
   const cDaiVault = await CTokenFactory.deploy(

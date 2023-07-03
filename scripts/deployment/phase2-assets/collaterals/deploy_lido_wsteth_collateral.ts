@@ -40,6 +40,30 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
+  const deployedOracle: string[] = []
+
+  /********  Deploy Mock Oracle (if needed)  **************************/
+  let stethUsdOracleAddress: string = networkConfig[chainId].chainlinkFeeds.stETHUSD!
+  let stethEthOracleAddress: string = networkConfig[chainId].chainlinkFeeds.stETHETH!
+  if (chainId == 5) {
+    const MockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
+    const mockStethUsdOracle = await MockOracleFactory.connect(deployer).deploy(8, bn(2000e8))
+    await mockStethUsdOracle.deployed()
+    console.log(
+      `Deployed MockV3Aggregator on ${hre.network.name} (${chainId}): ${mockStethUsdOracle.address} `
+    )
+    deployedOracle.push(mockStethUsdOracle.address)
+    stethUsdOracleAddress = mockStethUsdOracle.address
+
+    const mockStethEthOracle = await MockOracleFactory.connect(deployer).deploy(8, bn(1e8))
+    await mockStethEthOracle.deployed()
+    console.log(
+      `Deployed MockV3Aggregator on ${hre.network.name} (${chainId}): ${mockStethEthOracle.address} `
+    )
+    deployedOracle.push(mockStethEthOracle.address)
+    stethEthOracleAddress = mockStethEthOracle.address
+  }
+
   /********  Deploy Lido Staked ETH Collateral - wstETH  **************************/
 
   const LidoStakedEthCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
@@ -51,7 +75,7 @@ async function main() {
   ).deploy(
     {
       priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.stETHUSD,
+      chainlinkFeed: stethUsdOracleAddress,
       oracleError: fp('0.01').toString(), // 1%: only for stETHUSD feed
       erc20: networkConfig[chainId].tokens.wstETH,
       maxTradeVolume: fp('1e6').toString(), // $1m,
@@ -61,7 +85,7 @@ async function main() {
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
-    networkConfig[chainId].chainlinkFeeds.stETHETH, // targetPerRefChainlinkFeed
+    stethEthOracleAddress, // targetPerRefChainlinkFeed
     oracleTimeout(chainId, '86400').toString() // targetPerRefChainlinkTimeout
   )
   await collateral.deployed()

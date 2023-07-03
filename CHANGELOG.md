@@ -13,6 +13,8 @@ Collateral / Asset plugins from 2.1.0 do not need to be upgraded
 
 #### Core Protocol Contracts
 
+Bump solidity version to 0.8.19
+
 - `AssetRegistry` [+1 slot]
   Summary: Other component contracts need to know when refresh() was last called
   - Add last refresh timestamp tracking and expose via `lastRefresh()` getter

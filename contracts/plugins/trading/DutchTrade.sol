@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libraries/Fixed.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/ITrade.sol";
+import "../../mixins/NetworkConfigLib.sol";
 
 uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
 uint192 constant SIXTY_PERCENT = 6e17; // {1} 0.6
@@ -44,6 +45,9 @@ contract DutchTrade is ITrade {
 
     TradeKind public constant KIND = TradeKind.DUTCH_AUCTION;
 
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
+
     TradeStatus public status; // reentrancy protection
 
     ITrading public origin; // the address that initialized the contract
@@ -54,7 +58,7 @@ contract DutchTrade is ITrade {
     uint192 public sellAmount; // {sellTok}
 
     // The auction runs from [startTime, endTime], inclusive
-    uint48 public startTime; // {s} when the dutch auction begins (12s after init())
+    uint48 public startTime; // {s} when the dutch auction begins (one block after init())
     uint48 public endTime; // {s} when the dutch auction ends if no bids are received
 
     // highPrice is always 1000x the middlePrice, so we don't need to track it explicitly
@@ -88,6 +92,10 @@ contract DutchTrade is ITrade {
 
         // {qBuyTok} = {sellTok} * {buyTok/sellTok} * {qBuyTok/buyTok}
         return sellAmount.mul(price, CEIL).shiftl_toUint(int8(buy.decimals()), CEIL);
+    }
+
+    constructor() {
+        ONE_BLOCK = NetworkConfigLib.blocktime();
     }
 
     // === External ===

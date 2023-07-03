@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -402,7 +402,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 : reg.toAsset(basket.erc20s[i]).price();
 
             low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
-            high256 += qty.safeMul(highP, RoundingMode.CEIL);
+
+            if (high256 < FIX_MAX) {
+                if (highP == FIX_MAX) {
+                    high256 = FIX_MAX;
+                } else {
+                    high256 += qty.safeMul(highP, RoundingMode.CEIL);
+                }
+            }
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
@@ -503,7 +510,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 if (refPerTok == 0) continue;
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
-                quantities[i] = safeMulDivFloor(amount, refAmtsAll[i], refPerTok).shiftl_toUint(
+
+                quantities[i] = amount.safeMulDiv(refAmtsAll[i], refPerTok, FLOOR).shiftl_toUint(
                     int8(asset.erc20Decimals()),
                     FLOOR
                 );
@@ -797,25 +805,5 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         } catch {
             return false;
         }
-    }
-
-    // === Private ===
-
-    /// @return The floored result of FixLib.mulDiv
-    function safeMulDivFloor(
-        uint192 x,
-        uint192 y,
-        uint192 z
-    ) private view returns (uint192) {
-        try main.backingManager().mulDiv(x, y, z, FLOOR) returns (uint192 result) {
-            return result;
-        } catch Panic(uint256 errorCode) {
-            // 0x11: overflow
-            // 0x12: div-by-zero
-            assert(errorCode == 0x11 || errorCode == 0x12);
-        } catch (bytes memory reason) {
-            assert(keccak256(reason) == UIntOutofBoundsHash);
-        }
-        return FIX_MAX;
     }
 }

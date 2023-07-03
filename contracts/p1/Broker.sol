@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -9,6 +9,7 @@ import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
 import "../libraries/Fixed.sol";
 import "./mixins/Component.sol";
+import "../mixins/NetworkConfigLib.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../plugins/trading/GnosisTrade.sol";
 
@@ -23,8 +24,9 @@ contract BrokerP1 is ComponentP1, IBroker {
     using Clones for address;
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
-    uint48 public constant MIN_AUCTION_LENGTH = ONE_BLOCK * 2; // {s} min auction length - 2 blocks
-    // warning: blocktime <= 12s assumption
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable MIN_AUCTION_LENGTH; // {s} 2 blocks based on network
 
     IBackingManager private backingManager;
     IRevenueTrader private rsrTrader;
@@ -58,6 +60,11 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 2;
+    }
 
     // effects: initial parameters are set
     function init(

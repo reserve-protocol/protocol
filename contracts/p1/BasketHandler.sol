@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -17,6 +17,8 @@ import "./mixins/Component.sol";
  * @title BasketHandler
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
+
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using BasketLibP1 for Basket;
     using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
@@ -337,7 +339,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 : assetRegistry.toAsset(basket.erc20s[i]).price();
 
             low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
-            high256 += qty.safeMul(highP, RoundingMode.CEIL);
+
+            if (high256 < FIX_MAX) {
+                if (highP == FIX_MAX) {
+                    high256 = FIX_MAX;
+                } else {
+                    high256 += qty.safeMul(highP, RoundingMode.CEIL);
+                }
+            }
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
@@ -401,6 +410,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // Add-in refAmts contribution from historical basket
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
                 IERC20 erc20 = b.erc20s[j];
+                // untestable:
+                //     previous baskets erc20s do not contain the zero address
                 if (address(erc20) == address(0)) continue;
 
                 // Ugly search through erc20sAll
@@ -438,11 +449,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 if (!asset.isCollateral()) continue; // skip token if no longer registered
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
-                quantities[i] = safeMulDivFloor(
-                    amount,
-                    refAmtsAll[i],
-                    ICollateral(address(asset)).refPerTok()
-                ).shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
+                quantities[i] = amount
+                    .safeMulDiv(refAmtsAll[i], ICollateral(address(asset)).refPerTok(), FLOOR)
+                    .shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
+
                 // marginally more penalizing than its sibling calculation that uses _quantity()
                 // because does not intermediately CEIL as part of the division
             } catch (bytes memory errData) {
@@ -531,12 +541,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         IERC20[] calldata newERC20s,
         uint192[] calldata newTargetAmts
     ) private {
-        // Empty _targetAmts mapping
-        while (_targetAmts.length() > 0) {
-            (bytes32 key, ) = _targetAmts.at(0);
-            _targetAmts.remove(key);
-        }
-
         // Populate _targetAmts mapping with old basket config
         uint256 len = config.erc20s.length;
         for (uint256 i = 0; i < len; ++i) {
@@ -598,11 +602,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 if (!asset.isCollateral()) continue; // skip token if no longer registered
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
-                quantities[i] = safeMulDivFloor(
-                    FIX_ONE,
-                    b.refAmts[erc20s[i]],
-                    ICollateral(address(asset)).refPerTok()
-                ).shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
+                quantities[i] = b
+                    .refAmts[erc20s[i]]
+                    .safeDiv(ICollateral(address(asset)).refPerTok(), FLOOR)
+                    .shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
             } catch (bytes memory errData) {
                 // untested:
                 //     OOG pattern tested in other contracts, cost to test here is high
@@ -652,26 +655,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             erc20s[i] = backup.erc20s[i];
         }
         max = backup.max;
-    }
-
-    // === Private ===
-
-    /// @return The floored result of FixLib.mulDiv
-    function safeMulDivFloor(
-        uint192 x,
-        uint192 y,
-        uint192 z
-    ) private view returns (uint192) {
-        try backingManager.mulDiv(x, y, z, FLOOR) returns (uint192 result) {
-            return result;
-        } catch Panic(uint256 errorCode) {
-            // 0x11: overflow
-            // 0x12: div-by-zero
-            assert(errorCode == 0x11 || errorCode == 0x12);
-        } catch (bytes memory reason) {
-            assert(keccak256(reason) == UIntOutofBoundsHash);
-        }
-        return FIX_MAX;
     }
 
     // ==== Storage Gap ====

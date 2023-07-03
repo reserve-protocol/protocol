@@ -64,11 +64,17 @@ async function main() {
       name: 'backingManager',
       desc: 'BackingManager',
       contract: 'contracts/p1/BackingManager.sol:BackingManagerP1',
+      libraries: {
+        'RecollateralizationLibP1': deployments.tradingLib,
+      }
     },
     {
       name: 'basketHandler',
       desc: 'BasketHandler',
       contract: 'contracts/p1/BasketHandler.sol:BasketHandlerP1',
+      libraries: {
+        'BasketLibP1': deployments.basketLib,
+      }
     },
     {
       name: 'broker',

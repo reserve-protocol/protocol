@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IAsset.sol";
@@ -61,11 +61,10 @@ library TradeLib {
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
         // {buyTok} = {sellTok} * {1} * {UoA/sellTok} / {UoA/buyTok}
-        uint192 b = safeMulDivCeil(
-            ITrading(address(this)),
-            s.mul(FIX_ONE.minus(maxTradeSlippage)),
-            trade.sellPrice, // {UoA/sellTok}
-            trade.buyPrice // {UoA/buyTok}
+        uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage)).safeMulDiv(
+            trade.sellPrice,
+            trade.buyPrice,
+            CEIL
         );
 
         // {*tok} => {q*Tok}
@@ -147,28 +146,6 @@ library TradeLib {
             // Trading platforms often don't allow token quanta trades for rounding reasons
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
-    }
-
-    /// @return The result of FixLib.mulDiv bounded from above by FIX_MAX in the case of overflow
-    function safeMulDivCeil(
-        ITrading trader,
-        uint192 x,
-        uint192 y,
-        uint192 z
-    ) internal pure returns (uint192) {
-        try trader.mulDiv(x, y, z, CEIL) returns (uint192 result) {
-            return result;
-        } catch Panic(uint256 errorCode) {
-            // 0x11: overflow
-            // 0x12: div-by-zero
-            // untestable:
-            //      Overflow is protected against and checked for in FixLib.mulDiv()
-            //      Div-by-zero is NOT protected against, but no caller will ever use 0 for z
-            assert(errorCode == 0x11 || errorCode == 0x12);
-        } catch (bytes memory reason) {
-            assert(keccak256(reason) == UIntOutofBoundsHash);
-        }
-        return FIX_MAX;
     }
 
     // === Private ===

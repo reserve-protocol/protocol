@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../libraries/Fixed.sol";
@@ -62,13 +62,8 @@ interface ITrading is IComponent, IRewardableComponent {
     /// @return The number of ongoing trades open
     function tradesOpen() external view returns (uint48);
 
-    /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDiv(
-        uint192 x,
-        uint192 y,
-        uint192 z,
-        RoundingMode rounding
-    ) external pure returns (uint192);
+    /// @return The number of total trades ever opened
+    function tradesNonce() external view returns (uint256);
 }
 
 interface TestITrading is ITrading {

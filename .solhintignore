@@ -18,4 +18,5 @@ contracts/libraries/Fixed.sol
 
 contracts/vendor
 contracts/plugins/assets/compound/vendor
-contracts/plugins/assets/convex/vendor
+contracts/plugins/assets/curve/crv
+contracts/plugins/assets/curve/cvx

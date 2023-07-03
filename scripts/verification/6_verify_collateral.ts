@@ -15,7 +15,7 @@ import {
   revenueHiding,
   verifyContract,
 } from '../deployment/utils'
-import { ATokenMock, ATokenFiatCollateral } from '../../typechain'
+import { ATokenMock, ATokenFiatCollateral, ICToken, CTokenFiatCollateral } from '../../typechain'
 
 let deployments: IAssetCollDeployments
 
@@ -70,7 +70,7 @@ async function main() {
       'Static ' + (await aToken.name()),
       's' + (await aToken.symbol()),
     ],
-    'contracts/plugins/assets/aave/StaticATokenLM.sol:StaticATokenLM'
+    'contracts/plugins/assets/aave/vendor/StaticATokenLM.sol:StaticATokenLM'
   )
   /********  Verify ATokenFiatCollateral - aDAI  **************************/
   await verifyContract(
@@ -92,6 +92,25 @@ async function main() {
     ],
     'contracts/plugins/assets/aave/ATokenFiatCollateral.sol:ATokenFiatCollateral'
   )
+  /********  Verify CTokenWrapper - cDAI  **************************/
+  const cToken: ICToken = <ICToken>(
+    await ethers.getContractAt('ICToken', networkConfig[chainId].tokens.cDAI as string)
+  )
+  const cTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
+    await ethers.getContractAt('CTokenFiatCollateral', deployments.collateral.cDAI as string)
+  )
+
+  await verifyContract(
+    chainId,
+    await cTokenCollateral.erc20(),
+    [
+      cToken.address,
+      `${await cToken.name()} Vault`,
+      `${await cToken.symbol()}-VAULT`,
+      networkConfig[chainId].COMPTROLLER!,
+    ],
+    'contracts/plugins/assets/compoundv2/CTokenWrapper.sol:CTokenWrapper'
+  )
   /********************** Verify CTokenFiatCollateral - cDAI  ****************************************/
   await verifyContract(
     chainId,
@@ -101,15 +120,14 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI,
         oracleError: fp('0.0025').toString(), // 0.25%
-        erc20: networkConfig[chainId].tokens.cDAI,
+        erc20: deployments.erc20s.cDAI,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: oracleTimeout(chainId, '3600').toString(),
         targetName: hre.ethers.utils.formatBytes32String('USD'),
         defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
-      revenueHiding.toString(),
-      networkConfig[chainId].COMPTROLLER,
+      revenueHiding.toString()
     ],
     'contracts/plugins/assets/compoundv2/CTokenFiatCollateral.sol:CTokenFiatCollateral'
   )
@@ -127,7 +145,7 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
         oracleError: combinedBTCWBTCError.toString(),
-        erc20: networkConfig[chainId].tokens.cWBTC,
+        erc20: deployments.erc20s.cWBTC,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
         targetName: hre.ethers.utils.formatBytes32String('BTC'),
@@ -136,8 +154,7 @@ async function main() {
       },
       networkConfig[chainId].chainlinkFeeds.BTC,
       oracleTimeout(chainId, '3600').toString(),
-      revenueHiding.toString(),
-      networkConfig[chainId].COMPTROLLER,
+      revenueHiding.toString()
     ],
     'contracts/plugins/assets/compoundv2/CTokenNonFiatCollateral.sol:CTokenNonFiatCollateral'
   )
@@ -150,7 +167,7 @@ async function main() {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
         oracleError: fp('0.005').toString(), // 0.5%
-        erc20: networkConfig[chainId].tokens.cETH,
+        erc20: deployments.erc20s.cETH,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: oracleTimeout(chainId, '3600').toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
@@ -158,8 +175,7 @@ async function main() {
         delayUntilDefault: '0',
       },
       revenueHiding.toString(),
-      '18',
-      networkConfig[chainId].COMPTROLLER,
+      '18'
     ],
     'contracts/plugins/assets/compoundv2/CTokenSelfReferentialCollateral.sol:CTokenSelfReferentialCollateral'
   )

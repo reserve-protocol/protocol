@@ -1,4 +1,4 @@
-import { CTokenVault, ICToken, IERC20Metadata } from '../../../../typechain'
+import { CTokenWrapper, ICToken, IERC20Metadata } from '../../../../typechain'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { BigNumberish } from 'ethers'
 import { getResetFork } from '../helpers'
@@ -8,7 +8,7 @@ export const mintFToken = async (
   underlying: IERC20Metadata,
   holderUnderlying: string,
   fToken: ICToken,
-  fTokenVault: CTokenVault,
+  fTokenVault: CTokenWrapper,
   amount: BigNumberish,
   recipient: string
 ) => {
@@ -17,7 +17,7 @@ export const mintFToken = async (
     await underlying.connect(signer).approve(fToken.address, balUnderlying)
     await fToken.connect(signer).mint(balUnderlying)
     await fToken.connect(signer).approve(fTokenVault.address, amount)
-    await fTokenVault.connect(signer).mint(amount, recipient)
+    await fTokenVault.connect(signer).deposit(amount, recipient)
   })
 }
 

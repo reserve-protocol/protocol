@@ -18,7 +18,7 @@ import {
   Asset,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
-  CTokenVaultMock,
+  CTokenWrapperMock,
   ERC20Mock,
   FiatCollateral,
   IAssetRegistry,
@@ -37,6 +37,7 @@ import {
   ORACLE_TIMEOUT,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
+  VERSION,
 } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
@@ -51,7 +52,7 @@ describe('Assets contracts #fast', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenVaultMock
+  let cToken: CTokenWrapperMock
 
   // Assets
   let collateral0: FiatCollateral
@@ -111,8 +112,8 @@ describe('Assets contracts #fast', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    cToken = <CTokenVaultMock>(
-      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    cToken = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
     )
 
     await rsr.connect(wallet).mint(wallet.address, amt)
@@ -137,6 +138,7 @@ describe('Assets contracts #fast', () => {
       expect(await rsrAsset.isCollateral()).to.equal(false)
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await rsr.decimals()).to.equal(18)
+      expect(await rsrAsset.version()).to.equal(VERSION)
       expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await rsrAsset.bal(wallet.address)).to.equal(amt)
       await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
@@ -146,6 +148,7 @@ describe('Assets contracts #fast', () => {
       expect(await compAsset.isCollateral()).to.equal(false)
       expect(await compAsset.erc20()).to.equal(compToken.address)
       expect(await compToken.decimals()).to.equal(18)
+      expect(await compAsset.version()).to.equal(VERSION)
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await compAsset.bal(wallet.address)).to.equal(amt)
       await expectPrice(compAsset.address, fp('1'), ORACLE_ERROR, true)
@@ -155,6 +158,7 @@ describe('Assets contracts #fast', () => {
       expect(await aaveAsset.isCollateral()).to.equal(false)
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
       expect(await aaveToken.decimals()).to.equal(18)
+      expect(await aaveAsset.version()).to.equal(VERSION)
       expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await aaveAsset.bal(wallet.address)).to.equal(amt)
       await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, true)
@@ -164,6 +168,7 @@ describe('Assets contracts #fast', () => {
       expect(await rTokenAsset.isCollateral()).to.equal(false)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await rToken.decimals()).to.equal(18)
+      expect(await rTokenAsset.version()).to.equal(VERSION)
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await rTokenAsset.bal(wallet.address)).to.equal(amt)
       await expectRTokenPrice(
@@ -301,6 +306,12 @@ describe('Assets contracts #fast', () => {
         config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+
+      // Should have lot price, equal to price when feed works OK
+      const [lowPrice, highPrice] = await rTokenAsset.price()
+      const [lotLow, lotHigh] = await rTokenAsset.lotPrice()
+      expect(lotLow).to.equal(lowPrice)
+      expect(lotHigh).to.equal(highPrice)
     })
 
     it('Should calculate trade min correctly', async () => {
@@ -389,7 +400,7 @@ describe('Assets contracts #fast', () => {
       await invalidFiatCollateral.setSimplyRevert(false)
       await expect(invalidFiatCollateral.price()).to.be.reverted
 
-      //  Check RToken price reverrts
+      //  Check RToken price reverts
       await expect(rTokenAsset.price()).to.be.reverted
     })
 

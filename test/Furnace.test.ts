@@ -6,7 +6,7 @@ import hre, { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
 import {
-  CTokenVaultMock,
+  CTokenWrapperMock,
   ERC20Mock,
   StaticATokenMock,
   TestIFurnace,
@@ -52,7 +52,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let token2: StaticATokenMock
-  let token3: CTokenVaultMock
+  let token3: CTokenWrapperMock
 
   let collateral0: Collateral
   let collateral1: Collateral
@@ -85,8 +85,8 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock>(
-      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    token3 = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
     )
 
     // Mint Tokens
@@ -103,18 +103,18 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     // Applies to all components - used here as an example
     it('Deployment does not accept invalid main address', async () => {
       let FurnaceFactory: ContractFactory
+      let newFurnace: TestIFurnace
       if (IMPLEMENTATION == Implementation.P0) {
         FurnaceFactory = await ethers.getContractFactory('FurnaceP0')
-        return <TestIFurnace>await FurnaceFactory.deploy()
+        newFurnace = <TestIFurnace>await FurnaceFactory.deploy()
       } else if (IMPLEMENTATION == Implementation.P1) {
         FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
-        return <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
+        newFurnace = <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
           kind: 'uups',
         })
       } else {
         throw new Error('PROTO_IMPL must be set to either `0` or `1`')
       }
-      const newFurnace = await FurnaceFactory.deploy()
       await expect(newFurnace.init(ZERO_ADDRESS, config.rewardRatio)).to.be.revertedWith(
         'main is zero address'
       )
@@ -237,7 +237,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       // Advance one period
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await advanceTime(Number(ONE_PERIOD))
 
       // Melt
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
@@ -256,7 +256,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
       // Get past first noop melt
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await advanceTime(Number(ONE_PERIOD))
 
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 

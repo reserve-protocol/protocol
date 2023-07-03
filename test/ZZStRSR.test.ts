@@ -21,7 +21,7 @@ import {
   TestIMain,
   TestIRToken,
   TestIStRSR,
-  CTokenVaultMock,
+  CTokenWrapperMock,
 } from '../typechain'
 import { IConfig, MAX_RATIO, MAX_UNSTAKING_DELAY } from '../common/configuration'
 import { CollateralStatus, MAX_UINT256, ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
@@ -79,7 +79,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let token2: StaticATokenMock
-  let token3: CTokenVaultMock
+  let token3: CTokenWrapperMock
   let collateral0: Collateral
   let collateral1: Collateral
   let collateral2: Collateral
@@ -178,8 +178,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock>(
-      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    token3 = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
     )
   })
 
@@ -667,6 +667,12 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Exchange rate remains steady
       expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+
+      // Cancelling the unstake with invalid index does nothing
+      await expect(stRSR.connect(addr1).cancelUnstake(0)).to.not.emit(stRSR, 'UnstakingCancelled')
+      await expect(stRSR.connect(addr1).cancelUnstake(2)).to.be.revertedWith('index out-of-bounds')
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSR.totalSupply()).to.equal(0)
 
       // Let's cancel the unstake
       await expect(stRSR.connect(addr1).cancelUnstake(1)).to.emit(stRSR, 'UnstakingCancelled')
@@ -1164,6 +1170,12 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Check withdrawals - We can withdraw the third stake for user 2
         expect(await stRSR.endIdForWithdraw(addr1.address)).to.equal(1)
         expect(await stRSR.endIdForWithdraw(addr2.address)).to.equal(3)
+
+        // Cancelling the unstake with invalid index does nothing
+        await expect(stRSR.connect(addr2).cancelUnstake(1)).to.not.emit(stRSR, 'UnstakingCancelled')
+        await expect(stRSR.connect(addr2).cancelUnstake(4)).to.be.revertedWith(
+          'index out-of-bounds'
+        )
 
         // Withdraw
         await stRSR
@@ -2000,6 +2012,74 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.totalSupply()).to.equal(amount.sub(one))
     })
 
+    it('Should handle cancel unstake after a significant RSR seizure', async () => {
+      stkWithdrawalDelay = bn(await stRSR.unstakingDelay()).toNumber()
+
+      const unstakeAmount: BigNumber = fp('1e-9')
+      const amount: BigNumber = bn('1e18').add(unstakeAmount).add(1)
+
+      // Stake enough for 2 unstakings
+      await rsr.connect(addr1).approve(stRSR.address, amount.add(1))
+      await stRSR.connect(addr1).stake(amount.add(1))
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(1))
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount.add(1)))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.add(1))
+
+      // Unstake twice
+      const availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
+      await expect(stRSR.connect(addr1).unstake(1))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(0, 1, addr1.address, 1, 1, availableAt)
+      await expect(stRSR.connect(addr1).unstake(unstakeAmount))
+        .emit(stRSR, 'UnstakingStarted')
+        .withArgs(1, 1, addr1.address, unstakeAmount, unstakeAmount, availableAt + 1)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.add(1))
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount.add(1)))
+
+      // All staked funds withdrawn upfront
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.sub(unstakeAmount))
+      expect(await stRSR.totalSupply()).to.equal(amount.sub(unstakeAmount))
+
+      // Rate does not change
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+
+      // Seize most of the RSR
+      const seizeAmt = fp('0.99999999').mul(amount).div(fp('1')).add(1)
+      const exchangeRate = fp('1e-8')
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(seizeAmt)).to.emit(stRSR, 'ExchangeRateSet')
+      })
+
+      // Check new rate
+      expect(await stRSR.exchangeRate()).to.be.closeTo(exchangeRate, bn(10))
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(exchangeRate.add(10))
+      expect(await stRSR.totalSupply()).to.equal(amount.sub(unstakeAmount))
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount.add(1)))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.sub(unstakeAmount))
+
+      // Move forward past stakingWithdrawalDelay
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay)
+
+      // Cancel the larger unstake -- should round down to 0
+      await stRSR.connect(addr1).cancelUnstake(1)
+
+      // Check balances and stakes - No changes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(exchangeRate.add(10))
+      expect(await stRSR.totalSupply()).to.equal(amount.sub(unstakeAmount))
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount.add(1)))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount.sub(unstakeAmount))
+    })
+
     it('Should not allow stakeRate manipulation', async () => {
       // send RSR to stRSR (attempt to manipulate stake rate)
       await rsr.connect(addr1).transfer(stRSR.address, fp('200'))
@@ -2092,13 +2172,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to send to zero address
       await expect(stRSR.connect(addr1).transfer(ZERO_ADDRESS, amount)).to.be.revertedWith(
-        'ERC20: transfer to the zero address'
+        'ERC20: transfer to or from the zero address'
       )
 
       // Attempt to send from zero address - Impersonation is the only way to get to this validation
       await whileImpersonating(ZERO_ADDRESS, async (signer) => {
         await expect(stRSR.connect(signer).transfer(addr2.address, amount)).to.be.revertedWith(
-          'ERC20: transfer from the zero address'
+          'ERC20: transfer to or from the zero address'
         )
       })
 
@@ -2305,13 +2385,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to set allowance to zero address
       await expect(stRSR.connect(addr1).approve(ZERO_ADDRESS, amount)).to.be.revertedWith(
-        'ERC20: approve to the zero address'
+        'ERC20: approve to or from the zero address'
       )
 
       // Attempt set allowance from zero address - Impersonation is the only way to get to this validation
       await whileImpersonating(ZERO_ADDRESS, async (signer) => {
         await expect(stRSR.connect(signer).approve(addr2.address, amount)).to.be.revertedWith(
-          'ERC20: approve from the zero address'
+          'ERC20: approve to or from the zero address'
         )
       })
 

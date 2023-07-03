@@ -11,7 +11,7 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
-  CTokenVaultMock,
+  CTokenWrapperMock,
   CTokenSelfReferentialCollateral,
   ERC20Mock,
   EURFiatCollateral,
@@ -64,7 +64,7 @@ describe('Collateral contracts', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenVaultMock
+  let cToken: CTokenWrapperMock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
 
@@ -125,8 +125,8 @@ describe('Collateral contracts', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenCollateral.erc20())
     )
-    cToken = <CTokenVaultMock>(
-      await ethers.getContractAt('CTokenVaultMock', await cTokenCollateral.erc20())
+    cToken = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await cTokenCollateral.erc20())
     )
 
     await token.connect(owner).mint(owner.address, amt)
@@ -1282,7 +1282,7 @@ describe('Collateral contracts', () => {
     let CTokenNonFiatFactory: ContractFactory
     let cTokenNonFiatCollateral: CTokenNonFiatCollateral
     let nonFiatToken: ERC20Mock
-    let cNonFiatTokenVault: CTokenVaultMock
+    let cNonFiatTokenVault: CTokenWrapperMock
     let targetUnitOracle: MockV3Aggregator
     let referenceUnitOracle: MockV3Aggregator
 
@@ -1299,7 +1299,7 @@ describe('Collateral contracts', () => {
       )
       // cToken
       cNonFiatTokenVault = await (
-        await ethers.getContractFactory('CTokenVaultMock')
+        await ethers.getContractFactory('CTokenWrapperMock')
       ).deploy(
         'cWBTC Token',
         'cWBTC',
@@ -1716,7 +1716,7 @@ describe('Collateral contracts', () => {
     let CTokenSelfReferentialFactory: ContractFactory
     let cTokenSelfReferentialCollateral: CTokenSelfReferentialCollateral
     let selfRefToken: WETH9
-    let cSelfRefToken: CTokenVaultMock
+    let cSelfRefToken: CTokenWrapperMock
     let chainlinkFeed: MockV3Aggregator
 
     beforeEach(async () => {
@@ -1727,7 +1727,7 @@ describe('Collateral contracts', () => {
 
       // cToken Self Ref
       cSelfRefToken = await (
-        await ethers.getContractFactory('CTokenVaultMock')
+        await ethers.getContractFactory('CTokenWrapperMock')
       ).deploy('cETH Token', 'cETH', selfRefToken.address, compToken.address, compoundMock.address)
 
       CTokenSelfReferentialFactory = await ethers.getContractFactory(
