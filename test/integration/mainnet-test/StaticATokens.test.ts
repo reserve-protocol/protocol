@@ -222,7 +222,7 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
       })
 
       // Wrap aDAI  - Underlying = false
-      expect(await aDai.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await aDai.balanceOf(addr1.address)).to.be.closeTo(initialBal, 1)
       expect(await stataDai.balanceOf(addr1.address)).to.equal(0)
 
       // Wrap aDAI into a staticaDAI

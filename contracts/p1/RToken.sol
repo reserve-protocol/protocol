@@ -247,7 +247,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192[] memory portions,
         address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external notFrozen returns (address[] memory erc20sOut, uint256[] memory amountsOut) {
+    ) external notFrozen {
         // == Refresh ==
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
@@ -275,7 +275,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // === Get basket redemption amounts ===
 
-        (erc20sOut, amountsOut) = basketHandler.quoteCustomRedemption(
+        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quoteCustomRedemption(
             basketNonces,
             portions,
             baskets
@@ -283,18 +283,18 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // ==== Prorate redemption ====
         // i.e, set amounts = min(amounts, balances * amount / totalSupply)
-        //   where balances[i] = erc20sOut[i].balanceOf(backingManager)
+        //   where balances[i] = erc20s[i].balanceOf(backingManager)
 
         // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
-        for (uint256 i = 0; i < erc20sOut.length; ++i) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             // {qTok} = {qTok} * {qRTok} / {qRTok}
             uint256 prorata = mulDiv256(
-                IERC20(erc20sOut[i]).balanceOf(address(backingManager)),
+                IERC20(erc20s[i]).balanceOf(address(backingManager)),
                 amount,
                 supply
             ); // FLOOR
 
-            if (prorata < amountsOut[i]) amountsOut[i] = prorata;
+            if (prorata < amounts[i]) amounts[i] = prorata;
         }
 
         // === Save initial recipient balances ===
@@ -310,15 +310,15 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // Distribute tokens; revert if empty redemption
         {
             bool allZero = true;
-            for (uint256 i = 0; i < erc20sOut.length; ++i) {
-                if (amountsOut[i] == 0) continue; // unregistered ERC20s will have 0 amount
+            for (uint256 i = 0; i < erc20s.length; ++i) {
+                if (amounts[i] == 0) continue; // unregistered ERC20s will have 0 amount
                 if (allZero) allZero = false;
 
                 // Send withdrawal
-                IERC20Upgradeable(erc20sOut[i]).safeTransferFrom(
+                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     address(backingManager),
                     recipient,
-                    amountsOut[i]
+                    amounts[i]
                 );
             }
             if (allZero) revert("empty redemption");

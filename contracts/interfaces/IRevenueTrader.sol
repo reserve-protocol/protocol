@@ -31,9 +31,11 @@ interface IRevenueTrader is IComponent, ITrading {
     /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
     /// @custom:interaction
     function manageTokens(IERC20[] memory erc20s, TradeKind[] memory kinds) external;
+
+    function tokenToBuy() external view returns (IERC20);
 }
 
 // solhint-disable-next-line no-empty-blocks
 interface TestIRevenueTrader is IRevenueTrader, TestITrading {
-    function tokenToBuy() external view returns (IERC20);
+
 }

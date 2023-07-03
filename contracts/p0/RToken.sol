@@ -186,12 +186,7 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         uint192[] memory portions,
         address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    )
-        external
-        notFrozen
-        exchangeRateIsValidAfter
-        returns (address[] memory erc20sOut, uint256[] memory amountsOut)
-    {
+    ) external notFrozen exchangeRateIsValidAfter {
         require(amount > 0, "Cannot redeem zero");
         require(amount <= balanceOf(_msgSender()), "insufficient balance");
 
@@ -218,11 +213,9 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
             require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
         }
 
-        (erc20sOut, amountsOut) = main.basketHandler().quoteCustomRedemption(
-            basketNonces,
-            portions,
-            basketsRedeemed
-        );
+        (address[] memory erc20s, uint256[] memory amounts) = main
+            .basketHandler()
+            .quoteCustomRedemption(basketNonces, portions, basketsRedeemed);
 
         // === Save initial recipient balances ===
 
@@ -235,21 +228,21 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         {
             bool allZero = true;
             // Bound each withdrawal by the prorata share, in case currently under-collateralized
-            for (uint256 i = 0; i < erc20sOut.length; i++) {
+            for (uint256 i = 0; i < erc20s.length; i++) {
                 // {qTok} = {qTok} * {qRTok} / {qRTok}
                 uint256 prorata = mulDiv256(
-                    IERC20(erc20sOut[i]).balanceOf(address(main.backingManager())),
+                    IERC20(erc20s[i]).balanceOf(address(main.backingManager())),
                     amount,
                     supply
                 ); // FLOOR
-                if (prorata < amountsOut[i]) amountsOut[i] = prorata;
+                if (prorata < amounts[i]) amounts[i] = prorata;
 
                 // Send withdrawal
-                if (amountsOut[i] > 0) {
-                    IERC20(erc20sOut[i]).safeTransferFrom(
+                if (amounts[i] > 0) {
+                    IERC20(erc20s[i]).safeTransferFrom(
                         address(main.backingManager()),
                         recipient,
-                        amountsOut[i]
+                        amounts[i]
                     );
                     allZero = false;
                 }

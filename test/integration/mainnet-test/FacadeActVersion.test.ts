@@ -97,7 +97,6 @@ describeFork(
         const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
         newFacadeAct = await FacadeActFactory.deploy()
 
-        // These surpluses move around in CI, so I think it's fine just to assert the right ones are >0
         const expectedSurpluses = [
           bn('13498155707558299290000'),
           bn('9076'),
@@ -114,11 +113,29 @@ describeFork(
           bn('0'),
           bn('6413550000'),
         ]
-        const [, , surpluses] = await newFacadeAct.callStatic.revenueOverview(revenueTrader.address)
+        const expectedBmRewards = [
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('9999'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+          bn('0'),
+        ]
+        const [, , surpluses, , bmRewards, revTraderRewards] =
+          await newFacadeAct.callStatic.revenueOverview(revenueTrader.address)
+
         for (let i = 0; i < surpluses.length; i++) {
-          if (expectedSurpluses[i].gt(0)) {
-            expect(surpluses[i]).gt(0)
-          }
+          if (expectedSurpluses[i].gt(0)) expect(surpluses[i]).gte(expectedSurpluses[i])
+          if (expectedBmRewards[i].gt(0)) expect(bmRewards[i]).gte(expectedBmRewards[i])
+          expect(revTraderRewards[i]).to.equal(0)
         }
       })
 
@@ -131,6 +148,7 @@ describeFork(
         await expect(
           newFacadeAct.runRevenueAuctions(revenueTrader.address, [], [await main.rToken()], [0])
         ).to.emit(revenueTrader, 'TradeStarted')
+
         expect(await revenueTrader.tradesOpen()).to.equal(2)
       })
     })

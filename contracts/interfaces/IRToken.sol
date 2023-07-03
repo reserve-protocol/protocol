@@ -107,7 +107,7 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
         uint192[] memory portions,
         address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external returns (address[] memory erc20sOut, uint256[] memory amountsOut);
+    ) external;
 
     /// Mint an amount of RToken equivalent to baskets BUs, scaling basketsNeeded up
     /// Callable only by BackingManager

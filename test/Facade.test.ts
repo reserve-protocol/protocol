@@ -298,7 +298,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
     })
 
     it('Should return redeemable quantities correctly', async () => {
-      const [toks, quantities, isProrata] = await facade.callStatic.redeem(
+      const [toks, quantities, available] = await facade.callStatic.redeem(
         rToken.address,
         issueAmount
       )
@@ -311,17 +311,73 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect(quantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
       expect(quantities[2]).to.equal(issueAmount.div(4))
       expect(quantities[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
-      expect(isProrata).to.equal(false)
+      expect(available[0]).to.equal(issueAmount.div(4))
+      expect(available[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
+      expect(available[2]).to.equal(issueAmount.div(4))
+      expect(available[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
+
+      // redeemCustom
+      const [toksCustom, quantitiesCustom] = await facade.callStatic.redeemCustom(
+        rToken.address,
+        issueAmount,
+        [await basketHandler.nonce()],
+        [fp('1')]
+      )
+      expect(toksCustom.length).to.equal(4)
+      expect(toksCustom[0]).to.equal(token.address)
+      expect(toksCustom[1]).to.equal(usdc.address)
+      expect(toksCustom[2]).to.equal(aToken.address)
+      expect(toksCustom[3]).to.equal(cTokenVault.address)
+      expect(quantitiesCustom[0]).to.equal(issueAmount.div(4))
+      expect(quantitiesCustom[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
+      expect(quantitiesCustom[2]).to.equal(issueAmount.div(4))
+      expect(quantitiesCustom[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
 
       // Prorata case -- burn half
       await token.burn(await main.backingManager(), issueAmount.div(8))
-      const [newToks, newQuantities, newIsProrata] = await facade.callStatic.redeem(
+      const [newToks, newQuantities, newAvailable] = await facade.callStatic.redeem(
         rToken.address,
         issueAmount
       )
       expect(newToks[0]).to.equal(token.address)
-      expect(newQuantities[0]).to.equal(issueAmount.div(8))
-      expect(newIsProrata).to.equal(true)
+      expect(newQuantities[0]).to.equal(issueAmount.div(4))
+      expect(newAvailable[0]).to.equal(issueAmount.div(4).div(2))
+
+      // redeemCustom
+      const [newToksCustom, newQuantitiesCustom] = await facade.callStatic.redeemCustom(
+        rToken.address,
+        issueAmount,
+        [await basketHandler.nonce()],
+        [fp('1')]
+      )
+      expect(newToksCustom.length).to.equal(4)
+      expect(newToksCustom[0]).to.equal(token.address)
+      expect(newToksCustom[1]).to.equal(usdc.address)
+      expect(newToksCustom[2]).to.equal(aToken.address)
+      expect(newToksCustom[3]).to.equal(cTokenVault.address)
+      expect(newQuantitiesCustom[0]).to.equal(issueAmount.div(4).div(2))
+      expect(newQuantitiesCustom[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
+      expect(newQuantitiesCustom[2]).to.equal(issueAmount.div(4))
+      expect(newQuantitiesCustom[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
+
+      // refreshBasket()
+      await basketHandler.connect(owner).refreshBasket()
+      await expect(facade.callStatic.redeem(rToken.address, issueAmount)).not.to.be.reverted
+      const [prevBasketTokens, prevBasketQuantities] = await facade.callStatic.redeemCustom(
+        rToken.address,
+        issueAmount,
+        [(await basketHandler.nonce()) - 1],
+        [fp('1')]
+      )
+      expect(prevBasketTokens.length).to.equal(4)
+      expect(prevBasketTokens[0]).to.equal(token.address)
+      expect(prevBasketTokens[1]).to.equal(usdc.address)
+      expect(prevBasketTokens[2]).to.equal(aToken.address)
+      expect(prevBasketTokens[3]).to.equal(cTokenVault.address)
+      expect(prevBasketQuantities[0]).to.equal(issueAmount.div(4).div(2))
+      expect(prevBasketQuantities[1]).to.equal(issueAmount.div(4).div(bn('1e12')))
+      expect(prevBasketQuantities[2]).to.equal(issueAmount.div(4))
+      expect(prevBasketQuantities[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
     })
 
     it('Should revert when returning redeemable quantities if frozen', async () => {
