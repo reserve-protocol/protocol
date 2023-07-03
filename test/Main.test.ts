@@ -1728,10 +1728,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with invalid length', async () => {
       await expect(
         freshBasketHandler.connect(owner).setPrimeBasket([token0.address], [])
-      ).to.be.revertedWith('must be same length')
+      ).to.be.revertedWith('len mismatch')
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [])
-      ).to.be.revertedWith('must be same length')
+      ).to.be.revertedWith('len mismatch')
     })
 
     it('Should not allow to set prime Basket with non-collateral tokens', async () => {

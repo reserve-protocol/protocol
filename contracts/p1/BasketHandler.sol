@@ -177,7 +177,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         governance
     {
         require(erc20s.length > 0, "empty basket");
-        require(erc20s.length == targetAmts.length, "must be same length");
+        require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
         // If this isn't initial setup, require targets remain constant
