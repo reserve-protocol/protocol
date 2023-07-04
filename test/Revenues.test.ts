@@ -2593,7 +2593,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         it('Should not return bid amount before auction starts', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
           const trade = await ethers.getContractAt(
             'DutchTrade',
@@ -2616,7 +2616,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         it('Should allow one bidder', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2))
-          await rTokenTrader.manageToken(token0.address, TradeKind.DUTCH_AUCTION)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
           const trade = await ethers.getContractAt(
             'DutchTrade',
