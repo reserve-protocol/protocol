@@ -1132,10 +1132,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.not.be.reverted
 
         // Check trade values
-        const [sellLow, sellHigh] = await newCollateral0.price()
-        const [buyLow, buyHigh] = await collateral1.price()
-        expect(await trade.middlePrice()).to.equal(divCeil(sellHigh.mul(fp('1')), buyLow))
-        const withoutSlippage = sellLow.mul(fp('1')).div(buyHigh)
+        expect(await trade.middlePrice()).to.equal(
+          divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
+        )
+        const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
