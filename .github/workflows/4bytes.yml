@@ -9,8 +9,8 @@ on:
       - closed
 
 jobs:
-  deployment-scripts:
-    if: github.event.pull_request.merged == true
+  sync-signatures:
+    # if: github.event.pull_request.merged == true
     name: 'Deployment Scripts'
     runs-on: ubuntu-latest
     permissions:
