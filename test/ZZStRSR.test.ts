@@ -1139,6 +1139,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Allow cancelling unstake with multiple withdraws', async function () {
+        console.log("Timestamp: ", await getLatestBlockTimestamp())
         // Create an additional third stake for user 2
         await rsr.connect(addr2).approve(stRSR.address, amount3)
         await stRSR.connect(addr2).stake(amount3)
