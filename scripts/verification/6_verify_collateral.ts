@@ -127,7 +127,7 @@ async function main() {
         defaultThreshold: fp('0.0125').toString(), // 1.25%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
-      revenueHiding.toString()
+      revenueHiding.toString(),
     ],
     'contracts/plugins/assets/compoundv2/CTokenFiatCollateral.sol:CTokenFiatCollateral'
   )
@@ -154,7 +154,7 @@ async function main() {
       },
       networkConfig[chainId].chainlinkFeeds.BTC,
       oracleTimeout(chainId, '3600').toString(),
-      revenueHiding.toString()
+      revenueHiding.toString(),
     ],
     'contracts/plugins/assets/compoundv2/CTokenNonFiatCollateral.sol:CTokenNonFiatCollateral'
   )
@@ -175,7 +175,7 @@ async function main() {
         delayUntilDefault: '0',
       },
       revenueHiding.toString(),
-      '18'
+      '18',
     ],
     'contracts/plugins/assets/compoundv2/CTokenSelfReferentialCollateral.sol:CTokenSelfReferentialCollateral'
   )

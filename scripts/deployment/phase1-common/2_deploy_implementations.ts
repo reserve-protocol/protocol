@@ -103,17 +103,17 @@ async function main() {
   const MainImplFactory = await ethers.getContractFactory('MainP1')
   let mainImplAddr = ''
   if (!upgrade) {
-    mainImplAddr = await upgrades.deployImplementation(MainImplFactory, {
+    mainImplAddr = (await upgrades.deployImplementation(MainImplFactory, {
       kind: 'uups',
-    }) as string
+    })) as string
   } else {
-    mainImplAddr = await upgrades.prepareUpgrade(
+    mainImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.main,
       MainImplFactory,
       {
         kind: 'uups',
       }
-    ) as string
+    )) as string
   }
   mainImpl = <MainP1>await ethers.getContractAt('MainP1', mainImplAddr)
 
@@ -156,17 +156,17 @@ async function main() {
   const AssetRegImplFactory = await ethers.getContractFactory('AssetRegistryP1')
   let assetRegImplAddr = ''
   if (!upgrade) {
-    assetRegImplAddr = await upgrades.deployImplementation(AssetRegImplFactory, {
+    assetRegImplAddr = (await upgrades.deployImplementation(AssetRegImplFactory, {
       kind: 'uups',
-    }) as string
+    })) as string
   } else {
-    assetRegImplAddr = await upgrades.prepareUpgrade(
+    assetRegImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.assetRegistry,
       AssetRegImplFactory,
       {
         kind: 'uups',
       }
-    ) as string
+    )) as string
   }
 
   assetRegImpl = await ethers.getContractAt('AssetRegistryP1', assetRegImplAddr)
@@ -188,19 +188,19 @@ async function main() {
   })
   let backingMgrImplAddr = ''
   if (!upgrade) {
-    backingMgrImplAddr = await upgrades.deployImplementation(BackingMgrImplFactory, {
+    backingMgrImplAddr = (await upgrades.deployImplementation(BackingMgrImplFactory, {
       kind: 'uups',
       unsafeAllow: ['external-library-linking', 'delegatecall'],
-    }) as string
+    })) as string
   } else {
-    backingMgrImplAddr = await upgrades.prepareUpgrade(
+    backingMgrImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.backingManager,
       BackingMgrImplFactory,
       {
         kind: 'uups',
         unsafeAllow: ['external-library-linking', 'delegatecall'],
       }
-    ) as string
+    )) as string
   }
 
   backingMgrImpl = <BackingManagerP1>(
@@ -222,19 +222,19 @@ async function main() {
   })
   let bskHndlrImplAddr = ''
   if (!upgrade) {
-    bskHndlrImplAddr = await upgrades.deployImplementation(BskHandlerImplFactory, {
+    bskHndlrImplAddr = (await upgrades.deployImplementation(BskHandlerImplFactory, {
       kind: 'uups',
       unsafeAllow: ['external-library-linking'],
-    }) as string
+    })) as string
   } else {
-    bskHndlrImplAddr = await upgrades.prepareUpgrade(
+    bskHndlrImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.basketHandler,
       BskHandlerImplFactory,
       {
         kind: 'uups',
         unsafeAllow: ['external-library-linking'],
       }
-    ) as string
+    )) as string
   }
 
   bskHndlrImpl = <BasketHandlerP1>await ethers.getContractAt('BasketHandlerP1', bskHndlrImplAddr)
@@ -252,17 +252,17 @@ async function main() {
   const BrokerImplFactory = await ethers.getContractFactory('BrokerP1')
   let brokerImplAddr = ''
   if (!upgrade) {
-    brokerImplAddr = await upgrades.deployImplementation(BrokerImplFactory, {
+    brokerImplAddr = (await upgrades.deployImplementation(BrokerImplFactory, {
       kind: 'uups',
-    }) as string
+    })) as string
   } else {
-    brokerImplAddr = await upgrades.prepareUpgrade(
+    brokerImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.broker,
       BrokerImplFactory,
       {
         kind: 'uups',
       }
-    ) as string
+    )) as string
   }
 
   brokerImpl = <BrokerP1>await ethers.getContractAt('BrokerP1', brokerImplAddr)
@@ -280,17 +280,17 @@ async function main() {
   const DistribImplFactory = await ethers.getContractFactory('DistributorP1')
   let distribImplAddr = ''
   if (!upgrade) {
-    distribImplAddr = await upgrades.deployImplementation(DistribImplFactory, {
+    distribImplAddr = (await upgrades.deployImplementation(DistribImplFactory, {
       kind: 'uups',
-    }) as string
+    })) as string
   } else {
-    distribImplAddr = await upgrades.prepareUpgrade(
+    distribImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.distributor,
       DistribImplFactory,
       {
         kind: 'uups',
       }
-    ) as string
+    )) as string
   }
 
   distribImpl = <DistributorP1>await ethers.getContractAt('DistributorP1', distribImplAddr)
@@ -308,17 +308,17 @@ async function main() {
   const FurnaceImplFactory = await ethers.getContractFactory('FurnaceP1')
   let furnaceImplAddr = ''
   if (!upgrade) {
-    furnaceImplAddr = await upgrades.deployImplementation(FurnaceImplFactory, {
+    furnaceImplAddr = (await upgrades.deployImplementation(FurnaceImplFactory, {
       kind: 'uups',
-    }) as string
+    })) as string
   } else {
-    furnaceImplAddr = await upgrades.prepareUpgrade(
+    furnaceImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.furnace,
       FurnaceImplFactory,
       {
         kind: 'uups',
       }
-    ) as string
+    )) as string
   }
 
   furnaceImpl = <FurnaceP1>await ethers.getContractAt('FurnaceP1', furnaceImplAddr)
@@ -338,21 +338,21 @@ async function main() {
   let rsrTraderImplAddr = ''
   let rTokenTraderImplAddr = ''
   if (!upgrade) {
-    rsrTraderImplAddr = await upgrades.deployImplementation(RevTraderImplFactory, {
+    rsrTraderImplAddr = (await upgrades.deployImplementation(RevTraderImplFactory, {
       kind: 'uups',
       unsafeAllow: ['delegatecall'],
-    }) as string
+    })) as string
     rTokenTraderImplAddr = rsrTraderImplAddr // Both equal in initial deployment
   } else {
     // RSR Trader
-    rsrTraderImplAddr = await upgrades.prepareUpgrade(
+    rsrTraderImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.rsrTrader,
       RevTraderImplFactory,
       {
         kind: 'uups',
         unsafeAllow: ['delegatecall'],
       }
-    ) as string
+    )) as string
 
     // If Traders have different implementations, upgrade separately
     if (
@@ -360,14 +360,14 @@ async function main() {
       prevDeployments.implementations.components.rTokenTrader
     ) {
       // RToken Trader
-      rTokenTraderImplAddr = await upgrades.prepareUpgrade(
+      rTokenTraderImplAddr = (await upgrades.prepareUpgrade(
         prevDeployments.implementations.components.rTokenTrader,
         RevTraderImplFactory,
         {
           kind: 'uups',
           unsafeAllow: ['delegatecall'],
         }
-      ) as string
+      )) as string
     } else {
       // Both use the same implementation
       rTokenTraderImplAddr = rsrTraderImplAddr
@@ -400,17 +400,17 @@ async function main() {
   const RTokenImplFactory = await ethers.getContractFactory('RTokenP1')
   let rTokenImplAddr = ''
   if (!upgrade) {
-    rTokenImplAddr = await upgrades.deployImplementation(RTokenImplFactory, {
+    rTokenImplAddr = (await upgrades.deployImplementation(RTokenImplFactory, {
       kind: 'uups',
-    }) as string
+    })) as string
   } else {
-    rTokenImplAddr = await upgrades.prepareUpgrade(
+    rTokenImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.rToken,
       RTokenImplFactory,
       {
         kind: 'uups',
       }
-    ) as string
+    )) as string
   }
 
   rTokenImpl = <RTokenP1>await ethers.getContractAt('RTokenP1', rTokenImplAddr)
@@ -429,17 +429,17 @@ async function main() {
   const StRSRImplFactory = await ethers.getContractFactory('StRSRP1Votes')
   let stRSRImplAddr = ''
   if (!upgrade) {
-    stRSRImplAddr = await upgrades.deployImplementation(StRSRImplFactory, {
+    stRSRImplAddr = (await upgrades.deployImplementation(StRSRImplFactory, {
       kind: 'uups',
-    }) as string
+    })) as string
   } else {
-    stRSRImplAddr = await upgrades.prepareUpgrade(
+    stRSRImplAddr = (await upgrades.prepareUpgrade(
       prevDeployments.implementations.components.stRSR,
       StRSRImplFactory,
       {
         kind: 'uups',
       }
-    ) as string
+    )) as string
   }
 
   stRSRImpl = <StRSRP1Votes>await ethers.getContractAt('StRSRP1Votes', stRSRImplAddr)

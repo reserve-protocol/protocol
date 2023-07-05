@@ -110,14 +110,14 @@ export async function verifyContract(
     await tenderly.verify({
       name: contract,
       address: address!,
-      libraries
-    });
+      libraries,
+    })
   } else {
     // Sleep 0.5s to not overwhelm API
     await new Promise((r) => setTimeout(r, 500))
-  
+
     const ETHERSCAN_API_KEY = useEnv('ETHERSCAN_API_KEY')
-  
+
     // Check to see if already verified
     const url = `${getEtherscanBaseURL(
       chainId,
@@ -127,7 +127,7 @@ export async function verifyContract(
     if (status != 200 || data['status'] != '1') {
       throw new Error("Can't communicate with Etherscan API")
     }
-  
+
     // Only run verification script if not verified
     if (data['result'][0]['SourceCode']?.length > 0) {
       console.log('Already verified. Continuing')
