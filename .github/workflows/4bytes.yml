@@ -11,7 +11,7 @@ on:
 jobs:
   sync-signatures:
     # if: github.event.pull_request.merged == true
-    name: 'Deployment Scripts'
+    name: '4Bytes Sync'
     runs-on: ubuntu-latest
     permissions:
       contents: write
