@@ -52,6 +52,9 @@ export interface ITokens {
   ONDO?: string
   sDAI?: string
   cbETH?: string
+  STG?: string
+  sUSDC?: string
+  sUSDT?: string
 }
 
 export interface IFeeds {
@@ -139,6 +142,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
       cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
+      STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
+      sUSDC: '0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56',
+      sUSDT: '0x38EA452219524Bb87e18dE1C24D3bB59510BD783',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -231,6 +237,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
       cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
+      STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
+      sUSDC: '0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56',
+      sUSDT: '0x38EA452219524Bb87e18dE1C24D3bB59510BD783',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
