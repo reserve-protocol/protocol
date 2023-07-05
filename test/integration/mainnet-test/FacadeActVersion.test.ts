@@ -8,6 +8,7 @@ import { networkConfig } from '../../../common/configuration'
 import forkBlockNumber from '../fork-block-numbers'
 import { FacadeAct, RevenueTraderP1 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
+import { getLatestBlockNumber, getLatestBlockTimestamp } from '#/utils/time'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
@@ -94,6 +95,8 @@ describeFork(
       })
 
       it('Fixed FacadeAct should return right revenueOverview', async () => {
+        console.log('Block number ', await getLatestBlockNumber(hre))
+        console.log('Timestamp ', await getLatestBlockTimestamp(hre))
         const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
         newFacadeAct = await FacadeActFactory.deploy()
 
