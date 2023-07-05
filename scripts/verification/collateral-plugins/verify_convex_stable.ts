@@ -62,7 +62,7 @@ async function main() {
     await w3PoolCollateral.erc20(),
     [],
     'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol:ConvexStakingWrapper',
-    {CvxMining: coreDeployments.cvxMiningLib}
+    { CvxMining: coreDeployments.cvxMiningLib }
   )
 
   /********  Verify CvxMining Lib  **************************/

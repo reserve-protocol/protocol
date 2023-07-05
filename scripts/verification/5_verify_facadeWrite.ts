@@ -34,7 +34,7 @@ async function main() {
     deployments.facadeWrite,
     [deployments.deployer],
     'contracts/facade/FacadeWrite.sol:FacadeWrite',
-    { FacadeWriteLib: deployments.facadeWriteLib}
+    { FacadeWriteLib: deployments.facadeWriteLib }
   )
 }
 
