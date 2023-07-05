@@ -1,4 +1,4 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import { loadFixture, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
@@ -63,9 +63,41 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
   // Implementation-agnostic interface for deploying the Furnace
   const deployNewFurnace = async (): Promise<TestIFurnace> => {
-    // Deploy fixture
-    ;({ furnace } = await loadFixture(defaultFixture))
+    let FurnaceFactory: ContractFactory
+    let furnace: TestIFurnace
+    if (IMPLEMENTATION == Implementation.P0) {
+      FurnaceFactory = await ethers.getContractFactory('FurnaceP0')
+      furnace = <TestIFurnace>await FurnaceFactory.deploy()
+    } else if (IMPLEMENTATION == Implementation.P1) {
+      FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
+      furnace = <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
+        kind: 'uups',
+      })
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    }
+
     return furnace
+  }
+
+  const setFurnace = async (main: TestIMain, furnace: TestIFurnace) => {
+    if (IMPLEMENTATION == Implementation.P0) {
+      // Setup new furnace correctly in MainP0 - Slot 209 (0xD1)
+      await setStorageAt(
+        main.address,
+        '0xD1',
+        ethers.utils.hexlify(ethers.utils.zeroPad(furnace.address, 32))
+      )
+    } else if (IMPLEMENTATION == Implementation.P1) {
+      // Setup new furnace correctly in RTokenP1 - Slot 357 (0x165)
+      await setStorageAt(
+        await main.rToken(),
+        '0x165',
+        ethers.utils.hexlify(ethers.utils.zeroPad(furnace.address, 32))
+      )
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    }
   }
 
   beforeEach(async () => {
@@ -91,6 +123,8 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
     // Mint Tokens
     await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
+
+    console.log('BeforeEach - Timestamp: ', await getLatestBlockTimestamp())
   })
 
   describe('Deployment #fast', () => {
@@ -102,19 +136,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
     // Applies to all components - used here as an example
     it('Deployment does not accept invalid main address', async () => {
-      let FurnaceFactory: ContractFactory
-      let newFurnace: TestIFurnace
-      if (IMPLEMENTATION == Implementation.P0) {
-        FurnaceFactory = await ethers.getContractFactory('FurnaceP0')
-        newFurnace = <TestIFurnace>await FurnaceFactory.deploy()
-      } else if (IMPLEMENTATION == Implementation.P1) {
-        FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
-        newFurnace = <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
-          kind: 'uups',
-        })
-      } else {
-        throw new Error('PROTO_IMPL must be set to either `0` or `1`')
-      }
+      const newFurnace: TestIFurnace = await deployNewFurnace()
       await expect(newFurnace.init(ZERO_ADDRESS, config.rewardRatio)).to.be.revertedWith(
         'main is zero address'
       )
@@ -281,76 +303,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
     })
 
-    it('Should accumulate negligible error - parallel furnaces', async () => {
-      // Maintain two furnaces in parallel, one burning every block and one burning annually
-      // We have to use two brand new instances here to ensure their timestamps are synced
-      const firstFurnace = await deployNewFurnace()
-      const secondFurnace = await deployNewFurnace()
-
-      // Set automine to false for multiple transactions in one block
-      await hre.network.provider.send('evm_setAutomine', [false])
-
-      // Populate balances
-      const hndAmt: BigNumber = bn('1e18')
-      await rToken.connect(addr1).transfer(firstFurnace.address, hndAmt)
-      await rToken.connect(addr1).transfer(secondFurnace.address, hndAmt)
-      await firstFurnace.init(main.address, config.rewardRatio)
-      await secondFurnace.init(main.address, config.rewardRatio)
-      await advanceBlocks(1)
-
-      // Set automine to true again
-      await hre.network.provider.send('evm_setAutomine', [true])
-
-      const oneDay = bn('86400')
-      for (let i = 0; i < Number(oneDay.div(ONE_PERIOD)); i++) {
-        // Advance a period
-        await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-        await firstFurnace.melt()
-        // secondFurnace does not melt
-      }
-
-      // SecondFurnace melts once
-      await secondFurnace.melt()
-
-      const one = await rToken.balanceOf(firstFurnace.address)
-      const two = await rToken.balanceOf(secondFurnace.address)
-      const diff = one.sub(two).abs() // {qRTok}
-      const expectedDiff = bn(3555) // empirical exact diff
-      // At a rate of 3555 qRToken per day error, a year's worth of error would result in
-      // a difference only starting in the 12th decimal place: .000000000001
-      // This seems more than acceptable
-
-      expect(diff).to.be.lte(expectedDiff)
-    })
-
-    it('Should accumulate negligible error - a year all at once', async () => {
-      const hndAmt: BigNumber = bn('10e18')
-
-      // Transfer
-      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
-
-      // Get past first noop melt
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
-      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
-
-      const periods = 2628000 // one year worth
-
-      // Advance a year's worth of periods
-      await setNextBlockTimestamp(
-        Number(await getLatestBlockTimestamp()) + periods * Number(ONE_PERIOD)
-      )
-
-      // Precise JS calculation should be within 3 atto
-      const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt = decayFn(hndAmt, periods)
-      const error = bn('3')
-      await expect(furnace.melt()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt).add(error))
-      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt.sub(error))
-    })
-
     it('Should allow melt - two periods, one at a time #fast', async () => {
       const hndAmt: BigNumber = bn('10e18')
 
@@ -420,6 +372,78 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
+    })
+
+    it('Should accumulate negligible error - a year all at once', async () => {
+      const hndAmt: BigNumber = bn('10e18')
+
+      // Transfer
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
+
+      const periods = 2628000 // one year worth
+
+      // Advance a year's worth of periods
+      await setNextBlockTimestamp(
+        Number(await getLatestBlockTimestamp()) + periods * Number(ONE_PERIOD)
+      )
+
+      // Precise JS calculation should be within 3 atto
+      const decayFn = makeDecayFn(await furnace.ratio())
+      const expAmt = decayFn(hndAmt, periods)
+      const error = bn('3')
+      await expect(furnace.melt()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt).add(error))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt.sub(error))
+    })
+
+    it('Should accumulate negligible error - parallel furnaces', async () => {
+      // Maintain two furnaces in parallel, one burning every block and one burning annually
+      // We have to use two brand new instances here to ensure their timestamps are synced
+      const firstFurnace = await deployNewFurnace()
+      const secondFurnace = await deployNewFurnace()
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      // Populate balances
+      const hndAmt: BigNumber = bn('1e18')
+      await rToken.connect(addr1).transfer(firstFurnace.address, hndAmt)
+      await rToken.connect(addr1).transfer(secondFurnace.address, hndAmt)
+      await firstFurnace.init(main.address, config.rewardRatio)
+      await secondFurnace.init(main.address, config.rewardRatio)
+      await advanceBlocks(1)
+
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
+
+      const oneDay = bn('86400')
+      await setFurnace(main, firstFurnace)
+      for (let i = 0; i < Number(oneDay.div(ONE_PERIOD)); i++) {
+        // Advance a period
+        await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+        await firstFurnace.melt()
+        // secondFurnace does not melt
+      }
+
+      // SecondFurnace melts once
+      await setFurnace(main, secondFurnace)
+      await secondFurnace.melt()
+
+      const one = await rToken.balanceOf(firstFurnace.address)
+      const two = await rToken.balanceOf(secondFurnace.address)
+      const diff = one.sub(two).abs() // {qRTok}
+      const expectedDiff = bn(3555) // empirical exact diff
+      // At a rate of 3555 qRToken per day error, a year's worth of error would result in
+      // a difference only starting in the 12th decimal place: .000000000001
+      // This seems more than acceptable
+
+      expect(diff).to.be.lte(expectedDiff)
     })
   })
 
