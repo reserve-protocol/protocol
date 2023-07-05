@@ -48,7 +48,11 @@ contract StargateLPStakingMock is IStargateLPStaking {
 
     function emergencyWithdraw(uint256 pid) external override {}
 
-    function addRewardsToUser(uint256 pid, address user, uint256 amount) external {
+    function addRewardsToUser(
+        uint256 pid,
+        address user,
+        uint256 amount
+    ) external {
         poolToUserRewardsPending[pid][user] += amount;
     }
 

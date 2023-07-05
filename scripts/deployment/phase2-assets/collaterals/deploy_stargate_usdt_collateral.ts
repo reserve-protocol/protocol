@@ -73,7 +73,7 @@ async function main() {
   ).deploy({
     priceTimeout: priceTimeout.toString(),
     chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT!,
-    oracleError: fp('0.005').toString(), // 0.5%,
+    oracleError: fp('0.001').toString(), // 0.1%,
     erc20: erc20.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h hr,

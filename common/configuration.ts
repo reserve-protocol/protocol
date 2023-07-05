@@ -55,6 +55,7 @@ export interface ITokens {
   STG?: string
   sUSDC?: string
   sUSDT?: string
+  sETH?: string
 }
 
 export interface IFeeds {
@@ -145,6 +146,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
       sUSDC: '0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56',
       sUSDT: '0x38EA452219524Bb87e18dE1C24D3bB59510BD783',
+      sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -240,6 +242,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
       sUSDC: '0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56',
       sUSDT: '0x38EA452219524Bb87e18dE1C24D3bB59510BD783',
+      sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',

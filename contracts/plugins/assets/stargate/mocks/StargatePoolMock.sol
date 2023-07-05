@@ -12,7 +12,11 @@ contract StargatePoolMock is ERC20Mock {
     uint256 public totalLiquidity;
     uint8 private _decimals;
 
-    constructor(string memory name, string memory symbol, uint8 decimals_) ERC20Mock(name, symbol) {
+    constructor(
+        string memory name,
+        string memory symbol,
+        uint8 decimals_
+    ) ERC20Mock(name, symbol) {
         totalLiquidity = totalSupply();
         _decimals = decimals_;
     }

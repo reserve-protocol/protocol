@@ -20,8 +20,8 @@ import {
 import { ContractFactory } from 'ethers'
 
 import {
+  SETH,
   STAKING_CONTRACT,
-  SUSDC,
 } from '../../../../test/plugins/individual-collateral/stargate/constants'
 
 async function main() {
@@ -48,21 +48,21 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy Stargate USDC Wrapper  **************************/
+  /********  Deploy Stargate ETH Wrapper  **************************/
 
   const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('StargatePoolWrapper')
 
   const erc20 = await WrapperFactory.deploy(
-    'Wrapped Stargate USDC',
-    'wSTG-USDC',
+    'Wrapped Stargate ETH',
+    'wSTG-ETH',
     networkConfig[chainId].tokens.STG,
     STAKING_CONTRACT,
-    SUSDC
+    SETH
   )
   await erc20.deployed()
 
   console.log(
-    `Deployed Wrapper for Stargate USDC on ${hre.network.name} (${chainId}): ${erc20.address} `
+    `Deployed Wrapper for Stargate ETH on ${hre.network.name} (${chainId}): ${erc20.address} `
   )
 
   const StargateCollateralFactory: StargatePoolFiatCollateral__factory =
@@ -72,8 +72,8 @@ async function main() {
     deployer
   ).deploy({
     priceTimeout: priceTimeout.toString(),
-    chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-    oracleError: fp('0.001').toString(), // 0.1%,
+    chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
+    oracleError: fp('0.005').toString(), // 0.5%,
     erc20: erc20.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h hr,
@@ -85,10 +85,10 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed Stargate USDC to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(`Deployed Stargate ETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
-  assetCollDeployments.collateral.sUSDC = collateral.address
-  assetCollDeployments.erc20s.sUSDC = erc20.address
+  assetCollDeployments.collateral.sETH = collateral.address
+  assetCollDeployments.erc20s.sETH = erc20.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

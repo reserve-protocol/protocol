@@ -5,6 +5,7 @@ export const STARGATE = networkConfig['1'].tokens['STG']!
 export const STAKING_CONTRACT = '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
 export const SUSDC = networkConfig['1'].tokens['sUSDC']!
 export const SUSDT = networkConfig['1'].tokens['sUSDT']!
+export const SETH = networkConfig['1'].tokens['sETH']!
 export const USDC = networkConfig['1'].tokens['USDC']!
 export const USDT = networkConfig['1'].tokens['USDT']!
 export const USDC_HOLDER = '0x0a59649758aa4d66e25f08dd01271e891fe52199'
