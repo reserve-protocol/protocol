@@ -123,8 +123,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
     // Mint Tokens
     await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
-
-    console.log('BeforeEach - Timestamp: ', await getLatestBlockTimestamp())
   })
 
   describe('Deployment #fast', () => {
@@ -292,13 +290,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       const expAmt = decayFn(hndAmt, 1) // 1 period
 
       // Melt
-      console.log('Timestamp 1: ', await getLatestBlockTimestamp())
       await expect(furnace.connect(addr1).melt())
         .to.emit(rToken, 'Melted')
         .withArgs(hndAmt.sub(expAmt))
 
-      // Another call to melt should have no impact
-      console.log('Timestamp 2 - Issue: ', await getLatestBlockTimestamp())
+      // Another call to melt right away before next period should have no impact
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 2)
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
@@ -365,13 +362,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       const expAmt = decayFn(hndAmt, 1) // 1 period
 
       // Melt
-      console.log('Timestamp 1: ', await getLatestBlockTimestamp())
       await expect(furnace.setRatio(bn('1e13')))
         .to.emit(rToken, 'Melted')
         .withArgs(hndAmt.sub(expAmt))
 
-      // Another call to melt should have no impact
-      console.log('Timestamp 2 - Issue: ', await getLatestBlockTimestamp())
+      // Another call to melt right away before next period should have no impact
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 2)
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))

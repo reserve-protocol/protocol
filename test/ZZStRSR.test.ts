@@ -1139,7 +1139,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Allow cancelling unstake with multiple withdraws', async function () {
-        console.log('Timestamp: ', await getLatestBlockTimestamp())
         // Create an additional third stake for user 2
         await rsr.connect(addr2).approve(stRSR.address, amount3)
         await stRSR.connect(addr2).stake(amount3)
@@ -1166,7 +1165,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.endIdForWithdraw(addr2.address)).to.equal(0)
 
         // Move time forward 3/4 of way to first period complete
-        await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 4)
+        await setNextBlockTimestamp(
+          Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 4
+        )
 
         // Cancel 1st withdrawal
         await stRSR.connect(addr2).cancelUnstake(1)

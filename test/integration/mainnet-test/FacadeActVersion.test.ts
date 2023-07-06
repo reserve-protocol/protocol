@@ -8,7 +8,8 @@ import { networkConfig } from '../../../common/configuration'
 import forkBlockNumber from '../fork-block-numbers'
 import { FacadeAct, RevenueTraderP1 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
-import { getLatestBlockNumber, getLatestBlockTimestamp } from '#/utils/time'
+import { getLatestBlockTimestamp, setNextBlockTimestamp } from '../../utils/time'
+import { ONE_PERIOD } from '#/common/constants'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
@@ -95,9 +96,8 @@ describeFork(
       })
 
       it('Fixed FacadeAct should return right revenueOverview', async () => {
-        console.log('Block number ', await getLatestBlockNumber(hre))
-        console.log('Timestamp ', await getLatestBlockTimestamp(hre))
         const FacadeActFactory = await ethers.getContractFactory('FacadeAct')
+        await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
         newFacadeAct = await FacadeActFactory.deploy()
 
         const expectedSurpluses = [
