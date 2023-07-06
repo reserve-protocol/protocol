@@ -168,7 +168,7 @@ export default async (
       await whileImpersonating(hre, whales[buyTokenAddress.toLowerCase()], async (whale) => {
         const sellToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
         let repeat = true
-        while(repeat) {
+        while (repeat) {
           try {
             await sellToken.connect(whale).approve(gnosis.address, 0)
             await sellToken.connect(whale).approve(gnosis.address, buyAmount)
