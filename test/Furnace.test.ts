@@ -262,7 +262,8 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       // Melt
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
-      // Another call to melt should also have no impact
+      // Another immediate call to melt should also have no impact
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
@@ -295,7 +296,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
         .withArgs(hndAmt.sub(expAmt))
 
       // Another call to melt right away before next period should have no impact
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 2)
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
@@ -367,7 +368,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
         .withArgs(hndAmt.sub(expAmt))
 
       // Another call to melt right away before next period should have no impact
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 2)
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
