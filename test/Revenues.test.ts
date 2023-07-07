@@ -44,7 +44,12 @@ import {
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
+import {
+  advanceTime,
+  advanceToTimestamp,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+} from './utils/time'
 import { withinQuad } from './utils/matchers'
 import {
   Collateral,
@@ -2705,7 +2710,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           // Snipe auction at 0s left
           await advanceToTimestamp((await trade.endTime()) - 1)
           await expect(trade.bidAmount(await trade.endTime())).to.not.be.reverted
-          await trade.connect(addr1).bid() // timestamp should be exactly endTime()
+          // Set timestamp to be exactly endTime()
+          await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
+          await trade.connect(addr1).bid()
           expect(await trade.canSettle()).to.equal(false)
           expect(await trade.status()).to.equal(2) // Status.CLOSED
           expect(await trade.bidder()).to.equal(addr1.address)

@@ -240,7 +240,12 @@ contract FixedCallerMock {
     ) public pure returns (uint192) {
         return FixLib.safeMul(a, b, rnd);
     }
-    function safeDiv_(uint192 a, uint192 b, RoundingMode rnd) public pure returns (uint192) {
+
+    function safeDiv_(
+        uint192 a,
+        uint192 b,
+        RoundingMode rnd
+    ) public pure returns (uint192) {
         return FixLib.safeDiv(a, b, rnd);
     }
 
