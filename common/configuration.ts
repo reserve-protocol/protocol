@@ -331,6 +331,26 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     GNOSIS_EASY_AUCTION: '0x1fbab40c338e2e7243da945820ba680c92ef8281', // canonical
     COMPTROLLER: '0x627ea49279fd0de89186a58b8758ad02b6be2867', // canonical
   },
+  '84531': {
+    name: 'base-goerli',
+    tokens: {
+      // mocks
+      DAI: '0xDA2eA2f60545555e268124E51EA27bc97DE78E9c',
+      USDC: '0x1265Ec05FD621d82F224814902c925a600307fb3',
+      USDT: '0x3D3226C68B1425FdaA273F2A6295D5C40462327C',
+      RSR: '0xc8058960a9d7E7d81143BDBA38d19e6824165932',
+    },
+    chainlinkFeeds: {
+      DAI: '0x440bD1535a02243d72E0fEED45B137efcC98bF7e',
+      ETH: '0xcD2A119bD1F7DF95d706DE6F2057fDD45A0503E2',
+      BTC: '0xAC15714c08986DACC0379193e22382736796496f',
+      USDC: '0xb85765935B4d9Ab6f841c9a00690Da5F34368bc0',
+      USDT: '0xd5973EB46D6fE54E82C5337dD9536B35D080912C',
+      // mocks
+      RSR: '0xbEfB78358eAaaCAa083C2dff5D2Ed6e7e32b2d3A',
+    },
+    GNOSIS_EASY_AUCTION: '0xcdf32E323e69090eCA17adDeF058A6A921c3e75A', // mock
+  },
 }
 
 export const getNetworkConfig = (chainId: string) => {
@@ -341,6 +361,8 @@ export const getNetworkConfig = (chainId: string) => {
 }
 
 export const developmentChains = ['hardhat', 'localhost']
+
+export const baseL2Chains = ['base-goerli', 'base']
 
 // Common configuration interfaces
 export interface IConfig {
