@@ -18,6 +18,8 @@ ROPSTEN_RPC_URL=""
 # Goerli Infura URL, used for Testnet deployments
 GOERLI_RPC_URL=""
 
+# Base Goerli URL
+BASE_GOERLI_RPC_URL=""
 
 # Mainnet URL, used for Mainnet forking
 MAINNET_RPC_URL=""

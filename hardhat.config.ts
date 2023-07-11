@@ -22,6 +22,7 @@ tenderly.setup()
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
+const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
@@ -57,6 +58,13 @@ const config: HardhatUserConfig = {
     goerli: {
       chainId: 5,
       url: GOERLI_RPC_URL,
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+    },
+    'base-goerli': {
+      chainId: 84531,
+      url: BASE_GOERLI_RPC_URL,
       accounts: {
         mnemonic: MNEMONIC,
       },
@@ -123,6 +131,16 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: useEnv('ETHERSCAN_API_KEY'),
+    customChains: [
+      {
+        network: 'base-goerli',
+        chainId: 84531,
+        urls: {
+          apiURL: 'https://api-goerli.basescan.org/api',
+          browserURL: 'https://goerli.basescan.org',
+        },
+      },
+    ],
   },
   tenderly: {
     // see https://github.com/Tenderly/hardhat-tenderly/tree/master/packages/tenderly-hardhat for details
