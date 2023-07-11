@@ -4,7 +4,7 @@ import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber, BigNumberish } from 'ethers'
 import { bn, fp } from '../../common/numbers'
-import { IComponents } from '../../common/configuration'
+import { IComponents, baseL2Chains } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
@@ -118,11 +118,21 @@ export async function verifyContract(
 
     const ETHERSCAN_API_KEY = useEnv('ETHERSCAN_API_KEY')
 
+    let url: string
+    if (baseL2Chains.includes(hre.network.name)) {
+      // Base L2
+      url = `${getBasescanURL(
+        chainId
+      )}/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
+    } else {
+      // Ethereum
+      url = `${getEtherscanBaseURL(
+        chainId,
+        true
+      )}/api/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
+    }
+
     // Check to see if already verified
-    const url = `${getEtherscanBaseURL(
-      chainId,
-      true
-    )}/api/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
     const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
     if (status != 200 || data['status'] != '1') {
       throw new Error("Can't communicate with Etherscan API")
@@ -157,6 +167,15 @@ export const getEtherscanBaseURL = (chainId: number, api = false) => {
   if (api) prefix = chainId == 1 ? 'api.' : `api-${hre.network.name}.`
   else prefix = chainId == 1 ? '' : `${hre.network.name}.`
   return `https://${prefix}etherscan.io`
+}
+
+export const getBasescanURL = (chainId: number) => {
+  // For Base, get URL from HH config
+  const chainConfig = hre.config.etherscan.customChains.find((chain) => chain.chainId == chainId)
+  if (!chainConfig || !chainConfig.urls) {
+    throw new Error(`Missing custom chain configuration for ${hre.network.name}`)
+  }
+  return `${chainConfig.urls.apiURL}`
 }
 
 export const getEmptyDeployment = (): IDeployments => {
