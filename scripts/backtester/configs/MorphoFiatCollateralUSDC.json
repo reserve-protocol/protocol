@@ -1,0 +1,61 @@
+{
+    "collateralContract": "MorphoFiatCollateral",
+    "startBlock": 15408569,
+    "stride": 1,
+    "endBlock": 17590000,
+    "collateralConfig": {
+      "priceTimeout": "604800",
+      "chainlinkFeed": "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
+      "oracleError": "2500000000000000",
+      "erc20": "0xbcca60bb61934080951369a648fb03df4f96263c",
+      "maxTradeVolume": "1000000000000000000000000",
+      "oracleTimeout": "86460",
+      "targetName": "0x5553440000000000000000000000000000000000000000000000000000000000",
+      "defaultThreshold": "12500000000000000",
+      "delayUntilDefault": "86400"
+    },
+    "variants": [
+        {
+            "name": "MorphoFiatCollateral-USDC:0.0",
+            "args": [ "0" ]
+        },
+        {
+            "name": "MorphoFiatCollateral-USDC:0.000001",
+            "args": [ "1000000000000" ]
+        },
+        {
+            "name": "MorphoFiatCollateral-USDC:0.00001",
+            "args": [ "10000000000000" ]
+        },
+        {
+            "name": "MorphoFiatCollateral-USDC:0.0001",
+            "args": [ "100000000000000" ]
+        },
+        {
+            "name": "MorphoFiatCollateral-USDC:0.001",
+            "args": [ "1000000000000000" ]
+        },
+        {
+            "name": "MorphoFiatCollateral-USDC:0.01",
+            "args": [ "10000000000000000" ]
+        },
+        {
+            "name": "MorphoFiatCollateral-USDC:0.1",
+            "args": [ "100000000000000000" ]
+        }
+    ],
+    "erc20Wrapper": {
+      "contract": "MorphoAaveV2TokenisedDeposit",
+      "args": [
+        {
+            "morphoController": "0x777777c9898D384F785Ee44Acfe945efDFf5f3E0",
+            "morphoLens": "0x507fA343d0A90786d86C7cd885f5C49263A91FF4",
+            "rewardsDistributor": "0x3b14e5c73e0a56d607a8688098326fd4b4292135",
+            "underlyingERC20": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "poolToken": "0xbcca60bb61934080951369a648fb03df4f96263c",
+            "rewardToken": "0x9994e35db50125e0df82e4c2dde62496ce330999"
+        }
+      ],
+      "factoryOptions": {}
+    }
+  }

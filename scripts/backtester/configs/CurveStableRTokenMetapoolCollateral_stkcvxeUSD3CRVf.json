@@ -1,0 +1,172 @@
+{
+  "collateralContract": "CurveStableRTokenMetapoolCollateral",
+  "startBlock": 17500000,
+  "stride": 1,
+  "endBlock": 17590000,
+  "collateralConfig": {
+    "erc20": "0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F",
+    "targetName": "0x5553440000000000000000000000000000000000000000000000000000000000",
+    "priceTimeout": "604800",
+    "chainlinkFeed": "0x0000000000000000000000000000000000000001",
+    "oracleError": "1",
+    "oracleTimeout": "1",
+    "maxTradeVolume": "1000000000000000000000000",
+    "defaultThreshold": "20000000000000000",
+    "delayUntilDefault": "259200"
+  },
+  "variants": [
+    {
+      "name": "CurveStableRTokenMetapoolCollateral-stkcvxeUSD3CRV-f:0.0",
+      "args": [
+        "0",
+        {
+          "nTokens": 2,
+          "curvePool": "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+          "poolType": 0,
+          "feeds": [
+            ["0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"]
+          ],
+          "oracleTimeouts": [["3660"], ["86460"]],
+          "oracleErrors": [["10000000000000000"], ["2500000000000000"]],
+          "lpToken": "0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC"
+        },
+        "0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F",
+        "20000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableRTokenMetapoolCollateral-stkcvxeUSD3CRV-f:0.000001",
+      "args": [
+        "1000000000000",
+        {
+          "nTokens": 2,
+          "curvePool": "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+          "poolType": 0,
+          "feeds": [
+            ["0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"]
+          ],
+          "oracleTimeouts": [["3660"], ["86460"]],
+          "oracleErrors": [["10000000000000000"], ["2500000000000000"]],
+          "lpToken": "0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC"
+        },
+        "0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F",
+        "20000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableRTokenMetapoolCollateral-stkcvxeUSD3CRV-f:0.00001",
+      "args": [
+        "10000000000000",
+        {
+          "nTokens": 2,
+          "curvePool": "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+          "poolType": 0,
+          "feeds": [
+            ["0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"]
+          ],
+          "oracleTimeouts": [["3660"], ["86460"]],
+          "oracleErrors": [["10000000000000000"], ["2500000000000000"]],
+          "lpToken": "0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC"
+        },
+        "0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F",
+        "20000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableRTokenMetapoolCollateral-stkcvxeUSD3CRV-f:0.0001",
+      "args": [
+        "100000000000000",
+        {
+          "nTokens": 2,
+          "curvePool": "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+          "poolType": 0,
+          "feeds": [
+            ["0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"]
+          ],
+          "oracleTimeouts": [["3660"], ["86460"]],
+          "oracleErrors": [["10000000000000000"], ["2500000000000000"]],
+          "lpToken": "0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC"
+        },
+        "0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F",
+        "20000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableRTokenMetapoolCollateral-stkcvxeUSD3CRV-f:0.001",
+      "args": [
+        "1000000000000000",
+        {
+          "nTokens": 2,
+          "curvePool": "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+          "poolType": 0,
+          "feeds": [
+            ["0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"]
+          ],
+          "oracleTimeouts": [["3660"], ["86460"]],
+          "oracleErrors": [["10000000000000000"], ["2500000000000000"]],
+          "lpToken": "0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC"
+        },
+        "0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F",
+        "20000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableRTokenMetapoolCollateral-stkcvxeUSD3CRV-f:0.01",
+      "args": [
+        "10000000000000000",
+        {
+          "nTokens": 2,
+          "curvePool": "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+          "poolType": 0,
+          "feeds": [
+            ["0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"]
+          ],
+          "oracleTimeouts": [["3660"], ["86460"]],
+          "oracleErrors": [["10000000000000000"], ["2500000000000000"]],
+          "lpToken": "0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC"
+        },
+        "0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F",
+        "20000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableRTokenMetapoolCollateral-stkcvxeUSD3CRV-f:0.1",
+      "args": [
+        "100000000000000000",
+        {
+          "nTokens": 2,
+          "curvePool": "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+          "poolType": 0,
+          "feeds": [
+            ["0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"]
+          ],
+          "oracleTimeouts": [["3660"], ["86460"]],
+          "oracleErrors": [["10000000000000000"], ["2500000000000000"]],
+          "lpToken": "0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC"
+        },
+        "0xAEda92e6A3B1028edc139A4ae56Ec881f3064D4F",
+        "20000000000000000"
+      ]
+    }
+  ],
+  "erc20Wrapper": {
+    "contract": "ConvexStakingWrapper",
+    "args": [],
+    "factoryOptions": {
+      "libraries": { "CvxMining": "0xA6B8934a82874788043A75d50ca74a18732DC660" }
+    },
+    "calls": [
+      {
+        "method": "initialize",
+        "args": [156]
+      }
+    ]
+  }
+}

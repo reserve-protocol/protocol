@@ -142,4 +142,16 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
     /// Should update in inheritors
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view virtual returns (uint192);
+
+    function injectState(uint48 lastWhenDefault, uint192 _exposedReferencePrice) external override {
+        _injectState(lastWhenDefault);
+        exposedReferencePrice = _exposedReferencePrice;
+    }
+
+    function sample() external view override returns (Out memory out) {
+        out = Out(0, 0, 0, 0, 0);
+        out.underlyingRefPrTok = _underlyingRefPerTok();
+        out.refPrTok = refPerTok();
+        (out.priceLow, out.priceHigh, out.pegPrice) = this.tryPrice();
+    }
 }

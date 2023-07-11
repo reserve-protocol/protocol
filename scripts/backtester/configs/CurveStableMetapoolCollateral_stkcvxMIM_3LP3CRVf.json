@@ -1,0 +1,179 @@
+{
+  "collateralContract": "CurveStableMetapoolCollateral",
+  "startBlock": 15000000,
+  "stride": 1,
+  "endBlock": 17590000,
+  "collateralConfig": {
+    "erc20": "0x0000000000000000000000000000000000000000",
+    "targetName": "0x5553440000000000000000000000000000000000000000000000000000000000",
+    "priceTimeout": "604800",
+    "chainlinkFeed": "0x7A364e8770418566e3eb2001A96116E6138Eb32F",
+    "oracleError": "5000000000000000",
+    "oracleTimeout": "86400",
+    "maxTradeVolume": "1000000000000000000000000",
+    "defaultThreshold": "12500000000000000",
+    "delayUntilDefault": "86400"
+  },
+  "variants": [
+    {
+      "name": "CurveStableMetapoolCollateral_stkcvxMIM_3LP3CRVf:0.0",
+      "args": [
+        "0",
+        {
+          "nTokens": 3,
+          "curvePool": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+          "poolType": 0,
+          "feeds": [
+            ["0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"],
+            ["0x3E7d1eAB13ad0104d2750B8863b489D65364e32D"]
+          ],
+          "oracleTimeouts": [["86460"], ["86460"], ["86460"]],
+          "oracleErrors": [["2500000000000000"], ["2500000000000000"], ["2500000000000000"]],
+          "lpToken": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+        },
+        "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+        "55000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableMetapoolCollateral_stkcvxMIM_3LP3CRVf:0.000001",
+      "args": [
+        "1000000000000",
+        {
+          "nTokens": 3,
+          "curvePool": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+          "poolType": 0,
+          "feeds": [
+            ["0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"],
+            ["0x3E7d1eAB13ad0104d2750B8863b489D65364e32D"]
+          ],
+          "oracleTimeouts": [["86460"], ["86460"], ["86460"]],
+          "oracleErrors": [["2500000000000000"], ["2500000000000000"], ["2500000000000000"]],
+          "lpToken": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+        },
+        "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+        "55000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableMetapoolCollateral_stkcvxMIM_3LP3CRVf:0.00001",
+      "args": [
+        "10000000000000",
+        {
+          "nTokens": 3,
+          "curvePool": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+          "poolType": 0,
+          "feeds": [
+            ["0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"],
+            ["0x3E7d1eAB13ad0104d2750B8863b489D65364e32D"]
+          ],
+          "oracleTimeouts": [["86460"], ["86460"], ["86460"]],
+          "oracleErrors": [["2500000000000000"], ["2500000000000000"], ["2500000000000000"]],
+          "lpToken": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+        },
+        "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+        "55000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableMetapoolCollateral_stkcvxMIM_3LP3CRVf:0.0001",
+      "args": [
+        "100000000000000",
+        {
+          "nTokens": 3,
+          "curvePool": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+          "poolType": 0,
+          "feeds": [
+            ["0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"],
+            ["0x3E7d1eAB13ad0104d2750B8863b489D65364e32D"]
+          ],
+          "oracleTimeouts": [["86460"], ["86460"], ["86460"]],
+          "oracleErrors": [["2500000000000000"], ["2500000000000000"], ["2500000000000000"]],
+          "lpToken": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+        },
+        "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+        "55000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableMetapoolCollateral_stkcvxMIM_3LP3CRVf:0.001",
+      "args": [
+        "1000000000000000",
+        {
+          "nTokens": 3,
+          "curvePool": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+          "poolType": 0,
+          "feeds": [
+            ["0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"],
+            ["0x3E7d1eAB13ad0104d2750B8863b489D65364e32D"]
+          ],
+          "oracleTimeouts": [["86460"], ["86460"], ["86460"]],
+          "oracleErrors": [["2500000000000000"], ["2500000000000000"], ["2500000000000000"]],
+          "lpToken": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+        },
+        "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+        "55000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableMetapoolCollateral_stkcvxMIM_3LP3CRVf:0.01",
+      "args": [
+        "10000000000000000",
+        {
+          "nTokens": 3,
+          "curvePool": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+          "poolType": 0,
+          "feeds": [
+            ["0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"],
+            ["0x3E7d1eAB13ad0104d2750B8863b489D65364e32D"]
+          ],
+          "oracleTimeouts": [["86460"], ["86460"], ["86460"]],
+          "oracleErrors": [["2500000000000000"], ["2500000000000000"], ["2500000000000000"]],
+          "lpToken": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+        },
+        "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+        "55000000000000000"
+      ]
+    },
+    {
+      "name": "CurveStableMetapoolCollateral_stkcvxMIM_3LP3CRVf:0.1",
+      "args": [
+        "100000000000000000",
+        {
+          "nTokens": 3,
+          "curvePool": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+          "poolType": 0,
+          "feeds": [
+            ["0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9"],
+            ["0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"],
+            ["0x3E7d1eAB13ad0104d2750B8863b489D65364e32D"]
+          ],
+          "oracleTimeouts": [["86460"], ["86460"], ["86460"]],
+          "oracleErrors": [["2500000000000000"], ["2500000000000000"], ["2500000000000000"]],
+          "lpToken": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+        },
+        "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+        "55000000000000000"
+      ]
+    }
+  ],
+  "erc20Wrapper": {
+    "contract": "ConvexStakingWrapper",
+    "args": [],
+    "factoryOptions": {
+      "libraries": { "CvxMining": "0xA6B8934a82874788043A75d50ca74a18732DC660" }
+    },
+    "calls": [
+      {
+        "method": "initialize",
+        "args": [40]
+      }
+    ]
+  }
+}

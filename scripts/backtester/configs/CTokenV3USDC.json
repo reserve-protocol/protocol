@@ -1,0 +1,55 @@
+{
+    "collateralContract": "CTokenV3Collateral",
+    "startBlock": 15331586,
+    "stride": 1,
+    "endBlock": 17590000,
+    "collateralConfig": {
+      "priceTimeout": "604800",
+      "chainlinkFeed": "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
+      "oracleError": "2500000000000000",
+      "erc20": "0x39AA39c021dfbaE8faC545936693aC917d5E7563",
+      "maxTradeVolume": "1000000000000000000000000",
+      "oracleTimeout": "86460",
+      "targetName": "0x5553440000000000000000000000000000000000000000000000000000000000",
+      "defaultThreshold": "12500000000000000",
+      "delayUntilDefault": "86400"
+    },
+    "variants": [
+        {
+            "name": "CTokenV3Collateral-USDC:0.0",
+            "args": [ "0", "10000000000" ]
+        },
+        {
+            "name": "CTokenV3Collateral-USDC:0.000001",
+            "args": [ "1000000000000", "10000000000" ]
+        },
+        {
+            "name": "CTokenV3Collateral-USDC:0.00001",
+            "args": [ "10000000000000", "10000000000" ]
+        },
+        {
+            "name": "CTokenV3Collateral-USDC:0.0001",
+            "args": [ "100000000000000", "10000000000" ]
+        },
+        {
+            "name": "CTokenV3Collateral-USDC:0.001",
+            "args": [ "1000000000000000", "10000000000" ]
+        },
+        {
+            "name": "CTokenV3Collateral-USDC:0.01",
+            "args": [ "10000000000000000", "10000000000" ]
+        },
+        {
+            "name": "CTokenV3Collateral-USDC:0.1",
+            "args": [ "100000000000000000", "10000000000" ]
+        }
+    ],
+    "erc20Wrapper": {
+      "contract": "CusdcV3Wrapper",
+      "args": [
+        "0xc3d688B66703497DAA19211EEdff47f25384cdc3",
+        "0x1B0e765F6224C21223AeA2af16c1C46E38885a40",
+        "0xc00e94Cb662C3520282E6f5717214004A7f26888"
+      ]
+    }
+  }

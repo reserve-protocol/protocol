@@ -1,0 +1,57 @@
+{
+    "collateralContract": "ATokenFiatCollateral",
+    "startBlock": 15000000,
+    "stride": 1,
+    "endBlock": 17590000,
+    "collateralConfig": {
+      "priceTimeout": "604800",
+      "chainlinkFeed": "0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A",
+      "oracleError": "2500000000000000",
+      "erc20": "0xA361718326c15715591c299427c62086F69923D9",
+      "maxTradeVolume": "1000000000000000000000000",
+      "oracleTimeout": "86460",
+      "targetName": "0x5553440000000000000000000000000000000000000000000000000000000000",
+      "defaultThreshold": "12500000000000000",
+      "delayUntilDefault": "86400"
+    },
+    "variants": [
+        {
+            "name": "ATokenFiatCollateral-BUSD:0.0",
+            "args": [ "0" ]
+        },
+        {
+            "name": "ATokenFiatCollateral-BUSD:0.000001",
+            "args": [ "1000000000000" ]
+        },
+        {
+            "name": "ATokenFiatCollateral-BUSD:0.00001",
+            "args": [ "10000000000000" ]
+        },
+        {
+            "name": "ATokenFiatCollateral-BUSD:0.0001",
+            "args": [ "100000000000000" ]
+        },
+        {
+            "name": "ATokenFiatCollateral-BUSD:0.001",
+            "args": [ "1000000000000000" ]
+        },
+        {
+            "name": "ATokenFiatCollateral-BUSD:0.01",
+            "args": [ "10000000000000000" ]
+        },
+        {
+            "name": "ATokenFiatCollateral-BUSD:0.1",
+            "args": [ "100000000000000000" ]
+        }
+    ],
+    "erc20Wrapper": {
+      "contract": "StaticATokenLM",
+      "args": [
+        "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
+        "0xA361718326c15715591c299427c62086F69923D9",
+        "Static aBUSD",
+        "saUSDC"
+      ],
+      "factoryOptions": {}
+    }
+  }

@@ -1,0 +1,47 @@
+{
+  "collateralContract": "SDaiCollateral",
+  "startBlock": 16430000,
+  "stride": 1,
+  "endBlock": 17590000,
+  "collateralConfig": {
+    "priceTimeout": "604800",
+    "chainlinkFeed": "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
+    "oracleError": "2500000000000000",
+    "erc20": "0x83f20f44975d03b1b09e64809b757c47f942beea",
+    "maxTradeVolume": "1000000000000000000000000",
+    "oracleTimeout": "86460",
+    "targetName": "0x5553440000000000000000000000000000000000000000000000000000000000",
+    "defaultThreshold": "12500000000000000",
+    "delayUntilDefault": "86400"
+  },
+  "variants": [
+    {
+      "name": "SDaiCollateral:0.0",
+      "args": ["0", "0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7"]
+    },
+    {
+      "name": "SDaiCollateral:0.000001",
+      "args": ["1000000000000", "0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7"]
+    },
+    {
+      "name": "SDaiCollateral:0.00001",
+      "args": ["10000000000000", "0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7"]
+    },
+    {
+      "name": "SDaiCollateral:0.0001",
+      "args": ["100000000000000", "0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7"]
+    },
+    {
+      "name": "SDaiCollateral:0.001",
+      "args": ["1000000000000000", "0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7"]
+    },
+    {
+      "name": "SDaiCollateral:0.01",
+      "args": ["10000000000000000", "0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7"]
+    },
+    {
+      "name": "SDaiCollateral:0.1",
+      "args": ["100000000000000000", "0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7"]
+    }
+  ]
+}

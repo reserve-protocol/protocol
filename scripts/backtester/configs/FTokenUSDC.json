@@ -1,0 +1,56 @@
+{
+    "collateralContract": "CTokenFiatCollateral",
+    "startBlock": 16558734,
+    "stride": 1,
+    "endBlock": 17590000,
+    "collateralConfig": {
+      "priceTimeout": "604800",
+      "chainlinkFeed": "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
+      "oracleError": "2500000000000000",
+      "erc20": "0x465a5a630482f3abD6d3b84B39B29b07214d19e5",
+      "maxTradeVolume": "1000000000000000000000000",
+      "oracleTimeout": "86460",
+      "targetName": "0x5553440000000000000000000000000000000000000000000000000000000000",
+      "defaultThreshold": "12500000000000000",
+      "delayUntilDefault": "86400"
+    },
+    "variants": [
+        {
+            "name": "FluxFinance.CTokenFiatCollateral-USDC:0.0",
+            "args": [ "0" ]
+        },
+        {
+            "name": "FluxFinance.CTokenFiatCollateral-USDC:0.000001",
+            "args": [ "1000000000000" ]
+        },
+        {
+            "name": "FluxFinance.CTokenFiatCollateral-USDC:0.00001",
+            "args": [ "10000000000000" ]
+        },
+        {
+            "name": "FluxFinance.CTokenFiatCollateral-USDC:0.0001",
+            "args": [ "100000000000000" ]
+        },
+        {
+            "name": "FluxFinance.CTokenFiatCollateral-USDC:0.001",
+            "args": [ "1000000000000000" ]
+        },
+        {
+            "name": "FluxFinance.CTokenFiatCollateral-USDC:0.01",
+            "args": [ "10000000000000000" ]
+        },
+        {
+            "name": "FluxFinance.CTokenFiatCollateral-USDC:0.1",
+            "args": [ "100000000000000000" ]
+        }
+    ],
+    "erc20Wrapper": {
+      "contract": "CTokenWrapper",
+      "args": [
+        "0x465a5a630482f3abD6d3b84B39B29b07214d19e5",
+        "Flux Finance USD Coin",
+        "FUSDC",
+        "0x95Af143a021DF745bc78e845b54591C53a8B3A51"
+      ]
+    }
+  }

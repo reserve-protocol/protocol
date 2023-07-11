@@ -1,0 +1,48 @@
+{
+    "collateralContract": "CBEthCollateral",
+    "startBlock": 15995000,
+    "stride": 1,
+    "endBlock": 17590000,
+    "collateralConfig": {
+      "priceTimeout": "604800",
+      "chainlinkFeed": "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",
+      "oracleError": "25100000000000000",
+      "erc20": "0xBe9895146f7AF43049ca1c1AE358B0541Ea49704",
+      "maxTradeVolume": "1000000000000000000000000",
+      "oracleTimeout": "3660",
+      "targetName": "0x4554480000000000000000000000000000000000000000000000000000000000",
+      "defaultThreshold": "150000000000000000",
+      "delayUntilDefault": "86400"
+    },
+    "variants": [
+      {
+        "name": "CBETH:0.0",
+        "args": ["0", "0xf017fcb346a1885194689ba23eff2fe6fa5c483b", "86460"]
+      },
+      {
+        "name": "CBETH:0.000001",
+        "args": ["1000000000000", "0xf017fcb346a1885194689ba23eff2fe6fa5c483b", "86460"]
+      },
+      {
+        "name": "CBETH:0.00001",
+        "args": ["10000000000000", "0xf017fcb346a1885194689ba23eff2fe6fa5c483b", "86460"]
+      },
+      {
+        "name": "CBETH:0.0001",
+        "args": ["100000000000000", "0xf017fcb346a1885194689ba23eff2fe6fa5c483b", "86460"]
+      },
+      {
+        "name": "CBETH:0.001",
+        "args": ["1000000000000000", "0xf017fcb346a1885194689ba23eff2fe6fa5c483b", "86460"]
+      },
+      {
+        "name": "CBETH:0.01",
+        "args": ["10000000000000000", "0xf017fcb346a1885194689ba23eff2fe6fa5c483b", "86460"]
+      },
+      {
+        "name": "CBETH:0.1",
+        "args": ["100000000000000000", "0xf017fcb346a1885194689ba23eff2fe6fa5c483b", "86460"]
+      }
+    ]
+  }
+  

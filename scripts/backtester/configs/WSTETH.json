@@ -1,0 +1,47 @@
+{
+  "collateralContract": "LidoStakedEthCollateral",
+  "startBlock": 15000000,
+  "stride": 1,
+  "endBlock": 17590000,
+  "collateralConfig": {
+    "priceTimeout": "604800",
+    "chainlinkFeed": "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
+    "oracleError": "10000000000000000",
+    "erc20": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
+    "maxTradeVolume": "1000000000000000000000000",
+    "oracleTimeout": "3660",
+    "targetName": "0x4554480000000000000000000000000000000000000000000000000000000000",
+    "defaultThreshold": "150000000000000000",
+    "delayUntilDefault": "86400"
+  },
+  "variants": [
+    {
+      "name": "WSTETH:0.0",
+      "args": ["0", "0x86392dc19c0b719886221c78ab11eb8cf5c52812", "86460"]
+    },
+    {
+      "name": "WSTETH:0.000001",
+      "args": ["1000000000000", "0x86392dc19c0b719886221c78ab11eb8cf5c52812", "86460"]
+    },
+    {
+      "name": "WSTETH:0.00001",
+      "args": ["10000000000000", "0x86392dc19c0b719886221c78ab11eb8cf5c52812", "86460"]
+    },
+    {
+      "name": "WSTETH:0.0001",
+      "args": ["100000000000000", "0x86392dc19c0b719886221c78ab11eb8cf5c52812", "86460"]
+    },
+    {
+      "name": "WSTETH:0.001",
+      "args": ["1000000000000000", "0x86392dc19c0b719886221c78ab11eb8cf5c52812", "86460"]
+    },
+    {
+      "name": "WSTETH:0.01",
+      "args": ["10000000000000000", "0x86392dc19c0b719886221c78ab11eb8cf5c52812", "86460"]
+    },
+    {
+      "name": "WSTETH:0.1",
+      "args": ["100000000000000000", "0x86392dc19c0b719886221c78ab11eb8cf5c52812", "86460"]
+    }
+  ]
+}

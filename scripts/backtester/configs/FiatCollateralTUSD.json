@@ -1,0 +1,24 @@
+{
+    "collateralContract": "FiatCollateral",
+    "startBlock": 15000000,
+    "stride": 1,
+    "endBlock": 17590000,
+    "collateralConfig": {
+      "priceTimeout": "604800",
+      "chainlinkFeed": "0xec746eCF986E2927Abd291a2A1716c940100f8Ba",
+      "oracleError": "2500000000000000",
+      "erc20": "0x0000000000085d4780B73119b644AE5ecd22b376",
+      "maxTradeVolume": "1000000000000000000000000",
+      "oracleTimeout": "86460",
+      "targetName": "0x5553440000000000000000000000000000000000000000000000000000000000",
+      "defaultThreshold": "12500000000000000",
+      "delayUntilDefault": "86400"
+    },
+    "variants": [
+      {
+        "name": "FiatCollateral-TUSD",
+        "args": []
+      }
+    ]
+  }
+  

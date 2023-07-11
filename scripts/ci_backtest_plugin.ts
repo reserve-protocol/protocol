@@ -1,56 +1,85 @@
 import { providers } from 'ethers'
 import { ethers } from 'hardhat'
 import fs from 'fs'
-import { backTestPlugin } from './backtester/backtester'
-
-const htmlReportTemplate = fs.readFileSync('./scripts/backtester/report-template.html', 'utf8')
+import { submitBacktest } from './backtester/backtester'
+import { hexlify } from 'ethers/lib/utils'
+import ExampleBackTest from "./backtester/configs/CurveStableRTokenMetapoolCollateral_stkcvxeUSD3CRVf.json"
+type IBacktestType = typeof ExampleBackTest
 
 export const main = async () => {
   const provider = new providers.JsonRpcProvider(process.env.MAINNET_RPC_URL)
 
-  const currentBlock = await provider.getBlockNumber()
-  const stride = parseInt(process.env.STRIDE ?? '300', 10)
-  const numberOfSamples = parseInt(process.env.SAMPLES ?? '1000', 10)
-  const contractToTest = (
-    await ethers.getContractFactory(process.env.CONTRACT_NAME!)
-  ).getDeployTransaction(...JSON.parse(process.env.CONSTRUCTOR_PARAMETERS!))
+  const config = JSON.parse(fs.readFileSync("./scripts/backtester/configs/" + process.env.BACKTEST + ".json", "utf8")) as IBacktestType
+  const contractFactory = await ethers.getContractFactory(config.collateralContract)
 
-  if (process.env.BACKTEST_RESULT_DIR != null) {
-    console.log('Will save results to ', process.env.BACKTEST_RESULT_DIR)
-    if (!fs.existsSync(process.env.BACKTEST_RESULT_DIR)) {
-      fs.mkdirSync(process.env.BACKTEST_RESULT_DIR)
+  const byteCode = contractFactory.bytecode
+
+  const contractInterface = contractFactory.interface
+
+  let erc20Wrapper: {
+    byteCode: string
+    calls: { data: string }[]
+  } | undefined | null = null
+  if (config.erc20Wrapper != null) {
+    const erc20WrapperFactory = await ethers.getContractFactory(config.erc20Wrapper.contract, config.erc20Wrapper.factoryOptions)
+    erc20Wrapper = {
+      byteCode: hexlify(erc20WrapperFactory.getDeployTransaction(...config.erc20Wrapper.args).data || []),
+      calls: config.erc20Wrapper.calls?.map(call => {
+        return {
+          data: erc20WrapperFactory.interface.encodeFunctionData(call.method, call.args)
+        }
+      }) ?? []
     }
   }
 
-  const start = currentBlock - stride * numberOfSamples
-  const result = {
-    ...(
-      await backTestPlugin([contractToTest.data!], {
-        start,
-        stride,
-        numberOfSamples,
-        backtestServiceUrl: process.env.BACKTEST_SERVICE_URL!,
-      })
-    )[0],
-    backtestName: process.env.CONTRACT_NAME!,
-  }
 
-  if (process.env.BACKTEST_RESULT_DIR != null) {
-    console.log('Backtest done, saving results')
-    console.log(`Saving to ${process.env.BACKTEST_RESULT_DIR}/${process.env.CONTRACT_NAME}.json`)
-    fs.writeFileSync(
-      `${process.env.BACKTEST_RESULT_DIR}/${result.backtestName}.json`,
-      JSON.stringify(result, null, 2)
+  const firstPart = contractInterface._encodeParams(
+    contractInterface.deploy.inputs.slice(0, 1),
+    [config.collateralConfig]
+  )
+  const variants = config.variants.map((variant) => {
+    const full = contractInterface._encodeParams(
+      contractInterface.deploy.inputs,
+      [config.collateralConfig, ...variant.args]
     )
 
-    const htmlReport = htmlReportTemplate.replace(
-      'const data = []',
-      'const data = ' + JSON.stringify([result], null, 2)
-    )
-    fs.writeFileSync(`${process.env.BACKTEST_RESULT_DIR}/report.html`, htmlReport)
-  } else {
-    console.log(JSON.stringify(result, null, 2))
+    return {
+      name: variant.name,
+      args: '0x' + full.slice(firstPart.length, full.length)
+    }
+  })
+  
+  let start = config.startBlock
+  let stride = config.stride
+  let numberOfSamples = (config.endBlock - config.startBlock) / stride
+
+  if (process.env.STRIDE != null) {
+    stride = parseInt(process.env.STRIDE ?? '1', 10)
+    start = parseInt(process.env.START_BLOCK!, 10)
+
+    if (process.env.END_BLOCK === '0') {
+      const end = await provider.getBlockNumber()
+      numberOfSamples = (end - config.startBlock) / stride
+    } else {
+      const end = parseInt(process.env.END_BLOCK!, 10)
+      numberOfSamples = (end - config.startBlock) / stride
+    }
   }
+
+  const result = await submitBacktest(
+    process.env.BACKTEST_SERVICE_URL!,
+    {
+      startBlock: start,
+      stride,
+      samples: numberOfSamples,
+      byteCode: byteCode,
+      config: config.collateralConfig,
+      erc20Wrapper: erc20Wrapper,
+      variants
+    }
+  )
+
+  console.log(JSON.stringify(result, null, 2))
 }
 
 main()

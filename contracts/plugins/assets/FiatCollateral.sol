@@ -215,4 +215,27 @@ contract FiatCollateral is ICollateral, Asset {
     function isCollateral() external pure virtual override(Asset, IAsset) returns (bool) {
         return true;
     }
+
+    struct Out {
+        uint256 underlyingRefPrTok;
+        uint256 refPrTok;
+        uint256 priceHigh;
+        uint256 priceLow;
+        uint256 pegPrice;
+    }
+    function _injectState(uint48 lastWhenDefault) internal {
+        _whenDefault = lastWhenDefault;
+    }
+    function injectState(uint48 lastWhenDefault, uint192 _exposedReferencePrice) external virtual {
+        _injectState(lastWhenDefault);
+    }
+
+    function sample() external view virtual returns (
+        Out memory out
+    ) {
+        out = Out(0, 0, 0, 0, 0);
+        out.refPrTok = refPerTok();
+        out.underlyingRefPrTok = out.refPrTok;
+        (out.priceLow, out.priceHigh, out.pegPrice) = this.tryPrice();
+    }
 }

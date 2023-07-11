@@ -1,0 +1,56 @@
+{
+    "collateralContract": "CTokenNonFiatCollateral",
+    "startBlock": 15000000,
+    "stride": 1,
+    "endBlock": 17590000,
+    "collateralConfig": {
+      "priceTimeout": "604800",
+      "chainlinkFeed": "0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23",
+      "oracleError": "2510000000000000",
+      "erc20": "0xccF4429DB6322D5C611ee964527D42E5d685DD6a",
+      "maxTradeVolume": "1000000000000000000000000",
+      "oracleTimeout": "86460",
+      "targetName": "0x4254430000000000000000000000000000000000000000000000000000000000",
+      "defaultThreshold": "35000000000000000",
+      "delayUntilDefault": "86400"
+    },
+    "variants": [
+        {
+            "name": "CTokenNonFiatCollateral-WBTC:0.0",
+            "args": [ "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c", "3660", "0" ]
+        },
+        {
+            "name": "CTokenNonFiatCollateral-WBTC:0.000001",
+            "args": [ "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c", "3660", "1000000000000" ]
+        },
+        {
+            "name": "CTokenNonFiatCollateral-WBTC:0.00001",
+            "args": [ "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c", "3660", "10000000000000" ]
+        },
+        {
+            "name": "CTokenNonFiatCollateral-WBTC:0.0001",
+            "args": [ "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c", "3660", "100000000000000" ]
+        },
+        {
+            "name": "CTokenNonFiatCollateral-WBTC:0.001",
+            "args": [ "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c", "3660", "1000000000000000" ]
+        },
+        {
+            "name": "CTokenNonFiatCollateral-WBTC:0.01",
+            "args": [ "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c", "3660", "10000000000000000" ]
+        },
+        {
+            "name": "CTokenNonFiatCollateral-WBTC:0.1",
+            "args": [ "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c", "3660", "100000000000000000" ]
+        }
+    ],
+    "erc20Wrapper": {
+      "contract": "CTokenWrapper",
+      "args": [
+        "0xccF4429DB6322D5C611ee964527D42E5d685DD6a",
+        "cWBTC Vault",
+        "wcWBTC",
+        "0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B"
+      ]
+    }
+  }

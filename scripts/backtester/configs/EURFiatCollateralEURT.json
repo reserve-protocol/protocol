@@ -1,0 +1,27 @@
+{
+    "collateralContract": "EURFiatCollateral",
+    "startBlock": 15000000,
+    "stride": 1,
+    "endBlock": 17590000,
+    "collateralConfig": {
+      "priceTimeout": "604800",
+      "chainlinkFeed": "0x01D391A48f4F7339aC64CA2c83a07C22F95F587a",
+      "oracleError": "2000000000000000",
+      "erc20": "0xC581b735A1688071A1746c968e0798D642EDE491",
+      "maxTradeVolume": "1000000000000000000000000",
+      "oracleTimeout": "86460",
+      "targetName": "0x4555520000000000000000000000000000000000000000000000000000000000",
+      "defaultThreshold": "30000000000000000",
+      "delayUntilDefault": "86400"
+    },
+    "variants": [
+      {
+        "name": "EURFiatCollateral-EURT",
+        "args": [
+            "0xb49f677943BC038e9857d61E7d053CaA2C1734C1",
+            "86400"
+        ]
+      }
+    ]
+  }
+  

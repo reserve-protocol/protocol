@@ -3,21 +3,26 @@ import fetch from 'isomorphic-fetch'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+interface SubmitBacktestJobRequest {
+  stride: number
+  startBlock: number
+  samples: number
+  config: any
+  byteCode: string,
+  erc20Wrapper?: {
+    byteCode: string,
+    calls: { data: string }[]
+  } | null | undefined,
+  variants: { name: string, args: string }[]
+}
+
 export const submitBacktest = async (
   backtestServiceUrl: string,
-  deploymentTransactionData: BytesLike,
-  start: number,
-  stride: number,
-  numberOfSamples: number
+  req: SubmitBacktestJobRequest,
 ) => {
   const resp = await fetch(`${backtestServiceUrl}/api/backtest-plugin`, {
     method: 'POST',
-    body: JSON.stringify({
-      byteCode: deploymentTransactionData,
-      stride,
-      startBlock: start,
-      samples: numberOfSamples,
-    }),
+    body: JSON.stringify(req),
     headers: {
       'Content-Type': 'application/json',
     },
@@ -54,41 +59,29 @@ export const awaitBacktestJobResult = async (backtestServiceUrl: string, key: st
 }
 
 export const backTestPlugin = async (
-  deployTransactions: BytesLike[],
-  opts: {
-    start: number
-    stride: number
-    numberOfSamples: number
-    backtestServiceUrl: string
-  }
+  backtestServiceUrl: string,
+  request: SubmitBacktestJobRequest
 ) => {
-  return await Promise.all(
-    deployTransactions.map(async (deployTx) => {
-      try {
-        const backtestJob = await submitBacktest(
-          opts.backtestServiceUrl,
-          deployTx,
-          opts.start,
-          opts.stride,
-          opts.numberOfSamples
-        )
+  try {
+    const backtestJob = await submitBacktest(
+      backtestServiceUrl,
+      request
+    )
 
-        const backtestJobResult = await awaitBacktestJobResult(
-          opts.backtestServiceUrl,
-          backtestJob.hash
-        )
+    const backtestJobResult = await awaitBacktestJobResult(
+      backtestServiceUrl,
+      backtestJob.hash
+    )
 
-        return {
-          status: backtestJobResult.jobStatus,
-          result: backtestJobResult,
-        }
-      } catch (e: any) {
-        console.log('Skking')
-        return {
-          status: 'FAILED',
-          error: e.toString(),
-        }
-      }
-    })
-  )
+    return {
+      status: backtestJobResult.jobStatus,
+      result: backtestJobResult,
+    }
+  } catch (e: any) {
+    console.error(e)
+    return {
+      status: 'FAILED',
+      error: e.toString(),
+    }
+  }
 }
