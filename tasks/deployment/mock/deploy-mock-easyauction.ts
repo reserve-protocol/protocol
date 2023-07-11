@@ -26,30 +26,30 @@ task('deploy-mock-easyauction', 'Deploys a mock Easy Auction contract')
       )
     }
 
-    // Uncomment to verify
-    if (!params.noOutput) {
-      console.log('sleeping 30s')
-    }
+    // // Uncomment to verify
+    //  if (!params.noOutput) {
+    //   console.log('sleeping 30s')
+    // }
 
-    // Sleep to ensure API is in sync with chain
-    await new Promise((r) => setTimeout(r, 30000)) // 30s
+    // // Sleep to ensure API is in sync with chain
+    // await new Promise((r) => setTimeout(r, 30000)) // 30s
 
-    if (!params.noOutput) {
-      console.log('verifying')
-    }
+    // if (!params.noOutput) {
+    //   console.log('verifying')
+    // }
 
-    // /** ******************** Verify EasyAuction ****************************************/
-    console.time('Verifying EasyAuction')
-    await hre.run('verify:verify', {
-      address: easyAuction.address,
-      constructorArguments: [],
-      contract: 'contracts/plugins/mocks/EasyAuction.sol:EasyAuction',
-    })
-    console.timeEnd('Verifying EasyAuction')
+    // // /** ******************** Verify EasyAuction ****************************************/
+    // console.time('Verifying EasyAuction')
+    // await hre.run('verify:verify', {
+    //   address: easyAuction.address,
+    //   constructorArguments: [],
+    //   contract: 'contracts/plugins/mocks/EasyAuction.sol:EasyAuction',
+    // })
+    // console.timeEnd('Verifying EasyAuction')
 
-    if (!params.noOutput) {
-      console.log('verified')
-    }
+    // if (!params.noOutput) {
+    //   console.log('verified')
+    // }
 
     return { feed: easyAuction.address }
   })
