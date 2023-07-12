@@ -5,7 +5,8 @@ import "../../../libraries/Fixed.sol";
 import "../OracleLib.sol";
 import "../FiatCollateral.sol";
 import "./interfaces/IStargatePool.sol";
-import "./interfaces/IStargatePoolWrapper.sol";
+
+import "./StargateRewardableWrapper.sol";
 
 contract StargatePoolFiatCollateral is FiatCollateral {
     using FixLib for uint192;
@@ -14,9 +15,13 @@ contract StargatePoolFiatCollateral is FiatCollateral {
     // does not become nonzero until after first refresh()
     uint192 public lastReferencePrice; // {ref/tok} last ref price observed
 
+    IStargatePool private immutable pool;
+
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     // solhint-disable no-empty-blocks
-    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+    constructor(CollateralConfig memory config) FiatCollateral(config) {
+        pool = StargateRewardableWrapper(address(config.erc20)).pool();
+    }
 
     /// Can revert, used by other contract functions in order to catch errors
     /// Should not return FIX_MAX for low
@@ -105,17 +110,14 @@ contract StargatePoolFiatCollateral is FiatCollateral {
 
     /// @return _rate {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view virtual override returns (uint192 _rate) {
-        IStargatePoolWrapper poolWrapper = IStargatePoolWrapper(address(erc20));
-        IStargatePool pool = IStargatePool(address(poolWrapper.pool()));
         uint256 _totalSupply = pool.totalSupply();
+
         if (_totalSupply != 0) {
-            _rate = shiftl_toFix(pool.totalLiquidity(), -int8(erc20Decimals)).div(
-                shiftl_toFix(_totalSupply, -int8(erc20Decimals))
-            );
+            _rate = divuu(pool.totalLiquidity(), _totalSupply);
         }
     }
 
     function claimRewards() external override(Asset, IRewardable) {
-        IStargatePoolWrapper(address(erc20)).claimRewards();
+        StargateRewardableWrapper(address(erc20)).claimRewards();
     }
 }

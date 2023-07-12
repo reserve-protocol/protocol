@@ -8,9 +8,9 @@ import {
   MockV3Aggregator__factory,
   TestICollateral,
   StargatePoolMock,
-  IStargatePoolWrapper,
-  StargatePoolWrapper__factory,
   IStargateLPStaking,
+  StargateRewardableWrapper,
+  StargateRewardableWrapper__factory,
 } from '@typechain/index'
 import { bn, fp } from '#/common/numbers'
 import { expect } from 'chai'
@@ -33,7 +33,7 @@ import { noop } from 'lodash'
 
 interface StargateCollateralFixtureContext extends CollateralFixtureContext {
   pool: StargatePoolMock
-  wpool: IStargatePoolWrapper
+  wpool: StargateRewardableWrapper
   stargate: ERC20Mock
   stakingContract: IStargateLPStaking
 }
@@ -128,8 +128,8 @@ const deployCollateralStargateMockContext = async (
   }
   collateralOpts.chainlinkFeed = chainlinkFeed.address
 
-  const StargatePoolWrapperFactory = <StargatePoolWrapper__factory>(
-    await ethers.getContractFactory('StargatePoolWrapper')
+  const StargateRewardableWrapperFactory = <StargateRewardableWrapper__factory>(
+    await ethers.getContractFactory('StargateRewardableWrapper')
   )
   const stargate = await (
     await ethers.getContractFactory('ERC20Mock')
@@ -143,7 +143,7 @@ const deployCollateralStargateMockContext = async (
   await stakingContract.add(bn('5000'), mockPool.address)
   await mockPool.mint(stakingContract.address, bn(1))
   await mockPool.setExchangeRate(fp(1))
-  const wrapper = await StargatePoolWrapperFactory.deploy(
+  const wrapper = await StargateRewardableWrapperFactory.deploy(
     'wMocked Pool',
     'wMSP',
     stargate.address,
@@ -185,7 +185,7 @@ const mintCollateralTo: MintCollateralFunc<StargateCollateralFixtureContext> = a
 
   await ctx.pool.connect(user).approve(ctx.wpool.address, ethers.constants.MaxUint256)
   await ctx.pool.mint(user.address, amount)
-  await ctx.wpool.connect(user).deposit(amount)
+  await ctx.wpool.connect(user).deposit(amount, user.address)
   await ctx.wpool.connect(user).transfer(recipient, amount)
   await ctx.pool.setExchangeRate(currentExchangeRate.add(fp('0.000001')))
 }
@@ -257,7 +257,7 @@ export const stableOpts = {
   collateralName: 'Stargate USDC Pool',
   reduceTargetPerRef,
   increaseTargetPerRef,
-  itClaimsRewards: it.skip, // claims on deposit/withdraw, reward growth not supported in mock
+  itClaimsRewards: it.skip, // reward growth not supported in mock
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itHasRevenueHiding: it.skip, // no revenue hiding

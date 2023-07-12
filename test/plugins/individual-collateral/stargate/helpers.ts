@@ -4,8 +4,8 @@ import { ERC20Mock } from '@typechain/ERC20Mock'
 import {
   IStargatePool,
   IStargateRouter,
-  IStargatePoolWrapper,
-  StargatePoolWrapper__factory,
+  StargateRewardableWrapper__factory,
+  StargateRewardableWrapper,
 } from '@typechain/index'
 import { BigNumberish } from 'ethers'
 import { ethers } from 'hardhat'
@@ -21,7 +21,7 @@ import {
 
 interface WrappedstgUSDCFixture {
   usdc: ERC20Mock
-  wstgUSDC: IStargatePoolWrapper
+  wstgUSDC: StargateRewardableWrapper
   stgUSDC: IStargatePool
   router: IStargateRouter
 }
@@ -32,17 +32,15 @@ export const makewstgSUDC = async (susdc?: string): Promise<WrappedstgUSDCFixtur
     await ethers.getContractAt('IStargateRouter', await stgUSDC.router())
   )
 
-  const StargatePoolWrapperFactory = <StargatePoolWrapper__factory>(
-    await ethers.getContractFactory('StargatePoolWrapper')
+  const StargateRewardableWrapperFactory = <StargateRewardableWrapper__factory>(
+    await ethers.getContractFactory('StargateRewardableWrapper')
   )
-  const wstgUSDC = <IStargatePoolWrapper>(
-    await StargatePoolWrapperFactory.deploy(
-      WSUSDC_NAME,
-      WSUSDC_SYMBOL,
-      STARGATE,
-      STAKING_CONTRACT,
-      stgUSDC.address
-    )
+  const wstgUSDC = await StargateRewardableWrapperFactory.deploy(
+    WSUSDC_NAME,
+    WSUSDC_SYMBOL,
+    STARGATE,
+    STAKING_CONTRACT,
+    stgUSDC.address
   )
   const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
 
@@ -69,7 +67,7 @@ export const allocateUSDC = async (
 export const mintWStgUSDC = async (
   usdc: ERC20Mock,
   susdc: IStargatePool,
-  wsusdc: IStargatePoolWrapper,
+  wsusdc: StargateRewardableWrapper,
   account: SignerWithAddress,
   amount: BigNumberish
 ) => {
@@ -89,7 +87,7 @@ export const mintWStgUSDC = async (
   const nowBal = await susdc.balanceOf(account.address)
 
   const realAmount = nowBal.sub(initBal)
-  await wsusdc.connect(account).deposit(realAmount)
+  await wsusdc.connect(account).deposit(realAmount, account.address)
 
   return realAmount
 }

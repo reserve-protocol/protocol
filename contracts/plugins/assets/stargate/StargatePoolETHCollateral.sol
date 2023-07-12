@@ -4,7 +4,6 @@ pragma solidity 0.8.19;
 import "../../../libraries/Fixed.sol";
 import "../OracleLib.sol";
 import "./interfaces/IStargatePool.sol";
-import "./interfaces/IStargatePoolWrapper.sol";
 import "./StargatePoolFiatCollateral.sol";
 
 contract StargatePoolETHCollateral is StargatePoolFiatCollateral {

@@ -6,12 +6,12 @@ import { allocateUSDC, makewstgSUDC, mintWStgUSDC } from './helpers'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import {
   IStargatePool,
-  StargatePoolWrapper__factory,
-  IStargatePoolWrapper,
   ERC20Mock,
   IStargateRouter,
   StargatePoolMock,
   StargateLPStakingMock,
+  StargateRewardableWrapper__factory,
+  StargateRewardableWrapper,
 } from '@typechain/index'
 import { expect } from 'chai'
 import { ZERO_ADDRESS } from '#/common/constants'
@@ -27,10 +27,10 @@ describeFork('Wrapped S*USDC', () => {
   let charles: SignerWithAddress
   let don: SignerWithAddress
   let usdc: ERC20Mock
-  let wstgUSDC: IStargatePoolWrapper
+  let wstgUSDC: StargateRewardableWrapper
   let stgUSDC: IStargatePool
   let router: IStargateRouter
-  let StargatePoolWrapperFactory: StargatePoolWrapper__factory
+  let StargateRewardableWrapperFactory: StargateRewardableWrapper__factory
 
   let chainId: number
 
@@ -40,8 +40,8 @@ describeFork('Wrapped S*USDC', () => {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
 
-    StargatePoolWrapperFactory = <StargatePoolWrapper__factory>(
-      await ethers.getContractFactory('StargatePoolWrapper')
+    StargateRewardableWrapperFactory = <StargateRewardableWrapper__factory>(
+      await ethers.getContractFactory('StargateRewardableWrapper')
     )
   })
 
@@ -53,7 +53,7 @@ describeFork('Wrapped S*USDC', () => {
   describe('Deployment', () => {
     it('reverts if deployed with a 0 address for STG token or LP staking contract', async () => {
       await expect(
-        StargatePoolWrapperFactory.deploy(
+        StargateRewardableWrapperFactory.deploy(
           WSUSDC_NAME,
           WSUSDC_SYMBOL,
           ZERO_ADDRESS,
@@ -63,23 +63,19 @@ describeFork('Wrapped S*USDC', () => {
       ).to.be.reverted
 
       await expect(
-        StargatePoolWrapperFactory.deploy(WSUSDC_NAME, WSUSDC_SYMBOL, STARGATE, ZERO_ADDRESS, SUSDC)
-      ).to.be.reverted
-    })
-
-    it('reverts if deployed with no name or symbol', async () => {
-      await expect(
-        StargatePoolWrapperFactory.deploy('', WSUSDC_SYMBOL, STARGATE, STAKING_CONTRACT, SUSDC)
-      ).to.be.reverted
-
-      await expect(
-        StargatePoolWrapperFactory.deploy(WSUSDC_NAME, '', STARGATE, STAKING_CONTRACT, SUSDC)
+        StargateRewardableWrapperFactory.deploy(
+          WSUSDC_NAME,
+          WSUSDC_SYMBOL,
+          STARGATE,
+          ZERO_ADDRESS,
+          SUSDC
+        )
       ).to.be.reverted
     })
 
     it('reverts if deployed with invalid pool', async () => {
       await expect(
-        StargatePoolWrapperFactory.deploy(
+        StargateRewardableWrapperFactory.deploy(
           WSUSDC_NAME,
           WSUSDC_SYMBOL,
           STARGATE,
@@ -105,7 +101,7 @@ describeFork('Wrapped S*USDC', () => {
     })
 
     it('deposits correct amount', async () => {
-      await wstgUSDC.connect(bob).deposit(await stgUSDC.balanceOf(bob.address))
+      await wstgUSDC.connect(bob).deposit(await stgUSDC.balanceOf(bob.address), bob.address)
 
       expect(await stgUSDC.balanceOf(bob.address)).to.equal(0)
       expect(await wstgUSDC.balanceOf(bob.address)).to.closeTo(amount, 10)
@@ -115,7 +111,7 @@ describeFork('Wrapped S*USDC', () => {
     it('deposits less than available S*USDC', async () => {
       const depositAmount = await stgUSDC.balanceOf(bob.address).then((e) => e.div(2))
 
-      await wstgUSDC.connect(bob).deposit(depositAmount)
+      await wstgUSDC.connect(bob).deposit(depositAmount, bob.address)
 
       expect(await stgUSDC.balanceOf(bob.address)).to.be.closeTo(depositAmount, 10)
       expect(await usdc.balanceOf(bob.address)).to.equal(0)
@@ -125,9 +121,9 @@ describeFork('Wrapped S*USDC', () => {
     it('has accurate balances when doing multiple deposits', async () => {
       const depositAmount = await stgUSDC.balanceOf(bob.address)
 
-      await wstgUSDC.connect(bob).deposit(depositAmount.mul(3).div(4))
+      await wstgUSDC.connect(bob).deposit(depositAmount.mul(3).div(4), bob.address)
       await advanceTime(1000)
-      await wstgUSDC.connect(bob).deposit(depositAmount.mul(1).div(4))
+      await wstgUSDC.connect(bob).deposit(depositAmount.mul(1).div(4), bob.address)
 
       expect(await wstgUSDC.balanceOf(bob.address)).to.closeTo(depositAmount, 10)
     })
@@ -136,12 +132,8 @@ describeFork('Wrapped S*USDC', () => {
       const totalSupplyBefore = await wstgUSDC.totalSupply()
       const expectedAmount = await stgUSDC.balanceOf(bob.address)
 
-      await wstgUSDC.connect(bob).deposit(expectedAmount)
+      await wstgUSDC.connect(bob).deposit(expectedAmount, bob.address)
       expect(await wstgUSDC.totalSupply()).to.equal(totalSupplyBefore.add(expectedAmount))
-    })
-
-    it('reverts on depositing 0', async () => {
-      await expect(wstgUSDC.connect(bob).deposit(0)).to.be.revertedWith('Invalid amount')
     })
   })
 
@@ -154,7 +146,7 @@ describeFork('Wrapped S*USDC', () => {
     })
 
     it('withdraws to own account', async () => {
-      await wstgUSDC.connect(bob).withdraw(await wstgUSDC.balanceOf(bob.address))
+      await wstgUSDC.connect(bob).withdraw(await wstgUSDC.balanceOf(bob.address), bob.address)
       const bal = await wstgUSDC.balanceOf(bob.address)
 
       expect(bal).to.closeTo(bn('0'), 10)
@@ -165,19 +157,13 @@ describeFork('Wrapped S*USDC', () => {
       const initialBalance = await wstgUSDC.balanceOf(bob.address)
 
       const withdrawAmt = initialBalance.div(2)
-      await wstgUSDC.connect(bob).withdraw(withdrawAmt)
+      await wstgUSDC.connect(bob).withdraw(withdrawAmt, bob.address)
       expect(await wstgUSDC.balanceOf(bob.address)).to.closeTo(initialBalance.sub(withdrawAmt), 0)
 
       await advanceTime(1000)
 
-      await wstgUSDC.connect(bob).withdraw(withdrawAmt)
+      await wstgUSDC.connect(bob).withdraw(withdrawAmt, bob.address)
       expect(await wstgUSDC.balanceOf(bob.address)).to.closeTo(bn('0'), 10)
-    })
-
-    it('withdrawing 0 reverts', async () => {
-      const initialBalance = await wstgUSDC.balanceOf(bob.address)
-      await expect(wstgUSDC.connect(bob).withdraw(0)).to.be.revertedWith('Invalid amount')
-      expect(await wstgUSDC.balanceOf(bob.address)).to.equal(initialBalance)
     })
 
     it('handles complex withdrawal sequence', async () => {
@@ -189,7 +175,7 @@ describeFork('Wrapped S*USDC', () => {
 
       charlesWithdrawn = charlesWithdrawn.add(firstWithdrawAmt)
 
-      await wstgUSDC.connect(charles).withdraw(firstWithdrawAmt)
+      await wstgUSDC.connect(charles).withdraw(firstWithdrawAmt, charles.address)
       const newBalanceCharles = await stgUSDC.balanceOf(charles.address)
       expect(newBalanceCharles).to.closeTo(firstWithdrawAmt, 10)
 
@@ -198,26 +184,26 @@ describeFork('Wrapped S*USDC', () => {
 
       // bob withdraws SOME
       bobWithdrawn = bobWithdrawn.add(bn('12345e6'))
-      await wstgUSDC.connect(bob).withdraw(bn('12345e6'))
+      await wstgUSDC.connect(bob).withdraw(bn('12345e6'), bob.address)
 
       // don withdraws SOME
       donWithdrawn = donWithdrawn.add(bn('123e6'))
-      await wstgUSDC.connect(don).withdraw(bn('123e6'))
+      await wstgUSDC.connect(don).withdraw(bn('123e6'), don.address)
 
       // charles withdraws ALL
       const charlesRemainingBalance = await wstgUSDC.balanceOf(charles.address)
       charlesWithdrawn = charlesWithdrawn.add(charlesRemainingBalance)
-      await wstgUSDC.connect(charles).withdraw(charlesRemainingBalance)
+      await wstgUSDC.connect(charles).withdraw(charlesRemainingBalance, charles.address)
 
       // don withdraws ALL
       const donRemainingBalance = await wstgUSDC.balanceOf(don.address)
       donWithdrawn = donWithdrawn.add(donRemainingBalance)
-      await wstgUSDC.connect(don).withdraw(donRemainingBalance)
+      await wstgUSDC.connect(don).withdraw(donRemainingBalance, don.address)
 
       // bob withdraws ALL
       const bobRemainingBalance = await wstgUSDC.balanceOf(bob.address)
       bobWithdrawn = bobWithdrawn.add(bobRemainingBalance)
-      await wstgUSDC.connect(bob).withdraw(bobRemainingBalance)
+      await wstgUSDC.connect(bob).withdraw(bobRemainingBalance, bob.address)
 
       const bal = await wstgUSDC.balanceOf(bob.address)
 
@@ -231,7 +217,7 @@ describeFork('Wrapped S*USDC', () => {
       const totalSupplyBefore = await wstgUSDC.totalSupply()
       const withdrawAmt = bn('15000e6')
       const expectedDiff = withdrawAmt
-      await wstgUSDC.connect(bob).withdraw(withdrawAmt)
+      await wstgUSDC.connect(bob).withdraw(withdrawAmt, bob.address)
 
       expect(await wstgUSDC.totalSupply()).to.be.closeTo(totalSupplyBefore.sub(expectedDiff), 10)
     })
@@ -241,7 +227,7 @@ describeFork('Wrapped S*USDC', () => {
     let stakingContract: StargateLPStakingMock
     let stargate: ERC20Mock
     let mockPool: StargatePoolMock
-    let wrapper: IStargatePoolWrapper
+    let wrapper: StargateRewardableWrapper
 
     const initialAmount = bn('20000e6')
 
@@ -256,7 +242,7 @@ describeFork('Wrapped S*USDC', () => {
         await ethers.getContractFactory('StargatePoolMock')
       ).deploy('Mock S*USDC', 'MS*USDC', 6)
       await stakingContract.add(bn('5000'), mockPool.address)
-      wrapper = await StargatePoolWrapperFactory.deploy(
+      wrapper = await StargateRewardableWrapperFactory.deploy(
         'wMS*USDC',
         'wMS*USDC',
         stargate.address,
@@ -265,22 +251,16 @@ describeFork('Wrapped S*USDC', () => {
       )
       await mockPool.connect(bob).approve(wrapper.address, ethers.constants.MaxUint256)
       await mockPool.mint(bob.address, initialAmount)
-      await wrapper.connect(bob).deposit(initialAmount)
+      await wrapper.connect(bob).deposit(initialAmount, bob.address)
     })
 
-    it('emits previous rewards upon depositing', async () => {
+    it('claims previous rewards', async () => {
       await stakingContract.addRewardsToUser(bn('0'), wrapper.address, bn('20000e18'))
       const availableReward = await stakingContract.pendingStargate('0', wrapper.address)
       await mockPool.mint(bob.address, initialAmount)
-      await wrapper.connect(bob).deposit(await mockPool.balanceOf(bob.address))
-      expect(availableReward).to.be.eq(await stargate.balanceOf(bob.address))
-    })
+      await wrapper.connect(bob).deposit(await mockPool.balanceOf(bob.address), bob.address)
+      await wrapper.connect(bob).claimRewards()
 
-    it('emits previous rewards upon withdrawal', async () => {
-      await stakingContract.addRewardsToUser(bn('0'), wrapper.address, bn('20000e18'))
-      const availableReward = await stakingContract.pendingStargate('0', wrapper.address)
-
-      await wrapper.connect(bob).withdraw(await wrapper.balanceOf(bob.address))
       expect(availableReward).to.be.eq(await stargate.balanceOf(bob.address))
     })
 
@@ -293,15 +273,22 @@ describeFork('Wrapped S*USDC', () => {
         )
         await mockPool.mint(charles.address, initialAmount)
         await mockPool.connect(charles).approve(wrapper.address, ethers.constants.MaxUint256)
-        await wrapper.connect(charles).deposit(await mockPool.balanceOf(charles.address))
+        await wrapper
+          .connect(charles)
+          .deposit(await mockPool.balanceOf(charles.address), charles.address)
+        await wrapper.connect(charles).claimRewards()
         expect(await stargate.balanceOf(wrapper.address)).to.be.eq(rewardIncrement)
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement.mul(2))
         expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
           rewardIncrement.mul(2)
         )
-        await wrapper.connect(bob).withdraw(await wrapper.balanceOf(bob.address))
+        await wrapper.connect(bob).withdraw(await wrapper.balanceOf(bob.address), bob.address)
+        await wrapper.connect(bob).claimRewards()
         expect(await stargate.balanceOf(bob.address)).to.be.eq(rewardIncrement.mul(2))
-        await wrapper.connect(charles).withdraw(await wrapper.balanceOf(charles.address))
+        await wrapper
+          .connect(charles)
+          .withdraw(await wrapper.balanceOf(charles.address), charles.address)
+        await wrapper.connect(charles).claimRewards()
         expect(await stargate.balanceOf(charles.address)).to.be.eq(rewardIncrement)
       })
 
@@ -316,7 +303,10 @@ describeFork('Wrapped S*USDC', () => {
         // charles rewards - 0
         await mockPool.mint(charles.address, initialAmount)
         await mockPool.connect(charles).approve(wrapper.address, ethers.constants.MaxUint256)
-        await wrapper.connect(charles).deposit(await mockPool.balanceOf(charles.address))
+        await wrapper
+          .connect(charles)
+          .deposit(await mockPool.balanceOf(charles.address), charles.address)
+        await wrapper.connect(charles).claimRewards()
         expect(await stargate.balanceOf(wrapper.address)).to.be.eq(rewardIncrement)
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement.mul(2))
         expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
@@ -325,7 +315,8 @@ describeFork('Wrapped S*USDC', () => {
 
         // bob rewards - 40k
         // charles rewards - 20k
-        await wrapper.connect(bob).withdraw(initialAmount.div(2))
+        await wrapper.connect(bob).withdraw(initialAmount.div(2), bob.address)
+        await wrapper.connect(bob).claimRewards()
         expect(await stargate.balanceOf(bob.address)).to.be.eq(rewardIncrement.mul(2))
         expect(await stargate.balanceOf(wrapper.address)).to.be.eq(rewardIncrement)
 
@@ -338,18 +329,22 @@ describeFork('Wrapped S*USDC', () => {
 
         // bob rewards - 20k
         // charles rewards - 60k
-        await wrapper.connect(charles).withdraw(await wrapper.balanceOf(charles.address))
+        await wrapper
+          .connect(charles)
+          .withdraw(await wrapper.balanceOf(charles.address), charles.address)
+        await wrapper.connect(charles).claimRewards()
         expect(await stargate.balanceOf(charles.address)).to.be.eq(rewardIncrement.mul(3))
 
         // bob rewards - 20k
         // charles rewards - 0
-        await wrapper.connect(bob).withdraw(await wrapper.balanceOf(bob.address))
+        await wrapper.connect(bob).withdraw(await wrapper.balanceOf(bob.address), bob.address)
+        await wrapper.connect(bob).claimRewards()
         expect(await stargate.balanceOf(bob.address)).to.be.eq(rewardIncrement.mul(3))
       })
     })
 
     describe('Transfers', () => {
-      it('maintains user rewards when transfering tokens', async () => {
+      it('maintains user rewards when transferring tokens', async () => {
         const rewardIncrement = bn('20000e18')
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement)
         expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
@@ -358,11 +353,9 @@ describeFork('Wrapped S*USDC', () => {
         // bob rewards - 20k
         // charles rewards - 0
 
-        // doesn't claim pending rewards to wrapper
+        // claims pending rewards to wrapper
         await wrapper.connect(bob).transfer(charles.address, initialAmount.div(2))
-        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
-          rewardIncrement
-        )
+        expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(0)
         expect(await wrapper.balanceOf(bob.address)).to.be.eq(initialAmount.div(2))
         expect(await wrapper.balanceOf(charles.address)).to.be.eq(initialAmount.div(2))
         // bob rewards - 20k
@@ -370,20 +363,22 @@ describeFork('Wrapped S*USDC', () => {
 
         await stakingContract.addRewardsToUser(bn('0'), wrapper.address, rewardIncrement)
         expect(await stakingContract.pendingStargate(bn('0'), wrapper.address)).to.be.eq(
-          rewardIncrement.mul(2)
+          rewardIncrement
         )
         // bob rewards - 30k
         // charles rewards - 10k
 
-        await wrapper.connect(charles).withdraw(await wrapper.balanceOf(charles.address))
+        await wrapper
+          .connect(charles)
+          .withdraw(await wrapper.balanceOf(charles.address), charles.address)
+        await wrapper.connect(charles).claimRewards()
         expect(await stargate.balanceOf(charles.address)).to.be.eq(rewardIncrement.div(2))
         // bob rewards - 30k
         // charles rewards - 0
 
-        await wrapper.connect(bob).withdraw(await wrapper.balanceOf(bob.address))
-        expect(await stargate.balanceOf(bob.address)).to.be.eq(
-          rewardIncrement.div(2).add(rewardIncrement)
-        )
+        await wrapper.connect(bob).withdraw(await wrapper.balanceOf(bob.address), bob.address)
+        await wrapper.connect(bob).claimRewards()
+        expect(await stargate.balanceOf(bob.address)).to.be.eq(rewardIncrement.mul(3).div(2))
         // bob rewards - 0
         // charles rewards - 0
       })
