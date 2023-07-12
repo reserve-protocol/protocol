@@ -1165,7 +1165,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.endIdForWithdraw(addr2.address)).to.equal(0)
 
         // Move time forward 3/4 of way to first period complete
-        await advanceToTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 4)
+        await setNextBlockTimestamp(
+          Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay / 4
+        )
 
         // Cancel 1st withdrawal
         await stRSR.connect(addr2).cancelUnstake(1)

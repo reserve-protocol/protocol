@@ -16,7 +16,7 @@ async function main() {
   const chainId = await getChainId(hre)
 
   console.log(
-    `Deploying TradingLib and CvxMining to network ${hre.network.name} (${chainId}) with burner account: ${burner.address}`
+    `Deploying TradingLib, BasketLib, and CvxMining to network ${hre.network.name} (${chainId}) with burner account: ${burner.address}`
   )
 
   if (!networkConfig[chainId]) {
