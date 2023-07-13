@@ -15,4 +15,8 @@ contract RewardableERC20WrapperTest is RewardableERC20Wrapper {
     function _claimAssetRewards() internal virtual override {
         ERC20MockRewarding(address(underlying)).claim();
     }
+
+    function sync() external {
+        _claimAndSyncRewards();
+    }
 }
