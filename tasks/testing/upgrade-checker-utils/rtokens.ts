@@ -3,6 +3,7 @@ import { TradeKind } from '#/common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber } from 'ethers'
 import { Interface, LogDescription, formatEther } from 'ethers/lib/utils'
+import { advanceTime } from '#/utils/time'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { runTrade } from './trades'
 import { logToken } from './logs'
@@ -91,6 +92,9 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
     await main.basketHandler()
   )
 
+  // Move post warmup period
+  await advanceTime(hre, (await basketHandler.warmupPeriod()) + 1)
+
   let r = await backingManager.rebalance(TradeKind.BATCH_AUCTION)
 
   const iface: Interface = backingManager.interface
@@ -115,6 +119,7 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
         await runTrade(hre, backingManager, parsedLog.args.sell, false)
       }
     }
+
     r = await backingManager.rebalance(TradeKind.BATCH_AUCTION)
   }
 

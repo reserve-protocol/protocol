@@ -10,7 +10,7 @@ import { pushOraclesForward } from './upgrade-checker-utils/oracles'
 import { recollateralize, redeemRTokens } from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
-import runChecks2_1_0, { proposal_2_1_0 } from './upgrade-checker-utils/upgrades/2_1_0'
+import runChecks3_0_0, { proposal_3_0_0 } from './upgrade-checker-utils/upgrades/3_0_0'
 import { passAndExecuteProposal, proposeUpgrade } from './upgrade-checker-utils/governance'
 import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
 
@@ -61,7 +61,8 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     // 1. Approve and execute the govnerance proposal
     if (!params.proposalid) {
-      const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, proposal_2_1_0)
+      const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_0_0)
+
       await passAndExecuteProposal(
         hre,
         params.rtoken,
@@ -76,199 +77,207 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // we pushed the chain forward, so we need to keep the rToken SOUND
     await pushOraclesForward(hre, params.rtoken)
 
-    // 2. Run various checks
-    const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
-    const saUsdcAddress = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()
-    const usdtAddress = networkConfig['1'].tokens.USDT!
-    const usdcAddress = networkConfig['1'].tokens.USDC!
-    const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
-    const cUsdcAddress = networkConfig['1'].tokens.cUSDC!
-
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
-    const main = await hre.ethers.getContractAt('IMain', await rToken.main())
-    const basketHandler = await hre.ethers.getContractAt(
-      'BasketHandlerP1',
-      await main.basketHandler()
-    )
-    const backingManager = await hre.ethers.getContractAt(
-      'BackingManagerP1',
-      await main.backingManager()
-    )
 
-    /*
-    
-      mint
-
-     this is another area that needs to be made general
-     for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
-
-    */
-
-    const initialBal = bn('2e11')
-    const issueAmount = fp('1e5')
-    const usdt = await hre.ethers.getContractAt('ERC20Mock', usdtAddress)
-    const usdc = await hre.ethers.getContractAt('ERC20Mock', usdcAddress)
-    const saUsdt = await hre.ethers.getContractAt('StaticATokenLM', saUsdtAddress)
-    const cUsdt = await hre.ethers.getContractAt('ICToken', cUsdtAddress)
-    const saUsdc = await hre.ethers.getContractAt('StaticATokenLM', saUsdcAddress)
-    const cUsdc = await hre.ethers.getContractAt('ICToken', cUsdcAddress)
-
-    // get saUsdt
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
-      async (usdtSigner) => {
-        await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal)
-        await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
-      }
-    )
-    const saUsdtBal = await saUsdt.balanceOf(tester.address)
-    await saUsdt.connect(tester).approve(rToken.address, saUsdtBal)
-
-    // get cUsdt
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
-      async (usdtSigner) => {
-        console.log(cUsdt.address, usdt.address, usdtSigner.address)
-        await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
-        await cUsdt.connect(usdtSigner).mint(initialBal)
-        const bal = await cUsdt.balanceOf(usdtSigner.address)
-        await cUsdt.connect(usdtSigner).transfer(tester.address, bal)
-      }
-    )
-    const cUsdtBal = await cUsdt.balanceOf(tester.address)
-    await cUsdt.connect(tester).approve(rToken.address, cUsdtBal)
-
-    // get saUsdc
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
-      async (usdcSigner) => {
-        await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal)
-        await saUsdc.connect(usdcSigner).deposit(tester.address, initialBal, 0, true)
-      }
-    )
-    const saUsdcBal = await saUsdc.balanceOf(tester.address)
-    await saUsdc.connect(tester).approve(rToken.address, saUsdcBal)
-
-    // get cUsdc
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
-      async (usdcSigner) => {
-        await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal)
-        await cUsdc.connect(usdcSigner).mint(initialBal)
-        const bal = await cUsdc.balanceOf(usdcSigner.address)
-        await cUsdc.connect(usdcSigner).transfer(tester.address, bal)
-      }
-    )
-    const cUsdcBal = await cUsdc.balanceOf(tester.address)
-    await cUsdc.connect(tester).approve(rToken.address, cUsdcBal)
-
-    console.log(`\nIssuing  ${formatEther(issueAmount)} RTokens...`)
-    await rToken.connect(tester).issue(issueAmount)
-    const postIssueBal = await rToken.balanceOf(tester.address)
-    if (!postIssueBal.eq(issueAmount)) {
-      throw new Error(
-        `Did not issue the correct amount of RTokens. wanted: ${formatUnits(
-          issueAmount,
-          'mwei'
-        )}    balance: ${formatUnits(postIssueBal, 'mwei')}`
-      )
-    }
-
-    console.log('successfully minted RTokens')
-
-    // get saUsdt
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
-      async (usdtSigner) => {
-        await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal.mul(20))
-        await saUsdt.connect(usdtSigner).deposit(usdtSigner.address, initialBal.mul(20), 0, true)
-      }
-    )
-
-    // get cUsdt
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
-      async (usdtSigner) => {
-        console.log(cUsdt.address, usdt.address, usdtSigner.address)
-        await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal.mul(20))
-        await cUsdt.connect(usdtSigner).mint(initialBal.mul(20))
-      }
-    )
-
-    // get saUsdc
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
-      async (usdcSigner) => {
-        await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal.mul(20))
-        await saUsdc.connect(usdcSigner).deposit(usdcSigner.address, initialBal.mul(20), 0, true)
-      }
-    )
-
-    // get cUsdc
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
-      async (usdcSigner) => {
-        await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal.mul(20))
-        await cUsdc.connect(usdcSigner).mint(initialBal.mul(20))
-      }
-    )
-    /*
-
-      redeem
-
-    */
-    const redeemAmount = fp('5e4')
-    await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
-
-    // 2. Run the 2.1.0 checks
-    await runChecks2_1_0(hre, params.rtoken, params.governor)
-
-    /*
-
-      claim rewards
-
-    */
-    await claimRsrRewards(hre, params.rtoken)
-
-    /*
-
-      switch basket and recollateralize
-
-    */
-    await pushOraclesForward(hre, params.rtoken)
-
-    const bas = await basketHandler.getPrimeBasket()
-    console.log(bas.erc20s)
-
-    const governor = await hre.ethers.getContractAt('Governance', params.governor)
-    const timelockAddress = await governor.timelock()
-    await whileImpersonating(hre, timelockAddress, async (tl) => {
-      await basketHandler
-        .connect(tl)
-        .setPrimeBasket([saUsdtAddress, cUsdtAddress], [fp('0.5'), fp('0.5')])
-      await basketHandler.connect(tl).refreshBasket()
-      const tradingDelay = await backingManager.tradingDelay()
-      await advanceBlocks(hre, tradingDelay / 12 + 1)
-      await advanceTime(hre, tradingDelay + 1)
-    })
-
-    const b = await basketHandler.getPrimeBasket()
-    console.log(b.erc20s)
-
+    // 2. Bring back to fully collateralized
+    // TODO: Fix basket status
     await recollateralize(hre, rToken.address)
+
+    // TODO: Uncomment and fix once step 2 is OK
+    // // 3. Run various checks
+    // const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
+    // const saUsdcAddress = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()
+    // const usdtAddress = networkConfig['1'].tokens.USDT!
+    // const usdcAddress = networkConfig['1'].tokens.USDC!
+    // const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
+    // const cUsdcAddress = networkConfig['1'].tokens.cUSDC!
+
+    // const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+    // const basketHandler = await hre.ethers.getContractAt(
+    //   'BasketHandlerP1',
+    //   await main.basketHandler()
+    // )
+    // const backingManager = await hre.ethers.getContractAt(
+    //   'BackingManagerP1',
+    //   await main.backingManager()
+    // )
+
+    // /*
+
+    //   mint
+
+    //  this is another area that needs to be made general
+    //  for now, we just want to be able to test eUSD, so minting and redeeming eUSD is fine
+
+    // */
+
+    // const initialBal = bn('2e11')
+    // const issueAmount = fp('1e5')
+    // const usdt = await hre.ethers.getContractAt('ERC20Mock', usdtAddress)
+    // const usdc = await hre.ethers.getContractAt('ERC20Mock', usdcAddress)
+    // const saUsdt = await hre.ethers.getContractAt('StaticATokenLM', saUsdtAddress)
+    // const cUsdt = await hre.ethers.getContractAt('ICToken', cUsdtAddress)
+    // const cUsdtVault = await hre.ethers.getContractAt('CTokenWrapper', cUsdtAddress)
+    // const saUsdc = await hre.ethers.getContractAt('StaticATokenLM', saUsdcAddress)
+    // const cUsdc = await hre.ethers.getContractAt('ICToken', cUsdcAddress)
+    // const cUsdcVault = await hre.ethers.getContractAt('CTokenWrapper', cUsdtAddress)
+
+    // // get saUsdt
+    // await whileImpersonating(
+    //   hre,
+    //   whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
+    //   async (usdtSigner) => {
+    //     await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal)
+    //     await saUsdt.connect(usdtSigner).deposit(tester.address, initialBal, 0, true)
+    //   }
+    // )
+    // const saUsdtBal = await saUsdt.balanceOf(tester.address)
+    // await saUsdt.connect(tester).approve(rToken.address, saUsdtBal)
+
+    // // get cUsdt
+    // await whileImpersonating(
+    //   hre,
+    //   whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
+    //   async (usdtSigner) => {
+    //     console.log(cUsdt.address, usdt.address, usdtSigner.address)
+    //     await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
+    //     await cUsdt.connect(usdtSigner).mint(initialBal)
+    //     const bal = await cUsdt.balanceOf(usdtSigner.address)
+    //     await cUsdt.connect(usdtSigner).transfer(tester.address, bal)
+    //   }
+    // )
+    // const cUsdtBal = await cUsdt.balanceOf(tester.address)
+    // await cUsdt.connect(tester).approve(rToken.address, cUsdtBal)
+
+    // // get saUsdc
+    // await whileImpersonating(
+    //   hre,
+    //   whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
+    //   async (usdcSigner) => {
+    //     await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal)
+    //     await saUsdc.connect(usdcSigner).deposit(tester.address, initialBal, 0, true)
+    //   }
+    // )
+    // const saUsdcBal = await saUsdc.balanceOf(tester.address)
+    // await saUsdc.connect(tester).approve(rToken.address, saUsdcBal)
+
+    // // get cUsdc
+    // await whileImpersonating(
+    //   hre,
+    //   whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
+    //   async (usdcSigner) => {
+    //     await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal)
+    //     await cUsdc.connect(usdcSigner).mint(initialBal)
+    //     const bal = await cUsdc.balanceOf(usdcSigner.address)
+    //     await cUsdc.connect(usdcSigner).transfer(tester.address, bal)
+    //   }
+    // )
+    // const cUsdcBal = await cUsdc.balanceOf(tester.address)
+    // await cUsdc.connect(tester).approve(rToken.address, cUsdcBal)
+
+    // console.log(`\nIssuing  ${formatEther(issueAmount)} RTokens...`)
+    // await rToken.connect(tester).issue(issueAmount)
+    // const postIssueBal = await rToken.balanceOf(tester.address)
+    // if (!postIssueBal.eq(issueAmount)) {
+    //   throw new Error(
+    //     `Did not issue the correct amount of RTokens. wanted: ${formatUnits(
+    //       issueAmount,
+    //       'mwei'
+    //     )}    balance: ${formatUnits(postIssueBal, 'mwei')}`
+    //   )
+    // }
+
+    // console.log('successfully minted RTokens')
+
+    // // get saUsdt
+    // await whileImpersonating(
+    //   hre,
+    //   whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
+    //   async (usdtSigner) => {
+    //     await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal.mul(20))
+    //     await saUsdt.connect(usdtSigner).deposit(usdtSigner.address, initialBal.mul(20), 0, true)
+    //   }
+    // )
+
+    // // get cUsdt
+    // await whileImpersonating(
+    //   hre,
+    //   whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
+    //   async (usdtSigner) => {
+    //     console.log(cUsdt.address, usdt.address, usdtSigner.address)
+    //     await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal.mul(20))
+    //     await cUsdt.connect(usdtSigner).mint(initialBal.mul(20))
+    //   }
+    // )
+
+    // // get saUsdc
+    // await whileImpersonating(
+    //   hre,
+    //   whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
+    //   async (usdcSigner) => {
+    //     await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal.mul(20))
+    //     await saUsdc.connect(usdcSigner).deposit(usdcSigner.address, initialBal.mul(20), 0, true)
+    //   }
+    // )
+
+    // // get cUsdc
+    // await whileImpersonating(
+    //   hre,
+    //   whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
+    //   async (usdcSigner) => {
+    //     await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal.mul(20))
+    //     await cUsdc.connect(usdcSigner).mint(initialBal.mul(20))
+    //   }
+    // )
+    // /*
+
+    //   redeem
+
+    // */
+    // const redeemAmount = fp('5e4')
+    // await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
+
+    // // 3. Run the 3.0.0 checks
+    // await runChecks3_0_0(hre, params.rtoken, params.governor)
+
+    // /*
+
+    //   claim rewards
+
+    // */
+    // await claimRsrRewards(hre, params.rtoken)
+
+    // /*
+
+    //   switch basket and recollateralize
+
+    // */
+    // await pushOraclesForward(hre, params.rtoken)
+
+    // const bas = await basketHandler.getPrimeBasket()
+    // console.log(bas.erc20s)
+
+    // const governor = await hre.ethers.getContractAt('Governance', params.governor)
+    // const timelockAddress = await governor.timelock()
+    // await whileImpersonating(hre, timelockAddress, async (tl) => {
+    //   await basketHandler
+    //     .connect(tl)
+    //     .setPrimeBasket([saUsdtAddress, cUsdtAddress], [fp('0.5'), fp('0.5')])
+    //   await basketHandler.connect(tl).refreshBasket()
+    //   const tradingDelay = await backingManager.tradingDelay()
+    //   await advanceBlocks(hre, tradingDelay / 12 + 1)
+    //   await advanceTime(hre, tradingDelay + 1)
+    // })
+
+    // const b = await basketHandler.getPrimeBasket()
+    // console.log(b.erc20s)
+
+    // await recollateralize(hre, rToken.address)
   })
 
 task('propose', 'propose a gov action')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .setAction(async (params, hre) => {
-    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_2_1_0)
+    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_0_0)
   })

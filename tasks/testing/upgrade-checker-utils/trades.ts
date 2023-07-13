@@ -9,7 +9,6 @@ import { collateralToUnderlying, whales } from './constants'
 import { bn, fp } from '#/common/numbers'
 import { logToken } from './logs'
 import { networkConfig } from '#/common/configuration'
-import { ERC20Mock } from '@typechain/ERC20Mock'
 
 export const runTrade = async (
   hre: HardhatRuntimeEnvironment,
@@ -103,6 +102,23 @@ const mintCToken = async (
     const bal = await collateral.balanceOf(whaleSigner.address)
     console.log('3', amount, recipient, bal)
     await collateral.connect(whaleSigner).transfer(recipient, bal)
+  })
+}
+
+const mintCTokenVault = async (
+  hre: HardhatRuntimeEnvironment,
+  tokenAddress: string,
+  amount: BigNumber,
+  recipient: string
+) => {
+  const collateral = await hre.ethers.getContractAt('CTokenWrapper', tokenAddress)
+  const cToken = await hre.ethers.getContractAt('ICToken', await collateral.underlying())
+
+  await mintCToken(hre, cToken.address, amount, recipient)
+
+  await whileImpersonating(hre, recipient, async (recipientSigner) => {
+    await cToken.connect(recipientSigner).approve(collateral.address, amount)
+    await collateral.connect(recipientSigner).deposit(amount, recipient)
   })
 }
 
