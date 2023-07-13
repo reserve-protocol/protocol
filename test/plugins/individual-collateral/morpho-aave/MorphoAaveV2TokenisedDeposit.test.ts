@@ -145,6 +145,7 @@ const execTestForToken = ({ token, poolToken, amount }: ITestSuiteVariant) => {
     const fraction = (percent: number) => ((amountAsNumber * percent) / 100).toFixed(1)
 
     const closeTo = async (actual: Promise<string>, expected: string) => {
+      await new Promise((r) => setTimeout(r, 200))
       expect(parseFloat(await actual)).to.closeTo(parseFloat(expected), 0.5)
     }
 
