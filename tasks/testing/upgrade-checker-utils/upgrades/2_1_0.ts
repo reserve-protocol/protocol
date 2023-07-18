@@ -127,13 +127,12 @@ export default async (
     let parsedLog: LogDescription | undefined
     try {
       parsedLog = iface.parseLog(event)
-    } catch {}
+    } catch { }
     if (parsedLog && parsedLog.name == 'TradeStarted') {
       console.log(
         `\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(
           parsedLog.args.buy
-        )} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${
-          parsedLog.args.sellAmount
+        )} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${parsedLog.args.sellAmount
         }`
       )
       //
@@ -188,6 +187,7 @@ export default async (
             console.log('Trying again...')
           }
         }
+
       })
 
       const lastTimestamp = await getLatestBlockTimestamp(hre)

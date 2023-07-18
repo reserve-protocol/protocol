@@ -9,7 +9,6 @@ import { collateralToUnderlying, whales } from './constants'
 import { bn, fp } from '#/common/numbers'
 import { logToken } from './logs'
 import { networkConfig } from '#/common/configuration'
-import { ERC20Mock } from '@typechain/ERC20Mock'
 
 export const runTrade = async (
   hre: HardhatRuntimeEnvironment,
@@ -42,10 +41,8 @@ export const runTrade = async (
   buyAmount = buyAmount.add(fp('1').div(bn(10 ** (18 - buyDecimals))))
 
   const gnosis = await hre.ethers.getContractAt('EasyAuction', await trade.gnosis())
-  console.log('impersonate', whales[buyTokenAddress.toLowerCase()], buyTokenAddress)
   await whileImpersonating(hre, whales[buyTokenAddress.toLowerCase()], async (whale) => {
     const sellToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
-    // await mintTokensIfNeeded(hre, buyTokenAddress, buyAmount, whale.address)
     await sellToken.connect(whale).approve(gnosis.address, buyAmount)
     await gnosis
       .connect(whale)
@@ -63,7 +60,6 @@ export const runTrade = async (
   await trader.settleTrade(tradeToken)
   console.log(`Settled trade for ${logToken(buyTokenAddress)}.`)
 }
-
 // impersonate the whale to get the token
 const mintTokensIfNeeded = async (
   hre: HardhatRuntimeEnvironment,
