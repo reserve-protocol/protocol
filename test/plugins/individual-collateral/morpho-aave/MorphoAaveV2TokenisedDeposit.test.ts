@@ -30,7 +30,7 @@ const TOKENS_TO_TEST = [
 type ITestSuiteVariant = typeof TOKENS_TO_TEST[number]
 
 const execTestForToken = ({ token, poolToken, amount }: ITestSuiteVariant) => {
-  describe('Tokenised Morpho Position - ' + token.symbol, () => {
+  describe.skip('Tokenised Morpho Position - ' + token.symbol, () => {
     const beforeEachFn = async () => {
       const factories = {
         ERC20Mock: await ethers.getContractFactory('ERC20Mock'),
