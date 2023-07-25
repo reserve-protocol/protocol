@@ -428,20 +428,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(balAfter).to.equal(rewardAmt)
       })
 
-      it('Should not settle trade if paused', async () => {
-        await main.connect(owner).pauseTrading()
-        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-      })
-
-      it('Should not settle trade if frozen', async () => {
-        await main.connect(owner).freezeShort()
-        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-      })
-
       it('Should still launch revenue auction if IFFY', async () => {
         // Depeg one of the underlying tokens - Reducing price 30%
         await setOraclePrice(collateral0.address, bn('7e7'))

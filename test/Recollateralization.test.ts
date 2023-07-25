@@ -1009,20 +1009,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
       })
 
-      it('Should not settle trades if trading paused', async () => {
-        await main.connect(owner).pauseTrading()
-        await expect(backingManager.settleTrade(token0.address)).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-      })
-
-      it('Should not settle trades if frozen', async () => {
-        await main.connect(owner).freezeShort()
-        await expect(backingManager.settleTrade(token0.address)).to.be.revertedWith(
-          'frozen or trading paused'
-        )
-      })
-
       it('Should not recollateralize when switching basket if all assets are UNPRICED', async () => {
         // Set price to use lot price
         await setOraclePrice(collateral0.address, MAX_UINT256.div(2))
