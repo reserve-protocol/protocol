@@ -39,6 +39,9 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     bool public disabled;
 
+    // 3.0.0
+    mapping(TradeKind kind => bool isDisabled) public tradeKindDisabled;
+
     constructor() {
         MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 2;
     }
@@ -68,7 +71,7 @@ contract BrokerP0 is ComponentP0, IBroker {
         TradeRequest memory req,
         TradePrices memory prices
     ) external returns (ITrade) {
-        require(!disabled, "broker disabled");
+        require(!tradeKindDisabled[kind], "broker disabled");
         assert(req.sellAmount > 0);
 
         address caller = _msgSender();
@@ -92,16 +95,18 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @custom:protected
     function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
-        emit DisabledSet(disabled, true);
-        disabled = true;
+
+        TradeKind kind = ITrade(_msgSender()).KIND();
+
+        emit DisabledSet(kind, tradeKindDisabled[kind], true);
+        tradeKindDisabled[kind] = true;
     }
 
     /// @param maxTokensAllowed {qTok} The max number of sell tokens allowed by the trading platform
-    function resizeTrade(TradeRequest memory req, uint256 maxTokensAllowed)
-        private
-        pure
-        returns (TradeRequest memory)
-    {
+    function resizeTrade(
+        TradeRequest memory req,
+        uint256 maxTokensAllowed
+    ) private pure returns (TradeRequest memory) {
         // {qTok}
         uint256 maxQuantity = (req.minBuyAmount > req.sellAmount)
             ? req.minBuyAmount
@@ -216,8 +221,9 @@ contract BrokerP0 is ComponentP0, IBroker {
     }
 
     /// @custom:governance
-    function setDisabled(bool disabled_) external governance {
-        emit DisabledSet(disabled, disabled_);
-        disabled = disabled_;
+    function setDisabled(TradeKind kind, bool disabled_) external governance {
+        emit DisabledSet(kind, tradeKindDisabled[kind], disabled_);
+
+        tradeKindDisabled[kind] = disabled_;
     }
 }

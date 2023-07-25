@@ -45,6 +45,7 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // Whether trading is disabled.
     // Initially false. Settable by OWNER. A trade clone can set it to true via reportViolation()
+    // @deprecated in 3.0.0
     bool public disabled;
 
     // The set of ITrade (clone) addresses this contract has created
@@ -60,6 +61,9 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
+
+    // === 3.0.0 === Violation by trade kind
+    mapping(TradeKind kind => bool isDisabled) public tradeKindDisabled;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -106,7 +110,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         TradeRequest memory req,
         TradePrices memory prices
     ) external returns (ITrade) {
-        require(!disabled, "broker disabled");
+        require(!tradeKindDisabled[kind], "broker disabled");
 
         address caller = _msgSender();
         require(
@@ -129,8 +133,11 @@ contract BrokerP1 is ComponentP1, IBroker {
     // effects: disabled' = true
     function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
-        emit DisabledSet(disabled, true);
-        disabled = true;
+
+        TradeKind kind = ITrade(_msgSender()).KIND();
+
+        emit DisabledSet(kind, tradeKindDisabled[kind], true);
+        tradeKindDisabled[kind] = true;
     }
 
     // === Setters ===
@@ -188,9 +195,10 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     /// @custom:governance
-    function setDisabled(bool disabled_) external governance {
-        emit DisabledSet(disabled, disabled_);
-        disabled = disabled_;
+    function setDisabled(TradeKind kind, bool disabled_) external governance {
+        emit DisabledSet(kind, tradeKindDisabled[kind], disabled_);
+
+        tradeKindDisabled[kind] = disabled_;
     }
 
     // === Private ===
@@ -244,5 +252,5 @@ contract BrokerP1 is ComponentP1, IBroker {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[43] private __gap;
+    uint256[42] private __gap;
 }

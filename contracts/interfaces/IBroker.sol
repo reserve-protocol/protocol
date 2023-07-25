@@ -38,7 +38,7 @@ interface IBroker is IComponent {
     event DutchTradeImplementationSet(ITrade indexed oldVal, ITrade indexed newVal);
     event BatchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
     event DutchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
-    event DisabledSet(bool indexed prevVal, bool indexed newVal);
+    event DisabledSet(TradeKind tradeKind, bool indexed prevVal, bool indexed newVal);
 
     // Initialization
     function init(
@@ -63,6 +63,8 @@ interface IBroker is IComponent {
     function reportViolation() external;
 
     function disabled() external view returns (bool);
+
+    function tradeKindDisabled(TradeKind kind) external view returns (bool);
 }
 
 interface TestIBroker is IBroker {
@@ -86,5 +88,5 @@ interface TestIBroker is IBroker {
 
     function setDutchAuctionLength(uint48 newAuctionLength) external;
 
-    function setDisabled(bool disabled_) external;
+    function setDisabled(TradeKind kind, bool disabled_) external;
 }

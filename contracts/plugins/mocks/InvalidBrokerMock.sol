@@ -24,6 +24,9 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     bool public disabled = false;
 
+    // === 3.0.0 === Violation by trade kind
+    mapping(TradeKind kind => bool isDisabled) public tradeKindDisabled;
+
     function init(
         IMain main_,
         IGnosis gnosis_,
