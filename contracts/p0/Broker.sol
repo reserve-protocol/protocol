@@ -40,7 +40,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     bool public disabled;
 
     // 3.0.0
-    mapping(TradeKind kind => bool isDisabled) public tradeKindDisabled;
+    mapping(TradeKind => bool) public tradeKindDisabled;
 
     constructor() {
         MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 2;
@@ -103,10 +103,11 @@ contract BrokerP0 is ComponentP0, IBroker {
     }
 
     /// @param maxTokensAllowed {qTok} The max number of sell tokens allowed by the trading platform
-    function resizeTrade(
-        TradeRequest memory req,
-        uint256 maxTokensAllowed
-    ) private pure returns (TradeRequest memory) {
+    function resizeTrade(TradeRequest memory req, uint256 maxTokensAllowed)
+        private
+        pure
+        returns (TradeRequest memory)
+    {
         // {qTok}
         uint256 maxQuantity = (req.minBuyAmount > req.sellAmount)
             ? req.minBuyAmount

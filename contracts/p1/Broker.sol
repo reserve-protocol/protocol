@@ -63,7 +63,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
 
     // === 3.0.0 === Violation by trade kind
-    mapping(TradeKind kind => bool isDisabled) public tradeKindDisabled;
+    mapping(TradeKind => bool) public tradeKindDisabled;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {

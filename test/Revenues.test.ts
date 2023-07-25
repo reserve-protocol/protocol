@@ -2163,7 +2163,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Disable broker
-        await broker.connect(owner).setDisabled(true)
+        await broker.connect(owner).setDisabled(TradeKind.BATCH_AUCTION, true)
 
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
         const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
