@@ -2095,7 +2095,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: broker,
             name: 'DisabledSet',
-            args: [false, true],
+            args: [TradeKind.BATCH_AUCTION, false, true],
             emitted: true,
           },
           {
