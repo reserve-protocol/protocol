@@ -93,8 +93,23 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @custom:protected
     function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
-        emit BatchTradeDisabledSet(batchTradeDisabled, true);
-        batchTradeDisabled = true;
+        ITrade trade = ITrade(_msgSender());
+        TradeKind kind = trade.KIND();
+
+        if (kind == TradeKind.BATCH_AUCTION) {
+            emit BatchTradeDisabledSet(batchTradeDisabled, true);
+            batchTradeDisabled = true;
+        } else if (kind == TradeKind.DUTCH_AUCTION) {
+            IERC20Metadata sell = trade.sell();
+            emit DutchTradeDisabledSet(sell, dutchTradeDisabled[sell], true);
+            dutchTradeDisabled[sell] = true;
+
+            IERC20Metadata buy = trade.buy();
+            emit DutchTradeDisabledSet(buy, dutchTradeDisabled[buy], true);
+            dutchTradeDisabled[buy] = true;
+        } else {
+            revert("unrecognized trade kind");
+        }
     }
 
     /// @param maxTokensAllowed {qTok} The max number of sell tokens allowed by the trading platform
