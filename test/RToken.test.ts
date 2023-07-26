@@ -224,6 +224,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('issuance pctRate too big')
     })
 
+    it.only('Should account for accrued value when updating issuance throttle parameters', async () => {
+      await advanceTime(12*5*60) // 60 minutes, charge fully
+      const issuanceThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
+
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      let params = await rToken.issuanceThrottleParams()
+      expect(params[0]).to.equal(issuanceThrottleParams.amtRate)
+      expect(params[1]).to.equal(issuanceThrottleParams.pctRate)
+
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+      await rToken.connect(addr1).issue(fp('20'))
+      expect(await rToken.issuanceAvailable()).to.equal(fp('40'))
+
+      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 12*5*10) // 10 minutes
+
+      issuanceThrottleParams.amtRate = fp('100')
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      expect(await rToken.issuanceAvailable()).to.equal(fp('50'))
+    })
+
     it('Should allow to update redemption throttle if Owner and perform validations', async () => {
       const redemptionThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') }
       await expect(
@@ -260,6 +280,30 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(
         rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
       ).to.be.revertedWith('redemption pctRate too big')
+    })
+
+    it.only('Should account for accrued value when updating redemption throttle parameters', async () => {
+      await advanceTime(12*5*60) // 60 minutes, charge fully
+      const issuanceThrottleParams = { amtRate: fp('100'), pctRate: fp('0.1') }
+      const redemptionThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
+
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      let params = await rToken.redemptionThrottleParams()
+      expect(params[0]).to.equal(redemptionThrottleParams.amtRate)
+      expect(params[1]).to.equal(redemptionThrottleParams.pctRate)
+
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+      await rToken.connect(addr1).issue(fp('100'))
+      expect(await rToken.redemptionAvailable()).to.equal(fp('60'))
+      await rToken.connect(addr1).redeem(fp('30'))
+      expect(await rToken.redemptionAvailable()).to.equal(fp('30'))
+
+      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 12*5*10) // 10 minutes
+
+      redemptionThrottleParams.amtRate = fp('100')
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      expect(await rToken.redemptionAvailable()).to.equal(fp('40'))
     })
 
     it('Should return a price of 0 if the assets become unregistered', async () => {
