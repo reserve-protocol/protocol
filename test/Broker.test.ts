@@ -356,22 +356,24 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.disabled()).to.equal(false)
 
       // If not owner cannot update
-      await expect(broker.connect(other).setDisabled(true)).to.be.revertedWith('governance only')
+      await expect(broker.connect(other).setBatchTradeDisabled(true)).to.be.revertedWith(
+        'governance only'
+      )
 
       // Check value did not change
       expect(await broker.disabled()).to.equal(false)
 
       // Update with owner
-      await expect(broker.connect(owner).setDisabled(true))
-        .to.emit(broker, 'DisabledSet')
+      await expect(broker.connect(owner).setBatchTradeDisabled(true))
+        .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(false, true)
 
       // Check value was updated
       expect(await broker.disabled()).to.equal(true)
 
       // Update back to false
-      await expect(broker.connect(owner).setDisabled(false))
-        .to.emit(broker, 'DisabledSet')
+      await expect(broker.connect(owner).setBatchTradeDisabled(false))
+        .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(true, false)
 
       // Check value was updated
@@ -382,8 +384,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   describe('Trade Management', () => {
     it('Should not allow to open trade if Disabled', async () => {
       // Disable Broker
-      await expect(broker.connect(owner).setDisabled(true))
-        .to.emit(broker, 'DisabledSet')
+      await expect(broker.connect(owner).setBatchTradeDisabled(true))
+        .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(false, true)
 
       // Attempt to open trade
@@ -397,10 +399,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await expect(
           broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
-        ).to.be.revertedWith('broker disabled')
+        ).to.be.revertedWith('batch auctions disabled')
         await expect(
           broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
-        ).to.be.revertedWith('broker disabled')
+        ).to.be.revertedWith('batch auctions disabled')
       })
     })
 

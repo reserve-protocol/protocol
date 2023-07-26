@@ -836,7 +836,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End Auction
-      await expect(trade.connect(addr1).settle()).to.not.emit(broker, 'DisabledSet')
+      await expect(trade.connect(addr1).settle()).to.not.emit(broker, 'BatchTradeDisabledSet')
       expect(await broker.disabled()).to.equal(false)
     }
 
@@ -883,7 +883,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
   })
 
   describe('Regression Tests', () => {
-    it('Passes Test: 12/03/2023 - Broker Disabled on Trade Settlement with one less token', async () => {
+    it('Passes Test: 12/03/2023 - Batch Auctions on Trade Settlement with one less token', async () => {
       // TX: 0xb5fc3d61d46e41b79bd333583448e6d4c186ca49206f8a0e7dde05f2700e0965
       // This set the broker to false since it was one token short.
       // This test is to make sure that the broker is not disabled in this case.

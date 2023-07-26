@@ -43,9 +43,9 @@ contract BrokerP1 is ComponentP1, IBroker {
     // {s} the length of a Gnosis EasyAuction. Governance parameter.
     uint48 public batchAuctionLength;
 
-    // Whether trading is disabled.
+    // Whether Batch Auctions are disabled.
     // Initially false. Settable by OWNER. A trade clone can set it to true via reportViolation()
-    bool public disabled;
+    bool public batchTradeDisabled;
 
     // The set of ITrade (clone) addresses this contract has created
     mapping(address => bool) private trades;
@@ -57,6 +57,9 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     // {s} the length of a Dutch Auction. Governance parameter.
     uint48 public dutchAuctionLength;
+
+    // Whether Dutch Auctions are currently disabled, per ERC20
+    mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
@@ -93,7 +96,6 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// @dev Requires setting an allowance in advance
     /// @custom:protected and @custom:interaction CEI
     // checks:
-    //   not disabled, paused (trading), or frozen
     //   caller is a system Trader
     // effects:
     //   Deploys a new trade clone, `trade`
@@ -106,8 +108,6 @@ contract BrokerP1 is ComponentP1, IBroker {
         TradeRequest memory req,
         TradePrices memory prices
     ) external returns (ITrade) {
-        require(!disabled, "broker disabled");
-
         address caller = _msgSender();
         require(
             caller == address(backingManager) ||
@@ -129,8 +129,8 @@ contract BrokerP1 is ComponentP1, IBroker {
     // effects: disabled' = true
     function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
-        emit DisabledSet(disabled, true);
-        disabled = true;
+        emit BatchTradeDisabledSet(batchTradeDisabled, true);
+        batchTradeDisabled = true;
     }
 
     // === Setters ===
@@ -188,14 +188,21 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     /// @custom:governance
-    function setDisabled(bool disabled_) external governance {
-        emit DisabledSet(disabled, disabled_);
-        disabled = disabled_;
+    function setBatchTradeDisabled(bool disabled) external governance {
+        emit BatchTradeDisabledSet(batchTradeDisabled, disabled);
+        batchTradeDisabled = disabled;
+    }
+
+    /// @custom:governance
+    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external governance {
+        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], disabled);
+        dutchTradeDisabled[erc20] = disabled;
     }
 
     // === Private ===
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
+        require(!batchTradeDisabled, "batch auctions disabled");
         require(batchAuctionLength > 0, "batch auctions not enabled");
         GnosisTrade trade = GnosisTrade(address(batchTradeImplementation).clone());
         trades[address(trade)] = true;
@@ -224,6 +231,10 @@ contract BrokerP1 is ComponentP1, IBroker {
         TradePrices memory prices,
         ITrading caller
     ) private returns (ITrade) {
+        require(
+            !dutchTradeDisabled[req.sell.erc20()] && !dutchTradeDisabled[req.buy.erc20()],
+            "dutch auctions disabled for token pair"
+        );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
         DutchTrade trade = DutchTrade(address(dutchTradeImplementation).clone());
         trades[address(trade)] = true;
@@ -244,5 +255,5 @@ contract BrokerP1 is ComponentP1, IBroker {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[43] private __gap;
+    uint256[42] private __gap;
 }

@@ -37,7 +37,9 @@ contract BrokerP0 is ComponentP0, IBroker {
     uint48 public batchAuctionLength; // {s} the length of a Gnosis EasyAuction
     uint48 public dutchAuctionLength; // {s} the length of a Dutch Auction
 
-    bool public disabled;
+    bool public batchTradeDisabled;
+
+    mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
     constructor() {
         MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 2;
@@ -68,7 +70,6 @@ contract BrokerP0 is ComponentP0, IBroker {
         TradeRequest memory req,
         TradePrices memory prices
     ) external returns (ITrade) {
-        require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
 
         address caller = _msgSender();
@@ -92,8 +93,8 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @custom:protected
     function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
-        emit DisabledSet(disabled, true);
-        disabled = true;
+        emit BatchTradeDisabledSet(batchTradeDisabled, true);
+        batchTradeDisabled = true;
     }
 
     /// @param maxTokensAllowed {qTok} The max number of sell tokens allowed by the trading platform
@@ -173,6 +174,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     // === Private ===
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
+        require(!batchTradeDisabled, "batch auctions disabled");
         require(batchAuctionLength > 0, "batch auctions not enabled");
         GnosisTrade trade = new GnosisTrade();
         trades[address(trade)] = true;
@@ -201,6 +203,10 @@ contract BrokerP0 is ComponentP0, IBroker {
         TradePrices memory prices,
         ITrading caller
     ) private returns (ITrade) {
+        require(
+            !dutchTradeDisabled[req.sell.erc20()] && !dutchTradeDisabled[req.buy.erc20()],
+            "dutch auctions disabled for token pair"
+        );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
         DutchTrade trade = new DutchTrade();
         trades[address(trade)] = true;
@@ -216,8 +222,14 @@ contract BrokerP0 is ComponentP0, IBroker {
     }
 
     /// @custom:governance
-    function setDisabled(bool disabled_) external governance {
-        emit DisabledSet(disabled, disabled_);
-        disabled = disabled_;
+    function setBatchTradeDisabled(bool disabled) external governance {
+        emit BatchTradeDisabledSet(batchTradeDisabled, disabled);
+        batchTradeDisabled = disabled;
+    }
+
+    /// @custom:governance
+    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external governance {
+        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], disabled);
+        dutchTradeDisabled[erc20] = disabled;
     }
 }

@@ -38,7 +38,12 @@ interface IBroker is IComponent {
     event DutchTradeImplementationSet(ITrade indexed oldVal, ITrade indexed newVal);
     event BatchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
     event DutchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
-    event DisabledSet(bool indexed prevVal, bool indexed newVal);
+    event BatchTradeDisabledSet(bool indexed prevVal, bool indexed newVal);
+    event DutchTradeDisabledSet(
+        IERC20Metadata indexed erc20,
+        bool indexed prevVal,
+        bool indexed newVal
+    );
 
     // Initialization
     function init(
@@ -62,7 +67,7 @@ interface IBroker is IComponent {
     /// Only callable by one of the trading contracts the broker deploys
     function reportViolation() external;
 
-    function disabled() external view returns (bool);
+    function batchTradeDisabled() external view returns (bool);
 }
 
 interface TestIBroker is IBroker {
@@ -86,5 +91,7 @@ interface TestIBroker is IBroker {
 
     function setDutchAuctionLength(uint48 newAuctionLength) external;
 
-    function setDisabled(bool disabled_) external;
+    function setBatchTradeDisabled(bool disabled) external;
+
+    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external;
 }

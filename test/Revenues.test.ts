@@ -2094,7 +2094,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: broker,
-            name: 'DisabledSet',
+            name: 'BatchTradeDisabledSet',
             args: [false, true],
             emitted: true,
           },
@@ -2163,7 +2163,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Disable broker
-        await broker.connect(owner).setDisabled(true)
+        await broker.connect(owner).setBatchTradeDisabled(true)
 
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
         const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
@@ -2173,10 +2173,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await backingManager.forwardRevenue([aaveToken.address])
         await expect(
           rsrTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
-        ).to.be.revertedWith('broker disabled')
+        ).to.be.revertedWith('batch auctions disabled')
         await expect(
           rTokenTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
-        ).to.be.revertedWith('broker disabled')
+        ).to.be.revertedWith('batch auctions disabled')
 
         // Check funds - remain in traders
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
