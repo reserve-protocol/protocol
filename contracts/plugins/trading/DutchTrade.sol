@@ -16,7 +16,7 @@ import "../../interfaces/ITrade.sol";
 //
 // For a trade between 2 assets with 1% oracleError:
 //   A 30-minute auction on a chain with a 12-second blocktime has a ~20% price drop per block
-//   during the 1st period, 0.5% drop during the 2nd period, and a 0.05% drop during the 3rd period.
+//   during the 1st period, 0.5% during the 2nd period, and a 0.05% during the 3rd period.
 //
 //   30-minutes is the recommended length of auction for a chain with 12-second blocktimes.
 //

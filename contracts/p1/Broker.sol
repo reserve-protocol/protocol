@@ -44,7 +44,8 @@ contract BrokerP1 is ComponentP1, IBroker {
     uint48 public batchAuctionLength;
 
     // Whether Batch Auctions are disabled.
-    // Initially false. Settable by OWNER. A trade clone can set it to true via reportViolation()
+    // Initially false. Settable by OWNER.
+    // A GnosisTrade clone can set it to true via reportViolation()
     bool public batchTradeDisabled;
 
     // The set of ITrade (clone) addresses this contract has created

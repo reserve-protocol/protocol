@@ -68,6 +68,8 @@ interface IBroker is IComponent {
     function reportViolation() external;
 
     function batchTradeDisabled() external view returns (bool);
+
+    function dutchTradeDisabled(IERC20Metadata erc20) external view returns (bool);
 }
 
 interface TestIBroker is IBroker {

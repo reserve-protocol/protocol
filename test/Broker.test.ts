@@ -116,7 +116,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     it('Should setup Broker correctly', async () => {
       expect(await broker.gnosis()).to.equal(gnosis.address)
       expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
       expect(await broker.main()).to.equal(main.address)
     })
 
@@ -351,25 +352,31 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.dutchAuctionLength()).to.equal(bn(0))
     })
 
-    it('Should allow to update disabled if Owner', async () => {
+    it('Should allow to update batchTradeDisabled/dutchTradeDisabled if Owner', async () => {
       // Check existing value
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // If not owner cannot update
       await expect(broker.connect(other).setBatchTradeDisabled(true)).to.be.revertedWith(
         'governance only'
       )
+      await expect(
+        broker.connect(other).setDutchTradeDisabled(token0.address, true)
+      ).to.be.revertedWith('governance only')
 
       // Check value did not change
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
-      // Update with owner
+      // Update batchTradeDisabled with owner
       await expect(broker.connect(owner).setBatchTradeDisabled(true))
         .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(false, true)
 
       // Check value was updated
-      expect(await broker.disabled()).to.equal(true)
+      expect(await broker.batchTradeDisabled()).to.equal(true)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // Update back to false
       await expect(broker.connect(owner).setBatchTradeDisabled(false))
@@ -377,7 +384,28 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         .withArgs(true, false)
 
       // Check value was updated
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
+
+      // Update dutchTradeDisabled with owner
+      await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, true))
+        .to.emit(broker, 'DutchTradeDisabledSet')
+        .withArgs(token0.address, false, true)
+
+      // Check value was updated
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(true)
+      expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
+
+      // Update back to false
+      await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, false))
+        .to.emit(broker, 'DutchTradeDisabledSet')
+        .withArgs(token0.address, true, false)
+
+      // Check value was updated
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
     })
   })
 
@@ -456,7 +484,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
     it('Should not allow to report violation if not trade contract', async () => {
       // Check not disabled
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
 
       // Should not allow to report violation from any address
       await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
@@ -471,12 +499,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       // Check nothing changed
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
     })
 
     it('Should not allow to report violation if paused or frozen', async () => {
       // Check not disabled
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
 
       await main.connect(owner).pauseTrading()
 
@@ -493,7 +521,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       )
 
       // Check nothing changed
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
     })
   })
 
