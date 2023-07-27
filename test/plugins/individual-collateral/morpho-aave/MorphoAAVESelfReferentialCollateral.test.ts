@@ -31,9 +31,7 @@ interface MAFiatCollateralOpts extends CollateralOpts {
   defaultRefPerTok?: BigNumberish
 }
 
-export const deployCollateral = async (
-  opts: MAFiatCollateralOpts = {}
-): Promise<TestICollateral> => {
+const deployCollateral = async (opts: MAFiatCollateralOpts = {}): Promise<TestICollateral> => {
   if (opts.defaultThreshold == null && opts.delayUntilDefault === 0) {
     opts.defaultThreshold = fp('0.001')
   }
@@ -191,7 +189,7 @@ const collateralSpecificStatusTests = () => {}
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const beforeEachRewardsTest = async () => {}
 
-export const defaultCollateralOpts: MAFiatCollateralOpts = {
+const defaultCollateralOpts: MAFiatCollateralOpts = {
   targetName: ethers.utils.formatBytes32String('ETH'),
   underlyingToken: networkConfig[1].tokens.stETH!,
   poolToken: networkConfig[1].tokens.astETH!,
@@ -229,7 +227,7 @@ const opts = {
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
   resetFork: getResetFork(FORK_BLOCK),
-  collateralName: 'MorphoAAVEV2SelfReferentialCollateral',
+  collateralName: 'MorphoAAVEV2SelfReferentialCollateral - WETH',
   chainlinkDefaultAnswer: defaultCollateralOpts.defaultPrice!,
 }
 
