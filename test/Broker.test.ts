@@ -42,7 +42,7 @@ import {
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
-import { ITradeRequest, expectTrade } from './utils/trades'
+import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
@@ -143,9 +143,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           main.address,
           gnosis.address,
           ZERO_ADDRESS,
-          bn('100'),
+          bn('1000'),
           ZERO_ADDRESS,
-          bn('100')
+          bn('1000')
         )
       ).to.be.revertedWith('invalid batchTradeImplementation address')
       await expect(
@@ -153,9 +153,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           main.address,
           gnosis.address,
           ONE_ADDRESS,
-          bn('100'),
+          bn('1000'),
           ZERO_ADDRESS,
-          bn('100')
+          bn('1000')
         )
       ).to.be.revertedWith('invalid dutchTradeImplementation address')
     })
