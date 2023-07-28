@@ -1995,7 +1995,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
       })
 
-      it('Should report violation when auction behaves incorrectly', async () => {
+      it('Should report violation when Batch Auction behaves incorrectly', async () => {
+        // This test needs to be in this file and not Broker.test.ts because settleTrade()
+        // requires the BackingManager _actually_ started the trade
+
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -2133,7 +2136,233 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
       })
 
-      it('Should not perform auction if Broker is disabled', async () => {
+      it('Should report violation when Dutch Auction clears in geometric phase', async () => {
+        // This test needs to be in this file and not Broker.test.ts because settleTrade()
+        // requires the BackingManager _actually_ started the trade
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
+
+        // Claim rewards
+
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
+          {
+            contract: token3,
+            name: 'RewardsClaimed',
+            args: [compToken.address, bn(0)],
+            emitted: true,
+          },
+          {
+            contract: token2,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, rewardAmountAAVE],
+            emitted: true,
+          },
+        ])
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions
+        await expectEvents(
+          facadeTest.runAuctionsForAllTradersForKind(rToken.address, TradeKind.DUTCH_AUCTION),
+          [
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+              emitted: true,
+            },
+            {
+              contract: rTokenTrader,
+              name: 'TradeStarted',
+              args: [
+                anyValue,
+                aaveToken.address,
+                rToken.address,
+                sellAmtRToken,
+                withinQuad(minBuyAmtRToken),
+              ],
+              emitted: true,
+            },
+          ]
+        )
+
+        // Check auctions registered
+        // AAVE -> RSR Auction
+        const rsrTrade = await ethers.getContractAt(
+          'DutchTrade',
+          (
+            await getTrade(rsrTrader, aaveToken.address)
+          ).address
+        )
+        expect(await rsrTrade.sell()).to.equal(aaveToken.address)
+        expect(await rsrTrade.buy()).to.equal(rsr.address)
+        expect(await rsrTrade.sellAmount()).to.equal(sellAmt)
+
+        // AAVE -> RToken Auction
+        const rTokenTrade = await ethers.getContractAt(
+          'DutchTrade',
+          (
+            await getTrade(rTokenTrader, aaveToken.address)
+          ).address
+        )
+        expect(await rTokenTrade.sell()).to.equal(aaveToken.address)
+        expect(await rTokenTrade.buy()).to.equal(rToken.address)
+        expect(await rTokenTrade.sellAmount()).to.equal(sellAmtRToken)
+
+        // Should not be disabled to start
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
+
+        // Advance time near end of geometric phase
+        await advanceTime(config.dutchAuctionLength.div(5).sub(5).toString())
+
+        // Should settle RSR auction
+        await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
+        await expect(rsrTrade.connect(addr1).bid())
+          .to.emit(rsrTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(true)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(true)
+
+        // Should still be able to settle RToken auction, even though aaveToken is now disabled
+        await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
+        await expect(rTokenTrade.connect(addr1).bid())
+          .to.emit(rTokenTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
+
+        // Check all 3 tokens are disabled for dutch auctions
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(true)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(true)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(true)
+      })
+
+      it('Should not report violation when Dutch Auction clears in first linear phase', async () => {
+        // This test needs to be in this file and not Broker.test.ts because settleTrade()
+        // requires the BackingManager _actually_ started the trade
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
+
+        // Claim rewards
+
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
+          {
+            contract: token3,
+            name: 'RewardsClaimed',
+            args: [compToken.address, bn(0)],
+            emitted: true,
+          },
+          {
+            contract: token2,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, rewardAmountAAVE],
+            emitted: true,
+          },
+        ])
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions
+        await expectEvents(
+          facadeTest.runAuctionsForAllTradersForKind(rToken.address, TradeKind.DUTCH_AUCTION),
+          [
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+              emitted: true,
+            },
+            {
+              contract: rTokenTrader,
+              name: 'TradeStarted',
+              args: [
+                anyValue,
+                aaveToken.address,
+                rToken.address,
+                sellAmtRToken,
+                withinQuad(minBuyAmtRToken),
+              ],
+              emitted: true,
+            },
+          ]
+        )
+
+        // Check auctions registered
+        // AAVE -> RSR Auction
+        const rsrTrade = await ethers.getContractAt(
+          'DutchTrade',
+          (
+            await getTrade(rsrTrader, aaveToken.address)
+          ).address
+        )
+        expect(await rsrTrade.sell()).to.equal(aaveToken.address)
+        expect(await rsrTrade.buy()).to.equal(rsr.address)
+        expect(await rsrTrade.sellAmount()).to.equal(sellAmt)
+
+        // AAVE -> RToken Auction
+        const rTokenTrade = await ethers.getContractAt(
+          'DutchTrade',
+          (
+            await getTrade(rTokenTrader, aaveToken.address)
+          ).address
+        )
+        expect(await rTokenTrade.sell()).to.equal(aaveToken.address)
+        expect(await rTokenTrade.buy()).to.equal(rToken.address)
+        expect(await rTokenTrade.sellAmount()).to.equal(sellAmtRToken)
+
+        // Should not be disabled to start
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
+
+        // Advance time to middle of first linear phase
+        await advanceTime(config.dutchAuctionLength.div(3).toString())
+
+        // Should settle RSR auction
+        await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
+        await expect(rsrTrade.connect(addr1).bid())
+          .to.emit(rsrTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
+
+        // Should settle RToken auction
+        await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
+        await expect(rTokenTrade.connect(addr1).bid())
+          .to.emit(rTokenTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
+
+        // Should not have disabled anything
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
+      })
+
+      it('Should not perform auction if Batch Trades are disabled', async () => {
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards

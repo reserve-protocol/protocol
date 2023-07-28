@@ -42,7 +42,7 @@ import {
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
-import { ITradeRequest } from './utils/trades'
+import { ITradeRequest, expectTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
@@ -1010,6 +1010,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await token0.balanceOf(trade.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
       })
+
+      // There is no test here for the reportViolation case; that is in Revenues.test.ts
     })
 
     context('DutchTrade', () => {
@@ -1321,6 +1323,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await token0.balanceOf(trade.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
       })
+
+      // There is no test here for the reportViolation case; that is in Revenues.test.ts
     })
   })
 
