@@ -33,9 +33,8 @@ Some of the core contracts in our system regularly own ERC20 tokens. In each cas
 
 ### RToken Lifecycle
 
-1. During SlowIssuance, the `RToken` transfers collateral tokens from the caller's address into itself.
-2. At vesting time, the `RToken` contract mints new RToken to the recipient and transfers the held collateral to the `BackingManager`. If the `BasketHandler` has updated the basket since issuance began, then the collateral is instead returned to the recipient and no RToken is minted.
-3. During redemption, RToken is burnt from the redeemer's account and they are transferred a prorata share of backing collateral from the `BackingManager`.
+1. During minting, the `RToken` transfers collateral tokens from the caller's address into itself and mints new RToken to the caller's address. Minting amount must be less than the current throttle limit, or the transaction will revert.
+2. During redemption, RToken is burnt from the redeemer's account and they are transferred a prorata share of backing collateral from the `BackingManager`.
 
 ## Protocol Assumptions
 
