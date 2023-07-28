@@ -96,4 +96,7 @@ interface TestIBroker is IBroker {
     function setBatchTradeDisabled(bool disabled) external;
 
     function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external;
+
+    // only present on pre-3.0.0 Brokers; used by EasyAuction regression test
+    function disabled() external view returns (bool);
 }

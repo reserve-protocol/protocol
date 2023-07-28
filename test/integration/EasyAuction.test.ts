@@ -910,9 +910,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       )
 
       await backingManager.settleTrade('0x39AA39c021dfbaE8faC545936693aC917d5E7563')
-      expect(
-        await broker.attach('0x90EB22A31b69C29C34162E0E9278cc0617aA2B50').batchTradeDisabled()
-      ).to.equal(true)
+      expect(await broker.attach('0x90EB22A31b69C29C34162E0E9278cc0617aA2B50').disabled()).to.equal(
+        true
+      )
 
       await resetFork()
 
@@ -924,9 +924,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await setCode(gnosisTradeImpl.address, gnosisTradeArtifact.deployedBytecode)
 
       await backingManager.settleTrade('0x39AA39c021dfbaE8faC545936693aC917d5E7563')
-      expect(
-        await broker.attach('0x90EB22A31b69C29C34162E0E9278cc0617aA2B50').batchTradeDisabled()
-      ).to.equal(false)
+      expect(await broker.attach('0x90EB22A31b69C29C34162E0E9278cc0617aA2B50').disabled()).to.equal(
+        false
+      )
     })
   })
 })
