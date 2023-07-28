@@ -42,6 +42,7 @@ uint192 constant ONE_POINT_TWO = 12e17; // {1} 1.2
  *   price down to 1.2x the best plausible price in a geometric series.
  *   This period DOES NOT expect to receive a bid; it just defends against manipulated prices.
  *   If a bid occurs during this period, a violation is reported to the Broker.
+ *   This is still safe for the protocol since other trades, with price discovery, can occur.
  *
  *   Case 2: Over the next 20% of the auction the price falls from 1.2x the best plausible price
  *   to the best plausible price, linearly. No violation is reported if a bid occurs.
@@ -69,7 +70,6 @@ contract DutchTrade is ITrade {
     TradeStatus public status; // reentrancy protection
 
     IBroker public broker; // The Broker that cloned this contract into existence
-
     ITrading public origin; // the address that initialized the contract
 
     // === Auction ===
@@ -270,8 +270,8 @@ contract DutchTrade is ITrade {
 
         /// Price Curve:
         ///   - first 20%: geometrically decrease the price from 1000x the bestPrice to 1.2x it
-        ///   - next 20%: linearly decrease the price from 1.2x the bestPrice to 1x it
-        ///   - last 60%: linearly decrease the price from bestPrice to worstPrice
+        ///   -  next 20%: linearly decrease the price from 1.2x the bestPrice to 1x it
+        ///   -  last 60%: linearly decrease the price from bestPrice to worstPrice
 
         uint192 progression = divuu(timestamp - startTime, endTime - startTime); // {1}
 
