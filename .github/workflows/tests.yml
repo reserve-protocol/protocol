@@ -37,7 +37,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn lint
 
   plugin-tests:
@@ -50,7 +49,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:plugins
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
@@ -76,7 +74,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:p0
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -91,7 +88,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:p1
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -106,7 +102,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:scenario
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -121,7 +116,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:extreme
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
@@ -157,7 +151,6 @@ jobs:
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:integration
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
