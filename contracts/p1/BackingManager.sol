@@ -82,6 +82,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Settle a single trade. If the caller is the trade, try chaining into rebalance()
     /// While this function is not nonReentrant, its two subsets each individually are
+    /// If the caller is a trade contract, initiate the next trade.
+    /// This is done in order to better align incentives,
+    /// and have the last bidder be the one to start the next auction.
+    /// This behaviour currently only happens for Dutch Trade.
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
@@ -172,11 +176,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction not RCEI; nonReentrant
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function forwardRevenue(IERC20[] calldata erc20s)
-        external
-        nonReentrant
-        notTradingPausedOrFrozen
-    {
+    function forwardRevenue(
+        IERC20[] calldata erc20s
+    ) external nonReentrant notTradingPausedOrFrozen {
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
 
         assetRegistry.refresh();
