@@ -516,8 +516,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
             // {tok} = {BU} * {ref/BU} / {ref/tok}
             quantities[i] = amount
-                .safeMulDiv(refAmtsAll[i], collsAll[i].refPerTok(), FLOOR)
-                .shiftl_toUint(int8(collsAll[i].erc20Decimals()), FLOOR);
+            .safeMulDiv(refAmtsAll[i], collsAll[i].refPerTok(), FLOOR)
+            .shiftl_toUint(int8(collsAll[i].erc20Decimals()), FLOOR);
             // marginally more penalizing than its sibling calculation that uses _quantity()
             // because does not intermediately CEIL as part of the division
         }
