@@ -98,6 +98,8 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Unregister an asset, requiring that it is already registered
+    /// Rewards are NOT claimed by default when unregistering due to security concerns.
+    /// If the collateral is secure, governance should claim rewards before unregistering.
     /// @custom:governance
     // checks: assets[asset.erc20()] == asset
     // effects: assets' = assets - {asset.erc20():_} + {asset.erc20(), asset}
