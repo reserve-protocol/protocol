@@ -117,8 +117,7 @@ const config: HardhatUserConfig = {
   mocha: {
     timeout: TIMEOUT,
     slow: 1000,
-    retries: 3,
-    parallel: true,
+    retries: 3
   },
   contractSizer: {
     alphaSort: false,
