@@ -104,20 +104,26 @@ export const dutchBuyAmount = async (
   const leftover = slippage1e18.mod(fp('1'))
   const slippage = slippage1e18.div(fp('1')).add(leftover.gte(fp('0.5')) ? 1 : 0)
 
-  const lowPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
-  const middlePrice = divCeil(sellHigh.mul(fp('1')), buyLow)
+  const worstPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
+  const bestPrice = divCeil(sellHigh.mul(fp('1')), buyLow)
+  const highPrice = divCeil(sellHigh.mul(fp('1.2')), buyLow)
 
+  const TWENTY_PERCENT = fp('0.2') // 20%
   const FORTY_PERCENT = fp('0.4') // 40%
   const SIXTY_PERCENT = fp('0.6') // 60%
 
   let price: BigNumber
-  if (progression.lt(FORTY_PERCENT)) {
-    const exp = divRound(bn('6907752').mul(FORTY_PERCENT.sub(progression)), FORTY_PERCENT)
+  if (progression.lt(TWENTY_PERCENT)) {
+    const exp = divRound(bn('6725430').mul(TWENTY_PERCENT.sub(progression)), TWENTY_PERCENT)
     const divisor = new Decimal('999999').div('1000000').pow(exp.toString())
-    price = divCeil(middlePrice.mul(fp('1')), fp(divisor.toString()))
+    price = divCeil(highPrice.mul(fp('1')), fp(divisor.toString()))
+  } else if (progression.lt(FORTY_PERCENT)) {
+    price = highPrice.sub(
+      highPrice.sub(bestPrice).mul(progression.sub(TWENTY_PERCENT)).div(TWENTY_PERCENT)
+    )
   } else {
-    price = middlePrice.sub(
-      middlePrice.sub(lowPrice).mul(progression.sub(FORTY_PERCENT)).div(SIXTY_PERCENT)
+    price = bestPrice.sub(
+      bestPrice.sub(worstPrice).mul(progression.sub(FORTY_PERCENT)).div(SIXTY_PERCENT)
     )
   }
   return divCeil(outAmount.mul(price), fp('1'))

@@ -410,13 +410,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   })
 
   describe('Trade Management', () => {
-    it('Should not allow to open trade if Disabled', async () => {
-      // Disable Broker
+    it('Should not allow to open Batch trade if Disabled', async () => {
+      // Disable Broker Batch Auctions
       await expect(broker.connect(owner).setBatchTradeDisabled(true))
         .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(false, true)
 
-      // Attempt to open trade
       const tradeRequest: ITradeRequest = {
         sell: collateral0.address,
         buy: collateral1.address,
@@ -424,13 +423,59 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         minBuyAmount: bn('0'),
       }
 
+      // Batch Auction openTrade should fail
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await expect(
           broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
         ).to.be.revertedWith('batch auctions disabled')
+      })
+    })
+
+    it('Should not allow to open Dutch trade if Disabled for either token', async () => {
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await token0.mint(backingManager.address, tradeRequest.sellAmount)
+        await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+
+        // Should succeed in callStatic
+        await broker
+          .connect(bmSigner)
+          .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+
+        // Disable Broker Dutch Auctions for token0
+        await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, true))
+          .to.emit(broker, 'DutchTradeDisabledSet')
+          .withArgs(token0.address, false, true)
+
+        // Dutch Auction openTrade should fail now
         await expect(
           broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
-        ).to.be.revertedWith('batch auctions disabled')
+        ).to.be.revertedWith('dutch auctions disabled for token pair')
+
+        // Re-enable Dutch Auctions for token0
+        await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, false))
+          .to.emit(broker, 'DutchTradeDisabledSet')
+          .withArgs(token0.address, true, false)
+
+        // Should succeed in callStatic
+        await broker
+          .connect(bmSigner)
+          .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+
+        // Disable Broker Dutch Auctions for token1
+        await expect(broker.connect(owner).setDutchTradeDisabled(token1.address, true))
+          .to.emit(broker, 'DutchTradeDisabledSet')
+          .withArgs(token1.address, false, true)
+
+        // Dutch Auction openTrade should fail now
+        await expect(
+          broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+        ).to.be.revertedWith('dutch auctions disabled for token pair')
       })
     })
 
@@ -1008,10 +1053,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.endTime()).to.equal(
           (await trade.startTime()) + config.dutchAuctionLength.toNumber()
         )
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
-        expect(await trade.lowPrice()).to.equal(prices.sellLow.mul(fp('1')).div(prices.buyHigh))
+        expect(await trade.worstPrice()).to.equal(prices.sellLow.mul(fp('1')).div(prices.buyHigh))
         expect(await trade.canSettle()).to.equal(false)
 
         // Attempt to initialize again
@@ -1076,14 +1121,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.not.be.reverted
 
         // Check trade values
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
         const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
-        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
+        expect(await trade.worstPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
       })
 
       it('Should apply full maxTradeSlippage with low maxTradeVolume', async () => {
@@ -1119,14 +1164,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.not.be.reverted
 
         // Check trade values
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
         const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
-        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
+        expect(await trade.worstPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
       })
 
       it('Should apply full maxTradeSlippage with low maxTradeVolume', async () => {
@@ -1162,14 +1207,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.not.be.reverted
 
         // Check trade values
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
         const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
-        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
+        expect(await trade.worstPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {
