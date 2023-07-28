@@ -26,30 +26,35 @@ import "../../interfaces/ITrade.sol";
 uint192 constant TWENTY_PERCENT = 2e17; // {1} 0.2
 uint192 constant FORTY_PERCENT = 4e17; // {1} 0.4
 uint192 constant SIXTY_PERCENT = 6e17; // {1} 0.6
-uint192 constant MAX_EXP = 6725430 * FIX_ONE; // {1} (1000000/999999)^6725430 = ~833.333
+uint192 constant MAX_EXP = 6725430e18; // {1} (1000000/999999)^6725430 = ~833.333
 uint192 constant BASE = 999999e12; // {1} (999999/1000000)
 uint192 constant ONE_POINT_TWO = 12e17; // {1} 1.2
 
 /**
  * @title DutchTrade
  * @notice Implements a wholesale dutch auction via a 3-piecewise falling-price mechansim.
- *   Over the first 20% of the auction the price falls from ~1000x the best plausible price
- *   down to 1.2x the best plausible price in a geometric series.
+ *   The overall idea is to handle 3 cases:
+ *     1. Price manipulation of the exchange rate up to 1000x via read-only reentrancy
+ *     2. Price movement of up to 20% during the auction
+ *     3. Typical case: no significant price movement; clearing price within expected range
+ *
+ *   Case 1: Over the first 20% of the auction the price falls from ~1000x the best plausible
+ *   price down to 1.2x the best plausible price in a geometric series.
  *   This period DOES NOT expect to receive a bid; it just defends against manipulated prices.
  *   If a bid occurs during this period, a violation is reported to the Broker.
  *
- *   Over the next 20% of the auction the price falls from 1.2x the best plausible price to
- *   the best plausible price, linearly. No violation is reported if a bid occurs.
+ *   Case 2: Over the next 20% of the auction the price falls from 1.2x the best plausible price
+ *   to the best plausible price, linearly. No violation is reported if a bid occurs.
  *
- *   Over the last 60% of the auction the price falls from the best plausible price to the worst
- *   price, linearly. The worst price is further discounted by the maxTradeSlippage as a fraction
- *   of how far from minTradeVolume to maxTradeVolume the trade lies.
+ *   Case 3: Over the last 60% of the auction the price falls from the best plausible price to the
+ *   worst price, linearly. The worst price is further discounted by the maxTradeSlippage as a
+ *   fraction of how far from minTradeVolume to maxTradeVolume the trade lies.
  *   At maxTradeVolume, no additonal discount beyond the oracle errors is applied.
  *
  * To bid:
  * 1. Call `bidAmount()` view to check prices at various timestamps
  * 2. Provide approval of sell tokens for precisely the `bidAmount()` desired
- * 3. Wait until a desirable block is reached (hopefully not in the first 40% of the auction)
+ * 3. Wait until a desirable block is reached (hopefully not in the first 20% of the auction)
  * 4. Call bid()
  */
 contract DutchTrade is ITrade {
