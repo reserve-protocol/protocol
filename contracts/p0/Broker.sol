@@ -42,7 +42,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
     constructor() {
-        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 10;
+        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 20;
     }
 
     function init(

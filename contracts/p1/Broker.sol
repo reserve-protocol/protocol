@@ -67,7 +67,7 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 10;
+        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 20;
     }
 
     // effects: initial parameters are set
