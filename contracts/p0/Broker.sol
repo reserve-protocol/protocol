@@ -24,7 +24,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable MIN_AUCTION_LENGTH; // {s} 2 blocks based on network
+    uint48 public immutable MIN_AUCTION_LENGTH; // {s} 10 blocks based on network
 
     // Added for interface compatibility with P1
     ITrade public batchTradeImplementation;
@@ -42,7 +42,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
     constructor() {
-        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 2;
+        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 10;
     }
 
     function init(

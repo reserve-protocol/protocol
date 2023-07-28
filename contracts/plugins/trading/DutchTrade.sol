@@ -129,7 +129,7 @@ contract DutchTrade is ITrade {
         assert(
             address(sell_) != address(0) &&
                 address(buy_) != address(0) &&
-                auctionLength >= 2 * ONE_BLOCK
+                auctionLength >= 10 * ONE_BLOCK
         ); // misuse by caller
 
         // Only start dutch auctions under well-defined prices
