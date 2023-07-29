@@ -2136,7 +2136,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
       })
 
-      it('Should report violation when Dutch Auction clears in geometric phase', async () => {
+      it.only('Should report violation when Dutch Auction clears in geometric phase', async () => {
         // This test needs to be in this file and not Broker.test.ts because settleTrade()
         // requires the BackingManager _actually_ started the trade
 
@@ -2228,7 +2228,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
 
         // Advance time near end of geometric phase
-        await advanceTime(config.dutchAuctionLength.div(5).sub(5).toString())
+        await advanceBlocks(config.dutchAuctionLength.div(12).div(5).sub(5))
 
         // Should settle RSR auction
         await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
@@ -2342,7 +2342,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
 
         // Advance time to middle of first linear phase
-        await advanceTime(config.dutchAuctionLength.div(3).toString())
+        await advanceBlocks(config.dutchAuctionLength.div(12).div(3))
 
         // Should settle RSR auction
         await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))

@@ -46,7 +46,7 @@ import {
   defaultFixture,
   ORACLE_ERROR,
 } from './fixtures'
-import { getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
+import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { CollateralStatus, TradeKind, MAX_UINT256, ZERO_ADDRESS } from '#/common/constants'
 import { expectTrade } from './utils/trades'
 import { mintCollaterals } from './utils/tokens'
@@ -605,8 +605,8 @@ describe('FacadeRead + FacadeAct contracts', () => {
         // Nothing should be settleable
         expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
 
-        // Advance time till auction ended
-        await advanceTime(auctionLength + 13)
+        // Advance time till auction is over
+        await advanceBlocks(2 + auctionLength / 12)
 
         // Now should be settleable
         const settleable = await facade.auctionsSettleable(trader.address)
@@ -1097,7 +1097,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
-      await advanceTime(auctionLength + 13)
+      await advanceBlocks(1 + auctionLength / 12)
 
       // Settle and start new auction - Will retry
       await expectEvents(
@@ -1161,7 +1161,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect((await facade.auctionsSettleable(rTokenTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
-      await advanceTime(auctionLength + 13)
+      await advanceBlocks(1 + auctionLength / 12)
 
       // Upgrade components to V2
       await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
@@ -1196,7 +1196,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       await rTokenTrader.connect(owner).upgradeTo(revTraderV1.address)
 
       // Advance time till auction ended
-      await advanceTime(auctionLength + 13)
+      await advanceBlocks(1 + auctionLength / 12)
 
       // Settle and start new auction - Will retry again
       await expectEvents(
