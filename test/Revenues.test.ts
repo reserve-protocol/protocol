@@ -46,9 +46,9 @@ import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
 import {
   advanceTime,
-  advanceToTimestamp,
+  advanceBlocks,
+  getLatestBlockNumber,
   getLatestBlockTimestamp,
-  setNextBlockTimestamp,
 } from './utils/time'
 import { withinQuad } from './utils/matchers'
 import {
@@ -2792,76 +2792,26 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
           // Cannot get bid amount yet
           await expect(
-            trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
+            trade.connect(addr1).bidAmount(await getLatestBlockNumber())
           ).to.be.revertedWith('auction not started')
 
-          // Advance to start time
-          const start = await trade.startTime()
-          await advanceToTimestamp(start)
-
-          // Now we can get bid amount
-          const actual = await trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
+          // Can get bid amount in following block
+          await advanceBlocks(1)
+          const actual = await trade.connect(addr1).bidAmount(await getLatestBlockNumber())
           expect(actual).to.be.gt(bn(0))
         })
 
         it('Should allow one bidder', async () => {
-          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2))
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
 
           const trade = await ethers.getContractAt(
             'DutchTrade',
             await rTokenTrader.trades(token0.address)
           )
-
-          // Advance to auction on-going
-          await advanceToTimestamp((await trade.endTime()) - 1000)
 
           // Bid
-          await rToken.connect(addr1).approve(trade.address, initialBal)
-          await trade.connect(addr1).bid()
-          expect(await trade.bidder()).to.equal(addr1.address)
-
-          // Cannot bid once is settled
-          await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
-        })
-
-        it('Should not return bid amount before auction starts', async () => {
-          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
-
-          const trade = await ethers.getContractAt(
-            'DutchTrade',
-            await rTokenTrader.trades(token0.address)
-          )
-
-          // Cannot get bid amount yet
-          await expect(
-            trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
-          ).to.be.revertedWith('auction not started')
-
-          // Advance to start time
-          const start = await trade.startTime()
-          await advanceToTimestamp(start)
-
-          // Now we can get bid amount
-          const actual = await trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
-          expect(actual).to.be.gt(bn(0))
-        })
-
-        it('Should allow one bidder', async () => {
-          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2))
-          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
-
-          const trade = await ethers.getContractAt(
-            'DutchTrade',
-            await rTokenTrader.trades(token0.address)
-          )
-
-          // Advance to auction on-going
-          await advanceToTimestamp((await trade.endTime()) - 1000)
-
-          // Bid
-          await rToken.connect(addr1).approve(trade.address, initialBal)
+          await rToken.connect(addr1).approve(trade.address, issueAmount)
           await trade.connect(addr1).bid()
           expect(await trade.bidder()).to.equal(addr1.address)
 
@@ -2879,15 +2829,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           )
           await rToken.connect(addr1).approve(trade.address, initialBal)
 
-          const start = await trade.startTime()
-          const end = await trade.endTime()
-          await advanceToTimestamp(start)
+          const start = await trade.startBlock()
+          const end = await trade.endBlock()
 
           // Simulate 30 minutes of blocks, should swap at right price each time
-          for (let now = await getLatestBlockTimestamp(); now <= end; now += 12) {
+          let now = bn(await getLatestBlockNumber())
+          while (now.lt(end)) {
             const actual = await trade.connect(addr1).bidAmount(now)
             const expected = await dutchBuyAmount(
-              fp(now - start).div(end - start),
+              fp(now.sub(start)).div(end.sub(start)),
               rTokenAsset.address,
               collateral0.address,
               issueAmount,
@@ -2898,7 +2848,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
             const staticResult = await trade.connect(addr1).callStatic.bid()
             expect(staticResult).to.equal(actual)
-            await advanceToTimestamp((await getLatestBlockTimestamp()) + 12)
+            await advanceBlocks(1)
+            now = bn(await getLatestBlockNumber())
           }
         })
 
@@ -2911,9 +2862,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           )
           await rToken.connect(addr1).approve(trade.address, initialBal)
 
-          await advanceToTimestamp((await trade.endTime()) + 1)
+          await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).add(1))
           await expect(
-            trade.connect(addr1).bidAmount(await getLatestBlockTimestamp())
+            trade.connect(addr1).bidAmount(await getLatestBlockNumber())
           ).to.be.revertedWith('auction over')
           await expect(trade.connect(addr1).bid()).be.revertedWith('auction over')
 
@@ -2927,7 +2878,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await backingManager.tradesOpen()).to.equal(0)
         })
 
-        it('Should bid at exactly endTime() and not launch another auction', async () => {
+        it('Should bid at exactly endBlock() and not launch another auction', async () => {
           await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
           await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
           const trade = await ethers.getContractAt(
@@ -2935,12 +2886,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             await rTokenTrader.trades(token0.address)
           )
           await rToken.connect(addr1).approve(trade.address, initialBal)
+          await expect(trade.bidAmount(await trade.endBlock())).to.not.be.reverted
 
           // Snipe auction at 0s left
-          await advanceToTimestamp((await trade.endTime()) - 1)
-          await expect(trade.bidAmount(await trade.endTime())).to.not.be.reverted
-          // Set timestamp to be exactly endTime()
-          await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
+          await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
           await trade.connect(addr1).bid()
           expect(await trade.canSettle()).to.equal(false)
           expect(await trade.status()).to.equal(2) // Status.CLOSED

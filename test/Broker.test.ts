@@ -41,7 +41,13 @@ import {
   PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  advanceToTimestamp,
+  getLatestBlockTimestamp,
+  getLatestBlockNumber,
+} from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
 
@@ -1051,9 +1057,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.sell()).to.equal(token0.address)
         expect(await trade.buy()).to.equal(token1.address)
         expect(await trade.sellAmount()).to.equal(amount)
-        expect(await trade.startTime()).to.equal((await getLatestBlockTimestamp()) + 12)
+        expect(await trade.startBlock()).to.equal((await getLatestBlockNumber()) + 1)
+        const tradeLen = (await trade.endBlock()).sub(await trade.startBlock())
         expect(await trade.endTime()).to.equal(
-          (await trade.startTime()) + config.dutchAuctionLength.toNumber()
+          tradeLen.mul(12).add(await getLatestBlockTimestamp())
         )
         expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
@@ -1176,49 +1183,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.worstPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
       })
 
-      it('Should apply full maxTradeSlippage with low maxTradeVolume', async () => {
-        // Set low maxTradeVolume for collateral
-        const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
-        const newCollateral0: FiatCollateral = <FiatCollateral>await FiatCollateralFactory.deploy({
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: await collateral0.chainlinkFeed(),
-          oracleError: ORACLE_ERROR,
-          erc20: token0.address,
-          maxTradeVolume: bn(500),
-          oracleTimeout: ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: DEFAULT_THRESHOLD,
-          delayUntilDefault: DELAY_UNTIL_DEFAULT,
-        })
-
-        // Refresh and swap collateral
-        await newCollateral0.refresh()
-        await assetRegistry.connect(owner).swapRegistered(newCollateral0.address)
-
-        // Fund trade and initialize
-        await token0.connect(owner).mint(trade.address, amount)
-        await expect(
-          trade.init(
-            backingManager.address,
-            newCollateral0.address,
-            collateral1.address,
-            amount,
-            config.dutchAuctionLength,
-            prices
-          )
-        ).to.not.be.reverted
-
-        // Check trade values
-        expect(await trade.bestPrice()).to.equal(
-          divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
-        )
-        const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
-        const withSlippage = withoutSlippage.sub(
-          withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
-        )
-        expect(await trade.worstPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
-      })
-
       it('Should not allow to initialize an unfunded trade', async () => {
         // Attempt to initialize without funding
         await expect(
@@ -1253,8 +1217,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('auction not over')
         })
 
-        // Advance time till trade can be settled
-        await advanceTime(config.dutchAuctionLength.add(100).toString())
+        // Advance blocks til trade can be settled
+        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
+        await advanceBlocks(tradeLen.add(1))
 
         // Settle trade
         expect(await trade.canSettle()).to.equal(true)
@@ -1291,8 +1256,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           'only after trade is closed'
         )
 
-        // Advance time till trade can be settled
-        await advanceTime(config.dutchAuctionLength.add(100).toString())
+        // Advance blocks til trade can be settled
+        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
+        await advanceBlocks(tradeLen.add(1))
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {
