@@ -30,7 +30,7 @@ uint192 constant TWENTY_FIVE_PERCENT = 25e16; // {1} 0.25
 uint192 constant FORTY_FIVE_PERCENT = 45e16; // {1} 0.45
 uint192 constant FIFTY_PERCENT = 5e17; // {1} 0.5
 uint192 constant NINETY_FIVE_PERCENT = 95e16; // {1} 0.95
-uint192 constant MAX_EXP = 6725430e18; // {1} (1000000/999999)^6725430 = ~833.333
+uint192 constant MAX_EXP = 6502287e18; // {1} (1000000/999999)^6502287 = ~666.6667
 uint192 constant BASE = 999999e12; // {1} (999999/1000000)
 uint192 constant ONE_POINT_FIVE = 15e17; // {1} 1.5
 
@@ -293,7 +293,7 @@ contract DutchTrade is ITrade {
             uint192 exp = MAX_EXP.mulDiv(TWENTY_PERCENT - progression, TWENTY_PERCENT, ROUND);
 
             // bestPrice * ((1000000/999999) ^ exp) = bestPrice / ((999999/1000000) ^ exp)
-            // safe uint48 downcast: exp is at-most 6725430
+            // safe uint48 downcast: exp is at-most 6502287
             // {buyTok/sellTok} = {buyTok/sellTok} / {1} ^ {1}
             return bestPrice.mulDiv(ONE_POINT_FIVE, BASE.powu(uint48(exp.toUint(ROUND))), CEIL);
             // this reverts for bestPrice >= 6.21654046e36 * FIX_ONE

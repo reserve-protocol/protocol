@@ -2136,7 +2136,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
       })
 
-      it.only('Should report violation when Dutch Auction clears in geometric phase', async () => {
+      it('Should report violation when Dutch Auction clears in geometric phase', async () => {
         // This test needs to be in this file and not Broker.test.ts because settleTrade()
         // requires the BackingManager _actually_ started the trade
 

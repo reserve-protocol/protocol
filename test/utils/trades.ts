@@ -110,7 +110,7 @@ export const dutchBuyAmount = async (
 
   let price: BigNumber
   if (progression.lt(fp('0.2'))) {
-    const exp = divRound(bn('6725430').mul(fp('0.2').sub(progression)), fp('0.2'))
+    const exp = divRound(bn('6502287').mul(fp('0.2').sub(progression)), fp('0.2'))
     const divisor = new Decimal('999999').div('1000000').pow(exp.toString())
     price = divCeil(highPrice.mul(fp('1')), fp(divisor.toString()))
   } else if (progression.lt(fp('0.45'))) {
