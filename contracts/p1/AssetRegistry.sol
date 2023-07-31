@@ -188,6 +188,13 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = assets.set(asset.erc20(), asset)
     // returns: assets[asset.erc20()] != asset
     function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
+        if (asset.isCollateral()) {
+            require(
+                ICollateral(address(asset)).status() == CollateralStatus.SOUND,
+                "collateral not sound"
+            );
+        }
+
         IERC20Metadata erc20 = asset.erc20();
         if (_erc20s.contains(address(erc20))) {
             if (assets[erc20] == asset) return false;
