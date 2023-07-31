@@ -1,4 +1,4 @@
-import { loadFixture, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
@@ -505,8 +505,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
         trade = <GnosisTrade>await TradeFactory.deploy()
 
-        await setStorageAt(trade.address, 0, 0)
-
         // Check state
         expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
         expect(await trade.canSettle()).to.equal(false)
@@ -949,8 +947,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Create a Trade
         const TradeFactory: ContractFactory = await ethers.getContractFactory('DutchTrade')
         trade = <DutchTrade>await TradeFactory.deploy()
-
-        await setStorageAt(trade.address, 0, 0)
 
         // Check state
         expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)

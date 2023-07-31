@@ -58,10 +58,6 @@ contract GnosisTrade is ITrade {
         status = end;
     }
 
-    constructor() {
-        status = TradeStatus.CLOSED;
-    }
-
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
     /// @custom:interaction reentrancy-safe b/c state-locking
