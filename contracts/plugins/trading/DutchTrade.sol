@@ -98,6 +98,8 @@ contract DutchTrade is ITrade {
 
     constructor() {
         ONE_BLOCK = NetworkConfigLib.blocktime();
+
+        status = TradeStatus.CLOSED;
     }
 
     // === External ===
