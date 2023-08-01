@@ -224,7 +224,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('issuance pctRate too big')
     })
 
-    it.only('Should account for accrued value when updating issuance throttle parameters', async () => {
+    it('Should account for accrued value when updating issuance throttle parameters', async () => {
       await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
       const issuanceThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
 
@@ -282,7 +282,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('redemption pctRate too big')
     })
 
-    it.only('Should account for accrued value when updating redemption throttle parameters', async () => {
+    it('Should account for accrued value when updating redemption throttle parameters', async () => {
       await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
       const issuanceThrottleParams = { amtRate: fp('100'), pctRate: fp('0.1') }
       const redemptionThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
