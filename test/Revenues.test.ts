@@ -667,7 +667,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
         ).to.be.revertedWith('unregistered erc20')
 
-        // Succeed on just token1 + rsr
+        // Succeed on just token0 + rsr
         await expectEvents(rsrTrader.returnTokens([rsr.address, token0.address]), [
           {
             contract: rsr,
@@ -721,7 +721,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
         ).to.be.revertedWith('unregistered erc20')
 
-        // Succeed on just token1 + rsr
+        // Succeed on just token0 + rsr
         await expectEvents(rTokenTrader.returnTokens([rsr.address, token0.address]), [
           {
             contract: rsr,
