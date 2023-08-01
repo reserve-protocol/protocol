@@ -225,11 +225,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it.only('Should account for accrued value when updating issuance throttle parameters', async () => {
-      await advanceTime(12*5*60) // 60 minutes, charge fully
+      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
       const issuanceThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
 
       await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
-      let params = await rToken.issuanceThrottleParams()
+      const params = await rToken.issuanceThrottleParams()
       expect(params[0]).to.equal(issuanceThrottleParams.amtRate)
       expect(params[1]).to.equal(issuanceThrottleParams.pctRate)
 
@@ -237,7 +237,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(fp('20'))
       expect(await rToken.issuanceAvailable()).to.equal(fp('40'))
 
-      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 12*5*10) // 10 minutes
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12 * 5 * 10) // 10 minutes
 
       issuanceThrottleParams.amtRate = fp('100')
       await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
@@ -283,13 +283,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it.only('Should account for accrued value when updating redemption throttle parameters', async () => {
-      await advanceTime(12*5*60) // 60 minutes, charge fully
+      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
       const issuanceThrottleParams = { amtRate: fp('100'), pctRate: fp('0.1') }
       const redemptionThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
 
       await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
       await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
-      let params = await rToken.redemptionThrottleParams()
+      const params = await rToken.redemptionThrottleParams()
       expect(params[0]).to.equal(redemptionThrottleParams.amtRate)
       expect(params[1]).to.equal(redemptionThrottleParams.pctRate)
 
@@ -299,7 +299,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).redeem(fp('30'))
       expect(await rToken.redemptionAvailable()).to.equal(fp('30'))
 
-      await setNextBlockTimestamp(await getLatestBlockTimestamp() + 12*5*10) // 10 minutes
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12 * 5 * 10) // 10 minutes
 
       redemptionThrottleParams.amtRate = fp('100')
       await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
