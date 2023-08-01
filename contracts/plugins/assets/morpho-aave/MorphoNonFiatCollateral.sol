@@ -48,7 +48,7 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {tar/ref} Get current market peg ({btc/wbtc})
+        // {tar/ref} Get current market peg
         pegPrice = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
 
         // {UoA/tok} = {UoA/ref} * {ref/tok}

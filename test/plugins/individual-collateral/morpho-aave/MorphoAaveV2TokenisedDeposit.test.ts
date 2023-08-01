@@ -8,9 +8,10 @@ import { expect } from 'chai'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 
 type ITokenSymbol = keyof ITokens
+const networkConfigToUse = networkConfig[31337]
 
 const mkToken = (symbol: ITokenSymbol) => ({
-  address: networkConfig[1].tokens[symbol]! as string,
+  address: networkConfigToUse.tokens[symbol]! as string,
   symbol: symbol,
 })
 const mkTestCase = <T extends ITokenSymbol>(symbol: T, amount: string) => ({
@@ -20,6 +21,7 @@ const mkTestCase = <T extends ITokenSymbol>(symbol: T, amount: string) => ({
 })
 
 const TOKENS_TO_TEST = [
+  mkTestCase('USDC', '1000.0'),
   mkTestCase('USDT', '1000.0'),
   mkTestCase('DAI', '1000.0'),
   mkTestCase('WETH', '1.0'),
@@ -37,14 +39,14 @@ const execTestForToken = ({ token, poolToken, amount }: ITestSuiteVariant) => {
       }
       const instances = {
         underlying: factories.ERC20Mock.attach(token.address),
-        morpho: factories.ERC20Mock.attach(networkConfig[1].tokens.MORPHO!),
+        morpho: factories.ERC20Mock.attach(networkConfigToUse.tokens.MORPHO!),
         tokenVault: await factories.MorphoTokenisedDeposit.deploy({
           underlyingERC20: token.address,
           poolToken: poolToken.address,
-          morphoController: networkConfig[1].MORPHO_AAVE_CONTROLLER!,
-          morphoLens: networkConfig[1].MORPHO_AAVE_LENS!,
-          rewardsDistributor: networkConfig[1].MORPHO_REWARDS_DISTRIBUTOR!,
-          rewardToken: networkConfig[1].tokens.MORPHO!,
+          morphoController: networkConfigToUse.MORPHO_AAVE_CONTROLLER!,
+          morphoLens: networkConfigToUse.MORPHO_AAVE_LENS!,
+          rewardsDistributor: networkConfigToUse.MORPHO_REWARDS_DISTRIBUTOR!,
+          rewardToken: networkConfigToUse.tokens.MORPHO!,
         }),
       }
       const underlyingDecimals = await instances.underlying.decimals()
