@@ -23,6 +23,8 @@ export interface ITokens {
   aBUSD?: string
   aUSDP?: string
   aWETH?: string
+  aWBTC?: string
+  aCRV?: string
   cDAI?: string
   cUSDC?: string
   cUSDT?: string
@@ -52,11 +54,23 @@ export interface ITokens {
   ONDO?: string
   sDAI?: string
   cbETH?: string
+  STG?: string
+  sUSDC?: string
+  sUSDT?: string
+  sETH?: string
+  MORPHO?: string
+  astETH?: string
+
+  // Morpho Aave
+  maUSDC?: string
+  maUSDT?: string
+  maDAI?: string
 }
 
 export interface IFeeds {
   stETHETH?: string
   stETHUSD?: string
+  wBTCBTC?: string
 }
 
 export interface IPools {
@@ -82,6 +96,9 @@ interface INetworkConfig {
   FLUX_FINANCE_COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  MORPHO_AAVE_CONTROLLER?: string
+  MORPHO_REWARDS_DISTRIBUTOR?: string
+  MORPHO_AAVE_LENS?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -110,6 +127,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aBUSD: '0xA361718326c15715591c299427c62086F69923D9',
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
+      aWBTC: '0x9ff58f4ffb29fa2266ab25e75e2a8b3503311656',
+      aCRV: '0x8dae6cb04688c62d939ed9b68d32bc62e49970b1',
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
@@ -139,6 +158,12 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
       cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
+      STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
+      sUSDC: '0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56',
+      sUSDT: '0x38EA452219524Bb87e18dE1C24D3bB59510BD783',
+      sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
+      MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
+      astETH: "0x1982b2F5814301d4e9a8b0201555376e62F82428"
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -164,6 +189,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
+      wBTCBTC: "0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23", // "WBTC/BTC"
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
@@ -173,6 +199,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
+    MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
+    MORPHO_REWARDS_DISTRIBUTOR: "0x3b14e5c73e0a56d607a8688098326fd4b4292135"
   },
   '3': {
     name: 'ropsten',
@@ -216,6 +245,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
       WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      aWBTC: '0x9ff58f4ffb29fa2266ab25e75e2a8b3503311656',
+      aCRV: '0x8dae6cb04688c62d939ed9b68d32bc62e49970b1',
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
@@ -231,6 +262,12 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       ONDO: '0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3',
       sDAI: '0x83f20f44975d03b1b09e64809b757c47f942beea',
       cbETH: '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704',
+      STG: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',
+      sUSDC: '0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56',
+      sUSDT: '0x38EA452219524Bb87e18dE1C24D3bB59510BD783',
+      sETH: '0x101816545F6bd2b1076434B54383a1E633390A2E',
+      astETH: "0x1982b2F5814301d4e9a8b0201555376e62F82428",
+      MORPHO: '0x9994e35db50125e0df82e4c2dde62496ce330999',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -256,12 +293,16 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
+      wBTCBTC: "0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23" // "WBTC/BTC"
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_RESERVE_TREASURY: '0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c',
     FLUX_FINANCE_COMPTROLLER: '0x95Af143a021DF745bc78e845b54591C53a8B3A51',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
+    MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
+    MORPHO_REWARDS_DISTRIBUTOR: "0x3b14e5c73e0a56d607a8688098326fd4b4292135"
   },
   '5': {
     name: 'goerli',

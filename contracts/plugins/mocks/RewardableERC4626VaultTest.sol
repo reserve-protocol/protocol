@@ -15,4 +15,8 @@ contract RewardableERC4626VaultTest is RewardableERC4626Vault {
     function _claimAssetRewards() internal virtual override {
         ERC20MockRewarding(asset()).claim();
     }
+
+    function sync() external {
+        _claimAndSyncRewards();
+    }
 }

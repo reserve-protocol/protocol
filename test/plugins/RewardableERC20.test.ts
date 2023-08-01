@@ -7,17 +7,20 @@ import {
   ERC20MockDecimals,
   ERC20MockRewarding,
   RewardableERC20Wrapper,
+  RewardableERC20WrapperTest,
   RewardableERC4626Vault,
+  RewardableERC4626VaultTest,
 } from '../../typechain'
 import { cartesianProduct } from '../utils/cases'
 import { useEnv } from '#/utils/env'
 import { Implementation } from '../fixtures'
 import snapshotGasCost from '../utils/snapshotGasCost'
+import { formatUnits, parseUnits } from 'ethers/lib/utils'
 
 type Fixture<T> = () => Promise<T>
 
 interface RewardableERC20Fixture {
-  rewardableVault: RewardableERC4626Vault | RewardableERC20Wrapper
+  rewardableVault: RewardableERC4626VaultTest | RewardableERC20WrapperTest
   rewardableAsset: ERC20MockRewarding
   rewardToken: ERC20MockDecimals
 }
@@ -59,7 +62,7 @@ for (const wrapperName of wrapperNames) {
         )
 
         const rewardableVaultFactory: ContractFactory = await ethers.getContractFactory(wrapperName)
-        const rewardableVault = <RewardableERC4626Vault | RewardableERC20Wrapper>(
+        const rewardableVault = <RewardableERC4626VaultTest | RewardableERC20WrapperTest>(
           await rewardableVaultFactory.deploy(
             rewardableAsset.address,
             'Rewarding Test Asset Vault',
@@ -95,6 +98,20 @@ for (const wrapperName of wrapperNames) {
       return wrapperERC4626.withdraw(amount, to, to)
     }
   }
+  const withdrawAll = async (
+    wrapper: RewardableERC4626Vault | RewardableERC20Wrapper,
+    to?: string
+  ): Promise<ContractTransaction> => {
+    const owner = await wrapper.signer.getAddress()
+    to = to || owner
+    if (wrapperName == Wrapper.ERC20) {
+      const wrapperERC20 = wrapper as RewardableERC20Wrapper
+      return wrapperERC20.withdraw(await wrapperERC20.balanceOf(owner), to)
+    } else {
+      const wrapperERC4626 = wrapper as RewardableERC4626Vault
+      return wrapperERC4626.withdraw(await wrapperERC4626.maxWithdraw(owner), to, owner)
+    }
+  }
 
   const runTests = (assetDecimals: number, rewardDecimals: number) => {
     describe(wrapperName, () => {
@@ -102,7 +119,7 @@ for (const wrapperName of wrapperNames) {
       let shareDecimals: number
 
       // Assets
-      let rewardableVault: RewardableERC20Wrapper | RewardableERC4626Vault
+      let rewardableVault: RewardableERC20WrapperTest | RewardableERC4626VaultTest
       let rewardableAsset: ERC20MockRewarding
       let rewardToken: ERC20MockDecimals
 
@@ -110,8 +127,8 @@ for (const wrapperName of wrapperNames) {
       let alice: Wallet
       let bob: Wallet
 
-      const initBalance = fp('10000').div(bn(10).pow(18 - assetDecimals))
-      const rewardAmount = fp('200').div(bn(10).pow(18 - rewardDecimals))
+      const initBalance = parseUnits('10000', assetDecimals)
+      const rewardAmount = parseUnits('200', rewardDecimals)
       let oneShare: BigNumber
       let initShares: BigNumber
 
@@ -153,6 +170,75 @@ for (const wrapperName of wrapperNames) {
           await rewardableVault.connect(alice).claimRewards()
           expect(await rewardableVault.rewardsPerShare()).to.equal(bn(0))
           expect(await rewardableVault.lastRewardsPerShare(alice.address)).to.equal(bn(0))
+        })
+
+        it('supports direct airdrops', async () => {
+          await rewardableVault
+            .connect(alice)
+            .deposit(parseUnits('10', assetDecimals), alice.address)
+          expect(await rewardableVault.rewardsPerShare()).to.equal(bn(0))
+          expect(await rewardableVault.lastRewardsPerShare(alice.address)).to.equal(bn(0))
+          await rewardToken.mint(rewardableVault.address, parseUnits('10', rewardDecimals))
+          await rewardableVault.sync()
+          expect(await rewardableVault.rewardsPerShare()).to.equal(parseUnits('1', rewardDecimals))
+        })
+
+        it('correctly handles reward tracking if supply is burned', async () => {
+          await rewardableVault
+            .connect(alice)
+            .deposit(parseUnits('10', assetDecimals), alice.address)
+          expect(await rewardableVault.rewardsPerShare()).to.equal(bn(0))
+          expect(await rewardableVault.lastRewardsPerShare(alice.address)).to.equal(bn(0))
+          await rewardToken.mint(rewardableVault.address, parseUnits('10', rewardDecimals))
+          await rewardableVault.sync()
+          expect(await rewardableVault.rewardsPerShare()).to.equal(parseUnits('1', rewardDecimals))
+
+          // Setting supply to 0
+          await withdrawAll(rewardableVault.connect(alice))
+          expect(await rewardableVault.totalSupply()).to.equal(bn(0))
+
+          // Add some undistributed reward tokens to the vault
+          await rewardToken.mint(rewardableVault.address, parseUnits('10', rewardDecimals))
+
+          // Claim whatever rewards are available
+          expect(await rewardToken.balanceOf(alice.address)).to.be.equal(bn(0))
+          await rewardableVault.connect(alice).claimRewards()
+
+          expect(await rewardToken.balanceOf(alice.address)).to.be.equal(
+            parseUnits('10', rewardDecimals)
+          )
+
+          // Nothing updates.. as totalSupply as totalSupply is 0
+          await rewardableVault.sync()
+          expect(await rewardableVault.rewardsPerShare()).to.equal(parseUnits('1', rewardDecimals))
+          await rewardableVault
+            .connect(alice)
+            .deposit(parseUnits('10', assetDecimals), alice.address)
+          await rewardableVault.sync()
+
+          await rewardableVault.connect(alice).claimRewards()
+          expect(await rewardToken.balanceOf(alice.address)).to.be.equal(
+            parseUnits('20', rewardDecimals)
+          )
+        })
+
+        it('1 wei supply', async () => {
+          await rewardableVault.connect(alice).deposit('1', alice.address)
+          expect(await rewardableVault.rewardsPerShare()).to.equal(bn(0))
+          expect(await rewardableVault.lastRewardsPerShare(alice.address)).to.equal(bn(0))
+          await rewardToken.mint(rewardableVault.address, parseUnits('1', rewardDecimals))
+          await rewardableVault.sync()
+          await rewardableVault.connect(bob).deposit('10', bob.address)
+          await rewardableVault.connect(alice).deposit('10', alice.address)
+          await rewardToken.mint(rewardableVault.address, parseUnits('99', rewardDecimals))
+          await rewardableVault.connect(alice).claimRewards()
+          await rewardableVault.connect(bob).claimRewards()
+          const aliceBalance = await rewardToken.balanceOf(await alice.getAddress())
+          const bobBalance = await rewardToken.balanceOf(await bob.getAddress())
+
+          expect(parseFloat(formatUnits(aliceBalance, rewardDecimals))).to.be.closeTo(52.8, 0.1)
+
+          expect(parseFloat(formatUnits(bobBalance, rewardDecimals))).to.be.closeTo(47.1, 0.1)
         })
       })
 
