@@ -11,7 +11,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout } from '../../utils'
+import { priceTimeout, oracleTimeout, combinedError } from '../../utils'
 
 async function main() {
   // ==== Read Configuration ====
@@ -36,7 +36,7 @@ async function main() {
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const deployedCollateral: string[] = []
-  const revenueHiding = fp('1e-6').toString() // revenueHiding = 0.0001%
+  const revenueHiding = fp('1e-6') // revenueHiding = 0.0001%
 
   /******** Deploy Morpho - AaveV2 **************************/
 
@@ -61,6 +61,7 @@ async function main() {
     poolToken: networkConfig[chainId].tokens.aUSDC!,
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
   })
+
   const maDAI = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
@@ -70,50 +71,85 @@ async function main() {
     rewardToken: networkConfig[chainId].tokens.MORPHO!,
   })
 
+  const maWBTC = await MorphoTokenisedDepositFactory.deploy({
+    morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+    morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
+    underlyingERC20: networkConfig[chainId].tokens.WBTC!,
+    poolToken: networkConfig[chainId].tokens.aWBTC!,
+    rewardToken: networkConfig[chainId].tokens.MORPHO!,
+  })
+
+  const maWETH = await MorphoTokenisedDepositFactory.deploy({
+    morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+    morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
+    underlyingERC20: networkConfig[chainId].tokens.WETH!,
+    poolToken: networkConfig[chainId].tokens.aWETH!,
+    rewardToken: networkConfig[chainId].tokens.MORPHO!,
+  })
+
+  const maStETH = await MorphoTokenisedDepositFactory.deploy({
+    morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
+    morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
+    rewardsDistributor: networkConfig[chainId].MORPHO_REWARDS_DISTRIBUTOR!,
+    underlyingERC20: networkConfig[chainId].tokens.stETH!,
+    poolToken: networkConfig[chainId].tokens.astETH!,
+    rewardToken: networkConfig[chainId].tokens.MORPHO!,
+  })
+
   await maUSDT.deployed()
   await maUSDC.deployed()
   await maDAI.deployed()
+  await maWBTC.deployed()
+  await maWETH.deployed()
+  await maStETH.deployed()
 
   assetCollDeployments.erc20s.maUSDT = maUSDT.address
   assetCollDeployments.erc20s.maUSDC = maUSDC.address
   assetCollDeployments.erc20s.maDAI = maDAI.address
+  assetCollDeployments.erc20s.maWBTC = maWBTC.address
+  assetCollDeployments.erc20s.maWETH = maWETH.address
+  assetCollDeployments.erc20s.maStETH = maStETH.address
 
   /******** Morpho collateral **************************/
   const FiatCollateralFactory = await hre.ethers.getContractFactory(
     "MorphoFiatCollateral"
   )
+  const NonFiatCollateralFactory = await hre.ethers.getContractFactory(
+    "MorphoNonFiatCollateral"
+  )
+  const SelfReferentialFactory = await hre.ethers.getContractFactory(
+    "MorphoSelfReferentialCollateral"
+  )
   const stablesOracleError = fp('0.0025') // 0.25%
+
+  const baseStableConfig = {
+    priceTimeout: priceTimeout.toString(),
+    oracleError: stablesOracleError.toString(),
+    maxTradeVolume: fp('1e6').toString(), // $1m,
+    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 1 hr
+    targetName: ethers.utils.formatBytes32String("USD"),
+    defaultThreshold: stablesOracleError.add(fp("0.01")), // 1.25%
+    delayUntilDefault: bn('86400').toString(), // 24h
+  }
 
   {
     const collateral = await FiatCollateralFactory.connect(deployer).deploy({
-      priceTimeout: priceTimeout.toString(),
+      ...baseStableConfig,
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT!,
-      oracleError: stablesOracleError.toString(),
       erc20: maUSDT.address,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 1 hr
-      targetName: ethers.utils.formatBytes32String("USD"),
-      defaultThreshold: stablesOracleError.add(fp("0.01")), // 1.25%
-      delayUntilDefault: bn('86400').toString(), // 24h
     },
       revenueHiding
     );
     assetCollDeployments.collateral.maUSDT = collateral.address
     deployedCollateral.push(collateral.address.toString())
-
   }
   {
-
     const collateral = await FiatCollateralFactory.connect(deployer).deploy({
-      priceTimeout: priceTimeout.toString(),
+      ...baseStableConfig,
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-      oracleError: stablesOracleError.toString(),
       erc20: maUSDC.address,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 1 hr
-      targetName: ethers.utils.formatBytes32String("USD"),
-      defaultThreshold: stablesOracleError.add(fp("0.01")), // 1.25%
-      delayUntilDefault: bn('86400').toString(), // 24h
     },
       revenueHiding
     );
@@ -122,19 +158,82 @@ async function main() {
   }
   {
     const collateral = await FiatCollateralFactory.connect(deployer).deploy({
-      priceTimeout: priceTimeout.toString(),
+      ...baseStableConfig,
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI!,
-      oracleError: stablesOracleError.toString(),
       erc20: maDAI.address,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
-      targetName: ethers.utils.formatBytes32String("USD"),
-      defaultThreshold: stablesOracleError.add(fp("0.01")), // 1.25%
-      delayUntilDefault: bn('86400').toString(), // 24h
     },
       revenueHiding
     );
     assetCollDeployments.collateral.maDAI = collateral.address
+    deployedCollateral.push(collateral.address.toString())
+  }
+
+  {
+    const wbtcOracleError = fp('0.02') // 2%
+    const btcOracleError = fp('0.005') // 0.5%
+    const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
+    const collateral = await NonFiatCollateralFactory.connect(deployer).deploy({
+      priceTimeout: priceTimeout,
+      oracleError: combinedBTCWBTCError,
+      maxTradeVolume: fp('1e6'), // $1m,
+      oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
+      targetName: ethers.utils.formatBytes32String("BTC"),
+      defaultThreshold: fp('0.01').add(combinedBTCWBTCError),  // ~3.5%
+      delayUntilDefault: bn('86400'), // 24h
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!,
+      erc20: maWBTC.address,
+    },
+      revenueHiding,
+      networkConfig[chainId].chainlinkFeeds.wBTCBTC!,
+      oracleTimeout(chainId, '86400').toString(),  // 1 hr
+    );
+    assetCollDeployments.collateral.maWBTC = collateral.address
+    deployedCollateral.push(collateral.address.toString())
+  }
+
+  {
+    const collateral = await SelfReferentialFactory.connect(deployer).deploy({
+      priceTimeout: priceTimeout,
+      oracleError: fp('0.005'),
+      maxTradeVolume: fp('1e6'), // $1m,
+      oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
+      targetName: ethers.utils.formatBytes32String("ETH"),
+      defaultThreshold: fp('0.05'),  // 5%
+      delayUntilDefault: bn('86400'), // 24h
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
+      erc20: maWBTC.address,
+    },
+      revenueHiding,
+    );
+    assetCollDeployments.collateral.maWETH = collateral.address
+    deployedCollateral.push(collateral.address.toString())
+  }
+
+  {
+    const ethStEthOracleError = fp('0.005') // 0.5%
+    const ethOracleError = fp('0.005') // 0.5%
+
+    const combinedOracleErrors = combinedError(ethStEthOracleError, ethOracleError)
+
+    // TAR: ETH
+    // REF: stETH
+    // TOK: maETH
+    const collateral = await NonFiatCollateralFactory.connect(deployer).deploy({
+      priceTimeout: priceTimeout,
+      oracleError: combinedOracleErrors,
+      maxTradeVolume: fp('1e6'), // $1m,
+      oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
+      targetName: ethers.utils.formatBytes32String("ETH"),
+      defaultThreshold: fp('0.01').add(combinedOracleErrors),  // ~1.5%
+      delayUntilDefault: bn('86400'), // 24h
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
+      erc20: maStETH.address,
+    },
+      revenueHiding,
+      networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
+      oracleTimeout(chainId, '86400').toString(),  // 1 hr
+    );
+    assetCollDeployments.collateral.maWBTC = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }
 

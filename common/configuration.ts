@@ -65,6 +65,9 @@ export interface ITokens {
   maUSDC?: string
   maUSDT?: string
   maDAI?: string
+  maWBTC?: string
+  maWETH?: string
+  maStETH?: string
 }
 
 export interface IFeeds {
