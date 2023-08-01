@@ -348,9 +348,9 @@ contract FacadeRead is IFacadeRead {
         uint192 uoaHeldInBaskets; // {UoA}
         {
             (address[] memory basketERC20s, uint256[] memory quantities) = rToken
-                .main()
-                .basketHandler()
-                .quote(basketsNeeded, FLOOR);
+            .main()
+            .basketHandler()
+            .quote(basketsNeeded, FLOOR);
 
             IAssetRegistry reg = rToken.main().assetRegistry();
             IBackingManager bm = rToken.main().backingManager();

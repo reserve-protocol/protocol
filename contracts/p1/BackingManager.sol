@@ -85,12 +85,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell)
-        public
-        override(ITrading, TradingP1)
-        notTradingPausedOrFrozen
-        returns (ITrade trade)
-    {
+    function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
         trade = super.settleTrade(sell); // nonReentrant
 
         // if the settler is the trade contract itself, try chaining with another rebalance()

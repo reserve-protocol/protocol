@@ -124,7 +124,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
         (bool doTrade, TradeRequest memory req, TradePrices memory prices) = TradingLibP0
-            .prepareRecollateralizationTrade(this, basketsHeld);
+        .prepareRecollateralizationTrade(this, basketsHeld);
 
         if (doTrade) {
             // Seize RSR if needed
