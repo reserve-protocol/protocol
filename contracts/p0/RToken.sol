@@ -214,8 +214,8 @@ contract RTokenP0 is ComponentP0, ERC20PermitUpgradeable, IRToken {
         }
 
         (address[] memory erc20s, uint256[] memory amounts) = main
-            .basketHandler()
-            .quoteCustomRedemption(basketNonces, portions, basketsRedeemed);
+        .basketHandler()
+        .quoteCustomRedemption(basketNonces, portions, basketsRedeemed);
 
         // === Save initial recipient balances ===
 

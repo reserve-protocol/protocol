@@ -17,7 +17,7 @@ library OracleLib {
         returns (uint192)
     {
         (uint80 roundId, int256 p, , uint256 updateTime, uint80 answeredInRound) = chainlinkFeed
-            .latestRoundData();
+        .latestRoundData();
 
         if (updateTime == 0 || answeredInRound < roundId) {
             revert StalePrice();
