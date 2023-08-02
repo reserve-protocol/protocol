@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../plugins/trading/GnosisTrade.sol";
 import "../interfaces/IBroker.sol";
@@ -174,7 +175,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
         require(batchAuctionLength > 0, "batch auctions not enabled");
-        GnosisTrade trade = new GnosisTrade();
+        GnosisTrade trade = GnosisTrade(Clones.clone(address(batchTradeImplementation)));
         trades[address(trade)] = true;
 
         // Apply Gnosis EasyAuction-specific resizing of req, if needed: Ensure that
@@ -202,7 +203,7 @@ contract BrokerP0 is ComponentP0, IBroker {
         ITrading caller
     ) private returns (ITrade) {
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
-        DutchTrade trade = new DutchTrade();
+        DutchTrade trade = DutchTrade(Clones.clone(address(dutchTradeImplementation)));
         trades[address(trade)] = true;
 
         IERC20Metadata(address(req.sell.erc20())).safeTransferFrom(
