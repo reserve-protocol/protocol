@@ -636,6 +636,112 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
       })
 
+      it('Should return tokens to BackingManager correctly - rsrTrader.returnTokens()', async () => {
+        // Mint tokens
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await token0.connect(owner).mint(rsrTrader.address, issueAmount.add(1))
+        await token1.connect(owner).mint(rsrTrader.address, issueAmount.add(2))
+
+        // Should fail when trading paused or frozen
+        await main.connect(owner).pauseIssuance()
+        await main.connect(owner).pauseTrading()
+        await main.connect(owner).freezeForever()
+        await expect(
+          rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('frozen or trading paused')
+        await main.connect(owner).unfreeze()
+        await expect(
+          rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('frozen or trading paused')
+        await main.connect(owner).unpauseTrading()
+
+        // Should fail when distribution is nonzero
+        await expect(
+          rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('rsrTotal > 0')
+        await distributor.setDistribution(STRSR_DEST, { rTokenDist: bn('0'), rsrDist: bn('0') })
+
+        // Should fail for unregistered token
+        await assetRegistry.connect(owner).unregister(collateral1.address)
+        await expect(
+          rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('unregistered erc20')
+
+        // Succeed on just token0 + rsr
+        await expectEvents(rsrTrader.returnTokens([rsr.address, token0.address]), [
+          {
+            contract: rsr,
+            name: 'Transfer',
+            args: [rsrTrader.address, backingManager.address, issueAmount],
+            emitted: true,
+          },
+          {
+            contract: token0,
+            name: 'Transfer',
+            args: [rsrTrader.address, backingManager.address, issueAmount.add(1)],
+            emitted: true,
+          },
+          {
+            contract: token1,
+            name: 'Transfer',
+            emitted: false,
+          },
+        ])
+      })
+
+      it('Should return tokens to BackingManager correctly - rTokenTrader.returnTokens()', async () => {
+        // Mint tokens
+        await rsr.connect(owner).mint(rTokenTrader.address, issueAmount)
+        await token0.connect(owner).mint(rTokenTrader.address, issueAmount.add(1))
+        await token1.connect(owner).mint(rTokenTrader.address, issueAmount.add(2))
+
+        // Should fail when trading paused or frozen
+        await main.connect(owner).pauseIssuance()
+        await main.connect(owner).pauseTrading()
+        await main.connect(owner).freezeForever()
+        await expect(
+          rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('frozen or trading paused')
+        await main.connect(owner).unfreeze()
+        await expect(
+          rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('frozen or trading paused')
+        await main.connect(owner).unpauseTrading()
+
+        // Should fail when distribution is nonzero
+        await expect(
+          rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('rTokenTotal > 0')
+        await distributor.setDistribution(FURNACE_DEST, { rTokenDist: bn('0'), rsrDist: bn('0') })
+
+        // Should fail for unregistered token
+        await assetRegistry.connect(owner).unregister(collateral1.address)
+        await expect(
+          rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('unregistered erc20')
+
+        // Succeed on just token0 + rsr
+        await expectEvents(rTokenTrader.returnTokens([rsr.address, token0.address]), [
+          {
+            contract: rsr,
+            name: 'Transfer',
+            args: [rTokenTrader.address, backingManager.address, issueAmount],
+            emitted: true,
+          },
+          {
+            contract: token0,
+            name: 'Transfer',
+            args: [rTokenTrader.address, backingManager.address, issueAmount.add(1)],
+            emitted: true,
+          },
+          {
+            contract: token1,
+            name: 'Transfer',
+            emitted: false,
+          },
+        ])
+      })
+
       it('Should launch multiple auctions -- has tokenToBuy', async () => {
         // Mint AAVE, token0, and RSR to the RSRTrader
         await aaveToken.connect(owner).mint(rsrTrader.address, issueAmount)
