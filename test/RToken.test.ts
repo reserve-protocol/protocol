@@ -411,6 +411,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await Promise.all(
         tokens.map((t) => t.connect(addr1).approve(rToken.address, MAX_THROTTLE_AMT_RATE))
       )
+      // advance time
+      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
       await rToken.connect(addr1).issue(MAX_THROTTLE_AMT_RATE)
       expect(await rToken.totalSupply()).to.equal(MAX_THROTTLE_AMT_RATE)
       expect(await rToken.basketsNeeded()).to.equal(MAX_THROTTLE_AMT_RATE)
@@ -1414,6 +1416,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           redemptionThrottleParams.pctRate = bn(0)
           await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
 
+          // advance time
+          await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
+
           // Check redemption throttle
           expect(await rToken.redemptionAvailable()).to.equal(redemptionThrottleParams.amtRate)
 
@@ -2226,6 +2231,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           redemptionThrottleParams.amtRate = fp('25')
           redemptionThrottleParams.pctRate = bn(0)
           await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+
+          // advance time
+          await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
 
           // Check redemption throttle
           expect(await rToken.redemptionAvailable()).to.equal(redemptionThrottleParams.amtRate)
