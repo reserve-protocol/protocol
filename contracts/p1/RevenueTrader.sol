@@ -73,6 +73,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         } else if (address(tokenToBuy) == address(rToken)) {
             require(revTotals.rTokenTotal == 0, "rTokenTotal > 0");
         } else {
+            // untestable: tokenToBuy is always the RSR or RToken
             revert("invalid tokenToBuy");
         }
 
