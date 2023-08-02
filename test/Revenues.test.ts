@@ -684,7 +684,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: token1,
             name: 'Transfer',
-            args: [anyValue, anyValue, anyValue],
             emitted: false,
           },
         ])
@@ -738,7 +737,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: token1,
             name: 'Transfer',
-            args: [anyValue, anyValue, anyValue],
             emitted: false,
           },
         ])
