@@ -49,6 +49,8 @@ contract FacadeRead is IFacadeRead {
         return basketsHeld.bottom.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
     }
 
+    /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
+    ///     of backing tokens to approve.
     /// @return tokens The erc20 needed for the issuance
     /// @return deposits {qTok} The deposits necessary to issue `amount` RToken
     /// @return depositsUoA {UoA} The UoA value of the deposits necessary to issue `amount` RToken
