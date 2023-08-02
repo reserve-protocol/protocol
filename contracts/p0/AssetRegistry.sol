@@ -144,6 +144,13 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Register an asset, unregistering any previous asset with the same ERC20.
     function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
+        if (asset.isCollateral()) {
+            require(
+                ICollateral(address(asset)).status() == CollateralStatus.SOUND,
+                "collateral not sound"
+            );
+        }
+
         if (_erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] == asset)
             return false;
 

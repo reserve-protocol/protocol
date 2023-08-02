@@ -715,10 +715,14 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       const CollFactory = await ethers.getContractFactory('FiatCollateral')
       const MainFactory = await ethers.getContractFactory('MainP0')
       const BrokerFactory = await ethers.getContractFactory('BrokerP0')
+      const GnosisTradeFactory = await ethers.getContractFactory('GnosisTrade')
+      const DutchTradeFactory = await ethers.getContractFactory('DutchTrade')
 
       // Deployments
       const main = await MainFactory.deploy()
       const broker = await BrokerFactory.deploy()
+      const gnosisTradeImpl = await GnosisTradeFactory.deploy()
+      const dutchTradeImpl = await DutchTradeFactory.deploy()
       await main.init(
         {
           rToken: ONE_ADDRESS,
@@ -743,9 +747,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await broker.init(
         main.address,
         easyAuction.address,
-        ONE_ADDRESS,
+        gnosisTradeImpl.address,
         config.batchAuctionLength,
-        ONE_ADDRESS,
+        dutchTradeImpl.address,
         config.dutchAuctionLength
       )
       const sellTok = await ERC20Factory.deploy('Sell Token', 'SELL', sellTokDecimals)
