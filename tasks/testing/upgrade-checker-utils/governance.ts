@@ -5,6 +5,7 @@ import { Delegate, Proposal, getDelegates, getProposalDetails } from '#/utils/su
 import { advanceBlocks, advanceTime } from '#/utils/time'
 import { BigNumber, PopulatedTransaction } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { pushOraclesForward } from './oracles'
 
 export const passAndExecuteProposal = async (
   hre: HardhatRuntimeEnvironment,
@@ -105,6 +106,7 @@ export const passAndExecuteProposal = async (
     // Advance time required by timelock
     await advanceTime(hre, minDelay.add(1).toString())
     await advanceBlocks(hre, 1)
+    await pushOraclesForward(hre, rtokenAddress)
 
     // Execute
     await governor.execute(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)

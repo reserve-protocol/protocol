@@ -1,5 +1,5 @@
 import { bn } from '#/common/numbers'
-import { TradeKind } from '#/common/constants'
+import { ONE_PERIOD, TradeKind } from '#/common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber } from 'ethers'
 import { Interface, LogDescription, formatEther } from 'ethers/lib/utils'
@@ -79,9 +79,16 @@ export const redeemRTokens = async (
   console.log(`successfully redeemed ${formatEther(redeemAmount)} RTokens`)
 }
 
-export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddress: string) => {
+export const recollateralize = async (
+  hre: HardhatRuntimeEnvironment,
+  rtokenAddress: string,
+  facadeActAddress: string,
+  kind: TradeKind
+) => {
   console.log(`\n\n* * * * * Recollateralizing RToken ${rtokenAddress}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
+  const facadeAct = await hre.ethers.getContractAt('FacadeAct', facadeActAddress)
+
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const backingManager = await hre.ethers.getContractAt(
     'BackingManagerP1',
@@ -95,12 +102,10 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
   // Move post warmup period
   await advanceTime(hre, (await basketHandler.warmupPeriod()) + 1)
 
-  let r = await backingManager.rebalance(TradeKind.BATCH_AUCTION)
-
   const iface: Interface = backingManager.interface
   let tradesRemain = true
   while (tradesRemain) {
-    tradesRemain = false
+    const r = await backingManager.rebalance(kind) // TradeKind.BATCH_AUCTION
     const resp = await r.wait()
     for (const event of resp.events!) {
       let parsedLog: LogDescription | undefined
@@ -108,7 +113,6 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
         parsedLog = iface.parseLog(event)
       } catch {}
       if (parsedLog && parsedLog.name == 'TradeStarted') {
-        tradesRemain = true
         console.log(
           `\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(
             parsedLog.args.buy
@@ -120,7 +124,12 @@ export const recollateralize = async (hre: HardhatRuntimeEnvironment, rtokenAddr
       }
     }
 
-    r = await backingManager.rebalance(TradeKind.BATCH_AUCTION)
+    // Set tradesRemain
+    ;[tradesRemain, , ,] = await facadeAct.callStatic.nextRecollateralizationAuction(
+      backingManager.address
+    )
+
+    await advanceTime(hre, ONE_PERIOD.toString())
   }
 
   const basketStatus = await basketHandler.status()
