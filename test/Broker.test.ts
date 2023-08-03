@@ -41,7 +41,13 @@ import {
   PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  advanceToTimestamp,
+  getLatestBlockTimestamp,
+  getLatestBlockNumber,
+} from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
 
@@ -116,7 +122,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     it('Should setup Broker correctly', async () => {
       expect(await broker.gnosis()).to.equal(gnosis.address)
       expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
       expect(await broker.main()).to.equal(main.address)
     })
 
@@ -142,9 +149,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           main.address,
           gnosis.address,
           ZERO_ADDRESS,
-          bn('100'),
+          bn('1000'),
           ZERO_ADDRESS,
-          bn('100')
+          bn('1000')
         )
       ).to.be.revertedWith('invalid batchTradeImplementation address')
       await expect(
@@ -152,9 +159,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           main.address,
           gnosis.address,
           ONE_ADDRESS,
-          bn('100'),
+          bn('1000'),
           ZERO_ADDRESS,
-          bn('100')
+          bn('1000')
         )
       ).to.be.revertedWith('invalid dutchTradeImplementation address')
     })
@@ -351,42 +358,70 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.dutchAuctionLength()).to.equal(bn(0))
     })
 
-    it('Should allow to update disabled if Owner', async () => {
+    it('Should allow to update batchTradeDisabled/dutchTradeDisabled if Owner', async () => {
       // Check existing value
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // If not owner cannot update
-      await expect(broker.connect(other).setDisabled(true)).to.be.revertedWith('governance only')
+      await expect(broker.connect(other).setBatchTradeDisabled(true)).to.be.revertedWith(
+        'governance only'
+      )
+      await expect(
+        broker.connect(other).setDutchTradeDisabled(token0.address, true)
+      ).to.be.revertedWith('governance only')
 
       // Check value did not change
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
-      // Update with owner
-      await expect(broker.connect(owner).setDisabled(true))
-        .to.emit(broker, 'DisabledSet')
+      // Update batchTradeDisabled with owner
+      await expect(broker.connect(owner).setBatchTradeDisabled(true))
+        .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(false, true)
 
       // Check value was updated
-      expect(await broker.disabled()).to.equal(true)
+      expect(await broker.batchTradeDisabled()).to.equal(true)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // Update back to false
-      await expect(broker.connect(owner).setDisabled(false))
-        .to.emit(broker, 'DisabledSet')
+      await expect(broker.connect(owner).setBatchTradeDisabled(false))
+        .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(true, false)
 
       // Check value was updated
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
+
+      // Update dutchTradeDisabled with owner
+      await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, true))
+        .to.emit(broker, 'DutchTradeDisabledSet')
+        .withArgs(token0.address, false, true)
+
+      // Check value was updated
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(true)
+      expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
+
+      // Update back to false
+      await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, false))
+        .to.emit(broker, 'DutchTradeDisabledSet')
+        .withArgs(token0.address, true, false)
+
+      // Check value was updated
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
     })
   })
 
   describe('Trade Management', () => {
-    it('Should not allow to open trade if Disabled', async () => {
-      // Disable Broker
-      await expect(broker.connect(owner).setDisabled(true))
-        .to.emit(broker, 'DisabledSet')
+    it('Should not allow to open Batch trade if Disabled', async () => {
+      // Disable Broker Batch Auctions
+      await expect(broker.connect(owner).setBatchTradeDisabled(true))
+        .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(false, true)
 
-      // Attempt to open trade
       const tradeRequest: ITradeRequest = {
         sell: collateral0.address,
         buy: collateral1.address,
@@ -394,13 +429,59 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         minBuyAmount: bn('0'),
       }
 
+      // Batch Auction openTrade should fail
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await expect(
           broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
-        ).to.be.revertedWith('broker disabled')
+        ).to.be.revertedWith('batch auctions disabled')
+      })
+    })
+
+    it('Should not allow to open Dutch trade if Disabled for either token', async () => {
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await token0.mint(backingManager.address, tradeRequest.sellAmount)
+        await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+
+        // Should succeed in callStatic
+        await broker
+          .connect(bmSigner)
+          .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+
+        // Disable Broker Dutch Auctions for token0
+        await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, true))
+          .to.emit(broker, 'DutchTradeDisabledSet')
+          .withArgs(token0.address, false, true)
+
+        // Dutch Auction openTrade should fail now
         await expect(
           broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
-        ).to.be.revertedWith('broker disabled')
+        ).to.be.revertedWith('dutch auctions disabled for token pair')
+
+        // Re-enable Dutch Auctions for token0
+        await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, false))
+          .to.emit(broker, 'DutchTradeDisabledSet')
+          .withArgs(token0.address, true, false)
+
+        // Should succeed in callStatic
+        await broker
+          .connect(bmSigner)
+          .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+
+        // Disable Broker Dutch Auctions for token1
+        await expect(broker.connect(owner).setDutchTradeDisabled(token1.address, true))
+          .to.emit(broker, 'DutchTradeDisabledSet')
+          .withArgs(token1.address, false, true)
+
+        // Dutch Auction openTrade should fail now
+        await expect(
+          broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+        ).to.be.revertedWith('dutch auctions disabled for token pair')
       })
     })
 
@@ -454,7 +535,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
     it('Should not allow to report violation if not trade contract', async () => {
       // Check not disabled
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
 
       // Should not allow to report violation from any address
       await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
@@ -469,12 +550,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       // Check nothing changed
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
     })
 
     it('Should not allow to report violation if paused or frozen', async () => {
       // Check not disabled
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
 
       await main.connect(owner).pauseTrading()
 
@@ -491,7 +572,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       )
 
       // Check nothing changed
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
     })
   })
 
@@ -937,6 +1018,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await token0.balanceOf(trade.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
       })
+
+      // There is no test here for the reportViolation case; that is in Revenues.test.ts
     })
 
     context('DutchTrade', () => {
@@ -978,14 +1061,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.sell()).to.equal(token0.address)
         expect(await trade.buy()).to.equal(token1.address)
         expect(await trade.sellAmount()).to.equal(amount)
-        expect(await trade.startTime()).to.equal((await getLatestBlockTimestamp()) + 12)
+        expect(await trade.startBlock()).to.equal((await getLatestBlockNumber()) + 1)
+        const tradeLen = (await trade.endBlock()).sub(await trade.startBlock())
         expect(await trade.endTime()).to.equal(
-          (await trade.startTime()) + config.dutchAuctionLength.toNumber()
+          tradeLen.mul(12).add(await getLatestBlockTimestamp())
         )
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
-        expect(await trade.lowPrice()).to.equal(prices.sellLow.mul(fp('1')).div(prices.buyHigh))
+        expect(await trade.worstPrice()).to.equal(prices.sellLow.mul(fp('1')).div(prices.buyHigh))
         expect(await trade.canSettle()).to.equal(false)
 
         // Attempt to initialize again
@@ -1050,14 +1134,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.not.be.reverted
 
         // Check trade values
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
         const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
-        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
+        expect(await trade.worstPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
       })
 
       it('Should apply full maxTradeSlippage with low maxTradeVolume', async () => {
@@ -1093,57 +1177,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.not.be.reverted
 
         // Check trade values
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
         const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
-        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
-      })
-
-      it('Should apply full maxTradeSlippage with low maxTradeVolume', async () => {
-        // Set low maxTradeVolume for collateral
-        const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
-        const newCollateral0: FiatCollateral = <FiatCollateral>await FiatCollateralFactory.deploy({
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: await collateral0.chainlinkFeed(),
-          oracleError: ORACLE_ERROR,
-          erc20: token0.address,
-          maxTradeVolume: bn(500),
-          oracleTimeout: ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: DEFAULT_THRESHOLD,
-          delayUntilDefault: DELAY_UNTIL_DEFAULT,
-        })
-
-        // Refresh and swap collateral
-        await newCollateral0.refresh()
-        await assetRegistry.connect(owner).swapRegistered(newCollateral0.address)
-
-        // Fund trade and initialize
-        await token0.connect(owner).mint(trade.address, amount)
-        await expect(
-          trade.init(
-            backingManager.address,
-            newCollateral0.address,
-            collateral1.address,
-            amount,
-            config.dutchAuctionLength,
-            prices
-          )
-        ).to.not.be.reverted
-
-        // Check trade values
-        expect(await trade.middlePrice()).to.equal(
-          divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
-        )
-        const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
-        const withSlippage = withoutSlippage.sub(
-          withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
-        )
-        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
+        expect(await trade.worstPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {
@@ -1180,8 +1221,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('auction not over')
         })
 
-        // Advance time till trade can be settled
-        await advanceTime(config.dutchAuctionLength.add(100).toString())
+        // Advance blocks til trade can be settled
+        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
+        await advanceBlocks(tradeLen.add(1))
 
         // Settle trade
         expect(await trade.canSettle()).to.equal(true)
@@ -1218,8 +1260,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           'only after trade is closed'
         )
 
-        // Advance time till trade can be settled
-        await advanceTime(config.dutchAuctionLength.add(100).toString())
+        // Advance blocks til trade can be settled
+        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
+        await advanceBlocks(tradeLen.add(1))
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -1250,6 +1293,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await token0.balanceOf(trade.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
       })
+
+      // There is no test here for the reportViolation case; that is in Revenues.test.ts
     })
   })
 

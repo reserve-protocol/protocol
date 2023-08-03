@@ -22,7 +22,9 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
     uint48 public batchAuctionLength; // {s} the length of a batch auction
     uint48 public dutchAuctionLength; // {s} the length of a dutch auction
 
-    bool public disabled = false;
+    bool public batchTradeDisabled = false;
+
+    mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
     function init(
         IMain main_,
@@ -44,8 +46,6 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
         TradeRequest memory,
         TradePrices memory
     ) external view notTradingPausedOrFrozen returns (ITrade) {
-        require(!disabled, "broker disabled");
-
         // Revert when opening trades
         revert("Failure opening trade");
     }
@@ -64,5 +64,9 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
-    function setDisabled(bool disabled_) external governance {}
+    function setBatchTradeDisabled(bool disabled) external governance {}
+
+    /// Dummy implementation
+    /* solhint-disable no-empty-blocks */
+    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external governance {}
 }
