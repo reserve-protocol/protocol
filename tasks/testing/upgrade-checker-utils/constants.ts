@@ -17,7 +17,7 @@ export const whales: { [key: string]: string } = {
   [networkConfig['1'].tokens.stETH!.toLowerCase()]: '0x176F3DAb24a159341c0509bB36B833E7fdd0a132',
   [networkConfig['1'].tokens.WETH!.toLowerCase()]: '0x8EB8a3b98659Cce290402893d0123abb75E3ab28',
   [networkConfig['1'].tokens.DAI!.toLowerCase()]: '0x8EB8a3b98659Cce290402893d0123abb75E3ab28',
-  [networkConfig['1'].tokens.CRV!.toLowerCase()]: "0xf977814e90da44bfa03b6295a0616a897441acec"
+  [networkConfig['1'].tokens.CRV!.toLowerCase()]: '0xf977814e90da44bfa03b6295a0616a897441acec',
 }
 
 export const collateralToUnderlying: { [key: string]: string } = {
