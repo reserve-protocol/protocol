@@ -3,7 +3,12 @@ import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+} from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
@@ -34,11 +39,18 @@ import {
 import {
   Collateral,
   defaultFixture,
+  IMPLEMENTATION,
+  Implementation,
   ORACLE_TIMEOUT,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
   VERSION,
 } from '../fixtures'
+import { useEnv } from '#/utils/env'
+import snapshotGasCost from '../utils/snapshotGasCost'
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -102,7 +114,7 @@ describe('Assets contracts #fast', () => {
       rTokenAsset,
     } = await loadFixture(defaultFixture))
 
-    // Get collateral tokens
+    // Get rsrAsset tokens
     collateral0 = <FiatCollateral>basket[0]
     collateral1 = <FiatCollateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
@@ -662,6 +674,32 @@ describe('Assets contracts #fast', () => {
       await expect(RTokenAssetFactory.deploy(rToken.address, 0)).to.be.revertedWith(
         'invalid max trade volume'
       )
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    context('refresh()', () => {
+      afterEach(async () => {
+        await snapshotGasCost(rsrAsset.refresh())
+        await snapshotGasCost(rsrAsset.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('refresh() during SOUND', async () => {
+        // pass
+      })
+
+      it('refresh() after oracle timeout', async () => {
+        const oracleTimeout = await rsrAsset.oracleTimeout()
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+        await advanceBlocks(bn(oracleTimeout).div(12))
+      })
+
+      it('refresh() after full price timeout', async () => {
+        await advanceTime((await rsrAsset.priceTimeout()) + (await rsrAsset.oracleTimeout()))
+        const lotP = await rsrAsset.lotPrice()
+        expect(lotP[0]).to.equal(0)
+        expect(lotP[1]).to.equal(0)
+      })
     })
   })
 })

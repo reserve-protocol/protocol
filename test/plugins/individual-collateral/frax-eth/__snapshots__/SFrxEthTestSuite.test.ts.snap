@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `56918`;
+
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `52181`;
+
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `57618`;
+
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `55949`;
+
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `71659`;
+
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `71659`;
