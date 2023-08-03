@@ -10,38 +10,40 @@ import "../../interfaces/IBroker.sol";
 import "../../interfaces/ITrade.sol";
 
 // A dutch auction in 4 parts:
-//   1. 0-20%: Geometric decay from 1000x the bestPrice to ~1.5x the bestPrice
-//   2. 20%-45%: Linear decay from ~1.5x the bestPrice to the bestPrice
-//   3. 45%-95%: Linear decay from the bestPrice to the worstPrice
-//   4. 95%-100%: Constant at the worstPrice
+//   1.  0% -  20%: Geometric decay from 1000x the bestPrice to ~1.5x the bestPrice
+//   2. 20% -  45%: Linear decay from ~1.5x the bestPrice to the bestPrice
+//   3. 45% -  95%: Linear decay from the bestPrice to the worstPrice
+//   4. 95% - 100%: Constant at the worstPrice
 //
 // For a trade between 2 assets with 1% oracleError:
 //   A 30-minute auction on a chain with a 12-second blocktime has a ~20% price drop per block
 //   during the 1st period, ~0.8% during the 2nd period, and ~0.065% during the 3rd period.
 //
 //   30-minutes is the recommended length of auction for a chain with 12-second blocktimes.
+//   6 minutes, 7.5 minutes, 15 minutes, 1.5 minutes for each pariod respectively.
 //
 //   Longer and shorter times can be used as well. The pricing method does not degrade
 //   beyond the degree to which less overall blocktime means less overall precision.
 
 uint192 constant FIVE_PERCENT = 5e16; // {1} 0.05
-uint192 constant TWENTY_PERCENT = 2e17; // {1} 0.2
+uint192 constant TWENTY_PERCENT = 20e16; // {1} 0.2
 uint192 constant TWENTY_FIVE_PERCENT = 25e16; // {1} 0.25
 uint192 constant FORTY_FIVE_PERCENT = 45e16; // {1} 0.45
-uint192 constant FIFTY_PERCENT = 5e17; // {1} 0.5
+uint192 constant FIFTY_PERCENT = 50e16; // {1} 0.5
 uint192 constant NINETY_FIVE_PERCENT = 95e16; // {1} 0.95
+
 uint192 constant MAX_EXP = 6502287e18; // {1} (1000000/999999)^6502287 = ~666.6667
 uint192 constant BASE = 999999e12; // {1} (999999/1000000)
-uint192 constant ONE_POINT_FIVE = 15e17; // {1} 1.5
+uint192 constant ONE_POINT_FIVE = 150e16; // {1} 1.5
 
 /**
  * @title DutchTrade
  * @notice Implements a wholesale dutch auction via a 4-piecewise falling-price mechansim.
  *   The overall idea is to handle 4 cases:
- *     1. Price manipulation of the exchange rate up to 1000x via read-only reentrancy
+ *     1. Price manipulation of the exchange rate up to 1000x (eg: via a read-only reentrancy)
  *     2. Price movement of up to 50% during the auction
  *     3. Typical case: no significant price movement; clearing price within expected range
- *     4. No bots online; manual human doing bidding
+ *     4. No bots online; manual human doing bidding; additional time for tx clearing
  *
  *   Case 1: Over the first 20% of the auction the price falls from ~1000x the best plausible
  *   price down to 1.5x the best plausible price in a geometric series.
@@ -140,7 +142,7 @@ contract DutchTrade is ITrade {
         assert(
             address(sell_) != address(0) &&
                 address(buy_) != address(0) &&
-                auctionLength >= ONE_BLOCK * 20
+                auctionLength >= 20 * ONE_BLOCK
         ); // misuse by caller
 
         // Only start dutch auctions under well-defined prices
@@ -282,9 +284,9 @@ contract DutchTrade is ITrade {
 
         /// Price Curve:
         ///   - first 20%: geometrically decrease the price from 1000x the bestPrice to 1.5x it
-        ///   - next 25%: linearly decrease the price from 1.5x the bestPrice to 1x it
-        ///   - next 50%: linearly decrease the price from bestPrice to worstPrice
-        ///   - last 5%: constant at worstPrice
+        ///   - next  25%: linearly decrease the price from 1.5x the bestPrice to 1x it
+        ///   - next  50%: linearly decrease the price from bestPrice to worstPrice
+        ///   - last   5%: constant at worstPrice
 
         uint192 progression = divuu(blockNumber - startBlock, endBlock - startBlock); // {1}
 
