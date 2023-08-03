@@ -656,7 +656,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       await rToken.setRedemptionThrottleParams(noThrottle)
 
       await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
-      
+
       await rToken.connect(addr1).issue(rTokenSupply)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
