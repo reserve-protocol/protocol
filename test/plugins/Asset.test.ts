@@ -114,7 +114,7 @@ describe('Assets contracts #fast', () => {
       rTokenAsset,
     } = await loadFixture(defaultFixture))
 
-    // Get rsrAsset tokens
+    // Get collateral tokens
     collateral0 = <FiatCollateral>basket[0]
     collateral1 = <FiatCollateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
