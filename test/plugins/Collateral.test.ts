@@ -29,9 +29,13 @@ import {
   UnpricedAppreciatingFiatCollateralMock,
   USDCMock,
   WETH9,
-  UnpricedAppreciatingFiatCollateralMock,
 } from '../../typechain'
-import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+} from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import {
   expectPrice,
@@ -2164,45 +2168,69 @@ describe('Collateral contracts', () => {
   })
 
   describeGas('Gas Reporting', () => {
-    it('Force Updates - Soft Default', async function () {
-      const delayUntilDefault: BigNumber = bn(await tokenCollateral.delayUntilDefault())
+    context('refresh()', () => {
+      it('during SOUND', async () => {
+        await snapshotGasCost(tokenCollateral.refresh())
+        await snapshotGasCost(usdcCollateral.refresh())
+      })
 
-      // Depeg one of the underlying tokens - Reducing price 20%
-      // Should also impact on the aToken and cToken
-      await setOraclePrice(tokenCollateral.address, bn('7e7'))
+      it('during + after soft default', async function () {
+        const delayUntilDefault: BigNumber = bn(await tokenCollateral.delayUntilDefault())
 
-      // Force updates - Should update whenDefault and status
-      await snapshotGasCost(tokenCollateral.refresh())
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+        // Depeg one of the underlying tokens - Reducing price 20%
+        // Should also impact on the aToken and cToken
+        await setOraclePrice(tokenCollateral.address, bn('7e7'))
 
-      // Adance half the delay
-      await advanceTime(Number(delayUntilDefault.div(2)) + 1)
+        // Force updates - Should update whenDefault and status
+        await snapshotGasCost(tokenCollateral.refresh())
+        expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // Force updates - Nothing occurs
-      await snapshotGasCost(tokenCollateral.refresh())
-      await snapshotGasCost(usdcCollateral.refresh())
-      expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+        // Adance half the delay
+        await advanceTime(Number(delayUntilDefault.div(2)) + 1)
 
-      // Adance the other half
-      await advanceTime(Number(delayUntilDefault.div(2)) + 1)
+        // Force updates - Nothing occurs
+        await snapshotGasCost(tokenCollateral.refresh())
+        await snapshotGasCost(usdcCollateral.refresh())
+        expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // Move time forward past delayUntilDefault
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-    })
+        // Adance the other half
+        await advanceTime(Number(delayUntilDefault.div(2)) + 1)
 
-    it('Force Updates - Hard Default - ATokens/CTokens', async function () {
-      // Decrease rate for AToken and CToken, will disable collateral immediately
-      await aToken.setExchangeRate(fp('0.99'))
-      await cToken.setExchangeRate(fp('0.95'))
+        // Move time forward past delayUntilDefault
+        expect(await tokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+        await snapshotGasCost(tokenCollateral.refresh())
+        await snapshotGasCost(usdcCollateral.refresh())
+      })
 
-      // Force updates - Should update whenDefault and status for Atokens/CTokens
-      await snapshotGasCost(aTokenCollateral.refresh())
-      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      it('after hard default', async function () {
+        // Decrease rate for AToken and CToken, will disable collateral immediately
+        await aToken.setExchangeRate(fp('0.99'))
+        await cToken.setExchangeRate(fp('0.95'))
 
-      await snapshotGasCost(cTokenCollateral.refresh())
-      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        // Force updates - Should update whenDefault and status for Atokens/CTokens
+        await snapshotGasCost(aTokenCollateral.refresh())
+        expect(await aTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+        await snapshotGasCost(cTokenCollateral.refresh())
+        expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      })
+
+      it('after oracle timeout', async () => {
+        const oracleTimeout = await tokenCollateral.oracleTimeout()
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+        await advanceBlocks(oracleTimeout / 12)
+      })
+
+      it('after full price timeout', async () => {
+        await advanceTime(
+          (await tokenCollateral.priceTimeout()) + (await tokenCollateral.oracleTimeout())
+        )
+        const lotP = await tokenCollateral.lotPrice()
+        expect(lotP[0]).to.equal(0)
+        expect(lotP[1]).to.equal(0)
+      })
     })
   })
 })

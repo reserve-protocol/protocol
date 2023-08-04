@@ -26,8 +26,13 @@ import {
   CollateralStatus,
 } from './pluginTestTypes'
 import { expectPrice } from '../../utils/oracles'
+import snapshotGasCost from '../../utils/snapshotGasCost'
+import { IMPLEMENTATION, Implementation } from '../../fixtures'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 export default function fn<X extends CollateralFixtureContext>(
   fixtures: CollateralTestSuiteFixtures<X>
@@ -490,6 +495,50 @@ export default function fn<X extends CollateralFixtureContext>(
       })
 
       describe('collateral-specific tests', collateralSpecificStatusTests)
+
+      describeGas('Gas Reporting', () => {
+        context('refresh()', () => {
+          afterEach(async () => {
+            await snapshotGasCost(collateral.refresh())
+            await snapshotGasCost(collateral.refresh()) // 2nd refresh can be different than 1st
+          })
+
+          it('during SOUND', async () => {
+            // pass
+          })
+
+          itChecksRefPerTokDefault('after hard default', async () => {
+            await reduceRefPerTok(ctx, 5)
+          })
+
+          itChecksTargetPerRefDefault('during soft default', async () => {
+            await reduceTargetPerRef(ctx, 20)
+          })
+
+          itChecksTargetPerRefDefault('after soft default', async () => {
+            await reduceTargetPerRef(ctx, 20)
+            await expect(collateral.refresh())
+              .to.emit(collateral, 'CollateralStatusChanged')
+              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+            await advanceTime(await collateral.delayUntilDefault())
+          })
+
+          it('after oracle timeout', async () => {
+            const oracleTimeout = await collateral.oracleTimeout()
+            await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+            await advanceBlocks(oracleTimeout / 12)
+          })
+
+          it('after full price timeout', async () => {
+            await advanceTime(
+              (await collateral.priceTimeout()) + (await collateral.oracleTimeout())
+            )
+            const lotP = await collateral.lotPrice()
+            expect(lotP[0]).to.equal(0)
+            expect(lotP[1]).to.equal(0)
+          })
+        })
+      })
     })
   })
 }
