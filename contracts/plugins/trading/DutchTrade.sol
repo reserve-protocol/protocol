@@ -111,7 +111,12 @@ contract DutchTrade is ITrade {
         status = end;
     }
 
-    // === External Bid Helper ===
+    // === Auction Sizing Views ===
+
+    /// @return {qSellTok} The size of the lot being sold, in token quanta
+    function lot() public view returns (uint256) {
+        return sellAmount.shiftl_toUint(int8(sell.decimals()));
+    }
 
     /// Calculates how much buy token is needed to purchase the lot at a particular block
     /// @param blockNumber {block} The block number of the bid
@@ -119,6 +124,8 @@ contract DutchTrade is ITrade {
     function bidAmount(uint256 blockNumber) external view returns (uint256) {
         return _bidAmount(_price(blockNumber));
     }
+
+    // ==== Constructor ===
 
     constructor() {
         ONE_BLOCK = NetworkConfigLib.blocktime();
@@ -218,18 +225,16 @@ contract DutchTrade is ITrade {
 
         // Received bid
         if (bidder != address(0)) {
-            sell.safeTransfer(bidder, sellAmount);
+            soldAmt = lot(); // {qSellTok}
+            sell.safeTransfer(bidder, soldAmt); // {qSellTok}
         } else {
             require(block.number > endBlock, "auction not over");
         }
 
-        uint256 sellBal = sell.balanceOf(address(this));
-        soldAmt = sellAmount > sellBal ? sellAmount - sellBal : 0;
-        boughtAmt = buy.balanceOf(address(this));
-
-        // Transfer balances back to origin
-        buy.safeTransfer(address(origin), boughtAmt);
-        sell.safeTransfer(address(origin), sellBal);
+        // Transfer remaining balances back to origin
+        boughtAmt = buy.balanceOf(address(this)); // {qBuyTok}
+        buy.safeTransfer(address(origin), boughtAmt); // {qBuyTok}
+        sell.safeTransfer(address(origin), sell.balanceOf(address(this))); // {qSellTok}
     }
 
     /// Anyone can transfer any ERC20 back to the origin after the trade has been closed
@@ -244,11 +249,6 @@ contract DutchTrade is ITrade {
     // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() external view returns (bool) {
         return status == TradeStatus.OPEN && (bidder != address(0) || block.number > endBlock);
-    }
-
-    /// @return {qSellTok} The size of the lot being sold, in token quanta
-    function lot() external view returns (uint256) {
-        return sellAmount.shiftl_toUint(int8(sell.decimals()));
     }
 
     // === Private ===
