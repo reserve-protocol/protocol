@@ -446,6 +446,34 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       expect(diff).to.be.lte(expectedDiff)
     })
+
+    it('Regression test -- C4 June 2023 Issue #29', async () => {
+      // https://github.com/code-423n4/2023-06-reserve-findings/issues/29
+
+      // Transfer to Furnace and do first melt
+      await rToken.connect(addr1).transfer(furnace.address, bn('10e18'))
+      await furnace.melt()
+
+      // Advance 99 periods
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 99 * Number(ONE_PERIOD))
+
+      // Freeze and change ratio
+      await main.connect(owner).freezeForever()
+      const maxRatio = bn('1e14')
+      await expect(furnace.connect(owner).setRatio(maxRatio))
+        .to.emit(furnace, 'RatioSet')
+        .withArgs(config.rewardRatio, maxRatio)
+
+      // Unfreeze and advance 1 period
+      await main.connect(owner).unfreeze()
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await expect(furnace.melt()).to.emit(rToken, 'Melted')
+
+      // Should have updated lastPayout + lastPayoutBal
+      expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
+      expect(await furnace.lastPayout()).to.be.lt(await getLatestBlockTimestamp())
+      expect(await furnace.lastPayoutBal()).to.equal(bn('9.999e18'))
+    })
   })
 
   describeExtreme('Extreme Bounds', () => {
