@@ -157,6 +157,10 @@ Usage: `https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}`
 
 To get setup with tenderly, install the [tenderly cli](https://github.com/Tenderly/tenderly-cli). and login with `tenderly login --authentication-method access-key --access-key {your_access_key} --force`.
 
+## Responsible Disclosure
+
+[Immunifi](https://immunefi.com/bounty/reserve/)
+
 ## External Documentation
 
 [Video overview](https://youtu.be/341MhkOWsJE)
