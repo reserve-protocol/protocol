@@ -356,6 +356,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Return the current issuance/redemption value of `amount` BUs
+    /// Any approvals needed to issue RTokens should be set to the values returned by this function
     /// @dev Subset of logic of quoteCustomRedemption; more gas efficient for current nonce
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s

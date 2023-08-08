@@ -188,7 +188,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
     afterEach(async () => {
       // Should not trigger a de-listing of the auction platform
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
 
       // Should not be able to re-bid in auction
       await token0.connect(addr2).approve(easyAuction.address, buyAmt)
@@ -715,10 +715,14 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       const CollFactory = await ethers.getContractFactory('FiatCollateral')
       const MainFactory = await ethers.getContractFactory('MainP0')
       const BrokerFactory = await ethers.getContractFactory('BrokerP0')
+      const GnosisTradeFactory = await ethers.getContractFactory('GnosisTrade')
+      const DutchTradeFactory = await ethers.getContractFactory('DutchTrade')
 
       // Deployments
       const main = await MainFactory.deploy()
       const broker = await BrokerFactory.deploy()
+      const gnosisTradeImpl = await GnosisTradeFactory.deploy()
+      const dutchTradeImpl = await DutchTradeFactory.deploy()
       await main.init(
         {
           rToken: ONE_ADDRESS,
@@ -743,9 +747,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await broker.init(
         main.address,
         easyAuction.address,
-        ONE_ADDRESS,
+        gnosisTradeImpl.address,
         config.batchAuctionLength,
-        ONE_ADDRESS,
+        dutchTradeImpl.address,
         config.dutchAuctionLength
       )
       const sellTok = await ERC20Factory.deploy('Sell Token', 'SELL', sellTokDecimals)
@@ -836,8 +840,8 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // End Auction
-      await expect(trade.connect(addr1).settle()).to.not.emit(broker, 'DisabledSet')
-      expect(await broker.disabled()).to.equal(false)
+      await expect(trade.connect(addr1).settle()).to.not.emit(broker, 'BatchTradeDisabledSet')
+      expect(await broker.batchTradeDisabled()).to.equal(false)
     }
 
     // ==== Generate the tests ====
@@ -883,7 +887,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
   })
 
   describe('Regression Tests', () => {
-    it('Passes Test: 12/03/2023 - Broker Disabled on Trade Settlement with one less token', async () => {
+    it('Passes Test: 12/03/2023 - Batch Auctions on Trade Settlement with one less token', async () => {
       // TX: 0xb5fc3d61d46e41b79bd333583448e6d4c186ca49206f8a0e7dde05f2700e0965
       // This set the broker to false since it was one token short.
       // This test is to make sure that the broker is not disabled in this case.

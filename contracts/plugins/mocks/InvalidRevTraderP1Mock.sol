@@ -20,6 +20,7 @@ contract RevenueTraderP1InvalidReverts is TradingP1, IRevenueTrader {
     IBackingManager private backingManager;
     IFurnace private furnace;
     IRToken private rToken;
+    IERC20 private rsr;
 
     function init(
         IMain main_,
@@ -35,11 +36,31 @@ contract RevenueTraderP1InvalidReverts is TradingP1, IRevenueTrader {
     }
 
     /// Distribute tokenToBuy to its destinations
-    function distributeTokenToBuy() public {
+    function distributeTokenToBuy() public notTradingPausedOrFrozen {
         uint256 bal = tokenToBuy.balanceOf(address(this));
         tokenToBuy.safeApprove(address(main.distributor()), 0);
         tokenToBuy.safeApprove(address(main.distributor()), bal);
         main.distributor().distribute(tokenToBuy, bal);
+    }
+
+    /// Return registered ERC20s to the BackingManager if distribution for tokenToBuy is 0
+    /// @custom:interaction
+    function returnTokens(IERC20[] memory erc20s) external notTradingPausedOrFrozen {
+        RevenueTotals memory revTotals = distributor.totals();
+        if (tokenToBuy == rsr) {
+            require(revTotals.rsrTotal == 0, "rsrTotal > 0");
+        } else if (address(tokenToBuy) == address(rToken)) {
+            require(revTotals.rTokenTotal == 0, "rTokenTotal > 0");
+        } else {
+            revert("invalid tokenToBuy");
+        }
+
+        // Return ERC20s to the BackingManager
+        uint256 len = erc20s.length;
+        for (uint256 i = 0; i < len; ++i) {
+            require(assetRegistry.isRegistered(erc20s[i]), "erc20 unregistered");
+            erc20s[i].safeTransfer(address(backingManager), erc20s[i].balanceOf(address(this)));
+        }
     }
 
     /// Processes a single token; unpermissioned
@@ -55,5 +76,6 @@ contract RevenueTraderP1InvalidReverts is TradingP1, IRevenueTrader {
         backingManager = main.backingManager();
         furnace = main.furnace();
         rToken = main.rToken();
+        rsr = main.rsr();
     }
 }

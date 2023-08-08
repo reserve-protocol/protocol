@@ -25,6 +25,10 @@ interface IRevenueTrader is IComponent, ITrading {
     /// @custom:interaction
     function distributeTokenToBuy() external;
 
+    /// Return registered ERC20s to the BackingManager if distribution for tokenToBuy is 0
+    /// @custom:interaction
+    function returnTokens(IERC20[] memory erc20s) external;
+
     /// Process some number of tokens
     /// If the tokenToBuy is included in erc20s, RevenueTrader will distribute it at end of the tx
     /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered

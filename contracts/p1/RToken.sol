@@ -87,6 +87,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Issue an RToken on the current basket
+    /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
+    ///     of backing tokens to approve.
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
     function issue(uint256 amount) public {
@@ -94,6 +96,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Issue an RToken on the current basket, to a particular recipient
+    /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
+    ///     of backing tokens to approve.
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction RCEI
@@ -442,6 +446,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "issuance amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "issuance amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "issuance pctRate too big");
+        issuanceThrottle.useAvailable(totalSupply(), 0);
         emit IssuanceThrottleSet(issuanceThrottle.params, params);
         issuanceThrottle.params = params;
     }
@@ -451,6 +456,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "redemption amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "redemption amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "redemption pctRate too big");
+        redemptionThrottle.useAvailable(totalSupply(), 0);
         emit RedemptionThrottleSet(redemptionThrottle.params, params);
         redemptionThrottle.params = params;
     }

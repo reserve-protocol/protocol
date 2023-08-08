@@ -18,9 +18,10 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
 
     // solhint-disable no-empty-blocks
 
-    constructor(CollateralConfig memory config, uint192 revenueHiding)
-        AppreciatingFiatCollateral(config, revenueHiding)
-    {}
+    constructor(
+        CollateralConfig memory config,
+        uint192 revenueHiding
+    ) AppreciatingFiatCollateral(config, revenueHiding) {}
 
     // solhint-enable no-empty-blocks
 
@@ -66,6 +67,11 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
     // Setter to make refPerTok revert
     function setRefPerTokRevert(bool on) external {
         refPerTokRevert = on;
+    }
+
+    // Setter for status
+    function setStatus(CollateralStatus _status) external {
+        markStatus(_status);
     }
 
     function refPerTok() public view virtual override returns (uint192) {
