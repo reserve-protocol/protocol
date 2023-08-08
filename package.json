@@ -15,7 +15,7 @@
     "deploy:run": "hardhat run scripts/deploy.ts",
     "deploy:confirm": "hardhat run scripts/confirm.ts",
     "deploy:verify_etherscan": "hardhat run scripts/verify_etherscan.ts",
-    "test:extreme": "EXTREME=1 PROTO_IMPL=1 npx hardhat test test/{Furnace,RTokenExtremes,ZTradingExtremes,ZZStRSR}.test.ts",
+    "test:extreme": "EXTREME=1 PROTO_IMPL=1 npx hardhat test test/{Broker,Furnace,RTokenExtremes,ZTradingExtremes,ZZStRSR}.test.ts",
     "test:extreme:integration": "FORK=1 EXTREME=1 PROTO_IMPL=1 npx hardhat test test/integration/**/*.test.ts",
     "test:unit": "yarn test:plugins && yarn test:p0 && yarn test:p1",
     "test:fast": "bash tools/fast-test.sh",
