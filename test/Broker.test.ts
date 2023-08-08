@@ -6,6 +6,7 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import {
+  MAX_UINT48,
   MAX_UINT96,
   MAX_UINT192,
   TradeKind,
@@ -13,7 +14,7 @@ import {
   ZERO_ADDRESS,
   ONE_ADDRESS,
 } from '../common/constants'
-import { bn, fp, divCeil, toBNDecimals } from '../common/numbers'
+import { bn, fp, divCeil, shortString, toBNDecimals } from '../common/numbers'
 import {
   DutchTrade,
   ERC20Mock,
@@ -23,13 +24,16 @@ import {
   GnosisTrade,
   IAssetRegistry,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIMain,
   TestIRevenueTrader,
+  TestIRToken,
   USDCMock,
   ZeroDecimalMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
+import { cartesianProduct } from './utils/cases'
 import {
   Collateral,
   DefaultFixture,
@@ -39,6 +43,7 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  SLOW,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import {
@@ -53,6 +58,9 @@ import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
+const describeExtreme =
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -82,8 +90,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let main: TestIMain
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let rToken: TestIRToken
 
   let basket: Collateral[]
   let collateral: Collateral[]
@@ -99,10 +109,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       main,
       assetRegistry,
       backingManager,
+      basketHandler,
       broker,
       gnosis,
       rsrTrader,
       rTokenTrader,
+      rToken,
       collateral,
     } = <DefaultFixture>await loadFixture(defaultFixture))
 
@@ -1295,6 +1307,147 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       // There is no test here for the reportViolation case; that is in Revenues.test.ts
+    })
+  })
+
+  describeExtreme(`Extreme Values ${SLOW ? 'slow mode' : 'fast mode'}`, () => {
+    if (!(Implementation.P1 && useEnv('EXTREME'))) return // prevents bunch of skipped tests
+
+    async function runScenario([
+      sellTokDecimals,
+      buyTokDecimals,
+      auctionSellAmt,
+      progression,
+    ]: BigNumber[]) {
+      // Factories
+      const ERC20Factory = await ethers.getContractFactory('ERC20MockDecimals')
+      const CollFactory = await ethers.getContractFactory('FiatCollateral')
+      const sellTok = await ERC20Factory.deploy('Sell Token', 'SELL', sellTokDecimals)
+      const buyTok = await ERC20Factory.deploy('Buy Token', 'BUY', buyTokDecimals)
+      const sellColl = <FiatCollateral>await CollFactory.deploy({
+        priceTimeout: MAX_UINT48,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: bn('1'), // minimize
+        erc20: sellTok.address,
+        maxTradeVolume: MAX_UINT192,
+        oracleTimeout: MAX_UINT48,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.01'), // shouldn't matter
+        delayUntilDefault: bn('604800'), // shouldn't matter
+      })
+      await assetRegistry.connect(owner).register(sellColl.address)
+      const buyColl = <FiatCollateral>await CollFactory.deploy({
+        priceTimeout: MAX_UINT48,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: bn('1'), // minimize
+        erc20: buyTok.address,
+        maxTradeVolume: MAX_UINT192,
+        oracleTimeout: MAX_UINT48,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.01'), // shouldn't matter
+        delayUntilDefault: bn('604800'), // shouldn't matter
+      })
+      await assetRegistry.connect(owner).register(buyColl.address)
+
+      // Set basket
+      await basketHandler
+        .connect(owner)
+        .setPrimeBasket([sellTok.address, buyTok.address], [fp('0.5'), fp('0.5')])
+      await basketHandler.connect(owner).refreshBasket()
+
+      const MAX_ERC20_SUPPLY = bn('1e48') // from docs/solidity-style.md
+
+      // Max out throttles
+      const issuanceThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
+      const redemptionThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      await advanceTime(3600)
+
+      // Mint coll tokens to addr1
+      await buyTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
+      await sellTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
+
+      // Issue RToken
+      await buyTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
+      await sellTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
+      await rToken.connect(addr1).issue(MAX_ERC20_SUPPLY.div(2))
+
+      // Burn buyTok from backingManager and send extra sellTok
+      const burnAmount = divCeil(
+        auctionSellAmt.mul(bn(10).pow(buyTokDecimals)),
+        bn(10).pow(sellTokDecimals)
+      )
+      await buyTok.burn(backingManager.address, burnAmount)
+      await sellTok.connect(addr1).transfer(backingManager.address, auctionSellAmt.mul(10))
+
+      // Rebalance should cause backingManager to trade about auctionSellAmt, though not exactly
+      await backingManager.setMaxTradeSlippage(bn('0'))
+      await backingManager.setMinTradeVolume(bn('0'))
+      await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION))
+        .to.emit(backingManager, 'TradeStarted')
+        .withArgs(anyValue, sellTok.address, buyTok.address, anyValue, anyValue)
+
+      // Get Trade
+      const tradeAddr = await backingManager.trades(sellTok.address)
+      await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
+      const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+      const currentBlock = bn(await getLatestBlockNumber())
+      const toAdvance = progression
+        .mul((await trade.endBlock()).sub(currentBlock))
+        .div(fp('1'))
+        .sub(1)
+      if (toAdvance.gt(0)) await advanceBlocks(toAdvance)
+
+      // Bid
+      const sellAmt = await trade.lot()
+      const bidBlock = bn('1').add(await getLatestBlockNumber())
+      const bidAmt = await trade.bidAmount(bidBlock)
+      expect(bidAmt).to.be.gt(0)
+      const buyBalBefore = await buyTok.balanceOf(backingManager.address)
+      const sellBalBefore = await sellTok.balanceOf(addr1.address)
+      await expect(trade.connect(addr1).bid())
+        .to.emit(backingManager, 'TradeSettled')
+        .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+
+      // Check balances
+      expect(await sellTok.balanceOf(addr1.address)).to.equal(sellBalBefore.add(sellAmt))
+      expect(await buyTok.balanceOf(backingManager.address)).to.equal(buyBalBefore.add(bidAmt))
+      expect(await sellTok.balanceOf(trade.address)).to.equal(0)
+      expect(await buyTok.balanceOf(trade.address)).to.equal(0)
+
+      // Check disabled status
+      const shouldDisable = progression.lt(fp('0.2'))
+      expect(await broker.dutchTradeDisabled(sellTok.address)).to.equal(shouldDisable)
+      expect(await broker.dutchTradeDisabled(buyTok.address)).to.equal(shouldDisable)
+    }
+
+    // ==== Generate the tests ====
+
+    // applied to both buy and sell tokens
+    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
+
+    // auction sell amount
+    const auctionSellAmts = [bn('2'), bn('1595439874635'), bn('987321984732198435645846513')]
+
+    // auction progression %: these will get rounded to blocks later
+    const progression = [fp('0'), fp('0.321698432589749813'), fp('0.798138321987329646'), fp('1')]
+
+    // total cases is 5 * 5 * 3 * 4 = 300
+
+    if (SLOW) {
+      progression.push(fp('0.176334768961354965'), fp('0.523449931646439834'))
+
+      // total cases is 5 * 5 * 3 * 6 = 450
+    }
+
+    const paramList = cartesianProduct(decimals, decimals, auctionSellAmts, progression)
+
+    const numCases = paramList.length.toString()
+    paramList.forEach((params, index) => {
+      it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        await runScenario(params)
+      })
     })
   })
 
