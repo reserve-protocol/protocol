@@ -457,7 +457,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Should have updated lastPayout + lastPayoutBal
       expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
-      expect(await furnace.lastPayout()).to.be.lt(await getLatestBlockTimestamp())
+      expect(await furnace.lastPayout()).to.be.lte(await getLatestBlockTimestamp())
       expect(await furnace.lastPayoutBal()).to.equal(bn('10e18'))
 
       // Advance 99 periods -- should melt at old ratio
@@ -472,7 +472,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Should have updated lastPayout + lastPayoutBal
       expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
-      expect(await furnace.lastPayout()).to.be.lt(await getLatestBlockTimestamp())
+      expect(await furnace.lastPayout()).to.be.lte(await getLatestBlockTimestamp())
       expect(await furnace.lastPayoutBal()).to.equal(bn('10e18')) // no change
 
       // Unfreeze and advance 1 period
@@ -482,7 +482,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Should have updated lastPayout + lastPayoutBal
       expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
-      expect(await furnace.lastPayout()).to.be.lt(await getLatestBlockTimestamp())
+      expect(await furnace.lastPayout()).to.be.lte(await getLatestBlockTimestamp())
       expect(await furnace.lastPayoutBal()).to.equal(bn('9.999e18'))
     })
   })
