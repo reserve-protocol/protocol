@@ -23,6 +23,7 @@ contract MockV3Aggregator is AggregatorV3Interface {
 
     // Additional variable to be able to test invalid behavior
     uint256 public latestAnsweredRound;
+    address public aggregator;
 
     mapping(uint256 => int256) public getAnswer;
     mapping(uint256 => uint256) public getTimestamp;
@@ -30,7 +31,12 @@ contract MockV3Aggregator is AggregatorV3Interface {
 
     constructor(uint8 _decimals, int256 _initialAnswer) {
         decimals = _decimals;
+        aggregator = address(this);
         updateAnswer(_initialAnswer);
+    }
+
+    function deprecate() external {
+        aggregator = address(0);
     }
 
     function updateAnswer(int256 _answer) public {
@@ -80,6 +86,12 @@ contract MockV3Aggregator is AggregatorV3Interface {
             uint80 answeredInRound
         )
     {
+        if (aggregator == address(0)) {
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                revert(0, 0)
+            }
+        }
         return (
             _roundId,
             getAnswer[_roundId],
@@ -102,13 +114,7 @@ contract MockV3Aggregator is AggregatorV3Interface {
             uint80 answeredInRound
         )
     {
-        return (
-            uint80(latestRound),
-            getAnswer[latestRound],
-            getStartedAt[latestRound],
-            getTimestamp[latestRound],
-            uint80(latestAnsweredRound)
-        );
+        return this.getRoundData(uint80(latestAnsweredRound));
     }
 
     function description() external pure override returns (string memory) {
