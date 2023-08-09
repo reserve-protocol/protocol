@@ -452,9 +452,15 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Transfer to Furnace and do first melt
       await rToken.connect(addr1).transfer(furnace.address, bn('10e18'))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
       await furnace.melt()
 
-      // Advance 99 periods
+      // Should have updated lastPayout + lastPayoutBal
+      expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
+      expect(await furnace.lastPayout()).to.be.lt(await getLatestBlockTimestamp())
+      expect(await furnace.lastPayoutBal()).to.equal(bn('10e18'))
+
+      // Advance 99 periods -- should melt at old ratio
       await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 99 * Number(ONE_PERIOD))
 
       // Freeze and change ratio
@@ -463,6 +469,11 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await expect(furnace.connect(owner).setRatio(maxRatio))
         .to.emit(furnace, 'RatioSet')
         .withArgs(config.rewardRatio, maxRatio)
+
+      // Should have updated lastPayout + lastPayoutBal
+      expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
+      expect(await furnace.lastPayout()).to.be.lt(await getLatestBlockTimestamp())
+      expect(await furnace.lastPayoutBal()).to.equal(bn('10e18')) // no change
 
       // Unfreeze and advance 1 period
       await main.connect(owner).unfreeze()
