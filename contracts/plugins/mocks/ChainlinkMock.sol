@@ -114,7 +114,19 @@ contract MockV3Aggregator is AggregatorV3Interface {
             uint80 answeredInRound
         )
     {
-        return this.getRoundData(uint80(latestAnsweredRound));
+        if (aggregator == address(0)) {
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                revert(0, 0)
+            }
+        }
+        return (
+            uint80(latestRound),
+            getAnswer[latestRound],
+            getStartedAt[latestRound],
+            getTimestamp[latestRound],
+            uint80(latestAnsweredRound)
+        );
     }
 
     function description() external pure override returns (string memory) {
