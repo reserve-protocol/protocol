@@ -98,6 +98,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // Min exchange rate {qRSR/qStRSR} (compile-time constant)
     uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9
 
+    // stake rate under/over which governance can reset all stakes
+    uint192 private constant MAX_SAFE_STAKE_RATE = 1e6 * FIX_ONE; // 1e6
+    uint192 private constant MIN_SAFE_STAKE_RATE = uint192(1e12); // 1e-6
+
     // Withdrawal Leak
     uint192 private leaked; // {1} stake fraction that has withdrawn without a refresh
     uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
@@ -378,6 +382,20 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             address account = accounts.at(i);
             delete withdrawals[account];
         }
+        emit AllUnstakingReset(era);
+    }
+
+    /// @custom:governance
+    /// Reset all stakes and advance era
+    function resetStakes() external governance {
+        uint192 stakeRate = divuu(totalStaked, rsrBacking);
+        require(
+            stakeRate <= MIN_SAFE_STAKE_RATE || stakeRate >= MAX_SAFE_STAKE_RATE,
+            "rate still safe"
+        );
+
+        bankruptStakers();
+        bankruptWithdrawals();
     }
 
     /// Refresh if too much RSR has exited since the last refresh occurred

@@ -163,6 +163,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
     uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
 
+    // stake rate under/over which governance can reset all stakes
+    uint192 private constant MAX_SAFE_STAKE_RATE = 1e6 * FIX_ONE; // 1e6   D18{qStRSR/qRSR}
+    uint192 private constant MIN_SAFE_STAKE_RATE = uint192(1e12); // 1e-6  D18{qStRSR/qRSR}
+
     // ======================
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -480,6 +484,19 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, exchangeRate());
         IERC20Upgradeable(address(rsr)).safeTransfer(_msgSender(), seizedRSR);
+    }
+
+    /// @custom:governance
+    /// Reset all stakes and advance era
+    function resetStakes() external {
+        requireGovernanceOnly();
+        require(
+            stakeRate <= MIN_SAFE_STAKE_RATE || stakeRate >= MAX_SAFE_STAKE_RATE,
+            "rate still safe"
+        );
+
+        beginEra();
+        beginDraftEra();
     }
 
     /// @return D18{qRSR/qStRSR} The exchange rate between RSR and StRSR
