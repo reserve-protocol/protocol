@@ -426,8 +426,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @return available {qRTok} The maximum redemption that can be performed in the current block
     function redemptionAvailable() external view returns (uint256 available) {
         uint256 supply = totalSupply();
-        uint256 hourlyLimit = redemptionThrottle.hourlyLimit(supply);
-        available = redemptionThrottle.currentlyAvailable(hourlyLimit);
+        available = redemptionThrottle.currentlyAvailable(redemptionThrottle.hourlyLimit(supply));
         if (supply < available) available = supply;
     }
 
