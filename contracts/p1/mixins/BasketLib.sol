@@ -165,7 +165,9 @@ library BasketLibP1 {
         IAssetRegistry assetRegistry
     ) external returns (bool) {
         // targetNames := {}
-        while (targetNames.length() > 0) targetNames.remove(targetNames.at(0));
+        while (targetNames.length() > 0) {
+            targetNames.remove(targetNames.at(targetNames.length() - 1));
+        }
 
         // newBasket := {}
         newBasket.empty();
