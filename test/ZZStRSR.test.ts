@@ -2189,6 +2189,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // check new rate
       expectedRate = fp(stakeAmt.sub(seizeAmt).sub(seizeAmt2)).div(stakeAmt)
       expect(await stRSR.exchangeRate()).to.be.closeTo(expectedRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.lte(fp('1e-6'))
+      expect(await stRSR.exchangeRate()).to.be.gte(fp('1e-9'))
 
       // Now governance can reset stakes
       await expect(stRSR.connect(owner).resetStakes()).to.emit(stRSR, 'AllBalancesReset')
@@ -2248,7 +2250,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Payout rewards - Advance time - rate will be unsafe
       await setNextBlockTimestamp(Number(ONE_PERIOD.mul(100).add(await getLatestBlockTimestamp())))
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
-      expect(await stRSR.exchangeRate()).to.be.gt(newRate) // increased
+      expect(await stRSR.exchangeRate()).to.be.gte(fp('1e6'))
+      expect(await stRSR.exchangeRate()).to.be.lte(fp('1e9'))
       expect(await stRSR.totalSupply()).to.equal(stakeAmt)
       expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmt)
 

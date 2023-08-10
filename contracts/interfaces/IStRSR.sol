@@ -134,15 +134,15 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// @custom:protected
     function seizeRSR(uint256 amount) external;
 
+    /// Reset all stakes and advance era
+    /// @custom:governance
+    function resetStakes() external;
+
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
     function endIdForWithdraw(address account) external view returns (uint256 endId);
 
     /// @return {qRSR/qStRSR} The exchange rate between RSR and StRSR
     function exchangeRate() external view returns (uint192);
-
-    /// Reset all stakes and advance era
-    /// @custom:governance
-    function resetStakes() external;
 }
 
 interface TestIStRSR is IStRSR {
