@@ -43,7 +43,9 @@ async function main() {
   /******** Morpho token vaults **************************/
   console.log(`Deploying morpho token vaults to network ${hre.network.name} (${chainId})
     with burner account: ${deployer.address}`)
-  const MorphoTokenisedDepositFactory = await ethers.getContractFactory("MorphoAaveV2TokenisedDeposit")
+  const MorphoTokenisedDepositFactory = await ethers.getContractFactory(
+    'MorphoAaveV2TokenisedDeposit'
+  )
   const maUSDT = await MorphoTokenisedDepositFactory.deploy({
     morphoController: networkConfig[chainId].MORPHO_AAVE_CONTROLLER!,
     morphoLens: networkConfig[chainId].MORPHO_AAVE_LENS!,
@@ -113,14 +115,10 @@ async function main() {
   assetCollDeployments.erc20s.maStETH = maStETH.address
 
   /******** Morpho collateral **************************/
-  const FiatCollateralFactory = await hre.ethers.getContractFactory(
-    "MorphoFiatCollateral"
-  )
-  const NonFiatCollateralFactory = await hre.ethers.getContractFactory(
-    "MorphoNonFiatCollateral"
-  )
+  const FiatCollateralFactory = await hre.ethers.getContractFactory('MorphoFiatCollateral')
+  const NonFiatCollateralFactory = await hre.ethers.getContractFactory('MorphoNonFiatCollateral')
   const SelfReferentialFactory = await hre.ethers.getContractFactory(
-    "MorphoSelfReferentialCollateral"
+    'MorphoSelfReferentialCollateral'
   )
   const stablesOracleError = fp('0.0025') // 0.25%
 
@@ -129,41 +127,44 @@ async function main() {
     oracleError: stablesOracleError.toString(),
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 1 hr
-    targetName: ethers.utils.formatBytes32String("USD"),
-    defaultThreshold: stablesOracleError.add(fp("0.01")), // 1.25%
+    targetName: ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: stablesOracleError.add(fp('0.01')), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   }
 
   {
-    const collateral = await FiatCollateralFactory.connect(deployer).deploy({
-      ...baseStableConfig,
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT!,
-      erc20: maUSDT.address,
-    },
+    const collateral = await FiatCollateralFactory.connect(deployer).deploy(
+      {
+        ...baseStableConfig,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDT!,
+        erc20: maUSDT.address,
+      },
       revenueHiding
-    );
+    )
     assetCollDeployments.collateral.maUSDT = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }
   {
-    const collateral = await FiatCollateralFactory.connect(deployer).deploy({
-      ...baseStableConfig,
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-      erc20: maUSDC.address,
-    },
+    const collateral = await FiatCollateralFactory.connect(deployer).deploy(
+      {
+        ...baseStableConfig,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
+        erc20: maUSDC.address,
+      },
       revenueHiding
-    );
+    )
     assetCollDeployments.collateral.maUSDC = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }
   {
-    const collateral = await FiatCollateralFactory.connect(deployer).deploy({
-      ...baseStableConfig,
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI!,
-      erc20: maDAI.address,
-    },
+    const collateral = await FiatCollateralFactory.connect(deployer).deploy(
+      {
+        ...baseStableConfig,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI!,
+        erc20: maDAI.address,
+      },
       revenueHiding
-    );
+    )
     assetCollDeployments.collateral.maDAI = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }
@@ -172,39 +173,41 @@ async function main() {
     const wbtcOracleError = fp('0.02') // 2%
     const btcOracleError = fp('0.005') // 0.5%
     const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
-    const collateral = await NonFiatCollateralFactory.connect(deployer).deploy({
-      priceTimeout: priceTimeout,
-      oracleError: combinedBTCWBTCError,
-      maxTradeVolume: fp('1e6'), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
-      targetName: ethers.utils.formatBytes32String("BTC"),
-      defaultThreshold: fp('0.01').add(combinedBTCWBTCError),  // ~3.5%
-      delayUntilDefault: bn('86400'), // 24h
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!,
-      erc20: maWBTC.address,
-    },
+    const collateral = await NonFiatCollateralFactory.connect(deployer).deploy(
+      {
+        priceTimeout: priceTimeout,
+        oracleError: combinedBTCWBTCError,
+        maxTradeVolume: fp('1e6'), // $1m,
+        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
+        targetName: ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
+        delayUntilDefault: bn('86400'), // 24h
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!,
+        erc20: maWBTC.address,
+      },
       revenueHiding,
       networkConfig[chainId].chainlinkFeeds.wBTCBTC!,
-      oracleTimeout(chainId, '86400').toString(),  // 1 hr
-    );
+      oracleTimeout(chainId, '86400').toString() // 1 hr
+    )
     assetCollDeployments.collateral.maWBTC = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }
 
   {
-    const collateral = await SelfReferentialFactory.connect(deployer).deploy({
-      priceTimeout: priceTimeout,
-      oracleError: fp('0.005'),
-      maxTradeVolume: fp('1e6'), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
-      targetName: ethers.utils.formatBytes32String("ETH"),
-      defaultThreshold: fp('0.05'),  // 5%
-      delayUntilDefault: bn('86400'), // 24h
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
-      erc20: maWBTC.address,
-    },
-      revenueHiding,
-    );
+    const collateral = await SelfReferentialFactory.connect(deployer).deploy(
+      {
+        priceTimeout: priceTimeout,
+        oracleError: fp('0.005'),
+        maxTradeVolume: fp('1e6'), // $1m,
+        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
+        targetName: ethers.utils.formatBytes32String('ETH'),
+        defaultThreshold: fp('0.05'), // 5%
+        delayUntilDefault: bn('86400'), // 24h
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
+        erc20: maWBTC.address,
+      },
+      revenueHiding
+    )
     assetCollDeployments.collateral.maWETH = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }
@@ -218,21 +221,22 @@ async function main() {
     // TAR: ETH
     // REF: stETH
     // TOK: maETH
-    const collateral = await NonFiatCollateralFactory.connect(deployer).deploy({
-      priceTimeout: priceTimeout,
-      oracleError: combinedOracleErrors,
-      maxTradeVolume: fp('1e6'), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
-      targetName: ethers.utils.formatBytes32String("ETH"),
-      defaultThreshold: fp('0.01').add(combinedOracleErrors),  // ~1.5%
-      delayUntilDefault: bn('86400'), // 24h
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
-      erc20: maStETH.address,
-    },
+    const collateral = await NonFiatCollateralFactory.connect(deployer).deploy(
+      {
+        priceTimeout: priceTimeout,
+        oracleError: combinedOracleErrors,
+        maxTradeVolume: fp('1e6'), // $1m,
+        oracleTimeout: oracleTimeout(chainId, '3600'), // 1 hr
+        targetName: ethers.utils.formatBytes32String('ETH'),
+        defaultThreshold: fp('0.01').add(combinedOracleErrors), // ~1.5%
+        delayUntilDefault: bn('86400'), // 24h
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
+        erc20: maStETH.address,
+      },
       revenueHiding,
       networkConfig[chainId].chainlinkFeeds.stETHETH!, // {target/ref}
-      oracleTimeout(chainId, '86400').toString(),  // 1 hr
-    );
+      oracleTimeout(chainId, '86400').toString() // 1 hr
+    )
     assetCollDeployments.collateral.maWBTC = collateral.address
     deployedCollateral.push(collateral.address.toString())
   }

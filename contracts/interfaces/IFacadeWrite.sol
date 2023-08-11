@@ -84,13 +84,16 @@ interface IFacadeWrite {
     /// @param rToken The address of the RToken
     /// @param governance The address of the new governance
     /// @param timelock The address of the timelock
-    event GovernanceCreated(IRToken rToken, address governance, address timelock);
+    event GovernanceCreated(
+        IRToken indexed rToken,
+        address indexed governance,
+        address indexed timelock
+    );
 
     /// Deploys an instance of an RToken
-    function deployRToken(
-        ConfigurationParams calldata config,
-        SetupParams calldata setup
-    ) external returns (address);
+    function deployRToken(ConfigurationParams calldata config, SetupParams calldata setup)
+        external
+        returns (address);
 
     /// Sets up governance for an RToken
     function setupGovernance(

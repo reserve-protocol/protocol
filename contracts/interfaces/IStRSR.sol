@@ -89,9 +89,9 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     event RewardsPaid(uint256 rsrAmt);
 
     /// Emitted if all the RSR in the staking pool is seized and all balances are reset to zero.
-    event AllBalancesReset(uint256 newEra);
+    event AllBalancesReset(uint256 indexed newEra);
     /// Emitted if all the RSR in the unstakin pool is seized, and all ongoing unstaking is voided.
-    event AllUnstakingReset(uint256 newEra);
+    event AllUnstakingReset(uint256 indexed newEra);
 
     event UnstakingDelaySet(uint48 oldVal, uint48 newVal);
     event RewardRatioSet(uint192 oldVal, uint192 newVal);

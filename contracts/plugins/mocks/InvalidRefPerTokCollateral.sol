@@ -18,10 +18,9 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
 
     // solhint-disable no-empty-blocks
 
-    constructor(
-        CollateralConfig memory config,
-        uint192 revenueHiding
-    ) AppreciatingFiatCollateral(config, revenueHiding) {}
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
+    {}
 
     // solhint-enable no-empty-blocks
 

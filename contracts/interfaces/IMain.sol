@@ -114,7 +114,7 @@ interface IAuth is IAccessControlUpgradeable {
 interface IComponentRegistry {
     // === Component setters/getters ===
 
-    event RTokenSet(IRToken oldVal, IRToken newVal);
+    event RTokenSet(IRToken indexed oldVal, IRToken indexed newVal);
 
     function rToken() external view returns (IRToken);
 

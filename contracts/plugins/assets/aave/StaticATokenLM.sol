@@ -369,7 +369,11 @@ contract StaticATokenLM is
      * @param from The address of the sender of tokens
      * @param to The address of the receiver of tokens
      */
-    function _beforeTokenTransfer(address from, address to, uint256) internal override {
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256
+    ) internal override {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
         }
