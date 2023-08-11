@@ -123,11 +123,17 @@ const mintCollateralTo: MintCollateralFunc<CollateralFixtureContext> = async (
   await mintSDAI(ctx.tok, user, amount, recipient)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const reduceTargetPerRef = async () => {}
+const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
+  const lastRound = await ctx.chainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
+  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+}
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const increaseTargetPerRef = async () => {}
+const increaseTargetPerRef = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
+  const lastRound = await ctx.chainlinkFeed.latestRoundData()
+  const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
+  await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+}
 
 // prettier-ignore
 const reduceRefPerTok = async (
@@ -199,7 +205,7 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,

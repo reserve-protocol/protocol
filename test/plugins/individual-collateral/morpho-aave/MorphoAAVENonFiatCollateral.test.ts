@@ -146,18 +146,18 @@ const makeAaveNonFiatCollateralTestSuite = (
     ctx: MorphoAaveCollateralFixtureContext,
     pctDecrease: BigNumberish
   ) => {
-    const lastRound = await ctx.chainlinkFeed.latestRoundData()
+    const lastRound = await ctx.targetPrRefFeed!.latestRoundData()
     const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
-    await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+    await ctx.targetPrRefFeed!.updateAnswer(nextAnswer)
   }
 
   const increaseTargetPerRef = async (
     ctx: MorphoAaveCollateralFixtureContext,
     pctIncrease: BigNumberish
   ) => {
-    const lastRound = await ctx.chainlinkFeed.latestRoundData()
+    const lastRound = await ctx.targetPrRefFeed!.latestRoundData()
     const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
-    await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+    await ctx.targetPrRefFeed!.updateAnswer(nextAnswer)
   }
 
   const changeRefPerTok = async (

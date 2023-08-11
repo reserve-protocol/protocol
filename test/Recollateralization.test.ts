@@ -40,7 +40,6 @@ import {
 import {
   advanceTime,
   advanceBlocks,
-  advanceToTimestamp,
   getLatestBlockTimestamp,
   getLatestBlockNumber,
 } from './utils/time'
