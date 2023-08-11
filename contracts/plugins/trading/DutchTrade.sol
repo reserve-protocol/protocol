@@ -165,9 +165,14 @@ contract DutchTrade is ITrade {
 
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
-        startBlock = block.number + 1; // start in the next block
-        endBlock = startBlock + auctionLength / ONE_BLOCK; // FLOOR, since endBlock is inclusive
-        endTime = uint48(block.timestamp + ONE_BLOCK * (endBlock - startBlock));
+
+        uint256 _startBlock = block.number + 1; // start in the next block
+        startBlock = _startBlock; // gas-saver
+
+        uint256 _endBlock = _startBlock + auctionLength / ONE_BLOCK; // FLOOR; endBlock is inclusive
+        endBlock = _endBlock; // gas-saver
+
+        endTime = uint48(block.timestamp + ONE_BLOCK * (_endBlock - _startBlock));
 
         // {1}
         uint192 slippage = _slippage(
@@ -177,9 +182,11 @@ contract DutchTrade is ITrade {
         );
 
         // {buyTok/sellTok} = {UoA/sellTok} * {1} / {UoA/buyTok}
-        worstPrice = prices.sellLow.mulDiv(FIX_ONE - slippage, prices.buyHigh, FLOOR);
-        bestPrice = prices.sellHigh.div(prices.buyLow, CEIL); // no additional slippage
-        assert(worstPrice <= bestPrice);
+        uint192 _worstPrice = prices.sellLow.mulDiv(FIX_ONE - slippage, prices.buyHigh, FLOOR);
+        uint192 _bestPrice = prices.sellHigh.div(prices.buyLow, CEIL); // no additional slippage
+        assert(_worstPrice <= _bestPrice);
+        worstPrice = _worstPrice; // gas-saver
+        bestPrice = _bestPrice; // gas-saver
     }
 
     /// Bid for the auction lot at the current price; settling atomically via a callback
@@ -196,7 +203,7 @@ contract DutchTrade is ITrade {
 
         // Transfer in buy tokens
         bidder = msg.sender;
-        buy.safeTransferFrom(bidder, address(this), amountIn);
+        buy.safeTransferFrom(msg.sender, address(this), amountIn);
 
         // status must begin OPEN
         assert(status == TradeStatus.OPEN);
@@ -281,8 +288,10 @@ contract DutchTrade is ITrade {
     /// @param blockNumber {block} The block number to get price for
     /// @return {buyTok/sellTok}
     function _price(uint256 blockNumber) private view returns (uint192) {
-        require(blockNumber >= startBlock, "auction not started");
-        require(blockNumber <= endBlock, "auction over");
+        uint256 _startBlock = startBlock; // gas savings
+        uint256 _endBlock = endBlock; // gas savings
+        require(blockNumber >= _startBlock, "auction not started");
+        require(blockNumber <= _endBlock, "auction over");
 
         /// Price Curve:
         ///   - first 20%: geometrically decrease the price from 1000x the bestPrice to 1.5x it
@@ -290,7 +299,7 @@ contract DutchTrade is ITrade {
         ///   - next  50%: linearly decrease the price from bestPrice to worstPrice
         ///   - last   5%: constant at worstPrice
 
-        uint192 progression = divuu(blockNumber - startBlock, endBlock - startBlock); // {1}
+        uint192 progression = divuu(blockNumber - _startBlock, _endBlock - _startBlock); // {1}
 
         // Fast geometric decay -- 0%-20% of auction
         if (progression < TWENTY_PERCENT) {
@@ -305,19 +314,21 @@ contract DutchTrade is ITrade {
             // First linear decay -- 20%-45% of auction
             // 1.5x -> 1x the bestPrice
 
+            uint192 _bestPrice = bestPrice; // gas savings
             // {buyTok/sellTok} = {buyTok/sellTok} * {1}
-            uint192 highPrice = bestPrice.mul(ONE_POINT_FIVE, CEIL);
+            uint192 highPrice = _bestPrice.mul(ONE_POINT_FIVE, CEIL);
             return
                 highPrice -
-                (highPrice - bestPrice).mulDiv(progression - TWENTY_PERCENT, TWENTY_FIVE_PERCENT);
+                (highPrice - _bestPrice).mulDiv(progression - TWENTY_PERCENT, TWENTY_FIVE_PERCENT);
         } else if (progression < NINETY_FIVE_PERCENT) {
             // Second linear decay -- 45%-95% of auction
             // bestPrice -> worstPrice
 
+            uint192 _bestPrice = bestPrice; // gas savings
             // {buyTok/sellTok} = {buyTok/sellTok} * {1}
             return
-                bestPrice -
-                (bestPrice - worstPrice).mulDiv(progression - FORTY_FIVE_PERCENT, FIFTY_PERCENT);
+                _bestPrice -
+                (_bestPrice - worstPrice).mulDiv(progression - FORTY_FIVE_PERCENT, FIFTY_PERCENT);
         }
 
         // Constant price -- 95%-100% of auction

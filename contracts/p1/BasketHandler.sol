@@ -255,7 +255,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         for (uint256 i = 0; i < size; ++i) {
             CollateralStatus s = assetRegistry.toColl(basket.erc20s[i]).status();
-            if (s.worseThan(status_)) status_ = s;
+            if (s.worseThan(status_)) {
+                status_ = s;
+            }
+            if (status_ == CollateralStatus.DISABLED) {
+                break;
+            }
         }
     }
 
