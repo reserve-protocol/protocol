@@ -24,6 +24,11 @@ contract FacadeTest is IFacadeTest {
     /// Prompt all traders to run auctions
     /// Relatively gas-inefficient, shouldn't be used in production. Use multicall instead
     function runAuctionsForAllTraders(IRToken rToken) external {
+        runAuctionsForAllTradersForKind(rToken, TradeKind.BATCH_AUCTION);
+    }
+
+    // Prompt all traders to run auctions of a specific kind
+    function runAuctionsForAllTradersForKind(IRToken rToken, TradeKind kind) public {
         IMain main = rToken.main();
         IBackingManager backingManager = main.backingManager();
         IRevenueTrader rsrTrader = main.rsrTrader();
@@ -55,12 +60,17 @@ contract FacadeTest is IFacadeTest {
         try main.backingManager().forwardRevenue(erc20s) {} catch {}
 
         // Start exact RSR auctions
-        (IERC20[] memory rsrERC20s, TradeKind[] memory rsrKinds) = traderERC20s(rsrTrader, erc20s);
+        (IERC20[] memory rsrERC20s, TradeKind[] memory rsrKinds) = traderERC20s(
+            rsrTrader,
+            kind,
+            erc20s
+        );
         try main.rsrTrader().manageTokens(rsrERC20s, rsrKinds) {} catch {}
 
         // Start exact RToken auctions
         (IERC20[] memory rTokenERC20s, TradeKind[] memory rTokenKinds) = traderERC20s(
             rTokenTrader,
+            kind,
             erc20s
         );
         try main.rTokenTrader().manageTokens(rTokenERC20s, rTokenKinds) {} catch {}
@@ -115,11 +125,11 @@ contract FacadeTest is IFacadeTest {
 
     // === Private ===
 
-    function traderERC20s(IRevenueTrader trader, IERC20[] memory erc20sAll)
-        private
-        view
-        returns (IERC20[] memory erc20s, TradeKind[] memory kinds)
-    {
+    function traderERC20s(
+        IRevenueTrader trader,
+        TradeKind kind,
+        IERC20[] memory erc20sAll
+    ) private view returns (IERC20[] memory erc20s, TradeKind[] memory kinds) {
         uint256 len;
         IERC20[] memory traderERC20sAll = new IERC20[](erc20sAll.length);
         for (uint256 i = 0; i < erc20sAll.length; ++i) {
@@ -136,7 +146,7 @@ contract FacadeTest is IFacadeTest {
         kinds = new TradeKind[](len);
         for (uint256 i = 0; i < len; ++i) {
             erc20s[i] = traderERC20sAll[i];
-            kinds[i] = TradeKind.BATCH_AUCTION;
+            kinds[i] = kind;
         }
     }
 }

@@ -6,6 +6,7 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import {
+  MAX_UINT48,
   MAX_UINT96,
   MAX_UINT192,
   TradeKind,
@@ -13,7 +14,7 @@ import {
   ZERO_ADDRESS,
   ONE_ADDRESS,
 } from '../common/constants'
-import { bn, fp, divCeil, toBNDecimals } from '../common/numbers'
+import { bn, fp, divCeil, shortString, toBNDecimals } from '../common/numbers'
 import {
   DutchTrade,
   ERC20Mock,
@@ -21,15 +22,19 @@ import {
   GnosisMock,
   GnosisMockReentrant,
   GnosisTrade,
+  GnosisTrade__factory,
   IAssetRegistry,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIMain,
   TestIRevenueTrader,
+  TestIRToken,
   USDCMock,
   ZeroDecimalMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
+import { cartesianProduct } from './utils/cases'
 import {
   Collateral,
   DefaultFixture,
@@ -39,14 +44,25 @@ import {
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
+  SLOW,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, advanceToTimestamp, getLatestBlockTimestamp } from './utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  advanceToTimestamp,
+  getLatestBlockTimestamp,
+  getLatestBlockNumber,
+} from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
+import { parseUnits } from 'ethers/lib/utils'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
+const describeExtreme =
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
@@ -76,8 +92,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let main: TestIMain
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let rToken: TestIRToken
 
   let basket: Collateral[]
   let collateral: Collateral[]
@@ -93,10 +111,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       main,
       assetRegistry,
       backingManager,
+      basketHandler,
       broker,
       gnosis,
       rsrTrader,
       rTokenTrader,
+      rToken,
       collateral,
     } = <DefaultFixture>await loadFixture(defaultFixture))
 
@@ -116,7 +136,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     it('Should setup Broker correctly', async () => {
       expect(await broker.gnosis()).to.equal(gnosis.address)
       expect(await broker.batchAuctionLength()).to.equal(config.batchAuctionLength)
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
       expect(await broker.main()).to.equal(main.address)
     })
 
@@ -142,9 +163,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           main.address,
           gnosis.address,
           ZERO_ADDRESS,
-          bn('100'),
+          bn('1000'),
           ZERO_ADDRESS,
-          bn('100')
+          bn('1000')
         )
       ).to.be.revertedWith('invalid batchTradeImplementation address')
       await expect(
@@ -152,9 +173,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           main.address,
           gnosis.address,
           ONE_ADDRESS,
-          bn('100'),
+          bn('1000'),
           ZERO_ADDRESS,
-          bn('100')
+          bn('1000')
         )
       ).to.be.revertedWith('invalid dutchTradeImplementation address')
     })
@@ -351,42 +372,70 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.dutchAuctionLength()).to.equal(bn(0))
     })
 
-    it('Should allow to update disabled if Owner', async () => {
+    it('Should allow to update batchTradeDisabled/dutchTradeDisabled if Owner', async () => {
       // Check existing value
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // If not owner cannot update
-      await expect(broker.connect(other).setDisabled(true)).to.be.revertedWith('governance only')
+      await expect(broker.connect(other).setBatchTradeDisabled(true)).to.be.revertedWith(
+        'governance only'
+      )
+      await expect(
+        broker.connect(other).setDutchTradeDisabled(token0.address, true)
+      ).to.be.revertedWith('governance only')
 
       // Check value did not change
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
-      // Update with owner
-      await expect(broker.connect(owner).setDisabled(true))
-        .to.emit(broker, 'DisabledSet')
+      // Update batchTradeDisabled with owner
+      await expect(broker.connect(owner).setBatchTradeDisabled(true))
+        .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(false, true)
 
       // Check value was updated
-      expect(await broker.disabled()).to.equal(true)
+      expect(await broker.batchTradeDisabled()).to.equal(true)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // Update back to false
-      await expect(broker.connect(owner).setDisabled(false))
-        .to.emit(broker, 'DisabledSet')
+      await expect(broker.connect(owner).setBatchTradeDisabled(false))
+        .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(true, false)
 
       // Check value was updated
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
+
+      // Update dutchTradeDisabled with owner
+      await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, true))
+        .to.emit(broker, 'DutchTradeDisabledSet')
+        .withArgs(token0.address, false, true)
+
+      // Check value was updated
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(true)
+      expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
+
+      // Update back to false
+      await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, false))
+        .to.emit(broker, 'DutchTradeDisabledSet')
+        .withArgs(token0.address, true, false)
+
+      // Check value was updated
+      expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
     })
   })
 
   describe('Trade Management', () => {
-    it('Should not allow to open trade if Disabled', async () => {
-      // Disable Broker
-      await expect(broker.connect(owner).setDisabled(true))
-        .to.emit(broker, 'DisabledSet')
+    it('Should not allow to open Batch trade if Disabled', async () => {
+      // Disable Broker Batch Auctions
+      await expect(broker.connect(owner).setBatchTradeDisabled(true))
+        .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(false, true)
 
-      // Attempt to open trade
       const tradeRequest: ITradeRequest = {
         sell: collateral0.address,
         buy: collateral1.address,
@@ -394,13 +443,59 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         minBuyAmount: bn('0'),
       }
 
+      // Batch Auction openTrade should fail
       await whileImpersonating(backingManager.address, async (bmSigner) => {
         await expect(
           broker.connect(bmSigner).openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
-        ).to.be.revertedWith('broker disabled')
+        ).to.be.revertedWith('batch auctions disabled')
+      })
+    })
+
+    it('Should not allow to open Dutch trade if Disabled for either token', async () => {
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await token0.mint(backingManager.address, tradeRequest.sellAmount)
+        await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+
+        // Should succeed in callStatic
+        await broker
+          .connect(bmSigner)
+          .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+
+        // Disable Broker Dutch Auctions for token0
+        await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, true))
+          .to.emit(broker, 'DutchTradeDisabledSet')
+          .withArgs(token0.address, false, true)
+
+        // Dutch Auction openTrade should fail now
         await expect(
           broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
-        ).to.be.revertedWith('broker disabled')
+        ).to.be.revertedWith('dutch auctions disabled for token pair')
+
+        // Re-enable Dutch Auctions for token0
+        await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, false))
+          .to.emit(broker, 'DutchTradeDisabledSet')
+          .withArgs(token0.address, true, false)
+
+        // Should succeed in callStatic
+        await broker
+          .connect(bmSigner)
+          .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+
+        // Disable Broker Dutch Auctions for token1
+        await expect(broker.connect(owner).setDutchTradeDisabled(token1.address, true))
+          .to.emit(broker, 'DutchTradeDisabledSet')
+          .withArgs(token1.address, false, true)
+
+        // Dutch Auction openTrade should fail now
+        await expect(
+          broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
+        ).to.be.revertedWith('dutch auctions disabled for token pair')
       })
     })
 
@@ -454,7 +549,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
     it('Should not allow to report violation if not trade contract', async () => {
       // Check not disabled
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
 
       // Should not allow to report violation from any address
       await expect(broker.connect(addr1).reportViolation()).to.be.revertedWith(
@@ -469,12 +564,12 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
 
       // Check nothing changed
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
     })
 
     it('Should not allow to report violation if paused or frozen', async () => {
       // Check not disabled
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
 
       await main.connect(owner).pauseTrading()
 
@@ -491,13 +586,13 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       )
 
       // Check nothing changed
-      expect(await broker.disabled()).to.equal(false)
+      expect(await broker.batchTradeDisabled()).to.equal(false)
     })
   })
 
   describe('Trades', () => {
     context('GnosisTrade', () => {
-      const amount = bn('100e18')
+      const amount = fp('100.0')
       let trade: GnosisTrade
 
       beforeEach(async () => {
@@ -761,6 +856,98 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.canSettle()).to.equal(false)
       })
 
+      it('Settle frontrun regression check - should be OK', async () => {
+        // Initialize trade - simulate from backingManager
+        // token0 18 decimals
+        // token1 6 decimals
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: fp('100.0'),
+          minBuyAmount: parseUnits('95.0', 6),
+        }
+
+        // Fund trade and initialize
+        await token0.connect(owner).mint(backingManager.address, tradeRequest.sellAmount)
+
+        let newTradeAddress = ''
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          const brokerWithBM = broker.connect(bmSigner)
+          newTradeAddress = await brokerWithBM.callStatic.openTrade(
+            TradeKind.BATCH_AUCTION,
+            tradeRequest,
+            prices
+          )
+          await brokerWithBM.openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+        })
+        trade = GnosisTrade__factory.connect(newTradeAddress, owner)
+
+        await advanceTime(config.batchAuctionLength.div(10).toString())
+
+        // Place minimum bid
+        const bid = {
+          bidder: addr1.address,
+          sellAmount: tradeRequest.sellAmount,
+          buyAmount: tradeRequest.minBuyAmount,
+        }
+        await token1.connect(owner).mint(addr1.address, bid.buyAmount)
+        await token1.connect(addr1).approve(gnosis.address, bid.buyAmount)
+        await gnosis.placeBid(0, bid)
+
+        // Advance time till trade can be settled
+        await advanceTime(config.batchAuctionLength.add(100).toString())
+
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          const tradeWithBm = GnosisTrade__factory.connect(newTradeAddress, bmSigner)
+
+          const normalValues = await tradeWithBm.callStatic.settle()
+
+          expect(normalValues.boughtAmt).to.eq(tradeRequest.minBuyAmount)
+          expect(normalValues.soldAmt).to.eq(tradeRequest.sellAmount)
+
+          // Simulate someone frontrunning settlement and adding more funds to the trade
+          await token0.connect(owner).mint(tradeWithBm.address, fp('10'))
+          await token1.connect(owner).mint(tradeWithBm.address, parseUnits('1', 6))
+
+          // Simulate settlement after manipulating the trade
+          let frontRunnedValues = await tradeWithBm.callStatic.settle()
+          expect(frontRunnedValues.boughtAmt).to.eq(
+            tradeRequest.minBuyAmount.add(parseUnits('1', 6))
+          )
+          expect(frontRunnedValues.soldAmt).to.eq(tradeRequest.sellAmount.sub(fp('10')))
+          // We can manipulate boughtAmt up and soldAmt down.
+          // So we're unable to manipualte the clearing price down and force a violation.
+
+          // uint192 clearingPrice = shiftl_toFix(adjustedBuyAmt, -int8(buy.decimals())).div(
+          //   shiftl_toFix(adjustedSoldAmt, -int8(sell.decimals()))
+          // );
+          // if (clearingPrice.lt(worstCasePrice)) {
+          //   broker.reportViolation();
+          // }
+          await token0.connect(owner).mint(tradeWithBm.address, fp('10'))
+          await token1.connect(owner).mint(tradeWithBm.address, parseUnits('1', 6))
+          frontRunnedValues = await tradeWithBm.callStatic.settle()
+          expect(frontRunnedValues.boughtAmt).to.eq(
+            tradeRequest.minBuyAmount.add(parseUnits('2', 6))
+          )
+          expect(frontRunnedValues.soldAmt).to.eq(tradeRequest.sellAmount.sub(fp('20')))
+
+          expect(await broker.batchTradeDisabled()).to.be.false
+          await tradeWithBm.settle()
+          expect(await broker.batchTradeDisabled()).to.be.false
+        })
+
+        // Check status
+        expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+        expect(await trade.canSettle()).to.equal(false)
+
+        // It's potentially possible to prevent the reportViolation call to be called
+        // if (sellBal < initBal) {
+        // if sellBal get's set to initBal, then the GnosisTrade will ignore the boughtAmt
+        // But it's unknown if this could be exploited
+      })
+
       it('Should protect against reentrancy when settling GnosisTrade', async () => {
         // Create a Reetrant Gnosis
         const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
@@ -937,6 +1124,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await token0.balanceOf(trade.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
       })
+
+      // There is no test here for the reportViolation case; that is in Revenues.test.ts
     })
 
     context('DutchTrade', () => {
@@ -978,14 +1167,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.sell()).to.equal(token0.address)
         expect(await trade.buy()).to.equal(token1.address)
         expect(await trade.sellAmount()).to.equal(amount)
-        expect(await trade.startTime()).to.equal((await getLatestBlockTimestamp()) + 12)
+        expect(await trade.startBlock()).to.equal((await getLatestBlockNumber()) + 1)
+        const tradeLen = (await trade.endBlock()).sub(await trade.startBlock())
         expect(await trade.endTime()).to.equal(
-          (await trade.startTime()) + config.dutchAuctionLength.toNumber()
+          tradeLen.mul(12).add(await getLatestBlockTimestamp())
         )
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
-        expect(await trade.lowPrice()).to.equal(prices.sellLow.mul(fp('1')).div(prices.buyHigh))
+        expect(await trade.worstPrice()).to.equal(prices.sellLow.mul(fp('1')).div(prices.buyHigh))
         expect(await trade.canSettle()).to.equal(false)
 
         // Attempt to initialize again
@@ -1050,14 +1240,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.not.be.reverted
 
         // Check trade values
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
         const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
-        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
+        expect(await trade.worstPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
       })
 
       it('Should apply full maxTradeSlippage with low maxTradeVolume', async () => {
@@ -1093,57 +1283,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.not.be.reverted
 
         // Check trade values
-        expect(await trade.middlePrice()).to.equal(
+        expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
         const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
         const withSlippage = withoutSlippage.sub(
           withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
         )
-        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
-      })
-
-      it('Should apply full maxTradeSlippage with low maxTradeVolume', async () => {
-        // Set low maxTradeVolume for collateral
-        const FiatCollateralFactory = await ethers.getContractFactory('FiatCollateral')
-        const newCollateral0: FiatCollateral = <FiatCollateral>await FiatCollateralFactory.deploy({
-          priceTimeout: PRICE_TIMEOUT,
-          chainlinkFeed: await collateral0.chainlinkFeed(),
-          oracleError: ORACLE_ERROR,
-          erc20: token0.address,
-          maxTradeVolume: bn(500),
-          oracleTimeout: ORACLE_TIMEOUT,
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: DEFAULT_THRESHOLD,
-          delayUntilDefault: DELAY_UNTIL_DEFAULT,
-        })
-
-        // Refresh and swap collateral
-        await newCollateral0.refresh()
-        await assetRegistry.connect(owner).swapRegistered(newCollateral0.address)
-
-        // Fund trade and initialize
-        await token0.connect(owner).mint(trade.address, amount)
-        await expect(
-          trade.init(
-            backingManager.address,
-            newCollateral0.address,
-            collateral1.address,
-            amount,
-            config.dutchAuctionLength,
-            prices
-          )
-        ).to.not.be.reverted
-
-        // Check trade values
-        expect(await trade.middlePrice()).to.equal(
-          divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
-        )
-        const withoutSlippage = prices.sellLow.mul(fp('1')).div(prices.buyHigh)
-        const withSlippage = withoutSlippage.sub(
-          withoutSlippage.mul(config.maxTradeSlippage).div(fp('1'))
-        )
-        expect(await trade.lowPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
+        expect(await trade.worstPrice()).to.be.closeTo(withSlippage, withSlippage.div(bn('1e9')))
       })
 
       it('Should not allow to initialize an unfunded trade', async () => {
@@ -1180,8 +1327,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('auction not over')
         })
 
-        // Advance time till trade can be settled
-        await advanceTime(config.dutchAuctionLength.add(100).toString())
+        // Advance blocks til trade can be settled
+        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
+        await advanceBlocks(tradeLen.add(1))
 
         // Settle trade
         expect(await trade.canSettle()).to.equal(true)
@@ -1218,8 +1366,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           'only after trade is closed'
         )
 
-        // Advance time till trade can be settled
-        await advanceTime(config.dutchAuctionLength.add(100).toString())
+        // Advance blocks til trade can be settled
+        const tradeLen = (await trade.endBlock()).sub(await getLatestBlockNumber())
+        await advanceBlocks(tradeLen.add(1))
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -1249,6 +1398,149 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Check balances again - funds sent to origin
         expect(await token0.balanceOf(trade.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(amount.add(newFunds))
+      })
+
+      // There is no test here for the reportViolation case; that is in Revenues.test.ts
+    })
+  })
+
+  describeExtreme(`Extreme Values ${SLOW ? 'slow mode' : 'fast mode'}`, () => {
+    if (!(Implementation.P1 && useEnv('EXTREME'))) return // prevents bunch of skipped tests
+
+    async function runScenario([
+      sellTokDecimals,
+      buyTokDecimals,
+      auctionSellAmt,
+      progression,
+    ]: BigNumber[]) {
+      // Factories
+      const ERC20Factory = await ethers.getContractFactory('ERC20MockDecimals')
+      const CollFactory = await ethers.getContractFactory('FiatCollateral')
+      const sellTok = await ERC20Factory.deploy('Sell Token', 'SELL', sellTokDecimals)
+      const buyTok = await ERC20Factory.deploy('Buy Token', 'BUY', buyTokDecimals)
+      const sellColl = <FiatCollateral>await CollFactory.deploy({
+        priceTimeout: MAX_UINT48,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: bn('1'), // minimize
+        erc20: sellTok.address,
+        maxTradeVolume: MAX_UINT192,
+        oracleTimeout: MAX_UINT48,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.01'), // shouldn't matter
+        delayUntilDefault: bn('604800'), // shouldn't matter
+      })
+      await assetRegistry.connect(owner).register(sellColl.address)
+      const buyColl = <FiatCollateral>await CollFactory.deploy({
+        priceTimeout: MAX_UINT48,
+        chainlinkFeed: await collateral0.chainlinkFeed(),
+        oracleError: bn('1'), // minimize
+        erc20: buyTok.address,
+        maxTradeVolume: MAX_UINT192,
+        oracleTimeout: MAX_UINT48,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: fp('0.01'), // shouldn't matter
+        delayUntilDefault: bn('604800'), // shouldn't matter
+      })
+      await assetRegistry.connect(owner).register(buyColl.address)
+
+      // Set basket
+      await basketHandler
+        .connect(owner)
+        .setPrimeBasket([sellTok.address, buyTok.address], [fp('0.5'), fp('0.5')])
+      await basketHandler.connect(owner).refreshBasket()
+
+      const MAX_ERC20_SUPPLY = bn('1e48') // from docs/solidity-style.md
+
+      // Max out throttles
+      const issuanceThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
+      const redemptionThrottleParams = { amtRate: MAX_ERC20_SUPPLY, pctRate: 0 }
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      await advanceTime(3600)
+
+      // Mint coll tokens to addr1
+      await buyTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
+      await sellTok.connect(owner).mint(addr1.address, MAX_ERC20_SUPPLY)
+
+      // Issue RToken
+      await buyTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
+      await sellTok.connect(addr1).approve(rToken.address, MAX_ERC20_SUPPLY)
+      await rToken.connect(addr1).issue(MAX_ERC20_SUPPLY.div(2))
+
+      // Burn buyTok from backingManager and send extra sellTok
+      const burnAmount = divCeil(
+        auctionSellAmt.mul(bn(10).pow(buyTokDecimals)),
+        bn(10).pow(sellTokDecimals)
+      )
+      await buyTok.burn(backingManager.address, burnAmount)
+      await sellTok.connect(addr1).transfer(backingManager.address, auctionSellAmt.mul(10))
+
+      // Rebalance should cause backingManager to trade about auctionSellAmt, though not exactly
+      await backingManager.setMaxTradeSlippage(bn('0'))
+      await backingManager.setMinTradeVolume(bn('0'))
+      await expect(backingManager.rebalance(TradeKind.DUTCH_AUCTION))
+        .to.emit(backingManager, 'TradeStarted')
+        .withArgs(anyValue, sellTok.address, buyTok.address, anyValue, anyValue)
+
+      // Get Trade
+      const tradeAddr = await backingManager.trades(sellTok.address)
+      await buyTok.connect(addr1).approve(tradeAddr, MAX_ERC20_SUPPLY)
+      const trade = await ethers.getContractAt('DutchTrade', tradeAddr)
+      const currentBlock = bn(await getLatestBlockNumber())
+      const toAdvance = progression
+        .mul((await trade.endBlock()).sub(currentBlock))
+        .div(fp('1'))
+        .sub(1)
+      if (toAdvance.gt(0)) await advanceBlocks(toAdvance)
+
+      // Bid
+      const sellAmt = await trade.lot()
+      const bidBlock = bn('1').add(await getLatestBlockNumber())
+      const bidAmt = await trade.bidAmount(bidBlock)
+      expect(bidAmt).to.be.gt(0)
+      const buyBalBefore = await buyTok.balanceOf(backingManager.address)
+      const sellBalBefore = await sellTok.balanceOf(addr1.address)
+      await expect(trade.connect(addr1).bid())
+        .to.emit(backingManager, 'TradeSettled')
+        .withArgs(anyValue, sellTok.address, buyTok.address, sellAmt, bidAmt)
+
+      // Check balances
+      expect(await sellTok.balanceOf(addr1.address)).to.equal(sellBalBefore.add(sellAmt))
+      expect(await buyTok.balanceOf(backingManager.address)).to.equal(buyBalBefore.add(bidAmt))
+      expect(await sellTok.balanceOf(trade.address)).to.equal(0)
+      expect(await buyTok.balanceOf(trade.address)).to.equal(0)
+
+      // Check disabled status
+      const shouldDisable = progression.lt(fp('0.2'))
+      expect(await broker.dutchTradeDisabled(sellTok.address)).to.equal(shouldDisable)
+      expect(await broker.dutchTradeDisabled(buyTok.address)).to.equal(shouldDisable)
+    }
+
+    // ==== Generate the tests ====
+
+    // applied to both buy and sell tokens
+    const decimals = [bn('1'), bn('6'), bn('8'), bn('9'), bn('18')]
+
+    // auction sell amount
+    const auctionSellAmts = [bn('2'), bn('1595439874635'), bn('987321984732198435645846513')]
+
+    // auction progression %: these will get rounded to blocks later
+    const progression = [fp('0'), fp('0.321698432589749813'), fp('0.798138321987329646'), fp('1')]
+
+    // total cases is 5 * 5 * 3 * 4 = 300
+
+    if (SLOW) {
+      progression.push(fp('0.176334768961354965'), fp('0.523449931646439834'))
+
+      // total cases is 5 * 5 * 3 * 6 = 450
+    }
+
+    const paramList = cartesianProduct(decimals, decimals, auctionSellAmts, progression)
+
+    const numCases = paramList.length.toString()
+    paramList.forEach((params, index) => {
+      it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
+        await runScenario(params)
       })
     })
   })

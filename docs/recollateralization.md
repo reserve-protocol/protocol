@@ -8,6 +8,8 @@ Recollateralization takes place in the central loop of [`BackingManager.rebalanc
 
 The trading algorithm is isolated in [RecollateralizationLib.sol](../contracts/p1/mixins/RecollateralizationLib.sol). This document describes the algorithm implemented by the library at a high-level, as well as the concepts required to evaluate the correctness of the implementation.
 
+Note: In case of an upwards default, as in a token is worth _more_ than what it is supposed to be, the token redemption is worth more than the peg during recollateralization process. This will continue to be the case until the rebalancing process is complete. This is a good thing, and the protocol should be able to take advantage of this.
+
 ## High-level overview
 
 ```solidity

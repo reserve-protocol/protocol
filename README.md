@@ -24,6 +24,7 @@ For a much more detailed explanation of the economic design, including an hour-l
 - [System Design](docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
 - [Our Solidity Style](docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, estpecially where those go beyond standard practice.
 - [Writing Collateral Plugins](docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
+- [Building on Top](docs/build-on-top.md): How to build on top of Reserve, including information about long-lived fork environments.
 - [MEV](docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programatically.
 - [Rebalancing Algorithm](docs/recollateralization.md): Description of our trading algorithm during the recollateralization process
 - [Changelog](CHANGELOG.md): Release changelog
@@ -155,6 +156,10 @@ If you would like to contribute, you'll need to configure a secret in your fork 
 Usage: `https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}`
 
 To get setup with tenderly, install the [tenderly cli](https://github.com/Tenderly/tenderly-cli). and login with `tenderly login --authentication-method access-key --access-key {your_access_key} --force`.
+
+## Responsible Disclosure
+
+[Immunifi](https://immunefi.com/bounty/reserve/)
 
 ## External Documentation
 

@@ -19,6 +19,11 @@ import {
   getLatestBlockTimestamp,
   setNextBlockTimestamp,
 } from '#/test/utils/time'
+import snapshotGasCost from '../../../utils/snapshotGasCost'
+import { IMPLEMENTATION, Implementation } from '../../../fixtures'
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
@@ -635,6 +640,55 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         })
 
         describe('collateral-specific tests', collateralSpecificStatusTests)
+      })
+
+      describeGas('Gas Reporting', () => {
+        context('refresh()', () => {
+          afterEach(async () => {
+            await snapshotGasCost(ctx.collateral.refresh())
+            await snapshotGasCost(ctx.collateral.refresh()) // 2nd refresh can be different than 1st
+          })
+
+          it('during SOUND', async () => {
+            // pass
+          })
+
+          it('after hard default', async () => {
+            const currentExchangeRate = await ctx.curvePool.get_virtual_price()
+            await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
+          })
+
+          it('during soft default', async () => {
+            // Depeg first feed - Reducing price by 20% from 1 to 0.8
+            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
+            await updateAnswerTx.wait()
+          })
+
+          it('after soft default', async () => {
+            // Depeg first feed - Reducing price by 20% from 1 to 0.8
+            const updateAnswerTx = await ctx.feeds[0].updateAnswer(bn('8e7'))
+            await updateAnswerTx.wait()
+            await expect(ctx.collateral.refresh())
+              .to.emit(ctx.collateral, 'CollateralStatusChanged')
+              .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+            await advanceTime(await ctx.collateral.delayUntilDefault())
+          })
+
+          it('after oracle timeout', async () => {
+            const oracleTimeout = await ctx.collateral.oracleTimeout()
+            await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+            await advanceBlocks(oracleTimeout / 12)
+          })
+
+          it('after full price timeout', async () => {
+            await advanceTime(
+              (await ctx.collateral.priceTimeout()) + (await ctx.collateral.oracleTimeout())
+            )
+            const lotP = await ctx.collateral.lotPrice()
+            expect(lotP[0]).to.equal(0)
+            expect(lotP[1]).to.equal(0)
+          })
+        })
       })
     })
   })

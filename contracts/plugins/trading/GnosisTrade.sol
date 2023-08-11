@@ -184,11 +184,18 @@ contract GnosisTrade is ITrade {
 
         // Transfer balances to origin
         uint256 sellBal = sell.balanceOf(address(this));
+
+        // As raised in C4's review, this balance can be manupulated by a frontrunner
+        // It won't really affect the outcome of the trade, as protocol still gets paid
+        // and it just gets a better clearing price than expected.
+        // Fixing it would require some complex logic, as SimpleAuction does not expose
+        // the amount of tokens bought by the auction after the tokens are settled.
+        // So we will live with this for now. Worst case, there will be a mismatch between
+        // the trades recorded by the IDO contracts and on our side.
         boughtAmt = buy.balanceOf(address(this));
 
         if (sellBal > 0) IERC20Upgradeable(address(sell)).safeTransfer(origin, sellBal);
         if (boughtAmt > 0) IERC20Upgradeable(address(buy)).safeTransfer(origin, boughtAmt);
-
         // Check clearing prices
         if (sellBal < initBal) {
             soldAmt = initBal - sellBal;

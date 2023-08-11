@@ -284,7 +284,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await newBroker.gnosis()).to.equal(gnosis.address)
       expect(await newBroker.batchAuctionLength()).to.equal(config.batchAuctionLength)
       expect(await newBroker.dutchAuctionLength()).to.equal(config.dutchAuctionLength)
-      expect(await newBroker.disabled()).to.equal(false)
+      expect(await newBroker.batchTradeDisabled()).to.equal(false)
+      expect(await newBroker.dutchTradeDisabled(rToken.address)).to.equal(false)
+      expect(await newBroker.dutchTradeDisabled(rsr.address)).to.equal(false)
       expect(await newBroker.main()).to.equal(main.address)
     })
 
@@ -553,7 +555,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       // Check state is preserved
       expect(await brokerV2.gnosis()).to.equal(gnosis.address)
       expect(await brokerV2.batchAuctionLength()).to.equal(config.batchAuctionLength)
-      expect(await brokerV2.disabled()).to.equal(false)
+      expect(await brokerV2.batchTradeDisabled()).to.equal(false)
+      expect(await brokerV2.dutchTradeDisabled(rToken.address)).to.equal(false)
+      expect(await brokerV2.dutchTradeDisabled(rsr.address)).to.equal(false)
       expect(await brokerV2.main()).to.equal(main.address)
 
       // Check new version is implemented

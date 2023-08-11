@@ -25,7 +25,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
     // solhint-disable-next-line var-name-mixedcase
-    uint48 public immutable MIN_AUCTION_LENGTH; // {s} 2 blocks based on network
+    uint48 public immutable MIN_AUCTION_LENGTH; // {s} 20 blocks, based on network
 
     // Added for interface compatibility with P1
     ITrade public batchTradeImplementation;
@@ -38,10 +38,12 @@ contract BrokerP0 is ComponentP0, IBroker {
     uint48 public batchAuctionLength; // {s} the length of a Gnosis EasyAuction
     uint48 public dutchAuctionLength; // {s} the length of a Dutch Auction
 
-    bool public disabled;
+    bool public batchTradeDisabled;
+
+    mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
     constructor() {
-        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 2;
+        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 20;
     }
 
     function init(
@@ -69,7 +71,6 @@ contract BrokerP0 is ComponentP0, IBroker {
         TradeRequest memory req,
         TradePrices memory prices
     ) external returns (ITrade) {
-        require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
 
         address caller = _msgSender();
@@ -93,8 +94,23 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @custom:protected
     function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
-        emit DisabledSet(disabled, true);
-        disabled = true;
+        ITrade trade = ITrade(_msgSender());
+        TradeKind kind = trade.KIND();
+
+        if (kind == TradeKind.BATCH_AUCTION) {
+            emit BatchTradeDisabledSet(batchTradeDisabled, true);
+            batchTradeDisabled = true;
+        } else if (kind == TradeKind.DUTCH_AUCTION) {
+            IERC20Metadata sell = trade.sell();
+            emit DutchTradeDisabledSet(sell, dutchTradeDisabled[sell], true);
+            dutchTradeDisabled[sell] = true;
+
+            IERC20Metadata buy = trade.buy();
+            emit DutchTradeDisabledSet(buy, dutchTradeDisabled[buy], true);
+            dutchTradeDisabled[buy] = true;
+        } else {
+            revert("unrecognized trade kind");
+        }
     }
 
     /// @param maxTokensAllowed {qTok} The max number of sell tokens allowed by the trading platform
@@ -174,6 +190,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     // === Private ===
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
+        require(!batchTradeDisabled, "batch auctions disabled");
         require(batchAuctionLength > 0, "batch auctions not enabled");
         GnosisTrade trade = GnosisTrade(Clones.clone(address(batchTradeImplementation)));
         trades[address(trade)] = true;
@@ -202,6 +219,10 @@ contract BrokerP0 is ComponentP0, IBroker {
         TradePrices memory prices,
         ITrading caller
     ) private returns (ITrade) {
+        require(
+            !dutchTradeDisabled[req.sell.erc20()] && !dutchTradeDisabled[req.buy.erc20()],
+            "dutch auctions disabled for token pair"
+        );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
         DutchTrade trade = DutchTrade(Clones.clone(address(dutchTradeImplementation)));
         trades[address(trade)] = true;
@@ -217,8 +238,14 @@ contract BrokerP0 is ComponentP0, IBroker {
     }
 
     /// @custom:governance
-    function setDisabled(bool disabled_) external governance {
-        emit DisabledSet(disabled, disabled_);
-        disabled = disabled_;
+    function setBatchTradeDisabled(bool disabled) external governance {
+        emit BatchTradeDisabledSet(batchTradeDisabled, disabled);
+        batchTradeDisabled = disabled;
+    }
+
+    /// @custom:governance
+    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external governance {
+        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], disabled);
+        dutchTradeDisabled[erc20] = disabled;
     }
 }
