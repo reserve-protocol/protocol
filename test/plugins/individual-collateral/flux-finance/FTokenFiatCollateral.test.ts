@@ -1,3 +1,4 @@
+import { setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import collateralTests from '../collateralTests'
 import {
   CollateralFixtureContext,
@@ -261,9 +262,28 @@ all.forEach((curr: FTokenEnumeration) => {
     await mintFToken(underlying, curr.holderUnderlying, fToken, tok, amount, recipient)
   }
 
+  const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
+    const lastRound = await ctx.chainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
+    await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+  }
+
+  const increaseTargetPerRef = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
+    const lastRound = await ctx.chainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
+    await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+  }
+
   const increaseRefPerTok = async (ctx: CollateralFixtureContext) => {
     await advanceBlocks(1)
     await (ctx.tok as ICToken).exchangeRateCurrent()
+  }
+
+  const reduceRefPerTok = async (ctx: CollateralFixtureContext) => {
+    const tok = ctx.tok as CTokenWrapper
+    const fToken = await ethers.getContractAt('ICToken', await tok.underlying())
+    const underlying = await ethers.getContractAt('IERC20Metadata', await fToken.underlying())
+    await setStorageAt(underlying.address, 14, (await underlying.totalSupply()).add(100000)) // expand supply
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -324,14 +344,14 @@ all.forEach((curr: FTokenEnumeration) => {
     beforeEachRewardsTest: emptyFn,
     makeCollateralFixtureContext,
     mintCollateralTo,
-    reduceTargetPerRef: emptyFn,
-    increaseTargetPerRef: emptyFn,
-    reduceRefPerTok: emptyFn,
+    reduceTargetPerRef,
+    increaseTargetPerRef,
+    reduceRefPerTok,
     increaseRefPerTok,
     getExpectedPrice,
     itClaimsRewards: it.skip,
-    itChecksTargetPerRefDefault: it.skip,
-    itChecksRefPerTokDefault: it.skip,
+    itChecksTargetPerRefDefault: it,
+    itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
     itHasRevenueHiding: it.skip, // in this file
     resetFork,
