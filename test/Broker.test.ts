@@ -22,6 +22,7 @@ import {
   GnosisMock,
   GnosisMockReentrant,
   GnosisTrade,
+  GnosisTrade__factory,
   IAssetRegistry,
   TestIBackingManager,
   TestIBasketHandler,
@@ -55,6 +56,7 @@ import {
 } from './utils/time'
 import { ITradeRequest } from './utils/trades'
 import { useEnv } from '#/utils/env'
+import { parseUnits } from 'ethers/lib/utils'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -590,7 +592,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
   describe('Trades', () => {
     context('GnosisTrade', () => {
-      const amount = bn('100e18')
+      const amount = fp('100.0')
       let trade: GnosisTrade
 
       beforeEach(async () => {
@@ -852,6 +854,98 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Check status
         expect(await trade.status()).to.equal(TradeStatus.CLOSED)
         expect(await trade.canSettle()).to.equal(false)
+      })
+
+      it('Settle frontrun regression check - should be OK', async () => {
+        // Initialize trade - simulate from backingManager
+        // token0 18 decimals
+        // token1 6 decimals
+        const tradeRequest: ITradeRequest = {
+          sell: collateral0.address,
+          buy: collateral1.address,
+          sellAmount: fp('100.0'),
+          minBuyAmount: parseUnits('95.0', 6),
+        }
+
+        // Fund trade and initialize
+        await token0.connect(owner).mint(backingManager.address, tradeRequest.sellAmount)
+
+        let newTradeAddress = ''
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
+          const brokerWithBM = broker.connect(bmSigner)
+          newTradeAddress = await brokerWithBM.callStatic.openTrade(
+            TradeKind.BATCH_AUCTION,
+            tradeRequest,
+            prices
+          )
+          await brokerWithBM.openTrade(TradeKind.BATCH_AUCTION, tradeRequest, prices)
+        })
+        trade = GnosisTrade__factory.connect(newTradeAddress, owner)
+
+        await advanceTime(config.batchAuctionLength.div(10).toString())
+
+        // Place minimum bid
+        const bid = {
+          bidder: addr1.address,
+          sellAmount: tradeRequest.sellAmount,
+          buyAmount: tradeRequest.minBuyAmount,
+        }
+        await token1.connect(owner).mint(addr1.address, bid.buyAmount)
+        await token1.connect(addr1).approve(gnosis.address, bid.buyAmount)
+        await gnosis.placeBid(0, bid)
+
+        // Advance time till trade can be settled
+        await advanceTime(config.batchAuctionLength.add(100).toString())
+
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          const tradeWithBm = GnosisTrade__factory.connect(newTradeAddress, bmSigner)
+
+          const normalValues = await tradeWithBm.callStatic.settle()
+
+          expect(normalValues.boughtAmt).to.eq(tradeRequest.minBuyAmount)
+          expect(normalValues.soldAmt).to.eq(tradeRequest.sellAmount)
+
+          // Simulate someone frontrunning settlement and adding more funds to the trade
+          await token0.connect(owner).mint(tradeWithBm.address, fp('10'))
+          await token1.connect(owner).mint(tradeWithBm.address, parseUnits('1', 6))
+
+          // Simulate settlement after manipulating the trade
+          let frontRunnedValues = await tradeWithBm.callStatic.settle()
+          expect(frontRunnedValues.boughtAmt).to.eq(
+            tradeRequest.minBuyAmount.add(parseUnits('1', 6))
+          )
+          expect(frontRunnedValues.soldAmt).to.eq(tradeRequest.sellAmount.sub(fp('10')))
+          // We can manipulate boughtAmt up and soldAmt down.
+          // So we're unable to manipualte the clearing price down and force a violation.
+
+          // uint192 clearingPrice = shiftl_toFix(adjustedBuyAmt, -int8(buy.decimals())).div(
+          //   shiftl_toFix(adjustedSoldAmt, -int8(sell.decimals()))
+          // );
+          // if (clearingPrice.lt(worstCasePrice)) {
+          //   broker.reportViolation();
+          // }
+          await token0.connect(owner).mint(tradeWithBm.address, fp('10'))
+          await token1.connect(owner).mint(tradeWithBm.address, parseUnits('1', 6))
+          frontRunnedValues = await tradeWithBm.callStatic.settle()
+          expect(frontRunnedValues.boughtAmt).to.eq(
+            tradeRequest.minBuyAmount.add(parseUnits('2', 6))
+          )
+          expect(frontRunnedValues.soldAmt).to.eq(tradeRequest.sellAmount.sub(fp('20')))
+
+          expect(await broker.batchTradeDisabled()).to.be.false
+          await tradeWithBm.settle()
+          expect(await broker.batchTradeDisabled()).to.be.false
+        })
+
+        // Check status
+        expect(await trade.status()).to.equal(TradeStatus.CLOSED)
+        expect(await trade.canSettle()).to.equal(false)
+
+        // It's potentially possible to prevent the reportViolation call to be called
+        // if (sellBal < initBal) {
+        // if sellBal get's set to initBal, then the GnosisTrade will ignore the boughtAmt
+        // But it's unknown if this could be exploited
       })
 
       it('Should protect against reentrancy when settling GnosisTrade', async () => {
