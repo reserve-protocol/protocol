@@ -1571,6 +1571,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Create a new trade
         TradeFactory = await ethers.getContractFactory('GnosisTrade')
         newTrade = <GnosisTrade>await TradeFactory.deploy()
+        await setStorageAt(newTrade.address, 0, 0)
       })
 
       it('Open Trade ', async () => {
@@ -1613,6 +1614,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           )
         )
       })
+
+      // Bidding tested in Revenues.test.ts
 
       it('Settle Trade ', async () => {
         // Fund trade and initialize
@@ -1664,6 +1667,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Create a new trade
         TradeFactory = await ethers.getContractFactory('DutchTrade')
         newTrade = <DutchTrade>await TradeFactory.deploy()
+        await setStorageAt(newTrade.address, 0, 0)
       })
 
       it('Open Trade ', async () => {
@@ -1708,6 +1712,8 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
       })
 
+      // Bidding tested in Revenues.test.ts
+
       it('Settle Trade ', async () => {
         // Fund trade and initialize
         await token0.connect(owner).mint(newTrade.address, amount)
@@ -1721,7 +1727,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         )
 
         // Advance time till trade can be settled
-        await advanceTime(config.dutchAuctionLength.add(100).toString())
+        await advanceBlocks((await newTrade.endBlock()).sub(await getLatestBlockNumber()))
 
         // Settle trade
         await whileImpersonating(backingManager.address, async (bmSigner) => {
