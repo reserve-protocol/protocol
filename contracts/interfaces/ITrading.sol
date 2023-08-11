@@ -13,8 +13,8 @@ import "./IRewardable.sol";
  * @notice Common events and refresher function for all Trading contracts
  */
 interface ITrading is IComponent, IRewardableComponent {
-    event MaxTradeSlippageSet(uint192 indexed oldVal, uint192 indexed newVal);
-    event MinTradeVolumeSet(uint192 indexed oldVal, uint192 indexed newVal);
+    event MaxTradeSlippageSet(uint192 oldVal, uint192 newVal);
+    event MinTradeVolumeSet(uint192 oldVal, uint192 newVal);
 
     /// Emitted when a trade is started
     /// @param trade The one-time-use trade contract that was just deployed
