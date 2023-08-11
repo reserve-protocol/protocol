@@ -39,7 +39,7 @@ contract StaticATokenLM is
     using RayMathNoRounding for uint256;
 
     /// Emitted whenever a reward token balance is claimed
-    event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
+    event RewardsClaimed(IERC20 indexed erc20, uint256 amount);
 
     bytes public constant EIP712_REVISION = bytes("1");
     bytes32 internal constant EIP712_DOMAIN =
@@ -369,11 +369,7 @@ contract StaticATokenLM is
      * @param from The address of the sender of tokens
      * @param to The address of the receiver of tokens
      */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256
-    ) internal override {
+    function _beforeTokenTransfer(address from, address to, uint256) internal override {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
         }

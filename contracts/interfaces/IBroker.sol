@@ -33,17 +33,13 @@ struct TradeRequest {
  *   the continued proper functioning of trading platforms.
  */
 interface IBroker is IComponent {
-    event GnosisSet(IGnosis indexed oldVal, IGnosis indexed newVal);
-    event BatchTradeImplementationSet(ITrade indexed oldVal, ITrade indexed newVal);
-    event DutchTradeImplementationSet(ITrade indexed oldVal, ITrade indexed newVal);
-    event BatchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
-    event DutchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
-    event BatchTradeDisabledSet(bool indexed prevVal, bool indexed newVal);
-    event DutchTradeDisabledSet(
-        IERC20Metadata indexed erc20,
-        bool indexed prevVal,
-        bool indexed newVal
-    );
+    event GnosisSet(IGnosis oldVal, IGnosis newVal);
+    event BatchTradeImplementationSet(ITrade oldVal, ITrade newVal);
+    event DutchTradeImplementationSet(ITrade oldVal, ITrade newVal);
+    event BatchAuctionLengthSet(uint48 oldVal, uint48 newVal);
+    event DutchAuctionLengthSet(uint48 oldVal, uint48 newVal);
+    event BatchTradeDisabledSet(bool prevVal, bool newVal);
+    event DutchTradeDisabledSet(IERC20Metadata indexed erc20, bool prevVal, bool newVal);
 
     // Initialization
     function init(

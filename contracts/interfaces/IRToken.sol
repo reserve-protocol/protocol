@@ -25,7 +25,7 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     event Issuance(
         address indexed issuer,
         address indexed recipient,
-        uint256 indexed amount,
+        uint256 amount,
         uint192 baskets
     );
 
@@ -38,7 +38,7 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     event Redemption(
         address indexed redeemer,
         address indexed recipient,
-        uint256 indexed amount,
+        uint256  amount,
         uint192 baskets
     );
 

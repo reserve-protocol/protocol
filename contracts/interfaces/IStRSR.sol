@@ -29,7 +29,7 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
         uint256 indexed era,
         address indexed staker,
         uint256 rsrAmount,
-        uint256 indexed stRSRAmount
+        uint256 stRSRAmount
     );
 
     /// Emitted when an unstaking is started
@@ -83,19 +83,19 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     );
 
     /// Emitted whenever the exchange rate changes
-    event ExchangeRateSet(uint192 indexed oldVal, uint192 indexed newVal);
+    event ExchangeRateSet(uint192 oldVal, uint192 newVal);
 
     /// Emitted whenever RSR are paids out
-    event RewardsPaid(uint256 indexed rsrAmt);
+    event RewardsPaid(uint256 rsrAmt);
 
     /// Emitted if all the RSR in the staking pool is seized and all balances are reset to zero.
-    event AllBalancesReset(uint256 indexed newEra);
+    event AllBalancesReset(uint256 newEra);
     /// Emitted if all the RSR in the unstakin pool is seized, and all ongoing unstaking is voided.
-    event AllUnstakingReset(uint256 indexed newEra);
+    event AllUnstakingReset(uint256 newEra);
 
-    event UnstakingDelaySet(uint48 indexed oldVal, uint48 indexed newVal);
-    event RewardRatioSet(uint192 indexed oldVal, uint192 indexed newVal);
-    event WithdrawalLeakSet(uint192 indexed oldVal, uint192 indexed newVal);
+    event UnstakingDelaySet(uint48 oldVal, uint48 newVal);
+    event RewardRatioSet(uint192 oldVal, uint192 newVal);
+    event WithdrawalLeakSet(uint192 oldVal, uint192 newVal);
 
     // Initialization
     function init(

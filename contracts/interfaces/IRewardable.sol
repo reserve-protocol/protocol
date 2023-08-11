@@ -11,7 +11,7 @@ import "./IMain.sol";
  */
 interface IRewardable {
     /// Emitted whenever a reward token balance is claimed
-    event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
+    event RewardsClaimed(IERC20 indexed erc20, uint256 amount);
 
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// Must emit `RewardsClaimed` for each token rewards are claimed for
