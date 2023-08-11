@@ -1,17 +1,17 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `57750`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `60830`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `53281`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `56361`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after hard default 1`] = `91861`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after hard default 1`] = `98131`;
 
 exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after hard default 2`] = `36971`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `75731`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `81946`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `71262`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `77477`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `84175`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `90445`;
 
-exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `84175`;
+exports[`Collateral: CBEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `90445`;
