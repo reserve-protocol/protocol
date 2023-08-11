@@ -237,10 +237,7 @@ library BasketLibP1 {
         // For each tgt in target names, if we still need more weight for tgt then try to add the
         // backup basket for tgt to make up that weight:
         for (uint256 i = 0; i < targetsLength; ++i) {
-            uint192 _weight = totalWeights[i]; // gas-saver
-            uint192 _goodWeight = goodWeights[i]; // gas-saver
-
-            if (_weight.lte(_goodWeight)) continue; // Don't need any backup weight
+            if (totalWeights[i].lte(goodWeights[i])) continue; // Don't need any backup weight
             bytes32 _targetName = targetNames.at(i);
 
             // "tgt" = targetNames[i]
@@ -263,16 +260,15 @@ library BasketLibP1 {
             // Loop: for erc20 in backups(tgt)...
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; ++j) {
                 if (goodCollateral(_targetName, backup.erc20s[j], assetRegistry)) {
+                    uint192 backupWeight = totalWeights[i].minus(goodWeights[i]).div(
+                        // this div is safe: targetPerRef > 0: goodCollateral check
+                        assetRegistry.toColl(backup.erc20s[j]).targetPerRef().mulu(size),
+                        CEIL
+                    );
+
                     // Across this .add(), targetWeight(newBasket',erc20)
                     // = targetWeight(newBasket,erc20) + unsoundPrimeWt(tgt) / len(backups(tgt))
-                    newBasket.add(
-                        backup.erc20s[j],
-                        _weight.minus(_goodWeight).div(
-                            // this div is safe: targetPerRef > 0: goodCollateral check
-                            assetRegistry.toColl(backup.erc20s[j]).targetPerRef().mulu(size),
-                            CEIL
-                        )
-                    );
+                    BasketLibP1.add(newBasket, backup.erc20s[j], backupWeight);
                     assigned++;
                 }
             }
