@@ -15,7 +15,7 @@ library NetworkConfigLib {
         // untestable:
         //    most of the branches will be shown as uncovered, because we only run coverage
         //    on local Ethereum PoS network (31337). Manual testing was performed.
-        if (chainId == 1 || chainId == 5 || chainId == 31337) {
+        if (chainId == 1 || chainId == 3 || chainId == 5 || chainId == 31337) {
             return 12; // Ethereum PoS, Goerli, HH (tests)
         } else if (chainId == 8453 || chainId == 84531) {
             return 2; // Base, Base Goerli

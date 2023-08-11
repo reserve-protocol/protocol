@@ -79,13 +79,13 @@ const config: HardhatUserConfig = {
       gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
     tenderly: {
-      chainId: 1,
+      chainId: 3,
       url: TENDERLY_RPC_URL,
       accounts: {
         mnemonic: MNEMONIC,
       },
       // gasPrice: 10_000_000_000,
-      gasMultiplier: 1.015, // 1.5% buffer; seen failures on RToken deployment and asset refreshes
+      gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
   },
   solidity: {
@@ -117,7 +117,7 @@ const config: HardhatUserConfig = {
   mocha: {
     timeout: TIMEOUT,
     slow: 1000,
-    retries: 3
+    retries: 3,
   },
   contractSizer: {
     alphaSort: false,

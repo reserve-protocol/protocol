@@ -6,6 +6,10 @@ import "../../libraries/Fixed.sol";
 
 error StalePrice();
 
+interface EACAggregatorProxy {
+    function aggregator() external view returns (address);
+}
+
 /// Used by asset plugins to price their collateral
 library OracleLib {
     /// @dev Use for on-the-fly calculations that should revert
@@ -16,6 +20,11 @@ library OracleLib {
         view
         returns (uint192)
     {
+        // If the aggregator is not set, the chainlink feed has been deprecated
+        if (EACAggregatorProxy(address(chainlinkFeed)).aggregator() == address(0)) {
+            revert StalePrice();
+        }
+
         (uint80 roundId, int256 p, , uint256 updateTime, uint80 answeredInRound) = chainlinkFeed
         .latestRoundData();
 
