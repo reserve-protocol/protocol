@@ -183,7 +183,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
+        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -255,7 +255,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
+        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -446,6 +446,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "issuance amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "issuance pctRate too big");
         issuanceThrottle.useAvailable(totalSupply(), 0);
+
         emit IssuanceThrottleSet(issuanceThrottle.params, params);
         issuanceThrottle.params = params;
     }
@@ -456,6 +457,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "redemption amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "redemption pctRate too big");
         redemptionThrottle.useAvailable(totalSupply(), 0);
+
         emit RedemptionThrottleSet(redemptionThrottle.params, params);
         redemptionThrottle.params = params;
     }
