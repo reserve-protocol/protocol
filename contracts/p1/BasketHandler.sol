@@ -258,9 +258,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             if (s.worseThan(status_)) {
                 status_ = s;
             }
-            if (status_ == CollateralStatus.DISABLED) {
-                break;
-            }
         }
     }
 
