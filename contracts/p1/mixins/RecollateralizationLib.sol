@@ -181,6 +181,9 @@ library RecollateralizationLibP1 {
         int256 deltaTop; // D18{BU} even though this is int256, it is D18
         // not required for range.bottom
 
+        // to minimize total operations, range.bottom is calculated from a summed UoA
+        uint192 uoaBottom; // {UoA} pessimistic UoA estimate of balances above basketsHeld.bottom
+
         // (no space on the stack to cache erc20s.length)
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
             // Exclude RToken balances to avoid double counting value
@@ -193,15 +196,14 @@ library RecollateralizationLibP1 {
                 bal = bal.plus(reg.assets[i].bal(address(ctx.stRSR)));
             }
 
-            {
+            if (ctx.quantities[i] == 0) {
                 // Skip over dust-balance assets not in the basket
                 (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
 
                 // Intentionally include value of IFFY/DISABLED collateral
-                if (
-                    ctx.quantities[i] == 0 &&
-                    !TradeLib.isEnoughToSell(reg.assets[i], bal, lotLow, ctx.minTradeVolume)
-                ) continue;
+                if (!TradeLib.isEnoughToSell(reg.assets[i], bal, lotLow, ctx.minTradeVolume)) {
+                    continue;
+                }
             }
 
             (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/tok}
@@ -238,7 +240,7 @@ library RecollateralizationLibP1 {
                 // {tok} = {tok/BU} * {BU}
                 uint192 anchor = ctx.quantities[i].mul(ctx.basketsHeld.bottom, FLOOR);
 
-                // (1) Sell tokens at low price
+                // (1) Sum token value at low price
                 // {UoA} = {UoA/tok} * {tok}
                 uint192 val = low.mul(bal - anchor, FLOOR);
 
@@ -249,12 +251,7 @@ library RecollateralizationLibP1 {
                 //   in the calculation we have already calculated the UoA amount corresponding to
                 //   the excess token balance based on its low price, so we are already set up
                 //   to straightforwardly deduct the minTradeVolume before trying to buy BUs.
-                val = (val < ctx.minTradeVolume) ? 0 : val - ctx.minTradeVolume;
-
-                // (3) Buy BUs at their high price with the remaining value
-                // (4) Assume maximum slippage in trade
-                // {BU} = {UoA} * {1} / {UoA/BU}
-                range.bottom += val.mulDiv(FIX_ONE.minus(ctx.maxTradeSlippage), buPriceHigh, FLOOR);
+                uoaBottom += (val < ctx.minTradeVolume) ? 0 : val - ctx.minTradeVolume;
             }
         }
 
@@ -271,7 +268,12 @@ library RecollateralizationLibP1 {
         }
 
         // range.bottom
-        range.bottom += ctx.basketsHeld.bottom;
+        // (3) Buy BUs at their high price with the remaining value
+        // (4) Assume maximum slippage in trade
+        // {BU} = {UoA} * {1} / {UoA/BU}
+        range.bottom =
+            ctx.basketsHeld.bottom +
+            uoaBottom.mulDiv(FIX_ONE.minus(ctx.maxTradeSlippage), buPriceHigh, FLOOR);
         // reverting on overflow is appropriate here
 
         // ==== (3/3) Enforce (range.bottom <= range.top <= basketsNeeded) ====

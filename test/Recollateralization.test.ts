@@ -5191,10 +5191,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       let tradeAddr = await backingManager.trades(token2.address)
       let trade = await ethers.getContractAt('DutchTrade', tradeAddr)
       await backupToken1.connect(addr1).approve(trade.address, initialBal)
-      await advanceToTimestamp((await trade.endTime()) - 1)
+      await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
       await snapshotGasCost(trade.connect(addr1).bid())
 
-      // Expect new trade started -- bid in first block at ~1000x price
+      // Expect new trade started -- bid in last block
       expect(await backingManager.tradesOpen()).to.equal(1)
       expect(await backingManager.trades(token2.address)).to.equal(ZERO_ADDRESS)
       expect(await backingManager.trades(rsr.address)).to.not.equal(ZERO_ADDRESS)
