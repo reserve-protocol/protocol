@@ -643,6 +643,8 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       describeGas('Gas Reporting', () => {
+        if (IMPLEMENTATION != Implementation.P1 || !useEnv('REPORT_GAS')) return // hide pending
+
         context('refresh()', () => {
           afterEach(async () => {
             await snapshotGasCost(ctx.collateral.refresh())
