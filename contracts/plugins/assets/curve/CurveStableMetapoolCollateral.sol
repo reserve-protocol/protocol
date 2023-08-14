@@ -18,7 +18,8 @@ interface ICurveMetaPool is ICurvePool, IERC20Metadata {
  * tar = USD
  * UoA = USD
  *
- * @notice Curve pools with native ETH or ERC777 should be avoided, see docs/collateral.md for information
+ * @notice Curve pools with native ETH or ERC777 should be avoided,
+ *  see docs/collateral.md for information
  */
 contract CurveStableMetapoolCollateral is CurveStableCollateral {
     using OracleLib for AggregatorV3Interface;

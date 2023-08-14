@@ -21,7 +21,8 @@ import "../curve/PoolTokens.sol";
  * tar = USD
  * UoA = USD
  *
- * @notice Curve pools with native ETH or ERC777 should be avoided, see docs/collateral.md for information
+ * @notice Curve pools with native ETH or ERC777 should be avoided,
+ *  see docs/collateral.md for information
  */
 contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;

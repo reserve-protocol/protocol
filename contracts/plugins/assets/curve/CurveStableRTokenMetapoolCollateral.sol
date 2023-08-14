@@ -13,7 +13,8 @@ import "./CurveStableMetapoolCollateral.sol";
  * tar = USD
  * UoA = USD
  *
- * @notice Curve pools with native ETH or ERC777 should be avoided, see docs/collateral.md for information
+ * @notice Curve pools with native ETH or ERC777 should be avoided,
+ *  see docs/collateral.md for information
  */
 contract CurveStableRTokenMetapoolCollateral is CurveStableMetapoolCollateral {
     using FixLib for uint192;
