@@ -336,8 +336,8 @@ contract EasyAuction is Ownable {
         atStageSolutionSubmission(auctionId)
     {
         (, , uint96 auctioneerSellAmount) = auctionData[auctionId]
-            .initialAuctionOrder
-            .decodeOrder();
+        .initialAuctionOrder
+        .decodeOrder();
         uint256 sumBidAmount = auctionData[auctionId].interimSumBidAmount;
         bytes32 iterOrder = auctionData[auctionId].interimOrder;
 
@@ -438,7 +438,7 @@ contract EasyAuction is Ownable {
                 // Auction fully filled via partial match of currentOrder
                 uint256 sellAmountClearingOrder = sellAmountOfIter.sub(uncoveredBids);
                 auctionData[auctionId].volumeClearingPriceOrder = sellAmountClearingOrder
-                    .toUint96();
+                .toUint96();
                 currentBidSum = currentBidSum.sub(uncoveredBids);
                 clearingOrder = currentOrder;
             } else {
@@ -474,9 +474,9 @@ contract EasyAuction is Ownable {
                 );
 
                 fillVolumeOfAuctioneerOrder = currentBidSum
-                    .mul(fullAuctionedAmount)
-                    .div(minAuctionedBuyAmount)
-                    .toUint96();
+                .mul(fullAuctionedAmount)
+                .div(minAuctionedBuyAmount)
+                .toUint96();
             }
         }
         auctionData[auctionId].clearingPriceOrder = clearingOrder;
@@ -517,8 +517,8 @@ contract EasyAuction is Ownable {
         }
         AuctionData memory auction = auctionData[auctionId];
         (, uint96 priceNumerator, uint96 priceDenominator) = auction
-            .clearingPriceOrder
-            .decodeOrder();
+        .clearingPriceOrder
+        .decodeOrder();
         (uint64 userId, , ) = orders[0].decodeOrder();
         bool minFundingThresholdNotReached = auctionData[auctionId].minFundingThresholdNotReached;
         for (uint256 i = 0; i < orders.length; i++) {
@@ -568,8 +568,8 @@ contract EasyAuction is Ownable {
         } else {
             //[11]
             (, uint96 priceNumerator, uint96 priceDenominator) = auctionData[auctionId]
-                .clearingPriceOrder
-                .decodeOrder();
+            .clearingPriceOrder
+            .decodeOrder();
             uint256 unsettledAuctionTokens = fullAuctionedAmount.sub(fillVolumeOfAuctioneerOrder);
             uint256 auctioningTokenAmount = unsettledAuctionTokens.add(
                 feeAmount.mul(unsettledAuctionTokens).div(fullAuctionedAmount)

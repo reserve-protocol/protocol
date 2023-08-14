@@ -183,7 +183,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
+        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -255,7 +255,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
+        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -399,8 +399,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // Note: These are D18s, even though they are uint256s. This is because
         // we cannot assume we stay inside our valid range here, as that is what
         // we are checking in the first place
-        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
-        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
+        uint256 low = (FIX_ONE_256 * basketsNeeded_) / supply; // D18{BU/rTok}
+        uint256 high = (FIX_ONE_256 * basketsNeeded_ + (supply - 1)) / supply; // D18{BU/rTok}
 
         // here we take advantage of an implicit upcast from uint192 exchange rates
         require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
@@ -426,8 +426,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @return available {qRTok} The maximum redemption that can be performed in the current block
     function redemptionAvailable() external view returns (uint256 available) {
         uint256 supply = totalSupply();
-        uint256 hourlyLimit = redemptionThrottle.hourlyLimit(supply);
-        available = redemptionThrottle.currentlyAvailable(hourlyLimit);
+        available = redemptionThrottle.currentlyAvailable(redemptionThrottle.hourlyLimit(supply));
         if (supply < available) available = supply;
     }
 
@@ -447,6 +446,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "issuance amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "issuance pctRate too big");
         issuanceThrottle.useAvailable(totalSupply(), 0);
+
         emit IssuanceThrottleSet(issuanceThrottle.params, params);
         issuanceThrottle.params = params;
     }
@@ -457,6 +457,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "redemption amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "redemption pctRate too big");
         redemptionThrottle.useAvailable(totalSupply(), 0);
+
         emit RedemptionThrottleSet(redemptionThrottle.params, params);
         redemptionThrottle.params = params;
     }

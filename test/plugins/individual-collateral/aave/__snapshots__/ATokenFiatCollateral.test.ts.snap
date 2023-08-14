@@ -20,6 +20,6 @@ exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() durin
 
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 2`] = `93269`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 1`] = `128267`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 1`] = `128341`;
 
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 2`] = `92399`;
