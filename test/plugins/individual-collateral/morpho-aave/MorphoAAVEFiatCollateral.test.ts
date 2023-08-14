@@ -330,6 +330,7 @@ const makeAaveFiatCollateralTestSuite = (
     resetFork: getResetFork(FORK_BLOCK),
     collateralName,
     chainlinkDefaultAnswer: defaultCollateralOpts.defaultPrice!,
+    itIsPricedByPeg: true,
   }
 
   collateralTests(opts)
