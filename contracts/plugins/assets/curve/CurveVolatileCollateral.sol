@@ -12,6 +12,8 @@ import "./CurveStableCollateral.sol";
  * ref = volatilePlainPool pool invariant
  * tar = volatilePlainPool pool invariant
  * UoA = USD
+ *
+ * @notice Curve pools with native ETH or ERC777 should be avoided, see docs/collateral.md for information
  */
 contract CurveVolatileCollateral is CurveStableCollateral {
     using FixLib for uint192;
