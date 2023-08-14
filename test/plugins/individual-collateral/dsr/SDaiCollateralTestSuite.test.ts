@@ -212,6 +212,7 @@ const opts = {
   resetFork,
   collateralName: 'SDaiCollateral',
   chainlinkDefaultAnswer,
+  itIsPricedByPeg: true,
 }
 
 collateralTests(opts)
