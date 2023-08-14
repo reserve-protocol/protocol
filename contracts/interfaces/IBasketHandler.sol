@@ -36,7 +36,7 @@ interface IBasketHandler is IComponent {
     /// @param targetName The name of the target unit as a bytes32
     /// @param max The max number to use from `erc20s`
     /// @param erc20s The set of backup collateral tokens
-    event BackupConfigSet(bytes32 targetName, uint256 max, IERC20[] erc20s);
+    event BackupConfigSet(bytes32 indexed targetName, uint256 max, IERC20[] erc20s);
 
     /// Emitted when the warmup period is changed
     /// @param oldVal The old warmup period
