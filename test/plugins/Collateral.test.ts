@@ -2220,7 +2220,7 @@ describe('Collateral contracts', () => {
       it('after oracle timeout', async () => {
         const oracleTimeout = await tokenCollateral.oracleTimeout()
         await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
-        await advanceBlocks(oracleTimeout / 12)
+        await advanceBlocks(bn(oracleTimeout).div(12))
       })
 
       it('after full price timeout', async () => {

@@ -497,6 +497,8 @@ export default function fn<X extends CollateralFixtureContext>(
       describe('collateral-specific tests', collateralSpecificStatusTests)
 
       describeGas('Gas Reporting', () => {
+        if (IMPLEMENTATION != Implementation.P1 || !useEnv('REPORT_GAS')) return // hide pending
+
         context('refresh()', () => {
           afterEach(async () => {
             await snapshotGasCost(collateral.refresh())
