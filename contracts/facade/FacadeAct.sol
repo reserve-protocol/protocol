@@ -113,11 +113,11 @@ contract FacadeAct is IFacadeAct, Multicall {
             }
 
             surpluses[i] = erc20s[i].balanceOf(address(revenueTrader));
-            (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
-            if (lotLow == 0) continue;
+            (uint192 low, ) = reg.assets[i].price(); // {UoA/tok}
+            if (low == 0) continue;
 
             // {qTok} = {UoA} / {UoA/tok}
-            minTradeAmounts[i] = minTradeVolume.safeDiv(lotLow, FLOOR).shiftl_toUint(
+            minTradeAmounts[i] = minTradeVolume.safeDiv(low, FLOOR).shiftl_toUint(
                 int8(reg.assets[i].erc20Decimals())
             );
 
