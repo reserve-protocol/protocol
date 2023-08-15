@@ -64,7 +64,7 @@ abstract contract MorphoTokenisedDeposit is RewardableERC4626Vault {
     }
 
     function _decimalsOffset() internal view virtual override returns (uint8) {
-        return 0;
+        return 9;
     }
 
     function _withdraw(

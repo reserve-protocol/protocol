@@ -7,6 +7,12 @@ import { IERC4626 } from "../../../vendor/oz/IERC4626.sol";
 interface IMorpho {
     function supply(address _poolToken, uint256 _amount) external;
 
+    function supply(
+        address _poolToken,
+        address _onBehalf,
+        uint256 _amount
+    ) external;
+
     function withdraw(address _poolToken, uint256 _amount) external;
 }
 
