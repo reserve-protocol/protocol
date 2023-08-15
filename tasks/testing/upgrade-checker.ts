@@ -208,7 +208,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
 
     // 3. Run the 3.0.0 checks
-    // await runChecks3_0_0(hre, params.rtoken, params.governor, params.facadeact)
+    await runChecks3_0_0(hre, params.rtoken, params.governor)
 
     /*
 

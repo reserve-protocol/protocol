@@ -1,8 +1,10 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { expect } from 'chai'
 import { ProposalBuilder, buildProposal } from '../governance'
 import { Proposal } from '#/utils/subgraph'
 import { IImplementations, networkConfig } from '#/common/configuration'
 import { bn, fp } from '#/common/numbers'
+import { whileImpersonating } from '#/utils/impersonation'
 import {
   AssetRegistryP1,
   BackingManagerP1,
@@ -31,8 +33,26 @@ export default async (
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
+  const timelockAddress = await governor.timelock()
+  const assetRegistry = await hre.ethers.getContractAt(
+    'AssetRegistryP1',
+    await main.assetRegistry()
+  )
+  const basketHandler = await hre.ethers.getContractAt(
+    'BasketHandlerP1',
+    await main.basketHandler()
+  )
 
-  // TODO: 3.0.0 Specific checks
+  // Attempt to change target amounts
+  const usdcCollat = await assetRegistry.toColl(networkConfig['1'].tokens.USDC!)
+  const usdc = await hre.ethers.getContractAt('FiatCollateral', usdcCollat)
+
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await expect(
+      basketHandler.connect(tl).setPrimeBasket([await usdc.erc20()], [fp('20')])
+    ).to.be.revertedWith('new target weights')
+  })
+
   console.log('\n3.0.0 check succeeded!')
 }
 
