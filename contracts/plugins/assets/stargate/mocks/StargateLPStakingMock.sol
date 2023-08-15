@@ -59,6 +59,7 @@ contract StargateLPStakingMock is IStargateLPStaking {
     function addPool(IERC20 lpToken) internal {
         PoolInfo memory info;
         info.lpToken = lpToken;
+        info.allocPoint = 10;
         _poolInfo.push(info);
     }
 

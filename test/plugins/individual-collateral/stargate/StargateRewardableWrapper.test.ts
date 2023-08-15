@@ -255,10 +255,10 @@ describeFork('Wrapped S*USDC', () => {
     })
 
     it('claims previous rewards', async () => {
+      await wrapper.connect(bob).deposit(await mockPool.balanceOf(bob.address), bob.address)
       await stakingContract.addRewardsToUser(bn('0'), wrapper.address, bn('20000e18'))
       const availableReward = await stakingContract.pendingStargate('0', wrapper.address)
       await mockPool.mint(bob.address, initialAmount)
-      await wrapper.connect(bob).deposit(await mockPool.balanceOf(bob.address), bob.address)
       await wrapper.connect(bob).claimRewards()
 
       expect(availableReward).to.be.eq(await stargate.balanceOf(bob.address))
