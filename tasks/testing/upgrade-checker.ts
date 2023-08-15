@@ -16,7 +16,7 @@ import { passAndExecuteProposal, proposeUpgrade } from './upgrade-checker-utils/
 import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
 
 // run script for eUSD (version 3.0.0)
-// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
+// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --facadeact 0x98f292e6Bb4722664fEffb81448cCFB5B7211469
 
 /*
   This script is currently useful for the upcoming eUSD upgrade.
@@ -220,6 +220,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     /*
 
       switch basket and recollateralize - using Dutch Auctions
+      Also check for custom redemption
 
     */
     await pushOraclesForward(hre, params.rtoken)
@@ -242,7 +243,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const b = await basketHandler.getPrimeBasket()
     console.log(b.erc20s)
 
-    await recollateralize(hre, rToken.address, facadeAct.address, TradeKind.BATCH_AUCTION)
+    await recollateralize(hre, rToken.address, facadeAct.address, TradeKind.DUTCH_AUCTION)
   })
 
 task('propose', 'propose a gov action')

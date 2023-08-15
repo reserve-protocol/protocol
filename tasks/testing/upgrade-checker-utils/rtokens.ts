@@ -2,11 +2,10 @@ import { bn } from '#/common/numbers'
 import { ONE_PERIOD, TradeKind } from '#/common/constants'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber } from 'ethers'
-import { Interface, LogDescription, formatEther } from 'ethers/lib/utils'
+import { formatEther } from 'ethers/lib/utils'
 import { advanceTime } from '#/utils/time'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { runTrade } from './trades'
-import { logToken } from './logs'
+import { callAndGetNextTrade, runBatchTrade, runDutchTrade } from './trades'
 import { CollateralStatus } from '#/common/constants'
 
 type Balances = { [key: string]: BigNumber }
@@ -85,7 +84,21 @@ export const recollateralize = async (
   facadeActAddress: string,
   kind: TradeKind
 ) => {
-  console.log(`\n\n* * * * * Recollateralizing RToken ${rtokenAddress}...`)
+  if (kind == TradeKind.BATCH_AUCTION) {
+    await recollateralizeBatch(hre, rtokenAddress, facadeActAddress)
+  } else if (kind == TradeKind.DUTCH_AUCTION) {
+    await recollateralizeDutch(hre, rtokenAddress)
+  } else {
+    throw new Error(`Invalid Trade Type`)
+  }
+}
+
+const recollateralizeBatch = async (
+  hre: HardhatRuntimeEnvironment,
+  rtokenAddress: string,
+  facadeActAddress: string
+) => {
+  console.log(`\n\n* * * * * Recollateralizing (Batch) RToken ${rtokenAddress}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
   const facadeAct = await hre.ethers.getContractAt('FacadeAct', facadeActAddress)
 
@@ -102,39 +115,79 @@ export const recollateralize = async (
   // Move post warmup period
   await advanceTime(hre, (await basketHandler.warmupPeriod()) + 1)
 
-  const iface: Interface = backingManager.interface
+  //const iface: Interface = backingManager.interface
   let tradesRemain = true
   while (tradesRemain) {
-    const r = await backingManager.rebalance(kind) // TradeKind.BATCH_AUCTION
-    const resp = await r.wait()
-    for (const event of resp.events!) {
-      let parsedLog: LogDescription | undefined
-      try {
-        parsedLog = iface.parseLog(event)
-      } catch {}
-      if (parsedLog && parsedLog.name == 'TradeStarted') {
-        console.log(
-          `\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(
-            parsedLog.args.buy
-          )} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${
-            parsedLog.args.sellAmount
-          }`
-        )
-        await runTrade(hre, backingManager, parsedLog.args.sell, false)
-      }
+    const [newTradeCreated, newSellToken] = await callAndGetNextTrade(
+      backingManager.rebalance(TradeKind.BATCH_AUCTION),
+      backingManager
+    )
+
+    if (newTradeCreated) {
+      await runBatchTrade(hre, backingManager, newSellToken, false)
     }
 
     // Set tradesRemain
     ;[tradesRemain, , ,] = await facadeAct.callStatic.nextRecollateralizationAuction(
       backingManager.address
     )
-
     await advanceTime(hre, ONE_PERIOD.toString())
   }
 
   const basketStatus = await basketHandler.status()
   if (basketStatus != CollateralStatus.SOUND) {
     throw new Error(`Basket is not SOUND after recollateralizing new basket`)
+  }
+
+  if (!(await basketHandler.fullyCollateralized())) {
+    throw new Error(`Basket is not fully collateralized!`)
+  }
+
+  console.log('Recollateralization complete!')
+}
+
+const recollateralizeDutch = async (hre: HardhatRuntimeEnvironment, rtokenAddress: string) => {
+  console.log(`\n\n* * * * * Recollateralizing (Dutch) RToken ${rtokenAddress}...`)
+  const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
+
+  const main = await hre.ethers.getContractAt('IMain', await rToken.main())
+  const backingManager = await hre.ethers.getContractAt(
+    'BackingManagerP1',
+    await main.backingManager()
+  )
+  const basketHandler = await hre.ethers.getContractAt(
+    'BasketHandlerP1',
+    await main.basketHandler()
+  )
+
+  // Move post warmup period
+  await advanceTime(hre, (await basketHandler.warmupPeriod()) + 1)
+
+  let tradesRemain = false
+  let sellToken: string = ''
+
+  const [newTradeCreated, initialSellToken] = await callAndGetNextTrade(
+    backingManager.rebalance(TradeKind.DUTCH_AUCTION),
+    backingManager
+  )
+
+  if (newTradeCreated) {
+    tradesRemain = true
+    sellToken = initialSellToken
+
+    while (tradesRemain) {
+      ;[tradesRemain, sellToken] = await runDutchTrade(hre, backingManager, sellToken)
+      await advanceTime(hre, ONE_PERIOD.toString())
+    }
+  }
+
+  const basketStatus = await basketHandler.status()
+  if (basketStatus != CollateralStatus.SOUND) {
+    throw new Error(`Basket is not SOUND after recollateralizing new basket`)
+  }
+
+  if (!(await basketHandler.fullyCollateralized())) {
+    throw new Error(`Basket is not fully collateralized!`)
   }
 
   console.log('Recollateralization complete!')

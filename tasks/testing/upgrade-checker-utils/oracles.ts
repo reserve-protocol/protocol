@@ -6,7 +6,10 @@ export const overrideOracle = async (
   hre: HardhatRuntimeEnvironment,
   oracleAddress: string
 ): Promise<EACAggregatorProxyMock> => {
-  const oracle = await hre.ethers.getContractAt('EACAggregatorProxy', oracleAddress)
+  const oracle = await hre.ethers.getContractAt(
+    'contracts/plugins/mocks/EACAggregatorProxyMock.sol:EACAggregatorProxy',
+    oracleAddress
+  )
   const aggregator = await oracle.aggregator()
   const accessController = await oracle.accessController()
   const initPrice = await oracle.latestRoundData()

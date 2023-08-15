@@ -1,32 +1,22 @@
 import { whileImpersonating } from '#/utils/impersonation'
-import { advanceTime, getLatestBlockTimestamp } from '#/utils/time'
-import { getTrade } from '#/utils/trades'
+import {
+  advanceBlocks,
+  advanceTime,
+  getLatestBlockTimestamp,
+  getLatestBlockNumber,
+} from '#/utils/time'
 import { TestITrading } from '@typechain/TestITrading'
-import { BigNumber } from 'ethers'
+import { BigNumber, ContractTransaction } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { QUEUE_START, TradeKind } from '#/common/constants'
+import { QUEUE_START, TradeKind, TradeStatus } from '#/common/constants'
+import { Interface, LogDescription } from 'ethers/lib/utils'
 import { collateralToUnderlying, whales } from './constants'
 import { bn, fp } from '#/common/numbers'
 import { logToken } from './logs'
+import { GnosisTrade } from '@typechain/GnosisTrade'
+import { DutchTrade } from '@typechain/DutchTrade'
 
-// Run trade based on Trade Kind
-export const runTrade = async (
-  hre: HardhatRuntimeEnvironment,
-  trader: TestITrading,
-  tradeToken: string,
-  bidExact: boolean
-) => {
-  const trade = await getTrade(hre, trader, tradeToken)
-  const kind = await trade.KIND()
-
-  if (kind == TradeKind.BATCH_AUCTION) {
-    await runBatchTrade(hre, trader, tradeToken, bidExact)
-  } // else if (kind == TradeKind.DUTCH_AUCTION) {
-  //   await runDutchTrade(hre, trader, tradeToken, bidExact)
-  // }
-}
-
-const runBatchTrade = async (
+export const runBatchTrade = async (
   hre: HardhatRuntimeEnvironment,
   trader: TestITrading,
   tradeToken: string,
@@ -36,7 +26,14 @@ const runBatchTrade = async (
   // buy & sell are from the perspective of the auction-starter
   // placeSellOrders() flips it to be from the perspective of the trader
 
-  const trade = await getTrade(hre, trader, tradeToken)
+  const tradeAddr = await trader.trades(tradeToken)
+  const trade = <GnosisTrade>await hre.ethers.getContractAt('GnosisTrade', tradeAddr)
+
+  // Only works for Batch trades
+  if ((await trade.KIND()) != TradeKind.BATCH_AUCTION) {
+    throw new Error(`Invalid Trade Type`)
+  }
+
   const buyTokenAddress = await trade.buy()
   console.log(`Running trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
   const endTime = await trade.endTime()
@@ -83,6 +80,91 @@ const runBatchTrade = async (
   console.log(`Settled trade for ${logToken(buyTokenAddress)}.`)
 }
 
+export const runDutchTrade = async (
+  hre: HardhatRuntimeEnvironment,
+  trader: TestITrading,
+  tradeToken: string
+): Promise<[boolean, string]> => {
+  // NOTE:
+  // buy & sell are from the perspective of the auction-starter
+  // bid() flips it to be from the perspective of the trader
+
+  let tradesRemain: boolean = false
+  let newSellToken: string = ''
+
+  const tradeAddr = await trader.trades(tradeToken)
+  const trade = <DutchTrade>await hre.ethers.getContractAt('DutchTrade', tradeAddr)
+
+  // Only works for Dutch trades
+  if ((await trade.KIND()) != TradeKind.DUTCH_AUCTION) {
+    throw new Error(`Invalid Trade Type`)
+  }
+
+  const buyTokenAddress = await trade.buy()
+  console.log(`Running trade: sell ${logToken(tradeToken)} for ${logToken(buyTokenAddress)}...`)
+
+  const endBlock = await trade.endBlock()
+  const whaleAddr = whales[buyTokenAddress.toLowerCase()]
+
+  // Bid close to end block
+  await advanceBlocks(hre, endBlock.sub(await getLatestBlockNumber(hre)).sub(5))
+  const buyAmount = await trade.bidAmount(await getLatestBlockNumber(hre))
+
+  // Ensure funds available
+  await getTokens(hre, buyTokenAddress, buyAmount, whaleAddr)
+
+  await whileImpersonating(hre, whaleAddr, async (whale) => {
+    const sellToken = await hre.ethers.getContractAt('ERC20Mock', buyTokenAddress)
+    await sellToken.connect(whale).approve(trade.address, buyAmount)
+    // Bid
+    ;[tradesRemain, newSellToken] = await callAndGetNextTrade(trade.connect(whale).bid(), trader)
+  })
+
+  if (
+    (await trade.canSettle()) ||
+    (await trade.status()) != TradeStatus.CLOSED ||
+    (await trade.bidder()) != whaleAddr
+  ) {
+    throw new Error(`Error settling Dutch Trade`)
+  }
+
+  console.log(`Settled trade for ${logToken(buyTokenAddress)}.`)
+
+  // Return new trade (if exists)
+  return [tradesRemain, newSellToken]
+}
+
+export const callAndGetNextTrade = async (
+  tx: Promise<ContractTransaction>,
+  trader: TestITrading
+): Promise<[boolean, string]> => {
+  let tradesRemain: boolean = false
+  let newSellToken: string = ''
+
+  // Process transaction and get next trade
+  const r = await tx
+  const resp = await r.wait()
+  const iface: Interface = trader.interface
+  for (const event of resp.events!) {
+    let parsedLog: LogDescription | undefined
+    try {
+      parsedLog = iface.parseLog(event)
+    } catch {}
+    if (parsedLog && parsedLog.name == 'TradeStarted') {
+      console.log(
+        `\n====== Trade Started: sell ${logToken(parsedLog.args.sell)} / buy ${logToken(
+          parsedLog.args.buy
+        )} ======\n\tmbuyAmount: ${parsedLog.args.minBuyAmount}\n\tsellAmount: ${
+          parsedLog.args.sellAmount
+        }`
+      )
+      tradesRemain = true
+      newSellToken = parsedLog.args.sell
+    }
+  }
+
+  return [tradesRemain, newSellToken]
+}
 // impersonate the whale to provide the required tokens to recipient
 const getTokens = async (
   hre: HardhatRuntimeEnvironment,
