@@ -122,7 +122,7 @@ contract FiatCollateral is ICollateral, Asset {
     function refresh() public virtual override(Asset, IAsset) {
         CollateralStatus oldStatus = status();
 
-        // Check for soft default + save lotPrice
+        // Check for soft default + save price
         try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
