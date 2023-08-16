@@ -1,5 +1,11 @@
 # Changelog
 
+# 3.1.0 - Unreleased
+
+Upgrade `Broker` and _all_ assets
+
+Then call `Broker.cacheComponents()`
+
 # 3.0.0 - Unreleased
 
 ### Upgrade Steps
