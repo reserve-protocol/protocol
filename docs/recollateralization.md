@@ -64,21 +64,7 @@ If there does not exist a trade that meets these constraints, then the protocol 
 
 #### Trade Sizing
 
-The `IAsset` interface defines two types of prices:
-
-```solidity
-/// @return low {UoA/tok} The lower end of the price estimate
-/// @return high {UoA/tok} The upper end of the price estimate
-function price() external view returns (uint192 low, uint192 high);
-
-/// lotLow should be nonzero when the asset might be worth selling
-/// @return lotLow {UoA/tok} The lower end of the lot price estimate
-/// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
-
-```
-
-All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `lotPrice().low` and the buying asset's `lotPrice().high`.
+All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `price().low` and the buying asset's `lotPrice().high`.
 
 #### Trade Examples
 
