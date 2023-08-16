@@ -33,8 +33,8 @@ For a much more detailed explanation of the economic design, including an hour-l
 | Implementation Contracts | Address                                                                                                               |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | tradingLib               | [0x81b19Af39ab589D0Ca211DC3Dee4cfF7072eb478](https://etherscan.io/address/0x81b19Af39ab589D0Ca211DC3Dee4cfF7072eb478) |
-| facadeRead               | [0xf535Cab96457558eE3eeAF1402fCA6441E832f08](https://etherscan.io/address/0xf535Cab96457558eE3eeAF1402fCA6441E832f08) |
-| facadeAct                | [0x933c5DBdA80f03C102C560e9ed0c29812998fA78](https://etherscan.io/address/0x933c5DBdA80f03C102C560e9ed0c29812998fA78) |
+| facadeRead               | [0xad0BFAEE863B1102e9fD4e6330A02B08d885C715](https://etherscan.io/address/0xad0BFAEE863B1102e9fD4e6330A02B08d885C715) |
+| facadeAct                | [0x98f292e6Bb4722664fEffb81448cCFB5B7211469](https://etherscan.io/address/0x98f292e6Bb4722664fEffb81448cCFB5B7211469) |
 | facadeWriteLib           | [0xe33cEF9f56F0d8d2b683c6E1F6afcd1e43b77ea8](https://etherscan.io/address/0xe33cEF9f56F0d8d2b683c6E1F6afcd1e43b77ea8) |
 | facadeWrite              | [0x1656D8aAd7Ee892582B9D5c2E9992d9f94ff3629](https://etherscan.io/address/0x1656D8aAd7Ee892582B9D5c2E9992d9f94ff3629) |
 | deployer                 | [0x5c46b718Cd79F2BBA6869A3BeC13401b9a4B69bB](https://etherscan.io/address/0x5c46b718Cd79F2BBA6869A3BeC13401b9a4B69bB) |
