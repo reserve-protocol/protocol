@@ -942,7 +942,8 @@
     "initBal()",
     "origin()",
     "transferToOriginAfterTradeComplete(address)",
-    "worstCasePrice()"
+    "worstCasePrice()",
+    "setupGovernance(address,bool,bool,(uint256,uint256,uint256,uint256,uint256),(address,address,address[],address[],address[]))"
   ],
   "events": [
     "Approval(address,address,uint256)",
