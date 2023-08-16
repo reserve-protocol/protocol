@@ -62,6 +62,10 @@ contract BrokerP1 is ComponentP1, IBroker {
     // Whether Dutch Auctions are currently disabled, per ERC20
     mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
+    // === 3.1.0 ===
+
+    IRToken private rToken;
+
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
 
@@ -80,16 +84,21 @@ contract BrokerP1 is ComponentP1, IBroker {
         uint48 dutchAuctionLength_
     ) external initializer {
         __Component_init(main_);
-
-        backingManager = main_.backingManager();
-        rsrTrader = main_.rsrTrader();
-        rTokenTrader = main_.rTokenTrader();
+        cacheComponents();
 
         setGnosis(gnosis_);
         setBatchTradeImplementation(batchTradeImplementation_);
         setBatchAuctionLength(batchAuctionLength_);
         setDutchTradeImplementation(dutchTradeImplementation_);
         setDutchAuctionLength(dutchAuctionLength_);
+    }
+
+    /// Call after upgrade to >= 3.1.0
+    function cacheComponents() public {
+        backingManager = main.backingManager();
+        rsrTrader = main.rsrTrader();
+        rTokenTrader = main.rTokenTrader();
+        rToken = main.rToken();
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract
@@ -252,6 +261,11 @@ contract BrokerP1 is ComponentP1, IBroker {
             "dutch auctions disabled for token pair"
         );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
+        require(
+            priceIsCurrent(req.sell) && priceIsCurrent(req.buy),
+            "dutch auctions require live prices"
+        );
+
         DutchTrade trade = DutchTrade(address(dutchTradeImplementation).clone());
         trades[address(trade)] = true;
 
@@ -264,6 +278,11 @@ contract BrokerP1 is ComponentP1, IBroker {
 
         trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
         return trade;
+    }
+
+    /// @return true if the price is current, or it's the RTokenAsset
+    function priceIsCurrent(IAsset asset) private view returns (bool) {
+        return asset.lastSave() == block.timestamp || address(asset.erc20()) == address(rToken);
     }
 
     /**

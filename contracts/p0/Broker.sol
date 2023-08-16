@@ -224,6 +224,11 @@ contract BrokerP0 is ComponentP0, IBroker {
             "dutch auctions disabled for token pair"
         );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
+        require(
+            priceIsCurrent(req.sell) && priceIsCurrent(req.buy),
+            "dutch auctions require live prices"
+        );
+
         DutchTrade trade = DutchTrade(Clones.clone(address(dutchTradeImplementation)));
         trades[address(trade)] = true;
 
@@ -247,5 +252,11 @@ contract BrokerP0 is ComponentP0, IBroker {
     function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external governance {
         emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], disabled);
         dutchTradeDisabled[erc20] = disabled;
+    }
+
+    /// @return true if the price is current, or it's the RTokenAsset
+    function priceIsCurrent(IAsset asset) private view returns (bool) {
+        return
+            asset.lastSave() == block.timestamp || address(asset.erc20()) == address(main.rToken());
     }
 }
