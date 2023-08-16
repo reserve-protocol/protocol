@@ -28,7 +28,6 @@ async function main() {
   const assets = Object.values(assetsColls.assets)
   const collateral = Object.values(assetsColls.collateral)
 
-  // Confirm lotPrice() == price()
   for (const a of assets) {
     console.log(`confirming asset ${a}`)
     const asset = await hre.ethers.getContractAt('Asset', a)
@@ -39,8 +38,8 @@ async function main() {
       low.eq(MAX_UINT192) ||
       high.eq(0) ||
       high.eq(MAX_UINT192) ||
-      low.lastSave().neq(timestamp) ||
-      high.lastSave().neq(timestamp)
+      await asset.lastSave() !== timestamp ||
+      await asset.lastSave() !== timestamp
     )
       throw new Error('misconfigured oracle')
   }
@@ -60,8 +59,8 @@ async function main() {
       low.eq(MAX_UINT192) ||
       high.eq(0) ||
       high.eq(MAX_UINT192) ||
-      low.lastSave().neq(timestamp) ||
-      high.lastSave().neq(timestamp)
+      await coll.lastSave() !== timestamp ||
+      await coll.lastSave() !== timestamp
     )
       throw new Error('misconfigured oracle')
   }

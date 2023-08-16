@@ -350,29 +350,29 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
-        it('decays lotPrice over priceTimeout period', async () => {
-          // Prices should start out equal
+        it('decays price over priceTimeout period', async () => {
+          const savedLow = await collateral.savedLowPrice()
+          const savedHigh = await collateral.savedHighPrice()
+          // Price should start out at saved prices
           await collateral.refresh()
-          const p = await collateral.price()
-          let lotP = await collateral.lotPrice()
-          expect(p.length).to.equal(lotP.length)
-          expect(p[0]).to.equal(lotP[0])
-          expect(p[1]).to.equal(lotP[1])
+          let p = await collateral.price()
+          expect(p[0]).to.equal(savedLow)
+          expect(p[1]).to.equal(savedHigh)
 
           await advanceTime(await collateral.oracleTimeout())
 
           // Should be roughly half, after half of priceTimeout
           const priceTimeout = await collateral.priceTimeout()
           await advanceTime(priceTimeout / 2)
-          lotP = await collateral.lotPrice()
-          expect(lotP[0]).to.be.closeTo(p[0].div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
-          expect(lotP[1]).to.be.closeTo(p[1].div(2), p[1].div(2).div(10000)) // 1 part in 10 thousand
+          p = await collateral.price()
+          expect(p[0]).to.be.closeTo(savedLow.div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
+          expect(p[1]).to.be.closeTo(savedHigh.div(2), p[1].div(2).div(10000)) // 1 part in 10 thousand
 
           // Should be 0 after full priceTimeout
           await advanceTime(priceTimeout / 2)
-          lotP = await collateral.lotPrice()
-          expect(lotP[0]).to.equal(0)
-          expect(lotP[1]).to.equal(0)
+          p = await collateral.price()
+          expect(p[0]).to.equal(0)
+          expect(p[1]).to.equal(MAX_UINT192)
         })
       })
 
@@ -535,9 +535,9 @@ export default function fn<X extends CollateralFixtureContext>(
             await advanceTime(
               (await collateral.priceTimeout()) + (await collateral.oracleTimeout())
             )
-            const lotP = await collateral.lotPrice()
-            expect(lotP[0]).to.equal(0)
-            expect(lotP[1]).to.equal(0)
+            const p = await collateral.price()
+            expect(p[0]).to.equal(0)
+            expect(p[1]).to.equal(MAX_UINT192)
           })
         })
       })

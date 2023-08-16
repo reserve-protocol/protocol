@@ -22,7 +22,12 @@ import {
   IRTokenSetup,
   networkConfig,
 } from '../../../../common/configuration'
-import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
+import {
+  CollateralStatus,
+  MAX_UINT48,
+  MAX_UINT192,
+  ZERO_ADDRESS,
+} from '../../../../common/constants'
 import { expectEvents, expectInIndirectReceipt } from '../../../../common/events'
 import { bn, fp } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
@@ -1000,9 +1005,9 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await advanceTime(
           (await aDaiCollateral.priceTimeout()) + (await aDaiCollateral.oracleTimeout())
         )
-        const lotP = await aDaiCollateral.lotPrice()
-        expect(lotP[0]).to.equal(0)
-        expect(lotP[1]).to.equal(0)
+        const p = await aDaiCollateral.price()
+        expect(p[0]).to.equal(0)
+        expect(p[1]).to.equal(MAX_UINT192)
         await snapshotGasCost(aDaiCollateral.refresh())
         await snapshotGasCost(aDaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })

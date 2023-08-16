@@ -64,7 +64,7 @@ If there does not exist a trade that meets these constraints, then the protocol 
 
 #### Trade Sizing
 
-All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `price().low` and the buying asset's `lotPrice().high`.
+All trades have a worst-case exchange rate that is a function of (among other things) the selling asset's `price().low` and the buying asset's `price().high`.
 
 #### Trade Examples
 

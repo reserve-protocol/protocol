@@ -590,10 +590,10 @@ describe('Collateral contracts', () => {
       await expectPrice(aTokenCollateral.address, bn('0'), bn('0'), false)
       await expectPrice(cTokenCollateral.address, bn('0'), bn('0'), false)
 
-      // Lot prices should be zero
-      const [lotLow, lotHigh] = await tokenCollateral.lotPrice()
-      expect(lotLow).to.eq(0)
-      expect(lotHigh).to.eq(0)
+      // price should be zero
+      const [low, high] = await tokenCollateral.price()
+      expect(low).to.eq(0)
+      expect(high).to.eq(0)
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
@@ -2227,9 +2227,9 @@ describe('Collateral contracts', () => {
         await advanceTime(
           (await tokenCollateral.priceTimeout()) + (await tokenCollateral.oracleTimeout())
         )
-        const lotP = await tokenCollateral.lotPrice()
-        expect(lotP[0]).to.equal(0)
-        expect(lotP[1]).to.equal(0)
+        const p = await tokenCollateral.price()
+        expect(p[0]).to.equal(0)
+        expect(p[1]).to.equal(0)
       })
     })
   })
