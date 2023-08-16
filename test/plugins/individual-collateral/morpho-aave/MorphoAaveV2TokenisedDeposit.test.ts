@@ -274,11 +274,11 @@ const execTestForToken = ({
 
       await instances.morphoAaveV2Controller
         .connect(bob)
-      ['supply(address,address,uint256)'](
-        await instances.tokenVault.poolToken(),
-        instances.tokenVault.address,
-        amountBN
-      )
+        ['supply(address,address,uint256)'](
+          await instances.tokenVault.poolToken(),
+          instances.tokenVault.address,
+          amountBN
+        )
 
       await closeTo(methods.balanceUnderlying(bob), '0.0')
       expect(await methods.shares(alice)).to.equal('0.0')

@@ -132,12 +132,12 @@ export default function fn<X extends CollateralFixtureContext>(
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           const aliceBal = await collateral.bal(alice.address)
-          const amount18d = decimals <= 18 ? amount.mul(bn(10).pow(18 - decimals)) : amount.div(bn(10).pow(decimals - 18))
+          const amount18d =
+            decimals <= 18
+              ? amount.mul(bn(10).pow(18 - decimals))
+              : amount.div(bn(10).pow(decimals - 18))
           const dist18d = decimals <= 18 ? bn('100').mul(bn(10).pow(18 - decimals)) : bn('10')
-          expect(aliceBal).to.closeTo(
-            amount18d,
-            dist18d
-          )
+          expect(aliceBal).to.closeTo(amount18d, dist18d)
         })
       })
 
