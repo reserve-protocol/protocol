@@ -2,7 +2,8 @@ import hre from 'hardhat'
 
 import { getChainId } from '../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, MAX_UINT192 } from '../../common/constants'
+import { getLatestBlockTimestamp } from '#/utils/time'
 import {
   getDeploymentFile,
   IAssetCollDeployments,
@@ -31,14 +32,17 @@ async function main() {
   for (const a of assets) {
     console.log(`confirming asset ${a}`)
     const asset = await hre.ethers.getContractAt('Asset', a)
-    const [lotLow, lotHigh] = await asset.lotPrice()
     const [low, high] = await asset.price() // {UoA/tok}
-    if (low.eq(0) || high.eq(0)) throw new Error('misconfigured oracle')
-
-    if (!lotLow.eq(low) || !lotHigh.eq(high)) {
-      console.log('lotLow, low, lotHigh, high', lotLow, low, lotHigh, high)
-      throw new Error('lot price off')
-    }
+    const timestamp = await getLatestBlockTimestamp(hre)
+    if (
+      low.eq(0) ||
+      low.eq(MAX_UINT192) ||
+      high.eq(0) ||
+      high.eq(MAX_UINT192) ||
+      low.lastSave().neq(timestamp) ||
+      high.lastSave().neq(timestamp)
+    )
+      throw new Error('misconfigured oracle')
   }
 
   // Collateral
@@ -49,14 +53,18 @@ async function main() {
 
     if ((await coll.status()) != CollateralStatus.SOUND) throw new Error('collateral unsound')
 
-    const [lotLow, lotHigh] = await coll.lotPrice()
     const [low, high] = await coll.price() // {UoA/tok}
-    if (low.eq(0) || high.eq(0)) throw new Error('misconfigured oracle')
-
-    if (!lotLow.eq(low) || !lotHigh.eq(high)) {
-      console.log('lotLow, low, lotHigh, high', lotLow, low, lotHigh, high)
-      throw new Error('lot price off')
-    }
+    const timestamp = await getLatestBlockTimestamp(hre)
+    if (
+      low.eq(0) ||
+      low.eq(MAX_UINT192) ||
+      high.eq(0) ||
+      high.eq(MAX_UINT192) ||
+      low.lastSave().neq(timestamp) ||
+      high.lastSave().neq(timestamp)
+    )
+      throw new Error('misconfigured oracle')
+  }
   }
 }
 
