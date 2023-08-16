@@ -8,7 +8,7 @@ import { ethers } from 'hardhat'
 import { ERC20Mock, InvalidMockV3Aggregator } from '../../../../typechain'
 import { BigNumber } from 'ethers'
 import { bn, fp } from '../../../../common/numbers'
-import { MAX_UINT48, ZERO_ADDRESS, ONE_ADDRESS } from '../../../../common/constants'
+import { MAX_UINT48, MAX_UINT192, ZERO_ADDRESS, ONE_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { useEnv } from '#/utils/env'
@@ -427,28 +427,29 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
-        it('decays lotPrice over priceTimeout period', async () => {
-          // Prices should start out equal
-          const p = await ctx.collateral.price()
-          let lotP = await ctx.collateral.lotPrice()
-          expect(p.length).to.equal(lotP.length)
-          expect(p[0]).to.equal(lotP[0])
-          expect(p[1]).to.equal(lotP[1])
+        it('decays price over priceTimeout period', async () => {
+          const savedLow = await ctx.collateral.savedLowPrice()
+          const savedHigh = await ctx.collateral.savedHighPrice()
+          // Price should start out at saved prices
+          await ctx.collateral.refresh()
+          let p = await ctx.collateral.price()
+          expect(p[0]).to.equal(savedLow)
+          expect(p[1]).to.equal(savedHigh)
 
           await advanceTime(await ctx.collateral.oracleTimeout())
 
           // Should be roughly half, after half of priceTimeout
           const priceTimeout = await ctx.collateral.priceTimeout()
           await advanceTime(priceTimeout / 2)
-          lotP = await ctx.collateral.lotPrice()
-          expect(lotP[0]).to.be.closeTo(p[0].div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
-          expect(lotP[1]).to.be.closeTo(p[1].div(2), p[1].div(2).div(10000)) // 1 part in 10 thousand
+          p = await ctx.collateral.price()
+          expect(p[0]).to.be.closeTo(savedLow.div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
+          expect(p[1]).to.be.closeTo(savedHigh.div(2), p[1].div(2).div(10000)) // 1 part in 10 thousand
 
           // Should be 0 after full priceTimeout
           await advanceTime(priceTimeout / 2)
-          lotP = await ctx.collateral.lotPrice()
-          expect(lotP[0]).to.equal(0)
-          expect(lotP[1]).to.equal(0)
+          p = await ctx.collateral.price()
+          expect(p[0]).to.equal(0)
+          expect(p[1]).to.equal(MAX_UINT192)
         })
       })
 
@@ -686,9 +687,9 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             await advanceTime(
               (await ctx.collateral.priceTimeout()) + (await ctx.collateral.oracleTimeout())
             )
-            const lotP = await ctx.collateral.lotPrice()
-            expect(lotP[0]).to.equal(0)
-            expect(lotP[1]).to.equal(0)
+            const p = await ctx.collateral.price()
+            expect(p[0]).to.equal(0)
+            expect(p[1]).to.equal(MAX_UINT192)
           })
         })
       })

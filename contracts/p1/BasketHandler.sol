@@ -309,7 +309,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Should not revert
-    /// low should be nonzero when the asset might be worth selling
+    /// low should be nonzero when BUs are worth selling
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)

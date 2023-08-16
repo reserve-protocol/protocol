@@ -64,6 +64,12 @@ interface TestIAsset is IAsset {
 
     /// @return {s} Seconds that the price().low should decay over, after stale price
     function priceTimeout() external view returns (uint48);
+
+    /// @return {UoA/tok} The last saved low price
+    function savedLowPrice() external view returns (uint192);
+
+    /// @return {UoA/tok} The last saved high price
+    function savedHighPrice() external view returns (uint192);
 }
 
 /// CollateralStatus must obey a linear ordering. That is:
