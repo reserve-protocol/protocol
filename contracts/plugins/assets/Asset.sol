@@ -11,6 +11,8 @@ contract Asset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
+    uint192 public constant MAX_HIGH_PRICE_BUFFER = 2 * FIX_ONE; // {UoA/tok} 200%
+
     AggregatorV3Interface public immutable chainlinkFeed; // {UoA/tok}
 
     IERC20Metadata public immutable erc20;
@@ -119,20 +121,29 @@ contract Asset is IAsset, VersionedAsset {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
 
-            // if the price feed is broken, decay low linearly over the priceTimeout
+            // if the price feed is broken, decay _low downwards and _high upwards
 
             uint48 delta = uint48(block.timestamp) - lastSave; // {s}
             if (delta <= oracleTimeout) {
+                // use saved prices for at least the oracleTimeout
                 _low = savedLowPrice;
                 _high = savedHighPrice;
             } else if (delta >= oracleTimeout + priceTimeout) {
-                return (0, FIX_MAX); // unpriced after full timeout
+                // use unpriced after a full timeout, incase 3x was not enough
+                return (0, FIX_MAX);
             } else {
                 // oracleTimeout <= delta <= oracleTimeout + priceTimeout
 
+                // Decay _low downwards from savedLowPrice to 0
                 // {UoA/tok} = {UoA/tok} * {1}
                 _low = savedLowPrice.muluDivu(oracleTimeout + priceTimeout - delta, priceTimeout);
-                _high = FIX_MAX;
+
+                // Decay _high upwards to 3x savedHighPrice
+                _high = savedHighPrice.plus(
+                    savedHighPrice.mul(
+                        MAX_HIGH_PRICE_BUFFER.muluDivu(delta - oracleTimeout, priceTimeout)
+                    )
+                );
             }
         }
         assert(_low <= _high);
