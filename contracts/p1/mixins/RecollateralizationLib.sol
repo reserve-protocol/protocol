@@ -11,7 +11,7 @@ import "./TradeLib.sol";
 /// Struct purposes:
 ///   1. Configure trading
 ///   2. Stay under stack limit with fewer vars
-///   3. Cache information such as component addresses to save on gas
+///   3. Cache information such as component addresses and basket quantities, to save on gas
 struct TradingContext {
     BasketRange basketsHeld; // {BU}
     // basketsHeld.top is the number of partial baskets units held
@@ -80,7 +80,7 @@ library RecollateralizationLibP1 {
         ctx.minTradeVolume = bm.minTradeVolume();
         ctx.maxTradeSlippage = bm.maxTradeSlippage();
 
-        // Calculate quantities
+        // Cache quantities
         Registry memory reg = ctx.ar.getRegistry();
         ctx.quantities = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
@@ -90,6 +90,7 @@ library RecollateralizationLibP1 {
         // ============================
 
         // Compute a target basket range for trading -  {BU}
+        // The basket range is the full range of projected outcomes for the rebalancing process
         BasketRange memory range = basketRange(ctx, reg);
 
         // Select a pair to trade next, if one exists
@@ -129,7 +130,8 @@ library RecollateralizationLibP1 {
     // Compute the target basket range
     // Algorithm intuition: Trade conservatively. Quantify uncertainty based on the proportion of
     // token balances requiring trading vs not requiring trading. Seek to decrease uncertainty
-    // the largest amount possible with each trade.
+    // the largest amount possible with each trade. As long as trades clear within the expected
+    // range of prices, the basket range should narrow with each iteration (under constant prices)
     //
     // How do we know this algorithm converges?
     // Assumption: constant oracle prices; monotonically increasing refPerTok()
@@ -141,12 +143,12 @@ library RecollateralizationLibP1 {
     //       run-to-run, but will never increase it
     //
     // Preconditions:
-    // - ctx is correctly populated, with current basketsHeld.bottom + basketsHeld.top
-    // - reg contains erc20 + asset + quantities arrays in same order and without duplicates
+    // - ctx is correctly populated, with current basketsHeld + quantities
+    // - reg contains erc20 + asset arrays in same order and without duplicates
     // Trading Strategy:
     // - We will not aim to hold more than rToken.basketsNeeded() BUs
-    // - No double trades: if we buy B in one trade, we won't sell B in another trade
-    //       Caveat: Unless the asset we're selling is IFFY/DISABLED
+    // - No double trades: capital converted from token A to token B should not go to token C
+    //       unless the clearing price was outside the expected price range
     // - The best price we might get for a trade is at the high sell price and low buy price
     // - The worst price we might get for a trade is at the low sell price and
     //     the high buy price, multiplied by ( 1 - maxTradeSlippage )
@@ -301,9 +303,9 @@ library RecollateralizationLibP1 {
     ///   prices.buyLow {UoA/buyTok} The best-case price of the buy token on secondary markets
     ///   prices.buyHigh {UoA/buyTok} The worst-case price of the buy token on secondary markets
     ///
-    // Defining "sell" and "buy":
-    // If bal(e) > (quantity(e) * range.top), then e is in surplus by the difference
-    // If bal(e) < (quantity(e) * range.bottom), then e is in deficit by the difference
+    // For each asset e:
+    //   If bal(e) > (quantity(e) * range.top), then e is in surplus by the difference
+    //   If bal(e) < (quantity(e) * range.bottom), then e is in deficit by the difference
     //
     // First, ignoring RSR:
     //   `trade.sell` is the token from erc20s with the greatest surplus value (in UoA),

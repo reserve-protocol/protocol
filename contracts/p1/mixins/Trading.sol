@@ -118,7 +118,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         TradePrices memory prices
     ) internal returns (ITrade trade) {
         IERC20 sell = req.sell.erc20();
-        assert(address(trades[sell]) == address(0));
+        assert(address(trades[sell]) == address(0)); // ensure calling class has checked this
 
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
