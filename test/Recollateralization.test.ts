@@ -1015,9 +1015,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not recollateralize when switching basket if all assets are UNPRICED', async () => {
-        // Set oracle out-of-range
-        await setOraclePrice(collateral0.address, MAX_UINT256.div(2))
-
         // Setup prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
@@ -1029,7 +1026,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Advance time post warmup period - temporary IFFY->SOUND
         await advanceTime(Number(config.warmupPeriod) + 1)
 
-        // Set to sell price = 0
+        // Set all assets to UNPRICED
         await advanceTime(Number(ORACLE_TIMEOUT.add(PRICE_TIMEOUT)))
 
         // Check state remains SOUND

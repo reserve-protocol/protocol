@@ -463,6 +463,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
 
         // Should succeed in callStatic
+        await assetRegistry.refresh()
         await broker
           .connect(bmSigner)
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
@@ -483,6 +484,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .withArgs(token0.address, true, false)
 
         // Should succeed in callStatic
+        await assetRegistry.refresh()
         await broker
           .connect(bmSigner)
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)

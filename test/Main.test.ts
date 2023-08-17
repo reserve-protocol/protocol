@@ -70,6 +70,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
+  ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
   REVENUE_HIDING,
 } from './fixtures'
@@ -2756,8 +2757,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check BU price -- 1/4 of the basket has lost half its value
       await expectPrice(basketHandler.address, fp('0.875'), ORACLE_ERROR, true)
 
-      // Set collateral1 price to invalid value that should produce [0, FIX_MAX]
-      await setOraclePrice(collateral1.address, MAX_UINT192)
+      // Set collateral1 price to [0, FIX_MAX]
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(collateral0.address, bn('1e8'))
+      await assetRegistry.refresh()
 
       // Check BU price -- 1/4 of the basket has lost all its value
       const asset = await ethers.getContractAt('Asset', basketHandler.address)
@@ -2838,17 +2841,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         REVENUE_HIDING
       )
       await assetRegistry.connect(owner).swapRegistered(newColl.address)
-      await setOraclePrice(newColl.address, MAX_UINT192) // overflow
-      await expectUnpriced(newColl.address)
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
       await newColl.setTargetPerRef(1)
-      await freshBasketHandler.setPrimeBasket([await newColl.erc20()], [fp('1000')])
-      await freshBasketHandler.refreshBasket()
-
-      // Expect [something > 0, FIX_MAX]
-      const bh = await ethers.getContractAt('Asset', basketHandler.address)
-      const [lowPrice, highPrice] = await bh.price()
-      expect(lowPrice).to.be.gt(0)
-      expect(highPrice).to.equal(MAX_UINT192)
+      await expectUnpriced(basketHandler.address)
     })
 
     it('Should handle overflow in price calculation and return [FIX_MAX, FIX_MAX] - case 1', async () => {

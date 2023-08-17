@@ -45,6 +45,8 @@ import {
   IMPLEMENTATION,
   defaultFixture,
   ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from './fixtures'
 import { advanceBlocks, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
 import { CollateralStatus, TradeKind, MAX_UINT256, ZERO_ADDRESS } from '#/common/constants'
@@ -270,7 +272,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     it('Should handle UNPRICED when returning issuable quantities', async () => {
       // Set unpriced assets, should return UoA = 0
-      await setOraclePrice(tokenAsset.address, MAX_UINT256.div(2).sub(1))
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
       const [toks, quantities, uoas] = await facade.callStatic.issue(rToken.address, issueAmount)
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
@@ -283,9 +285,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect(quantities[2]).to.equal(issueAmount.div(4))
       expect(quantities[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
       expect(uoas.length).to.equal(4)
-      // Three assets are unpriced
+      // Assets are unpriced
       expect(uoas[0]).to.equal(0)
-      expect(uoas[1]).to.equal(issueAmount.div(4))
+      expect(uoas[1]).to.equal(0)
       expect(uoas[2]).to.equal(0)
       expect(uoas[3]).to.equal(0)
     })
@@ -505,7 +507,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(fp('0.5'))
 
-      await setOraclePrice(rsrAsset.address, MAX_UINT256.div(2).sub(1))
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(tokenAsset.address, bn('1e8'))
+      await setOraclePrice(usdcAsset.address, bn('1e8'))
+      await assetRegistry.refresh()
       ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully collateralized and no over-collateralization
