@@ -167,6 +167,8 @@ library RecollateralizationLibP1 {
         returns (BasketRange memory range)
     {
         (uint192 buPriceLow, uint192 buPriceHigh) = ctx.bh.price(); // {UoA/BU}
+        require(buPriceLow > 0 && buPriceHigh < FIX_MAX, "BUs unpriced");
+
         uint192 basketsNeeded = ctx.rToken.basketsNeeded(); // {BU}
 
         // Cap ctx.basketsHeld.top
@@ -245,7 +247,7 @@ library RecollateralizationLibP1 {
                 // (2) Lose minTradeVolume to dust (why: auctions can return tokens)
                 // Q: Why is this precisely where we should take out minTradeVolume?
                 // A: Our use of isEnoughToSell always uses the low price,
-                //   so min trade volumes are always assesed based on low prices. At this point
+                //   so min trade volumes are always assessed based on low prices. At this point
                 //   in the calculation we have already calculated the UoA amount corresponding to
                 //   the excess token balance based on its low price, so we are already set up
                 //   to straightforwardly deduct the minTradeVolume before trying to buy BUs.
