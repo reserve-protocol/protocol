@@ -66,7 +66,7 @@ export const deployCollateral = async (
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
-const refPerTokChainlinkDefaultAnswer = fp('1')
+const refPerTokChainlinkDefaultAnswer = fp('1.04027709')
 
 type Fixture<T> = () => Promise<T>
 

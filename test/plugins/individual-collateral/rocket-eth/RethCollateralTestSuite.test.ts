@@ -97,7 +97,7 @@ export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<T
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
-const refPerTokChainlinkDefaultAnswer = fp('1')
+const refPerTokChainlinkDefaultAnswer = fp('1.0859')
 
 type Fixture<T> = () => Promise<T>
 

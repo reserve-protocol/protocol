@@ -2,8 +2,9 @@
 pragma solidity 0.8.19;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { _safeWrap } from "../../../libraries/Fixed.sol";
-import "../AppreciatingFiatCollateral.sol";
+import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
+import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
+import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
 
 interface CBEth is IERC20Metadata {
     function mint(address account, uint256 amount) external returns (bool);
@@ -50,17 +51,16 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
+        uint192 spotRefPrTok = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(
-            refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout)
-        );
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(spotRefPrTok);
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;
         low = p - err;
         // assert(low <= high); obviously true just by inspection
 
-        pegPrice = targetPerRef(); // {target/ref} ETH/ETH is always 1
+        pegPrice = _underlyingRefPerTok().div(spotRefPrTok); // {target/ref}
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens

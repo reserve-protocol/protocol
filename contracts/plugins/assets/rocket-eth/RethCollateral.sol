@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../../libraries/Fixed.sol";
-import "../AppreciatingFiatCollateral.sol";
-import "../OracleLib.sol";
-import "./vendor/IReth.sol";
+import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
+import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
+import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
+import { IReth } from "./vendor/IReth.sol";
 
 /**
  * @title RethCollateral
@@ -49,17 +48,16 @@ contract RethCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
+        uint192 spotRefPrTok = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(
-            refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout)
-        );
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(spotRefPrTok);
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;
         low = p - err;
         // assert(low <= high); obviously true just by inspection
 
-        pegPrice = targetPerRef(); // {target/ref} ETH/ETH is always 1
+        pegPrice = _underlyingRefPerTok().div(spotRefPrTok); // {target/ref}
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
