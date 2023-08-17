@@ -605,38 +605,56 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
-    it('Should be unpriced in case of invalid timestamp', async () => {
+    it('Should remain at saved price in case of invalid timestamp', async () => {
       await setInvalidOracleTimestamp(tokenCollateral.address)
+      await setInvalidOracleTimestamp(usdcCollateral.address)
 
-      // Check price of token
-      await expectUnpriced(tokenCollateral.address)
-      await expectUnpriced(aTokenCollateral.address)
-      await expectUnpriced(cTokenCollateral.address)
-
-      // When refreshed, sets status to Unpriced
+      // lastSave should not be block timestamp after refresh
       await tokenCollateral.refresh()
+      await usdcCollateral.refresh()
       await aTokenCollateral.refresh()
       await cTokenCollateral.refresh()
+      expect(await tokenCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await usdcCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await aTokenCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await cTokenCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
 
+      // Check price is still at saved price
+      await expectPrice(tokenCollateral.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(usdcCollateral.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(aTokenCollateral.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(cTokenCollateral.address, fp('1').div(50), ORACLE_ERROR, false)
+
+      // Sets status to IFFY
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
-    it('Should be unpriced in case of invalid answered round', async () => {
+    it('Should remain at saved price in case of invalid answered round', async () => {
       await setInvalidOracleAnsweredRound(tokenCollateral.address)
+      await setInvalidOracleAnsweredRound(usdcCollateral.address)
 
-      // Check price of token
-      await expectUnpriced(tokenCollateral.address)
-      await expectUnpriced(aTokenCollateral.address)
-      await expectUnpriced(cTokenCollateral.address)
-
-      // When refreshed, sets status to Unpriced
+      // lastSave should not be block timestamp after refresh
       await tokenCollateral.refresh()
+      await usdcCollateral.refresh()
       await aTokenCollateral.refresh()
       await cTokenCollateral.refresh()
+      expect(await tokenCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await usdcCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await aTokenCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await cTokenCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
 
+      // Check price is still at saved price
+      await expectPrice(tokenCollateral.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(usdcCollateral.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(aTokenCollateral.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(cTokenCollateral.address, fp('1').div(50), ORACLE_ERROR, false)
+
+      // Sets status to IFFY
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
@@ -897,14 +915,24 @@ describe('Collateral contracts', () => {
       }
     })
 
-    it('Unpriced if price is stale', async () => {
-      await advanceTime(ORACLE_TIMEOUT.toString())
+    it('Should remain at saved price if oracle is stale', async () => {
+      await advanceTime(ORACLE_TIMEOUT.sub(12).toString())
 
-      // Check unpriced
-      await expectUnpriced(tokenCollateral.address)
-      await expectUnpriced(usdcCollateral.address)
-      await expectUnpriced(cTokenCollateral.address)
-      await expectUnpriced(aTokenCollateral.address)
+      // lastSave should not be block timestamp after refresh
+      await tokenCollateral.refresh()
+      await usdcCollateral.refresh()
+      await cTokenCollateral.refresh()
+      await aTokenCollateral.refresh()
+      expect(await tokenCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await usdcCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await cTokenCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+      expect(await aTokenCollateral.lastSave()).to.not.equal(await getLatestBlockTimestamp())
+
+      // Check price
+      await expectPrice(tokenCollateral.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(usdcCollateral.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(cTokenCollateral.address, fp('1').div(50), ORACLE_ERROR, false)
+      await expectPrice(aTokenCollateral.address, fp('1'), ORACLE_ERROR, false)
     })
 
     it('Enters IFFY state when price becomes stale', async () => {
