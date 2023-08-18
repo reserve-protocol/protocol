@@ -2249,15 +2249,15 @@ describe('Collateral contracts', () => {
         const oracleTimeout = await tokenCollateral.oracleTimeout()
         await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
         await advanceBlocks(bn(oracleTimeout).div(12))
+        await snapshotGasCost(tokenCollateral.refresh())
       })
 
       it('after full price timeout', async () => {
         await advanceTime(
           (await tokenCollateral.priceTimeout()) + (await tokenCollateral.oracleTimeout())
         )
-        const p = await tokenCollateral.price()
-        expect(p[0]).to.equal(0)
-        expect(p[1]).to.equal(0)
+        await expectUnpriced(tokenCollateral.address)
+        await snapshotGasCost(tokenCollateral.refresh())
       })
     })
   })
