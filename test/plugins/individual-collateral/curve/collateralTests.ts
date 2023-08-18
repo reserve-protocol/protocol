@@ -403,7 +403,7 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(low).to.equal(0)
           expect(high).to.equal(0)
 
-          // When refreshed, sets status to Unpriced
+          // When refreshed, sets status to IFFY
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
         })
@@ -411,13 +411,15 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         it('does not revert in case of invalid timestamp', async () => {
           await ctx.feeds[0].setInvalidTimestamp()
 
-          // When refreshed, sets status to Unpriced
+          // When refreshed, sets status to IFFY
           await ctx.collateral.refresh()
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
-        it('Handles stale price', async () => {
-          await advanceTime(await ctx.collateral.priceTimeout())
+        it('handles stale price', async () => {
+          await advanceTime(
+            (await ctx.collateral.oracleTimeout()) + (await ctx.collateral.priceTimeout())
+          )
 
           // (0, FIX_MAX) is returned
           await expectUnpriced(ctx.collateral.address)
@@ -443,13 +445,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await advanceTime(priceTimeout / 2)
           p = await ctx.collateral.price()
           expect(p[0]).to.be.closeTo(savedLow.div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
-          expect(p[1]).to.be.closeTo(savedHigh.div(2), p[1].div(2).div(10000)) // 1 part in 10 thousand
+          expect(p[1]).to.be.closeTo(savedHigh.mul(2), p[1].mul(2).div(10000)) // 1 part in 10 thousand
 
           // Should be 0 after full priceTimeout
           await advanceTime(priceTimeout / 2)
-          p = await ctx.collateral.price()
-          expect(p[0]).to.equal(0)
-          expect(p[1]).to.equal(MAX_UINT192)
+          await expectUnpriced(ctx.collateral.address)
         })
       })
 
