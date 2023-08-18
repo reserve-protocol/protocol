@@ -75,12 +75,6 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
     /// Refresh exchange rates and update default status.
     /// @dev Should not need to override: can handle collateral with variable refPerTok()
     function refresh() public virtual override {
-        if (alreadyDefaulted()) {
-            // continue to update rates
-            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
-            return;
-        }
-
         CollateralStatus oldStatus = status();
 
         // Check for hard default
