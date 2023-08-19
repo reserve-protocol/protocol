@@ -346,10 +346,10 @@ export default function fn<X extends CollateralFixtureContext>(
         })
 
         it('decays price over priceTimeout period', async () => {
+          await collateral.refresh()
           const savedLow = await collateral.savedLowPrice()
           const savedHigh = await collateral.savedHighPrice()
           // Price should start out at saved prices
-          await collateral.refresh()
           let p = await collateral.price()
           expect(p[0]).to.equal(savedLow)
           expect(p[1]).to.equal(savedHigh)

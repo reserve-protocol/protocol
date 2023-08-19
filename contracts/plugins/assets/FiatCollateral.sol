@@ -7,8 +7,6 @@ import "../../libraries/Fixed.sol";
 import "./Asset.sol";
 import "./OracleLib.sol";
 
-import "hardhat/console.sol";
-
 uint48 constant MAX_DELAY_UNTIL_DEFAULT = 1209600; // {s} 2 weeks
 
 struct CollateralConfig {
@@ -134,9 +132,7 @@ contract FiatCollateral is ICollateral, Asset {
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);
-                console.log("lastSave", lastSave);
             } else {
-                console.log("else");
                 // must be unpriced
                 assert(low == 0);
             }
@@ -149,7 +145,6 @@ contract FiatCollateral is ICollateral, Asset {
                 markStatus(CollateralStatus.SOUND);
             }
         } catch (bytes memory errData) {
-            console.log("err");
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             markStatus(CollateralStatus.IFFY);
