@@ -13,8 +13,6 @@ import "./mixins/Component.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../plugins/trading/GnosisTrade.sol";
 
-import "hardhat/console.sol";
-
 // Gnosis: uint96 ~= 7e28
 uint256 constant GNOSIS_MAX_TOKENS = 7e28;
 
@@ -284,7 +282,6 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     /// @return true if the price is current, or it's the RTokenAsset
     function priceIsCurrent(IAsset asset) private view returns (bool) {
-        console.log(asset.lastSave(), block.timestamp);
         return asset.lastSave() == block.timestamp || address(asset.erc20()) == address(rToken);
     }
 

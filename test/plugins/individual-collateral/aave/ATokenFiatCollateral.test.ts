@@ -658,10 +658,14 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
       // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
+      await advanceTime(ORACLE_TIMEOUT.sub(12).toString())
 
-      // stkAAVEound
-      await expectUnpriced(aDaiCollateral.address)
+      // Price is at saved prices
+      const savedLowPrice = await aDaiCollateral.savedLowPrice()
+      const savedHighPrice = await aDaiCollateral.savedHighPrice()
+      const p = await aDaiCollateral.price()
+      expect(p[0]).to.equal(savedLowPrice)
+      expect(p[1]).to.equal(savedHighPrice)
 
       // Refresh should mark status IFFY
       await aDaiCollateral.refresh()

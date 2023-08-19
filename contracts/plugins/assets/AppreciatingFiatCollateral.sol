@@ -8,8 +8,6 @@ import "./FiatCollateral.sol";
 import "./Asset.sol";
 import "./OracleLib.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title AppreciatingFiatCollateral
  * Collateral that may need revenue hiding to become truly "up only"
@@ -112,9 +110,7 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);
-                console.log("set lastSave", lastSave);
             } else {
-                console.log("else");
                 // must be unpriced
                 assert(low == 0);
             }
@@ -127,7 +123,6 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
                 markStatus(CollateralStatus.SOUND);
             }
         } catch (bytes memory errData) {
-            console.log("err");
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             markStatus(CollateralStatus.IFFY);

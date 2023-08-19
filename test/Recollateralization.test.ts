@@ -5175,9 +5175,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       // Run auctions - First Settle trades then Manage Funds
       // Will sell all balance of token2
       await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith('no trade open')
-      console.log('before')
       await snapshotGasCost(backingManager.rebalance(TradeKind.DUTCH_AUCTION))
-      console.log('after')
       expect(await backingManager.tradesOpen()).to.equal(1)
 
       // Another call should not create any new auctions if still ongoing
