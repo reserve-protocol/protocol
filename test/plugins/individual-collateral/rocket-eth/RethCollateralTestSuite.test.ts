@@ -205,19 +205,29 @@ const mintCollateralTo: MintCollateralFunc<RethCollateralFixtureContext> = async
   await mintRETH(ctx.reth, user, amount, recipient)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const reduceTargetPerRef = async () => {}
+const changeTargetPerRef = async (ctx: RethCollateralFixtureContext, percentChange: BigNumber) => {
+  // We leave the actual refPerTok exchange where it is and just change {target/tok}
+  {
+    const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
+    await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  }
+}
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const increaseTargetPerRef = async () => {}
+const reduceTargetPerRef = async (ctx: RethCollateralFixtureContext, pctDecrease: BigNumberish) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease).mul(-1))
+}
+
+const increaseTargetPerRef = async (
+  ctx: RethCollateralFixtureContext,
+  pctDecrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease))
+}
 
 const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
 
-// prettier-ignore
-const reduceRefPerTok = async (
-  ctx: RethCollateralFixtureContext,
-  pctDecrease: BigNumberish 
-) => {
+const reduceRefPerTok = async (ctx: RethCollateralFixtureContext, pctDecrease: BigNumberish) => {
   const rethNetworkBalances = await ethers.getContractAt(
     'IRocketNetworkBalances',
     RETH_NETWORK_BALANCES
@@ -234,11 +244,7 @@ const reduceRefPerTok = async (
   await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
-// prettier-ignore
-const increaseRefPerTok = async (
-  ctx: RethCollateralFixtureContext,
-  pctIncrease: BigNumberish 
-) => {
+const increaseRefPerTok = async (ctx: RethCollateralFixtureContext, pctIncrease: BigNumberish) => {
   const rethNetworkBalances = await ethers.getContractAt(
     'IRocketNetworkBalances',
     RETH_NETWORK_BALANCES
@@ -272,7 +278,6 @@ const getExpectedPrice = async (ctx: RethCollateralFixtureContext): Promise<BigN
   Define collateral-specific tests
 */
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificConstructorTests = () => {
   it('does not allow missing targetPerTok chainlink feed', async () => {
     await expect(
@@ -310,13 +315,14 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
   resetFork,
   collateralName: 'RocketPoolETH',
   chainlinkDefaultAnswer,
+  itIsPricedByPeg: true,
 }
 
 collateralTests(opts)

@@ -120,11 +120,28 @@ const mintCollateralTo: MintCollateralFunc<CbEthCollateralFixtureContext> = asyn
   await mintCBETH(amount, recipient)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const reduceTargetPerRef = async () => {}
+const changeTargetPerRef = async (ctx: CbEthCollateralFixtureContext, percentChange: BigNumber) => {
+  // We leave the actual refPerTok exchange where it is and just change {target/tok}
+  {
+    const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
+    await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  }
+}
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const increaseTargetPerRef = async () => {}
+const reduceTargetPerRef = async (
+  ctx: CbEthCollateralFixtureContext,
+  pctDecrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease).mul(-1))
+}
+
+const increaseTargetPerRef = async (
+  ctx: CbEthCollateralFixtureContext,
+  pctDecrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease))
+}
 
 const changeRefPerTok = async (ctx: CbEthCollateralFixtureContext, percentChange: BigNumber) => {
   await whileImpersonating(hre, CB_ETH_ORACLE, async (oracleSigner) => {
@@ -146,25 +163,12 @@ const changeRefPerTok = async (ctx: CbEthCollateralFixtureContext, percentChange
   })
 }
 
-// prettier-ignore
-const reduceRefPerTok = async (
-  ctx: CbEthCollateralFixtureContext,
-  pctDecrease: BigNumberish
-) => {
-  await changeRefPerTok(
-    ctx,
-    bn(pctDecrease).mul(-1)
-  )
+const reduceRefPerTok = async (ctx: CbEthCollateralFixtureContext, pctDecrease: BigNumberish) => {
+  await changeRefPerTok(ctx, bn(pctDecrease).mul(-1))
 }
-// prettier-ignore
-const increaseRefPerTok = async (
-  ctx: CbEthCollateralFixtureContext,
-  pctIncrease: BigNumberish
-) => {
-  await changeRefPerTok(
-    ctx,
-    bn(pctIncrease)
-  )
+
+const increaseRefPerTok = async (ctx: CbEthCollateralFixtureContext, pctIncrease: BigNumberish) => {
+  await changeRefPerTok(ctx, bn(pctIncrease))
 }
 const getExpectedPrice = async (ctx: CbEthCollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
@@ -233,13 +237,14 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
   resetFork: resetFork,
   collateralName: 'CBEthCollateral',
   chainlinkDefaultAnswer,
+  itIsPricedByPeg: true,
 }
 
 collateralTests(opts)
