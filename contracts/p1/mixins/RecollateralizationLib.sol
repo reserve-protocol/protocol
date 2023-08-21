@@ -28,7 +28,9 @@ struct TradingContext {
     uint192 minTradeVolume; // {UoA}
     uint192 maxTradeSlippage; // {1}
     // Cached values
-    uint192[] quantities; // {tok/BU} basket quantities
+    uint192[] quantities; // {tok/BU} basket quantities for each registered ERC20
+    uint192[] lowPrices; // {UoA/tok} price().low for each registered ERC20
+    uint192[] highPrices; // {UoA/tok} price().high for each registered ERC20
 }
 
 /**
@@ -82,9 +84,17 @@ library RecollateralizationLibP1 {
 
         // Cache quantities
         Registry memory reg = ctx.ar.getRegistry();
-        ctx.quantities = new uint192[](reg.erc20s.length);
-        for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+        uint256 len = reg.erc20s.length;
+        ctx.quantities = new uint192[](len);
+        ctx.lowPrices = new uint192[](len);
+        ctx.highPrices = new uint192[](len);
+        for (uint256 i = 0; i < len; ++i) {
             ctx.quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            if (address(reg.erc20s[i]) != address(ctx.rToken)) {
+                (ctx.lowPrices[i], ctx.highPrices[i]) = reg.assets[i].price();
+            } else {
+                ctx.highPrices[i] = FIX_MAX; // should go un-used, but just to be safe
+            }
         }
 
         // ============================
@@ -200,13 +210,11 @@ library RecollateralizationLibP1 {
                 bal = bal.plus(reg.assets[i].bal(address(ctx.stRSR)));
             }
 
-            (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/tok}
-
             // Skip over dust-balance assets not in the basket
             // Intentionally include value of IFFY/DISABLED collateral
             if (
                 ctx.quantities[i] == 0 &&
-                !TradeLib.isEnoughToSell(reg.assets[i], bal, low, ctx.minTradeVolume)
+                !TradeLib.isEnoughToSell(reg.assets[i], bal, ctx.lowPrices[i], ctx.minTradeVolume)
             ) {
                 continue;
             }
@@ -224,13 +232,17 @@ library RecollateralizationLibP1 {
                     // deficit: deduct optimistic estimate of baskets missing
 
                     // {BU} = {UoA/tok} * {tok} / {UoA/BU}
-                    deltaTop -= int256(uint256(low.mulDiv(anchor - bal, buPriceHigh, FLOOR)));
+                    deltaTop -= int256(
+                        uint256(ctx.lowPrices[i].mulDiv(anchor - bal, buPriceHigh, FLOOR))
+                    );
                     // does not need underflow protection: using low price of asset
                 } else {
                     // surplus: add-in optimistic estimate of baskets purchaseable
 
                     //  {BU} = {UoA/tok} * {tok} / {UoA/BU}
-                    deltaTop += int256(uint256(high.safeMulDiv(bal - anchor, buPriceLow, CEIL)));
+                    deltaTop += int256(
+                        uint256(ctx.highPrices[i].safeMulDiv(bal - anchor, buPriceLow, CEIL))
+                    );
                 }
             }
 
@@ -242,7 +254,7 @@ library RecollateralizationLibP1 {
 
                 // (1) Sum token value at low price
                 // {UoA} = {UoA/tok} * {tok}
-                uint192 val = low.mul(bal - anchor, FLOOR);
+                uint192 val = ctx.lowPrices[i].mul(bal - anchor, FLOOR);
 
                 // (2) Lose minTradeVolume to dust (why: auctions can return tokens)
                 // Q: Why is this precisely where we should take out minTradeVolume?
@@ -345,11 +357,10 @@ library RecollateralizationLibP1 {
             uint192 needed = range.top.mul(ctx.quantities[i], CEIL); // {tok}
 
             if (bal.gt(needed)) {
-                (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/sellTok}
-                if (high == 0) continue; // skip over worthless assets
+                if (ctx.highPrices[i] == 0) continue; // skip over worthless assets
 
                 // {UoA} = {sellTok} * {UoA/sellTok}
-                uint192 delta = bal.minus(needed).mul(low, FLOOR);
+                uint192 delta = bal.minus(needed).mul(ctx.lowPrices[i], FLOOR);
 
                 // status = asset.status() if asset.isCollateral() else SOUND
                 CollateralStatus status; // starts SOUND
@@ -364,14 +375,14 @@ library RecollateralizationLibP1 {
                     TradeLib.isEnoughToSell(
                         reg.assets[i],
                         bal.minus(needed),
-                        low,
+                        ctx.lowPrices[i],
                         ctx.minTradeVolume
                     )
                 ) {
                     trade.sell = reg.assets[i];
                     trade.sellAmount = bal.minus(needed);
-                    trade.prices.sellLow = low;
-                    trade.prices.sellHigh = high;
+                    trade.prices.sellLow = ctx.lowPrices[i];
+                    trade.prices.sellHigh = ctx.highPrices[i];
 
                     maxes.surplusStatus = status;
                     maxes.surplus = delta;
@@ -382,17 +393,16 @@ library RecollateralizationLibP1 {
 
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
-                    (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/buyTok}
 
                     // {UoA} = {buyTok} * {UoA/buyTok}
-                    uint192 delta = amtShort.mul(high, CEIL);
+                    uint192 delta = amtShort.mul(ctx.highPrices[i], CEIL);
 
                     // The best asset to buy is whichever asset has the largest deficit
                     if (delta.gt(maxes.deficit)) {
                         trade.buy = reg.assets[i];
                         trade.buyAmount = amtShort;
-                        trade.prices.buyLow = low;
-                        trade.prices.buyHigh = high;
+                        trade.prices.buyLow = ctx.lowPrices[i];
+                        trade.prices.buyHigh = ctx.highPrices[i];
 
                         maxes.deficit = delta;
                     }

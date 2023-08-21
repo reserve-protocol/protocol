@@ -22,6 +22,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     IBasketHandler public immutable basketHandler;
     IAssetRegistry public immutable assetRegistry;
     IBackingManager public immutable backingManager;
+    IRToken public immutable rToken;
 
     IERC20Metadata public immutable erc20;
 
@@ -41,6 +42,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         basketHandler = main.basketHandler();
         assetRegistry = main.assetRegistry();
         backingManager = main.backingManager();
+        rToken = main.rToken();
 
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();
@@ -180,11 +182,19 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
             ctx.minTradeVolume = backingManager.minTradeVolume();
             ctx.maxTradeSlippage = backingManager.maxTradeSlippage();
 
-            // Calculate quantities
+            // Calculate cached values
             Registry memory reg = ctx.ar.getRegistry();
-            ctx.quantities = new uint192[](reg.erc20s.length);
-            for (uint256 i = 0; i < reg.erc20s.length; ++i) {
+            uint256 len = reg.erc20s.length;
+            ctx.quantities = new uint192[](len);
+            ctx.lowPrices = new uint192[](len);
+            ctx.highPrices = new uint192[](len);
+            for (uint256 i = 0; i < len; ++i) {
                 ctx.quantities[i] = ctx.bh.quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+                if (address(reg.erc20s[i]) != address(rToken)) {
+                    (ctx.lowPrices[i], ctx.highPrices[i]) = reg.assets[i].price();
+                } else {
+                    ctx.highPrices[i] = FIX_MAX; // should go un-used, but just to be safe
+                }
             }
 
             // will exclude UoA value from RToken balances at BackingManager
