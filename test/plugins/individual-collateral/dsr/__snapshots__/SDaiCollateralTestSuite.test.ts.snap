@@ -1,25 +1,25 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `117728`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `117612`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `109311`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `109300`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after hard default 1`] = `132112`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after hard default 1`] = `132090`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after hard default 2`] = `124152`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after hard default 2`] = `124130`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `117442`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `117431`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `109311`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `109300`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 1`] = `112297`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 1`] = `112286`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 2`] = `108970`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 2`] = `108959`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `124149`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `124127`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `124149`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `124127`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 1`] = `131977`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 1`] = `132029`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 2`] = `124431`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 2`] = `124483`;

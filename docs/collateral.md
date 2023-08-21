@@ -55,15 +55,10 @@ interface IAsset is IRewardable {
   function refresh() external;
 
   /// Should not revert
+  /// low should be nonzero when the asset might be worth selling
   /// @return low {UoA/tok} The lower end of the price estimate
   /// @return high {UoA/tok} The upper end of the price estimate
   function price() external view returns (uint192 low, uint192 high);
-
-  /// Should not revert
-  /// lotLow should be nonzero when the asset might be worth selling
-  /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-  /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-  function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
   /// @return {tok} The balance of the ERC20 in whole tokens
   function bal(address account) external view returns (uint192);
@@ -79,6 +74,9 @@ interface IAsset is IRewardable {
 
   /// @param {UoA} The max trade volume, in UoA
   function maxTradeVolume() external view returns (uint192);
+
+  /// @return {s} The timestamp of the last refresh() that saved prices
+  function lastSave() external view returns (uint48);
 }
 
 /// CollateralStatus must obey a linear ordering. That is:
@@ -317,7 +315,7 @@ The same wrapper approach is easily used to tokenize positions in protocols that
 
 Because it’s called at the beginning of many transactions, `refresh()` should never revert. If `refresh()` encounters a critical error, it should change the Collateral contract’s state so that `status()` becomes `DISABLED`.
 
-To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`lotPrice()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
+To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
 
 ### The `IFFY` status should be temporary.
 
@@ -364,7 +362,7 @@ The values returned by the following view methods should never change:
 
 Collateral implementors who extend from [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) can restrict their attention to overriding the following four functions:
 
-- `tryPrice()` (not on the ICollateral interface; used by `price()`/`lotPrice()`/`refresh()`)
+- `tryPrice()` (not on the ICollateral interface; used by `price()`/`refresh()`)
 - `refPerTok()`
 - `targetPerRef()`
 - `claimRewards()`
@@ -441,15 +439,7 @@ Lower estimate must be <= upper estimate.
 
 Should return `(0, FIX_MAX)` if pricing data is unavailable or stale.
 
-Should be gas-efficient.
-
-### lotPrice() `{UoA/tok}`
-
-Should never revert.
-
-Lower estimate must be <= upper estimate.
-
-The low estimate should be nonzero while the asset is worth selling.
+Recommend decaying low estimate downwards and high estimate upwards over time.
 
 Should be gas-efficient.
 

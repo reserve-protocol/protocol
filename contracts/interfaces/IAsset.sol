@@ -27,15 +27,10 @@ interface IAsset is IRewardable {
     function refresh() external;
 
     /// Should not revert
+    /// low should be nonzero if the asset could be worth selling
     /// @return low {UoA/tok} The lower end of the price estimate
     /// @return high {UoA/tok} The upper end of the price estimate
     function price() external view returns (uint192 low, uint192 high);
-
-    /// Should not revert
-    /// lotLow should be nonzero when the asset might be worth selling
-    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);
@@ -67,8 +62,14 @@ interface TestIAsset is IAsset {
     /// @return {s} Seconds that an oracle value is considered valid
     function oracleTimeout() external view returns (uint48);
 
-    /// @return {s} Seconds that the lotPrice should decay over, after stale price
+    /// @return {s} Seconds that the price().low should decay over, after stale price
     function priceTimeout() external view returns (uint48);
+
+    /// @return {UoA/tok} The last saved low price
+    function savedLowPrice() external view returns (uint192);
+
+    /// @return {UoA/tok} The last saved high price
+    function savedHighPrice() external view returns (uint192);
 }
 
 /// CollateralStatus must obey a linear ordering. That is:

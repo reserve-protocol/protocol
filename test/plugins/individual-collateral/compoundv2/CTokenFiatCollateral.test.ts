@@ -22,7 +22,12 @@ import {
   IRTokenSetup,
   networkConfig,
 } from '../../../../common/configuration'
-import { CollateralStatus, MAX_UINT48, ZERO_ADDRESS } from '../../../../common/constants'
+import {
+  CollateralStatus,
+  MAX_UINT48,
+  MAX_UINT192,
+  ZERO_ADDRESS,
+} from '../../../../common/constants'
 import { expectEvents, expectInIndirectReceipt } from '../../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
@@ -666,10 +671,14 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
       // Does not revert with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
+      await advanceTime(ORACLE_TIMEOUT.sub(12).toString())
 
-      // Compound
-      await expectUnpriced(cDaiCollateral.address)
+      // Price is at saved prices
+      const savedLowPrice = await cDaiCollateral.savedLowPrice()
+      const savedHighPrice = await cDaiCollateral.savedHighPrice()
+      const p = await cDaiCollateral.price()
+      expect(p[0]).to.equal(savedLowPrice)
+      expect(p[1]).to.equal(savedHighPrice)
 
       // Refresh should mark status IFFY
       await cDaiCollateral.refresh()
@@ -1028,9 +1037,9 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await advanceTime(
           (await cDaiCollateral.priceTimeout()) + (await cDaiCollateral.oracleTimeout())
         )
-        const lotP = await cDaiCollateral.lotPrice()
-        expect(lotP[0]).to.equal(0)
-        expect(lotP[1]).to.equal(0)
+        const p = await cDaiCollateral.price()
+        expect(p[0]).to.equal(0)
+        expect(p[1]).to.equal(MAX_UINT192)
         await snapshotGasCost(cDaiCollateral.refresh())
         await snapshotGasCost(cDaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })

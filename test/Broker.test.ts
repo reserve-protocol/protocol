@@ -1,4 +1,4 @@
-import { loadFixture, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
+import { loadFixture, getStorageAt, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { expect } from 'chai'
@@ -463,6 +463,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         await token0.connect(bmSigner).approve(broker.address, tradeRequest.sellAmount)
 
         // Should succeed in callStatic
+        await assetRegistry.refresh()
         await broker
           .connect(bmSigner)
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
@@ -483,6 +484,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .withArgs(token0.address, true, false)
 
         // Should succeed in callStatic
+        await assetRegistry.refresh()
         await broker
           .connect(bmSigner)
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
@@ -1648,6 +1650,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       let TradeFactory: ContractFactory
       let newTrade: DutchTrade
 
+      // Increment `lastSave` in storage slot 1
+      const incrementLastSave = async (addr: string) => {
+        const asArray = ethers.utils.arrayify(await getStorageAt(addr, 1))
+        asArray[7] = asArray[7] + 1 // increment least significant byte of lastSave
+        const asHex = ethers.utils.hexlify(asArray)
+        await setStorageAt(addr, 1, asHex)
+      }
+
       beforeEach(async () => {
         amount = bn('100e18')
 
@@ -1675,6 +1685,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // Backing Manager
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           await token0.connect(bmSigner).approve(broker.address, amount)
+          await assetRegistry.refresh()
+          await incrementLastSave(tradeRequest.sell)
+          await incrementLastSave(tradeRequest.buy)
           await snapshotGasCost(
             broker.connect(bmSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
           )
@@ -1683,6 +1696,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // RSR Trader
         await whileImpersonating(rsrTrader.address, async (rsrSigner) => {
           await token0.connect(rsrSigner).approve(broker.address, amount)
+          await assetRegistry.refresh()
+          await incrementLastSave(tradeRequest.sell)
+          await incrementLastSave(tradeRequest.buy)
           await snapshotGasCost(
             broker.connect(rsrSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
           )
@@ -1691,6 +1707,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         // RToken Trader
         await whileImpersonating(rTokenTrader.address, async (rtokSigner) => {
           await token0.connect(rtokSigner).approve(broker.address, amount)
+          await assetRegistry.refresh()
+          await incrementLastSave(tradeRequest.sell)
+          await incrementLastSave(tradeRequest.buy)
           await snapshotGasCost(
             broker.connect(rtokSigner).openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
           )

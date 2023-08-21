@@ -11,6 +11,8 @@ contract Asset is IAsset, VersionedAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
+    uint192 public constant MAX_HIGH_PRICE_BUFFER = 2 * FIX_ONE; // {UoA/tok} 200%
+
     AggregatorV3Interface public immutable chainlinkFeed; // {UoA/tok}
 
     IERC20Metadata public immutable erc20;
@@ -106,54 +108,45 @@ contract Asset is IAsset, VersionedAsset {
     }
 
     /// Should not revert
+    /// low should be nonzero if the asset could be worth selling
     /// @dev Should be general enough to not need to be overridden
-    /// @return {UoA/tok} The lower end of the price estimate
-    /// @return {UoA/tok} The upper end of the price estimate
-    function price() public view virtual returns (uint192, uint192) {
-        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
-            assert(low <= high);
-            return (low, high);
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            return (0, FIX_MAX);
-        }
-    }
-
-    /// Should not revert
-    /// lotLow should be nonzero when the asset might be worth selling
-    /// @dev Should be general enough to not need to be overridden
-    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-    function lotPrice() external view virtual returns (uint192 lotLow, uint192 lotHigh) {
+    /// @return _low {UoA/tok} The lower end of the price estimate
+    /// @return _high {UoA/tok} The upper end of the price estimate
+    function price() public view virtual returns (uint192 _low, uint192 _high) {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
             // if the price feed is still functioning, use that
-            lotLow = low;
-            lotHigh = high;
+            _low = low;
+            _high = high;
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
 
-            // if the price feed is broken, use a decayed historical value
+            // if the price feed is broken, decay _low downwards and _high upwards
 
             uint48 delta = uint48(block.timestamp) - lastSave; // {s}
             if (delta <= oracleTimeout) {
-                lotLow = savedLowPrice;
-                lotHigh = savedHighPrice;
+                // use saved prices for at least the oracleTimeout
+                _low = savedLowPrice;
+                _high = savedHighPrice;
             } else if (delta >= oracleTimeout + priceTimeout) {
-                return (0, 0); // no price after full timeout
+                // use unpriced after a full timeout, incase 3x was not enough
+                return (0, FIX_MAX);
             } else {
                 // oracleTimeout <= delta <= oracleTimeout + priceTimeout
 
-                // {1} = {s} / {s}
-                uint192 lotMultiplier = divuu(oracleTimeout + priceTimeout - delta, priceTimeout);
-
+                // Decay _low downwards from savedLowPrice to 0
                 // {UoA/tok} = {UoA/tok} * {1}
-                lotLow = savedLowPrice.mul(lotMultiplier);
-                lotHigh = savedHighPrice.mul(lotMultiplier);
+                _low = savedLowPrice.muluDivu(oracleTimeout + priceTimeout - delta, priceTimeout);
+
+                // Decay _high upwards to 3x savedHighPrice
+                _high = savedHighPrice.plus(
+                    savedHighPrice.mul(
+                        MAX_HIGH_PRICE_BUFFER.muluDivu(delta - oracleTimeout, priceTimeout)
+                    )
+                );
             }
         }
-        assert(lotLow <= lotHigh);
+        assert(_low <= _high);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

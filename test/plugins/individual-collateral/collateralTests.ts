@@ -25,7 +25,7 @@ import {
   CollateralTestSuiteFixtures,
   CollateralStatus,
 } from './pluginTestTypes'
-import { expectPrice } from '../../utils/oracles'
+import { expectPrice, expectUnpriced } from '../../utils/oracles'
 import snapshotGasCost from '../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation } from '../../fixtures'
 
@@ -261,7 +261,7 @@ export default function fn<X extends CollateralFixtureContext>(
           const updateAnswerTx = await chainlinkFeed.updateAnswer(0)
           await updateAnswerTx.wait()
 
-          // (0, FIX_MAX) is returned
+          // (0, 0) is returned
           const [low, high] = await collateral.price()
           expect(low).to.equal(0)
           expect(high).to.equal(0)
@@ -271,33 +271,28 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
-        it('reverts in case of invalid timestamp', async () => {
+        it('does not revert in case of invalid timestamp', async () => {
           await chainlinkFeed.setInvalidTimestamp()
 
-          // Check price of token
-          const [low, high] = await collateral.price()
-          expect(low).to.equal(0)
-          expect(high).to.equal(MAX_UINT192)
-
-          // When refreshed, sets status to Unpriced
+          // When refreshed, sets status to IFFY
           await collateral.refresh()
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
         it('does not update the saved prices if collateral is unpriced', async () => {
           /*
-            want to cover this block from the refresh function
+          want to cover this block from the refresh function
             is it even possible to cover this w/ the tryPrice from AppreciatingFiatCollateral?
-
+            
             if (high < FIX_MAX) {
-                savedLowPrice = low;
-                savedHighPrice = high;
-                lastSave = uint48(block.timestamp);
+              savedLowPrice = low;
+              savedHighPrice = high;
+              lastSave = uint48(block.timestamp);
             } else {
-                // must be unpriced
-                assert(low == 0);
+              // must be unpriced
+              assert(low == 0);
             }
-          */
+            */
           expect(true)
         })
 
@@ -350,29 +345,27 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
-        it('decays lotPrice over priceTimeout period', async () => {
-          // Prices should start out equal
+        it('decays price over priceTimeout period', async () => {
           await collateral.refresh()
-          const p = await collateral.price()
-          let lotP = await collateral.lotPrice()
-          expect(p.length).to.equal(lotP.length)
-          expect(p[0]).to.equal(lotP[0])
-          expect(p[1]).to.equal(lotP[1])
+          const savedLow = await collateral.savedLowPrice()
+          const savedHigh = await collateral.savedHighPrice()
+          // Price should start out at saved prices
+          let p = await collateral.price()
+          expect(p[0]).to.equal(savedLow)
+          expect(p[1]).to.equal(savedHigh)
 
           await advanceTime(await collateral.oracleTimeout())
 
           // Should be roughly half, after half of priceTimeout
           const priceTimeout = await collateral.priceTimeout()
           await advanceTime(priceTimeout / 2)
-          lotP = await collateral.lotPrice()
-          expect(lotP[0]).to.be.closeTo(p[0].div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
-          expect(lotP[1]).to.be.closeTo(p[1].div(2), p[1].div(2).div(10000)) // 1 part in 10 thousand
+          p = await collateral.price()
+          expect(p[0]).to.be.closeTo(savedLow.div(2), p[0].div(2).div(10000)) // 1 part in 10 thousand
+          expect(p[1]).to.be.closeTo(savedHigh.mul(2), p[1].mul(2).div(10000)) // 1 part in 10 thousand
 
-          // Should be 0 after full priceTimeout
+          // Should be unpriced after full priceTimeout
           await advanceTime(priceTimeout / 2)
-          lotP = await collateral.lotPrice()
-          expect(lotP[0]).to.equal(0)
-          expect(lotP[1]).to.equal(0)
+          await expectUnpriced(collateral.address)
         })
       })
 
@@ -535,9 +528,9 @@ export default function fn<X extends CollateralFixtureContext>(
             await advanceTime(
               (await collateral.priceTimeout()) + (await collateral.oracleTimeout())
             )
-            const lotP = await collateral.lotPrice()
-            expect(lotP[0]).to.equal(0)
-            expect(lotP[1]).to.equal(0)
+            const p = await collateral.price()
+            expect(p[0]).to.equal(0)
+            expect(p[1]).to.equal(MAX_UINT192)
           })
         })
       })
