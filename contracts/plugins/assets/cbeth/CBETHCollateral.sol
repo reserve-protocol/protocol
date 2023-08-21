@@ -40,8 +40,10 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
         AggregatorV3Interface _targetPerTokChainlinkFeed,
         uint48 _targetPerTokChainlinkTimeout
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        token = CBEth(address(config.erc20));
+        require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
+        require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
 
+        token = CBEth(address(config.erc20));
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
         targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
     }
