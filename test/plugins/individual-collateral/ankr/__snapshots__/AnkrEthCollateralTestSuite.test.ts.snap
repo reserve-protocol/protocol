@@ -1,17 +1,17 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `61342`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `61208`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `56873`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `56739`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after hard default 1`] = `79535`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after hard default 1`] = `79401`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after hard default 2`] = `37508`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after hard default 2`] = `71718`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `61342`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `61208`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `56873`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `56739`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `71849`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `71715`;
 
-exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `71849`;
+exports[`Collateral: AnkrStakedETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `71715`;
