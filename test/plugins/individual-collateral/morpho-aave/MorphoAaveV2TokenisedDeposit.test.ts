@@ -252,7 +252,7 @@ const execTestForToken = ({
       await closeTo(methods.assets(bob), fraction(50))
     })
 
-    it('Check that inflation attacks are not possible', async () => {
+    it('Regression Test - C4 July 2023 Issue #5', async () => {
       const {
         users: { alice, bob },
         methods,
