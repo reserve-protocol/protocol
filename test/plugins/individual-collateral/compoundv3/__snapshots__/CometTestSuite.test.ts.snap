@@ -1,25 +1,25 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after full price timeout 1`] = `110087`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after full price timeout 1`] = `109921`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after full price timeout 2`] = `105350`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after full price timeout 2`] = `105184`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after hard default 1`] = `135455`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after hard default 1`] = `135278`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after hard default 2`] = `70661`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after hard default 2`] = `127595`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `110087`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `109921`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `105350`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `105184`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after soft default 1`] = `73461`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after soft default 1`] = `107911`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after soft default 2`] = `70661`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() after soft default 2`] = `104843`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() during SOUND 1`] = `127769`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() during SOUND 1`] = `127592`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() during SOUND 2`] = `127769`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() during SOUND 2`] = `127592`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() during soft default 1`] = `135320`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() during soft default 1`] = `135143`;
 
-exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() during soft default 2`] = `128051`;
+exports[`Collateral: CompoundV3USDC collateral functionality Gas Reporting refresh() during soft default 2`] = `127874`;

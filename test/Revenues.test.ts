@@ -554,13 +554,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
       })
 
-      it('Should launch revenue auction at lotPrice if UNPRICED', async () => {
-        // After oracleTimeout the lotPrice should be the original price still
+      it('Should launch revenue auction if UNPRICED', async () => {
+        // After oracleTimeout it should still launch auction for RToken
         await advanceTime(ORACLE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await rTokenTrader.callStatic.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
 
-        // After oracleTimeout the lotPrice should be the original price still
+        // After priceTimeout it should not buy RToken
         await advanceTime(PRICE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(

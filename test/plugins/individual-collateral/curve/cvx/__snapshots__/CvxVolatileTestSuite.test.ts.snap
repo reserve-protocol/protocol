@@ -1,25 +1,25 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `65346`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `65201`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `60878`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `60733`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 1`] = `241371`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 1`] = `240731`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 2`] = `29793`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after hard default 2`] = `235849`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `65346`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `65201`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `60878`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `60733`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after soft default 1`] = `29793`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after soft default 1`] = `60392`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after soft default 2`] = `29793`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() after soft default 2`] = `60392`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `236486`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `235846`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `236486`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `235846`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `242740`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `242100`;
 
-exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during soft default 2`] = `235472`;
+exports[`Collateral: CurveVolatileCollateral  - ConvexStakingWrapper collateral functionality Gas Reporting refresh() during soft default 2`] = `234832`;

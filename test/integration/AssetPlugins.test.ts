@@ -1082,7 +1082,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       })
 
       it('Should handle invalid/stale Price - Assets', async () => {
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
 
         // Stale Oracle
         await expectUnpriced(compAsset.address)
@@ -1126,7 +1126,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - Fiat', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
 
         await expectUnpriced(daiCollateral.address)
         await expectUnpriced(usdcCollateral.address)
@@ -1206,7 +1206,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.SOUND)
 
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
 
         // Compound
         await expectUnpriced(cDaiCollateral.address)
@@ -1279,7 +1279,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - ATokens Fiat', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
 
         // Aave
         await expectUnpriced(aDaiCollateral.address)
@@ -1356,7 +1356,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - Non-Fiatcoins', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
 
         // Aave
         await expectUnpriced(wbtcCollateral.address)
@@ -1428,7 +1428,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - CTokens Non-Fiat', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
 
         // Compound
         await expectUnpriced(cWBTCCollateral.address)
@@ -1509,7 +1509,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const delayUntilDefault = bn('86400') // 24h
 
         // Dows not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
 
         // Aave
         await expectUnpriced(wethCollateral.address)
@@ -1570,7 +1570,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const delayUntilDefault = bn('86400') // 24h
 
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
 
         // Compound
         await expectUnpriced(cETHCollateral.address)
@@ -1646,7 +1646,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       it('Should handle invalid/stale Price - Collateral - EUR Fiat', async () => {
         // Does not revert with stale price
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
 
         await expectUnpriced(eurtCollateral.address)
 

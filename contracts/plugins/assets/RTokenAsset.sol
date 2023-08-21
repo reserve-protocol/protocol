@@ -73,7 +73,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
     // solhint-disable no-empty-blocks
     function refresh() public virtual override {
-        // No need to save lastPrice; can piggyback off the backing collateral's lotPrice()
+        // No need to save lastPrice; can piggyback off the backing collateral's saved prices
 
         cachedOracleData.cachedAtTime = 0; // force oracle refresh
     }
@@ -91,27 +91,6 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             return (0, FIX_MAX);
         }
-    }
-
-    /// Should not revert
-    /// lotLow should be nonzero when the asset might be worth selling
-    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
-        (uint192 buLow, uint192 buHigh) = basketHandler.lotPrice(); // {UoA/BU}
-
-        // Here we take advantage of the fact that we know RToken has 18 decimals
-        // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
-        uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
-
-        if (supply == 0) return (buLow, buHigh);
-
-        BasketRange memory range = basketRange(); // {BU}
-
-        // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        lotLow = range.bottom.mulDiv(buLow, supply, FLOOR);
-        lotHigh = range.top.mulDiv(buHigh, supply, CEIL);
-        assert(lotLow <= lotHigh); // not obviously true
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
@@ -174,7 +153,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         );
     }
 
-    /// Computationally expensive basketRange calculation; used in price() & lotPrice()
+    /// Computationally expensive basketRange calculation; used in price()
     function basketRange() private view returns (BasketRange memory range) {
         BasketRange memory basketsHeld = basketHandler.basketsHeldBy(address(backingManager));
         uint192 basketsNeeded = IRToken(address(erc20)).basketsNeeded(); // {BU}

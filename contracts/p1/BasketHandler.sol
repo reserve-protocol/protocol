@@ -309,27 +309,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Should not revert
+    /// low should be nonzero when BUs are worth selling
     /// @return low {UoA/BU} The lower end of the price estimate
     /// @return high {UoA/BU} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
     function price() external view returns (uint192 low, uint192 high) {
-        return _price(false);
-    }
-
-    /// Should not revert
-    /// lowLow should be nonzero when the asset might be worth selling
-    /// @return lotLow {UoA/BU} The lower end of the lot price estimate
-    /// @return lotHigh {UoA/BU} The upper end of the lot price estimate
-    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
-    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
-        return _price(true);
-    }
-
-    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
-    /// @param useLotPrice Whether to use lotPrice() or price()
-    /// @return low {UoA/BU} The lower end of the price estimate
-    /// @return high {UoA/BU} The upper end of the price estimate
-    function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
         uint256 low256;
         uint256 high256;
 
@@ -338,9 +322,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint192 qty = quantity(basket.erc20s[i]);
             if (qty == 0) continue;
 
-            (uint192 lowP, uint192 highP) = useLotPrice
-                ? assetRegistry.toAsset(basket.erc20s[i]).lotPrice()
-                : assetRegistry.toAsset(basket.erc20s[i]).price();
+            (uint192 lowP, uint192 highP) = assetRegistry.toAsset(basket.erc20s[i]).price();
 
             low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
 
