@@ -12,14 +12,14 @@ exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after
 
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after oracle timeout 2`] = `73554`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 1`] = `91902`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 1`] = `91976`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 2`] = `91976`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 2`] = `91902`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 1`] = `93113`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 1`] = `93039`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 2`] = `93039`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 2`] = `93113`;
 
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 1`] = `128111`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 2`] = `92317`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 2`] = `92243`;
