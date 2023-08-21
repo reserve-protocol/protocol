@@ -61,12 +61,6 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     function refresh() public virtual override {
         ICusdcV3Wrapper(address(erc20)).accrue();
 
-        if (alreadyDefaulted()) {
-            // continue to update rates
-            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
-            return;
-        }
-
         CollateralStatus oldStatus = status();
 
         // Check for hard default
