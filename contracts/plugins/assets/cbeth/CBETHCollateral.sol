@@ -16,25 +16,34 @@ interface CBEth is IERC20Metadata {
     function exchangeRate() external view returns (uint256 _exchangeRate);
 }
 
+/**
+ * @title CBEthCollateral
+ * @notice Collateral plugin for Coinbase's staked ETH
+ * tok = cbETH
+ * ref = ETH2
+ * tar = ETH
+ * UoA = USD
+ */
 contract CBEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     CBEth public immutable token;
-    AggregatorV3Interface public immutable refPerTokChainlinkFeed;
-    uint48 public immutable refPerTokChainlinkTimeout;
+    AggregatorV3Interface public immutable targetPerTokChainlinkFeed; // {target/tok}
+    uint48 public immutable targetPerTokChainlinkTimeout;
 
-    /// @param config.chainlinkFeed {UoA/ref} price of DAI in USD terms
+    /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
+    /// @param _targetPerTokChainlinkFeed {target/tok} price of cbETH in ETH terms
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        AggregatorV3Interface _refPerTokChainlinkFeed,
-        uint48 _refPerTokChainlinkTimeout
+        AggregatorV3Interface _targetPerTokChainlinkFeed,
+        uint48 _targetPerTokChainlinkTimeout
     ) AppreciatingFiatCollateral(config, revenueHiding) {
         token = CBEth(address(config.erc20));
 
-        refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
-        refPerTokChainlinkTimeout = _refPerTokChainlinkTimeout;
+        targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
+        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -51,16 +60,18 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        uint192 spotRefPrTok = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(spotRefPrTok);
+        uint192 targetPerTok = targetPerTokChainlinkFeed.price(targetPerTokChainlinkTimeout);
+
+        // {UoA/tok} = {UoA/target} * {target/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(targetPerTok);
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;
         low = p - err;
         // assert(low <= high); obviously true just by inspection
 
-        pegPrice = _underlyingRefPerTok().div(spotRefPrTok); // {target/ref}
+        // {target/ref} = {ref/tok} / {target/tok}
+        pegPrice = _underlyingRefPerTok().div(targetPerTok);
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens

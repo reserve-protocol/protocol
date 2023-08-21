@@ -8,9 +8,9 @@ import { IReth } from "./vendor/IReth.sol";
 
 /**
  * @title RethCollateral
- * @notice Collateral plugin for Rocket-Pool ETH,
+ * @notice Collateral plugin for Rocket-Pool ETH
  * tok = rETH
- * ref = ETH
+ * ref = ETH2
  * tar = ETH
  * UoA = USD
  */
@@ -18,20 +18,22 @@ contract RethCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    AggregatorV3Interface public immutable refPerTokChainlinkFeed;
-    uint48 public immutable refPerTokChainlinkTimeout;
+    AggregatorV3Interface public immutable targetPerTokChainlinkFeed;
+    uint48 public immutable targetPerTokChainlinkTimeout;
 
-    /// @param config.chainlinkFeed Feed units: {UoA/ref}
+    /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
+    /// @param _targetPerTokChainlinkFeed {target/tok} price of cbETH in ETH terms
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        AggregatorV3Interface _refPerTokChainlinkFeed,
-        uint48 _refPerTokChainlinkTimeout
+        AggregatorV3Interface _targetPerTokChainlinkFeed,
+        uint48 _targetPerTokChainlinkTimeout
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(_refPerTokChainlinkFeed) != address(0), "missing refPerTok feed");
-        require(_refPerTokChainlinkTimeout != 0, "refPerTokChainlinkTimeout zero");
-        refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
-        refPerTokChainlinkTimeout = _refPerTokChainlinkTimeout;
+        require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
+        require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
+
+        targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
+        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -48,16 +50,18 @@ contract RethCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        uint192 spotRefPrTok = refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout);
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(spotRefPrTok);
+        uint192 targetPerTok = targetPerTokChainlinkFeed.price(targetPerTokChainlinkTimeout);
+
+        // {UoA/tok} = {UoA/target} * {target/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(targetPerTok);
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;
         low = p - err;
         // assert(low <= high); obviously true just by inspection
 
-        pegPrice = _underlyingRefPerTok().div(spotRefPrTok); // {target/ref}
+        // {target/ref} = {ref/tok} / {target/tok}
+        pegPrice = _underlyingRefPerTok().div(targetPerTok);
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
