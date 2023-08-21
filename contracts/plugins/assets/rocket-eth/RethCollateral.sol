@@ -22,7 +22,7 @@ contract RethCollateral is AppreciatingFiatCollateral {
     uint48 public immutable targetPerTokChainlinkTimeout;
 
     /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
-    /// @param _targetPerTokChainlinkFeed {target/tok} price of cbETH in ETH terms
+    /// @param _targetPerTokChainlinkFeed {target/tok} price of rETH in ETH terms
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
