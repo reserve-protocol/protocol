@@ -5148,7 +5148,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       expect(await backingManager.tradesOpen()).to.equal(0)
     })
 
-    it.only('rebalance() - DutchTrade ', async () => {
+    it('rebalance() - DutchTrade ', async () => {
       // Register Collateral
       await assetRegistry.connect(owner).register(backupCollateral1.address)
 
