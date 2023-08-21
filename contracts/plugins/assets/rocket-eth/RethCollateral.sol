@@ -60,8 +60,8 @@ contract RethCollateral is AppreciatingFiatCollateral {
         low = p - err;
         // assert(low <= high); obviously true just by inspection
 
-        // {target/ref} = {ref/tok} / {target/tok}
-        pegPrice = _underlyingRefPerTok().div(targetPerTok);
+        // {target/ref} = {target/tok} / {ref/tok}
+        pegPrice = targetPerTok.div(_underlyingRefPerTok());
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
