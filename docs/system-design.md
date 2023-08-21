@@ -319,6 +319,14 @@ Mainnet reasonable range: 0 to 25e16 (0 to 25%)
 
 In order to restrict the system to organic patterns of behavior, we maintain two supply throttles, one for net issuance and one for net redemption. When a supply change occurs, a check is performed to ensure this does not move the supply more than an acceptable range over a period; a period is fixed to be an hour. The acceptable range (per throttle) is a function of the `amtRate` and `pctRate` variables. **It is the maximum of whichever variable provides the larger rate.**
 
+The recommended starting values for these parameters are as follows:
+|**Parameter**|**Value**|
+|-------------|---------|
+|issuanceThrottle.amtRate|250k|
+|issuanceThrottle.pctRate|5%|
+|redemptionThrottle.amtRate|500k|
+|redemptionThrottle.pctRate|7.5%|
+
 Note the differing units: the `amtRate` variable is in terms of `{qRTok/hour}` while the `pctRate` variable is in terms of `{1/hour}`, i.e a fraction.
 
 #### `issuanceThrottle.amtRate`
