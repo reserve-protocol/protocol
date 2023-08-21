@@ -1,5 +1,16 @@
 # Changelog
 
+# 3.1.0 - Unreleased
+
+### Upgrade Steps -- Required
+
+Upgrade `Broker` + `DutchTrade`
+
+### Core Protocol Contracts
+
+- `Broker` [+0 slots]
+  - Only BackingManager can disable broker for dutch trades
+
 # 3.0.0 - Unreleased
 
 ### Upgrade Steps
