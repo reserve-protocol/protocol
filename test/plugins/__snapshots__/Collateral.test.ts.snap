@@ -1,19 +1,19 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral contracts Gas Reporting refresh() after hard default 1`] = `72844`;
+exports[`Collateral contracts Gas Reporting refresh() after hard default 1`] = `72710`;
 
-exports[`Collateral contracts Gas Reporting refresh() after hard default 2`] = `73980`;
+exports[`Collateral contracts Gas Reporting refresh() after hard default 2`] = `73846`;
 
-exports[`Collateral contracts Gas Reporting refresh() during + after soft default 1`] = `62534`;
+exports[`Collateral contracts Gas Reporting refresh() during + after soft default 1`] = `62400`;
 
-exports[`Collateral contracts Gas Reporting refresh() during + after soft default 2`] = `55266`;
+exports[`Collateral contracts Gas Reporting refresh() during + after soft default 2`] = `55132`;
 
-exports[`Collateral contracts Gas Reporting refresh() during + after soft default 3`] = `54984`;
+exports[`Collateral contracts Gas Reporting refresh() during + after soft default 3`] = `54850`;
 
-exports[`Collateral contracts Gas Reporting refresh() during + after soft default 4`] = `23429`;
+exports[`Collateral contracts Gas Reporting refresh() during + after soft default 4`] = `54791`;
 
-exports[`Collateral contracts Gas Reporting refresh() during + after soft default 5`] = `54984`;
+exports[`Collateral contracts Gas Reporting refresh() during + after soft default 5`] = `54850`;
 
-exports[`Collateral contracts Gas Reporting refresh() during SOUND 1`] = `54984`;
+exports[`Collateral contracts Gas Reporting refresh() during SOUND 1`] = `54850`;
 
-exports[`Collateral contracts Gas Reporting refresh() during SOUND 2`] = `54984`;
+exports[`Collateral contracts Gas Reporting refresh() during SOUND 2`] = `54850`;
