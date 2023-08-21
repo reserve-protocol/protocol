@@ -262,7 +262,15 @@ contract BrokerP1 is ComponentP1, IBroker {
             req.sellAmount
         );
 
-        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
+        trade.init(
+            caller,
+            req.sell,
+            req.buy,
+            req.sellAmount,
+            dutchAuctionLength,
+            caller == backingManager, // only backingManager can disable dutch auctions
+            prices
+        );
         return trade;
     }
 

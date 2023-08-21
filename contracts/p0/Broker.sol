@@ -233,7 +233,16 @@ contract BrokerP0 is ComponentP0, IBroker {
             req.sellAmount
         );
 
-        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
+        bool canReportViolation = caller == main.backingManager();
+        trade.init(
+            caller,
+            req.sell,
+            req.buy,
+            req.sellAmount,
+            dutchAuctionLength,
+            canReportViolation,
+            prices
+        );
         return trade;
     }
 
