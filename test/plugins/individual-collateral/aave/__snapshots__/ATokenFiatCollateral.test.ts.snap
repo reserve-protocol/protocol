@@ -16,9 +16,9 @@ exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after
 
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 2`] = `91976`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 1`] = `93039`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 1`] = `93113`;
 
-exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 2`] = `93113`;
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 2`] = `93039`;
 
 exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 1`] = `128111`;
 

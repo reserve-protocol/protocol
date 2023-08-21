@@ -20,6 +20,6 @@ exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refre
 
 exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `124127`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 1`] = `132029`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 1`] = `131955`;
 
-exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 2`] = `124483`;
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 2`] = `124409`;
