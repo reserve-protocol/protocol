@@ -28,7 +28,6 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    CBEth public immutable token;
     AggregatorV3Interface public immutable targetPerTokChainlinkFeed; // {target/tok}
     uint48 public immutable targetPerTokChainlinkTimeout;
 
@@ -43,7 +42,6 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
         require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
         require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
 
-        token = CBEth(address(config.erc20));
         targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
         targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
     }
@@ -78,6 +76,6 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        return _safeWrap(token.exchangeRate());
+        return _safeWrap(CBEth(address(erc20)).exchangeRate());
     }
 }
