@@ -253,8 +253,7 @@ contract FacadeAct is IFacadeAct, Multicall {
         bytes1 majorVersion = bytes(bm.version())[0];
 
         if (majorVersion == MAJOR_VERSION_3) {
-            // solhint-disable-next-line no-empty-blocks
-            try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
+            bm.rebalance(TradeKind.DUTCH_AUCTION);
         } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
             IERC20[] memory emptyERC20s = new IERC20[](0);
             address(bm).functionCall(
