@@ -11,13 +11,15 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
         Helper functions
     */
 
+    const etherscanUrl = "https://etherscan.io/address/"
+
     const createTableRow = async (name: string, address: string) => {
         const url = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
         const response = await fetch(url)
         const data = await response.json()
         const implementation = data.result[0].Implementation
         const component = await hre.ethers.getContractAt('ComponentP1', address)
-        return `| ${name} | ${address} | ${implementation} | ${await component.version()} |`
+        return `| ${name} | [${address}](${etherscanUrl}${address}) | [${implementation}](${etherscanUrl}${implementation}#code) | ${await component.version()} |`
     }
 
     const createTableRows = async (components: { name: string, address: string }[]) => {
