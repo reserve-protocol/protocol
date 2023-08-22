@@ -3,8 +3,12 @@ import { expect } from 'chai'
 import { ProposalBuilder, buildProposal } from '../governance'
 import { Proposal } from '#/utils/subgraph'
 import { IImplementations, networkConfig } from '#/common/configuration'
-import { bn, fp } from '#/common/numbers'
+import { bn, fp, toBNDecimals } from '#/common/numbers'
+import { CollateralStatus, TradeKind, ZERO_ADDRESS } from '#/common/constants'
+import { setOraclePrice } from '../oracles'
 import { whileImpersonating } from '#/utils/impersonation'
+import { whales } from '../constants'
+import { getTokens, runDutchTrade } from '../trades'
 import {
   AssetRegistryP1,
   BackingManagerP1,
@@ -13,7 +17,9 @@ import {
   BrokerP1,
   CTokenFiatCollateral,
   DistributorP1,
+  EURFiatCollateral,
   FurnaceP1,
+  MockV3Aggregator,
   GnosisTrade,
   IERC20Metadata,
   DutchTrade,
@@ -23,6 +29,7 @@ import {
   MainP1,
   RecollateralizationLibP1,
 } from '../../../../typechain'
+import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '#/utils/time'
 
 export default async (
   hre: HardhatRuntimeEnvironment,
@@ -30,6 +37,7 @@ export default async (
   governorAddress: string
 ) => {
   console.log('\n* * * * * Run checks for release 3.0.0...')
+  const [tester] = await hre.ethers.getSigners()
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
@@ -42,15 +50,183 @@ export default async (
     'BasketHandlerP1',
     await main.basketHandler()
   )
+  const backingManager = await hre.ethers.getContractAt(
+    'BackingManagerP1',
+    await main.backingManager()
+  )
+  const furnace = await hre.ethers.getContractAt('FurnaceP1', await main.furnace())
+  const rsrTrader = await hre.ethers.getContractAt('RevenueTraderP1', await main.rsrTrader())
+  const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
+  const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
 
-  // Attempt to change target amounts
+  /*
+    Asset Registry - new getters       
+  */
+  const nextTimestamp = (await getLatestBlockTimestamp(hre)) + 10
+  await setNextBlockTimestamp(hre, nextTimestamp)
+  await assetRegistry.refresh()
+  expect(await assetRegistry.lastRefresh()).to.equal(nextTimestamp)
+  expect(await assetRegistry.size()).to.equal(16)
+
+  /*
+    New Basket validations - units and weights       
+  */
   const usdcCollat = await assetRegistry.toColl(networkConfig['1'].tokens.USDC!)
-  const usdc = await hre.ethers.getContractAt('FiatCollateral', usdcCollat)
+  const usdcFiatColl = await hre.ethers.getContractAt('FiatCollateral', usdcCollat)
+  const usdc = await hre.ethers.getContractAt('USDCMock', await usdcFiatColl.erc20())
 
+  // Attempt to change target weights in basket
   await whileImpersonating(hre, timelockAddress, async (tl) => {
     await expect(
-      basketHandler.connect(tl).setPrimeBasket([await usdc.erc20()], [fp('20')])
+      basketHandler.connect(tl).setPrimeBasket([usdc.address], [fp('20')])
     ).to.be.revertedWith('new target weights')
+  })
+
+  // Attempt to change target unit in basket
+  const eurt = await hre.ethers.getContractAt('ERC20Mock', networkConfig['1'].tokens.EURT!)
+  const EURFiatCollateralFactory = await hre.ethers.getContractFactory('EURFiatCollateral')
+  const feedMock = <MockV3Aggregator>(
+    await (await hre.ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+  )
+  const eurFiatCollateral = <EURFiatCollateral>await EURFiatCollateralFactory.deploy(
+    {
+      priceTimeout: bn('604800'),
+      chainlinkFeed: feedMock.address,
+      oracleError: fp('0.01'),
+      erc20: eurt.address,
+      maxTradeVolume: fp('1000'),
+      oracleTimeout: await usdcFiatColl.oracleTimeout(),
+      targetName: hre.ethers.utils.formatBytes32String('EUR'),
+      defaultThreshold: fp('0.01'),
+      delayUntilDefault: bn('86400'),
+    },
+    feedMock.address,
+    await usdcFiatColl.oracleTimeout()
+  )
+  await eurFiatCollateral.refresh()
+
+  // Attempt to set basket with an EUR token
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await assetRegistry.connect(tl).register(eurFiatCollateral.address)
+    await expect(
+      basketHandler.connect(tl).setPrimeBasket([eurt.address], [fp('1')])
+    ).to.be.revertedWith('new target weights')
+    await assetRegistry.connect(tl).unregister(eurFiatCollateral.address)
+  })
+
+  /*
+    Main - Pausing issuance and trading
+  */
+  // Can pause/unpause issuance and trading separately
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await main.connect(tl).pauseIssuance()
+
+    await expect(rToken.connect(tester).issue(fp('100'))).to.be.revertedWith(
+      'frozen or issuance paused'
+    )
+
+    await main.connect(tl).unpauseIssuance()
+
+    await expect(rToken.connect(tester).issue(fp('100'))).to.emit(rToken, 'Issuance')
+
+    await main.connect(tl).pauseTrading()
+
+    await expect(backingManager.connect(tester).forwardRevenue([])).to.be.revertedWith(
+      'frozen or trading paused'
+    )
+
+    await main.connect(tl).unpauseTrading()
+
+    await expect(backingManager.connect(tester).forwardRevenue([])).to.not.be.reverted
+  })
+
+  /*
+    Dust Auctions
+  */
+  const minTrade = bn('1e18')
+  const minTradePrev = await rsrTrader.minTradeVolume()
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await rsrTrader.connect(tl).setMinTradeVolume(minTrade)
+  })
+  await usdcFiatColl.refresh()
+
+  const dustAmount = bn('1e17')
+  await getTokens(hre, usdc.address, toBNDecimals(dustAmount, 6), tester.address)
+  await usdc.connect(tester).transfer(rsrTrader.address, toBNDecimals(dustAmount, 6))
+
+  await expect(rsrTrader.manageTokens([usdc.address], [TradeKind.DUTCH_AUCTION])).to.emit(
+    rsrTrader,
+    'TradeStarted'
+  )
+
+  await runDutchTrade(hre, rsrTrader, usdc.address)
+
+  // Restore values
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await rsrTrader.connect(tl).setMinTradeVolume(minTradePrev)
+  })
+
+  /*
+    Warmup period
+  */
+  const usdcChainlinkFeed = await hre.ethers.getContractAt(
+    'AggregatorV3Interface',
+    await usdcFiatColl.chainlinkFeed()
+  )
+
+  const roundData = await usdcChainlinkFeed.latestRoundData()
+  await setOraclePrice(hre, usdcFiatColl.address, bn('0.8e8'))
+  await assetRegistry.refresh()
+  expect(await usdcFiatColl.status()).to.equal(CollateralStatus.IFFY)
+  expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
+  expect(await basketHandler.isReady()).to.equal(false)
+
+  // Restore SOUND
+  await setOraclePrice(hre, usdcFiatColl.address, roundData.answer)
+  await assetRegistry.refresh()
+
+  // Still cannot issue
+  expect(await usdcFiatColl.status()).to.equal(CollateralStatus.SOUND)
+  expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+  expect(await basketHandler.isReady()).to.equal(false)
+  await expect(rToken.connect(tester).issue(fp('1'))).to.be.revertedWith('basket not ready')
+
+  // Move post warmup period
+  await advanceTime(hre, Number(await basketHandler.warmupPeriod()) + 1)
+
+  // Can issue now
+  expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+  expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+  expect(await basketHandler.isReady()).to.equal(true)
+  await expect(rToken.connect(tester).issue(fp('1'))).to.emit(rToken, 'Issuance')
+
+  /*
+    Melting occurs when paused
+  */
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await main.connect(tl).pauseIssuance()
+    await main.connect(tl).pauseTrading()
+
+    await furnace.melt()
+
+    await main.connect(tl).unpauseIssuance()
+    await main.connect(tl).unpauseTrading()
+  })
+
+  /*
+    Stake and delegate
+  */
+  const stakeAmount = fp('4e6')
+
+  await whileImpersonating(hre, whales[networkConfig['1'].tokens.RSR!], async (rsrSigner) => {
+    expect(await stRSR.delegates(rsrSigner.address)).to.equal(ZERO_ADDRESS)
+    expect(await stRSR.balanceOf(rsrSigner.address)).to.equal(0)
+
+    await rsr.connect(rsrSigner).approve(stRSR.address, stakeAmount)
+    await stRSR.connect(rsrSigner).stakeAndDelegate(stakeAmount, rsrSigner.address)
+
+    expect(await stRSR.delegates(rsrSigner.address)).to.equal(rsrSigner.address)
+    expect(await stRSR.balanceOf(rsrSigner.address)).to.be.gt(0)
   })
 
   console.log('\n3.0.0 check succeeded!')

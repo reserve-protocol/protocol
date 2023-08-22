@@ -3,20 +3,29 @@ import { networkConfig } from '../../common/configuration'
 import { getChainId } from '../../common/blockchain-utils'
 import { whileImpersonating } from '#/utils/impersonation'
 import { useEnv } from '#/utils/env'
+import { expect } from 'chai'
 import { resetFork } from '#/utils/chain'
 import { bn, fp } from '#/common/numbers'
 import { TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { pushOraclesForward } from './upgrade-checker-utils/oracles'
-import { recollateralize, redeemRTokens } from './upgrade-checker-utils/rtokens'
+import {
+  recollateralize,
+  redeemRTokens,
+  customRedeemRTokens,
+} from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
 import runChecks3_0_0, { proposal_3_0_0 } from './upgrade-checker-utils/upgrades/3_0_0'
-import { passAndExecuteProposal, proposeUpgrade } from './upgrade-checker-utils/governance'
+import {
+  passAndExecuteProposal,
+  proposeUpgrade,
+  stakeAndDelegateRsr,
+} from './upgrade-checker-utils/governance'
 import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
 
 // run script for eUSD (version 3.0.0)
-// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6 --facadeact 0x98f292e6Bb4722664fEffb81448cCFB5B7211469
+// npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
 
 /*
   This script is currently useful for the upcoming eUSD upgrade.
@@ -36,7 +45,6 @@ import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
 task('upgrade-checker', 'Mints all the tokens to an address')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
-  .addParam('facadeact', 'the address of the latest FacadeAct')
   .addOptionalParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params, hre) => {
     await resetFork(hre, Number(useEnv('MAINNET_BLOCK')))
@@ -80,11 +88,8 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await pushOraclesForward(hre, params.rtoken)
 
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
-    const facadeAct = await hre.ethers.getContractAt('FacadeAct', params.facadeact)
 
     // 2. Bring back to fully collateralized
-    // TODO: Fix basket status
-
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     const basketHandler = await hre.ethers.getContractAt(
       'BasketHandlerP1',
@@ -94,11 +99,12 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       'BackingManagerP1',
       await main.backingManager()
     )
+    const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
     // Move past trading delay
     await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
 
-    await recollateralize(hre, rToken.address, facadeAct.address, TradeKind.BATCH_AUCTION)
+    await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION) // BATCH_AUCTION
 
     // 3. Run various checks
     const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
@@ -208,7 +214,11 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
 
     // 3. Run the 3.0.0 checks
+    await pushOraclesForward(hre, params.rtoken)
     await runChecks3_0_0(hre, params.rtoken, params.governor)
+
+    // we pushed the chain forward, so we need to keep the rToken SOUND
+    await pushOraclesForward(hre, params.rtoken)
 
     /*
 
@@ -219,15 +229,43 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     /*
 
+      staking/unstaking
+
+    */
+
+    // get RSR
+    const stakeAmount = fp('4e6')
+    const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.RSR!.toLowerCase()],
+      async (rsrSigner) => {
+        await rsr.connect(rsrSigner).transfer(tester.address, stakeAmount)
+      }
+    )
+
+    const balPrevRSR = await rsr.balanceOf(stRSR.address)
+    const balPrevStRSR = await stRSR.balanceOf(tester.address)
+
+    await stakeAndDelegateRsr(hre, rToken.address, tester.address)
+
+    expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(stakeAmount))
+    expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
+
+    /*
+
       switch basket and recollateralize - using Dutch Auctions
       Also check for custom redemption
 
     */
+
+    // we pushed the chain forward, so we need to keep the rToken SOUND
     await pushOraclesForward(hre, params.rtoken)
 
     const bas = await basketHandler.getPrimeBasket()
     console.log(bas.erc20s)
 
+    const prevNonce = await basketHandler.nonce()
     const governor = await hre.ethers.getContractAt('Governance', params.governor)
     const timelockAddress = await governor.timelock()
     await whileImpersonating(hre, timelockAddress, async (tl) => {
@@ -243,7 +281,21 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const b = await basketHandler.getPrimeBasket()
     console.log(b.erc20s)
 
-    await recollateralize(hre, rToken.address, facadeAct.address, TradeKind.DUTCH_AUCTION)
+    /*
+       custom redemption
+    */
+    // Cannot do normal redeem
+    expect(await basketHandler.fullyCollateralized()).to.equal(false)
+    await expect(rToken.connect(tester).redeem(redeemAmount)).to.be.revertedWith(
+      'partial redemption; use redeemCustom'
+    )
+
+    // Do custom redemption on previous basket
+    await customRedeemRTokens(hre, tester, params.rtoken, prevNonce, redeemAmount)
+
+    // Recollateralize using Batch auctions
+    // TODO: Uncomment once bug in FacadeAct is fixed for nextRecollateralizationAuction
+    // await recollateralize(hre, rToken.address, TradeKind.BATCH_AUCTION)
   })
 
 task('propose', 'propose a gov action')

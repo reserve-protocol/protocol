@@ -166,7 +166,7 @@ export const callAndGetNextTrade = async (
   return [tradesRemain, newSellToken]
 }
 // impersonate the whale to provide the required tokens to recipient
-const getTokens = async (
+export const getTokens = async (
   hre: HardhatRuntimeEnvironment,
   tokenAddress: string,
   amount: BigNumber,
@@ -183,6 +183,7 @@ const getTokens = async (
       await getCTokenVault(hre, tokenAddress, amount, recipient)
       break
     default:
+      await getERC20Tokens(hre, tokenAddress, amount, recipient)
       return
   }
 }
@@ -267,5 +268,18 @@ const getStaticAToken = async (
     const bal = await aToken.balanceOf(recipientSigner.address)
     await aToken.connect(recipientSigner).approve(collateral.address, bal)
     await collateral.connect(recipientSigner).deposit(recipient, bal, 0, false)
+  })
+}
+
+// get a specific amount of erc20 plain token
+const getERC20Tokens = async (
+  hre: HardhatRuntimeEnvironment,
+  tokenAddress: string,
+  amount: BigNumber,
+  recipient: string
+) => {
+  const token = await hre.ethers.getContractAt('ERC20Mock', tokenAddress)
+  await whileImpersonating(hre, whales[token.address.toLowerCase()], async (whaleSigner) => {
+    await token.connect(whaleSigner).transfer(recipient, amount)
   })
 }
