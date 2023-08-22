@@ -185,9 +185,9 @@ const reduceTargetPerRef = async (
 
 const increaseTargetPerRef = async (
   ctx: AnkrETHCollateralFixtureContext,
-  pctDecrease: BigNumberish
+  pctIncrease: BigNumberish
 ) => {
-  await changeTargetPerRef(ctx, bn(pctDecrease))
+  await changeTargetPerRef(ctx, bn(pctIncrease))
 }
 
 const changeRefPerTok = async (ctx: AnkrETHCollateralFixtureContext, percentChange: BigNumber) => {
