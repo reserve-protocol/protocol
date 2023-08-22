@@ -220,8 +220,8 @@ export default function fn<X extends CollateralFixtureContext>(
               const newPrice = await getExpectedPrice(ctx)
               await expectPrice(collateral.address, newPrice, oracleError, true)
               const [newLow, newHigh] = await collateral.price()
-              expect(oldLow).to.not.equal(newLow)
-              expect(oldHigh).to.not.equal(newHigh)
+              expect(oldLow).to.be.lt(newLow)
+              expect(oldHigh).to.be.lt(newHigh)
             } else {
               // Check new prices -- no increase expected
               await expectPrice(collateral.address, expectedPrice, oracleError, true)

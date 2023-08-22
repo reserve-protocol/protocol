@@ -26,12 +26,12 @@ import hre from 'hardhat'
 
 interface CbEthCollateralFixtureContext extends CollateralFixtureContext {
   cbETH: CBEth
-  refPerTokChainlinkFeed: MockV3Aggregator
+  targetPerTokChainlinkFeed: MockV3Aggregator
 }
 
 interface CbEthCollateralOpts extends CollateralOpts {
-  refPerTokChainlinkFeed?: string
-  refPerTokChainlinkTimeout?: BigNumberish
+  targetPerTokChainlinkFeed?: string
+  targetPerTokChainlinkTimeout?: BigNumberish
 }
 
 export const deployCollateral = async (
@@ -54,8 +54,8 @@ export const deployCollateral = async (
       delayUntilDefault: opts.delayUntilDefault,
     },
     opts.revenueHiding,
-    opts.refPerTokChainlinkFeed ?? CBETH_ETH_PRICE_FEED,
-    opts.refPerTokChainlinkTimeout ?? ORACLE_TIMEOUT,
+    opts.targetPerTokChainlinkFeed ?? CBETH_ETH_PRICE_FEED,
+    opts.targetPerTokChainlinkTimeout ?? ORACLE_TIMEOUT,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -66,7 +66,7 @@ export const deployCollateral = async (
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
-const refPerTokChainlinkDefaultAnswer = fp('1')
+const targetPerTokChainlinkDefaultAnswer = fp('1.04027709')
 
 type Fixture<T> = () => Promise<T>
 
@@ -85,12 +85,12 @@ const makeCollateralFixtureContext = (
       await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
     )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
-    const refPerTokChainlinkFeed = <MockV3Aggregator>(
-      await MockV3AggregatorFactory.deploy(18, refPerTokChainlinkDefaultAnswer)
+    const targetPerTokChainlinkFeed = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(18, targetPerTokChainlinkDefaultAnswer)
     )
 
-    collateralOpts.refPerTokChainlinkFeed = refPerTokChainlinkFeed.address
-    collateralOpts.refPerTokChainlinkTimeout = PRICE_TIMEOUT
+    collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
+    collateralOpts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT
 
     const cbETH = (await ethers.getContractAt('CBEth', CB_ETH)) as unknown as CBEth
     const collateral = await deployCollateral(collateralOpts)
@@ -99,7 +99,7 @@ const makeCollateralFixtureContext = (
       alice,
       collateral,
       chainlinkFeed,
-      refPerTokChainlinkFeed,
+      targetPerTokChainlinkFeed,
       cbETH,
       tok: cbETH as unknown as ERC20Mock,
     }
@@ -120,11 +120,28 @@ const mintCollateralTo: MintCollateralFunc<CbEthCollateralFixtureContext> = asyn
   await mintCBETH(amount, recipient)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const reduceTargetPerRef = async () => {}
+const changeTargetPerRef = async (ctx: CbEthCollateralFixtureContext, percentChange: BigNumber) => {
+  // We leave the actual refPerTok exchange where it is and just change {target/tok}
+  {
+    const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
+    await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  }
+}
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const increaseTargetPerRef = async () => {}
+const reduceTargetPerRef = async (
+  ctx: CbEthCollateralFixtureContext,
+  pctDecrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease).mul(-1))
+}
+
+const increaseTargetPerRef = async (
+  ctx: CbEthCollateralFixtureContext,
+  pctDecrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease))
+}
 
 const changeRefPerTok = async (ctx: CbEthCollateralFixtureContext, percentChange: BigNumber) => {
   await whileImpersonating(hre, CB_ETH_ORACLE, async (oracleSigner) => {
@@ -133,9 +150,9 @@ const changeRefPerTok = async (ctx: CbEthCollateralFixtureContext, percentChange
       .connect(oracleSigner)
       .updateExchangeRate(rate.add(rate.mul(percentChange).div(bn('100'))))
     {
-      const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+      const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
       const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
-      await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+      await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
     }
 
     {
@@ -146,32 +163,19 @@ const changeRefPerTok = async (ctx: CbEthCollateralFixtureContext, percentChange
   })
 }
 
-// prettier-ignore
-const reduceRefPerTok = async (
-  ctx: CbEthCollateralFixtureContext,
-  pctDecrease: BigNumberish
-) => {
-  await changeRefPerTok(
-    ctx,
-    bn(pctDecrease).mul(-1)
-  )
+const reduceRefPerTok = async (ctx: CbEthCollateralFixtureContext, pctDecrease: BigNumberish) => {
+  await changeRefPerTok(ctx, bn(pctDecrease).mul(-1))
 }
-// prettier-ignore
-const increaseRefPerTok = async (
-  ctx: CbEthCollateralFixtureContext,
-  pctIncrease: BigNumberish
-) => {
-  await changeRefPerTok(
-    ctx,
-    bn(pctIncrease)
-  )
+
+const increaseRefPerTok = async (ctx: CbEthCollateralFixtureContext, pctIncrease: BigNumberish) => {
+  await changeRefPerTok(ctx, bn(pctIncrease))
 }
 const getExpectedPrice = async (ctx: CbEthCollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const clRptData = await ctx.refPerTokChainlinkFeed.latestRoundData()
-  const clRptDecimals = await ctx.refPerTokChainlinkFeed.decimals()
+  const clRptData = await ctx.targetPerTokChainlinkFeed.latestRoundData()
+  const clRptDecimals = await ctx.targetPerTokChainlinkFeed.decimals()
 
   return clData.answer
     .mul(bn(10).pow(18 - clDecimals))
@@ -184,7 +188,19 @@ const getExpectedPrice = async (ctx: CbEthCollateralFixtureContext): Promise<Big
 */
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {}
+const collateralSpecificConstructorTests = () => {
+  it('does not allow missing targetPerTok chainlink feed', async () => {
+    await expect(
+      deployCollateral({ targetPerTokChainlinkFeed: ethers.constants.AddressZero })
+    ).to.be.revertedWith('missing targetPerTok feed')
+  })
+
+  it('does not allow targetPerTok oracle timeout at 0', async () => {
+    await expect(deployCollateral({ targetPerTokChainlinkTimeout: 0 })).to.be.revertedWith(
+      'targetPerTokChainlinkTimeout zero'
+    )
+  })
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {}
@@ -221,13 +237,14 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
-  resetFork: resetFork,
+  resetFork,
   collateralName: 'CBEthCollateral',
   chainlinkDefaultAnswer,
+  itIsPricedByPeg: true,
 }
 
 collateralTests(opts)
