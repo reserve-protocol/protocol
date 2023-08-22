@@ -257,9 +257,11 @@ contract FacadeAct is IFacadeAct, Multicall {
             try bm.rebalance(TradeKind.DUTCH_AUCTION) {} catch {}
         } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
             IERC20[] memory emptyERC20s = new IERC20[](0);
-            address(bm).functionCall(
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = address(bm).call{ value: 0 }(
                 abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
             );
+            success = success; // hush warning
         } else {
             _revertUnrecognizedVersion();
         }
