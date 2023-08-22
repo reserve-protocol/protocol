@@ -4,7 +4,6 @@ import fs from 'fs'
 
 task('get-addys', 'Compile the deployed addresses of an RToken deployment')
   .addOptionalParam('rtoken', 'The address of the RToken', undefined, types.string)
-  .addOptionalParam('save', 'Save the output to markdown files', false, types.boolean)
   .setAction(async (params, hre) => {
 
     /*
@@ -42,9 +41,8 @@ ${rows}
     const getRTokenFileName = async (rtoken: string) => {
         const chainId = await getChainId(hre)
         const rToken = await hre.ethers.getContractAt('IRToken', rtoken)
-        const rTokenName = await rToken.name()
         const rTokenSymbol = await rToken.symbol()
-        return `${outputDir}${chainId}-${rTokenName}-${rTokenSymbol}.md`
+        return `${outputDir}${chainId}-${rTokenSymbol}.md`
     }
 
     const outputDir = 'docs/deployed-addresses/'
