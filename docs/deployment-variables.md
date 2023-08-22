@@ -41,7 +41,7 @@ Dimension: `{1}`
 
 The `rewardRatio` is the fraction of the current reward amount that should be handed out per block.
 
-Default value: `3209014700000` = a half life of 30 days.
+Default value: `68764601000000` = a half life of 14 days.
 
 Mainnet reasonable range: 1e11 to 1e13
 
