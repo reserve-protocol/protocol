@@ -5,7 +5,6 @@ import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
 import {
-  ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
@@ -33,13 +32,19 @@ import { whileImpersonating } from '../../../utils/impersonation'
 
 interface AnkrETHCollateralFixtureContext extends CollateralFixtureContext {
   ankreth: IAnkrETH
+  targetPerTokChainlinkFeed: MockV3Aggregator
+}
+
+interface AnkrETHCollateralOpts extends CollateralOpts {
+  targetPerTokChainlinkFeed?: string
+  targetPerTokChainlinkTimeout?: BigNumberish
 }
 
 /*
   Define deployment functions
 */
 
-export const defaultAnkrEthCollateralOpts: CollateralOpts = {
+export const defaultAnkrETHCollateralOpts: AnkrETHCollateralOpts = {
   erc20: ANKRETH,
   targetName: ethers.utils.formatBytes32String('ETH'),
   rewardERC20: ZERO_ADDRESS,
@@ -53,8 +58,24 @@ export const defaultAnkrEthCollateralOpts: CollateralOpts = {
   revenueHiding: fp('0'),
 }
 
-export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestICollateral> => {
-  opts = { ...defaultAnkrEthCollateralOpts, ...opts }
+export const deployCollateral = async (
+  opts: AnkrETHCollateralOpts = {}
+): Promise<TestICollateral> => {
+  opts = { ...defaultAnkrETHCollateralOpts, ...opts }
+
+  if (opts.targetPerTokChainlinkFeed === undefined) {
+    // Use mock targetPerTok feed until Chainlink deploys a real one
+    const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
+      await ethers.getContractFactory('MockV3Aggregator')
+    )
+    const targetPerTokChainlinkFeed = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(18, targetPerTokChainlinkDefaultAnswer)
+    )
+    opts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
+  }
+  if (opts.targetPerTokChainlinkTimeout === undefined) {
+    opts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT
+  }
 
   const AnkrETHCollateralFactory: ContractFactory = await ethers.getContractFactory(
     'AnkrStakedEthCollateral'
@@ -73,6 +94,8 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
       delayUntilDefault: opts.delayUntilDefault,
     },
     opts.revenueHiding,
+    opts.targetPerTokChainlinkFeed,
+    opts.targetPerTokChainlinkTimeout,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -85,14 +108,15 @@ export const deployCollateral = async (opts: CollateralOpts = {}): Promise<TestI
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
+const targetPerTokChainlinkDefaultAnswer = fp('1.075118097902877192') // TODO
 
 type Fixture<T> = () => Promise<T>
 
 const makeCollateralFixtureContext = (
   alice: SignerWithAddress,
-  opts: CollateralOpts = {}
+  opts: AnkrETHCollateralOpts = {}
 ): Fixture<AnkrETHCollateralFixtureContext> => {
-  const collateralOpts = { ...defaultAnkrEthCollateralOpts, ...opts }
+  const collateralOpts = { ...defaultAnkrETHCollateralOpts, ...opts }
 
   const makeCollateralFixtureContext = async () => {
     const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
@@ -105,17 +129,22 @@ const makeCollateralFixtureContext = (
 
     collateralOpts.chainlinkFeed = chainlinkFeed.address
 
+    const targetPerTokChainlinkFeed = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(18, targetPerTokChainlinkDefaultAnswer)
+    )
+    collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
+    collateralOpts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT
+
     const ankreth = (await ethers.getContractAt('IAnkrETH', ANKRETH)) as IAnkrETH
-    const rewardToken = (await ethers.getContractAt('ERC20Mock', ZERO_ADDRESS)) as ERC20Mock
     const collateral = await deployCollateral(collateralOpts)
 
     return {
       alice,
       collateral,
       chainlinkFeed,
+      targetPerTokChainlinkFeed,
       ankreth,
       tok: ankreth,
-      rewardToken,
     }
   }
 
@@ -135,50 +164,78 @@ const mintCollateralTo: MintCollateralFunc<AnkrETHCollateralFixtureContext> = as
   await mintAnkrETH(ctx.ankreth, user, amount, recipient)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const reduceTargetPerRef = async () => {}
+const changeTargetPerRef = async (
+  ctx: AnkrETHCollateralFixtureContext,
+  percentChange: BigNumber
+) => {
+  // We leave the actual refPerTok exchange where it is and just change {target/tok}
+  {
+    const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
+    await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  }
+}
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const increaseTargetPerRef = async () => {}
+const reduceTargetPerRef = async (
+  ctx: AnkrETHCollateralFixtureContext,
+  pctDecrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease).mul(-1))
+}
 
-const reduceRefPerTok = async (ctx: AnkrETHCollateralFixtureContext, pctDecrease: BigNumberish) => {
+const increaseTargetPerRef = async (
+  ctx: AnkrETHCollateralFixtureContext,
+  pctDecrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease))
+}
+
+const changeRefPerTok = async (ctx: AnkrETHCollateralFixtureContext, percentChange: BigNumber) => {
   const ankrETH = (await ethers.getContractAt('IAnkrETH', ANKRETH)) as IAnkrETH
 
-  // Increase ratio so refPerTok decreases
+  // Move ratio in opposite direction as percentChange
   const currentRatio = await ankrETH.ratio()
-  const newRatio: BigNumberish = currentRatio.add(currentRatio.mul(pctDecrease).div(100))
+  const newRatio: BigNumberish = currentRatio.add(currentRatio.mul(percentChange.mul(-1)).div(100))
 
   // Impersonate AnkrETH Owner
   await whileImpersonating(ANKRETH_OWNER, async (ankrEthOwnerSigner) => {
     await ankrETH.connect(ankrEthOwnerSigner).updateRatio(newRatio)
   })
+
+  {
+    const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
+    await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  }
+
+  {
+    const lastRound = await ctx.chainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
+    await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+  }
+}
+
+const reduceRefPerTok = async (ctx: AnkrETHCollateralFixtureContext, pctDecrease: BigNumberish) => {
+  await changeRefPerTok(ctx, bn(pctDecrease).mul(-1))
 }
 
 const increaseRefPerTok = async (
   ctx: AnkrETHCollateralFixtureContext,
   pctIncrease: BigNumberish
 ) => {
-  const ankrETH = (await ethers.getContractAt('IAnkrETH', ANKRETH)) as IAnkrETH
-
-  // Decrease ratio so refPerTok increases
-  const currentRatio = await ankrETH.ratio()
-  const newRatio: BigNumberish = currentRatio.sub(currentRatio.mul(pctIncrease).div(100))
-
-  // Impersonate AnkrETH Owner
-  await whileImpersonating(ANKRETH_OWNER, async (ankrEthOwnerSigner) => {
-    await ankrETH.connect(ankrEthOwnerSigner).updateRatio(newRatio)
-  })
+  await changeRefPerTok(ctx, bn(pctIncrease))
 }
 
 const getExpectedPrice = async (ctx: AnkrETHCollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const refPerTok = await ctx.collateral.refPerTok()
+  const clRptData = await ctx.targetPerTokChainlinkFeed.latestRoundData()
+  const clRptDecimals = await ctx.targetPerTokChainlinkFeed.decimals()
 
   return clData.answer
     .mul(bn(10).pow(18 - clDecimals))
-    .mul(refPerTok)
+    .mul(clRptData.answer.mul(bn(10).pow(18 - clRptDecimals)))
     .div(fp('1'))
 }
 
@@ -187,7 +244,19 @@ const getExpectedPrice = async (ctx: AnkrETHCollateralFixtureContext): Promise<B
 */
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {}
+const collateralSpecificConstructorTests = () => {
+  it('does not allow missing targetPerTok chainlink feed', async () => {
+    await expect(
+      deployCollateral({ targetPerTokChainlinkFeed: ethers.constants.AddressZero })
+    ).to.be.revertedWith('missing targetPerTok feed')
+  })
+
+  it('does not allow targetPerTok oracle timeout at 0', async () => {
+    await expect(deployCollateral({ targetPerTokChainlinkTimeout: 0 })).to.be.revertedWith(
+      'targetPerTokChainlinkTimeout zero'
+    )
+  })
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {}
@@ -212,13 +281,14 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
   resetFork,
   collateralName: 'AnkrStakedETH',
   chainlinkDefaultAnswer,
+  itIsPricedByPeg: true,
 }
 
 collateralTests(opts)

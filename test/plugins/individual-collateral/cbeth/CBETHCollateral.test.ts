@@ -90,7 +90,7 @@ const makeCollateralFixtureContext = (
     )
 
     collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
-    collateralOpts.targetPerTokChainlinkTimeout = PRICE_TIMEOUT
+    collateralOpts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT
 
     const cbETH = (await ethers.getContractAt('CBEth', CB_ETH)) as unknown as CBEth
     const collateral = await deployCollateral(collateralOpts)
@@ -241,7 +241,7 @@ const opts = {
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
-  resetFork: resetFork,
+  resetFork,
   collateralName: 'CBEthCollateral',
   chainlinkDefaultAnswer,
   itIsPricedByPeg: true,
