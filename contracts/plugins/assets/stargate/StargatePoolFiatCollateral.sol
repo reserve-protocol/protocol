@@ -11,7 +11,7 @@ import "./StargateRewardableWrapper.sol";
 /**
  * @title StargatePoolFiatCollateral
  * @notice Collateral plugin for Stargate USD Stablecoins,
-* tok = wstgUSDC / wstgUSDT
+ * tok = wstgUSDC / wstgUSDT
  * ref = USDC / USDC
  * tar = USD
  * UoA = USD
