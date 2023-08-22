@@ -55,8 +55,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     }
 
     function _underlyingRefPerTok() internal view virtual override returns (uint192) {
-        return
-            shiftl_toFix(ICusdcV3Wrapper(address(erc20)).exchangeRate(), -int8(cometDecimals));
+        return shiftl_toFix(ICusdcV3Wrapper(address(erc20)).exchangeRate(), -int8(cometDecimals));
     }
 
     /// Refresh exchange rates and update default status.
