@@ -48,7 +48,14 @@ contract StargateLPStakingMock is IStargateLPStaking {
         poolToUserBalance[pid][sender] -= amount;
     }
 
-    function emergencyWithdraw(uint256 pid) external override {}
+    function emergencyWithdraw(uint256 pid) external override {
+        IERC20 pool = _poolInfo[pid].lpToken;
+
+        uint256 amount = poolToUserBalance[pid][msg.sender];
+        poolToUserBalance[pid][msg.sender] = 0;
+
+        pool.transfer(msg.sender, amount);
+    }
 
     function addRewardsToUser(
         uint256 pid,
@@ -63,6 +70,10 @@ contract StargateLPStakingMock is IStargateLPStaking {
         info.lpToken = lpToken;
         info.allocPoint = 10;
         _poolInfo.push(info);
+    }
+
+    function setAllocPoint(uint256 pid, uint256 allocPoint) external {
+        _poolInfo[pid].allocPoint = allocPoint;
     }
 
     function _emitUserRewards(uint256 pid, address user) private {
