@@ -127,7 +127,7 @@ interface ICollateral is IAsset {
 
 ## Some security considerations
 
-The protocol specifically does not allow the use of any assets that have a callback mechanism, such as ERC777 or native ETH. In order to support these assets, they must be wrapped in an ERC20 contract that does not have a callback mechanism. This is a security consideration to prevent reentrancy attacks. This recommendation extends to LP tokens that contain assets with callback mechanisms. (Such as Curve raw ETH pools - CRV/ETH for example)
+The protocol specifically does not allow the use of any assets that have a callback mechanism, such as ERC777 or native ETH. In order to support these assets, they must be wrapped in an ERC20 contract that does not have a callback mechanism. This is a security consideration to prevent reentrancy attacks. This recommendation extends to LP tokens that contain assets with callback mechanisms (Such as Curve raw ETH pools - CRV/ETH for example) as well as tokens/LPs that involve WETH with unwrapping built-in.
 
 ## Accounting Units and Exchange Rates
 
