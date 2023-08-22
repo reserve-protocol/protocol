@@ -664,6 +664,11 @@ describe('FacadeRead + FacadeAct contracts', () => {
     })
 
     it('Should return nextRecollateralizationAuction', async () => {
+      // Confirm no auction to run yet - should not revert
+      let [canStart, sell, buy, sellAmount] =
+        await facadeAct.callStatic.nextRecollateralizationAuction(backingManager.address)
+      expect(canStart).to.equal(false)
+
       // Setup prime basket
       await basketHandler.connect(owner).setPrimeBasket([usdc.address], [fp('1')])
 
@@ -676,7 +681,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       const sellAmt: BigNumber = await token.balanceOf(backingManager.address)
 
       // Confirm nextRecollateralizationAuction is true
-      let [canStart, sell, buy, sellAmount] =
+      ;[canStart, sell, buy, sellAmount] =
         await facadeAct.callStatic.nextRecollateralizationAuction(backingManager.address)
       expect(canStart).to.equal(true)
       expect(sell).to.equal(token.address)
@@ -739,6 +744,11 @@ describe('FacadeRead + FacadeAct contracts', () => {
       // Upgrade BackingManager to V2
       await backingManager.connect(owner).upgradeTo(backingManagerV2.address)
 
+      // Confirm no auction to run yet - should not revert
+      let [canStart, sell, buy, sellAmount] =
+        await facadeAct.callStatic.nextRecollateralizationAuction(backingManager.address)
+      expect(canStart).to.equal(false)
+
       // Setup prime basket
       await basketHandler.connect(owner).setPrimeBasket([usdc.address], [fp('1')])
 
@@ -751,7 +761,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       const sellAmt: BigNumber = await token.balanceOf(backingManager.address)
 
       // Confirm nextRecollateralizationAuction is true
-      let [canStart, sell, buy, sellAmount] =
+      ;[canStart, sell, buy, sellAmount] =
         await facadeAct.callStatic.nextRecollateralizationAuction(backingManager.address)
       expect(canStart).to.equal(true)
       expect(sell).to.equal(token.address)
