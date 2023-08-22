@@ -127,14 +127,17 @@ export default function fn<X extends CollateralFixtureContext>(
 
       describe('functions', () => {
         it('returns the correct bal (18 decimals)', async () => {
-          const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
+          const decimals = await ctx.tok.decimals()
+          const amount = bn('20').mul(bn(10).pow(decimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           const aliceBal = await collateral.bal(alice.address)
-          expect(aliceBal).to.closeTo(
-            amount.mul(bn(10).pow(18 - (await ctx.tok.decimals()))),
-            bn('100').mul(bn(10).pow(18 - (await ctx.tok.decimals())))
-          )
+          const amount18d =
+            decimals <= 18
+              ? amount.mul(bn(10).pow(18 - decimals))
+              : amount.div(bn(10).pow(decimals - 18))
+          const dist18d = decimals <= 18 ? bn('100').mul(bn(10).pow(18 - decimals)) : bn('10')
+          expect(aliceBal).to.closeTo(amount18d, dist18d)
         })
       })
 
@@ -497,6 +500,8 @@ export default function fn<X extends CollateralFixtureContext>(
       describe('collateral-specific tests', collateralSpecificStatusTests)
 
       describeGas('Gas Reporting', () => {
+        if (IMPLEMENTATION != Implementation.P1 || !useEnv('REPORT_GAS')) return // hide pending
+
         context('refresh()', () => {
           afterEach(async () => {
             await snapshotGasCost(collateral.refresh())

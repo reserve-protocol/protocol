@@ -39,7 +39,7 @@ contract StaticATokenLM is
     using RayMathNoRounding for uint256;
 
     /// Emitted whenever a reward token balance is claimed
-    event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
+    event RewardsClaimed(IERC20 indexed erc20, uint256 amount);
 
     bytes public constant EIP712_REVISION = bytes("1");
     bytes32 internal constant EIP712_DOMAIN =

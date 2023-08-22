@@ -866,10 +866,7 @@
           },
           "t_enum(TradeKind)10909": {
             "label": "enum TradeKind",
-            "members": [
-              "DUTCH_AUCTION",
-              "BATCH_AUCTION"
-            ],
+            "members": ["DUTCH_AUCTION", "BATCH_AUCTION"],
             "numberOfBytes": "1"
           },
           "t_mapping(t_contract(IERC20)6264,t_contract(ITrade)12850)": {
@@ -1162,11 +1159,7 @@
           },
           "t_enum(CollateralStatus)20723": {
             "label": "enum CollateralStatus",
-            "members": [
-              "SOUND",
-              "IFFY",
-              "DISABLED"
-            ],
+            "members": ["SOUND", "IFFY", "DISABLED"],
             "numberOfBytes": "1"
           },
           "t_mapping(t_bytes32,t_bytes32)": {

@@ -142,11 +142,23 @@ const makeAaveNonFiatCollateralTestSuite = (
     Define helper functions
   */
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const reduceTargetPerRef = async () => {}
+  const reduceTargetPerRef = async (
+    ctx: MorphoAaveCollateralFixtureContext,
+    pctDecrease: BigNumberish
+  ) => {
+    const lastRound = await ctx.targetPrRefFeed!.latestRoundData()
+    const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
+    await ctx.targetPrRefFeed!.updateAnswer(nextAnswer)
+  }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const increaseTargetPerRef = async () => {}
+  const increaseTargetPerRef = async (
+    ctx: MorphoAaveCollateralFixtureContext,
+    pctIncrease: BigNumberish
+  ) => {
+    const lastRound = await ctx.targetPrRefFeed!.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
+    await ctx.targetPrRefFeed!.updateAnswer(nextAnswer)
+  }
 
   const changeRefPerTok = async (
     ctx: MorphoAaveCollateralFixtureContext,
@@ -215,7 +227,7 @@ const makeAaveNonFiatCollateralTestSuite = (
     increaseRefPerTok,
     getExpectedPrice,
     itClaimsRewards: it.skip,
-    itChecksTargetPerRefDefault: it.skip,
+    itChecksTargetPerRefDefault: it,
     itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
     itHasRevenueHiding: it,
