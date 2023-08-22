@@ -294,8 +294,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     await customRedeemRTokens(hre, tester, params.rtoken, prevNonce, redeemAmount)
 
     // Recollateralize using Batch auctions
-    // TODO: Uncomment once bug in FacadeAct is fixed for nextRecollateralizationAuction
-    // await recollateralize(hre, rToken.address, TradeKind.BATCH_AUCTION)
+    await recollateralize(hre, rToken.address, TradeKind.BATCH_AUCTION)
   })
 
 task('propose', 'propose a gov action')
