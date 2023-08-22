@@ -319,13 +319,15 @@ Mainnet reasonable range: 0 to 25e16 (0 to 25%)
 
 In order to restrict the system to organic patterns of behavior, we maintain two supply throttles, one for net issuance and one for net redemption. When a supply change occurs, a check is performed to ensure this does not move the supply more than an acceptable range over a period; a period is fixed to be an hour. The acceptable range (per throttle) is a function of the `amtRate` and `pctRate` variables. **It is the maximum of whichever variable provides the larger rate.**
 
-The recommended starting values for these parameters are as follows:
+The recommended starting values (amt-rate normalized to $USD) for these parameters are as follows:
 |**Parameter**|**Value**|
 |-------------|---------|
-|issuanceThrottle.amtRate|250k|
+|issuanceThrottle.amtRate|$250k|
 |issuanceThrottle.pctRate|5%|
-|redemptionThrottle.amtRate|500k|
+|redemptionThrottle.amtRate|$500k|
 |redemptionThrottle.pctRate|7.5%|
+
+Be sure to convert a $ amtRate (units of `{qUSD}`) back into RTokens (units of `{qTok}`).
 
 Note the differing units: the `amtRate` variable is in terms of `{qRTok/hour}` while the `pctRate` variable is in terms of `{1/hour}`, i.e a fraction.
 
@@ -337,7 +339,7 @@ A quantity of RToken that serves as a lower-bound for how much net issuance to a
 
 Must be at least 1 whole RToken, or 1e18. Can be as large as 1e48. Set it to 1e48 if you want to effectively disable the issuance throttle altogether.
 
-Default value: `1e24` = 1,000,000 RToken
+Default value: `2.5e23` = 250,000 RToken
 Mainnet reasonable range: 1e23 to 1e27
 
 #### `issuanceThrottle.pctRate`
@@ -348,7 +350,7 @@ A fraction of the RToken supply that indicates how much net issuance to allow pe
 
 Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 
-Default value: `2.5e16` = 2.5% per hour
+Default value: `5e16` = 5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 #### `redemptionThrottle.amtRate`
@@ -359,7 +361,7 @@ A quantity of RToken that serves as a lower-bound for how much net redemption to
 
 Must be at least 1 whole RToken, or 1e18. Can be as large as 1e48. Set it to 1e48 if you want to effectively disable the redemption throttle altogether.
 
-Default value: `2e24` = 2,000,000 RToken
+Default value: `5e23` = 500,000 RToken
 Mainnet reasonable range: 1e23 to 1e27
 
 #### `redemptionThrottle.pctRate`
@@ -370,7 +372,7 @@ A fraction of the RToken supply that indicates how much net redemption to allow 
 
 Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
 
-Default value: `5e16` = 5% per hour
+Default value: `7.5e16` = 7.5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 ### Governance Parameters
