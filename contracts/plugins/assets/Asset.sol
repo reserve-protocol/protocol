@@ -116,8 +116,10 @@ contract Asset is IAsset, VersionedAsset {
     ///     If the price feed is broken for more than `oracleTimeout + priceTimeout` seconds,
     ///     _low will be 0 and _high will be FIX_MAX.
     ///     Because the price decay begins at `oracleTimeout` seconds and not `updateTime` from the
-    ///     price feed, the price feed can be broken for up to `priceTimeout` seconds without
-    ///     affecting the price estimate.
+    ///     price feed, the price feed can be broken for up to `2 * oracleTimeout` seconds without
+    ///     affecting the price estimate.  This could happen if the Asset is refreshed just before
+    ///     the oracleTimeout is reached, forcing a second period of oracleTimeout to pass before
+    ///     the price begins to decay.
     function price() public view virtual returns (uint192 _low, uint192 _high) {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
             // if the price feed is still functioning, use that
