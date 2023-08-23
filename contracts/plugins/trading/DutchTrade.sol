@@ -102,8 +102,6 @@ contract DutchTrade is ITrade {
     address public bidder;
     // the bid amount is just whatever token balance is in the contract at settlement time
 
-    bool public canReportViolation; // if a bid during the geometric phase can disable the Broker
-
     // This modifier both enforces the state-machine pattern and guards against reentrancy.
     modifier stateTransition(TradeStatus begin, TradeStatus end) {
         require(status == begin, "Invalid trade state");
@@ -142,14 +140,12 @@ contract DutchTrade is ITrade {
     /// @param buy_ The asset being bought by the protocol
     /// @param sellAmount_ {qSellTok} The amount to sell in the auction, in token quanta
     /// @param auctionLength {s} How many seconds the dutch auction should run for
-    /// @param canReportViolation_ If a bid during the geometric phase can disable the Broker
     function init(
         ITrading origin_,
         IAsset sell_,
         IAsset buy_,
         uint256 sellAmount_,
         uint48 auctionLength,
-        bool canReportViolation_,
         TradePrices memory prices
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         assert(
@@ -166,7 +162,6 @@ contract DutchTrade is ITrade {
         origin = origin_;
         sell = sell_.erc20();
         buy = buy_.erc20();
-        canReportViolation = canReportViolation_;
 
         require(sellAmount_ <= sell.balanceOf(address(this)), "unfunded trade");
         sellAmount = shiftl_toFix(sellAmount_, -int8(sell.decimals())); // {sellTok}
@@ -214,7 +209,7 @@ contract DutchTrade is ITrade {
         assert(status == TradeStatus.OPEN);
 
         // reportViolation if auction cleared in geometric phase
-        if (canReportViolation && price > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
+        if (price > bestPrice.mul(ONE_POINT_FIVE, CEIL)) {
             broker.reportViolation();
         }
 

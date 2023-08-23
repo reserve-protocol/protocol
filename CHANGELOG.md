@@ -4,13 +4,9 @@
 
 ### Upgrade Steps -- Required
 
-Upgrade `BackingManager`, `Broker`, `DutchTrade`, and _all_ assets
+Upgrade `BackingManager`, `Broker`, and _all_ assets
 
 Then call `Broker.cacheComponents()`.
-
-### Core Protocol Contracts
-
-- `Broker` [+0 slots]
 
 ### Core Protocol Contracts
 
@@ -18,15 +14,14 @@ Then call `Broker.cacheComponents()`.
   - Replace use of `lotPrice()` with `price()`
 - `Broker` [+1 slot]
   - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
-  - Restrict disabling dutch auctions to BackingManager-started trades
+  - Only permit BackingManager-started dutch auctions to report violations and disable trading
 
 ## Plugins
 
 ### Assets
 
 - Remove `lotPrice()`
-- Make `price().low` decay downwards like old `lotPrice()`
-- Make `price().high` decay upwards to 3x the saved high price
+- Alter `price().high` to decay upwards to 3x over the price timeout
 
 # 3.0.0 - Unreleased
 

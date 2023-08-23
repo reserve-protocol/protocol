@@ -1158,7 +1158,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         ).to.not.be.reverted
@@ -1189,7 +1188,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         ).to.be.revertedWith('Invalid trade state')
@@ -1208,7 +1206,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         ).to.be.revertedWith('bad sell pricing')
@@ -1223,7 +1220,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         ).to.be.revertedWith('bad buy pricing')
@@ -1241,7 +1237,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         ).to.not.be.reverted
@@ -1285,7 +1280,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         ).to.not.be.reverted
@@ -1310,7 +1304,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         ).to.be.revertedWith('unfunded trade')
@@ -1326,7 +1319,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         ).to.not.be.reverted
@@ -1363,7 +1355,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         ).to.not.be.reverted
@@ -1735,7 +1726,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
             collateral1.address,
             amount,
             config.dutchAuctionLength,
-            true,
             prices
           )
         )
@@ -1752,7 +1742,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           collateral1.address,
           amount,
           config.dutchAuctionLength,
-          true,
           prices
         )
 
