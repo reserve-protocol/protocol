@@ -14,6 +14,7 @@ Then call `Broker.cacheComponents()`.
   - Replace use of `lotPrice()` with `price()`
 - `Broker` [+1 slot]
   - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
+  - Only permit BackingManager-started dutch auctions to report violations and disable trading
 
 ## Plugins
 

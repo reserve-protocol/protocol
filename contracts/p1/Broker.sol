@@ -146,13 +146,16 @@ contract BrokerP1 is ComponentP1, IBroker {
             emit BatchTradeDisabledSet(batchTradeDisabled, true);
             batchTradeDisabled = true;
         } else if (kind == TradeKind.DUTCH_AUCTION) {
-            IERC20Metadata sell = trade.sell();
-            emit DutchTradeDisabledSet(sell, dutchTradeDisabled[sell], true);
-            dutchTradeDisabled[sell] = true;
+            // Only allow BackingManager-started trades to disable Dutch Auctions
+            if (DutchTrade(address(trade)).origin() == backingManager) {
+                IERC20Metadata sell = trade.sell();
+                emit DutchTradeDisabledSet(sell, dutchTradeDisabled[sell], true);
+                dutchTradeDisabled[sell] = true;
 
-            IERC20Metadata buy = trade.buy();
-            emit DutchTradeDisabledSet(buy, dutchTradeDisabled[buy], true);
-            dutchTradeDisabled[buy] = true;
+                IERC20Metadata buy = trade.buy();
+                emit DutchTradeDisabledSet(buy, dutchTradeDisabled[buy], true);
+                dutchTradeDisabled[buy] = true;
+            }
         } else {
             revert("unrecognized trade kind");
         }

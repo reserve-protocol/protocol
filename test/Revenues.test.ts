@@ -2228,7 +2228,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
       })
 
-      it('Should report violation when Dutch Auction clears in geometric phase', async () => {
+      it('Should not report violation when Dutch Auction clears in geometric phase', async () => {
         // This test needs to be in this file and not Broker.test.ts because settleTrade()
         // requires the BackingManager _actually_ started the trade
 
@@ -2322,24 +2322,24 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Advance time near end of geometric phase
         await advanceBlocks(config.dutchAuctionLength.div(12).div(5).sub(5))
 
-        // Should settle RSR auction
+        // Should settle RSR auction without disabling dutch auctions
         await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
         await expect(rsrTrade.connect(addr1).bid())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
-        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(true)
-        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(true)
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
 
-        // Should still be able to settle RToken auction, even though aaveToken is now disabled
+        // Should still be able to settle RToken auction
         await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
         await expect(rTokenTrade.connect(addr1).bid())
           .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
 
-        // Check all 3 tokens are disabled for dutch auctions
-        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(true)
-        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(true)
-        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(true)
+        // Check all no tokens are disabled for dutch auctions
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
       })
 
       it('Should not report violation when Dutch Auction clears in first linear phase', async () => {
