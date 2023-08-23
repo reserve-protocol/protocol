@@ -1,0 +1,31 @@
+# Component Implementations (Mainnet 2.1.0)
+## Component Addresses
+| Contract | Address | Implementation | Version |
+| --- | --- | --- | --- |
+| AssetRegistry | [0x5a004F70b2450E909B4048050c585549Ab8afeB8](https://etherscan.io/address/0x5a004F70b2450E909B4048050c585549Ab8afeB8) |
+| BackingManager | [0xa0D4b6aD503E776457dBF4695d462DdF8621A1CC](https://etherscan.io/address/0xa0D4b6aD503E776457dBF4695d462DdF8621A1CC) |
+| BasketHandler | [0x5c13b3b6f40aD4bF7aa4793F844BA24E85482030](https://etherscan.io/address/0x5c13b3b6f40aD4bF7aa4793F844BA24E85482030) |
+| Broker | [0x89209a52d085D975b14555F3e828F43fb7EaF3B7](https://etherscan.io/address/0x89209a52d085D975b14555F3e828F43fb7EaF3B7) |
+| CvxMiningLib | [0xA6B8934a82874788043A75d50ca74a18732DC660](https://etherscan.io/address/0xA6B8934a82874788043A75d50ca74a18732DC660) |
+| Deployer | [0x5c46b718Cd79F2BBA6869A3BeC13401b9a4B69bB](https://etherscan.io/address/0x5c46b718Cd79F2BBA6869A3BeC13401b9a4B69bB) |
+| Distributor | [0xc78c5a84F30317B5F7D87170Ec21DC73Df38d569](https://etherscan.io/address/0xc78c5a84F30317B5F7D87170Ec21DC73Df38d569) |
+| DutchTrade | [0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439](https://etherscan.io/address/0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439) |
+| FacadeAct | [0x933c5DBdA80f03C102C560e9ed0c29812998fA78](https://etherscan.io/address/0x933c5DBdA80f03C102C560e9ed0c29812998fA78) |
+| FacadeMonitor | [0xF3458200eDe2C5A592757dc0BA9A915e9CCA77C6](https://etherscan.io/address/0xF3458200eDe2C5A592757dc0BA9A915e9CCA77C6) |
+| FacadeRead | [0xf535Cab96457558eE3eeAF1402fCA6441E832f08](https://etherscan.io/address/0xf535Cab96457558eE3eeAF1402fCA6441E832f08) |
+| FacadeWrite | [0x1656D8aAd7Ee892582B9D5c2E9992d9f94ff3629](https://etherscan.io/address/0x1656D8aAd7Ee892582B9D5c2E9992d9f94ff3629) |
+| FacadeWriteLib | [0xe33cEF9f56F0d8d2b683c6E1F6afcd1e43b77ea8](https://etherscan.io/address/0xe33cEF9f56F0d8d2b683c6E1F6afcd1e43b77ea8) |
+| Furnace | [0x393002573ea4A3d74A80F3B1Af436a3ee3A30c96](https://etherscan.io/address/0x393002573ea4A3d74A80F3B1Af436a3ee3A30c96) |
+| GNOSIS_EASY_AUCTION | [0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101](https://etherscan.io/address/0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101) |
+| GnosisTrade | [0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439](https://etherscan.io/address/0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439) |
+| Main | [0x143C35bFe04720394eBd18AbECa83eA9D8BEdE2F](https://etherscan.io/address/0x143C35bFe04720394eBd18AbECa83eA9D8BEdE2F) |
+| RSR | [0x320623b8e4ff03373931769a31fc52a4e78b5d70](https://etherscan.io/address/0x320623b8e4ff03373931769a31fc52a4e78b5d70) |
+| RSR_FEED | [0x759bBC1be8F90eE6457C44abc7d443842a976d02](https://etherscan.io/address/0x759bBC1be8F90eE6457C44abc7d443842a976d02) |
+| RsrAsset | [0x9cd0F8387672fEaaf7C269b62c34C53590d7e948](https://etherscan.io/address/0x9cd0F8387672fEaaf7C269b62c34C53590d7e948) |
+| RsrTrader | [0xE5bD2249118b6a4B39Be195951579dC9Af05029a](https://etherscan.io/address/0xE5bD2249118b6a4B39Be195951579dC9Af05029a) |
+| RToken | [0x5643D5AC6b79ae8467Cf2F416da6D465d8e7D9C1](https://etherscan.io/address/0x5643D5AC6b79ae8467Cf2F416da6D465d8e7D9C1) |
+| RTokenTrader | [0xE5bD2249118b6a4B39Be195951579dC9Af05029a](https://etherscan.io/address/0xE5bD2249118b6a4B39Be195951579dC9Af05029a) |
+| StRSR | [0xfDa8C62d86E426D5fB653B6c44a455Bb657b693f](https://etherscan.io/address/0xfDa8C62d86E426D5fB653B6c44a455Bb657b693f) |
+| Trade | [0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439](https://etherscan.io/address/0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439) |
+| TradingLib | [0x81b19Af39ab589D0Ca211DC3Dee4cfF7072eb478](https://etherscan.io/address/0x81b19Af39ab589D0Ca211DC3Dee4cfF7072eb478) |
+        
