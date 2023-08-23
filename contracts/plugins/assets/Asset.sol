@@ -113,7 +113,7 @@ contract Asset is IAsset, VersionedAsset {
     /// @return _low {UoA/tok} The lower end of the price estimate
     /// @return _high {UoA/tok} The upper end of the price estimate
     /// @notice If the price feed is broken, _low will decay downwards and _high will decay upwards
-    ///     If the price feed is broken for more than `oracleTimeout + priceTimeout` seconds,
+    ///     If tryPrice() is broken for more than `oracleTimeout + priceTimeout` seconds,
     ///     _low will be 0 and _high will be FIX_MAX.
     ///     Because the price decay begins at `oracleTimeout` seconds and not `updateTime` from the
     ///     price feed, the price feed can be broken for up to `2 * oracleTimeout` seconds without
