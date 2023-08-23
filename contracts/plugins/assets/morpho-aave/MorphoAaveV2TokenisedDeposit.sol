@@ -32,7 +32,7 @@ contract MorphoAaveV2TokenisedDeposit is MorphoTokenisedDeposit {
         morphoLens = config.morphoLens;
     }
 
-    function getMorphoPoolBalance(address poolToken)
+    function getMorphoPoolBalance(address _poolToken)
         internal
         view
         virtual
@@ -40,7 +40,7 @@ contract MorphoAaveV2TokenisedDeposit is MorphoTokenisedDeposit {
         returns (uint256)
     {
         (, , uint256 supplyBalance) = morphoLens.getCurrentSupplyBalanceInOf(
-            poolToken,
+            _poolToken,
             address(this)
         );
         return supplyBalance;

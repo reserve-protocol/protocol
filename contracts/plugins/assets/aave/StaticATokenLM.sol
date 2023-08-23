@@ -554,7 +554,7 @@ contract StaticATokenLM is
      * @param user The user to compute for
      * @param balance The balance of the user
      * @param fresh Flag to account for rewards not claimed by contract yet
-     * @return The amound of pending rewards in RAY
+     * @return The amount of pending rewards in RAY
      */
     function _getPendingRewards(
         address user,

@@ -112,6 +112,9 @@ contract StargatePoolFiatCollateral is FiatCollateral {
 
         if (_totalSupply != 0) {
             _rate = divuu(pool.totalLiquidity(), _totalSupply);
+        } else {
+            // In case the pool has no tokens at all, the rate is 1:1
+            _rate = FIX_ONE;
         }
     }
 

@@ -16,6 +16,7 @@ import { useEnv } from '#/utils/env'
 import { Implementation } from '../fixtures'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { formatUnits, parseUnits } from 'ethers/lib/utils'
+import { MAX_UINT256 } from '#/common/constants'
 
 type Fixture<T> = () => Promise<T>
 
@@ -627,6 +628,48 @@ for (const wrapperName of wrapperNames) {
     const wrapperStr = wrapperName.replace('Test', '')
     describe(`${wrapperStr} - asset decimals: ${params[0]} / reward decimals: ${params[1]}`, () => {
       runTests(params[0], params[1])
+    })
+  })
+
+  describe(`${wrapperName.replace('Test', '')} Special Case: Fractional Rewards Tracking`, () => {
+    // Assets
+    let rewardableVault: RewardableERC20WrapperTest | RewardableERC4626VaultTest
+    let rewardableAsset: ERC20MockRewarding
+
+    // Main
+    let alice: Wallet
+    let bob: Wallet
+
+    const initBalance = parseUnits('1000000', 18)
+    const rewardAmount = parseUnits('1.9', 6)
+
+    const fixture = getFixture(18, 6)
+
+    before('load wallets', async () => {
+      ;[alice, bob] = (await ethers.getSigners()) as unknown as Wallet[]
+    })
+
+    beforeEach(async () => {
+      // Deploy fixture
+      ;({ rewardableVault, rewardableAsset } = await loadFixture(fixture))
+
+      await rewardableAsset.mint(alice.address, initBalance)
+      await rewardableAsset.connect(alice).approve(rewardableVault.address, MAX_UINT256)
+      await rewardableAsset.mint(bob.address, initBalance)
+      await rewardableAsset.connect(bob).approve(rewardableVault.address, MAX_UINT256)
+    })
+
+    it('Correctly handles fractional rewards', async () => {
+      expect(await rewardableVault.rewardsPerShare()).to.equal(0)
+
+      await rewardableVault.connect(alice).deposit(initBalance, alice.address)
+
+      for (let i = 0; i < 10; i++) {
+        await rewardableAsset.accrueRewards(rewardAmount, rewardableVault.address)
+        await rewardableVault.claimRewards()
+
+        expect(await rewardableVault.rewardsPerShare()).to.equal(Math.floor(1.9 * (i + 1)))
+      }
     })
   })
 

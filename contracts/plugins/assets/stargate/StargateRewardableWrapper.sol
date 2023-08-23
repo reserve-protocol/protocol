@@ -25,6 +25,7 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
                 address(pool_) != address(0),
             "Invalid address"
         );
+        require(address(stargate_) == address(stakingContract_.stargate()), "Wrong stargate");
 
         uint256 poolLength = stakingContract_.poolLength();
         uint256 pid = type(uint256).max;
@@ -36,8 +37,6 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
         }
         require(pid != type(uint256).max, "Invalid pool");
 
-        pool_.approve(address(stakingContract_), type(uint256).max); // TODO: Change this!
-
         pool = pool_;
         poolId = pid;
         stakingContract = stakingContract_;
@@ -45,18 +44,35 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
     }
 
     function _claimAssetRewards() internal override {
-        stakingContract.deposit(poolId, 0);
+        IStargateLPStaking.PoolInfo memory poolInfo = stakingContract.poolInfo(poolId);
+
+        if (poolInfo.allocPoint != 0 && totalSupply() != 0) {
+            stakingContract.deposit(poolId, 0);
+        } else {
+            stakingContract.emergencyWithdraw(poolId);
+        }
     }
 
-    function _afterDeposit(uint256 _amount, address to) internal override {
-        require(to == msg.sender, "Only the sender can deposit");
+    function _afterDeposit(uint256, address) internal override {
+        uint256 underlyingBalance = underlying.balanceOf(address(this));
+        IStargateLPStaking.PoolInfo memory poolInfo = stakingContract.poolInfo(poolId);
 
-        stakingContract.deposit(poolId, _amount);
+        if (poolInfo.allocPoint != 0 && underlyingBalance != 0) {
+            pool.approve(address(stakingContract), underlyingBalance);
+            stakingContract.deposit(poolId, underlyingBalance);
+        }
     }
 
-    function _beforeWithdraw(uint256 _amount, address to) internal override {
-        require(to == msg.sender, "Only the sender can withdraw");
+    function _beforeWithdraw(uint256 _amount, address) internal override {
+        IStargateLPStaking.PoolInfo memory poolInfo = stakingContract.poolInfo(poolId);
 
-        stakingContract.withdraw(poolId, _amount);
+        if (poolInfo.allocPoint != 0) {
+            uint256 underlyingBalance = underlying.balanceOf(address(this));
+            if (underlyingBalance < _amount) {
+                stakingContract.withdraw(poolId, _amount - underlyingBalance);
+            }
+        } else {
+            stakingContract.emergencyWithdraw(poolId);
+        }
     }
 }
