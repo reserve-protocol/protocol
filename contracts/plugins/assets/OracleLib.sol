@@ -44,6 +44,7 @@ library OracleLib {
                 if (EACAggregatorProxy(address(chainlinkFeed)).aggregator() == address(0)) {
                     revert StalePrice();
                 }
+                // solhint-disable-next-line reason-string
                 revert();
             }
 
