@@ -27,7 +27,7 @@ Bidding instructions from the `DutchTrade` contract:
 `DutchTrade` (relevant) interface:
 
 ```solidity
-function bid() external; // execute a bid at the current block timestamp
+function bid() external; // execute a bid at the current block number
 
 function sell() external view returns (IERC20);
 
@@ -37,7 +37,7 @@ function status() external view returns (uint8); // 0: not_started, 1: active, 2
 
 function lot() external view returns (uint256); // {qSellTok} the number of tokens being sold
 
-function bidAmount(uint48 timestamp) external view returns (uint256); // {qBuyTok} the number of tokens required to buy the lot, at a particular timestamp
+function bidAmount(uint256 blockNumber) external view returns (uint256); // {qBuyTok} the number of tokens required to buy the lot, at a particular block number
 
 ```
 
@@ -45,7 +45,7 @@ To participate:
 
 1. Call `status()` view; the auction is ongoing if return value is 1
 2. Call `lot()` to see the number of tokens being sold
-3. Call `bidAmount()` to see the number of tokens required to buy the lot, at various timestamps
+3. Call `bidAmount()` to see the number of tokens required to buy the lot, at various block numbers
 4. After finding an attractive bidAmount, provide an approval for the `buy()` token. The spender should be the `DutchTrade` contract.
    **Note**: it is very important to set tight approvals! Do not set more than the `bidAmount()` for the desired bidding block else reorgs present risk.
 5. Wait until the desired block is reached (hopefully not in the first 40% of the auction)
