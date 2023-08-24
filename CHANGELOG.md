@@ -14,43 +14,49 @@ Call the following functions:
 - `RevenueTrader.cacheComponents()` (for both rsrTrader and rTokenTrader)
 - `Distributor.cacheComponents()`
 
-Collateral / Asset plugins from 2.1.0 do not need to be upgraded with the exception of Compound V2 cToken collateral ([CTokenFiatCollateral.sol](contracts/plugins/assets/compoundv2/CTokenFiatCollateral.sol)), which needs to be swapped in via `AssetRegistry.swapRegistered()`. Skipping this step will result in COMP rewards becoming unclaimable. Note that this will change the ERC20 for the collateral plugin, causing the protocol to trade out of the old ERC20. Since COMP rewards are claimed on every transfer, COMP does not need to be claimed beforehand.
+_All_ asset plugins (and their corresponding ERC20s) must be upgraded.
+
+- Make sure to use `Deployer.deployRTokenAsset()` to create new `RTokenAsset` instances. This asset must be swapped too.
 
 #### Optional Steps
 
 Call the following functions, once it is desired to turn on the new features:
 
-- `BaasketHandler.setWarmupPeriod()`
+- `BasketHandler.setWarmupPeriod()`
 - `StRSR.setWithdrawalLeak()`
 - `Broker.setDutchAuctionLength()`
+
+It is acceptable to leave these function calls out of the initial upgrade tx and follow up with them later. The protocol will continue to function, just without dutch auctions, RSR unstaking gas-savings, and the warmup period.
 
 ### Core Protocol Contracts
 
 Bump solidity version to 0.8.19
 
-Bump solidity version to 0.8.19
-
 - `AssetRegistry` [+1 slot]
-  Summary: Other component contracts need to know when refresh() was last called
+  Summary: StRSR contract need to know when refresh() was last called
   - Add last refresh timestamp tracking and expose via `lastRefresh()` getter
   - Add `size()` getter for number of registered assets
+  - Require asset is SOUND on registration
+  - Bugfix: Fix gas attack that could result in someone disabling the basket
 - `BackingManager` [+2 slots]
   Summary: manageTokens was broken out into rebalancing and surplus-forwarding functions to allow users to more precisely call the protocol
 
   - Replace `manageTokens(IERC20[] memory erc20s)` with:
-    - `rebalance(TradeKind)` + `RecollateralizationLibP1`
-      - Modify trading algorithm to not trade RToken, and instead dissolve it when it has a balance above ~1e6. "dissolve" = melt() with a basketsNeeded change, like redemption.
+    - `rebalance(TradeKind)`
+      - Modify trading algorithm to not trade RToken, and instead dissolve it when it has a balance above ~1e6 RToken quanta. "dissolve" = melt() with a basketsNeeded change, similar to redemption but without transfer of RToken collateral.
+      - Use `lotPrice()` to set trade prices instead of `price()`
       - Add significant caching to save gas
     - `forwardRevenue(IERC20[] memory erc20s)`
-      - Modify backingBuffer logic to keep the backing buffer in collateral tokens only. Fix subtle and inconsequential bug that resulted in not maximizing RToken minting locally, though overall RToken production would not have been lower.
+      - Modify backingBuffer logic to keep the backing buffer in collateral tokens only. Fix subtle and inconsequential bug that resulted in not maximizing RToken minting locally, though overall RToken production does not change.
       - Use `nonReentrant` over CEI pattern for gas improvement. related to discussion of [this](https://github.com/code-423n4/2023-01-reserve-findings/issues/347) cross-contract reentrancy risk
     - move `nonReentrant` up outside `tryTrade` internal helper
   - Remove `manageTokensSortedOrder(IERC20[] memory erc20s)`
   - Modify `settleTrade(IERC20 sell)` to call `rebalance()` when caller is a trade it deployed.
-  - Remove all `delegatecall` during reward claiming
+  - Remove all `delegatecall` during reward claiming; call `claimRewards()` directly on ERC20
   - Functions now revert on unproductive executions, instead of no-op
   - Do not trade until a warmupPeriod (last time SOUND was newly attained) has passed
   - Add `cacheComponents()` refresher to be called on upgrade
+  - Add concept of `tradeNonce`
   - Bugfix: consider `maxTradeVolume()` from both assets on a trade, not just 1
 
 - `BasketHandler` [+5 slots]
@@ -62,18 +68,19 @@ Bump solidity version to 0.8.19
   - Enforce `setPrimeBasket()` does not change the net value of a basket in terms of its target units
   - Add `quoteCustomRedemption(uint48[] basketNonces, uint192[] memory portions, ..)` to quote a linear combination of current-or-previous baskets for redemption
   - Add `getHistoricalBasket(uint48 basketNonce)` view
+  - Bugfix: Protect against high BU price overflow
 
-- `Broker` [+1 slot]
-  Summary: Add a new trading plugin that performs single-lot dutch auctions. Batch auctions via Gnosis EasyAuction are expected to be the backup auction (can be faster if more gas costly) going forward.
+- `Broker` [+2 slot]
+  Summary: Add a second trading method for single-lot dutch auctions. Batch auctions via Gnosis EasyAuction are expected to be the backup auction going forward.
 
-  - Add `TradeKind` enum to track multiple trading types
   - Add new dutch auction `DutchTrade`
-  - Add minimum auction length of 24s; applies to all auction types
+  - Add minimum auction length of 20 blocks based on network block time
   - Rename variable `auctionLength` -> `batchAuctionLength`
   - Rename setter `setAuctionLength()` -> `setBatchAuctionLength()`
   - Rename event `AuctionLengthSet()` -> `BatchAuctionLengthSet()`
   - Add `dutchAuctionLength` and `setDutchAuctionLength()` setter and `DutchAuctionLengthSet()` event
   - Add `dutchTradeImplementation` and `setDutchTradeImplementation()` setter and `DutchTradeImplementationSet()` event
+  - Unlike batch auctions, dutch auctions can be disabled _per-ERC20_, and can only be disabled by BackingManager-started trades
   - Modify `openTrade(TradeRequest memory reg)` -> `openTrade(TradeKind kind, TradeRequest memory req)`
     - Allow when paused / frozen, since caller must be in-system
 
@@ -82,13 +89,18 @@ Bump solidity version to 0.8.19
 
   - Modify to handle new gov params: `warmupPeriod`, `dutchAuctionLength`, and `withdrawalLeak`
   - Do not grant OWNER any of the roles other than ownership
+  - Add `deployRTokenAsset()` to allow easy creation of new `RTokenAsset` instances
 
-- `Distributor` [+0 slots]
-  Summary: Waste of gas to double-check this, since caller is another component
+- `Distributor` [+2 slots]
+  Summary: Restrict callers to system components and remove paused/frozen checks
   - Remove `notPausedOrFrozen` modifier from `distribute()`
 - `Furnace` [+0 slots]
-  Summary: Should be able to melting while redeeming when frozen
-  - Modify `melt()` modifier: `notPausedOrFrozen` -> `notFrozen`
+  Summary: Allow melting while paused
+
+  - Allow melting while paused
+  - Melt during updates to the melting ratio
+  - Lower `MAX_RATIO` from 1e18 to 1e14.
+
 - `Main` [+0 slots]
   Summary: Breakup pausing into two types of pausing: issuance and trading
 
@@ -98,43 +110,69 @@ Bump solidity version to 0.8.19
   - `pausedOrFrozen()` -> `tradingPausedOrFrozen()` and `issuancePausedOrFrozen()`
   - `PausedSet()` event -> `TradingPausedSet()` and `IssuancePausedSet()`
 
-- `RevenueTrader` [+3 slots]
+- `RevenueTrader` [+4 slots]
   Summary: QoL improvements. Make compatible with new dutch auction trading method
 
-  - Remove `delegatecall` during reward claiming
+  - Remove `delegatecall` during reward claiming; call `claimRewards()` directly on ERC20
   - Add `cacheComponents()` refresher to be called on upgrade
-  - `manageToken(IERC20 sell)` -> `manageToken(IERC20 sell, TradeKind kind)`
-    - Allow `manageToken(..)` to open dust auctions
-    - Revert on 0 balance or collision auction, instead of no-op
+  - `manageToken(IERC20 sell)` -> `manageTokens(IERC20[] calldata erc20s, TradeKind[] memory kinds)`
+    - Allow multiple auctions to be launched at once
+    - Allow opening dust auctions (i.e ignore `minTradeVolume`)
+    - Revert on 0 balance or collision auction instead of no-op
     - Refresh buy and sell asset before trade
-  - `settleTrade(IERC20)` now distributes `tokenToBuy`, instead of requiring separate `manageToken(IERC20)` call
+  - `settleTrade(IERC20)` now distributes `tokenToBuy` automatically, instead of requiring separate `manageToken(IERC20)` call
+  - Add `returnTokens(IERC20[] memory erc20s)` to return tokens to the BackingManager when the distribution is set to 0
+  - Add concept of `tradeNonce`
 
 - `RToken` [+0 slots]
-  Summary: Provide multiple redemption methods for when fullyCollateralized vs not. Should support a higher RToken price during basket changes.
+  Summary: Provide multiple redemption methods for fullyCollateralized vs uncollateralized.
 
-  - Remove `exchangeRateIsValidAfter` modifier from all functions except `setBasketsNeeded()`
-  - Modify `issueTo()` to revert before `warmupPeriod`
-  - Modify `redeem(uint256 amount, uint48 basketNonce)` -> `redeem(uint256 amount)`. Redemptions are on the current basket nonce and revert under partial redemption
+  - Gas: Remove `exchangeRateIsValidAfter` modifier from all functions except `setBasketsNeeded()`
+  - Modify issuance`to revert before`warmupPeriod`
+  - Modify `redeem(uint256 amount, uint48 basketNonce)` -> `redeem(uint256 amount)`. Redemptions are always on the current basket nonce and revert under partial redemption
   - Modify `redeemTo(address recipient, uint256 amount, uint48 basketNonce)` -> `redeemTo(address recipient, uint256 amount)`. Redemptions are on the current basket nonce and revert under partial redemption
-  - Add new `redeemCustom(.., uint256 amount, uint48[] memory basketNonces, uint192[] memory portions, ..)` function to allow redemption from a linear combination of current and previous baskets. During rebalancing this method of redemption will provide a higher overall redemption value than prorata redemption on the current basket nonce would.
-  - `mint(address recipient, uint256 amtRToken)` -> `mint(uint256 amtRToken)`, since recipient is _always_ BackingManager. Expand scope to include adjustments to `basketsNeeded`
+  - Add new `redeemCustom(.., uint256 amount, uint48[] memory basketNonces, uint192[] memory portions, ..)` function to allow redemption from a linear combination of current and previous baskets. During rebalancing this method of redemption may provide a higher overall redemption value than prorata redemption on the current basket nonce would.
+  - Modify `mint(address recipient, uint256 amtRToken)` -> `mint(uint256 amtRToken)`, since recipient is _always_ BackingManager. Expand scope to include adjustments to `basketsNeeded`
   - Add `dissolve(uint256 amount)`: burns RToken and reduces `basketsNeeded`, similar to redemption. Only callable by BackingManager
   - Modify `setBasketsNeeded(..)` to revert when supply is 0
+  - Bugfix: Accumulate throttles upon change
 
 - `StRSR` [+2 slots]
-  Summary: Add the ability to cancel unstakings and a withdrawal() gas-saver to allow small RSR amounts to be exempt from refreshes
+  Summary: Add the ability to cancel unstakings and a withdrawal() gas-saver to allow small RSR amounts to be exempt from asset refreshes
 
+  - Lower `MAX_REWARD_RATIO` from 1e18 to 1e14.
   - Remove duplicate `stakeRate()` getter (same as `1 / exchangeRate()`)
   - Add `withdrawalLeak` gov param, with `setWithdrawalLeak(..)` setter and `WithdrawalLeakSet()` event
-  - Modify `withdraw()` to allow a small % of RSR too exit without paying to refresh all assets
+  - Modify `withdraw()` to allow a small % of RSR to exit without paying to refresh all assets
   - Modify `withdraw()` to check for `warmupPeriod`
   - Add ability to re-stake during a withdrawal via `cancelUnstake(uint256 endId)`
   - Add `UnstakingCancelled()` event
+  - Allow payout of (already acquired) RSR rewards while frozen
+  - Add ability for governance to `resetStakes()` when stake rate falls outside (1e12, 1e24)
 
 - `StRSRVotes` [+0 slots]
-  - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function, to encourage people to receive voting weight upon staking
+  - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function to encourage people to receive voting weight upon staking
 
 ### Facades
+
+- `FacadeAct`
+  Summary: Remove unused getActCalldata and add way to run revenue auctions
+
+  - Remove `getActCalldata(..)`
+  - Remove `canRunRecollateralizationAuctions(..)`
+  - Modify `runRevenueAuctions(..)` to work with both 3.0.0 and 2.1.0 interfaces
+  - Add `revenueOverview(..)` callstatic function to get an overview of the current revenue state
+  - Add `nextRecollateralizationAuction(..)` callstatic function to get an overview of the rebalancing state
+
+- Remove `FacadeMonitor`
+
+- `FacadeRead`
+  Summary: Add new data summary views frontends may be interested in
+
+  - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
+  - Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
+  - Remove `traderBalances(..)`
+  - `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
 
 - `FacadeWrite`
   Summary: More expressive and fine-grained control over the set of pausers and freezers
@@ -145,41 +183,33 @@ Bump solidity version to 0.8.19
   - Modify `setupGovernance(.., address owner, address guardian, address pauser)` -> `setupGovernance(.., GovernanceRoles calldata govRoles)`
   - Update `DeploymentParams` and `Implementations` struct to contain new gov params and dutch trade plugin
 
-- `FacadeAct`
-  Summary: Remove unused getActCalldata and add way to run revenue auctions
-
-  - Remove `getActCalldata(..)`
-  - Modify `runRevenueAuctions(..)` to work with both 3.0.0 and 2.1.0 interfaces
-
-- `FacadeRead`
-  Summary: Add new data summary views frontends may be interested in
-
-  - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
-  - Remove `traderBalances(..)`
-  - `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
-  - Add `nextRecollateralizationAuction(..) returns (bool canStart, IERC20 sell, IERC20 buy, uint256 sellAmount)`
-  - Add `revenueOverview(IRevenueTrader) returns ( IERC20[] memory erc20s, bool[] memory canStart, uint256[] memory surpluses, uint256[] memory minTradeAmounts)`
-
-- Remove `FacadeMonitor` - redundant with `nextRecollateralizationAuction()` and `revenueOverview()`
-
 ## Plugins
 
 ### DutchTrade
 
-A cheaper, simpler, trading method. Intended to be the new dominant trading method, with GnosisTrade (batch auctions) available as a faster-but-more-gas-expensive backup option.
+A cheaper, simpler, trading method. Intended to be the new dominant trading method, with GnosisTrade (batch auctions) available as a backup option. Generally speaking the batch auction length can be kept shorter than the dutch auction length.
 
-DutchTrade implements a two-stage, single-lot, falling price dutch auction. In the first 40% of the auction, the price falls from 1000x to the best-case price in a geometric/exponential decay as a price manipulation defense mechanism. Bids are not expected to occur (but note: unlike the GnosisTrade batch auction, this mechanism is not resistant to _arbitrary_ price manipulation).
+DutchTrade implements a four-stage, single-lot, falling price dutch auction:
 
-Over the last 60% of the auction, the price falls linearly from the best-case price to the worst-case price. Only a single bidder can bid fill the auction, and settlement is atomic. If no bids are received, the capital cycles back to the BackingManager and no loss is taken.
+1. In the first 20% of the auction, the price falls from 1000x the best price to the best price in a geometric/exponential decay as a price manipulation defense mechanism. Bids are not expected to occur (but note: unlike the GnosisTrade batch auction, this mechanism is not resistant to _arbitrary_ price manipulation). If a bid occurs, then trading for the pair of tokens is disabled as long as the trade was started by the BackingManager.
+2. Between 20% and 45%, the price falls linearly from 1.5x the best price to the best price.
+3. Between 45% and 95%, the price falls linearly from the best price to the worst price.
+4. Over the last 5% of the auction, the price remains constant at the worst price.
 
 Duration: 30 min (default)
 
 ### Assets and Collateral
 
-- Bugfix: `lotPrice()` now begins at 100% the lastSavedPrice, instead of below 100%. It can be at 100% for up to the oracleTimeout in the worst-case.
 - Add `version() return (string)` getter to pave way for separation of asset versioning and core protocol versioning
-- Update `claimRewards()` on all assets to 3.0.0-style, without `delegatecall`
+- Deprecate `claimRewards()`
 - Add `lastSave()` to `RTokenAsset`
+- Remove `CurveVolatileCollateral`
+- Switch `CToken*Collateral` (Compound V2) to using a CTokenVault ERC20 rather than the raw cToken
+- Bugfix: `lotPrice()` now begins at 100% the lastSavedPrice, instead of below 100%. It can be at 100% for up to the oracleTimeout in the worst-case.
+- Bugfix: Handle oracle deprecation as indicated by the `aggregator()` being set to the zero address
+- Bugfix: `AnkrStakedETHCollateral`/`CBETHCollateral`/`RethCollateral` now correctly detects soft default (note that Ankr still requires a new oracle before it can be deployed)
+- Bugfix: Adjust `Curve*Collateral` and `RTokenAsset` to treat FIX_MAX correctly as +inf
+- Bugfix: Continue updating cached price after collateral default (impacts all appreciating collateral)
 
 # 2.1.0
 
