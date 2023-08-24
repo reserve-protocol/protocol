@@ -8,6 +8,14 @@ import "./interfaces/IStargatePool.sol";
 
 import "./StargateRewardableWrapper.sol";
 
+/**
+ * @title StargatePoolFiatCollateral
+ * @notice Collateral plugin for Stargate USD Stablecoins,
+ * tok = wstgUSDC / wstgUSDT
+ * ref = USDC / USDT
+ * tar = USD
+ * UoA = USD
+ */
 contract StargatePoolFiatCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;

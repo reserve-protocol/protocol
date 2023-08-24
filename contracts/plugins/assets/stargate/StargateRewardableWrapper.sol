@@ -9,7 +9,6 @@ import "../erc20/RewardableERC20Wrapper.sol";
 contract StargateRewardableWrapper is RewardableERC20Wrapper {
     IStargateLPStaking public immutable stakingContract;
     IStargatePool public immutable pool;
-    IERC20 public immutable stargate;
     uint256 public immutable poolId;
 
     constructor(
@@ -40,7 +39,6 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
         pool = pool_;
         poolId = pid;
         stakingContract = stakingContract_;
-        stargate = stargate_;
     }
 
     function _claimAssetRewards() internal override {
