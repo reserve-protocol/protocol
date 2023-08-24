@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after full price timeout 1`] = `75367`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after full price timeout 2`] = `73699`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after hard default 1`] = `73922`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after hard default 2`] = `30918`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after oracle timeout 1`] = `75367`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after oracle timeout 2`] = `73699`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 1`] = `51728`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after soft default 2`] = `51728`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 1`] = `93195`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during SOUND 2`] = `93269`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 1`] = `128341`;
+
+exports[`ATokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() during soft default 2`] = `92399`;

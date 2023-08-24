@@ -1668,6 +1668,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         // Basket is now disabled
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       })
+
+      it('Recognizes Sound Collateral', async () => {
+        expect(await collateral1.status()).to.equal(CollateralStatus.SOUND)
+        await expect(assetRegistry.register(collateral1.address)).not.be.reverted
+
+        await revertCollateral.setStatus(CollateralStatus.DISABLED)
+        expect(await revertCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+        await expect(
+          assetRegistry.connect(owner).register(revertCollateral.address)
+        ).be.revertedWith('collateral not sound')
+        await expect(
+          assetRegistry.connect(owner).swapRegistered(revertCollateral.address)
+        ).be.revertedWith('collateral not sound')
+      })
     })
   })
 

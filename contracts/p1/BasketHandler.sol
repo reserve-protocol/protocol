@@ -255,7 +255,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         for (uint256 i = 0; i < size; ++i) {
             CollateralStatus s = assetRegistry.toColl(basket.erc20s[i]).status();
-            if (s.worseThan(status_)) status_ = s;
+            if (s.worseThan(status_)) {
+                if (s == CollateralStatus.DISABLED) return CollateralStatus.DISABLED;
+                status_ = s;
+            }
         }
     }
 
@@ -356,6 +359,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Return the current issuance/redemption value of `amount` BUs
+    /// Any approvals needed to issue RTokens should be set to the values returned by this function
     /// @dev Subset of logic of quoteCustomRedemption; more gas efficient for current nonce
     /// @param amount {BU}
     /// @return erc20s The backing collateral erc20s
@@ -376,11 +380,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
             quantities[i] = _quantity(basket.erc20s[i], coll)
-                .safeMul(amount, rounding)
-                .shiftl_toUint(
-                    int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
-                    rounding
-                );
+            .safeMul(amount, rounding)
+            .shiftl_toUint(int8(IERC20Metadata(address(basket.erc20s[i])).decimals()), rounding);
         }
     }
 
@@ -461,8 +462,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // {tok} = {BU} * {ref/BU} / {ref/tok}
             quantities[i] = amount
-                .safeMulDiv(refAmtsAll[i], collsAll[i].refPerTok(), FLOOR)
-                .shiftl_toUint(int8(collsAll[i].erc20Decimals()), FLOOR);
+            .safeMulDiv(refAmtsAll[i], collsAll[i].refPerTok(), FLOOR)
+            .shiftl_toUint(int8(collsAll[i].erc20Decimals()), FLOOR);
             // marginally more penalizing than its sibling calculation that uses _quantity()
             // because does not intermediately CEIL as part of the division
         }
@@ -608,9 +609,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
                 // {tok} = {BU} * {ref/BU} / {ref/tok}
                 quantities[i] = b
-                    .refAmts[erc20s[i]]
-                    .safeDiv(ICollateral(address(asset)).refPerTok(), FLOOR)
-                    .shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
+                .refAmts[erc20s[i]]
+                .safeDiv(ICollateral(address(asset)).refPerTok(), FLOOR)
+                .shiftl_toUint(int8(asset.erc20Decimals()), FLOOR);
             } catch (bytes memory errData) {
                 // untested:
                 //     OOG pattern tested in other contracts, cost to test here is high

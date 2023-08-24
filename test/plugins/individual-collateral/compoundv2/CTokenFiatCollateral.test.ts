@@ -3,7 +3,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
-import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../../fixtures'
+import {
+  IMPLEMENTATION,
+  Implementation,
+  ORACLE_ERROR,
+  PRICE_TIMEOUT,
+  REVENUE_HIDING,
+} from '../../../fixtures'
 import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 import { getChainId } from '../../../../common/blockchain-utils'
 import forkBlockNumber from '../../../integration/fork-block-numbers'
@@ -26,7 +32,12 @@ import {
   expectUnpriced,
   setOraclePrice,
 } from '../../../utils/oracles'
-import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../../utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+} from '../../../utils/time'
 import {
   Asset,
   BadERC20,
@@ -51,6 +62,10 @@ import {
 } from '../../../../typechain'
 import { useEnv } from '#/utils/env'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
+import snapshotGasCost from '../../../utils/snapshotGasCost'
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 // Setup test environment
 const setup = async (blockNumber: number) => {
@@ -863,6 +878,162 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await invalidChainlinkFeed.setSimplyRevert(false)
       await expect(invalidCTokenCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    context('refresh()', () => {
+      it('during SOUND', async () => {
+        await snapshotGasCost(cDaiCollateral.refresh())
+        await snapshotGasCost(cDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after hard default', async () => {
+        // Note: In this case requires to use a CToken mock to be able to change the rate
+        const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+        const symbol = await cDai.symbol()
+        const cDaiMock: CTokenMock = <CTokenMock>(
+          await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+        )
+        // Set initial exchange rate to the new cDai Mock
+        await cDaiMock.setExchangeRate(fp('0.02'))
+
+        const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
+        cDaiVault = <CTokenWrapper>(
+          await cDaiVaultFactory.deploy(
+            cDaiMock.address,
+            'cDAI RToken Vault',
+            'rv_cDAI',
+            comptroller.address
+          )
+        )
+
+        // Redeploy plugin using the new cDai mock
+        const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: cDaiVault.address,
+            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await cDaiCollateral.oracleTimeout(),
+            targetName: await cDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+        await newCDaiCollateral.refresh()
+
+        // Decrease rate for aDAI, will disable collateral immediately
+        await cDaiMock.setExchangeRate(fp('0.019'))
+        await snapshotGasCost(newCDaiCollateral.refresh())
+        await snapshotGasCost(newCDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('during soft default', async () => {
+        // Redeploy plugin using a Chainlink mock feed where we can change the price
+        const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: mockChainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: await cDaiCollateral.erc20(),
+            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await cDaiCollateral.oracleTimeout(),
+            targetName: await cDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+
+        // Check initial state
+        expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+
+        // Depeg one of the underlying tokens - Reducing price 20%
+        await setOraclePrice(newCDaiCollateral.address, bn('8e7')) // -20%
+        await snapshotGasCost(newCDaiCollateral.refresh())
+        await snapshotGasCost(newCDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after soft default', async () => {
+        // Redeploy plugin using a Chainlink mock feed where we can change the price
+        const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: mockChainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: await cDaiCollateral.erc20(),
+            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await cDaiCollateral.oracleTimeout(),
+            targetName: await cDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+
+        // Check initial state
+        expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+
+        // Depeg one of the underlying tokens - Reducing price 20%
+        await setOraclePrice(newCDaiCollateral.address, bn('8e7')) // -20%
+
+        // Force updates - Should update whenDefault and status
+        await expect(newCDaiCollateral.refresh())
+          .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+        expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+          delayUntilDefault
+        )
+        expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+        // Move time forward past delayUntilDefault
+        await advanceTime(Number(delayUntilDefault))
+        expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+        // Nothing changes if attempt to refresh after default
+        // CToken
+        const prevWhenDefault: BigNumber = await newCDaiCollateral.whenDefault()
+        await expect(newCDaiCollateral.refresh()).to.not.emit(
+          newCDaiCollateral,
+          'CollateralStatusChanged'
+        )
+        expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await newCDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
+        await snapshotGasCost(newCDaiCollateral.refresh())
+        await snapshotGasCost(newCDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after oracle timeout', async () => {
+        const oracleTimeout = await cDaiCollateral.oracleTimeout()
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+        await advanceBlocks(bn(oracleTimeout).div(12))
+        await snapshotGasCost(cDaiCollateral.refresh())
+        await snapshotGasCost(cDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after full price timeout', async () => {
+        await advanceTime(
+          (await cDaiCollateral.priceTimeout()) + (await cDaiCollateral.oracleTimeout())
+        )
+        const lotP = await cDaiCollateral.lotPrice()
+        expect(lotP[0]).to.equal(0)
+        expect(lotP[1]).to.equal(0)
+        await snapshotGasCost(cDaiCollateral.refresh())
+        await snapshotGasCost(cDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
     })
   })
 })

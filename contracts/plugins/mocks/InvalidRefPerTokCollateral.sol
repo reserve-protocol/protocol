@@ -68,6 +68,11 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
         refPerTokRevert = on;
     }
 
+    // Setter for status
+    function setStatus(CollateralStatus _status) external {
+        markStatus(_status);
+    }
+
     function refPerTok() public view virtual override returns (uint192) {
         if (refPerTokRevert) revert(); // Revert with no reason
         return rateMock;

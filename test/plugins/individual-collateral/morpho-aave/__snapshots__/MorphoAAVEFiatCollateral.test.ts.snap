@@ -1,0 +1,73 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after full price timeout 1`] = `135022`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after full price timeout 2`] = `130553`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after hard default 1`] = `180391`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after hard default 2`] = `111194`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `135022`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `130553`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after soft default 1`] = `111194`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() after soft default 2`] = `111194`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() during SOUND 1`] = `172705`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() during SOUND 2`] = `172705`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() during soft default 1`] = `180256`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - DAI collateral functionality Gas Reporting refresh() during soft default 2`] = `172987`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after full price timeout 1`] = `135225`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after full price timeout 2`] = `130756`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after hard default 1`] = `180797`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after hard default 2`] = `111397`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `135225`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `130756`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after soft default 1`] = `111397`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() after soft default 2`] = `111397`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() during SOUND 1`] = `173111`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() during SOUND 2`] = `173111`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() during soft default 1`] = `180662`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDC collateral functionality Gas Reporting refresh() during soft default 2`] = `173393`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after full price timeout 1`] = `134378`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after full price timeout 2`] = `129909`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after hard default 1`] = `179103`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after hard default 2`] = `110550`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `134378`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `129909`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after soft default 1`] = `110550`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() after soft default 2`] = `110550`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() during SOUND 1`] = `171417`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() during SOUND 2`] = `171417`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() during soft default 1`] = `178968`;
+
+exports[`Collateral: MorphoAAVEV2FiatCollateral - USDT collateral functionality Gas Reporting refresh() during soft default 2`] = `171699`;

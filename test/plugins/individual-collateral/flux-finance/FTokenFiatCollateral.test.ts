@@ -1,16 +1,10 @@
+import { setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import collateralTests from '../collateralTests'
-import {
-  CollateralFixtureContext,
-  CollateralStatus,
-  CollateralOpts,
-  MintCollateralFunc,
-} from '../pluginTestTypes'
+import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
   CTokenWrapper,
-  CTokenWrapperMock,
-  ICToken,
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
@@ -20,7 +14,6 @@ import { bn, fp } from '../../../../common/numbers'
 import { ZERO_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { advanceBlocks } from '../../../utils/time'
 import {
   USDC_HOLDER,
   USDT_HOLDER,
@@ -192,59 +185,6 @@ all.forEach((curr: FTokenEnumeration) => {
     return makeCollateralFixtureContext
   }
 
-  const deployCollateralMockContext = async (
-    opts: FTokenCollateralOpts = {}
-  ): Promise<CollateralFixtureContext> => {
-    const collateralOpts = { ...defaultCollateralOpts, ...opts }
-
-    const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
-      await ethers.getContractFactory('MockV3Aggregator')
-    )
-
-    const comptroller = await ethers.getContractAt('ComptrollerMock', collateralOpts.comptroller!)
-
-    const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
-    collateralOpts.chainlinkFeed = chainlinkFeed.address
-
-    const FTokenMockFactory = await ethers.getContractFactory('CTokenMock')
-
-    const underlyingFToken = await FTokenMockFactory.deploy(
-      'Mock FToken',
-      'Mock Ftk',
-      curr.underlying
-    )
-
-    const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
-      'CTokenWrapperMock'
-    )
-
-    let compAddress = ZERO_ADDRESS
-    try {
-      compAddress = await comptroller.getCompAddress()
-      // eslint-disable-next-line no-empty
-    } catch {}
-
-    const fTokenVault = <CTokenWrapperMock>(
-      await CTokenWrapperMockFactory.deploy(
-        await underlyingFToken.name(),
-        await underlyingFToken.symbol(),
-        underlyingFToken.address,
-        compAddress,
-        collateralOpts.comptroller!
-      )
-    )
-
-    collateralOpts.erc20 = fTokenVault.address
-
-    const collateral = await deployCollateral(collateralOpts)
-
-    return {
-      collateral,
-      chainlinkFeed,
-      tok: fTokenVault,
-    }
-  }
-
   /*
   Define helper functions
 */
@@ -261,41 +201,45 @@ all.forEach((curr: FTokenEnumeration) => {
     await mintFToken(underlying, curr.holderUnderlying, fToken, tok, amount, recipient)
   }
 
-  const increaseRefPerTok = async (ctx: CollateralFixtureContext) => {
-    await advanceBlocks(1)
-    await (ctx.tok as ICToken).exchangeRateCurrent()
+  const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
+    const lastRound = await ctx.chainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
+    await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+  }
+
+  const increaseTargetPerRef = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
+    const lastRound = await ctx.chainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
+    await ctx.chainlinkFeed.updateAnswer(nextAnswer)
+  }
+
+  const increaseRefPerTok = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
+    const tok = ctx.tok as CTokenWrapper
+    const fToken = await ethers.getContractAt('ICToken', await tok.underlying())
+    const totalSupply = await fToken.totalSupply()
+    await setStorageAt(
+      fToken.address,
+      13, // interesting, the storage slot is 13 for fTokens and 14 for cTokens
+      totalSupply.sub(totalSupply.mul(pctIncrease).div(100))
+    ) // expand supply by pctDecrease, since it's denominator of exchange rate calculation
+  }
+
+  const reduceRefPerTok = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
+    const tok = ctx.tok as CTokenWrapper
+    const fToken = await ethers.getContractAt('ICToken', await tok.underlying())
+    const totalSupply = await fToken.totalSupply()
+    await setStorageAt(
+      fToken.address,
+      13, // interesting, the storage slot is 13 for fTokens and 14 for cTokens
+      totalSupply.add(totalSupply.mul(pctDecrease).div(100))
+    ) // expand supply by pctDecrease, since it's denominator of exchange rate calculation
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   const collateralSpecificConstructorTests = () => {}
 
-  const collateralSpecificStatusTests = () => {
-    it('does revenue hiding correctly', async () => {
-      const { collateral, tok } = await deployCollateralMockContext({ revenueHiding: fp('0.01') })
-
-      const rate = fp('2')
-      const rateAsRefPerTok = rate.div(50)
-      await (tok as CTokenWrapperMock).setExchangeRate(rate) // above current
-      await collateral.refresh()
-      const before = await collateral.refPerTok()
-      expect(before).to.equal(rateAsRefPerTok.mul(fp('0.99')).div(fp('1')))
-      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Should be SOUND if drops just under 1%
-      await (tok as CTokenWrapperMock).setExchangeRate(rate.mul(fp('0.99001')).div(fp('1')))
-      await collateral.refresh()
-      let after = await collateral.refPerTok()
-      expect(before).to.eq(after)
-      expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Should be DISABLED if drops just over 1%
-      await (tok as CTokenWrapperMock).setExchangeRate(before.mul(fp('0.98999')).div(fp('1')))
-      await collateral.refresh()
-      after = await collateral.refPerTok()
-      expect(before).to.be.gt(after)
-      expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
-    })
-  }
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  const collateralSpecificStatusTests = () => {}
 
   const getExpectedPrice = async (ctx: CollateralFixtureContext) => {
     const initRefPerTok = await ctx.collateral.refPerTok()
@@ -324,19 +268,20 @@ all.forEach((curr: FTokenEnumeration) => {
     beforeEachRewardsTest: emptyFn,
     makeCollateralFixtureContext,
     mintCollateralTo,
-    reduceTargetPerRef: emptyFn,
-    increaseTargetPerRef: emptyFn,
-    reduceRefPerTok: emptyFn,
+    reduceTargetPerRef,
+    increaseTargetPerRef,
+    reduceRefPerTok,
     increaseRefPerTok,
     getExpectedPrice,
     itClaimsRewards: it.skip,
-    itChecksTargetPerRefDefault: it.skip,
-    itChecksRefPerTokDefault: it.skip,
+    itChecksTargetPerRefDefault: it,
+    itChecksRefPerTokDefault: it,
     itChecksPriceChanges: it,
-    itHasRevenueHiding: it.skip, // in this file
+    itHasRevenueHiding: it,
     resetFork,
     collateralName: curr.testName,
     chainlinkDefaultAnswer: bn('1e8'),
+    itIsPricedByPeg: true,
   }
 
   collateralTests(opts)

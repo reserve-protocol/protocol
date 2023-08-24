@@ -104,6 +104,9 @@ contract DistributorP1 is ComponentP1, IDistributor {
         Transfer[] memory transfers = new Transfer[](destinations.length());
         uint256 numTransfers;
 
+        address furnaceAddr = furnace; // gas-saver
+        address stRSRAddr = stRSR; // gas-saver
+
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
 
@@ -114,9 +117,9 @@ contract DistributorP1 is ComponentP1, IDistributor {
             uint256 transferAmt = tokensPerShare * numberOfShares;
 
             if (addrTo == FURNACE) {
-                addrTo = furnace;
+                addrTo = furnaceAddr;
             } else if (addrTo == ST_RSR) {
-                addrTo = stRSR;
+                addrTo = stRSRAddr;
             }
 
             transfers[numTransfers] = Transfer({

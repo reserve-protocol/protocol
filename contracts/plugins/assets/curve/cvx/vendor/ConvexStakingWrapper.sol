@@ -101,7 +101,7 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
         emit OwnershipTransferred(address(0), owner);
 
         (address _lptoken, address _token, , address _rewards, , ) = IBooster(convexBooster)
-            .poolInfo(_poolId);
+        .poolInfo(_poolId);
         curveToken = _lptoken;
         convexToken = _token;
         convexPool = _rewards;
@@ -275,10 +275,8 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
                     }
                 } else {
                     reward.claimable_reward[_accounts[u]] = reward
-                        .claimable_reward[_accounts[u]]
-                        .add(
-                            _balances[u].mul(uint256(reward.reward_integral).sub(userI)).div(1e20)
-                        );
+                    .claimable_reward[_accounts[u]]
+                    .add(_balances[u].mul(uint256(reward.reward_integral).sub(userI)).div(1e20));
                 }
                 reward.reward_integral_for[_accounts[u]] = reward.reward_integral;
             }
@@ -375,8 +373,8 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
             }
 
             uint256 newlyClaimable = _getDepositedBalance(_account)
-                .mul(I.sub(reward.reward_integral_for[_account]))
-                .div(1e20);
+            .mul(I.sub(reward.reward_integral_for[_account]))
+            .div(1e20);
             claimable[i].amount = claimable[i].amount.add(
                 reward.claimable_reward[_account].add(newlyClaimable)
             );
@@ -395,8 +393,8 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
                         );
                 }
                 newlyClaimable = _getDepositedBalance(_account)
-                    .mul(I.sub(reward.reward_integral_for[_account]))
-                    .div(1e20);
+                .mul(I.sub(reward.reward_integral_for[_account]))
+                .div(1e20);
                 claimable[CVX_INDEX].amount = CvxMining.ConvertCrvToCvx(newlyClaimable);
                 claimable[CVX_INDEX].token = cvx;
             }

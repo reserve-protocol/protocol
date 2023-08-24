@@ -22,6 +22,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     IBackingManager private backingManager;
     IFurnace private furnace;
     IRToken private rToken;
+    IERC20 private rsr;
 
     function init(
         IMain main_,
@@ -43,18 +44,14 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         backingManager = main.backingManager();
         furnace = main.furnace();
         rToken = main.rToken();
+        rsr = main.rsr();
     }
 
     /// Settle a single trade + distribute revenue
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell)
-        public
-        override(ITrading, TradingP1)
-        notTradingPausedOrFrozen
-        returns (ITrade trade)
-    {
+    function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
         trade = super.settleTrade(sell); // nonReentrant
         _distributeTokenToBuy();
         // unlike BackingManager, do _not_ chain trades; b2b trades of the same token are unlikely
@@ -65,6 +62,27 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// @custom:interaction
     function distributeTokenToBuy() external notTradingPausedOrFrozen {
         _distributeTokenToBuy();
+    }
+
+    /// Return registered ERC20s to the BackingManager if distribution for tokenToBuy is 0
+    /// @custom:interaction
+    function returnTokens(IERC20[] memory erc20s) external notTradingPausedOrFrozen {
+        RevenueTotals memory revTotals = distributor.totals();
+        if (tokenToBuy == rsr) {
+            require(revTotals.rsrTotal == 0, "rsrTotal > 0");
+        } else if (address(tokenToBuy) == address(rToken)) {
+            require(revTotals.rTokenTotal == 0, "rTokenTotal > 0");
+        } else {
+            // untestable: tokenToBuy is always the RSR or RToken
+            revert("invalid tokenToBuy");
+        }
+
+        // Return ERC20s to the BackingManager
+        uint256 len = erc20s.length;
+        for (uint256 i = 0; i < len; ++i) {
+            require(assetRegistry.isRegistered(erc20s[i]), "unregistered erc20");
+            erc20s[i].safeTransfer(address(backingManager), erc20s[i].balanceOf(address(this)));
+        }
     }
 
     /// Process some number of tokens
@@ -169,5 +187,5 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[44] private __gap;
+    uint256[43] private __gap;
 }

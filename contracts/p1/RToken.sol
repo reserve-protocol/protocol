@@ -87,6 +87,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Issue an RToken on the current basket
+    /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
+    ///     of backing tokens to approve.
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
     function issue(uint256 amount) public {
@@ -94,6 +96,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Issue an RToken on the current basket, to a particular recipient
+    /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
+    ///     of backing tokens to approve.
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:interaction RCEI
@@ -179,7 +183,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
+        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -251,7 +255,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
+        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -395,8 +399,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // Note: These are D18s, even though they are uint256s. This is because
         // we cannot assume we stay inside our valid range here, as that is what
         // we are checking in the first place
-        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
-        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
+        uint256 low = (FIX_ONE_256 * basketsNeeded_) / supply; // D18{BU/rTok}
+        uint256 high = (FIX_ONE_256 * basketsNeeded_ + (supply - 1)) / supply; // D18{BU/rTok}
 
         // here we take advantage of an implicit upcast from uint192 exchange rates
         require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
@@ -422,8 +426,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @return available {qRTok} The maximum redemption that can be performed in the current block
     function redemptionAvailable() external view returns (uint256 available) {
         uint256 supply = totalSupply();
-        uint256 hourlyLimit = redemptionThrottle.hourlyLimit(supply);
-        available = redemptionThrottle.currentlyAvailable(hourlyLimit);
+        available = redemptionThrottle.currentlyAvailable(redemptionThrottle.hourlyLimit(supply));
         if (supply < available) available = supply;
     }
 
@@ -442,6 +445,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "issuance amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "issuance amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "issuance pctRate too big");
+        issuanceThrottle.useAvailable(totalSupply(), 0);
+
         emit IssuanceThrottleSet(issuanceThrottle.params, params);
         issuanceThrottle.params = params;
     }
@@ -451,6 +456,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "redemption amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "redemption amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "redemption pctRate too big");
+        redemptionThrottle.useAvailable(totalSupply(), 0);
+
         emit RedemptionThrottleSet(redemptionThrottle.params, params);
         redemptionThrottle.params = params;
     }

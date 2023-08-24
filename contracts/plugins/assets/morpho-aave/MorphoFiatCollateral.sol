@@ -18,7 +18,6 @@ import { shiftl_toFix, FIX_ONE } from "../../../libraries/Fixed.sol";
 contract MorphoFiatCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
 
-    MorphoTokenisedDeposit public immutable vault;
     uint256 private immutable oneShare;
     int8 private immutable refDecimals;
 
@@ -29,13 +28,17 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
         AppreciatingFiatCollateral(config, revenueHiding)
     {
         require(address(config.erc20) != address(0), "missing erc20");
-        vault = MorphoTokenisedDeposit(address(config.erc20));
+        MorphoTokenisedDeposit vault = MorphoTokenisedDeposit(address(config.erc20));
         oneShare = 10**vault.decimals();
         refDecimals = int8(uint8(IERC20Metadata(vault.asset()).decimals()));
     }
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        return shiftl_toFix(vault.convertToAssets(oneShare), -refDecimals);
+        return
+            shiftl_toFix(
+                MorphoTokenisedDeposit(address(erc20)).convertToAssets(oneShare),
+                -refDecimals
+            );
     }
 }

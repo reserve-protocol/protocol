@@ -33,12 +33,13 @@ struct TradeRequest {
  *   the continued proper functioning of trading platforms.
  */
 interface IBroker is IComponent {
-    event GnosisSet(IGnosis indexed oldVal, IGnosis indexed newVal);
-    event BatchTradeImplementationSet(ITrade indexed oldVal, ITrade indexed newVal);
-    event DutchTradeImplementationSet(ITrade indexed oldVal, ITrade indexed newVal);
-    event BatchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
-    event DutchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
-    event DisabledSet(bool indexed prevVal, bool indexed newVal);
+    event GnosisSet(IGnosis oldVal, IGnosis newVal);
+    event BatchTradeImplementationSet(ITrade oldVal, ITrade newVal);
+    event DutchTradeImplementationSet(ITrade oldVal, ITrade newVal);
+    event BatchAuctionLengthSet(uint48 oldVal, uint48 newVal);
+    event DutchAuctionLengthSet(uint48 oldVal, uint48 newVal);
+    event BatchTradeDisabledSet(bool prevVal, bool newVal);
+    event DutchTradeDisabledSet(IERC20Metadata indexed erc20, bool prevVal, bool newVal);
 
     // Initialization
     function init(
@@ -62,7 +63,9 @@ interface IBroker is IComponent {
     /// Only callable by one of the trading contracts the broker deploys
     function reportViolation() external;
 
-    function disabled() external view returns (bool);
+    function batchTradeDisabled() external view returns (bool);
+
+    function dutchTradeDisabled(IERC20Metadata erc20) external view returns (bool);
 }
 
 interface TestIBroker is IBroker {
@@ -86,5 +89,10 @@ interface TestIBroker is IBroker {
 
     function setDutchAuctionLength(uint48 newAuctionLength) external;
 
-    function setDisabled(bool disabled_) external;
+    function setBatchTradeDisabled(bool disabled) external;
+
+    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external;
+
+    // only present on pre-3.0.0 Brokers; used by EasyAuction regression test
+    function disabled() external view returns (bool);
 }

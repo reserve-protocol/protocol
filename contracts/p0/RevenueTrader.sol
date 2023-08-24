@@ -50,6 +50,26 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         _distributeTokenToBuy();
     }
 
+    /// Return registered ERC20s to the BackingManager if distribution for tokenToBuy is 0
+    /// @custom:interaction
+    function returnTokens(IERC20[] memory erc20s) external notTradingPausedOrFrozen {
+        RevenueTotals memory revTotals = main.distributor().totals();
+        if (tokenToBuy == main.rsr()) {
+            require(revTotals.rsrTotal == 0, "rsrTotal > 0");
+        } else if (address(tokenToBuy) == address(main.rToken())) {
+            require(revTotals.rTokenTotal == 0, "rTokenTotal > 0");
+        } else {
+            revert("invalid tokenToBuy");
+        }
+
+        // Return ERC20s to the BackingManager
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            require(main.assetRegistry().isRegistered(erc20s[i]), "unregistered erc20");
+            address backingManager = address(main.backingManager());
+            erc20s[i].safeTransfer(backingManager, erc20s[i].balanceOf(address(this)));
+        }
+    }
+
     /// Process some number of tokens
     /// @param erc20s The ERC20s to manage; can be tokenToBuy or anything registered
     /// @param kinds The kinds of auctions to launch: DUTCH_AUCTION | BATCH_AUCTION
