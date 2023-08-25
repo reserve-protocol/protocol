@@ -381,7 +381,7 @@ describe('Assets contracts #fast', () => {
       await expectUnpriced(aaveAsset.address)
     })
 
-    it('Should handle unpriced edge cases for RToken', async () => {
+    it('Should handle reverting edge cases for RToken', async () => {
       // Swap one of the collaterals for an invalid one
       const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
       const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
@@ -408,12 +408,41 @@ describe('Assets contracts #fast', () => {
       // Check RToken unpriced
       await expectUnpriced(rTokenAsset.address)
 
-      //  Runnning out of gas
+      // Runnning out of gas
       await invalidFiatCollateral.setSimplyRevert(false)
       await expect(invalidFiatCollateral.price()).to.be.reverted
 
       //  Check RToken price reverts
       await expect(rTokenAsset.price()).to.be.reverted
+    })
+
+    it('Regression test -- Should handle unpriced collateral for RToken', async () => {
+      // https://github.com/code-423n4/2023-07-reserve-findings/issues/20
+
+      // Swap one of the collaterals for an invalid one
+      const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
+      const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
+        await InvalidFiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral0.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral0.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
+      )
+
+      // Swap asset
+      await assetRegistry.swapRegistered(invalidFiatCollateral.address)
+
+      // Set unpriced collateral
+      await invalidFiatCollateral.setUnpriced(true)
+
+      // Check RToken unpriced
+      await expectUnpriced(rTokenAsset.address)
     })
 
     it('Should be able to refresh saved prices', async () => {
