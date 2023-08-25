@@ -646,6 +646,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         if (IMPLEMENTATION != Implementation.P1 || !useEnv('REPORT_GAS')) return // hide pending
 
         context('refresh()', () => {
+          beforeEach(async () => {
+            await ctx.collateral.refresh()
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+          })
+
           afterEach(async () => {
             await snapshotGasCost(ctx.collateral.refresh())
             await snapshotGasCost(ctx.collateral.refresh()) // 2nd refresh can be different than 1st
@@ -653,11 +658,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
           it('during SOUND', async () => {
             // pass
-          })
-
-          it('after hard default', async () => {
-            const currentExchangeRate = await ctx.curvePool.get_virtual_price()
-            await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
           })
 
           it('during soft default', async () => {
@@ -689,6 +689,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             const lotP = await ctx.collateral.lotPrice()
             expect(lotP[0]).to.equal(0)
             expect(lotP[1]).to.equal(0)
+          })
+
+          it('after hard default', async () => {
+            const currentExchangeRate = await ctx.curvePool.get_virtual_price()
+            await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
           })
         })
       })
