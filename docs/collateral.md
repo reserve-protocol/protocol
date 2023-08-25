@@ -428,6 +428,8 @@ Should never revert.
 
 Should return a lower and upper estimate for the price of the token on secondary markets.
 
+The difference between the upper and lower estimate should not exceed 5%, though this is not a hard-and-fast rule. When the difference (usually arising from an oracleError) is large, it can lead to [the price estimation of the RToken](../contracts/plugins/assets/RTokenAsset.sol) somewhat degrading. While this is not usually an issue it can come into play when one RToken is using another RToken as collateral either directly or indirectly through an LP token. If there is RSR overcollateralization then this issue is mitigated.
+
 Lower estimate must be <= upper estimate.
 
 Should return `(0, FIX_MAX)` if pricing data is unavailable or stale.
