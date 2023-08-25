@@ -863,7 +863,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
       // Attempt to trigger recollateralization
       await expect(
-        facadeAct.callStatic.nextRecollateralizationAuction(backingManager.address)
+        facadeAct.callStatic.nextRecollateralizationAuction(
+          backingManager.address,
+          TradeKind.BATCH_AUCTION
+        )
       ).to.be.revertedWith('unrecognized version')
     })
 
