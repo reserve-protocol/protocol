@@ -883,54 +883,14 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   describeGas('Gas Reporting', () => {
     context('refresh()', () => {
+      beforeEach(async () => {
+        await cDaiCollateral.refresh()
+        expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      })
+
       it('during SOUND', async () => {
         await snapshotGasCost(cDaiCollateral.refresh())
         await snapshotGasCost(cDaiCollateral.refresh()) // 2nd refresh can be different than 1st
-      })
-
-      it('after hard default', async () => {
-        // Note: In this case requires to use a CToken mock to be able to change the rate
-        const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-        const symbol = await cDai.symbol()
-        const cDaiMock: CTokenMock = <CTokenMock>(
-          await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
-        )
-        // Set initial exchange rate to the new cDai Mock
-        await cDaiMock.setExchangeRate(fp('0.02'))
-
-        const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-        cDaiVault = <CTokenWrapper>(
-          await cDaiVaultFactory.deploy(
-            cDaiMock.address,
-            'cDAI RToken Vault',
-            'rv_cDAI',
-            comptroller.address
-          )
-        )
-
-        // Redeploy plugin using the new cDai mock
-        const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-          await ethers.getContractFactory('CTokenFiatCollateral')
-        ).deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
-            oracleError: ORACLE_ERROR,
-            erc20: cDaiVault.address,
-            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
-            oracleTimeout: await cDaiCollateral.oracleTimeout(),
-            targetName: await cDaiCollateral.targetName(),
-            defaultThreshold,
-            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
-          },
-          REVENUE_HIDING
-        )
-        await newCDaiCollateral.refresh()
-
-        // Decrease rate for aDAI, will disable collateral immediately
-        await cDaiMock.setExchangeRate(fp('0.019'))
-        await snapshotGasCost(newCDaiCollateral.refresh())
-        await snapshotGasCost(newCDaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })
 
       it('during soft default', async () => {
@@ -1033,6 +993,51 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         expect(lotP[1]).to.equal(0)
         await snapshotGasCost(cDaiCollateral.refresh())
         await snapshotGasCost(cDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after hard default', async () => {
+        // Note: In this case requires to use a CToken mock to be able to change the rate
+        const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+        const symbol = await cDai.symbol()
+        const cDaiMock: CTokenMock = <CTokenMock>(
+          await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+        )
+        // Set initial exchange rate to the new cDai Mock
+        await cDaiMock.setExchangeRate(fp('0.02'))
+
+        const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
+        cDaiVault = <CTokenWrapper>(
+          await cDaiVaultFactory.deploy(
+            cDaiMock.address,
+            'cDAI RToken Vault',
+            'rv_cDAI',
+            comptroller.address
+          )
+        )
+
+        // Redeploy plugin using the new cDai mock
+        const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: cDaiVault.address,
+            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await cDaiCollateral.oracleTimeout(),
+            targetName: await cDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+        await newCDaiCollateral.refresh()
+
+        // Decrease rate for aDAI, will disable collateral immediately
+        await cDaiMock.setExchangeRate(fp('0.019'))
+        await snapshotGasCost(newCDaiCollateral.refresh())
+        await snapshotGasCost(newCDaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })
     })
   })
