@@ -66,7 +66,7 @@ interface IFacadeAct {
     /// @return buy The buy token in the auction
     /// @return sellAmount {qSellTok} How much would be sold
     /// @custom:static-call
-    function nextRecollateralizationAuction(IBackingManager bm)
+    function nextRecollateralizationAuction(IBackingManager bm, TradeKind kind)
         external
         returns (
             bool canStart,
