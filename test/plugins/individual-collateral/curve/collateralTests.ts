@@ -453,6 +453,32 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       describe('status', () => {
+        before(resetFork)
+
+        it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+          const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+            'InvalidMockV3Aggregator'
+          )
+          const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
+            await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
+          )
+
+          const [invalidCollateral] = await deployCollateral({
+            erc20: ctx.wrapper.address,
+            feeds: defaultOpts.feeds!.map((f) => f.map(() => invalidChainlinkFeed.address)),
+          })
+
+          // Reverting with no reason
+          await invalidChainlinkFeed.setSimplyRevert(true)
+          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+          // Runnning out of gas (same error)
+          await invalidChainlinkFeed.setSimplyRevert(false)
+          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+        })
+
         it('maintains status in normal situations', async () => {
           // Check initial state
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -612,31 +638,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           await expect(ctx.collateral.refresh()).to.emit(ctx.collateral, 'CollateralStatusChanged')
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.DISABLED)
           expect(await ctx.collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
-        })
-
-        it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
-          const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-            'InvalidMockV3Aggregator'
-          )
-          const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
-            await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
-          )
-
-          ctx = await loadFixture(makeCollateralFixtureContext(ctx.alice, {}))
-          const [invalidCollateral] = await deployCollateral({
-            erc20: ctx.wrapper.address,
-            feeds: defaultOpts.feeds!.map((f) => f.map(() => invalidChainlinkFeed.address)),
-          })
-
-          // Reverting with no reason
-          await invalidChainlinkFeed.setSimplyRevert(true)
-          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-          // Runnning out of gas (same error)
-          await invalidChainlinkFeed.setSimplyRevert(false)
-          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
         })
 
         describe('collateral-specific tests', collateralSpecificStatusTests)
