@@ -441,8 +441,10 @@ describe('Assets contracts #fast', () => {
       // Set unpriced collateral
       await invalidFiatCollateral.setUnpriced(true)
 
-      // Check RToken unpriced
-      await expectUnpriced(rTokenAsset.address)
+      // Check RToken is unpriced on the high side
+      const [low, high] = await rTokenAsset.price()
+      expect(low).to.be.gt(0) // should be non-zero
+      expect(high).to.eq(MAX_UINT192) // should be FIX_MAX
     })
 
     it('Should be able to refresh saved prices', async () => {
