@@ -287,23 +287,6 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
         })
 
-        it('does not update the saved prices if collateral is unpriced', async () => {
-          /*
-            want to cover this block from the refresh function
-            is it even possible to cover this w/ the tryPrice from AppreciatingFiatCollateral?
-
-            if (high < FIX_MAX) {
-                savedLowPrice = low;
-                savedHighPrice = high;
-                lastSave = uint48(block.timestamp);
-            } else {
-                // must be unpriced
-                assert(low == 0);
-            }
-          */
-          expect(true)
-        })
-
         itHasRevenueHiding('does revenue hiding correctly', async () => {
           ctx.collateral = await deployCollateral({
             erc20: ctx.tok.address,

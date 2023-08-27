@@ -37,14 +37,11 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
             // {UoA/tok}, {UoA/tok}, {target/ref}
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-            // Save prices if priced
+            // Save prices if high price is finite
             if (high < FIX_MAX) {
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);
-            } else {
-                // must be unpriced
-                assert(low == 0);
             }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data

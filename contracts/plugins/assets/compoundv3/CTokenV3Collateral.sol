@@ -93,21 +93,16 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
                 // {UoA/tok}, {UoA/tok}, {target/ref}
                 // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-                // Save prices if priced
+                // Save prices if high price is finite
                 if (high < FIX_MAX) {
                     savedLowPrice = low;
                     savedHighPrice = high;
                     lastSave = uint48(block.timestamp);
-                } else {
-                    // must be unpriced
-                    // untested:
-                    //      validated in other plugins, cost to test here is high
-                    assert(low == 0);
                 }
 
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus
-                if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
+                if (pegPrice < pegBottom || pegPrice > pegTop || low == 0 || high == FIX_MAX) {
                     markStatus(CollateralStatus.IFFY);
                 } else {
                     markStatus(CollateralStatus.SOUND);

@@ -99,21 +99,16 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
             // {UoA/tok}, {UoA/tok}, {UoA/tok}
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-            // Save prices if priced
+            // Save prices if high price is finite
             if (high < FIX_MAX) {
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);
-            } else {
-                // must be unpriced
-                // untested:
-                //      validated in other plugins, cost to test here is high
-                assert(low == 0);
             }
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
-            if (low == 0 || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
+            if (low == 0 || high == FIX_MAX || _anyDepeggedInPool() || _anyDepeggedOutsidePool()) {
                 markStatus(CollateralStatus.IFFY);
             } else {
                 markStatus(CollateralStatus.SOUND);
