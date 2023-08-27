@@ -14,7 +14,7 @@ import {
   TestICollateral,
 } from '../../../../../typechain'
 import { bn } from '../../../../../common/numbers'
-import { ZERO_ADDRESS, ONE_ADDRESS } from '../../../../../common/constants'
+import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -34,7 +34,9 @@ import {
   CurvePoolType,
   CRV,
   eUSD_FRAX_HOLDER,
+  eUSD,
 } from '../constants'
+import { whileImpersonating } from '../../../../utils/impersonation'
 
 type Fixture<T> = () => Promise<T>
 
@@ -48,7 +50,7 @@ export const defaultCrvStableCollateralOpts: CurveMetapoolCollateralOpts = {
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: RTOKEN_DELAY_UNTIL_DEFAULT,
-  revenueHiding: bn('0'), // TODO
+  revenueHiding: bn('0'),
   nTokens: 2,
   curvePool: FRAX_BP,
   lpToken: FRAX_BP_TOKEN,
@@ -196,7 +198,39 @@ const collateralSpecificConstructorTests = () => {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificStatusTests = () => {}
+const collateralSpecificStatusTests = () => {
+  it('Regression test -- maintains FIX_MAX high price for an RTokenAsset with price (>0, FIX_MAX)', async () => {
+    const [collateral] = await deployCollateral({})
+
+    // Swap out eUSD's RTokenAsset with a mock one
+    const AssetMockFactory = await ethers.getContractFactory('AssetMock')
+    const mockRTokenAsset = await AssetMockFactory.deploy(
+      bn('1'), // unused
+      ONE_ADDRESS, // unused
+      bn('1'), // unused
+      eUSD,
+      bn('1'), // unused
+      bn('1') // unused
+    )
+    const eUSDAssetRegistry = await ethers.getContractAt(
+      'IAssetRegistry',
+      '0x9B85aC04A09c8C813c37de9B3d563C2D3F936162'
+    )
+    await whileImpersonating('0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c', async (signer) => {
+      await eUSDAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
+    })
+
+    // Set price to (>0, FIX_MAX)
+    // Would be the price under a stale oracle timeout for a poorly-coded RTokenAsset
+    await mockRTokenAsset.setPrice(bn('0.5e18'), MAX_UINT192)
+
+    // Aggregate eUSD/fraxBP price should be (>0, FIX_MAX); maintains +inf properties throughout
+    const p = await collateral.price()
+    expect(p[0]).to.be.gt(bn('0.5e18'))
+    expect(p[0]).to.be.lt(bn('1e18'))
+    expect(p[1]).to.eq(MAX_UINT192)
+  })
+}
 
 /*
   Run the test suite
