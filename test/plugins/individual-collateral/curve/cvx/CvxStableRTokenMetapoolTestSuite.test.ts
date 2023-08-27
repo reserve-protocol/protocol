@@ -226,11 +226,20 @@ const collateralSpecificStatusTests = () => {
     // Would be the price under a stale oracle timeout for a poorly-coded RTokenAsset
     await mockRTokenAsset.setPrice(bn('0.5e18'), MAX_UINT192)
 
+    // refresh() should not revert
+    await collateral.refresh()
+
     // Aggregate eUSD/fraxBP price should be (>0, FIX_MAX); maintains +inf properties throughout
     const p = await collateral.price()
     expect(p[0]).to.be.gt(bn('0.5e18'))
     expect(p[0]).to.be.lt(bn('1e18'))
     expect(p[1]).to.eq(MAX_UINT192)
+
+    // Aggregate eUSD/fraxBP lotPrice should be (>0, FIX_MAX); maintains +inf properties throughout
+    const lotP = await collateral.lotPrice()
+    expect(lotP[0]).to.be.gt(bn('0.5e18'))
+    expect(lotP[0]).to.be.lt(bn('1e18'))
+    expect(lotP[1]).to.eq(MAX_UINT192)
   })
 }
 
