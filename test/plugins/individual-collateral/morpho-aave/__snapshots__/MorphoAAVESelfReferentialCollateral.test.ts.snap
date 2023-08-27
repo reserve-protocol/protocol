@@ -1,17 +1,17 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `202026`;
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `201563`;
 
-exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `197557`;
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `197094`;
 
-exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after hard default 1`] = `218208`;
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after hard default 1`] = `217762`;
 
-exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after hard default 2`] = `210525`;
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after hard default 2`] = `210079`;
 
-exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `202026`;
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `201563`;
 
-exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `197557`;
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `197094`;
 
-exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `210522`;
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `210076`;
 
-exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `210522`;
+exports[`Collateral: MorphoAAVEV2SelfReferentialCollateral - WETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `210076`;

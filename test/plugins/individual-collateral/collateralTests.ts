@@ -503,6 +503,11 @@ export default function fn<X extends CollateralFixtureContext>(
         if (IMPLEMENTATION != Implementation.P1 || !useEnv('REPORT_GAS')) return // hide pending
 
         context('refresh()', () => {
+          beforeEach(async () => {
+            await collateral.refresh()
+            expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+          })
+
           afterEach(async () => {
             await snapshotGasCost(collateral.refresh())
             await snapshotGasCost(collateral.refresh()) // 2nd refresh can be different than 1st
@@ -510,10 +515,6 @@ export default function fn<X extends CollateralFixtureContext>(
 
           it('during SOUND', async () => {
             // pass
-          })
-
-          itChecksRefPerTokDefault('after hard default', async () => {
-            await reduceRefPerTok(ctx, 5)
           })
 
           itChecksTargetPerRefDefault('during soft default', async () => {
@@ -541,6 +542,10 @@ export default function fn<X extends CollateralFixtureContext>(
             const lotP = await collateral.lotPrice()
             expect(lotP[0]).to.equal(0)
             expect(lotP[1]).to.equal(0)
+          })
+
+          itChecksRefPerTokDefault('after hard default', async () => {
+            await reduceRefPerTok(ctx, 5)
           })
         })
       })
