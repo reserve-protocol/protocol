@@ -12,7 +12,7 @@ uint256 constant ORACLE_TIMEOUT = 15 minutes;
 
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
-// @dev This RTokenAsset is ONLY compatible with Protocol ^3.0.0
+/// @dev This RTokenAsset is ONLY compatible with Protocol ^3.0.0
 contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
@@ -48,6 +48,11 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
+    /// @dev This method for calculating the price can provide a 2x larger range than the average
+    ///   oracleError of the RToken's backing collateral. This only occurs when there is
+    ///   less RSR overcollateralization in % terms than the average (weighted) oracleError.
+    ///   This arises from the use of oracleErrors inside of `basketRange()` and inside
+    ///   `basketHandler.price()`. When `range.bottom == range.top` then there is no compounding.
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
     function tryPrice() external view virtual returns (uint192 low, uint192 high) {
@@ -81,6 +86,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     // solhint-enable no-empty-blocks
 
     /// Should not revert
+    /// @dev See `tryPrice` caveat about possible compounding error in calculating price
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
@@ -95,6 +101,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
     /// Should not revert
     /// lotLow should be nonzero when the asset might be worth selling
+    /// @dev See `tryPrice` caveat about possible compounding error in calculating price
     /// @return lotLow {UoA/tok} The lower end of the lot price estimate
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
