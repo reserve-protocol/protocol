@@ -366,6 +366,9 @@ contract StaticATokenLM is
 
     /**
      * @notice Updates rewards for senders and receiver in a transfer (not updating rewards for address(0))
+     *  Only rewards which were previously collected from the Incentives Controller will be updated on
+     *  every transfer. It is designed this way to reduce gas costs on `transfer`, which will likely
+     *  outweigh the pending (uncollected) rewards for the sender under certain circumstances.
      * @param from The address of the sender of tokens
      * @param to The address of the receiver of tokens
      */
