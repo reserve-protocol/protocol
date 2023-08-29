@@ -11,6 +11,7 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
+  CTokenMock,
   CTokenWrapperMock,
   CTokenSelfReferentialCollateral,
   ERC20Mock,
@@ -919,6 +920,29 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
+    it('CTokens - Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      const currRate = await cToken.exchangeRateStored()
+
+      // Make cToken revert on exchangeRateCurrent()
+      const cTokenErc20Mock = <CTokenMock>(
+        await ethers.getContractAt('CTokenMock', await cToken.underlying())
+      )
+      await cTokenErc20Mock.setRevertExchangeRate(true)
+
+      // Refresh - should not revert - Sets DISABLED
+      await expect(cTokenCollateral.refresh())
+        .to.emit(cTokenCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await cTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Exchange rate stored is still accessible
+      expect(await cToken.exchangeRateStored()).to.equal(currRate)
+    })
+
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status - Fiat', async () => {
       const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
         await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
@@ -1521,6 +1545,29 @@ describe('Collateral contracts', () => {
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
+    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+      const currRate = await cNonFiatTokenVault.exchangeRateStored()
+
+      // Make cToken revert on exchangeRateCurrent()
+      const cTokenErc20Mock = <CTokenMock>(
+        await ethers.getContractAt('CTokenMock', await cNonFiatTokenVault.underlying())
+      )
+      await cTokenErc20Mock.setRevertExchangeRate(true)
+
+      // Refresh - should not revert - Sets DISABLED
+      await expect(cTokenNonFiatCollateral.refresh())
+        .to.emit(cTokenNonFiatCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await cTokenNonFiatCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Exchange rate stored is still accessible
+      expect(await cNonFiatTokenVault.exchangeRateStored()).to.equal(currRate)
+    })
+
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
       const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
         await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
@@ -1881,6 +1928,29 @@ describe('Collateral contracts', () => {
       // When refreshed, sets status to Unpriced
       await cTokenSelfReferentialCollateral.refresh()
       expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
+    })
+
+    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
+      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
+      const currRate = await cSelfRefToken.exchangeRateStored()
+
+      // Make cToken revert on exchangeRateCurrent()
+      const cTokenErc20Mock = <CTokenMock>(
+        await ethers.getContractAt('CTokenMock', await cSelfRefToken.underlying())
+      )
+      await cTokenErc20Mock.setRevertExchangeRate(true)
+
+      // Refresh - should not revert - Sets DISABLED
+      await expect(cTokenSelfReferentialCollateral.refresh())
+        .to.emit(cTokenSelfReferentialCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await cTokenSelfReferentialCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Exchange rate stored is still accessible
+      expect(await cSelfRefToken.exchangeRateStored()).to.equal(currRate)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {

@@ -37,9 +37,21 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() public virtual override {
+        CollateralStatus oldStatus = status();
+
         // == Refresh ==
         // Update the Compound Protocol
-        cToken.exchangeRateCurrent();
+        // solhint-disable no-empty-blocks
+        try cToken.exchangeRateCurrent() {} catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            markStatus(CollateralStatus.DISABLED);
+        }
+
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit CollateralStatusChanged(oldStatus, newStatus);
+        }
 
         // Intentional and correct for the super call to be last!
         super.refresh(); // already handles all necessary default checks
