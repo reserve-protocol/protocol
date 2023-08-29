@@ -66,7 +66,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = range.bottom.mulDiv(lowBUPrice, supply, FLOOR);
-        high = highBUPrice != FIX_MAX ? range.top.safeMulDiv(highBUPrice, supply, CEIL) : FIX_MAX;
+        high = range.top.safeMulDiv(highBUPrice, supply, CEIL);
 
         assert(low <= high); // not obviously true
     }
