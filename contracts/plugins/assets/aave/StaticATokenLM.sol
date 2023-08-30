@@ -24,7 +24,17 @@ import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/
  * @title StaticATokenLM
  * @notice Wrapper token that allows to deposit tokens on the Aave protocol and receive
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
- * The token support claiming liquidity mining rewards from the Aave system.
+ *
+ * The token supports claiming liquidity mining rewards from the Aave system. However, there might be
+ * be permanent loss of rewards for the sender of the token when a `transfer` is performed. This is due
+ * to the fact that only rewards previously collected from the Incentives Controller are processed (and
+ * assigned to the `sender`) when tokens are transferred. Any rewards pending to be collected are ignored
+ * on `transfer`, and might be later claimed by the `receiver`. It was designed this way to reduce gas
+ * costs on every transfer which would probably outweigh any missing/unprocessed/unclaimed rewards.
+ * It is important to remark that several operations such as `deposit`, `withdraw`, `collectAndUpdateRewards`,
+ * among others, will update rewards balances correctly, so while it is true that under certain circumstances
+ * rewards may not be fully accurate, we expect them only to be slightly off.
+ *
  * @author Aave
  * From: https://github.com/aave/protocol-v2/blob/238e5af2a95c3fbb83b0c8f44501ed2541215122/contracts/protocol/tokenization/StaticATokenLM.sol#L255
  **/
