@@ -921,8 +921,11 @@ describe('Collateral contracts', () => {
     })
 
     it('CTokens - Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       const currRate = await cToken.exchangeRateStored()
+      const [currLow, currHigh] = await cTokenCollateral.price()
+
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
       const cTokenErc20Mock = <CTokenMock>(
@@ -941,6 +944,12 @@ describe('Collateral contracts', () => {
 
       // Exchange rate stored is still accessible
       expect(await cToken.exchangeRateStored()).to.equal(currRate)
+
+      // Price remains the same
+      await expectPrice(cTokenCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+      const [newLow, newHigh] = await cTokenCollateral.price()
+      expect(newLow).to.equal(currLow)
+      expect(newHigh).to.equal(currHigh)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status - Fiat', async () => {
@@ -1546,8 +1555,11 @@ describe('Collateral contracts', () => {
     })
 
     it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
       const currRate = await cNonFiatTokenVault.exchangeRateStored()
+      const [currLow, currHigh] = await cTokenNonFiatCollateral.price()
+
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
       const cTokenErc20Mock = <CTokenMock>(
@@ -1566,6 +1578,12 @@ describe('Collateral contracts', () => {
 
       // Exchange rate stored is still accessible
       expect(await cNonFiatTokenVault.exchangeRateStored()).to.equal(currRate)
+
+      // Price remains the same
+      await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
+      const [newLow, newHigh] = await cTokenNonFiatCollateral.price()
+      expect(newLow).to.equal(currLow)
+      expect(newHigh).to.equal(currHigh)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
@@ -1931,8 +1949,11 @@ describe('Collateral contracts', () => {
     })
 
     it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
-      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
       const currRate = await cSelfRefToken.exchangeRateStored()
+      const [currLow, currHigh] = await cTokenSelfReferentialCollateral.price()
+
+      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
 
       // Make cToken revert on exchangeRateCurrent()
       const cTokenErc20Mock = <CTokenMock>(
@@ -1951,6 +1972,12 @@ describe('Collateral contracts', () => {
 
       // Exchange rate stored is still accessible
       expect(await cSelfRefToken.exchangeRateStored()).to.equal(currRate)
+
+      // Price remains the same
+      await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+      const [newLow, newHigh] = await cTokenSelfReferentialCollateral.price()
+      expect(newLow).to.equal(currLow)
+      expect(newHigh).to.equal(currHigh)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {

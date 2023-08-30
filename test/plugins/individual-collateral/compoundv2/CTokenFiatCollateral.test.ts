@@ -851,8 +851,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const cDaiMock: CTokenMock = <CTokenMock>(
         await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
       )
-      // Set initial exchange rate to the new cDai Mock
-      await cDaiMock.setExchangeRate(fp('0.02'))
 
       const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
       const cDaiMockVault = <CTokenWrapper>(
@@ -886,6 +884,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Check initial state
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+      await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+      const [currLow, currHigh] = await newCDaiCollateral.price()
       const currRate = await cDaiMockVault.exchangeRateStored()
 
       // Make exchangeRateCurrent() revert
@@ -902,6 +902,12 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Exchange rate stored is still accessible
       expect(await cDaiMockVault.exchangeRateStored()).to.equal(currRate)
+
+      // Price remains the same
+      await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+      const [newLow, newHigh] = await newCDaiCollateral.price()
+      expect(newLow).to.equal(currLow)
+      expect(newHigh).to.equal(currHigh)
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {

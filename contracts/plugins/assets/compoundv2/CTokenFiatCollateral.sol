@@ -46,11 +46,11 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
             markStatus(CollateralStatus.DISABLED);
-        }
 
-        CollateralStatus newStatus = status();
-        if (oldStatus != newStatus) {
-            emit CollateralStatusChanged(oldStatus, newStatus);
+            CollateralStatus newStatus = status();
+            if (oldStatus != newStatus) {
+                emit CollateralStatusChanged(oldStatus, newStatus);
+            }
         }
 
         // Intentional and correct for the super call to be last!
