@@ -1868,6 +1868,69 @@ describeFork('StaticATokenLM: aToken wrapper with static balances and liquidity 
       expect(totClaimable4).to.be.gt(userBalance4)
       expect(unclaimedRewards4).to.be.eq(0)
     })
+
+    it('Potential loss of rewards on transfer', async () => {
+      const amountToDeposit = utils.parseEther('5')
+
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticAToken.address, amountToDeposit.mul(2), defaultTxParams)
+      )
+
+      // Depositing
+      await waitForTx(
+        await staticAToken.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
+
+      const pendingRewards1_u1 = await staticAToken.getClaimableRewards(userSigner._address)
+      const pendingRewards1_u2 = await staticAToken.getClaimableRewards(user2Signer._address)
+
+      // No rewards assigned yet
+      expect(pendingRewards1_u1).to.be.eq(0)
+      expect(pendingRewards1_u2).to.be.eq(0)
+
+      await advanceTime(60 * 60)
+
+      // User1 now has some pending rewards. User2 should have no rewards.
+      const pendingRewards2_u1 = await staticAToken.getClaimableRewards(userSigner._address)
+      const pendingRewards2_u2 = await staticAToken.getClaimableRewards(user2Signer._address)
+      expect(pendingRewards2_u1).to.be.gt(pendingRewards1_u1)
+      expect(pendingRewards2_u2).to.be.eq(0)
+
+      // Transfer staticATokens to user2
+      await waitForTx(
+        await staticAToken.transfer(
+          user2Signer._address,
+          await staticAToken.balanceOf(userSigner._address)
+        )
+      )
+
+      // User1 now has zero pending rewards, all transferred to User2
+      const pendingRewards3_u1 = await staticAToken.getClaimableRewards(userSigner._address)
+      const pendingRewards3_u2 = await staticAToken.getClaimableRewards(user2Signer._address)
+
+      expect(pendingRewards3_u1).to.be.eq(0)
+      expect(pendingRewards3_u2).to.be.gt(pendingRewards2_u1)
+
+      // User2 can keep the rewards if for example `collectAndUpdateRewards` is called
+      await staticAToken.collectAndUpdateRewards()
+
+      // If transfer is performed to User1, rewards stay with User2
+      await waitForTx(
+        await staticAToken
+          .connect(user2Signer)
+          .transfer(userSigner._address, await staticAToken.balanceOf(user2Signer._address))
+      )
+
+      // User1 gets only some small rewards, but User2 keeps the rewards
+      const pendingRewards4_u1 = await staticAToken.getClaimableRewards(userSigner._address)
+      const pendingRewards4_u2 = await staticAToken.getClaimableRewards(user2Signer._address)
+
+      expect(pendingRewards4_u1).to.be.gt(0)
+      expect(pendingRewards4_u1).to.be.lt(pendingRewards4_u2)
+      expect(pendingRewards4_u2).to.be.gt(pendingRewards3_u2)
+    })
   })
 
   it('Multiple users deposit WETH on stataWETH, wait 1 hour, update rewards, one user transfer, then claim and update rewards.', async () => {
