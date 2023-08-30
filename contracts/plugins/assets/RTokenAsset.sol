@@ -52,6 +52,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @return high {UoA/tok} The high price estimate
     function tryPrice() external view virtual returns (uint192 low, uint192 high) {
         (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
+        require(lowBUPrice > 0 && highBUPrice < FIX_MAX, "invalid price");
         assert(lowBUPrice <= highBUPrice); // not obviously true just by inspection
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
@@ -66,7 +67,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = range.bottom.mulDiv(lowBUPrice, supply, FLOOR);
-        high = range.top.safeMulDiv(highBUPrice, supply, CEIL);
+        high = range.top.mulDiv(highBUPrice, supply, CEIL);
 
         assert(low <= high); // not obviously true
     }

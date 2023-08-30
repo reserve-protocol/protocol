@@ -7,6 +7,7 @@ import {
 import { makeWeUSDFraxBP, mintWeUSDFraxBP, resetFork } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
+import { expectUnpriced } from '../../../../utils/oracles'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -199,8 +200,11 @@ const collateralSpecificConstructorTests = () => {
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {
-  it('Regression test -- maintains FIX_MAX high price for an RTokenAsset with price (>0, FIX_MAX)', async () => {
+  it('Regression test -- becomes unpriced if inner RTokenAsset becomes unpriced', async () => {
     const [collateral] = await deployCollateral({})
+    const initialPrice = await collateral.price()
+    expect(initialPrice[0]).to.be.gt(0)
+    expect(initialPrice[1]).to.be.lt(MAX_UINT192)
 
     // Swap out eUSD's RTokenAsset with a mock one
     const AssetMockFactory = await ethers.getContractFactory('AssetMock')
@@ -220,24 +224,20 @@ const collateralSpecificStatusTests = () => {
       await eUSDAssetRegistry.connect(signer).swapRegistered(mockRTokenAsset.address)
     })
 
-    // Set price to (>0, FIX_MAX)
+    // Set RTokenAsset to unpriced
     // Would be the price under a stale oracle timeout for a poorly-coded RTokenAsset
-    await mockRTokenAsset.setPrice(bn('0.5e18'), MAX_UINT192)
+    await mockRTokenAsset.setPrice(0, MAX_UINT192)
 
     // refresh() should not revert
     await collateral.refresh()
 
-    // Aggregate eUSD/fraxBP price should be (>0, FIX_MAX); maintains +inf properties throughout
-    const p = await collateral.price()
-    expect(p[0]).to.be.gt(bn('0.5e18'))
-    expect(p[0]).to.be.lt(bn('1e18'))
-    expect(p[1]).to.eq(MAX_UINT192)
+    // Should be unpriced
+    await expectUnpriced(collateral.address)
 
-    // Aggregate eUSD/fraxBP lotPrice should be (>0, FIX_MAX); maintains +inf properties throughout
+    // Lot price should be initial price
     const lotP = await collateral.lotPrice()
-    expect(lotP[0]).to.be.gt(bn('0.5e18'))
-    expect(lotP[0]).to.be.lt(bn('1e18'))
-    expect(lotP[1]).to.eq(MAX_UINT192)
+    expect(lotP[0]).to.eq(initialPrice[0])
+    expect(lotP[1]).to.eq(initialPrice[1])
   })
 }
 

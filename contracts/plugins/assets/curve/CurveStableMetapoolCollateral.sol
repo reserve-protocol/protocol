@@ -82,6 +82,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
     {
         // {UoA/pairedTok}
         (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
+        require(lowPaired > 0 && highPaired < FIX_MAX, "invalid price");
 
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
@@ -92,7 +93,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
 
         // {UoA/tok} = {UoA} / {tok}
         low = aumLow.div(supply, FLOOR);
-        high = aumHigh.safeDiv(supply, CEIL);
+        high = aumHigh.div(supply, CEIL);
         assert(low <= high); // not obviously true just by inspection
 
         return (low, high, 0);
@@ -168,13 +169,6 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         // Add-in contribution from pairedTok
         // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}
         aumLow += lowPaired.mul(pairedBal, FLOOR);
-
-        // Add-in high part carefully
-        uint192 toAdd = highPaired.safeMul(pairedBal, CEIL);
-        if (aumHigh + uint256(toAdd) >= FIX_MAX) {
-            aumHigh = FIX_MAX;
-        } else {
-            aumHigh += toAdd;
-        }
+        aumHigh += highPaired.mul(pairedBal, CEIL);
     }
 }

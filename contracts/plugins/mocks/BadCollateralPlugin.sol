@@ -60,7 +60,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
 
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus
-                if (pegPrice < pegBottom || pegPrice > pegTop || low == 0 || high == FIX_MAX) {
+                if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
                     markStatus(CollateralStatus.IFFY);
                 } else {
                     markStatus(CollateralStatus.SOUND);
