@@ -82,7 +82,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
     {
         // {UoA/pairedTok}
         (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
-        require(lowPaired > 0 && highPaired < FIX_MAX, "invalid price");
+        require(lowPaired != 0 && highPaired != FIX_MAX, "invalid price");
 
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
