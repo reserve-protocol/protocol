@@ -1120,8 +1120,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         await setOraclePrice(zeroPriceAsset.address, bn(0))
 
-        // Zero price
-        await expectPrice(zeroPriceAsset.address, bn('0'), bn('0'), false)
+        // Unpriced
+        await expectUnpriced(zeroPriceAsset.address)
       })
 
       it('Should handle invalid/stale Price - Collateral - Fiat', async () => {
@@ -1192,8 +1192,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         await setOraclePrice(zeroFiatCollateral.address, bn(0))
 
-        // With zero price
-        await expectPrice(zeroFiatCollateral.address, bn('0'), bn('0'), false)
+        // Unpriced
+        await expectUnpriced(zeroFiatCollateral.address)
 
         // Refresh should mark status IFFY
         await zeroFiatCollateral.refresh()
@@ -1269,8 +1269,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
 
-        // With zero price
-        await expectPrice(zeropriceCtokenCollateral.address, bn('0'), bn('0'), false)
+        // Unpriced
+        await expectUnpriced(zeropriceCtokenCollateral.address)
 
         // Refresh should mark status IFFY
         await zeropriceCtokenCollateral.refresh()
@@ -1346,8 +1346,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         await setOraclePrice(zeroPriceAtokenCollateral.address, bn(0))
 
-        // With zero price
-        await expectPrice(zeroPriceAtokenCollateral.address, bn('0'), bn('0'), false)
+        // Unpriced
+        await expectUnpriced(zeroPriceAtokenCollateral.address)
 
         // Refresh should mark status IFFY
         await zeroPriceAtokenCollateral.refresh()
@@ -1418,8 +1418,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
         await v3Aggregator.updateAnswer(bn(0))
 
-        // Does not revert with zero price
-        await expectPrice(zeroPriceNonFiatCollateral.address, bn('0'), bn('0'), false)
+        // Unpriced
+        await expectUnpriced(zeroPriceNonFiatCollateral.address)
 
         // Refresh should mark status IFFY
         await zeroPriceNonFiatCollateral.refresh()
@@ -1497,8 +1497,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
         await v3Aggregator.updateAnswer(bn(0))
 
-        //  With zero price
-        await expectPrice(zeropriceCtokenNonFiatCollateral.address, bn('0'), bn('0'), false)
+        // Unpriced
+        await expectUnpriced(zeropriceCtokenNonFiatCollateral.address)
 
         // Refresh should mark status IFFY
         await zeropriceCtokenNonFiatCollateral.refresh()
@@ -1558,8 +1558,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Set price = 0
         await setOraclePrice(zeroPriceSelfReferentialCollateral.address, bn(0))
 
-        // Does not revert with zero price
-        await expectPrice(zeroPriceSelfReferentialCollateral.address, bn('0'), bn('0'), false)
+        // Unpriced
+        await expectUnpriced(zeroPriceSelfReferentialCollateral.address)
 
         // Refresh should mark status IFFY
         await zeroPriceSelfReferentialCollateral.refresh()
@@ -1634,8 +1634,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Set price = 0
         await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn(0))
 
-        //  With zero price
-        await expectPrice(zeroPriceCtokenSelfReferentialCollateral.address, bn('0'), bn('0'), false)
+        // Unpriced
+        await expectUnpriced(zeroPriceCtokenSelfReferentialCollateral.address)
 
         // Refresh should mark status IFFY
         await zeroPriceCtokenSelfReferentialCollateral.refresh()

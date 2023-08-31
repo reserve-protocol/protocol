@@ -35,7 +35,6 @@ It is acceptable to leave these function calls out of the initial upgrade tx and
   - # Add last refresh timestamp tracking and expose via `lastRefresh()` getter
     Summary: Other component contracts need to know when refresh() was last called
   - Add `lastRefresh()` timestamp getter
-    > > > > > > > Stashed changes
   - Add `size()` getter for number of registered assets
   - Require asset is SOUND on registration
   - Bugfix: Fix gas attack that could result in someone disabling the basket

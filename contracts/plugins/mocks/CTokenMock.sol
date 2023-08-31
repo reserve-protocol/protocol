@@ -11,6 +11,8 @@ contract CTokenMock is ERC20Mock {
 
     uint256 internal _exchangeRate;
 
+    bool public revertExchangeRate;
+
     constructor(
         string memory name,
         string memory symbol,
@@ -25,6 +27,9 @@ contract CTokenMock is ERC20Mock {
     }
 
     function exchangeRateCurrent() external returns (uint256) {
+        if (revertExchangeRate) {
+            revert("reverting exchange rate current");
+        }
         _exchangeRate = _exchangeRate; // just to avoid sol warning
         return _exchangeRate;
     }
@@ -47,5 +52,9 @@ contract CTokenMock is ERC20Mock {
         uint192 start = shiftl_toFix(2, -2); // 0.02
         int8 leftShift = 18 - int8(decimals()) + int8(IERC20Metadata(_underlyingToken).decimals());
         return fiatcoinRedemptionRate.shiftl(leftShift).mul_toUint(start);
+    }
+
+    function setRevertExchangeRate(bool newVal) external {
+        revertExchangeRate = newVal;
     }
 }

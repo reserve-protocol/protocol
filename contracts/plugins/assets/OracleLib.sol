@@ -5,6 +5,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../../libraries/Fixed.sol";
 
 error StalePrice();
+error ZeroPrice();
 
 interface EACAggregatorProxy {
     function aggregator() external view returns (address);
@@ -34,6 +35,8 @@ library OracleLib {
             // Downcast is safe: uint256(-) reverts on underflow; block.timestamp assumed < 2^48
             uint48 secondsSince = uint48(block.timestamp - updateTime);
             if (secondsSince > timeout) revert StalePrice();
+
+            if (p == 0) revert ZeroPrice();
 
             // {UoA/tok}
             return shiftl_toFix(uint256(p), -int8(chainlinkFeed.decimals()));

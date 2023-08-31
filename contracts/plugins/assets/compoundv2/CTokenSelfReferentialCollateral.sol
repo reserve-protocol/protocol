@@ -64,7 +64,19 @@ contract CTokenSelfReferentialCollateral is AppreciatingFiatCollateral {
     function refresh() public virtual override {
         // == Refresh ==
         // Update the Compound Protocol -- access cToken directly
-        cToken.exchangeRateCurrent();
+        // solhint-disable no-empty-blocks
+        try cToken.exchangeRateCurrent() {} catch (bytes memory errData) {
+            CollateralStatus oldStatus = status();
+
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            markStatus(CollateralStatus.DISABLED);
+
+            CollateralStatus newStatus = status();
+            if (oldStatus != newStatus) {
+                emit CollateralStatusChanged(oldStatus, newStatus);
+            }
+        }
 
         // Violation of calling super first! Composition broken! Intentional!
         super.refresh(); // already handles all necessary default checks

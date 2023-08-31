@@ -207,15 +207,15 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     /// @custom:governance
-    function setBatchTradeDisabled(bool disabled) external governance {
-        emit BatchTradeDisabledSet(batchTradeDisabled, disabled);
-        batchTradeDisabled = disabled;
+    function enableBatchTrade() external governance {
+        emit BatchTradeDisabledSet(batchTradeDisabled, false);
+        batchTradeDisabled = false;
     }
 
     /// @custom:governance
-    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external governance {
-        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], disabled);
-        dutchTradeDisabled[erc20] = disabled;
+    function enableDutchTrade(IERC20Metadata erc20) external governance {
+        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], false);
+        dutchTradeDisabled[erc20] = false;
     }
 
     // === Private ===

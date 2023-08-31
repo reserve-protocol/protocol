@@ -55,8 +55,11 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     ///   `basketHandler.price()`. When `range.bottom == range.top` then there is no compounding.
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    function tryPrice() external view virtual returns (uint192 low, uint192 high) {
-        (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
+    function tryPrice(bool useLotPrice) external view virtual returns (uint192 low, uint192 high) {
+        (uint192 lowBUPrice, uint192 highBUPrice) = useLotPrice
+            ? basketHandler.lotPrice()
+            : basketHandler.price(); // {UoA/BU}
+        require(lowBUPrice != 0 && highBUPrice != FIX_MAX, "invalid price");
         assert(lowBUPrice <= highBUPrice); // not obviously true just by inspection
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
@@ -90,7 +93,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
-        try this.tryPrice() returns (uint192 low, uint192 high) {
+        try this.tryPrice(false) returns (uint192 low, uint192 high) {
             return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -105,20 +108,14 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @return lotLow {UoA/tok} The lower end of the lot price estimate
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
-        (uint192 buLow, uint192 buHigh) = basketHandler.lotPrice(); // {UoA/BU}
-
-        // Here we take advantage of the fact that we know RToken has 18 decimals
-        // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
-        uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
-
-        if (supply == 0) return (buLow, buHigh);
-
-        BasketRange memory range = basketRange(); // {BU}
-
-        // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        lotLow = range.bottom.mulDiv(buLow, supply, FLOOR);
-        lotHigh = range.top.mulDiv(buHigh, supply, CEIL);
-        assert(lotLow <= lotHigh); // not obviously true
+        try this.tryPrice(true) returns (uint192 low, uint192 high) {
+            lotLow = low;
+            lotHigh = high;
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return (0, 0);
+        }
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
