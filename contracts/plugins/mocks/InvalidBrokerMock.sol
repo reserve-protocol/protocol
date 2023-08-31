@@ -64,9 +64,9 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
-    function setBatchTradeDisabled(bool disabled) external governance {}
+    function enableBatchTrade() external governance {}
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
-    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external governance {}
+    function enableDutchTrade(IERC20Metadata erc20) external governance {}
 }

@@ -132,6 +132,30 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
     prices = { sellLow: fp('1'), sellHigh: fp('1'), buyLow: fp('1'), buyHigh: fp('1') }
   })
 
+  const disableBatchTrade = async () => {
+    if (IMPLEMENTATION == Implementation.P1) {
+      const slot = await getStorageAt(broker.address, 205)
+      await setStorageAt(
+        broker.address,
+        205,
+        slot.replace(slot.slice(2, 14), '1'.padStart(12, '0'))
+      )
+    } else {
+      const slot = await getStorageAt(broker.address, 56)
+      await setStorageAt(broker.address, 56, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
+    }
+    expect(await broker.batchTradeDisabled()).to.equal(true)
+  }
+
+  const disableDutchTrade = async (erc20: string) => {
+    const mappingSlot = IMPLEMENTATION == Implementation.P1 ? bn('208') : bn('57')
+    const p = mappingSlot.toHexString().slice(2).padStart(64, '0')
+    const key = erc20.slice(2).padStart(64, '0')
+    const slot = ethers.utils.keccak256('0x' + key + p)
+    await setStorageAt(broker.address, slot, '0x' + '1'.padStart(64, '0'))
+    expect(await broker.dutchTradeDisabled(erc20)).to.equal(true)
+  }
+
   describe('Deployment', () => {
     it('Should setup Broker correctly', async () => {
       expect(await broker.gnosis()).to.equal(gnosis.address)
@@ -378,28 +402,21 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
       // If not owner cannot update
-      await expect(broker.connect(other).setBatchTradeDisabled(true)).to.be.revertedWith(
+      await expect(broker.connect(other).enableBatchTrade()).to.be.revertedWith('governance only')
+      await expect(broker.connect(other).enableDutchTrade(token0.address)).to.be.revertedWith(
         'governance only'
       )
-      await expect(
-        broker.connect(other).setDutchTradeDisabled(token0.address, true)
-      ).to.be.revertedWith('governance only')
 
       // Check value did not change
       expect(await broker.batchTradeDisabled()).to.equal(false)
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
-      // Update batchTradeDisabled with owner
-      await expect(broker.connect(owner).setBatchTradeDisabled(true))
-        .to.emit(broker, 'BatchTradeDisabledSet')
-        .withArgs(false, true)
-
-      // Check value was updated
+      // Disable batch trade manually
+      await disableBatchTrade()
       expect(await broker.batchTradeDisabled()).to.equal(true)
-      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
-      // Update back to false
-      await expect(broker.connect(owner).setBatchTradeDisabled(false))
+      // Enable batch trade with owner
+      await expect(broker.connect(owner).enableBatchTrade())
         .to.emit(broker, 'BatchTradeDisabledSet')
         .withArgs(true, false)
 
@@ -407,23 +424,18 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.batchTradeDisabled()).to.equal(false)
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
 
-      // Update dutchTradeDisabled with owner
-      await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, true))
-        .to.emit(broker, 'DutchTradeDisabledSet')
-        .withArgs(token0.address, false, true)
-
-      // Check value was updated
-      expect(await broker.batchTradeDisabled()).to.equal(false)
+      // Disable dutch trade manually
+      await disableDutchTrade(token0.address)
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(true)
-      expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
 
-      // Update back to false
-      await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, false))
+      // Enable dutch trade with owner
+      await expect(broker.connect(owner).enableDutchTrade(token0.address))
         .to.emit(broker, 'DutchTradeDisabledSet')
         .withArgs(token0.address, true, false)
 
       // Check value was updated
       expect(await broker.batchTradeDisabled()).to.equal(false)
+      expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
       expect(await broker.dutchTradeDisabled(token0.address)).to.equal(false)
       expect(await broker.dutchTradeDisabled(token1.address)).to.equal(false)
     })
@@ -432,9 +444,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   describe('Trade Management', () => {
     it('Should not allow to open Batch trade if Disabled', async () => {
       // Disable Broker Batch Auctions
-      await expect(broker.connect(owner).setBatchTradeDisabled(true))
-        .to.emit(broker, 'BatchTradeDisabledSet')
-        .withArgs(false, true)
+      await disableBatchTrade()
 
       const tradeRequest: ITradeRequest = {
         sell: collateral0.address,
@@ -468,9 +478,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
 
         // Disable Broker Dutch Auctions for token0
-        await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, true))
-          .to.emit(broker, 'DutchTradeDisabledSet')
-          .withArgs(token0.address, false, true)
+        await disableDutchTrade(token0.address)
 
         // Dutch Auction openTrade should fail now
         await expect(
@@ -478,7 +486,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('dutch auctions disabled for token pair')
 
         // Re-enable Dutch Auctions for token0
-        await expect(broker.connect(owner).setDutchTradeDisabled(token0.address, false))
+        await expect(broker.connect(owner).enableDutchTrade(token0.address))
           .to.emit(broker, 'DutchTradeDisabledSet')
           .withArgs(token0.address, true, false)
 
@@ -488,9 +496,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           .callStatic.openTrade(TradeKind.DUTCH_AUCTION, tradeRequest, prices)
 
         // Disable Broker Dutch Auctions for token1
-        await expect(broker.connect(owner).setDutchTradeDisabled(token1.address, true))
-          .to.emit(broker, 'DutchTradeDisabledSet')
-          .withArgs(token1.address, false, true)
+        await disableDutchTrade(token1.address)
 
         // Dutch Auction openTrade should fail now
         await expect(

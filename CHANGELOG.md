@@ -75,6 +75,8 @@ Bump solidity version to 0.8.19
   - Add `dutchAuctionLength` and `setDutchAuctionLength()` setter and `DutchAuctionLengthSet()` event
   - Add `dutchTradeImplementation` and `setDutchTradeImplementation()` setter and `DutchTradeImplementationSet()` event
   - Only permit BackingManager-started dutch auctions to report violations and disable trading
+  - Remove `setBatchTradeDisabled(bool)` and replace with `enableBatchTrade()`
+  - Remove `setDutchTradeDisabled(IERC20 erc20, bool)` and replace with `enableDutchTrade(IERC20 erc20)`
   - Modify `openTrade(TradeRequest memory reg)` -> `openTrade(TradeKind kind, TradeRequest memory req)`
     - Allow when paused / frozen, since caller must be in-system
 
