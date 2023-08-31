@@ -55,10 +55,8 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     ///   `basketHandler.price()`. When `range.bottom == range.top` then there is no compounding.
     /// @return low {UoA/tok} The low price estimate
     /// @return high {UoA/tok} The high price estimate
-    function tryPrice(bool useLotPrice) external view virtual returns (uint192 low, uint192 high) {
-        (uint192 lowBUPrice, uint192 highBUPrice) = useLotPrice
-            ? basketHandler.lotPrice()
-            : basketHandler.price(); // {UoA/BU}
+    function tryPrice() external view virtual returns (uint192 low, uint192 high) {
+        (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
         require(lowBUPrice != 0 && highBUPrice != FIX_MAX, "invalid price");
         assert(lowBUPrice <= highBUPrice); // not obviously true just by inspection
 
@@ -93,7 +91,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
-        try this.tryPrice(false) returns (uint192 low, uint192 high) {
+        try this.tryPrice() returns (uint192 low, uint192 high) {
             return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
