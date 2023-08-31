@@ -35,6 +35,10 @@ import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/
  * among others, will update rewards balances correctly, so while it is true that under certain circumstances
  * rewards may not be fully accurate, we expect them only to be slightly off.
  *
+ * Users should also be careful when claiming rewards using `forceUpdate=false` as this will result on permanent
+ * loss of pending/uncollected rewards. It is recommended to always claim rewards using `forceUpdate=true`
+ * unless the user is sure that gas costs would exceed the lost rewards.
+ *
  * @author Aave
  * From: https://github.com/aave/protocol-v2/blob/238e5af2a95c3fbb83b0c8f44501ed2541215122/contracts/protocol/tokenization/StaticATokenLM.sol#L255
  **/
@@ -467,6 +471,8 @@ contract StaticATokenLM is
 
     /**
      * @notice Claim rewards on behalf of a user and send them to a receiver
+     *  Users should be careful when claiming rewards using `forceUpdate=false` as this will result on permanent
+     * loss of pending/uncollected rewards. Always claim rewards using `forceUpdate=true` when possible.
      * @param onBehalfOf The address to claim on behalf of
      * @param receiver The address to receive the rewards
      * @param forceUpdate Flag to retrieve latest rewards from `INCENTIVES_CONTROLLER`
