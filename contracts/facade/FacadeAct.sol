@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "../plugins/trading/DutchTrade.sol";
+import "../plugins/trading/GnosisTrade.sol";
 import "../interfaces/IBackingManager.sol";
 import "../interfaces/IFacadeAct.sol";
 import "../interfaces/IFacadeRead.sol";
@@ -159,7 +160,7 @@ contract FacadeAct is IFacadeAct, Multicall {
     /// @return buy The buy token in the auction
     /// @return sellAmount {qSellTok} How much would be sold
     /// @custom:static-call
-    function nextRecollateralizationAuction(IBackingManager bm)
+    function nextRecollateralizationAuction(IBackingManager bm, TradeKind kind)
         external
         returns (
             bool canStart,
@@ -183,22 +184,34 @@ contract FacadeAct is IFacadeAct, Multicall {
 
         // If no auctions ongoing, to find a new auction to start
         if (bm.tradesOpen() == 0) {
-            _rebalance(bm);
+            _rebalance(bm, kind);
 
             // Find the started auction
             for (uint256 i = 0; i < erc20s.length; ++i) {
-                DutchTrade trade = DutchTrade(address(bm.trades(erc20s[i])));
+                ITrade trade = ITrade(address(bm.trades(erc20s[i])));
                 if (address(trade) != address(0)) {
                     canStart = true;
                     sell = trade.sell();
                     buy = trade.buy();
-                    sellAmount = trade.sellAmount();
+                    sellAmount = _getSellAmount(trade);
                 }
             }
         }
     }
 
     // === Private ===
+    function _getSellAmount(ITrade trade) private view returns (uint256) {
+        if (trade.KIND() == TradeKind.DUTCH_AUCTION) {
+            return
+                DutchTrade(address(trade)).sellAmount().shiftl_toUint(
+                    int8(trade.sell().decimals())
+                );
+        } else if (trade.KIND() == TradeKind.BATCH_AUCTION) {
+            return GnosisTrade(address(trade)).initBal();
+        } else {
+            revert("invalid trade type");
+        }
+    }
 
     function _settleTrade(ITrading trader, IERC20 toSettle) private {
         bytes1 majorVersion = bytes(trader.version())[0];
@@ -249,16 +262,19 @@ contract FacadeAct is IFacadeAct, Multicall {
         }
     }
 
-    function _rebalance(IBackingManager bm) private {
+    function _rebalance(IBackingManager bm, TradeKind kind) private {
         bytes1 majorVersion = bytes(bm.version())[0];
 
         if (majorVersion == MAJOR_VERSION_3) {
-            bm.rebalance(TradeKind.DUTCH_AUCTION);
+            // solhint-disable-next-line no-empty-blocks
+            try bm.rebalance(kind) {} catch {}
         } else if (majorVersion == MAJOR_VERSION_2 || majorVersion == MAJOR_VERSION_1) {
             IERC20[] memory emptyERC20s = new IERC20[](0);
-            address(bm).functionCall(
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = address(bm).call{ value: 0 }(
                 abi.encodeWithSignature("manageTokens(address[])", emptyERC20s)
             );
+            success = success; // hush warning
         } else {
             _revertUnrecognizedVersion();
         }

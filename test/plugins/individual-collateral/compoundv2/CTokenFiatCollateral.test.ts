@@ -848,6 +848,72 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
+    it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
+      // Note: In this case requires to use a CToken mock to be able to change the rate
+      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+      const symbol = await cDai.symbol()
+      const cDaiMock: CTokenMock = <CTokenMock>(
+        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+      )
+
+      const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
+      const cDaiMockVault = <CTokenWrapper>(
+        await cDaiVaultFactory.deploy(
+          cDaiMock.address,
+          'cDAI Mock RToken Vault',
+          'rv_mock_cDAI',
+          comptroller.address
+        )
+      )
+
+      // Redeploy plugin using the new cDai mock
+      const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+        await ethers.getContractFactory('CTokenFiatCollateral')
+      ).deploy(
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: cDaiMockVault.address,
+          maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+          oracleTimeout: await cDaiCollateral.oracleTimeout(),
+          targetName: await cDaiCollateral.targetName(),
+          defaultThreshold,
+          delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+        },
+        REVENUE_HIDING
+      )
+      await newCDaiCollateral.refresh()
+
+      // Check initial state
+      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+      await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+      const [currLow, currHigh] = await newCDaiCollateral.price()
+      const currRate = await cDaiMockVault.exchangeRateStored()
+
+      // Make exchangeRateCurrent() revert
+      await cDaiMock.setRevertExchangeRate(true)
+
+      // Force updates - Should set to DISABLED
+      await expect(newCDaiCollateral.refresh())
+        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Exchange rate stored is still accessible
+      expect(await cDaiMockVault.exchangeRateStored()).to.equal(currRate)
+
+      // Price remains the same
+      await expectPrice(newCDaiCollateral.address, fp('0.02'), ORACLE_ERROR, true)
+      const [newLow, newHigh] = await newCDaiCollateral.price()
+      expect(newLow).to.equal(currLow)
+      expect(newHigh).to.equal(currHigh)
+    })
+
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
       const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
         'InvalidMockV3Aggregator'
@@ -887,54 +953,14 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   describeGas('Gas Reporting', () => {
     context('refresh()', () => {
+      beforeEach(async () => {
+        await cDaiCollateral.refresh()
+        expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      })
+
       it('during SOUND', async () => {
         await snapshotGasCost(cDaiCollateral.refresh())
         await snapshotGasCost(cDaiCollateral.refresh()) // 2nd refresh can be different than 1st
-      })
-
-      it('after hard default', async () => {
-        // Note: In this case requires to use a CToken mock to be able to change the rate
-        const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-        const symbol = await cDai.symbol()
-        const cDaiMock: CTokenMock = <CTokenMock>(
-          await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
-        )
-        // Set initial exchange rate to the new cDai Mock
-        await cDaiMock.setExchangeRate(fp('0.02'))
-
-        const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-        cDaiVault = <CTokenWrapper>(
-          await cDaiVaultFactory.deploy(
-            cDaiMock.address,
-            'cDAI RToken Vault',
-            'rv_cDAI',
-            comptroller.address
-          )
-        )
-
-        // Redeploy plugin using the new cDai mock
-        const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-          await ethers.getContractFactory('CTokenFiatCollateral')
-        ).deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
-            oracleError: ORACLE_ERROR,
-            erc20: cDaiVault.address,
-            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
-            oracleTimeout: await cDaiCollateral.oracleTimeout(),
-            targetName: await cDaiCollateral.targetName(),
-            defaultThreshold,
-            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
-          },
-          REVENUE_HIDING
-        )
-        await newCDaiCollateral.refresh()
-
-        // Decrease rate for aDAI, will disable collateral immediately
-        await cDaiMock.setExchangeRate(fp('0.019'))
-        await snapshotGasCost(newCDaiCollateral.refresh())
-        await snapshotGasCost(newCDaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })
 
       it('during soft default', async () => {
@@ -1037,6 +1063,51 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         expect(p[1]).to.equal(MAX_UINT192)
         await snapshotGasCost(cDaiCollateral.refresh())
         await snapshotGasCost(cDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after hard default', async () => {
+        // Note: In this case requires to use a CToken mock to be able to change the rate
+        const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+        const symbol = await cDai.symbol()
+        const cDaiMock: CTokenMock = <CTokenMock>(
+          await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+        )
+        // Set initial exchange rate to the new cDai Mock
+        await cDaiMock.setExchangeRate(fp('0.02'))
+
+        const cDaiVaultFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
+        cDaiVault = <CTokenWrapper>(
+          await cDaiVaultFactory.deploy(
+            cDaiMock.address,
+            'cDAI RToken Vault',
+            'rv_cDAI',
+            comptroller.address
+          )
+        )
+
+        // Redeploy plugin using the new cDai mock
+        const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: cDaiVault.address,
+            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await cDaiCollateral.oracleTimeout(),
+            targetName: await cDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+        await newCDaiCollateral.refresh()
+
+        // Decrease rate for aDAI, will disable collateral immediately
+        await cDaiMock.setExchangeRate(fp('0.019'))
+        await snapshotGasCost(newCDaiCollateral.refresh())
+        await snapshotGasCost(newCDaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })
     })
   })

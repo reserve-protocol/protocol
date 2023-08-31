@@ -127,14 +127,17 @@ export default function fn<X extends CollateralFixtureContext>(
 
       describe('functions', () => {
         it('returns the correct bal (18 decimals)', async () => {
-          const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
+          const decimals = await ctx.tok.decimals()
+          const amount = bn('20').mul(bn(10).pow(decimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           const aliceBal = await collateral.bal(alice.address)
-          expect(aliceBal).to.closeTo(
-            amount.mul(bn(10).pow(18 - (await ctx.tok.decimals()))),
-            bn('100').mul(bn(10).pow(18 - (await ctx.tok.decimals())))
-          )
+          const amount18d =
+            decimals <= 18
+              ? amount.mul(bn(10).pow(18 - decimals))
+              : amount.div(bn(10).pow(decimals - 18))
+          const dist18d = decimals <= 18 ? bn('100').mul(bn(10).pow(18 - decimals)) : bn('10')
+          expect(aliceBal).to.closeTo(amount18d, dist18d)
         })
       })
 
@@ -217,8 +220,8 @@ export default function fn<X extends CollateralFixtureContext>(
               const newPrice = await getExpectedPrice(ctx)
               await expectPrice(collateral.address, newPrice, oracleError, true)
               const [newLow, newHigh] = await collateral.price()
-              expect(oldLow).to.not.equal(newLow)
-              expect(oldHigh).to.not.equal(newHigh)
+              expect(oldLow).to.be.lt(newLow)
+              expect(oldHigh).to.be.lt(newHigh)
             } else {
               // Check new prices -- no increase expected
               await expectPrice(collateral.address, expectedPrice, oracleError, true)
@@ -493,6 +496,11 @@ export default function fn<X extends CollateralFixtureContext>(
         if (IMPLEMENTATION != Implementation.P1 || !useEnv('REPORT_GAS')) return // hide pending
 
         context('refresh()', () => {
+          beforeEach(async () => {
+            await collateral.refresh()
+            expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+          })
+
           afterEach(async () => {
             await snapshotGasCost(collateral.refresh())
             await snapshotGasCost(collateral.refresh()) // 2nd refresh can be different than 1st
@@ -500,10 +508,6 @@ export default function fn<X extends CollateralFixtureContext>(
 
           it('during SOUND', async () => {
             // pass
-          })
-
-          itChecksRefPerTokDefault('after hard default', async () => {
-            await reduceRefPerTok(ctx, 5)
           })
 
           itChecksTargetPerRefDefault('during soft default', async () => {
@@ -531,6 +535,10 @@ export default function fn<X extends CollateralFixtureContext>(
             const p = await collateral.price()
             expect(p[0]).to.equal(0)
             expect(p[1]).to.equal(MAX_UINT192)
+          })
+
+          itChecksRefPerTokDefault('after hard default', async () => {
+            await reduceRefPerTok(ctx, 5)
           })
         })
       })

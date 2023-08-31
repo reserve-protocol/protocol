@@ -2,20 +2,20 @@
 
 exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Initialize Trade  1`] = `259526`;
 
-exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Open Trade  1`] = `374656`;
+exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Open Trade  1`] = `374517`;
 
-exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Open Trade  2`] = `376771`;
+exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Open Trade  2`] = `376632`;
 
-exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Open Trade  3`] = `378909`;
+exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Open Trade  3`] = `378770`;
 
 exports[`BrokerP1 contract #fast Gas Reporting DutchTrade Settle Trade  1`] = `63333`;
 
 exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Initialize Trade  1`] = `451427`;
 
-exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Open Trade  1`] = `541418`;
+exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Open Trade  1`] = `541279`;
 
-exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Open Trade  2`] = `529256`;
+exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Open Trade  2`] = `529117`;
 
-exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Open Trade  3`] = `531394`;
+exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Open Trade  3`] = `531255`;
 
 exports[`BrokerP1 contract #fast Gas Reporting GnosisTrade Settle Trade  1`] = `113056`;

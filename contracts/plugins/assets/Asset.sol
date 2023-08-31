@@ -40,6 +40,8 @@ contract Asset is IAsset, VersionedAsset {
     /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
+    /// @dev oracleTimeout_ is also used as the timeout value in lotPrice(), should be highest of
+    ///      all assets' oracleTimeout in a collateral if there are multiple oracles
     constructor(
         uint48 priceTimeout_,
         AggregatorV3Interface chainlinkFeed_,

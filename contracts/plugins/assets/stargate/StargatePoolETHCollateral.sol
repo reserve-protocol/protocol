@@ -6,6 +6,14 @@ import "../OracleLib.sol";
 import "./interfaces/IStargatePool.sol";
 import "./StargatePoolFiatCollateral.sol";
 
+/**
+ * @title StargatePoolETHCollateral
+ * @notice Collateral plugin for Stargate ETH,
+ * tok = wstgETH
+ * ref = ETH
+ * tar = ETH
+ * UoA = USD
+ */
 contract StargatePoolETHCollateral is StargatePoolFiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;

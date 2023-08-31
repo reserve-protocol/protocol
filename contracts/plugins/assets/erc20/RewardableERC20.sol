@@ -54,7 +54,7 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
         uint256 shares = balanceOf(account);
 
         // {qRewards}
-        uint256 _accumuatedRewards = accumulatedRewards[account];
+        uint256 _accumulatedRewards = accumulatedRewards[account];
 
         // {qRewards/share}
         uint256 _rewardsPerShare = rewardsPerShare;
@@ -63,10 +63,10 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
             uint256 delta = _rewardsPerShare - accountRewardsPerShare;
 
             // {qRewards} = {qRewards/share} * {qShare}
-            _accumuatedRewards += (delta * shares) / one;
+            _accumulatedRewards += (delta * shares) / one;
         }
         lastRewardsPerShare[account] = _rewardsPerShare;
-        accumulatedRewards[account] = _accumuatedRewards;
+        accumulatedRewards[account] = _accumulatedRewards;
     }
 
     function _claimAndSyncRewards() internal virtual {
@@ -82,9 +82,14 @@ abstract contract RewardableERC20 is IRewardable, ERC20, ReentrancyGuard {
 
         if (balanceAfterClaimingRewards > _previousBalance) {
             uint256 delta = balanceAfterClaimingRewards - _previousBalance;
+            uint256 deltaPerShare = (delta * one) / _totalSupply;
+
+            balanceAfterClaimingRewards = _previousBalance + (deltaPerShare * _totalSupply) / one;
+
             // {qRewards/share} += {qRewards} * {qShare/share} / {qShare}
-            _rewardsPerShare += (delta * one) / _totalSupply;
+            _rewardsPerShare += deltaPerShare;
         }
+
         lastRewardBalance = balanceAfterClaimingRewards;
         rewardsPerShare = _rewardsPerShare;
     }
