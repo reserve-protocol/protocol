@@ -561,10 +561,11 @@ describe('FacadeRead + FacadeAct contracts', () => {
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
         // Set lotLow to 0 == revenueOverview() should not revert
+        const initialPrice = await usdcAsset.price()
         await setOraclePrice(usdcAsset.address, bn('0'))
         await usdcAsset.refresh()
         const [lotLow] = await usdcAsset.lotPrice()
-        expect(lotLow).to.equal(0)
+        expect(lotLow).to.equal(initialPrice[0])
 
         // revenue
         let [erc20s, canStart, surpluses, minTradeAmounts] =
