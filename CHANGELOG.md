@@ -4,19 +4,18 @@
 
 ### Upgrade Steps -- Required
 
-Upgrade `BackingManager`, `Broker`, and _all_ assets
+Upgrade `BackingManager`, `Broker`, and _all_ assets. ERC20s do not need to be upgraded.
 
-Then call `Broker.cacheComponents()`.
+Then, call `Broker.cacheComponents()`.
 
 ### Core Protocol Contracts
 
 - `BackingManager`
   - Replace use of `lotPrice()` with `price()`
+- `BasketHandler`
+  - Remove `lotPrice()`
 - `Broker` [+1 slot]
   - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
-  - Only permit BackingManager-started dutch auctions to report violations and disable trading
-  - Remove `setBatchTradeDisabled(bool)` and replace with `enableBatchTrade()`
-  - Remove `setDutchTradeDisabled(IERC20 erc20, bool)` and replace with `enableDutchTrade(IERC20 erc20)`
 
 ## Plugins
 
@@ -25,7 +24,9 @@ Then call `Broker.cacheComponents()`.
 - Remove `lotPrice()`
 - Alter `price().high` to decay upwards to 3x over the price timeout
 
-# 3.0.0 - Unreleased
+# 3.0.0
+
+Bump solidity version to 0.8.19
 
 ### Upgrade Steps
 
