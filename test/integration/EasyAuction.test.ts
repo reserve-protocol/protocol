@@ -10,6 +10,8 @@ import {
   Implementation,
   SLOW,
   ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
   defaultFixture, // intentional
 } from '../fixtures'
 import { bn, fp, shortString, divCeil } from '../../common/numbers'
@@ -549,7 +551,11 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     })
 
     it('should be able to scoop entire auction cheaply when minBuyAmount = 0', async () => {
-      await setOraclePrice(collateral0.address, bn('0')) // make collateral0 worthless
+      // Make collateral0 lotPrice (0, 0)
+      await setOraclePrice(collateral0.address, bn('0'))
+      await collateral0.refresh()
+      await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+      await setOraclePrice(await assetRegistry.toAsset(rsr.address), bn('1e8'))
 
       // force a revenue dust auction
       await expect(rsrTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(

@@ -393,15 +393,13 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           }
         })
 
-        it('returns a 0 price', async () => {
+        it('returns unpriced for 0-valued oracle', async () => {
           for (const feed of ctx.feeds) {
             await feed.updateAnswer(0).then((e) => e.wait())
           }
 
-          // (0, 0) is returned
-          const [low, high] = await ctx.collateral.price()
-          expect(low).to.equal(0)
-          expect(high).to.equal(0)
+          // (0, FIX_MAX) is returned
+          await expectUnpriced(ctx.collateral.address)
 
           // When refreshed, sets status to Unpriced
           await ctx.collateral.refresh()
