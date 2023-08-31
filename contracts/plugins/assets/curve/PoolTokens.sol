@@ -229,6 +229,7 @@ contract PoolTokens {
         }
     }
 
+    /// @dev Warning: Can revert
     /// @param index The index of the token: 0, 1, 2, or 3
     /// @return low {UoA/ref_index}
     /// @return high {UoA/ref_index}
@@ -278,6 +279,7 @@ contract PoolTokens {
 
     // === Internal ===
 
+    /// @dev Warning: Can revert
     /// @return low {UoA}
     /// @return high {UoA}
     function totalBalancesValue() internal view returns (uint192 low, uint192 high) {

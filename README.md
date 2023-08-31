@@ -6,7 +6,7 @@ The Reserve Protocol enables a class of token called RToken: self-issued tokens 
 
 RTokens can be minted by depositing a basket of _collateral tokens_, and redeemed for the basket as well. Thus, an RToken will tend to trade at the market value of the entire basket that backs it, as any lower or higher price could be arbitraged.
 
-The definition of the collateral basket is set dynamically on a block-by-block basis with respect to a _reference basket_. While the RToken often does its internal calculus in terms of a single unit of account (USD), what constitutes appreciation is entirely a function of the reference basket, which will often be associated with a variety of units.
+The definition of the issuance/redemption basket is set dynamically on a block-by-block basis with respect to a _reference basket_. While the RToken often does its internal calculus in terms of a single unit of account (USD), what constitutes appreciation is entirely a function of the reference basket, which is a linear combination of reference units.
 
 RTokens can be over-collateralized, which means that if any of their collateral tokens default, there's a pool of value available to make up for the loss. RToken over-collateralization is provided by Reserve Rights (RSR) holders, who may choose to stake their RSR on an RToken instance. Staked RSR can be seized in the case of a default, in a process that is entirely mechanistic based on on-chain price-feeds, and does not depend on governance votes or human judgment.
 
@@ -22,6 +22,7 @@ For a much more detailed explanation of the economic design, including an hour-l
   - [Testing with Echidna](docs/using-echidna.md): Notes so far on setup and usage of Echidna (which is decidedly an integration-in-progress!)
   - [Deployment](docs/deployment.md): How to do test deployments in our environment.
 - [System Design](docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
+- [Deployment Variables](docs/deployment-variables.md) A detailed description of the governance variables of the protocol.
 - [Our Solidity Style](docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, estpecially where those go beyond standard practice.
 - [Writing Collateral Plugins](docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
 - [Building on Top](docs/build-on-top.md): How to build on top of Reserve, including information about long-lived fork environments.
@@ -103,13 +104,10 @@ The less-central folders in the repository are dedicated to project management, 
 
 ## Types of Tests
 
-We conceive of several different types of tests:
-
-Finally, inside particular testing, it's quite useful to distinguish unit tests from full end-to-end tests. As such, we expect to write tests of the following 5 types:
-
 ### Unit/System Tests
 
 - Driven by `hardhat test`
+- Addressed by `yarn test:unit`
 - Checks for expected behavior of the system.
 - Can run the same tests against both p0 and p1
 - Uses contract mocks, where helpful to predict component behavior
@@ -119,6 +117,7 @@ Target: Full branch coverage, and testing of any semantically-relevant situation
 ### End-to-End Tests
 
 - Driven by `hardhat test`
+- Addressed by `yarn test:integration`
 - Uses mainnet forking
 - Can run the same tests against both p0 and p1
 - Tests all needed plugin contracts, contract deployment, any migrations, etc.
@@ -137,17 +136,7 @@ Located in `fuzz` branch only.
 Target: The handful of our most depended-upon system properties and invariants are articulated and thoroughly fuzz-tested. Examples of such properties include:
 
 - Unless the basket is switched (due to token default or governance) the protocol always remains fully-collateralized.
-- Unless the protocol is paused, RToken holders can always redeem
-- If the protocol is paused, and governance does not act further, the protocol will later become unpaused.
-
-### Differential Testing
-
-Located in `fuzz` branch only.
-
-- Driven by Echidna
-- Asserts that the behavior of each p1 contract matches that of p0
-
-Target: Intensive equivalence testing, run continuously for days or weeks, sensitive to any difference between observable behaviors of p0 and p1.
+- Unless the protocol is frozen, RToken holders can always redeem
 
 ## Contributing
 
@@ -159,7 +148,7 @@ To get setup with tenderly, install the [tenderly cli](https://github.com/Tender
 
 ## Responsible Disclosure
 
-[Immunifi](https://immunefi.com/bounty/reserve/)
+See: [Immunifi](https://immunefi.com/bounty/reserve/)
 
 ## External Documentation
 

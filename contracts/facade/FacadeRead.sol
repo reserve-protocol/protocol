@@ -16,6 +16,7 @@ import "../p1/StRSRVotes.sol";
 /**
  * @title Facade
  * @notice A UX-friendly layer for reading out the state of a ^3.0.0 RToken in summary views.
+ *   Backwards-compatible with 2.1.0 RTokens with the exception of `redeemCustom()`.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 contract FacadeRead is IFacadeRead {

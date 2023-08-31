@@ -1931,6 +1931,59 @@ describeFork('StaticATokenLM: aToken wrapper with static balances and liquidity 
       expect(pendingRewards4_u1).to.be.lt(pendingRewards4_u2)
       expect(pendingRewards4_u2).to.be.gt(pendingRewards3_u2)
     })
+
+    it('Loss of rewards when claiming with forceUpdate=false', async () => {
+      const amountToDeposit = utils.parseEther('5')
+
+      // Just preparation
+      await waitForTx(await weth.deposit({ value: amountToDeposit.mul(2) }))
+      await waitForTx(
+        await weth.approve(staticAToken.address, amountToDeposit.mul(2), defaultTxParams)
+      )
+
+      // Depositing
+      await waitForTx(
+        await staticAToken.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
+      await advanceTime(1)
+
+      //***** need small reward balace
+      await staticAToken.collectAndUpdateRewards()
+      const staticATokenBalanceFirst = await stkAave.balanceOf(staticAToken.address)
+      expect(staticATokenBalanceFirst).to.be.gt(0)
+
+      await advanceTime(60 * 60 * 24)
+
+      // Depositing
+      await waitForTx(
+        await staticAToken.deposit(userSigner._address, amountToDeposit, 0, true, defaultTxParams)
+      )
+
+      const beforeRewardBalance = await stkAave.balanceOf(userSigner._address)
+      const pendingRewardsBefore = await staticAToken.getClaimableRewards(userSigner._address)
+
+      // User has no balance yet
+      expect(beforeRewardBalance).to.equal(0)
+      // Additional rewards exist to be collected
+      expect(pendingRewardsBefore).to.be.gt(staticATokenBalanceFirst)
+
+      // user claim forceUpdate = false
+      await waitForTx(await staticAToken.connect(userSigner).claimRewardsToSelf(false))
+
+      const afterRewardBalance = await stkAave.balanceOf(userSigner._address)
+      const pendingRewardsAfter = await staticAToken.getClaimableRewards(userSigner._address)
+
+      const pendingRewardsDecline = pendingRewardsBefore.toNumber() - pendingRewardsAfter.toNumber()
+      const getRewards = afterRewardBalance.toNumber() - beforeRewardBalance.toNumber()
+      const staticATokenBalanceAfter = await stkAave.balanceOf(staticAToken.address)
+
+      // User has the funds, nothing remains in contract
+      expect(afterRewardBalance).to.equal(staticATokenBalanceFirst)
+      expect(staticATokenBalanceAfter).to.equal(0)
+
+      // Check there is a loss
+      expect(pendingRewardsDecline - getRewards).to.be.gt(0)
+    })
   })
 
   it('Multiple users deposit WETH on stataWETH, wait 1 hour, update rewards, one user transfer, then claim and update rewards.', async () => {

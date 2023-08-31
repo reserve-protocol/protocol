@@ -81,12 +81,8 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         )
     {
         // {UoA/pairedTok}
-        uint192 lowPaired;
-        uint192 highPaired = FIX_MAX;
-        try this.tryPairedPrice() returns (uint192 lowPaired_, uint192 highPaired_) {
-            lowPaired = lowPaired_;
-            highPaired = highPaired_;
-        } catch {}
+        (uint192 lowPaired, uint192 highPaired) = tryPairedPrice();
+        require(lowPaired != 0 && highPaired != FIX_MAX, "invalid price");
 
         // {UoA}
         (uint192 aumLow, uint192 aumHigh) = _metapoolBalancesValue(lowPaired, highPaired);
@@ -124,8 +120,8 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
     // Check for defaults outside the pool
     function _anyDepeggedOutsidePool() internal view virtual override returns (bool) {
         try this.tryPairedPrice() returns (uint192 low, uint192 high) {
-            // {UoA/tok} = {UoA/tok} + {UoA/tok}
-            uint192 mid = (low + high) / 2;
+            // D18{UoA/tok} = D18{UoA/tok} + D18{UoA/tok}
+            uint256 mid = (low + uint256(high)) / 2;
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
@@ -140,6 +136,7 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         return false;
     }
 
+    /// @dev Warning: Can revert
     /// @param lowPaired {UoA/pairedTok}
     /// @param highPaired {UoA/pairedTok}
     /// @return aumLow {UoA}
@@ -172,13 +169,6 @@ contract CurveStableMetapoolCollateral is CurveStableCollateral {
         // Add-in contribution from pairedTok
         // {UoA} = {UoA} + {UoA/pairedTok} * {pairedTok}
         aumLow += lowPaired.mul(pairedBal, FLOOR);
-
-        // Add-in high part carefully
-        uint192 toAdd = highPaired.safeMul(pairedBal, CEIL);
-        if (aumHigh + uint256(toAdd) >= FIX_MAX) {
-            aumHigh = FIX_MAX;
-        } else {
-            aumHigh += toAdd;
-        }
+        aumHigh += highPaired.mul(pairedBal, CEIL);
     }
 }

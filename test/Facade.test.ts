@@ -557,6 +557,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     it('Should return revenue + chain into FacadeAct.runRevenueAuctions', async () => {
       const traders = [rTokenTrader, rsrTrader]
+
+      // Set lotLow to 0 == revenueOverview() should not revert
+      await setOraclePrice(usdcAsset.address, bn('0'))
+      await usdcAsset.refresh()
       for (let traderIndex = 0; traderIndex < traders.length; traderIndex++) {
         const trader = traders[traderIndex]
 
@@ -565,9 +569,6 @@ describe('FacadeRead + FacadeAct contracts', () => {
         const tokenSurplus = bn('0.5e18')
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
-        // Set low to 0 == revenueOverview() should not revert
-        await setOraclePrice(usdcAsset.address, bn('0'))
-        await usdcAsset.refresh()
         const [low] = await usdcAsset.price()
         expect(low).to.equal(0)
 

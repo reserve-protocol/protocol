@@ -2817,8 +2817,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await setOraclePrice(newColl2.address, bn('0'))
 
       // Check status and price again
-      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      await expectPrice(basketHandler.address, fp('0.25'), ORACLE_ERROR, true)
+      const p = await basketHandler.price()
+      expect(p[0]).to.be.closeTo(fp('1').div(4), fp('1').div(4).div(100)) // within 1%
+      expect(p[0]).to.be.lt(fp('1').div(4))
+      expect(p[1]).to.equal(MAX_UINT192)
     })
 
     it('Should handle a collateral (price * quantity) overflow', async () => {

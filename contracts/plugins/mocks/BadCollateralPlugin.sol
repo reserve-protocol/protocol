@@ -57,6 +57,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                     savedHighPrice = high;
                     lastSave = uint48(block.timestamp);
                 }
+
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus
                 if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {

@@ -582,19 +582,29 @@ describe('Collateral contracts', () => {
       )
     })
 
-    it('Should be (0, 0) if price is zero', async () => {
-      // Set price of token to 0 in Aave
+    it('Should become unpriced if price is zero', async () => {
+      const compInitPrice = await tokenCollateral.price()
+      const aaveInitPrice = await aTokenCollateral.price()
+      const rsrInitPrice = await cTokenCollateral.price()
+
+      // Update values in Oracles to 0
       await setOraclePrice(tokenCollateral.address, bn('0'))
 
-      // Check price of tokens
-      await expectPrice(tokenCollateral.address, bn('0'), bn('0'), false)
-      await expectPrice(aTokenCollateral.address, bn('0'), bn('0'), false)
-      await expectPrice(cTokenCollateral.address, bn('0'), bn('0'), false)
+      // Should be unpriced
+      await expectUnpriced(cTokenCollateral.address)
+      await expectUnpriced(tokenCollateral.address)
+      await expectUnpriced(aTokenCollateral.address)
 
-      // price should be zero
-      const [low, high] = await tokenCollateral.price()
-      expect(low).to.eq(0)
-      expect(high).to.eq(0)
+      // Fallback prices should be initial prices
+      let [lotLow, lotHigh] = await tokenCollateral.price()
+      expect(lotLow).to.eq(compInitPrice[0])
+      expect(lotHigh).to.eq(compInitPrice[1])
+      ;[lotLow, lotHigh] = await cTokenCollateral.price()
+      expect(lotLow).to.eq(rsrInitPrice[0])
+      expect(lotHigh).to.eq(rsrInitPrice[1])
+      ;[lotLow, lotHigh] = await aTokenCollateral.price()
+      expect(lotLow).to.eq(aaveInitPrice[0])
+      expect(lotHigh).to.eq(aaveInitPrice[1])
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
@@ -1260,7 +1270,7 @@ describe('Collateral contracts', () => {
 
       // Unpriced if price is zero - Update Oracles and check prices
       await targetUnitOracle.updateAnswer(bn('0'))
-      await expectPrice(nonFiatCollateral.address, bn('0'), bn('0'), false)
+      await expectUnpriced(nonFiatCollateral.address)
 
       // When refreshed, sets status to IFFY
       await nonFiatCollateral.refresh()
@@ -1273,9 +1283,9 @@ describe('Collateral contracts', () => {
 
       // Check the other oracle
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expectPrice(nonFiatCollateral.address, bn('0'), bn('0'), false)
+      await expectUnpriced(nonFiatCollateral.address)
 
-      // When refreshed, sets status to Unpriced
+      // When refreshed, sets status to IFFY
       await nonFiatCollateral.refresh()
       expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
@@ -1563,11 +1573,12 @@ describe('Collateral contracts', () => {
 
       // Unpriced if price is zero - Update Oracles and check prices
       await targetUnitOracle.updateAnswer(bn('0'))
-      await expectPrice(cTokenNonFiatCollateral.address, bn('0'), bn('0'), false)
+      await expectUnpriced(cTokenNonFiatCollateral.address)
 
-      // When refreshed, sets status to Unpriced
+      // When refreshed, sets status to IFFY
       await cTokenNonFiatCollateral.refresh()
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
+
       // Restore
       await targetUnitOracle.updateAnswer(bn('22000e8'))
       await cTokenNonFiatCollateral.refresh()
@@ -1575,9 +1586,9 @@ describe('Collateral contracts', () => {
 
       // Revert if price is zero - Update the other Oracle
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expectPrice(cTokenNonFiatCollateral.address, bn('0'), bn('0'), false)
+      await expectUnpriced(cTokenNonFiatCollateral.address)
 
-      // When refreshed, sets status to Unpriced
+      // When refreshed, sets status to IFFY
       await cTokenNonFiatCollateral.refresh()
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
@@ -1758,9 +1769,9 @@ describe('Collateral contracts', () => {
 
       // Unpriced if price is zero - Update Oracles and check prices
       await setOraclePrice(selfReferentialCollateral.address, bn(0))
-      await expectPrice(selfReferentialCollateral.address, bn('0'), bn('0'), false)
+      await expectUnpriced(selfReferentialCollateral.address)
 
-      // When refreshed, sets status to Unpriced
+      // When refreshed, sets status to IFFY
       await selfReferentialCollateral.refresh()
       expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -1969,9 +1980,9 @@ describe('Collateral contracts', () => {
 
       // Unpriced if price is zero - Update Oracles and check prices
       await setOraclePrice(cTokenSelfReferentialCollateral.address, bn(0))
-      await expectPrice(cTokenSelfReferentialCollateral.address, bn('0'), bn('0'), false)
+      await expectUnpriced(cTokenSelfReferentialCollateral.address)
 
-      // When refreshed, sets status to Unpriced
+      // When refreshed, sets status to IFFY
       await cTokenSelfReferentialCollateral.refresh()
       expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
@@ -2213,9 +2224,9 @@ describe('Collateral contracts', () => {
 
       // Unpriced if price is zero - Update Oracles and check prices
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expectPrice(eurFiatCollateral.address, bn('0'), bn('0'), false)
+      await expectUnpriced(eurFiatCollateral.address)
 
-      // When refreshed, sets status to Unpriced
+      // When refreshed, sets status to IFFY
       await eurFiatCollateral.refresh()
       expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
 

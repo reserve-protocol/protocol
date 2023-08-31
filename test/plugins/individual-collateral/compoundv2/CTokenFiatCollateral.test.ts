@@ -724,8 +724,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
 
-      // Does not revert with zero price
-      await expectPrice(zeropriceCtokenCollateral.address, bn('0'), bn('0'), false)
+      // Unpriced
+      await expectUnpriced(zeropriceCtokenCollateral.address)
 
       // Refresh should mark status IFFY
       await zeropriceCtokenCollateral.refresh()
