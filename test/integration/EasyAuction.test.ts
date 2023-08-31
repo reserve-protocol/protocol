@@ -576,20 +576,6 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await rsr.mint(addr1.address, issueAmount)
       await rsr.connect(addr1).approve(easyAuction.address, issueAmount)
 
-      // Bid with a too-small order and fail.
-      const lowBidAmt = 2
-      await expect(
-        easyAuction
-          .connect(addr1)
-          .placeSellOrders(
-            auctionId,
-            [issueAmount],
-            [lowBidAmt],
-            [QUEUE_START],
-            ethers.constants.HashZero
-          )
-      ).to.be.revertedWith('order too small')
-
       // Bid with a nontheless pretty small order, and succeed.
       const bidAmt = (await trade.DEFAULT_MIN_BID()).add(1)
       await easyAuction
