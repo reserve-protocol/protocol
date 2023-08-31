@@ -190,6 +190,18 @@ contract BrokerP0 is ComponentP0, IBroker {
         dutchAuctionLength = newAuctionLength;
     }
 
+    /// @custom:governance
+    function enableBatchTrade() external governance {
+        emit BatchTradeDisabledSet(batchTradeDisabled, false);
+        batchTradeDisabled = false;
+    }
+
+    /// @custom:governance
+    function enableDutchTrade(IERC20Metadata erc20) external governance {
+        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], false);
+        dutchTradeDisabled[erc20] = false;
+    }
+
     // === Private ===
 
     function newBatchAuction(TradeRequest memory req, address caller) private returns (ITrade) {
@@ -238,17 +250,5 @@ contract BrokerP0 is ComponentP0, IBroker {
 
         trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
         return trade;
-    }
-
-    /// @custom:governance
-    function setBatchTradeDisabled(bool disabled) external governance {
-        emit BatchTradeDisabledSet(batchTradeDisabled, disabled);
-        batchTradeDisabled = disabled;
-    }
-
-    /// @custom:governance
-    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external governance {
-        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], disabled);
-        dutchTradeDisabled[erc20] = disabled;
     }
 }
