@@ -6,7 +6,7 @@ import {
   TestICollateral,
   AaveV3FiatCollateral__factory,
   IERC20Metadata,
-  IStaticATokenLMV3,
+  MockStaticATokenV3LM,
 } from '@typechain/index'
 import { bn, fp } from '#/common/numbers'
 import { expect } from 'chai'
@@ -16,10 +16,9 @@ import { PRICE_TIMEOUT } from '#/test/fixtures'
 import { networkConfig } from '#/common/configuration'
 import { getResetFork } from '../helpers'
 import { whileImpersonating } from '#/test/utils/impersonation'
-import { setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 
 interface AaveV3FiatCollateralFixtureContext extends CollateralFixtureContext {
-  staticWrapper: IStaticATokenLMV3
+  staticWrapper: MockStaticATokenV3LM
   baseToken: IERC20Metadata
 }
 
@@ -27,12 +26,16 @@ interface AaveV3FiatCollateralFixtureContext extends CollateralFixtureContext {
   Define deployment functions
 */
 
+type CollateralParams = Parameters<AaveV3FiatCollateral__factory['deploy']>[0] & {
+  revenueHiding?: BigNumberish
+}
+
 // This defines options for the Aave V3 USDC Market
-export const defaultCollateralOpts: Parameters<AaveV3FiatCollateral__factory['deploy']>[0] = {
+export const defaultCollateralOpts: CollateralParams = {
   priceTimeout: PRICE_TIMEOUT,
   chainlinkFeed: networkConfig[1].chainlinkFeeds.USDC!,
   oracleError: fp('0.0025'),
-  erc20: '0x02c2d189b45CE213a40097b62D311cf0dD16eC92', // StaticATokenLM for USDC
+  erc20: '', // to be set
   maxTradeVolume: fp('1e6'),
   oracleTimeout: bn('86400'),
   targetName: ethers.utils.formatBytes32String('USD'),
@@ -40,17 +43,29 @@ export const defaultCollateralOpts: Parameters<AaveV3FiatCollateral__factory['de
   delayUntilDefault: bn('86400'),
 }
 
-export const deployCollateral = async (
-  opts: Partial<Parameters<AaveV3FiatCollateral__factory['deploy']>[0]> = {}
-) => {
+export const deployCollateral = async (opts: Partial<CollateralParams> = {}) => {
+  const combinedOpts = { ...defaultCollateralOpts, ...opts }
   const CollateralFactory = await ethers.getContractFactory('AaveV3FiatCollateral')
 
+  if (!combinedOpts.erc20 || combinedOpts.erc20 === '') {
+    const V3LMFactory = await ethers.getContractFactory('MockStaticATokenV3LM')
+    const staticWrapper = await V3LMFactory.deploy(
+      '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2', // USDC Pool
+      '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb' // Aave V3 Incentives Controller
+    )
+    await staticWrapper.deployed()
+    await staticWrapper.initialize(
+      '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
+      'Static Aave Ethereum USDC',
+      'stataEthUSDC'
+    )
+
+    combinedOpts.erc20 = staticWrapper.address
+  }
+
   const collateral = await CollateralFactory.deploy(
-    {
-      ...defaultCollateralOpts,
-      ...opts,
-    },
-    fp('0'), // change this to test with revenueHiding
+    combinedOpts,
+    opts.revenueHiding ?? fp('0'), // change this to test with revenueHiding
     {
       gasLimit: 30000000,
     }
@@ -82,19 +97,17 @@ const makeCollateralFixtureContext = (
       chainlinkFeed: chainlinkFeed.address,
     })
 
-    const staticWrapper = <IStaticATokenLMV3>(
-      await ethers.getContractAt('IStaticATokenLM_V3', collateralOpts.erc20)
+    const staticWrapper = await ethers.getContractAt(
+      'MockStaticATokenV3LM',
+      await collateral.erc20()
     )
 
     return {
       collateral,
       staticWrapper,
       chainlinkFeed,
-      tok: await ethers.getContractAt('IERC20Metadata', collateralOpts.erc20),
-      baseToken: await ethers.getContractAt(
-        'IERC20Metadata',
-        await staticWrapper.aTokenUnderlying()
-      ),
+      tok: await ethers.getContractAt('IERC20Metadata', await collateral.erc20()),
+      baseToken: await ethers.getContractAt('IERC20Metadata', await staticWrapper.asset()),
     }
   }
 
@@ -118,55 +131,17 @@ const mintCollateralTo: MintCollateralFunc<AaveV3FiatCollateralFixtureContext> =
     await ctx.baseToken
       .connect(signer)
       .approve(ctx.staticWrapper.address, ethers.constants.MaxUint256)
-    await ctx.staticWrapper.connect(signer).deposit(requiredCollat, recipient, 0, true)
+    await ctx.staticWrapper
+      .connect(signer)
+      ['deposit(uint256,address,uint16,bool)'](requiredCollat, recipient, 0, true)
   })
 }
 
 const modifyRefPerTok = async (ctx: AaveV3FiatCollateralFixtureContext, changeFactor = 100) => {
-  // const RAY = ethers.BigNumber.from(10).pow(27)
   const staticWrapper = ctx.staticWrapper
+  const currentRate = await staticWrapper.rate()
 
-  const aavePool = await staticWrapper.POOL()
-  // const poolRate = await staticWrapper.rate()
-
-  // Don't even ask how I got to these slots.
-  const storageSlot1 = await ethers.provider.getStorageAt(
-    aavePool,
-    '0xed960c71bd5fa1333658850f076b35ec5565086b606556c3dd36a916b43ddf21'
-  )
-  const storageSlot2 = await ethers.provider.getStorageAt(
-    aavePool,
-    '0xed960c71bd5fa1333658850f076b35ec5565086b606556c3dd36a916b43ddf23'
-  )
-  // const currentTimestamp = (await ethers.provider.getBlock('latest')).timestamp
-
-  // const currentLiquidityRate = ethers.BigNumber.from(`0x${storageSlot1.slice(-64, -32)}`)
-  const liquidityIndex = ethers.BigNumber.from(`0x${storageSlot1.slice(-32)}`)
-  // const lastUpdateTimestamp = ethers.BigNumber.from(`0x${storageSlot2.slice(-42, -32)}`)
-
-  // const calculateLinearInterest = currentLiquidityRate
-  //   .mul(currentTimestamp - lastUpdateTimestamp.toNumber())
-  //   .div(365 * 24 * 60 * 60)
-  //   .add(RAY)
-
-  // const finalMult = calculateLinearInterest.mul(liquidityIndex).add(RAY.div(2)).div(RAY)
-
-  // finalMult === poolRate; // this should be true.
-  // ^ this code above is just to verify that our math is correct
-
-  await setStorageAt(
-    aavePool,
-    '0xed960c71bd5fa1333658850f076b35ec5565086b606556c3dd36a916b43ddf21',
-    storageSlot1.replace(
-      storageSlot1.slice(-32),
-      liquidityIndex.mul(changeFactor).div(100).toHexString().slice(2).padStart(32, '0')
-    )
-  )
-  await setStorageAt(
-    aavePool,
-    '0xed960c71bd5fa1333658850f076b35ec5565086b606556c3dd36a916b43ddf23',
-    storageSlot2.replace(storageSlot2.slice(-42, -32), ''.padStart(10, '0'))
-  )
+  await staticWrapper.mock_setCustomRate(currentRate.mul(changeFactor).div(100))
 }
 
 const reduceRefPerTok = async (
@@ -233,8 +208,8 @@ export const stableOpts = {
   increaseTargetPerRef,
   itClaimsRewards: it.skip,
   itChecksTargetPerRefDefault: it,
-  itChecksRefPerTokDefault: it.skip, // we are modifying storage for refPerTok, supply check fails
-  itHasRevenueHiding: it.skip, // enable revenueHiding in constructor, or everything else fails
+  itChecksRefPerTokDefault: it,
+  itHasRevenueHiding: it,
   itIsPricedByPeg: true,
   chainlinkDefaultAnswer: 1e8,
   itChecksPriceChanges: it,

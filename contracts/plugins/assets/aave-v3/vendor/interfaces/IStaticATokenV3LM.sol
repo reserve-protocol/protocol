@@ -1,46 +1,12 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPool } from "@aave/core-v3/contracts/interfaces/IPool.sol";
+import { IAaveIncentivesController } from "@aave/core-v3/contracts/interfaces/IAaveIncentivesController.sol";
+import { IInitializableStaticATokenLM } from "./IInitializableStaticATokenLM.sol";
 
-interface IInitializableStaticATokenLM {
-    /**
-     * @dev Emitted when a StaticATokenLM is initialized
-     * @param aToken The address of the underlying aToken (aWETH)
-     * @param staticATokenName The name of the Static aToken
-     * @param staticATokenSymbol The symbol of the Static aToken
-     **/
-    event Initialized(address indexed aToken, string staticATokenName, string staticATokenSymbol);
-
-    /**
-     * @dev Initializes the StaticATokenLM
-     * @param aToken The address of the underlying aToken (aWETH)
-     * @param staticATokenName The name of the Static aToken
-     * @param staticATokenSymbol The symbol of the Static aToken
-     */
-    function initialize(
-        address aToken,
-        string calldata staticATokenName,
-        string calldata staticATokenSymbol
-    ) external;
-}
-
-// These definitions are not included in the interface by default, but are used in the contract.
-interface AaveV3StaticLMExtendedInterface {
-    function aTokenUnderlying() external view returns (IERC20MetadataUpgradeable);
-
-    function POOL() external view returns (address);
-
-    function previewMint(uint256 shares) external view returns (uint256);
-}
-
-/**
- * @title IStaticATokenLM
- * @notice Interface for StaticATokenLM
- * @author Aave / BGD Labs
- * @dev See https://github.com/bgd-labs/static-a-token-v3/
- **/
-interface IStaticATokenLM_V3 is AaveV3StaticLMExtendedInterface, IInitializableStaticATokenLM {
+interface IStaticATokenV3LM is IInitializableStaticATokenLM {
     struct SignatureParams {
         uint8 v;
         bytes32 r;
@@ -229,7 +195,7 @@ interface IStaticATokenLM_V3 is AaveV3StaticLMExtendedInterface, IInitializableS
      * @notice The aToken used inside the 4626 vault.
      * @return IERC20 The aToken IERC20.
      */
-    function aToken() external view returns (IERC20MetadataUpgradeable);
+    function aToken() external view returns (IERC20);
 
     /**
      * @notice The IERC20s that are currently rewarded to addresses of the vault via LM on incentivescontroller.

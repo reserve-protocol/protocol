@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 
-import "./IStaticATokenLM_V3.sol";
+import { StaticATokenV3LM } from "./vendor/StaticATokenV3LM.sol";
 
 /**
  * @title AaveV3FiatCollateral
@@ -23,7 +23,7 @@ contract AaveV3FiatCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        uint256 rate = IStaticATokenLM_V3(address(erc20)).rate(); // {ray ref/tok}
+        uint256 rate = StaticATokenV3LM(address(erc20)).rate(); // {ray ref/tok}
 
         return shiftl_toFix(rate, -27); // {ray -> wad}
     }
@@ -35,6 +35,6 @@ contract AaveV3FiatCollateral is AppreciatingFiatCollateral {
 
     /// Claim rewards, must specify rewards to be claimed
     function claimRewardsLM(address receiver, address[] memory rewards) external {
-        IStaticATokenLM_V3(address(erc20)).claimRewards(receiver, rewards);
+        StaticATokenV3LM(address(erc20)).claimRewards(receiver, rewards);
     }
 }
