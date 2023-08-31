@@ -30,16 +30,17 @@ It is acceptable to leave these function calls out of the initial upgrade tx and
 
 ### Core Protocol Contracts
 
-Bump solidity version to 0.8.19
-
 - `AssetRegistry` [+1 slot]
   Summary: StRSR contract need to know when refresh() was last called
-  - Add last refresh timestamp tracking and expose via `lastRefresh()` getter
+  - # Add last refresh timestamp tracking and expose via `lastRefresh()` getter
+    Summary: Other component contracts need to know when refresh() was last called
+  - Add `lastRefresh()` timestamp getter
+    > > > > > > > Stashed changes
   - Add `size()` getter for number of registered assets
   - Require asset is SOUND on registration
   - Bugfix: Fix gas attack that could result in someone disabling the basket
 - `BackingManager` [+2 slots]
-  Summary: manageTokens was broken out into rebalancing and surplus-forwarding functions to allow users to more precisely call the protocol
+  Summary: manageTokens was broken out into separate rebalancing and surplus-forwarding functions to allow users to more precisely call the protocol
 
   - Replace `manageTokens(IERC20[] memory erc20s)` with:
     - `rebalance(TradeKind)`
@@ -63,6 +64,7 @@ Bump solidity version to 0.8.19
   Summary: Introduces a notion of basket warmup to defend against short-term oracle manipulation attacks. Prevent RTokens from changing in value due to governance
 
   - Add new gov param: `warmupPeriod` with setter `setWarmupPeriod(..)` and event `WarmupPeriodSet()`
+  - Add `trackStatus()` refresher
   - Add `isReady()` view
   - Extract basket switching logic out into external library `BasketLibP1`
   - Enforce `setPrimeBasket()` does not change the net value of a basket in terms of its target units
@@ -80,9 +82,10 @@ Bump solidity version to 0.8.19
   - Rename event `AuctionLengthSet()` -> `BatchAuctionLengthSet()`
   - Add `dutchAuctionLength` and `setDutchAuctionLength()` setter and `DutchAuctionLengthSet()` event
   - Add `dutchTradeImplementation` and `setDutchTradeImplementation()` setter and `DutchTradeImplementationSet()` event
-  - Unlike batch auctions, dutch auctions can be disabled _per-ERC20_, and can only be disabled by BackingManager-started trades
-  - Only permit BackingManager-started dutch auctions to report violations and disable trading
-  - Modify `openTrade(TradeRequest memory reg)` -> `openTrade(TradeKind kind, TradeRequest memory req)`
+  - Modify `setBatchTradeDisabled(bool)` -> `enableBatchTrade()`
+  - Modify `setDutchTradeDisabled(IERC20 erc20, bool)` -> `enableDutchTrade(IERC20 erc20)`
+    - Unlike batch auctions, dutch auctions can be disabled _per-ERC20_, and can only be disabled by BackingManager-started trades
+  - Modify `openTrade(TradeRequest memory reg)` -> `openTrade(TradeKind kind, TradeRequest memory req, TradePrices memory prices)`
     - Allow when paused / frozen, since caller must be in-system
 
 - `Deployer` [+0 slots]
@@ -103,9 +106,9 @@ Bump solidity version to 0.8.19
   - Lower `MAX_RATIO` from 1e18 to 1e14.
 
 - `Main` [+0 slots]
-  Summary: Breakup pausing into two types of pausing: issuance and trading
+  Summary: Split pausing into two types of pausing: issuance and trading
 
-  - Break `paused` into `issuancePaused` and `tradingPaused`
+  - Split `paused` into `issuancePaused` and `tradingPaused`
   - `pause()` -> `pauseTrading()` and `pauseIssuance()`
   - `unpause()` -> `unpauseTrading()` and `unpauseIssuance()`
   - `pausedOrFrozen()` -> `tradingPausedOrFrozen()` and `issuancePausedOrFrozen()`
@@ -146,7 +149,7 @@ Bump solidity version to 0.8.19
   - Add `withdrawalLeak` gov param, with `setWithdrawalLeak(..)` setter and `WithdrawalLeakSet()` event
   - Modify `withdraw()` to allow a small % of RSR to exit without paying to refresh all assets
   - Modify `withdraw()` to check for `warmupPeriod`
-  - Add ability to re-stake during a withdrawal via `cancelUnstake(uint256 endId)`
+  - Add `cancelUnstake(uint256 endId)` to allow re-staking during unstaking
   - Add `UnstakingCancelled()` event
   - Allow payout of (already acquired) RSR rewards while frozen
   - Add ability for governance to `resetStakes()` when stake rate falls outside (1e12, 1e24)
@@ -156,16 +159,17 @@ Bump solidity version to 0.8.19
 
 ### Facades
 
+Remove `FacadeMonitor` - now redundant with `nextRecollateralizationAuction()` and `revenueOverview()`
+
 - `FacadeAct`
-  Summary: Remove unused getActCalldata and add way to run revenue auctions
+  Summary: Remove unused `getActCalldata()` and add way to run revenue auctions
 
   - Remove `getActCalldata(..)`
   - Remove `canRunRecollateralizationAuctions(..)`
-  - Modify `runRevenueAuctions(..)` to work with both 3.0.0 and 2.1.0 interfaces
-  - Add `revenueOverview(..)` callstatic function to get an overview of the current revenue state
-  - Add `nextRecollateralizationAuction(..)` callstatic function to get an overview of the rebalancing state
-
-- Remove `FacadeMonitor`
+  - Remove `runRevenueAuctions(..)`
+  - Add `revenueOverview(IRevenueTrader) returns ( IERC20[] memory erc20s, bool[] memory canStart, uint256[] memory surpluses, uint256[] memory minTradeAmounts)`
+  - Add `nextRecollateralizationAuction(..) returns (bool canStart, IERC20 sell, IERC20 buy, uint256 sellAmount)`
+  - Modify all functions to work on both 3.0.0 and 2.1.0 RTokens
 
 - `FacadeRead`
   Summary: Add new data summary views frontends may be interested in
@@ -173,7 +177,7 @@ Bump solidity version to 0.8.19
   - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
   - Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
   - Remove `traderBalances(..)`
-  - `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
+  - Add `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
 
 - `FacadeWrite`
   Summary: More expressive and fine-grained control over the set of pausers and freezers
@@ -182,7 +186,6 @@ Bump solidity version to 0.8.19
   - Do not automatically grant Owner PAUSER/SHORT_FREEZER/LONG_FREEZER
   - Add ability to initialize with multiple pausers, short freezers, and long freezers
   - Modify `setupGovernance(.., address owner, address guardian, address pauser)` -> `setupGovernance(.., GovernanceRoles calldata govRoles)`
-  - Update `DeploymentParams` and `Implementations` struct to contain new gov params and dutch trade plugin
 
 ## Plugins
 

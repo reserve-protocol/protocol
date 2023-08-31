@@ -12,7 +12,7 @@ import "../interfaces/IFacadeRead.sol";
 /**
  * @title Facade
  * @notice A Facade to help batch compound actions that cannot be done from an EOA, solely.
- *   For use with ^3.0.0 RTokens.
+ *   Compatible with both 2.1.0 and ^3.0.0 RTokens.
  */
 contract FacadeAct is IFacadeAct, Multicall {
     using Address for address;
