@@ -14,9 +14,9 @@ Call the following functions:
 - `RevenueTrader.cacheComponents()` (for both rsrTrader and rTokenTrader)
 - `Distributor.cacheComponents()`
 
-_All_ asset plugins (and their corresponding ERC20s) must be upgraded.
+_All_ asset plugins (and their corresponding ERC20s) must be upgraded. The only exception is the `StaticATokenLM` ERC20s from Aave V2. These can be left the same, however their assets should upgraded.
 
-- Make sure to use `Deployer.deployRTokenAsset()` to create new `RTokenAsset` instances. This asset must be swapped too.
+- Note: Make sure to use `Deployer.deployRTokenAsset()` to create new `RTokenAsset` instances. This asset should be swapped too.
 
 #### Optional Steps
 
