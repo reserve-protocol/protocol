@@ -636,9 +636,75 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
       })
 
+      it('Should distribute tokenToBuy before updating distribution', async () => {
+        // Check initial status
+        const [rTokenTotal, rsrTotal] = await distributor.totals()
+        expect(rsrTotal).equal(bn(60))
+        expect(rTokenTotal).equal(bn(40))
+
+        // Set some balance of token-to-buy in traders
+        const issueAmount = bn('100e18')
+
+        // RSR Trader
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // RToken Trader
+        const rTokenBal = await rToken.balanceOf(furnace.address)
+        await rToken.connect(addr1).issueTo(rTokenTrader.address, issueAmount)
+
+        // Update distributions with owner - Set f = 1
+        await distributor
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+
+        // Check tokens were transferred from Traders
+        const expectedAmountRSR = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmountRSR, 100)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.be.closeTo(bn(0), 100)
+
+        const expectedAmountRToken = rTokenBal.add(issueAmount)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(expectedAmountRToken, 100)
+        expect(await rsr.balanceOf(rTokenTrader.address)).to.be.closeTo(bn(0), 100)
+
+        // Check updated distributions
+        const [newRTokenTotal, newRsrTotal] = await distributor.totals()
+        expect(newRsrTotal).equal(bn(60))
+        expect(newRTokenTotal).equal(bn(0))
+      })
+
+      it('Should update distribution even if distributeTokenToBuy() reverts', async () => {
+        // Check initial status
+        const [rTokenTotal, rsrTotal] = await distributor.totals()
+        expect(rsrTotal).equal(bn(60))
+        expect(rTokenTotal).equal(bn(40))
+
+        // Set some balance of token-to-buy in RSR trader
+        const issueAmount = bn('100e18')
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Pause the system, makes distributeTokenToBuy() revert
+        await main.connect(owner).pauseTrading()
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.reverted
+
+        // Update distributions with owner - Set f = 1
+        await distributor
+          .connect(owner)
+          .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+
+        // Check no tokens were transferred
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(stRSRBal)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.equal(issueAmount)
+
+        // Check updated distributions
+        const [newRTokenTotal, newRsrTotal] = await distributor.totals()
+        expect(newRsrTotal).equal(bn(60))
+        expect(newRTokenTotal).equal(bn(0))
+      })
+
       it('Should return tokens to BackingManager correctly - rsrTrader.returnTokens()', async () => {
         // Mint tokens
-        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
         await token0.connect(owner).mint(rsrTrader.address, issueAmount.add(1))
         await token1.connect(owner).mint(rsrTrader.address, issueAmount.add(2))
 
@@ -660,6 +726,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
         ).to.be.revertedWith('rsrTotal > 0')
         await distributor.setDistribution(STRSR_DEST, { rTokenDist: bn('0'), rsrDist: bn('0') })
+
+        // Mint RSR
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
 
         // Should fail for unregistered token
         await assetRegistry.connect(owner).unregister(collateral1.address)
@@ -966,6 +1035,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           minBuyAmtRToken.div(bn('1e15'))
         )
       })
+
       it('Should be able to start a dust auction BATCH_AUCTION, if enabled', async () => {
         const minTrade = bn('1e18')
 
@@ -1948,10 +2018,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should only allow RevenueTraders to call distribute()', async () => {
         const distAmount: BigNumber = bn('100e18')
 
-        // Transfer some RSR to RevenueTraders
-        await rsr.connect(addr1).transfer(rTokenTrader.address, distAmount)
-        await rsr.connect(addr1).transfer(rsrTrader.address, distAmount)
-
         // Set f = 1
         await expect(
           distributor
@@ -1968,6 +2034,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
           .to.emit(distributor, 'DistributionSet')
           .withArgs(STRSR_DEST, bn(0), bn(1))
+
+        // Transfer some RSR to RevenueTraders
+        await rsr.connect(addr1).transfer(rTokenTrader.address, distAmount)
+        await rsr.connect(addr1).transfer(rsrTrader.address, distAmount)
 
         // Check funds in RevenueTraders and destinations
         expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(distAmount)

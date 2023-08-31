@@ -57,6 +57,11 @@ contract DistributorP1 is ComponentP1, IDistributor {
     //   destinations' = destinations.add(dest)
     //   distribution' = distribution.set(dest, share)
     function setDistribution(address dest, RevenueShare memory share) external governance {
+        // solhint-disable-next-line no-empty-blocks
+        try main.rsrTrader().distributeTokenToBuy() {} catch {}
+        // solhint-disable-next-line no-empty-blocks
+        try main.rTokenTrader().distributeTokenToBuy() {} catch {}
+
         _setDistribution(dest, share);
         RevenueTotals memory revTotals = totals();
         _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
