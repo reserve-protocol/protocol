@@ -15,6 +15,8 @@ Then call `Broker.cacheComponents()`.
 - `Broker` [+1 slot]
   - Disallow starting dutch trades with non-RTokenAsset assets when `lastSave() != block.timestamp`
   - Only permit BackingManager-started dutch auctions to report violations and disable trading
+  - Remove `setBatchTradeDisabled(bool)` and replace with `enableBatchTrade()`
+  - Remove `setDutchTradeDisabled(IERC20 erc20, bool)` and replace with `enableDutchTrade(IERC20 erc20)`
 
 ## Plugins
 
