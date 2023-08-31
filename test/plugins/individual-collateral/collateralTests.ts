@@ -25,7 +25,7 @@ import {
   CollateralTestSuiteFixtures,
   CollateralStatus,
 } from './pluginTestTypes'
-import { expectPrice } from '../../utils/oracles'
+import { expectPrice, expectUnpriced } from '../../utils/oracles'
 import snapshotGasCost from '../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation } from '../../fixtures'
 
@@ -259,15 +259,13 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(newHigh).to.be.gt(initHigh)
         })
 
-        it('returns a 0 price', async () => {
+        it('returns unpriced for 0-valued oracle', async () => {
           // Set price of underlying to 0
           const updateAnswerTx = await chainlinkFeed.updateAnswer(0)
           await updateAnswerTx.wait()
 
           // (0, FIX_MAX) is returned
-          const [low, high] = await collateral.price()
-          expect(low).to.equal(0)
-          expect(high).to.equal(0)
+          await expectUnpriced(collateral.address)
 
           // When refreshed, sets status to Unpriced
           await collateral.refresh()
@@ -285,23 +283,6 @@ export default function fn<X extends CollateralFixtureContext>(
           // When refreshed, sets status to Unpriced
           await collateral.refresh()
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-        })
-
-        it('does not update the saved prices if collateral is unpriced', async () => {
-          /*
-            want to cover this block from the refresh function
-            is it even possible to cover this w/ the tryPrice from AppreciatingFiatCollateral?
-
-            if (high < FIX_MAX) {
-                savedLowPrice = low;
-                savedHighPrice = high;
-                lastSave = uint48(block.timestamp);
-            } else {
-                // must be unpriced
-                assert(low == 0);
-            }
-          */
-          expect(true)
         })
 
         itHasRevenueHiding('does revenue hiding correctly', async () => {

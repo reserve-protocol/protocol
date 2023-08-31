@@ -552,6 +552,11 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     it('Should return revenue + chain into FacadeAct.runRevenueAuctions', async () => {
       const traders = [rTokenTrader, rsrTrader]
+      const initialPrice = await usdcAsset.price()
+
+      // Set lotLow to 0 == revenueOverview() should not revert
+      await setOraclePrice(usdcAsset.address, bn('0'))
+      await usdcAsset.refresh()
       for (let traderIndex = 0; traderIndex < traders.length; traderIndex++) {
         const trader = traders[traderIndex]
 
@@ -560,11 +565,8 @@ describe('FacadeRead + FacadeAct contracts', () => {
         const tokenSurplus = bn('0.5e18')
         await token.connect(addr1).transfer(trader.address, tokenSurplus)
 
-        // Set lotLow to 0 == revenueOverview() should not revert
-        await setOraclePrice(usdcAsset.address, bn('0'))
-        await usdcAsset.refresh()
         const [lotLow] = await usdcAsset.lotPrice()
-        expect(lotLow).to.equal(0)
+        expect(lotLow).to.equal(initialPrice[0])
 
         // revenue
         let [erc20s, canStart, surpluses, minTradeAmounts] =
@@ -582,7 +584,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
             expect(surpluses[i]).to.equal(0)
           }
           const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
-          const [low] = await asset.price()
+          const [low] = await asset.lotPrice()
           expect(minTradeAmounts[i]).to.equal(
             low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
           ) // 1% oracleError

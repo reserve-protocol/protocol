@@ -3048,7 +3048,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         })
 
-        it('Should not sell worthless asset when doing recollateralization- Use RSR directly for remainder', async () => {
+        it('Should sell worthless asset when doing recollateralization - Use RSR directly for remainder', async () => {
           // Set prime basket
           await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
@@ -3129,6 +3129,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           // Send the excess revenue tokens to backing manager - should try to use it instead of RSR
           // But we set price = $0, so it wont be sold -Will use RSR for remainder
           await aaveToken.connect(owner).mint(backingManager.address, buyAmtBidRemToken.mul(2))
+
+          // Make aaveToken worthless
           await setOraclePrice(aaveAsset.address, bn('0'))
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -3148,7 +3150,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
               name: 'TradeStarted',
               args: [
                 anyValue,
-                rsr.address,
+                aaveToken.address,
                 token1.address,
                 anyValue,
                 toBNDecimals(buyAmtBidRemToken, 6).add(1),
@@ -3161,13 +3163,13 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
 
           // RSR Token -> Token1 Auction
           await expectTrade(backingManager, {
-            sell: rsr.address,
+            sell: aaveToken.address,
             buy: token1.address,
             endTime: auctionTimestamp + Number(config.batchAuctionLength),
             externalId: bn('1'),
           })
 
-          const t = await getTrade(backingManager, rsr.address)
+          const t = await getTrade(backingManager, aaveToken.address)
           const sellAmtRemToken = await t.initBal()
           expect(toBNDecimals(buyAmtBidRemToken, 6).add(1)).to.equal(
             toBNDecimals(await toMinBuyAmt(sellAmtRemToken, fp('1'), fp('1')), 6).add(1)
@@ -3180,15 +3182,10 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           expect(await token1.balanceOf(backingManager.address)).to.equal(
             toBNDecimals(minBuyAmt, 6).add(1)
           )
-          // Aave token balance remains unchanged
-          expect(await aaveToken.balanceOf(backingManager.address)).to.equal(
-            buyAmtBidRemToken.mul(2)
-          )
-
           expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-          // Check Gnosis- using RSR
-          expect(await rsr.balanceOf(gnosis.address)).to.equal(sellAmtRemToken)
+          // Check Gnosis - using AAVE
+          expect(await aaveToken.balanceOf(gnosis.address)).to.equal(sellAmtRemToken)
 
           // Perform Mock Bids for the new Token (addr1 has balance)
           // Cover buyAmtBidRevToken which is all the amount required
@@ -3209,7 +3206,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
               name: 'TradeSettled',
               args: [
                 anyValue,
-                rsr.address,
+                aaveToken.address,
                 token1.address,
                 sellAmtRemToken,
                 toBNDecimals(buyAmtBidRemToken, 6).add(1),
@@ -3237,7 +3234,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
           // Stakes used in this case
-          expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount.sub(sellAmtRemToken))
+          expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
           expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmount)
         })
       })
