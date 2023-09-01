@@ -5,6 +5,7 @@ import { Delegate, Proposal, getDelegates, getProposalDetails } from '#/utils/su
 import { advanceBlocks, advanceTime } from '#/utils/time'
 import { BigNumber, PopulatedTransaction } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { pushOraclesForward } from './oracles'
 
 export const passAndExecuteProposal = async (
   hre: HardhatRuntimeEnvironment,
@@ -105,6 +106,7 @@ export const passAndExecuteProposal = async (
     // Advance time required by timelock
     await advanceTime(hre, minDelay.add(1).toString())
     await advanceBlocks(hre, 1)
+    await pushOraclesForward(hre, rtokenAddress)
 
     // Execute
     await governor.execute(proposal.targets, proposal.values, proposal.calldatas, descriptionHash)
@@ -122,10 +124,8 @@ export const passAndExecuteProposal = async (
 export const stakeAndDelegateRsr = async (
   hre: HardhatRuntimeEnvironment,
   rtokenAddress: string,
-  governorAddress: string,
   user: string
 ) => {
-  const governor = await hre.ethers.getContractAt('Governance', governorAddress)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rtokenAddress)
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
@@ -167,7 +167,7 @@ export const proposeUpgrade = async (
   const [tester] = await hre.ethers.getSigners()
 
   await hre.run('give-rsr', { address: tester.address })
-  await stakeAndDelegateRsr(hre, rTokenAddress, governorAddress, tester.address)
+  await stakeAndDelegateRsr(hre, rTokenAddress, tester.address)
 
   const proposal = await proposalBuilder(hre, rTokenAddress, governorAddress)
 
