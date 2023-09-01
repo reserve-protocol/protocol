@@ -144,17 +144,23 @@ contract Asset is IAsset, VersionedAsset {
             } else {
                 // oracleTimeout <= delta <= oracleTimeout + priceTimeout
 
-                // Decay _low downwards from savedLowPrice to 0
-                // {UoA/tok} = {UoA/tok} * {1}
-                _low = savedLowPrice.muluDivu(oracleTimeout + priceTimeout - delta, priceTimeout);
-                // during overflow should revert
-
                 // Decay _high upwards to 3x savedHighPrice
                 // {UoA/tok} = {UoA/tok} * {1}
                 _high = savedHighPrice.safeMul(
                     FIX_ONE + MAX_HIGH_PRICE_BUFFER.muluDivu(delta - oracleTimeout, priceTimeout),
                     ROUND
                 ); // during overflow should not revert
+
+                // if _high is FIX_MAX, leave at UNPRICED
+                if (_high != FIX_MAX) {
+                    // Decay _low downwards from savedLowPrice to 0
+                    // {UoA/tok} = {UoA/tok} * {1}
+                    _low = savedLowPrice.muluDivu(
+                        oracleTimeout + priceTimeout - delta,
+                        priceTimeout
+                    );
+                    // during overflow should revert since a FIX_MAX _low breaks everything
+                }
             }
         }
         assert(_low <= _high);
