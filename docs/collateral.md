@@ -15,7 +15,6 @@ In our inheritance tree, Collateral is a subtype of Asset (i.e. `ICollateral is 
 
 - How to get its price
 - A maximum volume per trade
-- How to claim token rewards, if the token offers them
 
 A Collateral contract is a subtype of Asset (i.e. `ICollateral is IAsset`), so it does everything as Asset does. Beyond that, a Collateral plugin provides the Reserve Protocol with the information it needs to use its token as collateral -- as backing, held in the RToken's basket.
 
@@ -27,20 +26,6 @@ A Collateral contract is a subtype of Asset (i.e. `ICollateral is IAsset`), so i
 The IAsset and ICollateral interfaces, from `IAsset.sol`, are as follows:
 
 ```solidity
-/**
- * @title IRewardable
- * @notice A simple interface mixin to support claiming of rewards.
- */
-interface IRewardable {
-  /// Emitted whenever a reward token balance is claimed
-  event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
-
-  /// Claim rewards earned by holding a balance of the ERC20 token
-  /// Must emit `RewardsClaimed` for each token rewards are claimed for
-  /// @custom:interaction
-  function claimRewards() external;
-}
-
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
@@ -77,8 +62,11 @@ interface IAsset is IRewardable {
   /// @return If the asset is an instance of ICollateral or not
   function isCollateral() external view returns (bool);
 
-  /// @param {UoA} The max trade volume, in UoA
+  /// @return {UoA} The max trade volume, in UoA
   function maxTradeVolume() external view returns (uint192);
+
+  /// @return {s} The timestamp of the last refresh() that saved prices
+  function lastSave() external view returns (uint48);
 }
 
 /// CollateralStatus must obey a linear ordering. That is:
@@ -199,9 +187,9 @@ Note, this doesn't disqualify collateral with USD as its target unit! It's fine 
 
 ### Representing Fractional Values
 
-Wherever contract variables have these units, it's understood that even though they're handled as `uint`s, they represent fractional values with 18 decimals. In particular, a `{tok}` value is a number of "whole tokens" with 18 decimals. So even though DAI has 18 decimals and USDC has 6 decimals, $1 in either token would be 1e18 when working in units of `{tok}`.
+Wherever contract variables have these units, it's understood that even though they're handled as `uint192`s, they represent fractional values with 18 decimals. In particular, a `{tok}` value is a number of "whole tokens" with 18 decimals. So even though DAI has 18 decimals and USDC has 6 decimals, $1 in either token would be 1e18 when working in units of `{tok}`.
 
-For more about our approach for handling decimal-fixed-point, see our [docs on the Fix Library](solidity-style.md#The-Fix-Library).
+For more about our approach for handling decimal-fixed-point, see our [docs on the Fix Library](solidity-style.md#The-Fix-Library). Ideally a user-defined type would be used but we found static analyses tools had trouble with that.
 
 ## Synthetic Units
 
@@ -349,9 +337,9 @@ If `status()` ever returns `CollateralStatus.DISABLED`, then it must always retu
 
 ### Token rewards should be claimable.
 
-Protocol contracts that hold an asset for any significant amount of time are all able to call `claimRewards()` on the ERC20 itself (previously on the asset/collateral plugin via delegatecall). The erc20 or its wrapper contract should include whatever logic is necessary to claim rewards from all relevant defi protocols. These rewards are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
+Protocol contracts that hold an asset for any significant amount of time must be able to call `claimRewards()` on the ERC20 itself (previously on the asset/collateral plugin via delegatecall). The erc20 should include whatever logic is necessary to claim rewards from all relevant defi protocols. These rewards are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
 
-- `claimRewards()` must claim all rewards that may be earned by holding the asset ERC20 and send them to the holder.
+- `claimRewards()` must claim all rewards that may be earned by holding the asset ERC20 and send them to the holder, in the correct proportions based on amount of time held.
 - The `RewardsClaimed` event should be emitted for each token type claimed.
 
 ### Smaller Constraints
@@ -371,7 +359,6 @@ Collateral implementors who extend from [Fiat Collateral](../contracts/plugins/a
 - `tryPrice()` (not on the ICollateral interface; used by `price()`/`lotPrice()`/`refresh()`)
 - `refPerTok()`
 - `targetPerRef()`
-- `claimRewards()`
 
 ### refresh()
 
@@ -441,6 +428,8 @@ Should never revert.
 
 Should return a lower and upper estimate for the price of the token on secondary markets.
 
+The difference between the upper and lower estimate should not exceed 5%, though this is not a hard-and-fast rule. When the difference (usually arising from an oracleError) is large, it can lead to [the price estimation of the RToken](../contracts/plugins/assets/RTokenAsset.sol) somewhat degrading. While this is not usually an issue it can come into play when one RToken is using another RToken as collateral either directly or indirectly through an LP token. If there is RSR overcollateralization then this issue is mitigated.
+
 Lower estimate must be <= upper estimate.
 
 Should return `(0, FIX_MAX)` if pricing data is unavailable or stale.
@@ -490,6 +479,6 @@ If implementing a demurrage-based collateral plugin, make sure your targetName f
 
 ## Practical Advice from Previous Work
 
-In most cases [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) can be extended, pretty easily, to support a new collateral type. This allows the collateral developer to limit their attention to the overriding of four functions: `tryPrice()`, `refPerTok()`, `targetPerRef()`, `claimRewards()`.
+In most cases [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) can be extended, pretty easily, to support a new collateral type. This allows the collateral developer to limit their attention to the overriding of three functions: `tryPrice()`, `refPerTok()`, `targetPerRef()`.
 
 If you're quite stuck, you might also find it useful to read through our other Collateral plugins as models, found in our repository in `/contracts/plugins/assets`.
