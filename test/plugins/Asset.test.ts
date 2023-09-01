@@ -12,6 +12,8 @@ import {
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
+  expectDecayedPrice,
+  expectExactPrice,
   expectPrice,
   expectRTokenPrice,
   expectUnpriced,
@@ -260,25 +262,45 @@ describe('Assets contracts #fast', () => {
       await setOraclePrice(compAsset.address, bn('0'))
       await setOraclePrice(aaveAsset.address, bn('0'))
       await setOraclePrice(rsrAsset.address, bn('0'))
-      await setOraclePrice(collateral0.address, bn(0))
-      await setOraclePrice(collateral1.address, bn(0))
+      await setOraclePrice(collateral0.address, bn('0'))
+      await setOraclePrice(collateral1.address, bn('0'))
 
       // Fallback prices should be initial prices
-      let [lotLow, lotHigh] = await compAsset.price()
-      expect(lotLow).to.eq(compInitPrice[0])
-      expect(lotHigh).to.eq(compInitPrice[1])
-      ;[lotLow, lotHigh] = await rsrAsset.price()
-      expect(lotLow).to.eq(rsrInitPrice[0])
-      expect(lotHigh).to.eq(rsrInitPrice[1])
-      ;[lotLow, lotHigh] = await aaveAsset.price()
-      expect(lotLow).to.eq(aaveInitPrice[0])
-      expect(lotHigh).to.eq(aaveInitPrice[1])
-      ;[lotLow, lotHigh] = await rTokenAsset.price()
-      expect(lotLow).to.eq(rTokenInitPrice[0])
-      expect(lotHigh).to.eq(rTokenInitPrice[1])
+      await expectExactPrice(compAsset.address, compInitPrice)
+      await expectExactPrice(rsrAsset.address, rsrInitPrice)
+      await expectExactPrice(aaveAsset.address, aaveInitPrice)
+      await expectExactPrice(rTokenAsset.address, rTokenInitPrice)
 
-      // Advance past timeouts
-      await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+      // Advance past oracle timeout
+      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await setOraclePrice(compAsset.address, bn('0'))
+      await setOraclePrice(aaveAsset.address, bn('0'))
+      await setOraclePrice(rsrAsset.address, bn('0'))
+      await setOraclePrice(collateral0.address, bn('0'))
+      await setOraclePrice(collateral1.address, bn('0'))
+      await compAsset.refresh()
+      await rsrAsset.refresh()
+      await aaveAsset.refresh()
+      await collateral0.refresh()
+      await collateral1.refresh()
+
+      // Prices should be decaying
+      await expectDecayedPrice(compAsset.address)
+      await expectDecayedPrice(rsrAsset.address)
+      await expectDecayedPrice(aaveAsset.address)
+      const p = await rTokenAsset.price()
+      expect(p[0]).to.be.gt(0)
+      expect(p[0]).to.be.lt(rTokenInitPrice[0])
+      expect(p[1]).to.be.gt(rTokenInitPrice[1])
+      expect(p[1]).to.be.lt(MAX_UINT192)
+
+      // After price timeout, should be unpriced
+      await advanceTime(PRICE_TIMEOUT.toString())
+      await setOraclePrice(compAsset.address, bn('0'))
+      await setOraclePrice(aaveAsset.address, bn('0'))
+      await setOraclePrice(rsrAsset.address, bn('0'))
+      await setOraclePrice(collateral0.address, bn('0'))
+      await setOraclePrice(collateral1.address, bn('0'))
 
       // Should be unpriced now
       await expectUnpriced(rsrAsset.address)
