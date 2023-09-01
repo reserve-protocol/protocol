@@ -3,18 +3,28 @@ import { networkConfig } from '../../common/configuration'
 import { getChainId } from '../../common/blockchain-utils'
 import { whileImpersonating } from '#/utils/impersonation'
 import { useEnv } from '#/utils/env'
+import { expect } from 'chai'
 import { resetFork } from '#/utils/chain'
 import { bn, fp } from '#/common/numbers'
+import { TradeKind } from '#/common/constants'
 import { formatEther, formatUnits } from 'ethers/lib/utils'
 import { pushOraclesForward } from './upgrade-checker-utils/oracles'
-import { recollateralize, redeemRTokens } from './upgrade-checker-utils/rtokens'
+import {
+  recollateralize,
+  redeemRTokens,
+  customRedeemRTokens,
+} from './upgrade-checker-utils/rtokens'
 import { claimRsrRewards } from './upgrade-checker-utils/rewards'
 import { whales } from './upgrade-checker-utils/constants'
-import runChecks2_1_0, { proposal_2_1_0 } from './upgrade-checker-utils/upgrades/2_1_0'
-import { passAndExecuteProposal, proposeUpgrade } from './upgrade-checker-utils/governance'
+import runChecks3_0_0, { proposal_3_0_0 } from './upgrade-checker-utils/upgrades/3_0_0'
+import {
+  passAndExecuteProposal,
+  proposeUpgrade,
+  stakeAndDelegateRsr,
+} from './upgrade-checker-utils/governance'
 import { advanceBlocks, advanceTime, getLatestBlockNumber } from '#/utils/time'
 
-// run script for eUSD
+// run script for eUSD (version 3.0.0)
 // npx hardhat upgrade-checker --rtoken 0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F --governor 0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6
 
 /*
@@ -59,9 +69,10 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     console.log(`starting at block ${await getLatestBlockNumber(hre)}`)
 
-    // 1. Approve and execute the govnerance proposal
+    // 1. Approve and execute the governance proposal
     if (!params.proposalid) {
-      const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, proposal_2_1_0)
+      const proposal = await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_0_0)
+
       await passAndExecuteProposal(
         hre,
         params.rtoken,
@@ -76,15 +87,9 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // we pushed the chain forward, so we need to keep the rToken SOUND
     await pushOraclesForward(hre, params.rtoken)
 
-    // 2. Run various checks
-    const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
-    const saUsdcAddress = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()
-    const usdtAddress = networkConfig['1'].tokens.USDT!
-    const usdcAddress = networkConfig['1'].tokens.USDC!
-    const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
-    const cUsdcAddress = networkConfig['1'].tokens.cUSDC!
-
     const rToken = await hre.ethers.getContractAt('RTokenP1', params.rtoken)
+
+    // 2. Bring back to fully collateralized
     const main = await hre.ethers.getContractAt('IMain', await rToken.main())
     const basketHandler = await hre.ethers.getContractAt(
       'BasketHandlerP1',
@@ -94,9 +99,25 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       'BackingManagerP1',
       await main.backingManager()
     )
+    const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
+
+    // Move past trading delay
+    await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
+
+    await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION) // DUTCH_AUCTION
+
+    // 3. Run various checks
+    const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
+    const saUsdcAddress = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()
+    const usdtAddress = networkConfig['1'].tokens.USDT!
+    const usdcAddress = networkConfig['1'].tokens.USDC!
+    const cUsdtAddress = networkConfig['1'].tokens.cUSDT!
+    const cUsdcAddress = networkConfig['1'].tokens.cUSDC!
+    const cUsdtVaultAddress = '0x840748F7Fd3EA956E5f4c88001da5CC1ABCBc038'.toLowerCase()
+    const cUsdcVaultAddress = '0xf201fFeA8447AB3d43c98Da3349e0749813C9009'.toLowerCase()
 
     /*
-    
+
       mint
 
      this is another area that needs to be made general
@@ -110,8 +131,10 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const usdc = await hre.ethers.getContractAt('ERC20Mock', usdcAddress)
     const saUsdt = await hre.ethers.getContractAt('StaticATokenLM', saUsdtAddress)
     const cUsdt = await hre.ethers.getContractAt('ICToken', cUsdtAddress)
+    const cUsdtVault = await hre.ethers.getContractAt('CTokenWrapper', cUsdtVaultAddress)
     const saUsdc = await hre.ethers.getContractAt('StaticATokenLM', saUsdcAddress)
     const cUsdc = await hre.ethers.getContractAt('ICToken', cUsdcAddress)
+    const cUsdcVault = await hre.ethers.getContractAt('CTokenWrapper', cUsdcVaultAddress)
 
     // get saUsdt
     await whileImpersonating(
@@ -125,20 +148,21 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const saUsdtBal = await saUsdt.balanceOf(tester.address)
     await saUsdt.connect(tester).approve(rToken.address, saUsdtBal)
 
-    // get cUsdt
+    // get cUsdtVault
     await whileImpersonating(
       hre,
       whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
       async (usdtSigner) => {
-        console.log(cUsdt.address, usdt.address, usdtSigner.address)
         await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal)
         await cUsdt.connect(usdtSigner).mint(initialBal)
         const bal = await cUsdt.balanceOf(usdtSigner.address)
-        await cUsdt.connect(usdtSigner).transfer(tester.address, bal)
+        await cUsdt.connect(usdtSigner).approve(cUsdtVault.address, bal)
+        await cUsdtVault.connect(usdtSigner).deposit(bal, tester.address)
       }
     )
-    const cUsdtBal = await cUsdt.balanceOf(tester.address)
-    await cUsdt.connect(tester).approve(rToken.address, cUsdtBal)
+
+    const cUsdtVaultBal = await cUsdtVault.balanceOf(tester.address)
+    await cUsdtVault.connect(tester).approve(rToken.address, cUsdtVaultBal)
 
     // get saUsdc
     await whileImpersonating(
@@ -152,7 +176,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const saUsdcBal = await saUsdc.balanceOf(tester.address)
     await saUsdc.connect(tester).approve(rToken.address, saUsdcBal)
 
-    // get cUsdc
+    // get cUsdcVault
     await whileImpersonating(
       hre,
       whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
@@ -160,11 +184,12 @@ task('upgrade-checker', 'Mints all the tokens to an address')
         await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal)
         await cUsdc.connect(usdcSigner).mint(initialBal)
         const bal = await cUsdc.balanceOf(usdcSigner.address)
-        await cUsdc.connect(usdcSigner).transfer(tester.address, bal)
+        await cUsdc.connect(usdcSigner).approve(cUsdcVault.address, bal)
+        await cUsdcVault.connect(usdcSigner).deposit(bal, tester.address)
       }
     )
-    const cUsdcBal = await cUsdc.balanceOf(tester.address)
-    await cUsdc.connect(tester).approve(rToken.address, cUsdcBal)
+    const cUsdcVaultBal = await cUsdcVault.balanceOf(tester.address)
+    await cUsdcVault.connect(tester).approve(rToken.address, cUsdcVaultBal)
 
     console.log(`\nIssuing  ${formatEther(issueAmount)} RTokens...`)
     await rToken.connect(tester).issue(issueAmount)
@@ -180,46 +205,6 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     console.log('successfully minted RTokens')
 
-    // get saUsdt
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
-      async (usdtSigner) => {
-        await usdt.connect(usdtSigner).approve(saUsdt.address, initialBal.mul(20))
-        await saUsdt.connect(usdtSigner).deposit(usdtSigner.address, initialBal.mul(20), 0, true)
-      }
-    )
-
-    // get cUsdt
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDT!.toLowerCase()],
-      async (usdtSigner) => {
-        console.log(cUsdt.address, usdt.address, usdtSigner.address)
-        await usdt.connect(usdtSigner).approve(cUsdt.address, initialBal.mul(20))
-        await cUsdt.connect(usdtSigner).mint(initialBal.mul(20))
-      }
-    )
-
-    // get saUsdc
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
-      async (usdcSigner) => {
-        await usdc.connect(usdcSigner).approve(saUsdc.address, initialBal.mul(20))
-        await saUsdc.connect(usdcSigner).deposit(usdcSigner.address, initialBal.mul(20), 0, true)
-      }
-    )
-
-    // get cUsdc
-    await whileImpersonating(
-      hre,
-      whales[networkConfig['1'].tokens.USDC!.toLowerCase()],
-      async (usdcSigner) => {
-        await usdc.connect(usdcSigner).approve(cUsdc.address, initialBal.mul(20))
-        await cUsdc.connect(usdcSigner).mint(initialBal.mul(20))
-      }
-    )
     /*
 
       redeem
@@ -228,8 +213,12 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const redeemAmount = fp('5e4')
     await redeemRTokens(hre, tester, params.rtoken, redeemAmount)
 
-    // 2. Run the 2.1.0 checks
-    await runChecks2_1_0(hre, params.rtoken, params.governor)
+    // 3. Run the 3.0.0 checks
+    await pushOraclesForward(hre, params.rtoken)
+    await runChecks3_0_0(hre, params.rtoken, params.governor)
+
+    // we pushed the chain forward, so we need to keep the rToken SOUND
+    await pushOraclesForward(hre, params.rtoken)
 
     /*
 
@@ -240,20 +229,49 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     /*
 
-      switch basket and recollateralize
+      staking/unstaking
 
     */
+
+    // get RSR
+    const stakeAmount = fp('4e6')
+    const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
+    await whileImpersonating(
+      hre,
+      whales[networkConfig['1'].tokens.RSR!.toLowerCase()],
+      async (rsrSigner) => {
+        await rsr.connect(rsrSigner).transfer(tester.address, stakeAmount)
+      }
+    )
+
+    const balPrevRSR = await rsr.balanceOf(stRSR.address)
+    const balPrevStRSR = await stRSR.balanceOf(tester.address)
+
+    await stakeAndDelegateRsr(hre, rToken.address, tester.address)
+
+    expect(await rsr.balanceOf(stRSR.address)).to.equal(balPrevRSR.add(stakeAmount))
+    expect(await stRSR.balanceOf(tester.address)).to.be.gt(balPrevStRSR)
+
+    /*
+
+      switch basket and recollateralize - using Batch Auctions
+      Also check for custom redemption
+
+    */
+
+    // we pushed the chain forward, so we need to keep the rToken SOUND
     await pushOraclesForward(hre, params.rtoken)
 
     const bas = await basketHandler.getPrimeBasket()
     console.log(bas.erc20s)
 
+    const prevNonce = await basketHandler.nonce()
     const governor = await hre.ethers.getContractAt('Governance', params.governor)
     const timelockAddress = await governor.timelock()
     await whileImpersonating(hre, timelockAddress, async (tl) => {
       await basketHandler
         .connect(tl)
-        .setPrimeBasket([saUsdtAddress, cUsdtAddress], [fp('0.5'), fp('0.5')])
+        .setPrimeBasket([saUsdtAddress, cUsdtVaultAddress], [fp('0.5'), fp('0.5')])
       await basketHandler.connect(tl).refreshBasket()
       const tradingDelay = await backingManager.tradingDelay()
       await advanceBlocks(hre, tradingDelay / 12 + 1)
@@ -263,12 +281,25 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     const b = await basketHandler.getPrimeBasket()
     console.log(b.erc20s)
 
-    await recollateralize(hre, rToken.address)
+    /*
+       custom redemption
+    */
+    // Cannot do normal redeem
+    expect(await basketHandler.fullyCollateralized()).to.equal(false)
+    await expect(rToken.connect(tester).redeem(redeemAmount)).to.be.revertedWith(
+      'partial redemption; use redeemCustom'
+    )
+
+    // Do custom redemption on previous basket
+    await customRedeemRTokens(hre, tester, params.rtoken, prevNonce, redeemAmount)
+
+    // Recollateralize using Batch auctions
+    await recollateralize(hre, rToken.address, TradeKind.BATCH_AUCTION)
   })
 
 task('propose', 'propose a gov action')
   .addParam('rtoken', 'the address of the RToken being upgraded')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .setAction(async (params, hre) => {
-    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_2_1_0)
+    await proposeUpgrade(hre, params.rtoken, params.governor, proposal_3_0_0)
   })

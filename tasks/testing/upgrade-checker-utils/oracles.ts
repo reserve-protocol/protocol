@@ -1,12 +1,16 @@
 import { setCode } from '@nomicfoundation/hardhat-network-helpers'
 import { EACAggregatorProxyMock } from '@typechain/EACAggregatorProxyMock'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { BigNumber } from 'ethers'
 
 export const overrideOracle = async (
   hre: HardhatRuntimeEnvironment,
   oracleAddress: string
 ): Promise<EACAggregatorProxyMock> => {
-  const oracle = await hre.ethers.getContractAt('EACAggregatorProxy', oracleAddress)
+  const oracle = await hre.ethers.getContractAt(
+    'contracts/plugins/mocks/EACAggregatorProxyMock.sol:EACAggregatorProxy',
+    oracleAddress
+  )
   const aggregator = await oracle.aggregator()
   const accessController = await oracle.accessController()
   const initPrice = await oracle.latestRoundData()
@@ -47,4 +51,25 @@ export const pushOracleForward = async (hre: HardhatRuntimeEnvironment, asset: s
   const initPrice = await realChainlinkFeed.latestRoundData()
   const oracle = await overrideOracle(hre, realChainlinkFeed.address)
   await oracle.updateAnswer(initPrice.answer)
+}
+
+export const setOraclePrice = async (
+  hre: HardhatRuntimeEnvironment,
+  asset: string,
+  value: BigNumber
+) => {
+  const assetContract = await hre.ethers.getContractAt('TestIAsset', asset)
+  let chainlinkFeed = ''
+  try {
+    chainlinkFeed = await assetContract.chainlinkFeed()
+  } catch {
+    console.log(`no chainlink oracle found. skipping RTokenAsset ${asset}...`)
+    return
+  }
+  const realChainlinkFeed = await hre.ethers.getContractAt(
+    'AggregatorV3Interface',
+    await assetContract.chainlinkFeed()
+  )
+  const oracle = await overrideOracle(hre, realChainlinkFeed.address)
+  await oracle.updateAnswer(value)
 }
