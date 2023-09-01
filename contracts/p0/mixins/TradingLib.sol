@@ -60,7 +60,7 @@ library TradingLibP0 {
         );
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellHigh); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, trade.buy, trade.prices.sellLow); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
