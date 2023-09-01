@@ -39,6 +39,8 @@ import {
 } from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import {
+  expectDecayedPrice,
+  expectExactPrice,
   expectPrice,
   expectRTokenPrice,
   expectUnpriced,
@@ -582,18 +584,13 @@ describe('Collateral contracts', () => {
       )
     })
 
-    it('Should become unpriced if price is zero', async () => {
+    it('Should handle prices correctly when price is zero', async () => {
       const compInitPrice = await tokenCollateral.price()
       const aaveInitPrice = await aTokenCollateral.price()
       const rsrInitPrice = await cTokenCollateral.price()
 
       // Update values in Oracles to 0
       await setOraclePrice(tokenCollateral.address, bn('0'))
-
-      // Should be unpriced
-      await expectUnpriced(cTokenCollateral.address)
-      await expectUnpriced(tokenCollateral.address)
-      await expectUnpriced(aTokenCollateral.address)
 
       // Fallback prices should be initial prices
       let [lotLow, lotHigh] = await tokenCollateral.price()
@@ -605,6 +602,14 @@ describe('Collateral contracts', () => {
       ;[lotLow, lotHigh] = await aTokenCollateral.price()
       expect(lotLow).to.eq(aaveInitPrice[0])
       expect(lotHigh).to.eq(aaveInitPrice[1])
+
+      // Advance past timeouts
+      await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+
+      // Should be unpriced
+      await expectUnpriced(cTokenCollateral.address)
+      await expectUnpriced(tokenCollateral.address)
+      await expectUnpriced(aTokenCollateral.address)
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
@@ -1259,6 +1264,8 @@ describe('Collateral contracts', () => {
     })
 
     it('Should calculate prices correctly', async function () {
+      const initialPrice = await nonFiatCollateral.price()
+
       // Check initial prices
       await expectPrice(nonFiatCollateral.address, fp('20000'), ORACLE_ERROR, true)
 
@@ -1268,26 +1275,37 @@ describe('Collateral contracts', () => {
       // Check new prices
       await expectPrice(nonFiatCollateral.address, fp('22000'), ORACLE_ERROR, true)
 
-      // Unpriced if price is zero - Update Oracles and check prices
+      // Cached but IFFY if price is zero
       await targetUnitOracle.updateAnswer(bn('0'))
-      await expectUnpriced(nonFiatCollateral.address)
-
-      // When refreshed, sets status to IFFY
       await nonFiatCollateral.refresh()
       expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await expectExactPrice(nonFiatCollateral.address, initialPrice)
+
+      // Should become disabled after just ORACLE_TIMEOUT
+      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await targetUnitOracle.updateAnswer(bn('0'))
+      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      await expectDecayedPrice(nonFiatCollateral.address)
 
       // Restore price
       await targetUnitOracle.updateAnswer(bn('20000e8'))
+      await referenceUnitOracle.updateAnswer(bn('1e8'))
       await nonFiatCollateral.refresh()
-      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expectExactPrice(nonFiatCollateral.address, initialPrice)
 
-      // Check the other oracle
+      // Check the other oracle's impact
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expectExactPrice(nonFiatCollateral.address, initialPrice)
+
+      // Advance past oracle timeout
+      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expectDecayedPrice(nonFiatCollateral.address)
+
+      // Advance past price timeout
+      await advanceTime(PRICE_TIMEOUT.toString())
       await referenceUnitOracle.updateAnswer(bn('0'))
       await expectUnpriced(nonFiatCollateral.address)
-
-      // When refreshed, sets status to IFFY
-      await nonFiatCollateral.refresh()
-      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
@@ -1550,20 +1568,19 @@ describe('Collateral contracts', () => {
     })
 
     it('Should calculate prices correctly', async function () {
+      // Check initial prices
       await expectPrice(cTokenNonFiatCollateral.address, fp('400'), ORACLE_ERROR, true)
-
-      // Check refPerTok initial values
       expect(await cTokenNonFiatCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Increase rate to double
       await cNonFiatTokenVault.setExchangeRate(fp(2))
       await cTokenNonFiatCollateral.refresh()
 
-      // Check price doubled
-      await expectPrice(cTokenNonFiatCollateral.address, fp('800'), ORACLE_ERROR, true)
-
       // RefPerTok also doubles in this case
       expect(await cTokenNonFiatCollateral.refPerTok()).to.equal(fp('0.04'))
+
+      // Check new prices
+      await expectPrice(cTokenNonFiatCollateral.address, fp('800'), ORACLE_ERROR, true)
 
       // Update values in Oracle increase by 10%
       await targetUnitOracle.updateAnswer(bn('22000e8')) // $22k
@@ -1571,26 +1588,44 @@ describe('Collateral contracts', () => {
       // Check new price
       await expectPrice(cTokenNonFiatCollateral.address, fp('880'), ORACLE_ERROR, true)
 
-      // Unpriced if price is zero - Update Oracles and check prices
-      await targetUnitOracle.updateAnswer(bn('0'))
-      await expectUnpriced(cTokenNonFiatCollateral.address)
-
-      // When refreshed, sets status to IFFY
-      await cTokenNonFiatCollateral.refresh()
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-      // Restore
-      await targetUnitOracle.updateAnswer(bn('22000e8'))
+      // Should be SOUND
       await cTokenNonFiatCollateral.refresh()
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Revert if price is zero - Update the other Oracle
-      await referenceUnitOracle.updateAnswer(bn('0'))
-      await expectUnpriced(cTokenNonFiatCollateral.address)
+      const initialPrice = await cTokenNonFiatCollateral.price()
 
-      // When refreshed, sets status to IFFY
+      // Cached but IFFY when price becomes zero
+      await targetUnitOracle.updateAnswer(bn('0'))
       await cTokenNonFiatCollateral.refresh()
       expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await expectExactPrice(cTokenNonFiatCollateral.address, initialPrice)
+
+      // Should become disabled after just ORACLE_TIMEOUT
+      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await targetUnitOracle.updateAnswer(bn('0'))
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      await cTokenNonFiatCollateral.refresh()
+      await expectDecayedPrice(cTokenNonFiatCollateral.address)
+
+      // Restore price
+      await targetUnitOracle.updateAnswer(bn('22000e8'))
+      await referenceUnitOracle.updateAnswer(bn('1e8'))
+      await cTokenNonFiatCollateral.refresh()
+      await expectExactPrice(cTokenNonFiatCollateral.address, initialPrice)
+
+      // Check the other oracle's impact
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expectExactPrice(cTokenNonFiatCollateral.address, initialPrice)
+
+      // Advance past oracle timeout
+      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expectDecayedPrice(cTokenNonFiatCollateral.address)
+
+      // Advance past price timeout
+      await advanceTime(PRICE_TIMEOUT.toString())
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expectUnpriced(cTokenNonFiatCollateral.address)
     })
 
     it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
@@ -1767,9 +1802,17 @@ describe('Collateral contracts', () => {
       // Check new prices
       await expectPrice(selfReferentialCollateral.address, fp('1.1'), ORACLE_ERROR, true)
 
-      // Unpriced if price is zero - Update Oracles and check prices
+      await selfReferentialCollateral.refresh()
+      const initialPrice = await selfReferentialCollateral.price()
+
+      // Cached price if oracle price is zero
       await setOraclePrice(selfReferentialCollateral.address, bn(0))
-      await expectUnpriced(selfReferentialCollateral.address)
+      await expectExactPrice(selfReferentialCollateral.address, initialPrice)
+
+      // Decay starts after oracle timeout
+      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await setOraclePrice(selfReferentialCollateral.address, bn(0))
+      await expectDecayedPrice(selfReferentialCollateral.address)
 
       // When refreshed, sets status to IFFY
       await selfReferentialCollateral.refresh()
@@ -1786,6 +1829,12 @@ describe('Collateral contracts', () => {
       // Another call would not change the state
       await selfReferentialCollateral.refresh()
       expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Final price checks
+      await expectDecayedPrice(selfReferentialCollateral.address)
+      await advanceTime(PRICE_TIMEOUT.toString())
+      await setOraclePrice(selfReferentialCollateral.address, bn(0))
+      await expectUnpriced(selfReferentialCollateral.address)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
@@ -1978,13 +2027,26 @@ describe('Collateral contracts', () => {
       // Check new prices
       await expectPrice(cTokenSelfReferentialCollateral.address, fp('0.044'), ORACLE_ERROR, true)
 
-      // Unpriced if price is zero - Update Oracles and check prices
+      await cTokenSelfReferentialCollateral.refresh()
+      const initialPrice = await cTokenSelfReferentialCollateral.price()
+      await setOraclePrice(cTokenSelfReferentialCollateral.address, bn(0))
+      await expectExactPrice(cTokenSelfReferentialCollateral.address, initialPrice)
+
+      // Decays if price is zero
+      await cTokenSelfReferentialCollateral.refresh()
+      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await setOraclePrice(cTokenSelfReferentialCollateral.address, bn(0))
+      await expectDecayedPrice(cTokenSelfReferentialCollateral.address)
+
+      // Unpriced after price timeout
+      await advanceTime(PRICE_TIMEOUT.toString())
       await setOraclePrice(cTokenSelfReferentialCollateral.address, bn(0))
       await expectUnpriced(cTokenSelfReferentialCollateral.address)
 
-      // When refreshed, sets status to IFFY
+      // When refreshed, sets status to DISABLED
       await cTokenSelfReferentialCollateral.refresh()
-      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.DISABLED)
     })
 
     it('Enters DISABLED state when exchangeRateCurrent() reverts', async () => {
@@ -2221,10 +2283,12 @@ describe('Collateral contracts', () => {
 
       // Check new prices
       await expectPrice(eurFiatCollateral.address, fp('2'), ORACLE_ERROR, true)
+      await eurFiatCollateral.refresh()
+      const initialPrice = await eurFiatCollateral.price()
 
-      // Unpriced if price is zero - Update Oracles and check prices
+      // Decays if price is zero
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expectUnpriced(eurFiatCollateral.address)
+      await expectExactPrice(eurFiatCollateral.address, initialPrice)
 
       // When refreshed, sets status to IFFY
       await eurFiatCollateral.refresh()
@@ -2239,6 +2303,18 @@ describe('Collateral contracts', () => {
       await targetUnitOracle.updateAnswer(bn('0'))
       await eurFiatCollateral.refresh()
       expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // Decays if price is zero
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expectExactPrice(eurFiatCollateral.address, initialPrice)
+      await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expectDecayedPrice(eurFiatCollateral.address)
+
+      // After timeout, unpriced
+      await advanceTime(PRICE_TIMEOUT.toString())
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expectUnpriced(eurFiatCollateral.address)
     })
 
     it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
