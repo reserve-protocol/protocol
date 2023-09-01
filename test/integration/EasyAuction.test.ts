@@ -551,10 +551,11 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     })
 
     it('should be able to scoop entire auction cheaply when minBuyAmount = 0', async () => {
-      // Make collateral0 lotPrice (0, 0)
+      // Make collateral0 price (0, FIX_MAX)
       await setOraclePrice(collateral0.address, bn('0'))
       await collateral0.refresh()
       await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+      await setOraclePrice(collateral0.address, bn('0'))
       await setOraclePrice(await assetRegistry.toAsset(rsr.address), bn('1e8'))
 
       // force a revenue dust auction
