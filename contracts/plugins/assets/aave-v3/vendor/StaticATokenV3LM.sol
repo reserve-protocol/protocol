@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
+/* solhint-disable */
+
 import { IPool } from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import { DataTypes, ReserveConfiguration } from "@aave/core-v3/contracts/protocol/libraries/configuration/ReserveConfiguration.sol";
 import { IScaledBalanceToken } from "@aave/core-v3/contracts/interfaces/IScaledBalanceToken.sol";
@@ -744,3 +746,5 @@ contract StaticATokenV3LM is
         }
     }
 }
+
+/* solhint-enable */

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.10;
 
+/* solhint-disable max-line-length */
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPool } from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import { IAaveIncentivesController } from "@aave/core-v3/contracts/interfaces/IAaveIncentivesController.sol";
@@ -214,3 +216,5 @@ interface IStaticATokenV3LM is IInitializableStaticATokenLM {
      */
     function isRegisteredRewardToken(address reward) external view returns (bool);
 }
+
+/* solhint-enable max-line-length */
