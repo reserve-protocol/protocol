@@ -214,6 +214,7 @@ export const stableOpts = {
   chainlinkDefaultAnswer: 1e8,
   itChecksPriceChanges: it,
   getExpectedPrice,
+  toleranceDivisor: bn('1e9'), // 1e15 adjusted for ((x + 1)/x) timestamp precision
 }
 
 collateralTests(stableOpts)

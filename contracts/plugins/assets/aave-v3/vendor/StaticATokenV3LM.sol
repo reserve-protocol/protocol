@@ -23,6 +23,8 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import { IRewardable } from "../../../../interfaces/IRewardable.sol";
+
 /**
  * @title StaticATokenLM
  * @notice Wrapper smart contract that allows to deposit tokens on the Aave protocol and receive
@@ -35,7 +37,8 @@ contract StaticATokenV3LM is
     Initializable,
     ERC20("STATIC__aToken_IMPL", "STATIC__aToken_IMPL", 18),
     IStaticATokenV3LM,
-    IERC4626
+    IERC4626,
+    IRewardable
 {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -275,7 +278,22 @@ contract StaticATokenV3LM is
 
     /// @dev Added by Reserve
     function claimRewards() external {
-        _claimRewardsOnBehalf(msg.sender, msg.sender, INCENTIVES_CONTROLLER.getRewardsList());
+        address[] memory rewardsList = INCENTIVES_CONTROLLER.getRewardsList();
+
+        for (uint256 i = 0; i < rewardsList.length; i++) {
+            address currentReward = rewardsList[i];
+
+            uint256 prevBalance = IERC20(currentReward).balanceOf(msg.sender);
+
+            address[] memory rewardsToCollect = new address[](1);
+            rewardsToCollect[0] = currentReward;
+            _claimRewardsOnBehalf(msg.sender, msg.sender, rewardsToCollect);
+
+            emit RewardsClaimed(
+                IERC20(currentReward),
+                IERC20(currentReward).balanceOf(msg.sender) - prevBalance
+            );
+        }
     }
 
     ///@inheritdoc IStaticATokenV3LM
