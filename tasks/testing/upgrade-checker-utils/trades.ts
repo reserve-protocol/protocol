@@ -77,6 +77,7 @@ export const runBatchTrade = async (
   const lastTimestamp = await getLatestBlockTimestamp(hre)
   await advanceTime(hre, BigNumber.from(endTime).sub(lastTimestamp).toString())
   await trader.settleTrade(tradeToken)
+
   console.log(`Settled trade for ${logToken(buyTokenAddress)}.`)
 }
 

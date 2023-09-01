@@ -90,7 +90,6 @@ export const customRedeemRTokens = async (
 ) => {
   console.log(`\nCustom Redeeming ${formatEther(redeemAmount)}...`)
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
-  const main = await hre.ethers.getContractAt('IMain', await rToken.main())
 
   const FacadeReadFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeRead')
   const facadeRead = <FacadeRead>await FacadeReadFactory.deploy()
@@ -105,13 +104,6 @@ export const customRedeemRTokens = async (
   const expectedBalances: Balances = {}
   let log = ''
   for (const erc20 in expectedTokens) {
-    console.log('Token: ', expectedTokens[erc20])
-    console.log(
-      'Balance: ',
-      await (
-        await hre.ethers.getContractAt('ERC20Mock', expectedTokens[erc20])
-      ).balanceOf(await main.backingManager())
-    )
     expectedBalances[expectedTokens[erc20]] = expectedQuantities[erc20]
     log += `\n\t${expectedTokens[erc20]}: ${expectedQuantities[erc20]}`
   }
@@ -197,11 +189,13 @@ const recollateralizeBatch = async (hre: HardhatRuntimeEnvironment, rtokenAddres
       await runBatchTrade(hre, backingManager, newSellToken, false)
     }
 
+    await advanceTime(hre, ONE_PERIOD.toString())
+
     // Set tradesRemain
     ;[tradesRemain, , ,] = await facadeAct.callStatic.nextRecollateralizationAuction(
-      backingManager.address
+      backingManager.address,
+      TradeKind.BATCH_AUCTION
     )
-    await advanceTime(hre, ONE_PERIOD.toString())
   }
 
   const basketStatus = await basketHandler.status()
