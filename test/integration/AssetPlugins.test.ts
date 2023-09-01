@@ -19,7 +19,14 @@ import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { advanceBlocks, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
-import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../utils/oracles'
+import {
+  expectDecayedPrice,
+  expectExactPrice,
+  expectPrice,
+  expectRTokenPrice,
+  expectUnpriced,
+  setOraclePrice,
+} from '../utils/oracles'
 import forkBlockNumber from './fork-block-numbers'
 import {
   Asset,
@@ -39,6 +46,7 @@ import {
   MockV3Aggregator,
   NonFiatCollateral,
   RTokenAsset,
+  SelfReferentialCollateral,
   StaticATokenLM,
   TestIBackingManager,
   TestIBasketHandler,
@@ -969,7 +977,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             cTokenAddress: networkConfig[chainId].tokens.cETH || '',
             cTokenCollateral: cETHCollateral,
             price: fp('1859.17'), // approx price June 6, 2022
-            refPerTok: fp('0.020064224962890636'), // for weth on June 2022
             targetName: 'ETH',
           },
         ]
@@ -1114,13 +1121,24 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             ORACLE_ERROR,
             networkConfig[chainId].tokens.stkAAVE || '',
             config.rTokenMaxTradeVolume,
-            MAX_ORACLE_TIMEOUT
+            ORACLE_TIMEOUT
           )
         )
+        await setOraclePrice(zeroPriceAsset.address, bn('1e10'))
+        await zeroPriceAsset.refresh()
 
+        const initialPrice = await zeroPriceAsset.price()
         await setOraclePrice(zeroPriceAsset.address, bn(0))
+        await expectExactPrice(zeroPriceAsset.address, initialPrice)
 
-        // Unpriced
+        // After oracle timeout, begins decay
+        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await setOraclePrice(zeroPriceAsset.address, bn(0))
+        await expectDecayedPrice(zeroPriceAsset.address)
+
+        // After price timeout, unpriced
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await setOraclePrice(zeroPriceAsset.address, bn(0))
         await expectUnpriced(zeroPriceAsset.address)
       })
 
@@ -1183,19 +1201,30 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           oracleError: ORACLE_ERROR,
           erc20: dai.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: MAX_ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
         })
+        await setOraclePrice(zeroFiatCollateral.address, bn('1e8'))
         await zeroFiatCollateral.refresh()
+        expect(await zeroFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
+        const initialPrice = await zeroFiatCollateral.price()
         await setOraclePrice(zeroFiatCollateral.address, bn(0))
+        await expectExactPrice(zeroFiatCollateral.address, initialPrice)
 
-        // Unpriced
+        // After oracle timeout, begins decay
+        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await setOraclePrice(zeroFiatCollateral.address, bn(0))
+        await expectDecayedPrice(zeroFiatCollateral.address)
+
+        // After price timeout, unpriced
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await setOraclePrice(zeroFiatCollateral.address, bn(0))
         await expectUnpriced(zeroFiatCollateral.address)
 
-        // Refresh should mark status IFFY
+        // Marked IFFY after refresh
         await zeroFiatCollateral.refresh()
         expect(await zeroFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       })
@@ -1258,18 +1287,29 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: cDaiVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold,
             delayUntilDefault,
           },
           REVENUE_HIDING
         )
+        await setOraclePrice(zeropriceCtokenCollateral.address, bn('1e8'))
         await zeropriceCtokenCollateral.refresh()
+        expect(await zeropriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
+        const initialPrice = await zeropriceCtokenCollateral.price()
         await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
+        await expectExactPrice(zeropriceCtokenCollateral.address, initialPrice)
 
-        // Unpriced
+        // After oracle timeout, begins decay
+        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
+        await expectDecayedPrice(zeropriceCtokenCollateral.address)
+
+        // After price timeout, unpriced
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
         await expectUnpriced(zeropriceCtokenCollateral.address)
 
         // Refresh should mark status IFFY
@@ -1335,18 +1375,29 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: stataDai.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
             defaultThreshold,
             delayUntilDefault,
           },
           REVENUE_HIDING
         )
+        await setOraclePrice(zeroPriceAtokenCollateral.address, bn('1e8'))
         await zeroPriceAtokenCollateral.refresh()
+        expect(await zeroPriceAtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
+        const initialPrice = await zeroPriceAtokenCollateral.price()
         await setOraclePrice(zeroPriceAtokenCollateral.address, bn(0))
+        await expectExactPrice(zeroPriceAtokenCollateral.address, initialPrice)
 
-        // Unpriced
+        // After oracle timeout, begins decay
+        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await setOraclePrice(zeroPriceAtokenCollateral.address, bn(0))
+        await expectDecayedPrice(zeroPriceAtokenCollateral.address)
+
+        // After price timeout, unpriced
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await setOraclePrice(zeroPriceAtokenCollateral.address, bn(0))
         await expectUnpriced(zeroPriceAtokenCollateral.address)
 
         // Refresh should mark status IFFY
@@ -1403,27 +1454,30 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: wbtc.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('BTC'),
             defaultThreshold,
             delayUntilDefault,
           },
           mockChainlinkFeed.address,
-          MAX_ORACLE_TIMEOUT
+          ORACLE_TIMEOUT
         )
+        await setOraclePrice(zeroPriceNonFiatCollateral.address, bn('1e10'))
         await zeroPriceNonFiatCollateral.refresh()
 
-        // Set price = 0
-        const chainlinkFeedAddr = await zeroPriceNonFiatCollateral.chainlinkFeed()
-        const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
-        await v3Aggregator.updateAnswer(bn(0))
+        const initialPrice = await zeroPriceNonFiatCollateral.price()
+        await setOraclePrice(zeroPriceNonFiatCollateral.address, bn(0))
+        await expectExactPrice(zeroPriceNonFiatCollateral.address, initialPrice)
 
-        // Unpriced
+        // After oracle timeout, begins decay
+        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await setOraclePrice(zeroPriceNonFiatCollateral.address, bn(0))
+        await expectDecayedPrice(zeroPriceNonFiatCollateral.address)
+
+        // After price timeout, unpriced
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await setOraclePrice(zeroPriceNonFiatCollateral.address, bn(0))
         await expectUnpriced(zeroPriceNonFiatCollateral.address)
-
-        // Refresh should mark status IFFY
-        await zeroPriceNonFiatCollateral.refresh()
-        expect(await zeroPriceNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       })
 
       it('Should handle invalid/stale Price - Collateral - CTokens Non-Fiat', async () => {
@@ -1480,29 +1534,32 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
               oracleError: ORACLE_ERROR,
               erc20: cWBTCVault.address,
               maxTradeVolume: config.rTokenMaxTradeVolume,
-              oracleTimeout: MAX_ORACLE_TIMEOUT,
+              oracleTimeout: ORACLE_TIMEOUT,
               targetName: ethers.utils.formatBytes32String('BTC'),
               defaultThreshold,
               delayUntilDefault,
             },
             mockChainlinkFeed.address,
-            MAX_ORACLE_TIMEOUT,
+            ORACLE_TIMEOUT,
             REVENUE_HIDING
           )
         )
+        await setOraclePrice(zeropriceCtokenNonFiatCollateral.address, bn('1e10'))
         await zeropriceCtokenNonFiatCollateral.refresh()
 
-        // Set price = 0
-        const chainlinkFeedAddr = await zeropriceCtokenNonFiatCollateral.targetUnitChainlinkFeed()
-        const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
-        await v3Aggregator.updateAnswer(bn(0))
+        const initialPrice = await zeropriceCtokenNonFiatCollateral.price()
+        await setOraclePrice(zeropriceCtokenNonFiatCollateral.address, bn(0))
+        await expectExactPrice(zeropriceCtokenNonFiatCollateral.address, initialPrice)
 
-        // Unpriced
+        // After oracle timeout, begins decay
+        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await setOraclePrice(zeropriceCtokenNonFiatCollateral.address, bn(0))
+        await expectDecayedPrice(zeropriceCtokenNonFiatCollateral.address)
+
+        // After price timeout, unpriced
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await setOraclePrice(zeropriceCtokenNonFiatCollateral.address, bn(0))
         await expectUnpriced(zeropriceCtokenNonFiatCollateral.address)
-
-        // Refresh should mark status IFFY
-        await zeropriceCtokenNonFiatCollateral.refresh()
-        expect(await zeropriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       })
 
       it('Should handle invalid/stale Price - Collateral - Self-Referential', async () => {
@@ -1518,8 +1575,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await wethCollateral.status()).to.equal(CollateralStatus.IFFY)
 
         // Self referential collateral with no price
-        const nonpriceSelfReferentialCollateral: FiatCollateral = <FiatCollateral>await (
-          await ethers.getContractFactory('FiatCollateral')
+        const nonpriceSelfReferentialCollateral: SelfReferentialCollateral = <
+          SelfReferentialCollateral
+        >await (
+          await ethers.getContractFactory('SelfReferentialCollateral')
         ).deploy({
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
@@ -1540,28 +1599,40 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await nonpriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
 
         // Self referential collateral with zero price
-        const zeroPriceSelfReferentialCollateral: FiatCollateral = <FiatCollateral>await (
-          await ethers.getContractFactory('FiatCollateral')
+        const zeroPriceSelfReferentialCollateral: SelfReferentialCollateral = <
+          SelfReferentialCollateral
+        >await (
+          await ethers.getContractFactory('SelfReferentialCollateral')
         ).deploy({
           priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: weth.address,
           maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: MAX_ORACLE_TIMEOUT,
+          oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String('ETH'),
           defaultThreshold: bn('0'),
           delayUntilDefault,
         })
+        await setOraclePrice(zeroPriceSelfReferentialCollateral.address, bn('1e10'))
         await zeroPriceSelfReferentialCollateral.refresh()
+        expect(await zeroPriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-        // Set price = 0
+        const initialPrice = await zeroPriceSelfReferentialCollateral.price()
         await setOraclePrice(zeroPriceSelfReferentialCollateral.address, bn(0))
+        await expectExactPrice(zeroPriceSelfReferentialCollateral.address, initialPrice)
 
-        // Unpriced
+        // After oracle timeout, begins decay
+        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await setOraclePrice(zeroPriceSelfReferentialCollateral.address, bn(0))
+        await expectDecayedPrice(zeroPriceSelfReferentialCollateral.address)
+
+        // After price timeout, unpriced
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await setOraclePrice(zeroPriceSelfReferentialCollateral.address, bn(0))
         await expectUnpriced(zeroPriceSelfReferentialCollateral.address)
 
-        // Refresh should mark status IFFY
+        // Refresh should mark status DISABLED
         await zeroPriceSelfReferentialCollateral.refresh()
         expect(await zeroPriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
       })
@@ -1621,7 +1692,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: cETHVault.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('ETH'),
             defaultThreshold: bn('0'),
             delayUntilDefault,
@@ -1629,12 +1700,24 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           REVENUE_HIDING,
           await weth.decimals()
         )
+        await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn('1e10'))
         await zeroPriceCtokenSelfReferentialCollateral.refresh()
+        expect(await zeroPriceCtokenSelfReferentialCollateral.status()).to.equal(
+          CollateralStatus.SOUND
+        )
 
-        // Set price = 0
+        const initialPrice = await zeroPriceCtokenSelfReferentialCollateral.price()
         await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn(0))
+        await expectExactPrice(zeroPriceCtokenSelfReferentialCollateral.address, initialPrice)
 
-        // Unpriced
+        // After oracle timeout, begins decay
+        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn(0))
+        await expectDecayedPrice(zeroPriceCtokenSelfReferentialCollateral.address)
+
+        // After price timeout, unpriced
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn(0))
         await expectUnpriced(zeroPriceCtokenSelfReferentialCollateral.address)
 
         // Refresh should mark status IFFY
@@ -1692,22 +1775,30 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             oracleError: ORACLE_ERROR,
             erc20: eurt.address,
             maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: MAX_ORACLE_TIMEOUT,
+            oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('EUR'),
             defaultThreshold,
             delayUntilDefault,
           },
           mockChainlinkFeed.address,
-          MAX_ORACLE_TIMEOUT
+          ORACLE_TIMEOUT
         )
+        await setOraclePrice(invalidPriceEURCollateral.address, bn('1e10'))
         await invalidPriceEURCollateral.refresh()
+        expect(await invalidPriceEURCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-        // Set price = 0
-        const chainlinkFeedAddr = await invalidPriceEURCollateral.targetUnitChainlinkFeed()
-        const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
-        await v3Aggregator.updateAnswer(bn(0))
+        const initialPrice = await invalidPriceEURCollateral.price()
+        await setOraclePrice(invalidPriceEURCollateral.address, bn(0))
+        await expectExactPrice(invalidPriceEURCollateral.address, initialPrice)
 
-        //  With zero price
+        // After oracle timeout, begins decay
+        await advanceTime(ORACLE_TIMEOUT.add(1).toString())
+        await setOraclePrice(invalidPriceEURCollateral.address, bn(0))
+        await expectDecayedPrice(invalidPriceEURCollateral.address)
+
+        // After price timeout, unpriced
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await setOraclePrice(invalidPriceEURCollateral.address, bn(0))
         await expectUnpriced(invalidPriceEURCollateral.address)
 
         // Refresh should mark status IFFY
