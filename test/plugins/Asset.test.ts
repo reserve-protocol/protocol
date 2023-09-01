@@ -260,11 +260,8 @@ describe('Assets contracts #fast', () => {
       await setOraclePrice(compAsset.address, bn('0'))
       await setOraclePrice(aaveAsset.address, bn('0'))
       await setOraclePrice(rsrAsset.address, bn('0'))
-
-      // Should be unpriced
-      await expectUnpriced(rsrAsset.address)
-      await expectUnpriced(compAsset.address)
-      await expectUnpriced(aaveAsset.address)
+      await setOraclePrice(collateral0.address, bn(0))
+      await setOraclePrice(collateral1.address, bn(0))
 
       // Fallback prices should be initial prices
       let [lotLow, lotHigh] = await compAsset.price()
@@ -276,18 +273,18 @@ describe('Assets contracts #fast', () => {
       ;[lotLow, lotHigh] = await aaveAsset.price()
       expect(lotLow).to.eq(aaveInitPrice[0])
       expect(lotHigh).to.eq(aaveInitPrice[1])
-
-      // Update values of underlying tokens of RToken to 0
-      await setOraclePrice(collateral0.address, bn(0))
-      await setOraclePrice(collateral1.address, bn(0))
-
-      // RTokenAsset should be unpriced now
-      await expectUnpriced(rTokenAsset.address)
-
-      // Should have initial lot price
       ;[lotLow, lotHigh] = await rTokenAsset.price()
       expect(lotLow).to.eq(rTokenInitPrice[0])
       expect(lotHigh).to.eq(rTokenInitPrice[1])
+
+      // Advance past timeouts
+      await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+
+      // Should be unpriced now
+      await expectUnpriced(rsrAsset.address)
+      await expectUnpriced(compAsset.address)
+      await expectUnpriced(aaveAsset.address)
+      await expectUnpriced(rTokenAsset.address)
     })
 
     it('Should return 0 price for RTokenAsset in full haircut scenario', async () => {
