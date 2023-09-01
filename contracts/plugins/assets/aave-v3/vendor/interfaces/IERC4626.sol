@@ -3,6 +3,8 @@
 
 pragma solidity ^0.8.10;
 
+/* solhint-disable max-line-length */
+
 /**
  * @dev Interface of the ERC4626 "Tokenized Vault Standard", as defined in
  * https://eips.ethereum.org/EIPS/eip-4626[ERC-4626].
@@ -239,3 +241,5 @@ interface IERC4626 {
         address owner
     ) external returns (uint256 assets);
 }
+
+/* solhint-enable max-line-length */

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.10;
 
+/* solhint-disable max-line-length */
+
 enum Rounding {
     UP,
     DOWN
@@ -40,3 +42,5 @@ library RayMathExplicitRounding {
         return a / WAD_RAY_RATIO;
     }
 }
+
+/* solhint-enable max-line-length */

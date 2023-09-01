@@ -6,7 +6,7 @@ import {
 } from '../pluginTestTypes'
 import { mintWPool, makeW3PoolStable, makeWSUSDPoolStable, resetFork } from './helpers'
 import { ethers } from 'hardhat'
-import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
+import { ContractFactory, BigNumberish } from 'ethers'
 import {
   ERC20Mock,
   IERC20,

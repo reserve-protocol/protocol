@@ -4,11 +4,14 @@ pragma solidity 0.8.19;
 import { StaticATokenV3LM, IPool, IRewardsController } from "../vendor/StaticATokenV3LM.sol";
 
 contract MockStaticATokenV3LM is StaticATokenV3LM {
-    uint256 customRate;
+    uint256 public customRate;
 
+    /* solhint-disable no-empty-blocks */
     constructor(IPool pool, IRewardsController rewardsController)
         StaticATokenV3LM(pool, rewardsController)
     {}
+
+    /* solhint-enable no-empty-blocks */
 
     function rate() public view override returns (uint256) {
         if (customRate != 0) {
@@ -18,7 +21,7 @@ contract MockStaticATokenV3LM is StaticATokenV3LM {
         return POOL.getReserveNormalizedIncome(_aTokenUnderlying);
     }
 
-    function mock_setCustomRate(uint256 _customRate) external {
+    function mockSetCustomRate(uint256 _customRate) external {
         customRate = _customRate;
     }
 }

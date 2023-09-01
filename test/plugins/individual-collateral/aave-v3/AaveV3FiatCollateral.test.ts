@@ -141,7 +141,7 @@ const modifyRefPerTok = async (ctx: AaveV3FiatCollateralFixtureContext, changeFa
   const staticWrapper = ctx.staticWrapper
   const currentRate = await staticWrapper.rate()
 
-  await staticWrapper.mock_setCustomRate(currentRate.mul(changeFactor).div(100))
+  await staticWrapper.mockSetCustomRate(currentRate.mul(changeFactor).div(100))
 }
 
 const reduceRefPerTok = async (

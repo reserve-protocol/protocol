@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.10;
 
+/* solhint-disable */
+
 import { IAaveIncentivesController } from "@aave/core-v3/contracts/interfaces/IAaveIncentivesController.sol";
 
 interface IAToken {
@@ -16,3 +18,5 @@ interface IAToken {
      */
     function scaledTotalSupply() external view returns (uint256);
 }
+
+/* solhint-enable */
