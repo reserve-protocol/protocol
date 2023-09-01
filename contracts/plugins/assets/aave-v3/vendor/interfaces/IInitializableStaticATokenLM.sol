@@ -17,7 +17,11 @@ interface IInitializableStaticATokenLM {
      * @param staticATokenSymbol The symbol of the Static aToken
      * @dev Used to be `Initialized` but changed to avoid duplicate events
      **/
-    event InitializedStaticATokenLM(address indexed aToken, string staticATokenName, string staticATokenSymbol);
+    event InitializedStaticATokenLM(
+        address indexed aToken,
+        string staticATokenName,
+        string staticATokenSymbol
+    );
 
     /**
      * @dev Initializes the StaticATokenLM
