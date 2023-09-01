@@ -104,7 +104,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
     // Move past trading delay
     await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
 
-    await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION) // BATCH_AUCTION
+    await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION) // DUTCH_AUCTION
 
     // 3. Run various checks
     const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()
@@ -254,7 +254,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
 
     /*
 
-      switch basket and recollateralize - using Dutch Auctions
+      switch basket and recollateralize - using Batch Auctions
       Also check for custom redemption
 
     */
