@@ -99,12 +99,17 @@ task('upgrade-checker', 'Mints all the tokens to an address')
       'BackingManagerP1',
       await main.backingManager()
     )
+    const broker = await hre.ethers.getContractAt('BrokerP1', await main.broker())
     const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
     // Move past trading delay
     await advanceTime(hre, (await backingManager.tradingDelay()) + 1)
 
-    await recollateralize(hre, rToken.address, TradeKind.DUTCH_AUCTION) // DUTCH_AUCTION
+    await recollateralize(
+      hre,
+      rToken.address,
+      (await broker.dutchAuctionLength()) > 0 ? TradeKind.DUTCH_AUCTION : TradeKind.BATCH_AUCTION
+    )
 
     // 3. Run various checks
     const saUsdtAddress = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()

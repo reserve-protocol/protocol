@@ -5,7 +5,7 @@ import { Proposal } from '#/utils/subgraph'
 import { IImplementations, networkConfig } from '#/common/configuration'
 import { bn, fp, toBNDecimals } from '#/common/numbers'
 import { CollateralStatus, TradeKind, ZERO_ADDRESS } from '#/common/constants'
-import { setOraclePrice } from '../oracles'
+import { pushOraclesForward, setOraclePrice } from '../oracles'
 import { whileImpersonating } from '#/utils/impersonation'
 import { whales } from '../constants'
 import { getTokens, runDutchTrade } from '../trades'
@@ -29,7 +29,12 @@ import {
   MainP1,
   RecollateralizationLibP1,
 } from '../../../../typechain'
-import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '#/utils/time'
+import {
+  advanceTime,
+  advanceToTimestamp,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+} from '#/utils/time'
 
 export default async (
   hre: HardhatRuntimeEnvironment,
@@ -54,10 +59,14 @@ export default async (
     'BackingManagerP1',
     await main.backingManager()
   )
+  const broker = await hre.ethers.getContractAt('BrokerP1', await main.broker())
   const furnace = await hre.ethers.getContractAt('FurnaceP1', await main.furnace())
   const rsrTrader = await hre.ethers.getContractAt('RevenueTraderP1', await main.rsrTrader())
   const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
   const rsr = await hre.ethers.getContractAt('StRSRP1Votes', await main.rsr())
+
+  // we pushed the chain forward, so we need to keep the rToken SOUND
+  await pushOraclesForward(hre, rTokenAddress)
 
   /*
     Asset Registry - new getters       
@@ -67,6 +76,7 @@ export default async (
   await assetRegistry.refresh()
   expect(await assetRegistry.lastRefresh()).to.equal(nextTimestamp)
   expect(await assetRegistry.size()).to.equal(16)
+  console.log(`successfully tested new AssetRegistry getters`)
 
   /*
     New Basket validations - units and weights       
@@ -114,6 +124,8 @@ export default async (
     await assetRegistry.connect(tl).unregister(eurFiatCollateral.address)
   })
 
+  console.log(`successfully tested validations of weights and units on basket switch`)
+
   /*
     Main - Pausing issuance and trading
   */
@@ -140,12 +152,28 @@ export default async (
     await expect(backingManager.connect(tester).forwardRevenue([])).to.not.be.reverted
   })
 
+  console.log(`successfully tested issuance and trading pause`)
+
+  /*
+    New setters for enabling auctions
+  */
+  // Auction setters
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await broker.connect(tl).enableBatchTrade()
+    await broker.connect(tl).enableDutchTrade(rsr.address)
+  })
+
+  console.log(`successfully tested new auction setters`)
+
   /*
     Dust Auctions
   */
+  console.log(`testing dust auctions...`)
+
   const minTrade = bn('1e18')
   const minTradePrev = await rsrTrader.minTradeVolume()
   await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await broker.connect(tl).setDutchAuctionLength(1800)
     await rsrTrader.connect(tl).setMinTradeVolume(minTrade)
   })
   await usdcFiatColl.refresh()
@@ -164,11 +192,17 @@ export default async (
   // Restore values
   await whileImpersonating(hre, timelockAddress, async (tl) => {
     await rsrTrader.connect(tl).setMinTradeVolume(minTradePrev)
+    await broker.connect(tl).setDutchAuctionLength(0)
   })
+
+  console.log(`succesfully tested dust auctions`)
 
   /*
     Warmup period
   */
+
+  console.log(`testing warmup period...`)
+
   const usdcChainlinkFeed = await hre.ethers.getContractAt(
     'AggregatorV3Interface',
     await usdcFiatColl.chainlinkFeed()
@@ -188,21 +222,30 @@ export default async (
   // Still cannot issue
   expect(await usdcFiatColl.status()).to.equal(CollateralStatus.SOUND)
   expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-  expect(await basketHandler.isReady()).to.equal(false)
-  await expect(rToken.connect(tester).issue(fp('1'))).to.be.revertedWith('basket not ready')
 
-  // Move post warmup period
-  await advanceTime(hre, Number(await basketHandler.warmupPeriod()) + 1)
+  // If warmup period defined
+  if ((await basketHandler.warmupPeriod()) > 0) {
+    expect(await basketHandler.isReady()).to.equal(false)
+    await expect(rToken.connect(tester).issue(fp('1'))).to.be.revertedWith('basket not ready')
+
+    // Move post warmup period
+    await advanceTime(hre, Number(await basketHandler.warmupPeriod()) + 1)
+  }
 
   // Can issue now
-  expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+  expect(await usdcFiatColl.status()).to.equal(CollateralStatus.SOUND)
   expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
   expect(await basketHandler.isReady()).to.equal(true)
   await expect(rToken.connect(tester).issue(fp('1'))).to.emit(rToken, 'Issuance')
+  console.log(`succesfully tested warmup period`)
+
+  // we pushed the chain forward, so we need to keep the rToken SOUND
+  await pushOraclesForward(hre, rTokenAddress)
 
   /*
     Melting occurs when paused
   */
+
   await whileImpersonating(hre, timelockAddress, async (tl) => {
     await main.connect(tl).pauseIssuance()
     await main.connect(tl).pauseTrading()
@@ -212,12 +255,14 @@ export default async (
     await main.connect(tl).unpauseIssuance()
     await main.connect(tl).unpauseTrading()
   })
+  console.log(`successfully tested melting during paused state`)
 
   /*
     Stake and delegate
   */
-  const stakeAmount = fp('4e6')
 
+  console.log(`testing stakeAndDelegate...`)
+  const stakeAmount = fp('4e6')
   await whileImpersonating(hre, whales[networkConfig['1'].tokens.RSR!], async (rsrSigner) => {
     expect(await stRSR.delegates(rsrSigner.address)).to.equal(ZERO_ADDRESS)
     expect(await stRSR.balanceOf(rsrSigner.address)).to.equal(0)
@@ -228,6 +273,99 @@ export default async (
     expect(await stRSR.delegates(rsrSigner.address)).to.equal(rsrSigner.address)
     expect(await stRSR.balanceOf(rsrSigner.address)).to.be.gt(0)
   })
+  console.log(`successfully tested stakeAndDelegate`)
+
+  /*
+    Withdrawal leak
+  */
+
+  console.log(`testing withrawalLeak...`)
+
+  // Decrease withdrawal leak to be able to test with previous stake
+  const withdrawalLeakPrev = await stRSR.withdrawalLeak()
+  const withdrawalLeak = withdrawalLeakPrev.eq(bn(0)) ? bn(0) : bn('1e5')
+  const unstakingDelay = await stRSR.unstakingDelay()
+
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await stRSR.connect(tl).setWithdrawalLeak(withdrawalLeak)
+  })
+
+  await whileImpersonating(hre, whales[networkConfig['1'].tokens.RSR!], async (rsrSigner) => {
+    const withdrawal = stakeAmount
+    await stRSR.connect(rsrSigner).unstake(1)
+    await stRSR.connect(rsrSigner).unstake(withdrawal)
+    await stRSR.connect(rsrSigner).unstake(1)
+
+    // Move forward past stakingWithdrawalDelay
+    await advanceToTimestamp(hre, Number(await getLatestBlockTimestamp(hre)) + unstakingDelay)
+
+    // we pushed the chain forward, so we need to keep the rToken SOUND
+    await pushOraclesForward(hre, rTokenAddress)
+
+    let lastRefresh = await assetRegistry.lastRefresh()
+
+    // Should not refresh if withdrawal leak is applied
+    await stRSR.connect(rsrSigner).withdraw(rsrSigner.address, 1)
+    if (withdrawalLeak.gt(bn(0))) {
+      expect(await assetRegistry.lastRefresh()).to.eq(lastRefresh)
+    }
+
+    // Should refresh
+    await stRSR.connect(rsrSigner).withdraw(rsrSigner.address, 2)
+    expect(await assetRegistry.lastRefresh()).to.be.gt(lastRefresh)
+    lastRefresh = await assetRegistry.lastRefresh()
+
+    // Should not refresh
+    await stRSR.connect(rsrSigner).withdraw(rsrSigner.address, 3)
+    if (withdrawalLeak.gt(bn(0))) {
+      expect(await assetRegistry.lastRefresh()).to.eq(lastRefresh)
+    }
+  })
+
+  // Restore values
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await stRSR.connect(tl).setWithdrawalLeak(withdrawalLeakPrev)
+  })
+  console.log(`successfully tested withrawalLeak`)
+
+  // we pushed the chain forward, so we need to keep the rToken SOUND
+  await pushOraclesForward(hre, rTokenAddress)
+
+  /*
+    RToken Asset
+  */
+  console.log(`swapping RTokenAsset...`)
+
+  const rTokenAsset = await hre.ethers.getContractAt(
+    'TestIAsset',
+    await assetRegistry.toAsset(rToken.address)
+  )
+  const maxTradeVolumePrev = await rTokenAsset.maxTradeVolume()
+
+  const newRTokenAsset = await (
+    await hre.ethers.getContractFactory('RTokenAsset')
+  ).deploy(rToken.address, maxTradeVolumePrev)
+
+  // Swap RToken Asset
+  await whileImpersonating(hre, timelockAddress, async (tl) => {
+    await assetRegistry.connect(tl).swapRegistered(newRTokenAsset.address)
+  })
+  await assetRegistry.refresh()
+
+  // Check interface behaves properly
+  expect(await newRTokenAsset.isCollateral()).to.equal(false)
+  expect(await newRTokenAsset.erc20()).to.equal(rToken.address)
+  expect(await rToken.decimals()).to.equal(18)
+  expect(await newRTokenAsset.version()).to.equal('3.0.0')
+  expect(await newRTokenAsset.maxTradeVolume()).to.equal(maxTradeVolumePrev)
+
+  const [lowPricePrev, highPricePrev] = await rTokenAsset.price()
+  const [lowPrice, highPrice] = await newRTokenAsset.price()
+  expect(lowPrice).to.equal(lowPricePrev)
+  expect(highPrice).to.equal(highPricePrev)
+
+  await expect(rTokenAsset.claimRewards()).to.not.emit(rTokenAsset, 'RewardsClaimed')
+  console.log(`successfully tested RTokenAsset`)
 
   console.log('\n3.0.0 check succeeded!')
 }
