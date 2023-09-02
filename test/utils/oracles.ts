@@ -22,7 +22,7 @@ export const expectPrice = async (
   const expectedHigh = avgPrice.add(delta)
 
   if (near) {
-    const tolerance = avgPrice.div(overrideToleranceDiv || toleranceDivisor)
+    const tolerance = avgPrice.div(overrideToleranceDiv ?? toleranceDivisor)
     expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
     expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
   } else {

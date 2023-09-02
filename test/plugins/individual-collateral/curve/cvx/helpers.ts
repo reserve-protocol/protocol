@@ -11,7 +11,6 @@ import {
   ERC20Mock,
   ICurvePool,
   MockV3Aggregator,
-  RewardableERC4626Vault,
 } from '../../../../../typechain'
 import { getResetFork } from '../../helpers'
 import {
@@ -88,7 +87,7 @@ export const makeW3PoolStable = async (): Promise<Wrapped3PoolFixtureStable> => 
     usdc,
     usdt,
     curvePool,
-    wrapper: wrapper as unknown as RewardableERC4626Vault,
+    wrapper: wrapper as unknown as ConvexStakingWrapper,
   }
 }
 
@@ -136,7 +135,7 @@ export const makeWSUSDPoolStable = async (): Promise<WrappedSUSDPoolFixtureStabl
   const wrapper = await wrapperFactory.deploy()
   await wrapper.initialize(SUSD_POOL_CVX_POOL_ID)
 
-  return { dai, usdc, usdt, susd, curvePool, wrapper: wrapper as unknown as RewardableERC4626Vault }
+  return { dai, usdc, usdt, susd, curvePool, wrapper }
 }
 
 export interface Wrapped3PoolFixtureVolatile extends CurveBase {
@@ -182,7 +181,7 @@ export const makeWTricryptoPoolVolatile = async (): Promise<Wrapped3PoolFixtureV
     wbtc,
     weth,
     curvePool,
-    wrapper: wrapper as unknown as RewardableERC4626Vault,
+    wrapper: wrapper,
   }
 }
 
@@ -193,7 +192,7 @@ export const mintWPool = async (
   recipient: string,
   holder: string
 ) => {
-  const cvxWrapper = ctx.wrapper as ConvexStakingWrapper
+  const cvxWrapper = ctx.wrapper
   const lpToken = await ethers.getContractAt(
     '@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20',
     await cvxWrapper.curveToken()

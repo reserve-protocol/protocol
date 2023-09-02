@@ -1,7 +1,6 @@
 import { BigNumberish } from 'ethers'
 import {
   ConvexStakingWrapper,
-  CurveGaugeWrapper,
   CurvePoolMock,
   ERC20Mock,
   MockV3Aggregator,
@@ -15,7 +14,7 @@ type Fixture<T> = () => Promise<T>
 
 export interface CurveBase {
   curvePool: CurvePoolMock
-  wrapper: CurveGaugeWrapper | ConvexStakingWrapper
+  wrapper: ConvexStakingWrapper
 }
 
 // The basic fixture context used in the Curve collateral plugin tests

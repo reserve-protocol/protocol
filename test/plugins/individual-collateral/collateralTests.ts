@@ -58,6 +58,7 @@ export default function fn<X extends CollateralFixtureContext>(
     resetFork,
     collateralName,
     chainlinkDefaultAnswer,
+    toleranceDivisor,
   } = fixtures
 
   describeFork(`Collateral: ${collateralName}`, () => {
@@ -186,7 +187,7 @@ export default function fn<X extends CollateralFixtureContext>(
         itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)
-          await expectPrice(collateral.address, expectedPrice, oracleError, true)
+          await expectPrice(collateral.address, expectedPrice, oracleError, true, toleranceDivisor)
 
           // Update values in Oracles increase by 10-20%
           const newPrice = BigNumber.from(chainlinkDefaultAnswer).mul(11).div(10)
@@ -197,7 +198,13 @@ export default function fn<X extends CollateralFixtureContext>(
           await collateral.refresh()
           const newExpectedPrice = await getExpectedPrice(ctx)
           expect(newExpectedPrice).to.be.gt(expectedPrice)
-          await expectPrice(collateral.address, newExpectedPrice, oracleError, true)
+          await expectPrice(
+            collateral.address,
+            newExpectedPrice,
+            oracleError,
+            true,
+            toleranceDivisor
+          )
         })
 
         // all our collateral that have targetPerRef feeds use them only for soft default checks
@@ -206,7 +213,13 @@ export default function fn<X extends CollateralFixtureContext>(
           async () => {
             const oracleError = await collateral.oracleError()
             const expectedPrice = await getExpectedPrice(ctx)
-            await expectPrice(collateral.address, expectedPrice, oracleError, true)
+            await expectPrice(
+              collateral.address,
+              expectedPrice,
+              oracleError,
+              true,
+              toleranceDivisor
+            )
 
             // Get refPerTok initial values
             const initialRefPerTok = await collateral.refPerTok()
@@ -218,13 +231,19 @@ export default function fn<X extends CollateralFixtureContext>(
             if (itIsPricedByPeg) {
               // Check new prices -- increase expected
               const newPrice = await getExpectedPrice(ctx)
-              await expectPrice(collateral.address, newPrice, oracleError, true)
+              await expectPrice(collateral.address, newPrice, oracleError, true, toleranceDivisor)
               const [newLow, newHigh] = await collateral.price()
               expect(oldLow).to.be.lt(newLow)
               expect(oldHigh).to.be.lt(newHigh)
             } else {
               // Check new prices -- no increase expected
-              await expectPrice(collateral.address, expectedPrice, oracleError, true)
+              await expectPrice(
+                collateral.address,
+                expectedPrice,
+                oracleError,
+                true,
+                toleranceDivisor
+              )
               const [newLow, newHigh] = await collateral.price()
               expect(oldLow).to.equal(newLow)
               expect(oldHigh).to.equal(newHigh)
@@ -244,7 +263,7 @@ export default function fn<X extends CollateralFixtureContext>(
           const [initLow, initHigh] = await collateral.price()
           const expectedPrice = await getExpectedPrice(ctx)
 
-          await expectPrice(collateral.address, expectedPrice, oracleError, true)
+          await expectPrice(collateral.address, expectedPrice, oracleError, true, toleranceDivisor)
 
           // need to deposit in order to get an exchange rate
           const amount = bn('200').mul(bn(10).pow(await ctx.tok.decimals()))
