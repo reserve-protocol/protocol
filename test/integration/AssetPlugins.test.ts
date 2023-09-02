@@ -977,6 +977,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             cTokenAddress: networkConfig[chainId].tokens.cETH || '',
             cTokenCollateral: cETHCollateral,
             price: fp('1859.17'), // approx price June 6, 2022
+            refPerTok: fp('0.020064224962890636'), // for weth on June 2022
             targetName: 'ETH',
           },
         ]
