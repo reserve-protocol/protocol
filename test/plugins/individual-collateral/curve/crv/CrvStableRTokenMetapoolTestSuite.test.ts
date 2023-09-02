@@ -234,8 +234,8 @@ const collateralSpecificStatusTests = () => {
     // Should be unpriced
     await expectUnpriced(collateral.address)
 
-    // Lot price should be initial price
-    const lotP = await collateral.lotPrice()
+    // Price should be initial price
+    const lotP = await collateral.price()
     expect(lotP[0]).to.eq(initialPrice[0])
     expect(lotP[1]).to.eq(initialPrice[1])
   })

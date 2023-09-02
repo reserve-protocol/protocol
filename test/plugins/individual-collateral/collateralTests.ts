@@ -25,7 +25,12 @@ import {
   CollateralTestSuiteFixtures,
   CollateralStatus,
 } from './pluginTestTypes'
-import { expectPrice, expectUnpriced } from '../../utils/oracles'
+import {
+  expectDecayedPrice,
+  expectExactPrice,
+  expectPrice,
+  expectUnpriced,
+} from '../../utils/oracles'
 import snapshotGasCost from '../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation } from '../../fixtures'
 
@@ -259,17 +264,34 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(newHigh).to.be.gt(initHigh)
         })
 
-        it('returns unpriced for 0-valued oracle', async () => {
+        it('decays for 0-valued oracle', async () => {
+          const initialPrice = await collateral.price()
+
           // Set price of underlying to 0
           const updateAnswerTx = await chainlinkFeed.updateAnswer(0)
           await updateAnswerTx.wait()
 
-          // (0, FIX_MAX) is returned
+          // Price remains same at first, though IFFY
+          await collateral.refresh()
+          await expectExactPrice(collateral.address, initialPrice)
+          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+
+          // After oracle timeout decay begins
+          const oracleTimeout = await collateral.oracleTimeout()
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+          await advanceBlocks(1 + oracleTimeout / 12)
+          await collateral.refresh()
+          await expectDecayedPrice(collateral.address)
+
+          // After price timeout it becomes unpriced
+          const priceTimeout = await collateral.priceTimeout()
+          await setNextBlockTimestamp((await getLatestBlockTimestamp()) + priceTimeout)
+          await advanceBlocks(1 + priceTimeout / 12)
           await expectUnpriced(collateral.address)
 
-          // When refreshed, sets status to Unpriced
+          // When refreshed, sets status to DISABLED
           await collateral.refresh()
-          expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
+          expect(await collateral.status()).to.equal(CollateralStatus.DISABLED)
         })
 
         it('does not revert in case of invalid timestamp', async () => {
