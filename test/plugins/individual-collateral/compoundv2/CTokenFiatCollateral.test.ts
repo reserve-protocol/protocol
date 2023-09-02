@@ -31,7 +31,12 @@ import {
 import { expectEvents, expectInIndirectReceipt } from '../../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../../common/numbers'
 import { whileImpersonating } from '../../../utils/impersonation'
-import { expectPrice, expectRTokenPrice, setOraclePrice } from '../../../utils/oracles'
+import {
+  expectPrice,
+  expectRTokenPrice,
+  expectUnpriced,
+  setOraclePrice,
+} from '../../../utils/oracles'
 import {
   advanceBlocks,
   advanceTime,
