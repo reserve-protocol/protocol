@@ -483,6 +483,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
       // Set price to 0
       await setOraclePrice(rsrAsset.address, bn(0))
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(tokenAsset.address, bn('1e8'))
+      await setOraclePrice(usdcAsset.address, bn('1e8'))
+      await assetRegistry.refresh()
 
       const [backing2, overCollateralization2] = await facade.callStatic.backingOverview(
         rToken.address
@@ -556,97 +560,98 @@ describe('FacadeRead + FacadeAct contracts', () => {
     })
 
     it('Should return revenue + chain into FacadeAct.runRevenueAuctions', async () => {
-      const traders = [rTokenTrader, rsrTrader]
+      // Set low to 0 == revenueOverview() should not revert
+      const minTradeVolume = await rsrTrader.minTradeVolume()
+      const auctionLength = await broker.dutchAuctionLength()
+      const tokenSurplus = bn('0.5e18')
+      await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
 
-      // Set lotLow to 0 == revenueOverview() should not revert
       await setOraclePrice(usdcAsset.address, bn('0'))
-      await usdcAsset.refresh()
-      for (let traderIndex = 0; traderIndex < traders.length; traderIndex++) {
-        const trader = traders[traderIndex]
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(tokenAsset.address, bn('1e8'))
+      await setOraclePrice(rsrAsset.address, bn('1e8'))
+      await assetRegistry.refresh()
 
-        const minTradeVolume = await trader.minTradeVolume()
-        const auctionLength = await broker.dutchAuctionLength()
-        const tokenSurplus = bn('0.5e18')
-        await token.connect(addr1).transfer(trader.address, tokenSurplus)
+      const [low] = await usdcAsset.price()
+      expect(low).to.equal(0)
 
-        const [low] = await usdcAsset.price()
-        expect(low).to.equal(0)
+      // revenue
+      let [erc20s, canStart, surpluses, minTradeAmounts] =
+        await facadeAct.callStatic.revenueOverview(rsrTrader.address)
+      expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
 
-        // revenue
-        let [erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-        expect(erc20s.length).to.equal(8) // should be full set of registered ERC20s
-
-        const erc20sToStart = []
-        for (let i = 0; i < 8; i++) {
-          if (erc20s[i] == token.address) {
-            erc20sToStart.push(erc20s[i])
-            expect(canStart[i]).to.equal(true)
-            expect(surpluses[i]).to.equal(tokenSurplus)
-          } else {
-            expect(canStart[i]).to.equal(false)
-            expect(surpluses[i]).to.equal(0)
-          }
-          const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
-          const [low] = await asset.price()
-          expect(minTradeAmounts[i]).to.equal(
-            low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
-          ) // 1% oracleError
+      const erc20sToStart = []
+      for (let i = 0; i < 8; i++) {
+        if (erc20s[i] == token.address) {
+          erc20sToStart.push(erc20s[i])
+          expect(canStart[i]).to.equal(true)
+          expect(surpluses[i]).to.equal(tokenSurplus)
+        } else {
+          expect(canStart[i]).to.equal(false)
+          expect(surpluses[i]).to.equal(0)
         }
-
-        // Run revenue auctions via multicall
-        const funcSig = ethers.utils.id('runRevenueAuctions(address,address[],address[],uint8[])')
-        const args = ethers.utils.defaultAbiCoder.encode(
-          ['address', 'address[]', 'address[]', 'uint8[]'],
-          [trader.address, [], erc20sToStart, [TradeKind.DUTCH_AUCTION]]
-        )
-        const data = funcSig.substring(0, 10) + args.slice(2)
-        await expect(facadeAct.multicall([data])).to.emit(trader, 'TradeStarted')
-
-        // Another call to revenueOverview should not propose any auction
-        ;[erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-        expect(canStart).to.eql(Array(8).fill(false))
-
-        // Nothing should be settleable
-        expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
-
-        // Advance time till auction is over
-        await advanceBlocks(2 + auctionLength / 12)
-
-        // Now should be settleable
-        const settleable = await facade.auctionsSettleable(trader.address)
-        expect(settleable.length).to.equal(1)
-        expect(settleable[0]).to.equal(token.address)
-
-        // Another call to revenueOverview should settle and propose new auction
-        ;[erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-
-        // Should repeat the same auctions
-        for (let i = 0; i < 8; i++) {
-          if (erc20s[i] == token.address) {
-            expect(canStart[i]).to.equal(true)
-            expect(surpluses[i]).to.equal(tokenSurplus)
-          } else {
-            expect(canStart[i]).to.equal(false)
-            expect(surpluses[i]).to.equal(0)
-          }
-        }
-
-        // Settle and start new auction
-        await facadeAct.runRevenueAuctions(trader.address, erc20sToStart, erc20sToStart, [
-          TradeKind.DUTCH_AUCTION,
-        ])
-
-        // Send additional revenues
-        await token.connect(addr1).transfer(trader.address, tokenSurplus)
-
-        // Call revenueOverview, cannot open new auctions
-        ;[erc20s, canStart, surpluses, minTradeAmounts] =
-          await facadeAct.callStatic.revenueOverview(trader.address)
-        expect(canStart).to.eql(Array(8).fill(false))
+        const asset = await ethers.getContractAt('IAsset', await assetRegistry.toAsset(erc20s[i]))
+        const [low] = await asset.price()
+        expect(minTradeAmounts[i]).to.equal(
+          low.gt(0) ? minTradeVolume.mul(bn('10').pow(await asset.erc20Decimals())).div(low) : 0
+        ) // 1% oracleError
       }
+
+      // Run revenue auctions via multicall
+      const funcSig = ethers.utils.id('runRevenueAuctions(address,address[],address[],uint8[])')
+      const args = ethers.utils.defaultAbiCoder.encode(
+        ['address', 'address[]', 'address[]', 'uint8[]'],
+        [rsrTrader.address, [], erc20sToStart, [TradeKind.DUTCH_AUCTION]]
+      )
+      const data = funcSig.substring(0, 10) + args.slice(2)
+      await expect(facadeAct.multicall([data])).to.emit(rsrTrader, 'TradeStarted')
+
+      // Another call to revenueOverview should not propose any auction
+      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facadeAct.callStatic.revenueOverview(
+        rsrTrader.address
+      )
+      expect(canStart).to.eql(Array(8).fill(false))
+
+      // Nothing should be settleable
+      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
+
+      // Advance time till auction is over
+      await advanceBlocks(2 + auctionLength / 12)
+
+      // Now should be settleable
+      const settleable = await facade.auctionsSettleable(rsrTrader.address)
+      expect(settleable.length).to.equal(1)
+      expect(settleable[0]).to.equal(token.address)
+
+      // Another call to revenueOverview should settle and propose new auction
+      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facadeAct.callStatic.revenueOverview(
+        rsrTrader.address
+      )
+
+      // Should repeat the same auctions
+      for (let i = 0; i < 8; i++) {
+        if (erc20s[i] == token.address) {
+          expect(canStart[i]).to.equal(true)
+          expect(surpluses[i]).to.equal(tokenSurplus)
+        } else {
+          expect(canStart[i]).to.equal(false)
+          expect(surpluses[i]).to.equal(0)
+        }
+      }
+
+      // Settle and start new auction
+      await facadeAct.runRevenueAuctions(rsrTrader.address, erc20sToStart, erc20sToStart, [
+        TradeKind.DUTCH_AUCTION,
+      ])
+
+      // Send additional revenues
+      await token.connect(addr1).transfer(rsrTrader.address, tokenSurplus)
+
+      // Call revenueOverview, cannot open new auctions
+      ;[erc20s, canStart, surpluses, minTradeAmounts] = await facadeAct.callStatic.revenueOverview(
+        rsrTrader.address
+      )
+      expect(canStart).to.eql(Array(8).fill(false))
     })
 
     itP1('Should handle invalid versions when running revenueOverview', async () => {
@@ -896,7 +901,11 @@ describe('FacadeRead + FacadeAct contracts', () => {
       )
       // set price of dai to 0
       await chainlinkFeed.updateAnswer(0)
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(usdcAsset.address, bn('1e8'))
+      await assetRegistry.refresh()
       await main.connect(owner).pauseTrading()
+
       const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
       expect(erc20s.length).to.equal(4)
       expect(breakdown.length).to.equal(4)
