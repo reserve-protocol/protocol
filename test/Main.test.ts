@@ -2815,6 +2815,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Set price = 0, which hits 3 of our 4 collateral in the basket
       await setOraclePrice(newColl2.address, bn('0'))
+      await advanceTime(ORACLE_TIMEOUT.add(PRICE_TIMEOUT).toString())
+      await setOraclePrice(collateral1.address, bn('1e8'))
 
       // Check status and price again
       const p = await basketHandler.price()
