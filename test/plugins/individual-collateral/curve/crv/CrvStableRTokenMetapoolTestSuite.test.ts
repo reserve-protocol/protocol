@@ -7,13 +7,14 @@ import {
 import { makeWeUSDFraxBP, mintWeUSDFraxBP, resetFork } from './helpers'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
-import { expectUnpriced } from '../../../../utils/oracles'
+import { expectDecayedPrice, expectExactPrice, expectUnpriced } from '../../../../utils/oracles'
 import {
   ERC20Mock,
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
 } from '../../../../../typechain'
+import { advanceTime } from '../../../../utils/time'
 import { bn } from '../../../../../common/numbers'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../../../../common/constants'
 import { expect } from 'chai'
@@ -227,17 +228,18 @@ const collateralSpecificStatusTests = () => {
     // Set RTokenAsset to unpriced
     // Would be the price under a stale oracle timeout for a poorly-coded RTokenAsset
     await mockRTokenAsset.setPrice(0, MAX_UINT192)
+    await expectExactPrice(collateral.address, initialPrice)
+
+    // Should decay after oracle timeout
+    await advanceTime(await collateral.oracleTimeout())
+    await expectDecayedPrice(collateral.address)
+
+    // Should be unpriced after price timeout
+    await advanceTime(await collateral.priceTimeout())
+    await expectUnpriced(collateral.address)
 
     // refresh() should not revert
     await collateral.refresh()
-
-    // Should be unpriced
-    await expectUnpriced(collateral.address)
-
-    // Price should be initial price
-    const lotP = await collateral.price()
-    expect(lotP[0]).to.eq(initialPrice[0])
-    expect(lotP[1]).to.eq(initialPrice[1])
   })
 }
 
