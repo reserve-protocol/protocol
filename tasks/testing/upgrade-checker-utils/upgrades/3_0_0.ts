@@ -155,15 +155,17 @@ export default async (
   console.log(`successfully tested issuance and trading pause`)
 
   /*
-    New setters for enabling auctions
+    New getters/setters for auctions
   */
-  // Auction setters
+  // Auction getters/setters
   await whileImpersonating(hre, timelockAddress, async (tl) => {
     await broker.connect(tl).enableBatchTrade()
     await broker.connect(tl).enableDutchTrade(rsr.address)
   })
+  expect(await broker.batchTradeDisabled()).to.equal(false)
+  expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
 
-  console.log(`successfully tested new auction setters`)
+  console.log(`successfully tested new auction getters/setters`)
 
   /*
     Dust Auctions
