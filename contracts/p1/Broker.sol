@@ -46,6 +46,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // Whether Batch Auctions are disabled.
     // Initially false. Settable by OWNER.
     // A GnosisTrade clone can set it to true via reportViolation()
+    /// @custom:oz-renamed-from disabled
     bool public batchTradeDisabled;
 
     // The set of ITrade (clone) addresses this contract has created
