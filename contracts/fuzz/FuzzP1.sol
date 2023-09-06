@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -288,8 +288,16 @@ contract BrokerP1Fuzz is BrokerP1 {
         return trade;
     }
 
-    function newDutchAuction(TradeRequest memory req, ITrading caller) internal override returns (ITrade) {
-        require(dutchAuctionLength > 0, "dutchAuctionLength unset");
+    function newDutchAuction(
+        TradeRequest memory req,
+        TradePrices memory prices,
+        ITrading caller
+    ) internal override returns (ITrade) {
+        require(
+            !dutchTradeDisabled[req.sell.erc20()] && !dutchTradeDisabled[req.buy.erc20()],
+            "dutch auctions disabled for token pair"
+        );
+        require(dutchAuctionLength > 0, "dutch auctions not enabled");
         DutchTrade trade = new DutchTrade(); // cannot clone in echidna
         trades[address(trade)] = true;
 
@@ -300,7 +308,7 @@ contract BrokerP1Fuzz is BrokerP1 {
             req.sellAmount
         );
 
-        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength);
+        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
         tradeSet.add(address(trade));
         tradeKindSet[address(trade)] = uint256(TradeKind.BATCH_AUCTION);
         lastOpenedTrade = trade;

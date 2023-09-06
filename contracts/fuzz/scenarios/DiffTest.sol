@@ -1,6 +1,6 @@
 // DEPRECATED 5/2/23
 // // SPDX-License-Identifier: BlueOak-1.0.0
-// pragma solidity 0.8.17;
+// pragma solidity 0.8.19;
 
 // import "@openzeppelin/contracts/utils/Strings.sol";
 // import "@openzeppelin/contracts/utils/math/Math.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -608,13 +608,19 @@ contract ChaosOpsScenario {
     }
 
     function manageTokenInRSRTrader(uint256 tokenID, uint256 kindSeed) public {
-        IERC20 token = main.someToken(tokenID);
-        main.rsrTrader().manageToken(token, TradeKind(kindSeed % 2));
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = main.someToken(tokenID);
+        TradeKind[] memory tradeKinds = new TradeKind[](1);
+        tradeKinds[0] = TradeKind(kindSeed % 2);
+        main.rsrTrader().manageTokens(tokens, tradeKinds);
     }
 
     function manageTokenInRTokenTrader(uint256 tokenID, uint256 kindSeed) public {
-        IERC20 token = main.someToken(tokenID);
-        main.rTokenTrader().manageToken(token, TradeKind(kindSeed % 2));
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = main.someToken(tokenID);
+        TradeKind[] memory tradeKinds = new TradeKind[](1);
+        tradeKinds[0] = TradeKind(kindSeed % 2);
+        main.rTokenTrader().manageTokens(tokens, tradeKinds);
     }
 
     function grantAllowances(uint256 tokenID) public {
@@ -882,8 +888,12 @@ contract ChaosOpsScenario {
         StRSRP1(address(main.stRSR())).setUnstakingDelay(uint48(between(1, 31536000, seed)));
     }
 
-    function setBrokerDisabled(bool disabled) public {
-        BrokerP1Fuzz(address(main.broker())).setDisabled(disabled);
+    function enableBatchTrade() public {
+        BrokerP1Fuzz(address(main.broker())).enableBatchTrade();
+    }
+
+    function enableDutchTrade(IERC20Metadata erc20) public {
+        BrokerP1Fuzz(address(main.broker())).enableDutchTrade(erc20);
     }
 
     function setShortFreeze(uint48 freeze) public {
