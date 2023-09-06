@@ -250,45 +250,44 @@ describe('Assets contracts #fast', () => {
       )
     })
 
-    it('Should return (0, 0) if price is zero', async () => {
+    it('Should become unpriced if price is zero', async () => {
+      const compInitPrice = await compAsset.price()
+      const aaveInitPrice = await aaveAsset.price()
+      const rsrInitPrice = await rsrAsset.price()
+      const rTokenInitPrice = await rTokenAsset.price()
+
       // Update values in Oracles to 0
       await setOraclePrice(compAsset.address, bn('0'))
       await setOraclePrice(aaveAsset.address, bn('0'))
       await setOraclePrice(rsrAsset.address, bn('0'))
 
-      // New prices should be (0, 0)
-      await expectPrice(rsrAsset.address, bn('0'), bn('0'), false)
-      await expectPrice(compAsset.address, bn('0'), bn('0'), false)
-      await expectPrice(aaveAsset.address, bn('0'), bn('0'), false)
+      // Should be unpriced
+      await expectUnpriced(rsrAsset.address)
+      await expectUnpriced(compAsset.address)
+      await expectUnpriced(aaveAsset.address)
 
-      // Fallback prices should be zero
-      let [lotLow, lotHigh] = await rsrAsset.lotPrice()
-      expect(lotLow).to.eq(0)
-      expect(lotHigh).to.eq(0)
+      // Fallback prices should be initial prices
+      let [lotLow, lotHigh] = await compAsset.lotPrice()
+      expect(lotLow).to.eq(compInitPrice[0])
+      expect(lotHigh).to.eq(compInitPrice[1])
       ;[lotLow, lotHigh] = await rsrAsset.lotPrice()
-      expect(lotLow).to.eq(0)
-      expect(lotHigh).to.eq(0)
+      expect(lotLow).to.eq(rsrInitPrice[0])
+      expect(lotHigh).to.eq(rsrInitPrice[1])
       ;[lotLow, lotHigh] = await aaveAsset.lotPrice()
-      expect(lotLow).to.eq(0)
-      expect(lotHigh).to.eq(0)
+      expect(lotLow).to.eq(aaveInitPrice[0])
+      expect(lotHigh).to.eq(aaveInitPrice[1])
 
       // Update values of underlying tokens of RToken to 0
       await setOraclePrice(collateral0.address, bn(0))
       await setOraclePrice(collateral1.address, bn(0))
 
       // RTokenAsset should be unpriced now
-      await expectRTokenPrice(
-        rTokenAsset.address,
-        bn(0),
-        ORACLE_ERROR,
-        await backingManager.maxTradeSlippage(),
-        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
-      )
+      await expectUnpriced(rTokenAsset.address)
 
-      // Should have lot price
+      // Should have initial lot price
       ;[lotLow, lotHigh] = await rTokenAsset.lotPrice()
-      expect(lotLow).to.eq(0)
-      expect(lotHigh).to.eq(0)
+      expect(lotLow).to.eq(rTokenInitPrice[0])
+      expect(lotHigh).to.eq(rTokenInitPrice[1])
     })
 
     it('Should return 0 price for RTokenAsset in full haircut scenario', async () => {
@@ -381,7 +380,7 @@ describe('Assets contracts #fast', () => {
       await expectUnpriced(aaveAsset.address)
     })
 
-    it('Should handle unpriced edge cases for RToken', async () => {
+    it('Should handle reverting edge cases for RToken', async () => {
       // Swap one of the collaterals for an invalid one
       const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
       const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
@@ -408,12 +407,41 @@ describe('Assets contracts #fast', () => {
       // Check RToken unpriced
       await expectUnpriced(rTokenAsset.address)
 
-      //  Runnning out of gas
+      // Runnning out of gas
       await invalidFiatCollateral.setSimplyRevert(false)
       await expect(invalidFiatCollateral.price()).to.be.reverted
 
       //  Check RToken price reverts
       await expect(rTokenAsset.price()).to.be.reverted
+    })
+
+    it('Regression test -- Should handle unpriced collateral for RToken', async () => {
+      // https://github.com/code-423n4/2023-07-reserve-findings/issues/20
+
+      // Swap one of the collaterals for an invalid one
+      const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
+      const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
+        await InvalidFiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral0.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral0.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
+      )
+
+      // Swap asset
+      await assetRegistry.swapRegistered(invalidFiatCollateral.address)
+
+      // Set unpriced collateral
+      await invalidFiatCollateral.setUnpriced(true)
+
+      // Check RToken is unpriced
+      await expectUnpriced(rTokenAsset.address)
     })
 
     it('Should be able to refresh saved prices', async () => {

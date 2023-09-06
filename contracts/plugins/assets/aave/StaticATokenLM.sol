@@ -24,7 +24,21 @@ import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/
  * @title StaticATokenLM
  * @notice Wrapper token that allows to deposit tokens on the Aave protocol and receive
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
- * The token support claiming liquidity mining rewards from the Aave system.
+ *
+ * The token supports claiming liquidity mining rewards from the Aave system. However, there might be
+ * be permanent loss of rewards for the sender of the token when a `transfer` is performed. This is due
+ * to the fact that only rewards previously collected from the Incentives Controller are processed (and
+ * assigned to the `sender`) when tokens are transferred. Any rewards pending to be collected are ignored
+ * on `transfer`, and might be later claimed by the `receiver`. It was designed this way to reduce gas
+ * costs on every transfer which would probably outweigh any missing/unprocessed/unclaimed rewards.
+ * It is important to remark that several operations such as `deposit`, `withdraw`, `collectAndUpdateRewards`,
+ * among others, will update rewards balances correctly, so while it is true that under certain circumstances
+ * rewards may not be fully accurate, we expect them only to be slightly off.
+ *
+ * Users should also be careful when claiming rewards using `forceUpdate=false` as this will result on permanent
+ * loss of pending/uncollected rewards. It is recommended to always claim rewards using `forceUpdate=true`
+ * unless the user is sure that gas costs would exceed the lost rewards.
+ *
  * @author Aave
  * From: https://github.com/aave/protocol-v2/blob/238e5af2a95c3fbb83b0c8f44501ed2541215122/contracts/protocol/tokenization/StaticATokenLM.sol#L255
  **/
@@ -366,6 +380,9 @@ contract StaticATokenLM is
 
     /**
      * @notice Updates rewards for senders and receiver in a transfer (not updating rewards for address(0))
+     *  Only rewards which were previously collected from the Incentives Controller will be updated on
+     *  every transfer. It is designed this way to reduce gas costs on `transfer`, which will likely
+     *  outweigh the pending (uncollected) rewards for the sender under certain circumstances.
      * @param from The address of the sender of tokens
      * @param to The address of the receiver of tokens
      */
@@ -454,6 +471,8 @@ contract StaticATokenLM is
 
     /**
      * @notice Claim rewards on behalf of a user and send them to a receiver
+     *  Users should be careful when claiming rewards using `forceUpdate=false` as this will result on permanent
+     * loss of pending/uncollected rewards. Always claim rewards using `forceUpdate=true` when possible.
      * @param onBehalfOf The address to claim on behalf of
      * @param receiver The address to receive the rewards
      * @param forceUpdate Flag to retrieve latest rewards from `INCENTIVES_CONTROLLER`
@@ -554,7 +573,7 @@ contract StaticATokenLM is
      * @param user The user to compute for
      * @param balance The balance of the user
      * @param fresh Flag to account for rewards not claimed by contract yet
-     * @return The amound of pending rewards in RAY
+     * @return The amount of pending rewards in RAY
      */
     function _getPendingRewards(
         address user,

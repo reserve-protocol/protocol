@@ -255,10 +255,10 @@ describeFork('Wrapped S*USDC', () => {
     })
 
     it('claims previous rewards', async () => {
+      await wrapper.connect(bob).deposit(await mockPool.balanceOf(bob.address), bob.address)
       await stakingContract.addRewardsToUser(bn('0'), wrapper.address, bn('20000e18'))
       const availableReward = await stakingContract.pendingStargate('0', wrapper.address)
       await mockPool.mint(bob.address, initialAmount)
-      await wrapper.connect(bob).deposit(await mockPool.balanceOf(bob.address), bob.address)
       await wrapper.connect(bob).claimRewards()
 
       expect(availableReward).to.be.eq(await stargate.balanceOf(bob.address))
@@ -381,6 +381,53 @@ describeFork('Wrapped S*USDC', () => {
         expect(await stargate.balanceOf(bob.address)).to.be.eq(rewardIncrement.mul(3).div(2))
         // bob rewards - 0
         // charles rewards - 0
+      })
+    })
+
+    describe('Emergency - Ignore Rewards', () => {
+      const amount = bn('20000e6')
+
+      beforeEach(async () => {
+        const requiredAmount = await stgUSDC.amountLPtoLD(amount)
+
+        await allocateUSDC(bob.address, requiredAmount.sub(await usdc.balanceOf(bob.address)))
+
+        await usdc.connect(bob).approve(router.address, requiredAmount)
+        await router.connect(bob).addLiquidity(await stgUSDC.poolId(), requiredAmount, bob.address)
+
+        await stgUSDC.connect(bob).approve(wstgUSDC.address, ethers.constants.MaxUint256)
+      })
+
+      it('deposits & withdraws correctly when in emergency already', async () => {
+        // Set staking contract in emergency mode
+        await stakingContract.setAllocPoint(0, 0)
+
+        await wstgUSDC.connect(bob).deposit(await stgUSDC.balanceOf(bob.address), bob.address)
+
+        expect(await stgUSDC.balanceOf(bob.address)).to.equal(0)
+        expect(await wstgUSDC.balanceOf(bob.address)).to.closeTo(amount, 10)
+        expect(await usdc.balanceOf(bob.address)).to.equal(0)
+
+        await wstgUSDC.connect(bob).withdraw(await wstgUSDC.balanceOf(bob.address), bob.address)
+
+        expect(await wstgUSDC.balanceOf(bob.address)).to.closeTo(bn('0'), 10)
+        expect(await stgUSDC.balanceOf(bob.address)).to.closeTo(amount, 10)
+      })
+
+      it('deposits & withdraws correctly when put in emergency while operating', async () => {
+        await wstgUSDC.connect(bob).deposit(await stgUSDC.balanceOf(bob.address), bob.address)
+
+        expect(await stgUSDC.balanceOf(bob.address)).to.equal(0)
+        expect(await wstgUSDC.balanceOf(bob.address)).to.closeTo(amount, 10)
+        expect(await usdc.balanceOf(bob.address)).to.equal(0)
+
+        // Set staking contract in emergency mode
+        await stakingContract.setAllocPoint(0, 0)
+
+        await wstgUSDC.connect(bob).withdraw(await wstgUSDC.balanceOf(bob.address), bob.address)
+
+        expect(await wstgUSDC.balanceOf(bob.address)).to.closeTo(bn('0'), 10)
+        expect(await stgUSDC.balanceOf(bob.address)).to.closeTo(amount, 10)
       })
     })
   })

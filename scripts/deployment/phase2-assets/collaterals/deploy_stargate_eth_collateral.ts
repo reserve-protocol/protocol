@@ -14,8 +14,8 @@ import {
 } from '../../common'
 import { priceTimeout, oracleTimeout } from '../../utils'
 import {
-  StargatePoolFiatCollateral,
-  StargatePoolFiatCollateral__factory,
+  StargatePoolETHCollateral,
+  StargatePoolETHCollateral__factory,
 } from '../../../../typechain'
 import { ContractFactory } from 'ethers'
 
@@ -65,10 +65,10 @@ async function main() {
     `Deployed Wrapper for Stargate ETH on ${hre.network.name} (${chainId}): ${erc20.address} `
   )
 
-  const StargateCollateralFactory: StargatePoolFiatCollateral__factory =
-    await hre.ethers.getContractFactory('StargatePoolFiatCollateral')
+  const StargateCollateralFactory: StargatePoolETHCollateral__factory =
+    await hre.ethers.getContractFactory('StargatePoolETHCollateral')
 
-  const collateral = <StargatePoolFiatCollateral>await StargateCollateralFactory.connect(
+  const collateral = <StargatePoolETHCollateral>await StargateCollateralFactory.connect(
     deployer
   ).deploy({
     priceTimeout: priceTimeout.toString(),
@@ -76,10 +76,10 @@ async function main() {
     oracleError: fp('0.005').toString(), // 0.5%,
     erc20: erc20.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h hr,
+    oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(),
-    delayUntilDefault: bn('86400').toString(), // 24h
+    defaultThreshold: 0,
+    delayUntilDefault: 0,
   })
   await collateral.deployed()
   await (await collateral.refresh()).wait()

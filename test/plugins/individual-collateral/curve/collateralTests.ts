@@ -393,15 +393,13 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           }
         })
 
-        it('returns a 0 price', async () => {
+        it('returns unpriced for 0-valued oracle', async () => {
           for (const feed of ctx.feeds) {
             await feed.updateAnswer(0).then((e) => e.wait())
           }
 
-          // (0, 0) is returned
-          const [low, high] = await ctx.collateral.price()
-          expect(low).to.equal(0)
-          expect(high).to.equal(0)
+          // (0, FIX_MAX) is returned
+          await expectUnpriced(ctx.collateral.address)
 
           // When refreshed, sets status to Unpriced
           await ctx.collateral.refresh()
@@ -453,6 +451,32 @@ export default function fn<X extends CurveCollateralFixtureContext>(
       })
 
       describe('status', () => {
+        before(resetFork)
+
+        it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+          const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+            'InvalidMockV3Aggregator'
+          )
+          const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
+            await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
+          )
+
+          const [invalidCollateral] = await deployCollateral({
+            erc20: ctx.wrapper.address,
+            feeds: defaultOpts.feeds!.map((f) => f.map(() => invalidChainlinkFeed.address)),
+          })
+
+          // Reverting with no reason
+          await invalidChainlinkFeed.setSimplyRevert(true)
+          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+          // Runnning out of gas (same error)
+          await invalidChainlinkFeed.setSimplyRevert(false)
+          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
+          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
+        })
+
         it('maintains status in normal situations', async () => {
           // Check initial state
           expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
@@ -614,31 +638,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
           expect(await ctx.collateral.whenDefault()).to.equal(await getLatestBlockTimestamp())
         })
 
-        it('reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
-          const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-            'InvalidMockV3Aggregator'
-          )
-          const invalidChainlinkFeed = <InvalidMockV3Aggregator>(
-            await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
-          )
-
-          ctx = await loadFixture(makeCollateralFixtureContext(ctx.alice, {}))
-          const [invalidCollateral] = await deployCollateral({
-            erc20: ctx.wrapper.address,
-            feeds: defaultOpts.feeds!.map((f) => f.map(() => invalidChainlinkFeed.address)),
-          })
-
-          // Reverting with no reason
-          await invalidChainlinkFeed.setSimplyRevert(true)
-          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-          // Runnning out of gas (same error)
-          await invalidChainlinkFeed.setSimplyRevert(false)
-          await expect(invalidCollateral.refresh()).to.be.revertedWithoutReason()
-          expect(await invalidCollateral.status()).to.equal(CollateralStatus.SOUND)
-        })
-
         describe('collateral-specific tests', collateralSpecificStatusTests)
       })
 
@@ -646,6 +645,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
         if (IMPLEMENTATION != Implementation.P1 || !useEnv('REPORT_GAS')) return // hide pending
 
         context('refresh()', () => {
+          beforeEach(async () => {
+            await ctx.collateral.refresh()
+            expect(await ctx.collateral.status()).to.equal(CollateralStatus.SOUND)
+          })
+
           afterEach(async () => {
             await snapshotGasCost(ctx.collateral.refresh())
             await snapshotGasCost(ctx.collateral.refresh()) // 2nd refresh can be different than 1st
@@ -653,11 +657,6 @@ export default function fn<X extends CurveCollateralFixtureContext>(
 
           it('during SOUND', async () => {
             // pass
-          })
-
-          it('after hard default', async () => {
-            const currentExchangeRate = await ctx.curvePool.get_virtual_price()
-            await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
           })
 
           it('during soft default', async () => {
@@ -689,6 +688,11 @@ export default function fn<X extends CurveCollateralFixtureContext>(
             const lotP = await ctx.collateral.lotPrice()
             expect(lotP[0]).to.equal(0)
             expect(lotP[1]).to.equal(0)
+          })
+
+          it('after hard default', async () => {
+            const currentExchangeRate = await ctx.curvePool.get_virtual_price()
+            await ctx.curvePool.setVirtualPrice(currentExchangeRate.sub(1e3)).then((e) => e.wait())
           })
         })
       })

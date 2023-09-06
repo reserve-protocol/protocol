@@ -89,9 +89,9 @@ interface TestIBroker is IBroker {
 
     function setDutchAuctionLength(uint48 newAuctionLength) external;
 
-    function setBatchTradeDisabled(bool disabled) external;
+    function enableBatchTrade() external;
 
-    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external;
+    function enableDutchTrade(IERC20Metadata erc20) external;
 
     // only present on pre-3.0.0 Brokers; used by EasyAuction regression test
     function disabled() external view returns (bool);

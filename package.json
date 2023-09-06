@@ -25,7 +25,7 @@
     "test:plugins:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/plugins/individual-collateral/**/*.test.ts",
     "test:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/**/*.test.ts",
     "test:scenario": "PROTO_IMPL=1 hardhat test test/scenario/*.test.ts",
-    "test:gas": "yarn test:gas:protocol && yarn test:gas:collateral && yarn test:gas:integration",
+    "test:gas": "yarn test:gas:protocol && yarn test:gas:collateral",
     "test:gas:protocol": "REPORT_GAS=1 PROTO_IMPL=1 hardhat test test/{libraries,plugins,scenario}/*.test.ts test/*.test.ts",
     "test:gas:collateral": "FORK=1 REPORT_GAS=1 PROTO_IMPL=1 hardhat test test/plugins/individual-collateral/**/*.test.ts",
     "test:coverage": "PROTO_IMPL=1 hardhat coverage --testfiles 'test/{libraries,plugins,scenario}/*.test.ts test/*.test.ts'",
@@ -111,6 +111,8 @@
   },
   "packageManager": "yarn@3.3.1",
   "dependencies": {
+    "@aave/core-v3": "^1.18.0",
+    "@aave/periphery-v3": "^2.5.0",
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
     "@types/isomorphic-fetch": "^0.0.36",
     "isomorphic-fetch": "^3.0.0"

@@ -707,8 +707,8 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
 
-      // Does not revert with zero price
-      await expectPrice(zeropriceCtokenCollateral.address, bn('0'), bn('0'), false)
+      // Unpriced
+      await expectUnpriced(zeropriceCtokenCollateral.address)
 
       // Refresh should mark status IFFY
       await zeropriceCtokenCollateral.refresh()
@@ -863,46 +863,14 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   describeGas('Gas Reporting', () => {
     context('refresh()', () => {
+      beforeEach(async () => {
+        await aDaiCollateral.refresh()
+        expect(await aDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      })
+
       it('during SOUND', async () => {
         await snapshotGasCost(aDaiCollateral.refresh())
         await snapshotGasCost(aDaiCollateral.refresh()) // 2nd refresh can be different than 1st
-      })
-
-      it('after hard default', async () => {
-        const sATokenMockFactory: ContractFactory = await ethers.getContractFactory(
-          'StaticATokenMock'
-        )
-        const aDaiErc20 = await ethers.getContractAt('ERC20Mock', aDai.address)
-        const symbol = await aDaiErc20.symbol()
-        const saDaiMock: StaticATokenMock = <StaticATokenMock>(
-          await sATokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
-        )
-        // Set initial exchange rate to the new aDai Mock
-        await saDaiMock.setExchangeRate(fp('0.02'))
-
-        // Redeploy plugin using the new aDai mock
-        const newADaiCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
-          await ethers.getContractFactory('ATokenFiatCollateral')
-        ).deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: await aDaiCollateral.chainlinkFeed(),
-            oracleError: ORACLE_ERROR,
-            erc20: saDaiMock.address,
-            maxTradeVolume: await aDaiCollateral.maxTradeVolume(),
-            oracleTimeout: await aDaiCollateral.oracleTimeout(),
-            targetName: await aDaiCollateral.targetName(),
-            defaultThreshold,
-            delayUntilDefault: await aDaiCollateral.delayUntilDefault(),
-          },
-          REVENUE_HIDING
-        )
-        await newADaiCollateral.refresh()
-
-        // Decrease rate for aDAI, will disable collateral immediately
-        await saDaiMock.setExchangeRate(fp('0.019'))
-        await snapshotGasCost(newADaiCollateral.refresh())
-        await snapshotGasCost(newADaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })
 
       it('during soft default', async () => {
@@ -1005,6 +973,43 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         expect(lotP[1]).to.equal(0)
         await snapshotGasCost(aDaiCollateral.refresh())
         await snapshotGasCost(aDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after hard default', async () => {
+        const sATokenMockFactory: ContractFactory = await ethers.getContractFactory(
+          'StaticATokenMock'
+        )
+        const aDaiErc20 = await ethers.getContractAt('ERC20Mock', aDai.address)
+        const symbol = await aDaiErc20.symbol()
+        const saDaiMock: StaticATokenMock = <StaticATokenMock>(
+          await sATokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+        )
+        // Set initial exchange rate to the new aDai Mock
+        await saDaiMock.setExchangeRate(fp('0.02'))
+
+        // Redeploy plugin using the new aDai mock
+        const newADaiCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+          await ethers.getContractFactory('ATokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await aDaiCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: saDaiMock.address,
+            maxTradeVolume: await aDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await aDaiCollateral.oracleTimeout(),
+            targetName: await aDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await aDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+        await newADaiCollateral.refresh()
+
+        // Decrease rate for aDAI, will disable collateral immediately
+        await saDaiMock.setExchangeRate(fp('0.019'))
+        await snapshotGasCost(newADaiCollateral.refresh())
+        await snapshotGasCost(newADaiCollateral.refresh()) // 2nd refresh can be different than 1st
       })
     })
   })

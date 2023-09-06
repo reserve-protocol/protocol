@@ -289,15 +289,14 @@ contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
     }
 
     function _checkpoint(address[2] memory _accounts) internal nonReentrant {
-        //if shutdown, no longer checkpoint in case there are problems
-        if (isShutdown()) return;
-
         uint256 supply = _getTotalSupply();
         uint256[2] memory depositedBalance;
         depositedBalance[0] = _getDepositedBalance(_accounts[0]);
         depositedBalance[1] = _getDepositedBalance(_accounts[1]);
 
-        IRewardStaking(convexPool).getReward(address(this), true);
+        if (!isShutdown()) {
+            IRewardStaking(convexPool).getReward(address(this), true);
+        }
 
         _claimExtras();
 

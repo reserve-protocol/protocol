@@ -46,6 +46,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     // Whether Batch Auctions are disabled.
     // Initially false. Settable by OWNER.
     // A GnosisTrade clone can set it to true via reportViolation()
+    /// @custom:oz-renamed-from disabled
     bool public batchTradeDisabled;
 
     // The set of ITrade (clone) addresses this contract has created
@@ -137,13 +138,16 @@ contract BrokerP1 is ComponentP1, IBroker {
             emit BatchTradeDisabledSet(batchTradeDisabled, true);
             batchTradeDisabled = true;
         } else if (kind == TradeKind.DUTCH_AUCTION) {
-            IERC20Metadata sell = trade.sell();
-            emit DutchTradeDisabledSet(sell, dutchTradeDisabled[sell], true);
-            dutchTradeDisabled[sell] = true;
+            // Only allow BackingManager-started trades to disable Dutch Auctions
+            if (DutchTrade(address(trade)).origin() == backingManager) {
+                IERC20Metadata sell = trade.sell();
+                emit DutchTradeDisabledSet(sell, dutchTradeDisabled[sell], true);
+                dutchTradeDisabled[sell] = true;
 
-            IERC20Metadata buy = trade.buy();
-            emit DutchTradeDisabledSet(buy, dutchTradeDisabled[buy], true);
-            dutchTradeDisabled[buy] = true;
+                IERC20Metadata buy = trade.buy();
+                emit DutchTradeDisabledSet(buy, dutchTradeDisabled[buy], true);
+                dutchTradeDisabled[buy] = true;
+            }
         } else {
             revert("unrecognized trade kind");
         }
@@ -204,15 +208,15 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     /// @custom:governance
-    function setBatchTradeDisabled(bool disabled) external governance {
-        emit BatchTradeDisabledSet(batchTradeDisabled, disabled);
-        batchTradeDisabled = disabled;
+    function enableBatchTrade() external governance {
+        emit BatchTradeDisabledSet(batchTradeDisabled, false);
+        batchTradeDisabled = false;
     }
 
     /// @custom:governance
-    function setDutchTradeDisabled(IERC20Metadata erc20, bool disabled) external governance {
-        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], disabled);
-        dutchTradeDisabled[erc20] = disabled;
+    function enableDutchTrade(IERC20Metadata erc20) external governance {
+        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], false);
+        dutchTradeDisabled[erc20] = false;
     }
 
     // === Private ===

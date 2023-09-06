@@ -20,6 +20,9 @@ import "../curve/PoolTokens.sol";
  * ref = stablePlainPool pool invariant
  * tar = USD
  * UoA = USD
+ *
+ * @notice Curve pools with native ETH or ERC777 should be avoided,
+ *  see docs/collateral.md for information
  */
 contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     using OracleLib for AggregatorV3Interface;
@@ -72,12 +75,6 @@ contract CurveStableCollateral is AppreciatingFiatCollateral, PoolTokens {
     /// Refresh exchange rates and update default status.
     /// Have to override to add custom default checks
     function refresh() public virtual override {
-        if (alreadyDefaulted()) {
-            // continue to update rates
-            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
-            return;
-        }
-
         CollateralStatus oldStatus = status();
 
         // Check for hard default

@@ -21,9 +21,9 @@ import "./mixins/Component.sol";
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using BasketLibP1 for Basket;
+    using CollateralStatusComparator for CollateralStatus;
     using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
     using EnumerableSet for EnumerableSet.Bytes32Set;
-    using CollateralStatusComparator for CollateralStatus;
     using FixLib for uint192;
 
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight

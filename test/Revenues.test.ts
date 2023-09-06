@@ -1,4 +1,4 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import { loadFixture, getStorageAt, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
@@ -140,6 +140,21 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       .mul(lowSellPrice) // (b)
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+  }
+
+  const disableBatchTrade = async () => {
+    if (IMPLEMENTATION == Implementation.P1) {
+      const slot = await getStorageAt(broker.address, 205)
+      await setStorageAt(
+        broker.address,
+        205,
+        slot.replace(slot.slice(2, 14), '1'.padStart(12, '0'))
+      )
+    } else {
+      const slot = await getStorageAt(broker.address, 56)
+      await setStorageAt(broker.address, 56, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
+    }
+    expect(await broker.batchTradeDisabled()).to.equal(true)
   }
 
   beforeEach(async () => {
@@ -1029,6 +1044,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
         await setOraclePrice(collateral0.address, bn(0))
         await collateral0.refresh()
+        await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+        await setOraclePrice(collateral1.address, bn('1e8'))
+
+        const p = await collateral0.lotPrice()
+        expect(p[0]).to.equal(0)
+        expect(p[1]).to.equal(0)
         await expect(
           p1RevenueTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
         ).to.revertedWith('bad sell pricing')
@@ -2035,7 +2056,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
-      it('Should not trade if price for buy token = 0', async () => {
+      it('Should trade even if price for buy token = 0', async () => {
         // Set AAVE tokens as reward
         rewardAmountAAVE = bn('1e18')
 
@@ -2078,13 +2099,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Set RSR price to 0
         await setOraclePrice(rsrAsset.address, bn('0'))
 
-        // Should revert
-        await expect(
-          rsrTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
-        ).to.be.revertedWith('buy asset price unknown')
+        // Should not revert
+        await expect(rsrTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])).to.not
+          .be.reverted
 
-        // Funds still in Trader
-        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        // Trade open for aaveToken
+        const t = await getTrade(rsrTrader, aaveToken.address)
+        expect(t.address).to.not.equal(ZERO_ADDRESS)
       })
 
       it('Should report violation when Batch Auction behaves incorrectly', async () => {
@@ -2228,7 +2249,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
       })
 
-      it('Should report violation when Dutch Auction clears in geometric phase', async () => {
+      it('Should not report violation when Dutch Auction clears in geometric phase', async () => {
         // This test needs to be in this file and not Broker.test.ts because settleTrade()
         // requires the BackingManager _actually_ started the trade
 
@@ -2322,24 +2343,24 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Advance time near end of geometric phase
         await advanceBlocks(config.dutchAuctionLength.div(12).div(5).sub(5))
 
-        // Should settle RSR auction
+        // Should settle RSR auction without disabling dutch auctions
         await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
         await expect(rsrTrade.connect(addr1).bid())
           .to.emit(rsrTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
-        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(true)
-        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(true)
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
 
-        // Should still be able to settle RToken auction, even though aaveToken is now disabled
+        // Should still be able to settle RToken auction
         await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
         await expect(rTokenTrade.connect(addr1).bid())
           .to.emit(rTokenTrader, 'TradeSettled')
           .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
 
-        // Check all 3 tokens are disabled for dutch auctions
-        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(true)
-        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(true)
-        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(true)
+        // Check all no tokens are disabled for dutch auctions
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
       })
 
       it('Should not report violation when Dutch Auction clears in first linear phase', async () => {
@@ -2484,7 +2505,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Disable broker
-        await broker.connect(owner).setBatchTradeDisabled(true)
+        await disableBatchTrade()
 
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
         const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%

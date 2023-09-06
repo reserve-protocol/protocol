@@ -73,12 +73,12 @@ async function main() {
   ).deploy({
     priceTimeout: priceTimeout.toString(),
     chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-    oracleError: fp('0.001').toString(), // 0.1%,
+    oracleError: fp('0.0025').toString(), // 0.25%,
     erc20: erc20.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h hr,
     targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.05').toString(),
+    defaultThreshold: fp('0.0125').toString(), // 1.25%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
   await collateral.deployed()

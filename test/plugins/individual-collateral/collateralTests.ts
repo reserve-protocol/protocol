@@ -25,7 +25,7 @@ import {
   CollateralTestSuiteFixtures,
   CollateralStatus,
 } from './pluginTestTypes'
-import { expectPrice } from '../../utils/oracles'
+import { expectPrice, expectUnpriced } from '../../utils/oracles'
 import snapshotGasCost from '../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation } from '../../fixtures'
 
@@ -58,6 +58,7 @@ export default function fn<X extends CollateralFixtureContext>(
     resetFork,
     collateralName,
     chainlinkDefaultAnswer,
+    toleranceDivisor,
   } = fixtures
 
   describeFork(`Collateral: ${collateralName}`, () => {
@@ -127,14 +128,17 @@ export default function fn<X extends CollateralFixtureContext>(
 
       describe('functions', () => {
         it('returns the correct bal (18 decimals)', async () => {
-          const amount = bn('20').mul(bn(10).pow(await ctx.tok.decimals()))
+          const decimals = await ctx.tok.decimals()
+          const amount = bn('20').mul(bn(10).pow(decimals))
           await mintCollateralTo(ctx, amount, alice, alice.address)
 
           const aliceBal = await collateral.bal(alice.address)
-          expect(aliceBal).to.closeTo(
-            amount.mul(bn(10).pow(18 - (await ctx.tok.decimals()))),
-            bn('100').mul(bn(10).pow(18 - (await ctx.tok.decimals())))
-          )
+          const amount18d =
+            decimals <= 18
+              ? amount.mul(bn(10).pow(18 - decimals))
+              : amount.div(bn(10).pow(decimals - 18))
+          const dist18d = decimals <= 18 ? bn('100').mul(bn(10).pow(18 - decimals)) : bn('10')
+          expect(aliceBal).to.closeTo(amount18d, dist18d)
         })
       })
 
@@ -183,7 +187,7 @@ export default function fn<X extends CollateralFixtureContext>(
         itChecksPriceChanges('prices change as USD feed price changes', async () => {
           const oracleError = await collateral.oracleError()
           const expectedPrice = await getExpectedPrice(ctx)
-          await expectPrice(collateral.address, expectedPrice, oracleError, true)
+          await expectPrice(collateral.address, expectedPrice, oracleError, true, toleranceDivisor)
 
           // Update values in Oracles increase by 10-20%
           const newPrice = BigNumber.from(chainlinkDefaultAnswer).mul(11).div(10)
@@ -194,7 +198,13 @@ export default function fn<X extends CollateralFixtureContext>(
           await collateral.refresh()
           const newExpectedPrice = await getExpectedPrice(ctx)
           expect(newExpectedPrice).to.be.gt(expectedPrice)
-          await expectPrice(collateral.address, newExpectedPrice, oracleError, true)
+          await expectPrice(
+            collateral.address,
+            newExpectedPrice,
+            oracleError,
+            true,
+            toleranceDivisor
+          )
         })
 
         // all our collateral that have targetPerRef feeds use them only for soft default checks
@@ -203,7 +213,13 @@ export default function fn<X extends CollateralFixtureContext>(
           async () => {
             const oracleError = await collateral.oracleError()
             const expectedPrice = await getExpectedPrice(ctx)
-            await expectPrice(collateral.address, expectedPrice, oracleError, true)
+            await expectPrice(
+              collateral.address,
+              expectedPrice,
+              oracleError,
+              true,
+              toleranceDivisor
+            )
 
             // Get refPerTok initial values
             const initialRefPerTok = await collateral.refPerTok()
@@ -215,13 +231,19 @@ export default function fn<X extends CollateralFixtureContext>(
             if (itIsPricedByPeg) {
               // Check new prices -- increase expected
               const newPrice = await getExpectedPrice(ctx)
-              await expectPrice(collateral.address, newPrice, oracleError, true)
+              await expectPrice(collateral.address, newPrice, oracleError, true, toleranceDivisor)
               const [newLow, newHigh] = await collateral.price()
-              expect(oldLow).to.not.equal(newLow)
-              expect(oldHigh).to.not.equal(newHigh)
+              expect(oldLow).to.be.lt(newLow)
+              expect(oldHigh).to.be.lt(newHigh)
             } else {
               // Check new prices -- no increase expected
-              await expectPrice(collateral.address, expectedPrice, oracleError, true)
+              await expectPrice(
+                collateral.address,
+                expectedPrice,
+                oracleError,
+                true,
+                toleranceDivisor
+              )
               const [newLow, newHigh] = await collateral.price()
               expect(oldLow).to.equal(newLow)
               expect(oldHigh).to.equal(newHigh)
@@ -241,7 +263,7 @@ export default function fn<X extends CollateralFixtureContext>(
           const [initLow, initHigh] = await collateral.price()
           const expectedPrice = await getExpectedPrice(ctx)
 
-          await expectPrice(collateral.address, expectedPrice, oracleError, true)
+          await expectPrice(collateral.address, expectedPrice, oracleError, true, toleranceDivisor)
 
           // need to deposit in order to get an exchange rate
           const amount = bn('200').mul(bn(10).pow(await ctx.tok.decimals()))
@@ -256,15 +278,13 @@ export default function fn<X extends CollateralFixtureContext>(
           expect(newHigh).to.be.gt(initHigh)
         })
 
-        it('returns a 0 price', async () => {
+        it('returns unpriced for 0-valued oracle', async () => {
           // Set price of underlying to 0
           const updateAnswerTx = await chainlinkFeed.updateAnswer(0)
           await updateAnswerTx.wait()
 
           // (0, FIX_MAX) is returned
-          const [low, high] = await collateral.price()
-          expect(low).to.equal(0)
-          expect(high).to.equal(0)
+          await expectUnpriced(collateral.address)
 
           // When refreshed, sets status to Unpriced
           await collateral.refresh()
@@ -282,23 +302,6 @@ export default function fn<X extends CollateralFixtureContext>(
           // When refreshed, sets status to Unpriced
           await collateral.refresh()
           expect(await collateral.status()).to.equal(CollateralStatus.IFFY)
-        })
-
-        it('does not update the saved prices if collateral is unpriced', async () => {
-          /*
-            want to cover this block from the refresh function
-            is it even possible to cover this w/ the tryPrice from AppreciatingFiatCollateral?
-
-            if (high < FIX_MAX) {
-                savedLowPrice = low;
-                savedHighPrice = high;
-                lastSave = uint48(block.timestamp);
-            } else {
-                // must be unpriced
-                assert(low == 0);
-            }
-          */
-          expect(true)
         })
 
         itHasRevenueHiding('does revenue hiding correctly', async () => {
@@ -500,6 +503,11 @@ export default function fn<X extends CollateralFixtureContext>(
         if (IMPLEMENTATION != Implementation.P1 || !useEnv('REPORT_GAS')) return // hide pending
 
         context('refresh()', () => {
+          beforeEach(async () => {
+            await collateral.refresh()
+            expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
+          })
+
           afterEach(async () => {
             await snapshotGasCost(collateral.refresh())
             await snapshotGasCost(collateral.refresh()) // 2nd refresh can be different than 1st
@@ -507,10 +515,6 @@ export default function fn<X extends CollateralFixtureContext>(
 
           it('during SOUND', async () => {
             // pass
-          })
-
-          itChecksRefPerTokDefault('after hard default', async () => {
-            await reduceRefPerTok(ctx, 5)
           })
 
           itChecksTargetPerRefDefault('during soft default', async () => {
@@ -538,6 +542,10 @@ export default function fn<X extends CollateralFixtureContext>(
             const lotP = await collateral.lotPrice()
             expect(lotP[0]).to.equal(0)
             expect(lotP[1]).to.equal(0)
+          })
+
+          itChecksRefPerTokDefault('after hard default', async () => {
+            await reduceRefPerTok(ctx, 5)
           })
         })
       })

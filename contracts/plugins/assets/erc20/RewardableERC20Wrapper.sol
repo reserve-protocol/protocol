@@ -45,6 +45,7 @@ abstract contract RewardableERC20Wrapper is RewardableERC20 {
             underlying.safeTransferFrom(msg.sender, address(this), _amount);
             _afterDeposit(_amount, _to);
         }
+
         emit Deposited(msg.sender, _to, _amount);
     }
 

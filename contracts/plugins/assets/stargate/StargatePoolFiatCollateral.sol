@@ -8,6 +8,14 @@ import "./interfaces/IStargatePool.sol";
 
 import "./StargateRewardableWrapper.sol";
 
+/**
+ * @title StargatePoolFiatCollateral
+ * @notice Collateral plugin for Stargate USD Stablecoins,
+ * tok = wstgUSDC / wstgUSDT
+ * ref = USDC / USDT
+ * tar = USD
+ * UoA = USD
+ */
 contract StargatePoolFiatCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
@@ -58,8 +66,6 @@ contract StargatePoolFiatCollateral is FiatCollateral {
     /// Refresh exchange rates and update default status.
     /// @dev Should not need to override: can handle collateral with variable refPerTok()
     function refresh() public virtual override {
-        if (alreadyDefaulted()) return;
-
         CollateralStatus oldStatus = status();
 
         // Check for hard default
@@ -114,6 +120,9 @@ contract StargatePoolFiatCollateral is FiatCollateral {
 
         if (_totalSupply != 0) {
             _rate = divuu(pool.totalLiquidity(), _totalSupply);
+        } else {
+            // In case the pool has no tokens at all, the rate is 1:1
+            _rate = FIX_ONE;
         }
     }
 
