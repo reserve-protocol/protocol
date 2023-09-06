@@ -5,20 +5,20 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Throttle.sol";
-
+import "hardhat/console.sol";
 function defaultParams() pure returns (DeploymentParams memory params) {
     // 1 {qRTok} per hour or 5% supply of {qRTok} per hour
     ThrottleLib.Params memory tParams = ThrottleLib.Params(
         {amtRate: 20000e18, pctRate: _safeWrap(5e16)}
     );
-
+    
     params = DeploymentParams({
         dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),
         minTradeVolume: 1e22,
         rTokenMaxTradeVolume: 1e24,
         shortFreeze: 345600, // 4 days
         longFreeze: 1814400, // 3 weeks
-        rewardRatio: FixLib.divu(toFix(22840), (1_000_000)), // approx. half life of 30 pay periods
+        rewardRatio: FixLib.divu(toFix(22840), (10_000_000_000)), // approx. half life of 30 pay periods
         unstakingDelay: 1209600, // 2 weeks
         withdrawalLeak: 5e16, // 5%
         tradingDelay: 0, // (the delay _after_ default has been confirmed)

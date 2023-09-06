@@ -9,7 +9,7 @@ describe(`PriceModels in AssetMock`, () => {
   let token: sc.ERC20Mock
 
   async function newAsset(priceModel: PriceModel): Promise<sc.AssetMock> {
-    const f: sc.AssetMock__factory = await ethers.getContractFactory('AssetMock')
+    const f: sc.AssetMock__factory = await ethers.getContractFactory('contracts/fuzz/AssetMock.sol:AssetMock')
     return await f.deploy(
       token.address, // erc20
       fp(1e6), // maxTradeVolume

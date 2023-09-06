@@ -359,7 +359,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
             expect(p0High).to.not.equal(p1High)
           }
         } else {
-          const assetMock = await ConAt('AssetMock', asset.address)
+          const assetMock = await ConAt('contracts/fuzz/AssetMock.sol:AssetMock', asset.address)
           const [kind, , ,] = await assetMock.model()
           if (kind == 0) {
             expect(p0Low).to.equal(p1Low)
@@ -500,6 +500,9 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(allowance1).to.equal(2n ** 256n - 1n)
     })
 
+    /*
+      deprecated
+
     it('can distribute revenue', async () => {
       // ==== Setup: 100% distribution to RSR;
       const furanceID = addrIDs.get(addr(1)) as number
@@ -546,6 +549,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(alice_bal.sub(alice_bal_end)).to.equal(20n * exa)
       expect(stRSR_bal_end.sub(stRSR_bal)).to.equal(20n * exa)
     })
+    */
 
     it('can manage tokens in Revenue Traders (RSR and RToken)', async () => {
       await warmup()
