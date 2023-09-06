@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../libraries/Fixed.sol";
@@ -36,20 +36,17 @@ interface IBasketHandler is IComponent {
     /// @param targetName The name of the target unit as a bytes32
     /// @param max The max number to use from `erc20s`
     /// @param erc20s The set of backup collateral tokens
-    event BackupConfigSet(bytes32 indexed targetName, uint256 indexed max, IERC20[] erc20s);
+    event BackupConfigSet(bytes32 indexed targetName, uint256 max, IERC20[] erc20s);
 
     /// Emitted when the warmup period is changed
     /// @param oldVal The old warmup period
     /// @param newVal The new warmup period
-    event WarmupPeriodSet(uint48 indexed oldVal, uint48 indexed newVal);
+    event WarmupPeriodSet(uint48 oldVal, uint48 newVal);
 
     /// Emitted when the status of a basket has changed
     /// @param oldStatus The previous basket status
     /// @param newStatus The new basket status
-    event BasketStatusChanged(
-        CollateralStatus indexed oldStatus,
-        CollateralStatus indexed newStatus
-    );
+    event BasketStatusChanged(CollateralStatus oldStatus, CollateralStatus newStatus);
 
     // Initialization
     function init(IMain main_, uint48 warmupPeriod_) external;

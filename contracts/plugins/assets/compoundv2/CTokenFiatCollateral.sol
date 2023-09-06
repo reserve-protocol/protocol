@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../../../interfaces/IRewardable.sol";
+import "../erc20/RewardableERC20Wrapper.sol";
 import "./ICToken.sol";
-import "../../../vendor/oz/IERC4626.sol";
 
 /**
  * @title CTokenFiatCollateral
@@ -22,14 +22,16 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
     uint8 public immutable referenceERC20Decimals;
 
-    ICToken public immutable cToken;
+    ICToken public immutable cToken; // gas-optimization: access underlying cToken directly
 
+    /// @param config.erc20 Should be a CTokenWrapper
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
-        cToken = ICToken(address(IERC4626(address(config.erc20)).asset()));
+        cToken = ICToken(address(RewardableERC20Wrapper(address(config.erc20)).underlying()));
         referenceERC20Decimals = IERC20Metadata(cToken.underlying()).decimals();
+        require(referenceERC20Decimals > 0, "referenceERC20Decimals missing");
     }
 
     /// Refresh exchange rates and update default status.
@@ -37,7 +39,19 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     function refresh() public virtual override {
         // == Refresh ==
         // Update the Compound Protocol
-        cToken.exchangeRateCurrent();
+        // solhint-disable no-empty-blocks
+        try cToken.exchangeRateCurrent() {} catch (bytes memory errData) {
+            CollateralStatus oldStatus = status();
+
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            markStatus(CollateralStatus.DISABLED);
+
+            CollateralStatus newStatus = status();
+            if (oldStatus != newStatus) {
+                emit CollateralStatusChanged(oldStatus, newStatus);
+            }
+        }
 
         // Intentional and correct for the super call to be last!
         super.refresh(); // already handles all necessary default checks

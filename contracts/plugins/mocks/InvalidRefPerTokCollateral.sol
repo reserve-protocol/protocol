@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
@@ -37,14 +37,11 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
             // {UoA/tok}, {UoA/tok}, {target/ref}
             // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-            // Save prices if priced
+            // Save prices if high price is finite
             if (high < FIX_MAX) {
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);
-            } else {
-                // must be unpriced
-                assert(low == 0);
             }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -66,6 +63,11 @@ contract InvalidRefPerTokCollateralMock is AppreciatingFiatCollateral {
     // Setter to make refPerTok revert
     function setRefPerTokRevert(bool on) external {
         refPerTokRevert = on;
+    }
+
+    // Setter for status
+    function setStatus(CollateralStatus _status) external {
+        markStatus(_status);
     }
 
     function refPerTok() public view virtual override returns (uint192) {

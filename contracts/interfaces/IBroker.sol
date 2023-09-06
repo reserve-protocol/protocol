@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "./IAsset.sol";
 import "./IComponent.sol";
@@ -9,6 +9,14 @@ import "./ITrade.sol";
 enum TradeKind {
     DUTCH_AUCTION,
     BATCH_AUCTION
+}
+
+/// Cache of all (lot) prices for a pair to prevent re-lookup
+struct TradePrices {
+    uint192 sellLow; // {UoA/sellTok} can be 0
+    uint192 sellHigh; // {UoA/sellTok} should not be 0
+    uint192 buyLow; // {UoA/buyTok} should not be 0
+    uint192 buyHigh; // {UoA/buyTok} should not be 0 or FIX_MAX
 }
 
 /// The data format that describes a request for trade with the Broker
@@ -25,12 +33,13 @@ struct TradeRequest {
  *   the continued proper functioning of trading platforms.
  */
 interface IBroker is IComponent {
-    event GnosisSet(IGnosis indexed oldVal, IGnosis indexed newVal);
-    event BatchTradeImplementationSet(ITrade indexed oldVal, ITrade indexed newVal);
-    event DutchTradeImplementationSet(ITrade indexed oldVal, ITrade indexed newVal);
-    event BatchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
-    event DutchAuctionLengthSet(uint48 indexed oldVal, uint48 indexed newVal);
-    event DisabledSet(bool indexed prevVal, bool indexed newVal);
+    event GnosisSet(IGnosis oldVal, IGnosis newVal);
+    event BatchTradeImplementationSet(ITrade oldVal, ITrade newVal);
+    event DutchTradeImplementationSet(ITrade oldVal, ITrade newVal);
+    event BatchAuctionLengthSet(uint48 oldVal, uint48 newVal);
+    event DutchAuctionLengthSet(uint48 oldVal, uint48 newVal);
+    event BatchTradeDisabledSet(bool prevVal, bool newVal);
+    event DutchTradeDisabledSet(IERC20Metadata indexed erc20, bool prevVal, bool newVal);
 
     // Initialization
     function init(
@@ -45,12 +54,18 @@ interface IBroker is IComponent {
     /// Request a trade from the broker
     /// @dev Requires setting an allowance in advance
     /// @custom:interaction
-    function openTrade(TradeKind kind, TradeRequest memory req) external returns (ITrade);
+    function openTrade(
+        TradeKind kind,
+        TradeRequest memory req,
+        TradePrices memory prices
+    ) external returns (ITrade);
 
     /// Only callable by one of the trading contracts the broker deploys
     function reportViolation() external;
 
-    function disabled() external view returns (bool);
+    function batchTradeDisabled() external view returns (bool);
+
+    function dutchTradeDisabled(IERC20Metadata erc20) external view returns (bool);
 }
 
 interface TestIBroker is IBroker {
@@ -74,5 +89,10 @@ interface TestIBroker is IBroker {
 
     function setDutchAuctionLength(uint48 newAuctionLength) external;
 
-    function setDisabled(bool disabled_) external;
+    function enableBatchTrade() external;
+
+    function enableDutchTrade(IERC20Metadata erc20) external;
+
+    // only present on pre-3.0.0 Brokers; used by EasyAuction regression test
+    function disabled() external view returns (bool);
 }

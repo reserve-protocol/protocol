@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC1271Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
@@ -14,6 +14,7 @@ import "../interfaces/IBasketHandler.sol";
 import "../interfaces/IStRSR.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "../libraries/Permit.sol";
 import "./mixins/Component.sol";
 
@@ -31,10 +32,12 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
 
-    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
-    uint48 public constant MIN_UNSTAKING_DELAY = PERIOD * 2; // {s}
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable PERIOD; // {s} 1 block based on network
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable MIN_UNSTAKING_DELAY; // {s} based on network
     uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint192 public constant MAX_REWARD_RATIO = 1e18;
+    uint192 public constant MAX_REWARD_RATIO = 1e14; // {1} 0.01%
     uint192 public constant MAX_WITHDRAWAL_LEAK = 3e17; // {1} 30%
 
     // ==== ERC20Permit ====
@@ -95,6 +98,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // Min exchange rate {qRSR/qStRSR} (compile-time constant)
     uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9
 
+    // stake rate under/over which governance can reset all stakes
+    uint192 private constant MAX_SAFE_STAKE_RATE = 1e6 * FIX_ONE; // 1e6
+    uint192 private constant MIN_SAFE_STAKE_RATE = uint192(1e12); // 1e-6
+
     // Withdrawal Leak
     uint192 private leaked; // {1} stake fraction that has withdrawn without a refresh
     uint48 private lastWithdrawRefresh; // {s} timestamp of last refresh() during withdraw()
@@ -103,6 +110,11 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     uint48 public unstakingDelay;
     uint192 public rewardRatio;
     uint192 public withdrawalLeak; // {1} gov param -- % RSR that can be withdrawn without refresh
+
+    constructor() {
+        PERIOD = NetworkConfigLib.blocktime();
+        MIN_UNSTAKING_DELAY = PERIOD * 2;
+    }
 
     function init(
         IMain main_,
@@ -128,7 +140,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notFrozen {
+    function payoutRewards() external {
         _payoutRewards();
     }
 
@@ -141,7 +153,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:
@@ -234,19 +246,29 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     function cancelUnstake(uint256 endId) external notFrozen {
         address account = _msgSender();
 
+        // Call state keepers
+        _payoutRewards();
+
+        // We specifically allow unstaking when under collateralized
         // IBasketHandler bh = main.basketHandler();
         // require(bh.fullyCollateralized(), "RToken uncollateralized");
         // require(bh.isReady(), "basket not ready");
 
         Withdrawal[] storage queue = withdrawals[account];
+
         if (endId == 0) return;
         require(endId <= queue.length, "index out-of-bounds");
+
+        // Cancelling unstake does not require checking if the unstaking was available
         // require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
 
         // Skip executed withdrawals - Both amounts should be 0
         uint256 start = 0;
         while (start < endId && queue[start].rsrAmount == 0 && queue[start].stakeAmount == 0)
             start++;
+
+        // Return if nothing to process
+        if (start == endId) return;
 
         // Accumulate and zero executable withdrawals
         uint256 total = 0;
@@ -360,6 +382,20 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             address account = accounts.at(i);
             delete withdrawals[account];
         }
+        emit AllUnstakingReset(era);
+    }
+
+    /// @custom:governance
+    /// Reset all stakes and advance era
+    function resetStakes() external governance {
+        uint192 stakeRate = divuu(totalStaked, rsrBacking);
+        require(
+            stakeRate <= MIN_SAFE_STAKE_RATE || stakeRate >= MAX_SAFE_STAKE_RATE,
+            "rate still safe"
+        );
+
+        bankruptStakers();
+        bankruptWithdrawals();
     }
 
     /// Refresh if too much RSR has exited since the last refresh occurred
@@ -418,8 +454,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address to,
         uint256 amount
     ) private {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
+        require(from != address(0), "ERC20: transfer to or from the zero address");
+        require(to != address(0), "ERC20: transfer to or from the zero address");
         require(to != address(this), "StRSR transfer to self");
 
         uint256 fromBalance = balances[from];
@@ -475,8 +511,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         address spender,
         uint256 amount
     ) private {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+        require(owner != address(0), "ERC20: approve to or from the zero address");
+        require(spender != address(0), "ERC20: approve to or from the zero address");
 
         allowances[owner][spender] = amount;
 
@@ -601,7 +637,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function setRewardRatio(uint192 val) public governance {
-        if (!main.frozen()) _payoutRewards();
+        _payoutRewards();
         require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;

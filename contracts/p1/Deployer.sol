@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -247,5 +247,11 @@ contract DeployerP1 is IDeployer, Versioned {
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
         return (address(components.rToken));
+    }
+
+    /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset) {
+        return new RTokenAsset(rToken, maxTradeVolume);
     }
 }

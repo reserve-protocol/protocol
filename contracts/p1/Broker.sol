@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -8,6 +8,7 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../interfaces/ITrade.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Component.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../plugins/trading/GnosisTrade.sol";
@@ -20,8 +21,9 @@ contract BrokerP1 is ComponentP1, IBroker {
     using Clones for address;
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
-    uint48 public constant MIN_AUCTION_LENGTH = ONE_BLOCK * 2; // {s} min auction length - 2 blocks
-    // warning: blocktime <= 12s assumption
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable MIN_AUCTION_LENGTH; // {s} 20 blocks, based on network
 
     IBackingManager private backingManager;
     IRevenueTrader private rsrTrader;
@@ -38,9 +40,11 @@ contract BrokerP1 is ComponentP1, IBroker {
     // {s} the length of a Gnosis EasyAuction. Governance parameter.
     uint48 public batchAuctionLength;
 
-    // Whether trading is disabled.
-    // Initially false. Settable by OWNER. A trade clone can set it to true via reportViolation()
-    bool public disabled;
+    // Whether Batch Auctions are disabled.
+    // Initially false. Settable by OWNER.
+    // A GnosisTrade clone can set it to true via reportViolation()
+    /// @custom:oz-renamed-from disabled
+    bool public batchTradeDisabled;
 
     // The set of ITrade (clone) addresses this contract has created
     mapping(address => bool) internal trades;
@@ -53,8 +57,16 @@ contract BrokerP1 is ComponentP1, IBroker {
     // {s} the length of a Dutch Auction. Governance parameter.
     uint48 public dutchAuctionLength;
 
+    // Whether Dutch Auctions are currently disabled, per ERC20
+    mapping(IERC20Metadata => bool) public dutchTradeDisabled;
+
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        MIN_AUCTION_LENGTH = NetworkConfigLib.blocktime() * 20;
+    }
 
     // effects: initial parameters are set
     function init(
@@ -83,7 +95,6 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// @dev Requires setting an allowance in advance
     /// @custom:protected and @custom:interaction CEI
     // checks:
-    //   not disabled, paused (trading), or frozen
     //   caller is a system Trader
     // effects:
     //   Deploys a new trade clone, `trade`
@@ -91,9 +102,11 @@ contract BrokerP1 is ComponentP1, IBroker {
     // actions:
     //   Transfers req.sellAmount of req.sell.erc20 from caller to `trade`
     //   Calls trade.init() with appropriate parameters
-    function openTrade(TradeKind kind, TradeRequest memory req) external returns (ITrade) {
-        require(!disabled, "broker disabled");
-
+    function openTrade(
+        TradeKind kind,
+        TradeRequest memory req,
+        TradePrices memory prices
+    ) external returns (ITrade) {
         address caller = _msgSender();
         require(
             caller == address(backingManager) ||
@@ -106,7 +119,7 @@ contract BrokerP1 is ComponentP1, IBroker {
         if (kind == TradeKind.BATCH_AUCTION) {
             return newBatchAuction(req, caller);
         }
-        return newDutchAuction(req, ITrading(caller));
+        return newDutchAuction(req, prices, ITrading(caller));
     }
 
     /// Disable the broker until re-enabled by governance
@@ -115,8 +128,26 @@ contract BrokerP1 is ComponentP1, IBroker {
     // effects: disabled' = true
     function reportViolation() external notTradingPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
-        emit DisabledSet(disabled, true);
-        disabled = true;
+        ITrade trade = ITrade(_msgSender());
+        TradeKind kind = trade.KIND();
+
+        if (kind == TradeKind.BATCH_AUCTION) {
+            emit BatchTradeDisabledSet(batchTradeDisabled, true);
+            batchTradeDisabled = true;
+        } else if (kind == TradeKind.DUTCH_AUCTION) {
+            // Only allow BackingManager-started trades to disable Dutch Auctions
+            if (DutchTrade(address(trade)).origin() == backingManager) {
+                IERC20Metadata sell = trade.sell();
+                emit DutchTradeDisabledSet(sell, dutchTradeDisabled[sell], true);
+                dutchTradeDisabled[sell] = true;
+
+                IERC20Metadata buy = trade.buy();
+                emit DutchTradeDisabledSet(buy, dutchTradeDisabled[buy], true);
+                dutchTradeDisabled[buy] = true;
+            }
+        } else {
+            revert("unrecognized trade kind");
+        }
     }
 
     // === Setters ===
@@ -174,14 +205,21 @@ contract BrokerP1 is ComponentP1, IBroker {
     }
 
     /// @custom:governance
-    function setDisabled(bool disabled_) external governance {
-        emit DisabledSet(disabled, disabled_);
-        disabled = disabled_;
+    function enableBatchTrade() external governance {
+        emit BatchTradeDisabledSet(batchTradeDisabled, false);
+        batchTradeDisabled = false;
+    }
+
+    /// @custom:governance
+    function enableDutchTrade(IERC20Metadata erc20) external governance {
+        emit DutchTradeDisabledSet(erc20, dutchTradeDisabled[erc20], false);
+        dutchTradeDisabled[erc20] = false;
     }
 
     // === Private ===
 
     function newBatchAuction(TradeRequest memory req, address caller) internal virtual returns (ITrade) {
+        require(!batchTradeDisabled, "batch auctions disabled");
         require(batchAuctionLength > 0, "batch auctions not enabled");
         GnosisTrade trade = GnosisTrade(address(batchTradeImplementation).clone());
         trades[address(trade)] = true;
@@ -205,7 +243,15 @@ contract BrokerP1 is ComponentP1, IBroker {
         return trade;
     }
 
-    function newDutchAuction(TradeRequest memory req, ITrading caller) internal virtual returns (ITrade) {
+    function newDutchAuction(
+        TradeRequest memory req,
+        TradePrices memory prices,
+        ITrading caller
+    ) internal virtual returns (ITrade) {
+        require(
+            !dutchTradeDisabled[req.sell.erc20()] && !dutchTradeDisabled[req.buy.erc20()],
+            "dutch auctions disabled for token pair"
+        );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
         DutchTrade trade = DutchTrade(address(dutchTradeImplementation).clone());
         trades[address(trade)] = true;
@@ -217,7 +263,7 @@ contract BrokerP1 is ComponentP1, IBroker {
             req.sellAmount
         );
 
-        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength);
+        trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
         return trade;
     }
 
@@ -226,5 +272,5 @@ contract BrokerP1 is ComponentP1, IBroker {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[43] private __gap;
+    uint256[42] private __gap;
 }

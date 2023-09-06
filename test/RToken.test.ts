@@ -2,28 +2,20 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, ContractFactory } from 'ethers'
+import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { IConfig, ThrottleParams, MAX_THROTTLE_AMT_RATE } from '../common/configuration'
-import {
-  BN_SCALE_FACTOR,
-  CollateralStatus,
-  MAX_UINT256,
-  ONE_PERIOD,
-  ZERO_ADDRESS,
-} from '../common/constants'
+import { CollateralStatus, MAX_UINT256, ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
-import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
+import { bn, fp, toBNDecimals } from '../common/numbers'
 import {
   ATokenFiatCollateral,
   CTokenFiatCollateral,
   ERC20Mock,
   ERC1271Mock,
   FacadeTest,
-  FiatCollateral,
   IAssetRegistry,
-  MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -31,7 +23,7 @@ import {
   TestIMain,
   TestIRToken,
   USDCMock,
-  CTokenVaultMock,
+  CTokenWrapperMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -47,23 +39,17 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
-  SLOW,
   ORACLE_TIMEOUT,
-  PRICE_TIMEOUT,
   VERSION,
 } from './fixtures'
-import { expectEqualArrays } from './utils/matchers'
-import { cartesianProduct } from './utils/cases'
 import { useEnv } from '#/utils/env'
 import { mintCollaterals } from './utils/tokens'
+import { expectEvents } from '#/common/events'
 
 const BLOCKS_PER_HOUR = bn(300)
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
-
-const describeExtreme =
-  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
 
 describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -76,7 +62,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenVaultMock
+  let token3: CTokenWrapperMock
   let tokens: ERC20Mock[]
 
   let collateral0: Collateral
@@ -123,8 +109,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenVaultMock>(
-      await ethers.getContractAt('CTokenVaultMock', await collateral3.erc20())
+    token3 = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
     )
     tokens = [token0, token1, token2, token3]
 
@@ -238,6 +224,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('issuance pctRate too big')
     })
 
+    it('Should account for accrued value when updating issuance throttle parameters', async () => {
+      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
+      const issuanceThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
+
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      const params = await rToken.issuanceThrottleParams()
+      expect(params[0]).to.equal(issuanceThrottleParams.amtRate)
+      expect(params[1]).to.equal(issuanceThrottleParams.pctRate)
+
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+      await rToken.connect(addr1).issue(fp('20'))
+      expect(await rToken.issuanceAvailable()).to.equal(fp('40'))
+
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12 * 5 * 10) // 10 minutes
+
+      issuanceThrottleParams.amtRate = fp('100')
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      expect(await rToken.issuanceAvailable()).to.equal(fp('50'))
+    })
+
     it('Should allow to update redemption throttle if Owner and perform validations', async () => {
       const redemptionThrottleParams = { amtRate: fp('1'), pctRate: fp('0.1') }
       await expect(
@@ -274,6 +280,30 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(
         rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
       ).to.be.revertedWith('redemption pctRate too big')
+    })
+
+    it('Should account for accrued value when updating redemption throttle parameters', async () => {
+      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
+      const issuanceThrottleParams = { amtRate: fp('100'), pctRate: fp('0.1') }
+      const redemptionThrottleParams = { amtRate: fp('60'), pctRate: fp('0.1') }
+
+      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      const params = await rToken.redemptionThrottleParams()
+      expect(params[0]).to.equal(redemptionThrottleParams.amtRate)
+      expect(params[1]).to.equal(redemptionThrottleParams.pctRate)
+
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+      await rToken.connect(addr1).issue(fp('100'))
+      expect(await rToken.redemptionAvailable()).to.equal(fp('60'))
+      await rToken.connect(addr1).redeem(fp('30'))
+      expect(await rToken.redemptionAvailable()).to.equal(fp('30'))
+
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 12 * 5 * 10) // 10 minutes
+
+      redemptionThrottleParams.amtRate = fp('100')
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+      expect(await rToken.redemptionAvailable()).to.equal(fp('40'))
     })
 
     it('Should return a price of 0 if the assets become unregistered', async () => {
@@ -381,6 +411,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await Promise.all(
         tokens.map((t) => t.connect(addr1).approve(rToken.address, MAX_THROTTLE_AMT_RATE))
       )
+      // advance time
+      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
       await rToken.connect(addr1).issue(MAX_THROTTLE_AMT_RATE)
       expect(await rToken.totalSupply()).to.equal(MAX_THROTTLE_AMT_RATE)
       expect(await rToken.basketsNeeded()).to.equal(MAX_THROTTLE_AMT_RATE)
@@ -901,6 +933,44 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
     })
+
+    it('Should update issuance throttle correctly with redemptions - edge case', async function () {
+      // set fixed redemption amount
+      const redemptionThrottleParams = JSON.parse(JSON.stringify(config.redemptionThrottle))
+      redemptionThrottleParams.amtRate = fp('1e6')
+      redemptionThrottleParams.pctRate = bn(0)
+      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+
+      // Provide approvals
+      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+
+      // Issuance throttle is fully charged
+      expect(await rToken.issuanceAvailable()).to.equal(config.issuanceThrottle.amtRate)
+      expect(await rToken.redemptionAvailable()).to.equal(bn(0))
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      // Issuance #1 - Full available - Will succeed
+      const fullIssuanceAmount: BigNumber = await rToken.issuanceAvailable()
+      await rToken.connect(addr1).issue(fullIssuanceAmount)
+
+      // Redemption #1 - Full amount
+      await rToken.connect(addr1).redeem(fullIssuanceAmount)
+
+      // Issuance #2 - Less than max - Will succeed
+      await rToken.connect(addr1).issue(fullIssuanceAmount.div(2))
+
+      // Mine block
+      await hre.network.provider.send('evm_mine', [])
+
+      // Issuance and redemption throttle still available for remainder
+      expect(await rToken.issuanceAvailable()).to.equal(fullIssuanceAmount.div(2))
+      expect(await rToken.redemptionAvailable()).to.equal(fullIssuanceAmount.div(2))
+
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
+    })
   })
 
   describe('Redeem', function () {
@@ -1030,6 +1100,40 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         await rToken.connect(addr1).redeem(issueAmount)
         expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should handle an extremely small redeem #fast', async function () {
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+        const reedemAmt = bn(10)
+
+        // Skips transfers for tokens with less than 18 decimals
+        await expectEvents(rToken.connect(addr1).redeem(reedemAmt), [
+          {
+            contract: token0,
+            name: 'Transfer',
+            emitted: true,
+          },
+          {
+            contract: token1,
+            name: 'Transfer',
+            emitted: false,
+          },
+          {
+            contract: token2,
+            name: 'Transfer',
+            emitted: true,
+          },
+          {
+            contract: token3,
+            name: 'Transfer',
+            emitted: false,
+          },
+        ])
+
+        // Checkbalances
+        expect(await rToken.totalSupply()).to.equal(issueAmount.sub(reedemAmt))
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.sub(reedemAmt))
       })
 
       it('Should redeem if paused #fast', async function () {
@@ -1312,6 +1416,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           redemptionThrottleParams.pctRate = bn(0)
           await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
 
+          // advance time
+          await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
+
           // Check redemption throttle
           expect(await rToken.redemptionAvailable()).to.equal(redemptionThrottleParams.amtRate)
 
@@ -1463,20 +1570,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           portions,
           redeemAmount
         )
-
-        // Check simulation result
-        const [actualERC20s, actualQuantities] = await rToken
-          .connect(addr1)
-          .callStatic.redeemCustom(
-            addr1.address,
-            redeemAmount,
-            basketNonces,
-            portions,
-            quote.erc20s,
-            quote.quantities
-          )
-        expectEqualArrays(actualERC20s, quote.erc20s)
-        expectEqualArrays(actualQuantities, quote.quantities)
 
         await rToken
           .connect(addr1)
@@ -1767,12 +1860,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token2.balanceOf(addr1.address)).to.equal(initialBal)
       })
 
-      it('Should not revert when redeeming unregistered collateral #fast', async function () {
-        // Unregister collateral2
+      it('Should not revert when redeeming mostly unregistered collateral #fast', async function () {
+        // Unregister everything except token0
+        const erc20s = await assetRegistry.erc20s()
+        for (const erc20 of erc20s) {
+          if (erc20 != token0.address) {
+            await assetRegistry.connect(owner).unregister(await assetRegistry.toAsset(erc20))
+          }
+        }
 
         const basketNonces = [1]
         const portions = [fp('1')]
-        await assetRegistry.connect(owner).unregister(collateral2.address)
         const quote = await basketHandler.quoteCustomRedemption(
           basketNonces,
           portions,
@@ -2133,6 +2231,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           redemptionThrottleParams.amtRate = fp('25')
           redemptionThrottleParams.pctRate = bn(0)
           await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
+
+          // advance time
+          await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
 
           // Check redemption throttle
           expect(await rToken.redemptionAvailable()).to.equal(redemptionThrottleParams.amtRate)
@@ -2703,183 +2804,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(erc1271Mock.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.nonces(erc1271Mock.address)).to.equal(1)
-    })
-  })
-
-  describeExtreme(`Extreme Values ${SLOW ? 'slow mode' : 'fast mode'}`, () => {
-    // makeColl: Deploy and register a new constant-price collateral
-    async function makeColl(index: number | string): Promise<ERC20Mock> {
-      const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-      const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
-      const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
-      const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
-      await oracle.deployed() // fix extreme value tests failing
-      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
-      const coll: FiatCollateral = <FiatCollateral>await CollateralFactory.deploy({
-        priceTimeout: PRICE_TIMEOUT,
-        chainlinkFeed: oracle.address,
-        oracleError: ORACLE_ERROR,
-        erc20: erc20.address,
-        maxTradeVolume: fp('1e36'),
-        oracleTimeout: ORACLE_TIMEOUT,
-        targetName: ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.01'),
-        delayUntilDefault: bn(86400),
-      })
-      await assetRegistry.register(coll.address)
-      expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
-      await backingManager.grantRTokenAllowance(erc20.address)
-      return erc20
-    }
-
-    async function forceUpdateGetStatus(): Promise<CollateralStatus> {
-      await whileImpersonating(basketHandler.address, async (bhSigner) => {
-        await assetRegistry.connect(bhSigner).refresh()
-      })
-      return basketHandler.status()
-    }
-
-    async function runScenario([
-      toIssue,
-      toRedeem,
-      totalSupply, // in this scenario, rtoken supply _after_ issuance.
-      numBasketAssets,
-      weightFirst, // target amount per asset (weight of first asset)
-      weightRest, // another target amount per asset (weight of second+ assets)
-      issuancePctAmt, // range under test: [.000_001 to 1.0]
-      redemptionPctAmt, // range under test: [.000_001 to 1.0]
-    ]: BigNumber[]) {
-      // skip nonsense cases
-      if (
-        (numBasketAssets.eq(1) && !weightRest.eq(1)) ||
-        toRedeem.gt(totalSupply) ||
-        toIssue.gt(totalSupply)
-      ) {
-        return
-      }
-
-      // ==== Deploy and register basket collateral
-
-      const N = numBasketAssets.toNumber()
-      const erc20s: ERC20Mock[] = []
-      const weights: BigNumber[] = []
-      let totalWeight: BigNumber = fp(0)
-      for (let i = 0; i < N; i++) {
-        const erc20 = await makeColl(i)
-        erc20s.push(erc20)
-        const currWeight = i == 0 ? weightFirst : weightRest
-        weights.push(currWeight)
-        totalWeight = totalWeight.add(currWeight)
-      }
-      expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
-
-      // ==== Switch Basket
-
-      const basketAddresses: string[] = erc20s.map((erc20) => erc20.address)
-      await basketHandler.connect(owner).setPrimeBasket(basketAddresses, weights)
-      await basketHandler.connect(owner).refreshBasket()
-      expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
-
-      for (let i = 0; i < basketAddresses.length; i++) {
-        expect(await basketHandler.quantity(basketAddresses[i])).to.equal(weights[i])
-      }
-
-      // ==== Mint basket tokens to owner and addr1
-
-      const toIssue0 = totalSupply.sub(toIssue)
-      const e18 = BN_SCALE_FACTOR
-      for (let i = 0; i < N; i++) {
-        const erc20: ERC20Mock = erc20s[i]
-        // user owner starts with enough basket assets to issue (totalSupply - toIssue)
-        const toMint0: BigNumber = toIssue0.mul(weights[i]).add(e18.sub(1)).div(e18)
-        await erc20.mint(owner.address, toMint0)
-        await erc20.connect(owner).increaseAllowance(rToken.address, toMint0)
-
-        // user addr1 starts with enough basket assets to issue (toIssue)
-        const toMint: BigNumber = toIssue.mul(weights[i]).add(e18.sub(1)).div(e18)
-        await erc20.mint(addr1.address, toMint)
-        await erc20.connect(addr1).increaseAllowance(rToken.address, toMint)
-      }
-
-      // Set up throttles
-      const issuanceThrottleParams = { amtRate: bn('1e48'), pctRate: issuancePctAmt }
-      const redemptionThrottleParams = { amtRate: bn('1e48'), pctRate: redemptionPctAmt }
-
-      await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
-      await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
-
-      // ==== Issue the "initial" rtoken supply to owner
-
-      expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
-      if (toIssue0.gt(0)) {
-        await rToken.connect(owner).issue(toIssue0)
-        expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
-      }
-
-      // ==== Issue the toIssue supply to addr1
-
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      await rToken.connect(addr1).issue(toIssue)
-      expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
-
-      // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
-
-      // owner has toIssue0 rToken, addr1 has toIssue rToken.
-      if (toRedeem.lte(toIssue0)) {
-        await rToken.connect(owner).transfer(addr2.address, toRedeem)
-      } else {
-        await rToken.connect(owner).transfer(addr2.address, toIssue0)
-        await rToken.connect(addr1).transfer(addr2.address, toRedeem.sub(toIssue0))
-      }
-      expect(await rToken.balanceOf(addr2.address)).to.equal(toRedeem)
-
-      // ==== Redeem tokens
-
-      await rToken.connect(addr2).redeem(toRedeem)
-      expect(await rToken.balanceOf(addr2.address)).to.equal(0)
-    }
-
-    // ==== Generate the tests
-    const MAX_RTOKENS = bn('1e48')
-    const MAX_WEIGHT = fp(1000)
-    const MIN_WEIGHT = fp('1e-6')
-    const MIN_ISSUANCE_PCT = fp('1e-6')
-    const MIN_REDEMPTION_PCT = fp('1e-6')
-    const MIN_RTOKENS = fp('1e-6')
-
-    let paramList
-
-    if (SLOW) {
-      const bounds: BigNumber[][] = [
-        [MIN_RTOKENS, MAX_RTOKENS, bn('1.205e24')], // toIssue
-        [MIN_RTOKENS, MAX_RTOKENS, bn('4.4231e24')], // toRedeem
-        [MAX_RTOKENS, bn('7.907e24')], // totalSupply
-        [bn(1), bn(3), bn(100)], // numAssets
-        [MIN_WEIGHT, MAX_WEIGHT, fp('0.1')], // weightFirst
-        [MIN_WEIGHT, MAX_WEIGHT, fp('0.2')], // weightRest
-        [MIN_ISSUANCE_PCT, fp('1e-2'), fp(1)], // issuanceThrottle.pctRate
-        [MIN_REDEMPTION_PCT, fp('1e-2'), fp(1)], // redemptionThrottle.pctRate
-      ]
-
-      paramList = cartesianProduct(...bounds)
-    } else {
-      const bounds: BigNumber[][] = [
-        [MIN_RTOKENS, MAX_RTOKENS], // toIssue
-        [MIN_RTOKENS, MAX_RTOKENS], // toRedeem
-        [MAX_RTOKENS], // totalSupply
-        [bn(1)], // numAssets
-        [MIN_WEIGHT, MAX_WEIGHT], // weightFirst
-        [MIN_WEIGHT], // weightRest
-        [MIN_ISSUANCE_PCT, fp(1)], // issuanceThrottle.pctRate
-        [MIN_REDEMPTION_PCT, fp(1)], // redemptionThrottle.pctRate
-      ]
-      paramList = cartesianProduct(...bounds)
-    }
-    const numCases = paramList.length.toString()
-    paramList.forEach((params, index) => {
-      it(`case ${index + 1} of ${numCases}: ${params.map(shortString).join(' ')}`, async () => {
-        await runScenario(params)
-      })
     })
   })
 

@@ -5,7 +5,7 @@ import { advanceBlocks, advanceTime } from '#/utils/time'
 import { IRewardable } from '@typechain/IRewardable'
 import { formatEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { runTrade } from '../upgrade-checker-utils/trades'
+import { runBatchTrade } from '../upgrade-checker-utils/trades'
 
 const claimRewards = async (claimer: IRewardable) => {
   const resp = await claimer.claimRewards()
@@ -42,9 +42,9 @@ export const claimRsrRewards = async (hre: HardhatRuntimeEnvironment, rtokenAddr
     await compContract.connect(compWhale).transfer(rsrTrader.address, fp('1e5'))
   })
 
-  await rsrTrader.manageToken(comp, TradeKind.BATCH_AUCTION)
-  await runTrade(hre, rsrTrader, comp, false)
-  await rsrTrader.manageToken(rsr.address, TradeKind.BATCH_AUCTION)
+  await rsrTrader.manageTokens([comp], [TradeKind.BATCH_AUCTION])
+  await runBatchTrade(hre, rsrTrader, comp, false)
+  await rsrTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
   await strsr.payoutRewards()
   await advanceBlocks(hre, 100)
   await advanceTime(hre, 1200)

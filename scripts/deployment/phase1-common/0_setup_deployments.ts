@@ -17,7 +17,7 @@ async function main() {
 
   // Check if deployment file already exists for this chainId
   const deploymentFilename = getDeploymentFilename(chainId)
-  if (chainId != '31337' && fileExists(deploymentFilename)) {
+  if (chainId != '31337' && chainId != '3' && fileExists(deploymentFilename)) {
     throw new Error(`${deploymentFilename} exists; I won't overwrite it.`)
   }
 

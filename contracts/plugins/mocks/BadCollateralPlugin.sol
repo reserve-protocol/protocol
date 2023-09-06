@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../assets/aave/ATokenFiatCollateral.sol";
 
@@ -26,12 +26,6 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     /// Refresh exchange rates and update default status.
     /// @dev Should be general enough to not need to be overridden
     function refresh() public virtual override {
-        if (alreadyDefaulted()) {
-            // continue to update rates
-            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
-            return;
-        }
-
         CollateralStatus oldStatus = status();
 
         // Check for hard default
@@ -63,6 +57,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                     savedHighPrice = high;
                     lastSave = uint48(block.timestamp);
                 }
+
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus
                 if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {

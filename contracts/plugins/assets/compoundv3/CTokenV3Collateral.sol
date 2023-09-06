@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -31,6 +31,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     IERC20 public immutable rewardERC20;
     IComet public immutable comet;
     uint256 public immutable reservesThresholdIffy; // {qUSDC}
+    uint8 public immutable cometDecimals;
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
@@ -41,6 +42,7 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
         rewardERC20 = ICusdcV3Wrapper(address(config.erc20)).rewardERC20();
         comet = IComet(address(ICusdcV3Wrapper(address(erc20)).underlyingComet()));
         reservesThresholdIffy = reservesThresholdIffy_;
+        cometDecimals = comet.decimals();
     }
 
     function bal(address account) external view override(Asset, IAsset) returns (uint192) {
@@ -53,19 +55,13 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
     }
 
     function _underlyingRefPerTok() internal view virtual override returns (uint192) {
-        return shiftl_toFix(ICusdcV3Wrapper(address(erc20)).exchangeRate(), -int8(erc20Decimals));
+        return shiftl_toFix(ICusdcV3Wrapper(address(erc20)).exchangeRate(), -int8(cometDecimals));
     }
 
     /// Refresh exchange rates and update default status.
     /// @dev Should not need to override: can handle collateral with variable refPerTok()
     function refresh() public virtual override {
         ICusdcV3Wrapper(address(erc20)).accrue();
-
-        if (alreadyDefaulted()) {
-            // continue to update rates
-            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
-            return;
-        }
 
         CollateralStatus oldStatus = status();
 
@@ -104,6 +100,8 @@ contract CTokenV3Collateral is AppreciatingFiatCollateral {
                     lastSave = uint48(block.timestamp);
                 } else {
                     // must be unpriced
+                    // untested:
+                    //      validated in other plugins, cost to test here is high
                     assert(low == 0);
                 }
 

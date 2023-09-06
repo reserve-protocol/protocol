@@ -28,7 +28,6 @@ scripts/addresses/31337*
 .\#*
 
 *.orig
-
 .idea
 
 test/__snapshots/
@@ -37,3 +36,7 @@ contracts/facade/FacadeAct.sol
 # Scripts for local/test interactions
 scripts/test.ts
 scripts/playground.ts
+
+# tenderly deployment/verification artifacts
+deployments/
+backtests/

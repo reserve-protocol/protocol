@@ -1,4 +1,4 @@
-import { BigNumber, ContractFactory } from 'ethers'
+import { ContractFactory } from 'ethers'
 import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
@@ -17,7 +17,7 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenSelfReferentialCollateral,
-  CTokenVaultMock,
+  CTokenWrapperMock,
   ERC20Mock,
   DeployerP0,
   DeployerP1,
@@ -149,23 +149,18 @@ async function gnosisFixture(): Promise<GnosisFixture> {
   }
 }
 
-interface CollateralFixture {
-  erc20s: ERC20Mock[] // all erc20 addresses
-  collateral: Collateral[] // all collateral
-  basket: Collateral[] // only the collateral actively backing the RToken
-  basketsNeededAmts: BigNumber[] // reference amounts
-}
-
 async function collateralFixture(
   compToken: ERC20Mock,
   comptroller: ComptrollerMock,
   aaveToken: ERC20Mock,
   config: IConfig
-): Promise<CollateralFixture> {
+) {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
-  const CTokenVaultMockFactory: ContractFactory = await ethers.getContractFactory('CTokenVaultMock')
+  const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
+    'CTokenWrapperMock'
+  )
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
@@ -240,9 +235,9 @@ async function collateralFixture(
     referenceERC20: ERC20Mock,
     chainlinkAddr: string,
     compToken: ERC20Mock
-  ): Promise<[CTokenVaultMock, CTokenFiatCollateral]> => {
-    const erc20: CTokenVaultMock = <CTokenVaultMock>(
-      await CTokenVaultMockFactory.deploy(
+  ): Promise<[CTokenWrapperMock, CTokenFiatCollateral]> => {
+    const erc20: CTokenWrapperMock = <CTokenWrapperMock>(
+      await CTokenWrapperMockFactory.deploy(
         symbol + ' Token',
         symbol,
         referenceERC20.address,
@@ -347,7 +342,7 @@ async function collateralFixture(
     ausdt[0],
     abusd[0],
     zcoin[0],
-  ]
+  ] as ERC20Mock[]
   const collateral = [
     dai[1],
     usdc[1],
@@ -372,8 +367,24 @@ async function collateralFixture(
     collateral,
     basket,
     basketsNeededAmts,
+    bySymbol: {
+      dai,
+      usdc,
+      usdt,
+      busd,
+      cdai,
+      cusdc,
+      cusdt,
+      adai,
+      ausdc,
+      ausdt,
+      abusd,
+      zcoin,
+    },
   }
 }
+
+type CollateralFixture = Awaited<ReturnType<typeof collateralFixture>>
 
 type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
   COMPAAVEFixture &
@@ -661,7 +672,7 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
   const stRSR: TestIStRSR = <TestIStRSR>await ethers.getContractAt('TestIStRSR', await main.stRSR())
 
   // Deploy collateral for Main
-  const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
+  const { erc20s, collateral, basket, basketsNeededAmts, bySymbol } = await collateralFixture(
     compToken,
     compoundMock,
     aaveToken,
@@ -740,5 +751,6 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     facadeTest,
     rsrTrader,
     rTokenTrader,
+    bySymbol,
   }
 }

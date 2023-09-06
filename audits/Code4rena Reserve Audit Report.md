@@ -1,9 +1,9 @@
 ---
-sponsor: "Reserve"
-slug: "2023-01-reserve"
-date: "2023-03-⭕"  # the date this report is published to the C4 website
-title: "Reserve contest"
-findings: "https://github.com/code-423n4/2023-01-reserve-findings/issues"
+sponsor: 'Reserve'
+slug: '2023-01-reserve'
+date: '2023-03-⭕' # the date this report is published to the C4 website
+title: 'Reserve contest'
+findings: 'https://github.com/code-423n4/2023-01-reserve-findings/issues'
 contest: 203
 ---
 
@@ -23,79 +23,79 @@ Following the C4 audit contest, 3 wardens (0xA5DF, HollaDieWaldfee, and [AkshayS
 
 76 Wardens contributed reports to the Reserve contest:
 
-  1. 0x52
-  2. 0xA5DF
-  3. [0xAgro](https://twitter.com/0xAgro)
-  4. [0xNazgul](https://twitter.com/0xNazgul)
-  5. [0xSmartContract](https://twitter.com/0xSmartContract)
-  6. [0xTaylor](https://twitter.com/0xTaylor_)
-  7. [0xdeadbeef0x](https://twitter.com/0xdeadbeef____)
-  8. 0xhacksmithh
-  9. [AkshaySrivastav](https://twitter.com/akshaysrivastv)
-  10. Awesome
-  11. [Aymen0909](https://github.com/Aymen1001)
-  12. BRONZEDISC
-  13. Bauer
-  14. Bnke0x0
-  15. Breeje
-  16. Budaghyan
-  17. CodingNameKiki
-  18. [Cyfrin](https://www.cyfrin.io/) ([PatrickAlphaC](https://twitter.com/PatrickAlphaC) and [giovannidisiena](https://twitter.com/giovannidisiena) and [hansfriese](https://twitter.com/hansfriese))
-  19. [Franfran](https://franfran.dev/)
-  20. [GalloDaSballo](https://twitter.com/gallodasballo)
-  21. HollaDieWaldfee
-  22. IceBear
-  23. IllIllI
-  24. JTJabba
-  25. Madalad
-  26. MyFDsYours
-  27. NoamYakov
-  28. RHaO-sec
-  29. Rageur
-  30. RaymondFam
-  31. ReyAdmirado
-  32. Rolezn
-  33. [Ruhum](https://twitter.com/0xruhum)
-  34. SAAJ
-  35. SaharDevep
-  36. [Sathish9098](https://www.linkedin.com/in/sathishkumar-p-26069915a)
-  37. Soosh
-  38. [Udsen](https://github.com/udsene)
-  39. \_\_141345\_\_
-  40. amshirif
-  41. arialblack14
-  42. brgltd
-  43. btk
-  44. [c3phas](https://twitter.com/c3ph_)
-  45. [carlitox477](https://twitter.com/carlitox477)
-  46. chaduke
-  47. chrisdior4
-  48. cryptonue
-  49. [csanuragjain](https://twitter.com/csanuragjain)
-  50. delfin454000
-  51. descharre
-  52. fs0c
-  53. hihen
-  54. immeas
-  55. [joestakey](https://twitter.com/JoeStakey)
-  56. [ladboy233](https://twitter.com/Xc1008Cu)
-  57. lukris02
-  58. luxartvinsec
-  59. [nadin](https://twitter.com/nadin20678790)
-  60. [oyc\_109](https://twitter.com/andyfeili)
-  61. [pavankv](https://twitter.com/@PavanKumarKv2)
-  62. peanuts
-  63. pedr02b2
-  64. rotcivegaf
-  65. rvierdiiev
-  66. [saneryee](https://medium.com/@saneryee-studio)
-  67. severity (medium-or-low and critical-or-high)
-  68. shark
-  69. tnevler
-  70. unforgiven
-  71. [ustas](https://lenster.xyz/u/ustas)
-  72. wait
-  73. yongskiws
+1. 0x52
+2. 0xA5DF
+3. [0xAgro](https://twitter.com/0xAgro)
+4. [0xNazgul](https://twitter.com/0xNazgul)
+5. [0xSmartContract](https://twitter.com/0xSmartContract)
+6. [0xTaylor](https://twitter.com/0xTaylor_)
+7. [0xdeadbeef0x](https://twitter.com/0xdeadbeef____)
+8. 0xhacksmithh
+9. [AkshaySrivastav](https://twitter.com/akshaysrivastv)
+10. Awesome
+11. [Aymen0909](https://github.com/Aymen1001)
+12. BRONZEDISC
+13. Bauer
+14. Bnke0x0
+15. Breeje
+16. Budaghyan
+17. CodingNameKiki
+18. [Cyfrin](https://www.cyfrin.io/) ([PatrickAlphaC](https://twitter.com/PatrickAlphaC) and [giovannidisiena](https://twitter.com/giovannidisiena) and [hansfriese](https://twitter.com/hansfriese))
+19. [Franfran](https://franfran.dev/)
+20. [GalloDaSballo](https://twitter.com/gallodasballo)
+21. HollaDieWaldfee
+22. IceBear
+23. IllIllI
+24. JTJabba
+25. Madalad
+26. MyFDsYours
+27. NoamYakov
+28. RHaO-sec
+29. Rageur
+30. RaymondFam
+31. ReyAdmirado
+32. Rolezn
+33. [Ruhum](https://twitter.com/0xruhum)
+34. SAAJ
+35. SaharDevep
+36. [Sathish9098](https://www.linkedin.com/in/sathishkumar-p-26069915a)
+37. Soosh
+38. [Udsen](https://github.com/udsene)
+39. \_\_141345\_\_
+40. amshirif
+41. arialblack14
+42. brgltd
+43. btk
+44. [c3phas](https://twitter.com/c3ph_)
+45. [carlitox477](https://twitter.com/carlitox477)
+46. chaduke
+47. chrisdior4
+48. cryptonue
+49. [csanuragjain](https://twitter.com/csanuragjain)
+50. delfin454000
+51. descharre
+52. fs0c
+53. hihen
+54. immeas
+55. [joestakey](https://twitter.com/JoeStakey)
+56. [ladboy233](https://twitter.com/Xc1008Cu)
+57. lukris02
+58. luxartvinsec
+59. [nadin](https://twitter.com/nadin20678790)
+60. [oyc_109](https://twitter.com/andyfeili)
+61. [pavankv](https://twitter.com/@PavanKumarKv2)
+62. peanuts
+63. pedr02b2
+64. rotcivegaf
+65. rvierdiiev
+66. [saneryee](https://medium.com/@saneryee-studio)
+67. severity (medium-or-low and critical-or-high)
+68. shark
+69. tnevler
+70. unforgiven
+71. [ustas](https://lenster.xyz/u/ustas)
+72. wait
+73. yongskiws
 
 This contest was judged by [0xean](https://github.com/0xean).
 
@@ -127,8 +127,10 @@ High-level considerations for vulnerabilities span the following key areas when 
 For more information regarding the severity criteria referenced throughout the submission review process, please refer to the documentation provided on [the C4 website](https://code4rena.com), specifically our section on [Severity Categorization](https://docs.code4rena.com/awarding/judging-criteria/severity-categorization).
 
 # High Risk Findings (2)
+
 ## [[H-01] Adversary can abuse a quirk of compound redemption to manipulate the underlying exchange rate and maliciously disable cToken collaterals](https://github.com/code-423n4/2023-01-reserve-findings/issues/310)
-*Submitted by [0x52](https://github.com/code-423n4/2023-01-reserve-findings/issues/310)*
+
+_Submitted by [0x52](https://github.com/code-423n4/2023-01-reserve-findings/issues/310)_
 
 Adversary can maliciously disable cToken collateral to cause loss to rToken during restructuring.
 
@@ -166,7 +168,7 @@ CTokenNonFiatCollateral and CTokenFiatCollateral both use the default refresh be
             redeemAmount = redeemAmountIn;
         }
 
-The exchange rate can be manipulated by a tiny amount during the redeem process. The focus above is the scenario where the user requests a specific amount of underlying. When calculating the number of cTokens to redeem for a specific amount of underlying it rounds IN FAVOR of the user. This allows the user to redeem more underlying than the exchange rate would otherwise imply. Because the user can redeem *slightly* more than intended they can create a scenario in which the exchange rate actually drops after they redeem. This is because compound calculates the exchange rate dynamically using the current supply of cTokens and the assets under management.
+The exchange rate can be manipulated by a tiny amount during the redeem process. The focus above is the scenario where the user requests a specific amount of underlying. When calculating the number of cTokens to redeem for a specific amount of underlying it rounds IN FAVOR of the user. This allows the user to redeem more underlying than the exchange rate would otherwise imply. Because the user can redeem _slightly_ more than intended they can create a scenario in which the exchange rate actually drops after they redeem. This is because compound calculates the exchange rate dynamically using the current supply of cTokens and the assets under management.
 
 [CToken.sol](https://github.com/compound-finance/compound-protocol/blob/a3214f67b73310d547e00fc578e8355911c9d376/contracts/CToken.sol#L293-L312)
 
@@ -202,7 +204,7 @@ Example:
 
 cTokens always start at a whole token ratio of 50:1 so let's assume this ratio to begin with. Let's use values similar to the current supply of cETH which is \~15M cETH and \~300k ETH. We'll start by calculating the current ratio:
 
-    exchangeRate = 300_000 * 1e18 * 1e18 / 15_000_000 * 1e8 = 2e26 
+    exchangeRate = 300_000 * 1e18 * 1e18 / 15_000_000 * 1e8 = 2e26
 
 Now to exploit the ratio we request to redeem 99e8 redeemAmount which we can use to calculate the amount of tokens we need to burn:
 
@@ -214,7 +216,7 @@ After truncation the amount burned is only 1. Now we can recalculate our ratio:
 
 The ratio has now been slightly decreased. In CTokenFiatCollateral the exchange rate is truncated to 18 dp so:
 
-    (referencePrice < prevReferencePrice) -> (19999999999999993 <  2e18) == true 
+    (referencePrice < prevReferencePrice) -> (19999999999999993 <  2e18) == true
 
 This results in that the collateral is now disabled. This forces the vault to liquidate their holdings to convert to a backup asset. This will almost certainly incur losses to the protocol that were maliciously inflicted.
 
@@ -232,36 +234,38 @@ Since the issue is with the underlying compound contracts, nothing can make the 
         }
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/310#issuecomment-1399632835):**
- > I do see in the cToken code base that the warden is correct with regard to the round down mechanism when redeeming cTokens using a redeemAmountIn.
-> 
+
+> I do see in the cToken code base that the warden is correct with regard to the round down mechanism when redeeming cTokens using a redeemAmountIn.
+>
 > The question I think comes down to is this dust amount enough to counteract the interest that would be accrued to the cToken which is added during the refresh call in `CTokenFiatCollateral`
-> 
-> Will leave open for sponsor review. 
+>
+> Will leave open for sponsor review.
 
 **[tmattimore (Reserve) confirmed](https://github.com/code-423n4/2023-01-reserve-findings/issues/310#issuecomment-1404050632)**
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/310#issuecomment-1404051723):**
- > Issue confirmed. 
-> 
-> Many defi protocols may have similar issues. We may choose to mitigate by building in revenue hiding to something like 1 part in 1 million to all collateral plugins. 
+
+> Issue confirmed.
+>
+> Many defi protocols may have similar issues. We may choose to mitigate by building in revenue hiding to something like 1 part in 1 million to all collateral plugins.
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR adds universal revenue hiding to all appreciating collateral: [reserve-protocol/protocol#620](https://github.com/reserve-protocol/protocol/pull/620)
+
+> This PR adds universal revenue hiding to all appreciating collateral: [reserve-protocol/protocol#620](https://github.com/reserve-protocol/protocol/pull/620)
 
 **Status:** Mitigation confirmed with comments. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/35), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/23), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/25).
 
-
-
-***
+---
 
 ## [[H-02] Basket range formula is inefficient, leading the protocol to unnecessary haircut](https://github.com/code-423n4/2023-01-reserve-findings/issues/235)
-*Submitted by [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/235), also found by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/317)*
+
+_Submitted by [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/235), also found by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/317)_
 
 The `BackingManager.manageTokens()` function checks if there's any deficit in collateral, in case there is, if there's a surplus from another collateral token it trades it to cover the deficit, otherwise it goes for a 'haircut' and cuts the amount of basket 'needed' (i.e. the number of baskets RToken claims to hold).
 
 In order to determine how much deficit/surplus there is the protocol calculates the 'basket range', where the top range is the optimistic estimation of the number of baskets the token would hold after trading and the bottom range is a pessimistic estimation.
 
-The estimation is done by dividing the total collateral value by the price of 1  basket unit (for optimistic estimation the max value is divided by min price of basket-unit and vice versa).
+The estimation is done by dividing the total collateral value by the price of 1 basket unit (for optimistic estimation the max value is divided by min price of basket-unit and vice versa).
 
 The problem is that this estimation is inefficient, for cases where just a little bit of collateral is missing the range 'band' (range.top - range.bottom) would be about 4% (when oracle error deviation is ±1%) instead of less than 1%.
 
@@ -284,7 +288,7 @@ index 62223442..03d3c3f4 100644
 +++ b/contracts/plugins/assets/RTokenAsset.sol
 @@ -123,7 +123,7 @@ contract RTokenAsset is IAsset {
      // ==== Private ====
- 
+
      function basketRange()
 -        private
 +        public
@@ -318,7 +322,7 @@ index 3c53fa30..386c0673 100644
 +
 +        // show the basket range is 95.9 to 99.9
 +        console.log({range});
- 
+
 +        let needed = await rToken.basketsNeeded();
 +
 +        // show that prices are more or less the same
@@ -329,10 +333,10 @@ index 3c53fa30..386c0673 100644
 +
 +        // show how many baskets are left after the haircut
 +         needed = await rToken.basketsNeeded();
-+         
++
 +        console.log({prices, needed});
 +        return;
-+    
++
 +      })
 +      return;
        it('Should select backup config correctly - Single backup token', async () => {
@@ -394,9 +398,9 @@ Output (comments are added by me):
 Change the formula so that we first calculate the 'base' (i.e. the min amount of baskets the RToken can satisfy without trading):
 
     base = basketsHeldBy(backingManager) // in the PoC's case it'd be 95
-    (diffLowValue, diffHighValue) = (0,0) 
+    (diffLowValue, diffHighValue) = (0,0)
     for each collateral token:
-        diff = collateralBalance - basketHandler.quantity(base) 
+        diff = collateralBalance - basketHandler.quantity(base)
         (diffLowValue, diffHighValue) = diff * (priceLow, priceHigh)
     addBasketsLow = diffLowValue / basketPriceHigh
     addBasketHigh = diffHighValue / basketPriceLow
@@ -404,93 +408,99 @@ Change the formula so that we first calculate the 'base' (i.e. the min amount of
     range.bottom = base + addBasketLow
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/235#issuecomment-1400384608):**
- > Would like sponsor to comment on this issue and will determine severity from there.
+
+> Would like sponsor to comment on this issue and will determine severity from there.
 
 **[tmattimore (Reserve) acknowledged](https://github.com/code-423n4/2023-01-reserve-findings/issues/235)**
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/235#issuecomment-1404082371):**
- > Agree this behaves the way described. We're aware of this problem and have been looking at fixes that are similar to the one suggested. 
+
+> Agree this behaves the way described. We're aware of this problem and have been looking at fixes that are similar to the one suggested.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/235#issuecomment-1409489804):**
- > Thank you @tbrent - I think High seems correct here as this does directly lead to a loss of value for users.
+
+> Thank you @tbrent - I think High seems correct here as this does directly lead to a loss of value for users.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/235#issuecomment-1412311915):**
- > @0xean - Seems right.
+
+> @0xean - Seems right.
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR simplifies and improves the basket range formula. The new logic should provide much tighter basket range estimates and result in smaller haircuts.
- > [reserve-protocol/protocol#585](https://github.com/reserve-protocol/protocol/pull/585)
+
+> This PR simplifies and improves the basket range formula. The new logic should provide much tighter basket range estimates and result in smaller haircuts.
+> [reserve-protocol/protocol#585](https://github.com/reserve-protocol/protocol/pull/585)
 
 **Status:** Not fully mitigated. Full details in [report from 0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/49), and also included in Mitigation Review section below.
 
+---
 
-
-***
-
- 
 # Medium Risk Findings (25)
+
 ## [[M-01] Battery discharge mechanism doesn't work correctly for first redemption](https://github.com/code-423n4/2023-01-reserve-findings/issues/452)
-*Submitted by [AkshaySrivastav](https://github.com/code-423n4/2023-01-reserve-findings/issues/452)*
+
+_Submitted by [AkshaySrivastav](https://github.com/code-423n4/2023-01-reserve-findings/issues/452)_
 
 The `RTokenP1` contract implements a throttling mechanism using the `RedemptionBatteryLib` library. The library models a "battery" which "recharges" linearly block by block, over roughly 1 hour.
 
 RToken.sol
 
 ```solidity
-    function redeem(uint256 amount) external notFrozen {
-        // ...
+function redeem(uint256 amount) external notFrozen {
+  // ...
 
-        uint256 supply = totalSupply();
+  uint256 supply = totalSupply();
 
-        // ...
-        battery.discharge(supply, amount); // reverts on over-redemption
+  // ...
+  battery.discharge(supply, amount); // reverts on over-redemption
 
-        // ...
-    }
+  // ...
+}
+
 ```
 
 RedemptionBatteryLib.sol
 
 ```solidity
-    function discharge(
-        Battery storage battery,
-        uint256 supply,
-        uint256 amount
-    ) internal {
-        if (battery.redemptionRateFloor == 0 && battery.scalingRedemptionRate == 0) return;
+function discharge(
+  Battery storage battery,
+  uint256 supply,
+  uint256 amount
+) internal {
+  if (battery.redemptionRateFloor == 0 && battery.scalingRedemptionRate == 0) return;
 
-        // {qRTok}
-        uint256 charge = currentCharge(battery, supply);
+  // {qRTok}
+  uint256 charge = currentCharge(battery, supply);
 
-        // A nice error message so people aren't confused why redemption failed
-        require(amount <= charge, "redemption battery insufficient");
+  // A nice error message so people aren't confused why redemption failed
+  require(amount <= charge, 'redemption battery insufficient');
 
-        // Update battery
-        battery.lastBlock = uint48(block.number);
-        battery.lastCharge = charge - amount;
-    }
+  // Update battery
+  battery.lastBlock = uint48(block.number);
+  battery.lastCharge = charge - amount;
+}
 
-    /// @param supply {qRTok} Total RToken supply before the burn step
-    /// @return charge {qRTok} The current total charge as an amount of RToken
-    function currentCharge(Battery storage battery, uint256 supply)
-        internal
-        view
-        returns (uint256 charge)
-    {
-        // {qRTok/hour} = {qRTok} * D18{1/hour} / D18
-        uint256 amtPerHour = (supply * battery.scalingRedemptionRate) / FIX_ONE_256;
+/// @param supply {qRTok} Total RToken supply before the burn step
+/// @return charge {qRTok} The current total charge as an amount of RToken
+function currentCharge(Battery storage battery, uint256 supply)
+  internal
+  view
+  returns (uint256 charge)
+{
+  // {qRTok/hour} = {qRTok} * D18{1/hour} / D18
+  uint256 amtPerHour = (supply * battery.scalingRedemptionRate) / FIX_ONE_256;
 
-        if (battery.redemptionRateFloor > amtPerHour) amtPerHour = battery.redemptionRateFloor;
+  if (battery.redemptionRateFloor > amtPerHour) amtPerHour = battery.redemptionRateFloor;
 
-        // {blocks}
-        uint48 blocks = uint48(block.number) - battery.lastBlock; 
+  // {blocks}
+  uint48 blocks = uint48(block.number) - battery.lastBlock;
 
-        // {qRTok} = {qRTok} + {qRTok/hour} * {blocks} / {blocks/hour}
-        charge = battery.lastCharge + (amtPerHour * blocks) / BLOCKS_PER_HOUR;
+  // {qRTok} = {qRTok} + {qRTok/hour} * {blocks} / {blocks/hour}
+  charge = battery.lastCharge + (amtPerHour * blocks) / BLOCKS_PER_HOUR;
 
-        uint256 maxCharge = amtPerHour > supply ? supply : amtPerHour;
-        if (charge > maxCharge) charge = maxCharge;
-    }
+  uint256 maxCharge = amtPerHour > supply ? supply : amtPerHour;
+  if (charge > maxCharge) charge = maxCharge;
+}
+
 ```
 
 The linear redemption limit is calculated in the `currentCharge` function. This function calculates the delta blocks by `uint48 blocks = uint48(block.number) - battery.lastBlock;`.
@@ -510,34 +520,38 @@ It should be noted that the issue only exists for the first ever redemption as d
 The following test case was added to `test/RToken.test.ts` file and was ran using command `PROTO_IMPL=1 npx hardhat test ./test/RToken.test.ts`.
 
 ```typescript
-  describe.only('Battery lastBlock bug', () => {
-    it('redemption battery does not work on first redemption', async () => {
-      // real chain scenario
-      await advanceBlocks(1_000_000)
-      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, ethers.constants.MaxUint256)))
+describe.only('Battery lastBlock bug', () => {
+  it('redemption battery does not work on first redemption', async () => {
+    // real chain scenario
+    await advanceBlocks(1_000_000)
+    await Promise.all(
+      tokens.map((t) => t.connect(addr1).approve(rToken.address, ethers.constants.MaxUint256))
+    )
 
-      expect(await rToken.totalSupply()).to.eq(0)
-      await rToken.connect(owner).setRedemptionRateFloor(fp('1e4'))
-      await rToken.connect(owner).setScalingRedemptionRate(fp('0'))
+    expect(await rToken.totalSupply()).to.eq(0)
+    await rToken.connect(owner).setRedemptionRateFloor(fp('1e4'))
+    await rToken.connect(owner).setScalingRedemptionRate(fp('0'))
 
-      // first issue
-      const issueAmount = fp('10000')
-      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
-      expect(await rToken.balanceOf(addr1.address)).to.eq(issueAmount)
-      expect(await rToken.totalSupply()).to.eq(issueAmount)
+    // first issue
+    const issueAmount = fp('10000')
+    await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+    expect(await rToken.balanceOf(addr1.address)).to.eq(issueAmount)
+    expect(await rToken.totalSupply()).to.eq(issueAmount)
 
-      // first redemption
-      expect(await rToken.redemptionLimit()).to.eq(await rToken.totalSupply())    // for first redemption the currentCharge value is capped by rToken.totalSupply() 
-      await rToken.connect(addr1).redeem(issueAmount)
-      expect(await rToken.totalSupply()).to.eq(0)
+    // first redemption
+    expect(await rToken.redemptionLimit()).to.eq(await rToken.totalSupply()) // for first redemption the currentCharge value is capped by rToken.totalSupply()
+    await rToken.connect(addr1).redeem(issueAmount)
+    expect(await rToken.totalSupply()).to.eq(0)
 
-      // second redemption
-      await rToken.connect(addr1)['issue(uint256)'](issueAmount)
-      expect(await rToken.balanceOf(addr1.address)).to.eq(issueAmount)
-      // from second redemtion onwards the battery discharge mechanism takes place correctly
-      await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('redemption battery insufficient')
-    })
+    // second redemption
+    await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+    expect(await rToken.balanceOf(addr1.address)).to.eq(issueAmount)
+    // from second redemtion onwards the battery discharge mechanism takes place correctly
+    await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
+      'redemption battery insufficient'
+    )
   })
+})
 ```
 
 ### Tools Used
@@ -549,31 +563,36 @@ Hardhat
 The `battery.lastBlock` value must be initialized in the `init` function of `RTokenP1`
 
 ```solidity
-    function init(
-        // ...
-    ) external initializer {
-        // ...
-        battery.lastBlock = uint48(block.number);
-    }
+function init()
+  external
+  // ...
+  initializer
+{
+  // ...
+  battery.lastBlock = uint48(block.number);
+}
+
 ```
 
 **[0xean (judge) decreased severity to Medium and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/452#issuecomment-1399277278):**
- > The first redemption is not constrained by the battery properly from what I can tell in the code base.  I don't see sufficient evidence that this would lead to a direct loss of user funds however.  I will leave open for sponsor review, but think either Medium severity or below is appropriate without a better statement of impact from the warden.
+
+> The first redemption is not constrained by the battery properly from what I can tell in the code base. I don't see sufficient evidence that this would lead to a direct loss of user funds however. I will leave open for sponsor review, but think either Medium severity or below is appropriate without a better statement of impact from the warden.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/452#issuecomment-1405393242):**
- > This can't lead to loss of user funds, but I think it is indeed Medium severity
+
+> This can't lead to loss of user funds, but I think it is indeed Medium severity
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/452#issuecomment-1421598482):**
- > Fixed here: https://github.com/reserve-protocol/protocol/pull/584
+
+> Fixed here: https://github.com/reserve-protocol/protocol/pull/584
 
 **Status:** Mitigation confirmed. Full details in reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/50), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/16), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/26).
 
-
-
-***
+---
 
 ## [[M-02] Attacker can make stakeRate to be 1 in the StRSR contract and users depositing tokens can lose funds because of the big rounding error](https://github.com/code-423n4/2023-01-reserve-findings/issues/439)
-*Submitted by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/439)*
+
+_Submitted by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/439)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L160-L188><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L496-L530><br>
@@ -654,7 +673,7 @@ This is `_payoutReward()` code:
             emit ExchangeRateSet(initRate, exchangeRate());
         }
 
-As you can see it sets the value of the `stakeRate`  to `(totalStakes * FIX_ONE_256 + (stakeRSR - 1)) / stakeRSR`.
+As you can see it sets the value of the `stakeRate` to `(totalStakes * FIX_ONE_256 + (stakeRSR - 1)) / stakeRSR`.
 
 So to exploit this attacker needs to perform these steps:
 
@@ -678,16 +697,16 @@ Prevent early manipulation of the PPS.
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-01-reserve-findings/issues/439)**
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/439#issuecomment-1421600557):**
- > Addressed in https://github.com/reserve-protocol/protocol/pull/617
+
+> Addressed in https://github.com/reserve-protocol/protocol/pull/617
 
 **Status:** Mitigation confirmed with comments. Full details in reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/51), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/20), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/27).
 
-
-
-***
+---
 
 ## [[M-03] Baited by redemption during undercollateralization (no issuance, just transfer)](https://github.com/code-423n4/2023-01-reserve-findings/issues/416)
-*Submitted by [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/416)*
+
+_Submitted by [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/416)_
 
 This is similar to the "high" vulnerability I submitted, but also shows a similar exploit can be done if a user isn't a whale, and isn't issuing anything.
 
@@ -695,21 +714,21 @@ A user can send a redeem TX and an evil actor can make it so they get almost not
 
 ### Proof of Concept
 
-*   UserA is looking to redeem their rToken for tokenA (the max the battery will allow, let's say 100k)
+- UserA is looking to redeem their rToken for tokenA (the max the battery will allow, let's say 100k)
 
-*   A basket refresh is about to be triggered
+- A basket refresh is about to be triggered
 
-*   Evil user wants the protocol to steal UserA's funds
+- Evil user wants the protocol to steal UserA's funds
 
-*   UserA sends redeem TX to the mempool, but Evil user move transactions around before it hits
+- UserA sends redeem TX to the mempool, but Evil user move transactions around before it hits
 
-*   Evil user calls refreshbasket in same block as original collateral (tokenA) is disabled, kicking in backupconfig (tokenB)
+- Evil user calls refreshbasket in same block as original collateral (tokenA) is disabled, kicking in backupconfig (tokenB)
 
-*   Protocol is now undercollateralized but collateral is sound (tokenB is good)
+- Protocol is now undercollateralized but collateral is sound (tokenB is good)
 
-*   Evil sends 1tokenB to backingManager to UserA's redeem has something to redeem
+- Evil sends 1tokenB to backingManager to UserA's redeem has something to redeem
 
-*   UserA's redemption tx lands, and redeems 100k rTokens for a fraction of tokenB!
+- UserA's redemption tx lands, and redeems 100k rTokens for a fraction of tokenB!
 
 UserA redeems and has nothing to show for it!
 
@@ -728,26 +747,28 @@ Disallow redemptions/issuance during undercollateralization
 See warden's [original submission](https://github.com/code-423n4/2023-01-reserve-findings/issues/416) for full details.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/416#issuecomment-1402220739):**
- > Not sure this is distinct enough from the other attack vector to stand alone, leaving open for sponsor comment before duping.
+
+> Not sure this is distinct enough from the other attack vector to stand alone, leaving open for sponsor comment before duping.
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/416#issuecomment-1405419594):**
- > Duplicate of [`#399`](https://github.com/code-423n4/2023-01-reserve-findings/issues/399) 
+
+> Duplicate of [`#399`](https://github.com/code-423n4/2023-01-reserve-findings/issues/399)
 
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-01-reserve-findings/issues/416#issuecomment-1419296557)**
 
-***Please note: the following comment and re-assessment took place after judging and awarding were finalized. As such, this report will leave this finding in its originally assessed risk category as it simply reflects a snapshot in time.***
+**_Please note: the following comment and re-assessment took place after judging and awarding were finalized. As such, this report will leave this finding in its originally assessed risk category as it simply reflects a snapshot in time._**
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/416#issuecomment-1428777177):**
- > After re-reviewing, I do believe this should have been included in the [M-04](https://github.com/code-423n4/2023-01-reserve-findings/issues/399) batch of issues as well.  As it is past the QA period, no changes will be made to awards, but I wanted to comment as such for the benefit of the sponsor.
 
-*Note: see mitigation status under M-04 below.*
+> After re-reviewing, I do believe this should have been included in the [M-04](https://github.com/code-423n4/2023-01-reserve-findings/issues/399) batch of issues as well. As it is past the QA period, no changes will be made to awards, but I wanted to comment as such for the benefit of the sponsor.
 
+_Note: see mitigation status under M-04 below._
 
-
-***
+---
 
 ## [[M-04] Redemptions during undercollateralization can be hot-swapped to steal all funds](https://github.com/code-423n4/2023-01-reserve-findings/issues/399)
-*Submitted by [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/399), also found by [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/411)*
+
+_Submitted by [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/399), also found by [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/411)_
 
 During recollateralization/a switch basket/when the protocol collateral isn't sound, a user can have almost their entire redemption transaction hot swapped for nothing.
 
@@ -755,23 +776,23 @@ For example, trying to redeem 1M collateral for 1M rTokens could have the user e
 
 Example:
 
-*   User A issues 1M rToken for 1M tokenA
+- User A issues 1M rToken for 1M tokenA
 
-*   Evil user sees tokenA is about to become disabled, and that User A sent a normally innocuous redeem tx for too much underlying collateral in the mempool
+- Evil user sees tokenA is about to become disabled, and that User A sent a normally innocuous redeem tx for too much underlying collateral in the mempool
 
-*   Evil user orders transactions so they and RSR/Rtoken holders can steal user A's funds
+- Evil user orders transactions so they and RSR/Rtoken holders can steal user A's funds
 
-*   They first buy a ton of tokenA and send it to the backing Manager
+- They first buy a ton of tokenA and send it to the backing Manager
 
-*   They call `manageTokens` which flash issues a ton of new Rtoken due to the inflated tokenA balance, increasing the totalSupply
+- They call `manageTokens` which flash issues a ton of new Rtoken due to the inflated tokenA balance, increasing the totalSupply
 
-*   The increase in total supply allows the normal redemption cap to be drastically lifted
+- The increase in total supply allows the normal redemption cap to be drastically lifted
 
-*   They then let the disabling of tokenA process, and calls refreshBasket where a backup token (tokenB) kicks in
+- They then let the disabling of tokenA process, and calls refreshBasket where a backup token (tokenB) kicks in
 
-*   We are now undercollateralized, and evil user sends tokenB dust to the backingmanager
+- We are now undercollateralized, and evil user sends tokenB dust to the backingmanager
 
-*   FINALLY: the original redemption TX is ordered, and due to the inflated RToken supply, the battery discharge amount is also inflated, allowing the redemption to go through. Due to the new collateral in place, they redeem ALL their Rtoken (1M) for dust of tokenB!! The protocol has essentially honeypotted them!!
+- FINALLY: the original redemption TX is ordered, and due to the inflated RToken supply, the battery discharge amount is also inflated, allowing the redemption to go through. Due to the new collateral in place, they redeem ALL their Rtoken (1M) for dust of tokenB!! The protocol has essentially honeypotted them!!
 
 ### Proof of Concept
 
@@ -854,7 +875,7 @@ And we calculate how much they get back like so. We see how much `$` we currentl
                 if (prorata < amounts[i]) amounts[i] = prorata;
             }
 
-And just like that, a seemingly innocuous redemption transaction was a trap the whole time. The next step would be to go through the rest of the process to see how much our evil user profited (from running the auctions), as they need to be a whale to inflate the RToken supply. However, we've seen attacks like this, and one could consider it a [highly profitable trading strategy](https://twitter.com/avi_eisen/status/1581326197241180160?s=20\&t=8WpEg76bW_Kk8YaJ5orP5Q). If they buy up majority shares in the RToken, or, they coordinate with most of the StRSR token holders they could advertise and honey pot people to do redemptions whenever a switchBasket is coming. Spread FUD like "you need to redeem otherwise you'll lose money!" and it's the redeeming that actually steals their money.
+And just like that, a seemingly innocuous redemption transaction was a trap the whole time. The next step would be to go through the rest of the process to see how much our evil user profited (from running the auctions), as they need to be a whale to inflate the RToken supply. However, we've seen attacks like this, and one could consider it a [highly profitable trading strategy](https://twitter.com/avi_eisen/status/1581326197241180160?s=20&t=8WpEg76bW_Kk8YaJ5orP5Q). If they buy up majority shares in the RToken, or, they coordinate with most of the StRSR token holders they could advertise and honey pot people to do redemptions whenever a switchBasket is coming. Spread FUD like "you need to redeem otherwise you'll lose money!" and it's the redeeming that actually steals their money.
 
 ### Tools Used
 
@@ -869,25 +890,26 @@ Disallow issuance/redemptions while the protocol is undercollateralized.
 See warden's [original submission](https://github.com/code-423n4/2023-01-reserve-findings/issues/399) for full details.
 
 **[0xean (judge) decreased severity to Medium and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/399#issuecomment-1399349370):**
- > Certainly a creative attack vector, will leave open for sponsor review.  I am unclear on a few nuances of the attack here, but ultimately would like the sponsor to comment.
-> 
-> Downgrading to Medium for the moment due to a very particular sequence of events being required for this to be executed. 
+
+> Certainly a creative attack vector, will leave open for sponsor review. I am unclear on a few nuances of the attack here, but ultimately would like the sponsor to comment.
+>
+> Downgrading to Medium for the moment due to a very particular sequence of events being required for this to be executed.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/399#issuecomment-1405418612):**
- > The bug is simpler than the description. If the basket is DISABLED, then all that needs to happen is for a redeem tx to be in the mempool. An MEV searcher can order a `refreshBasket()` call earlier in the block, causing the redemption to be partial. This acts as a net transfer between the RToken redeemer and RSR stakers, who will eventually collect the money. 
+
+> The bug is simpler than the description. If the basket is DISABLED, then all that needs to happen is for a redeem tx to be in the mempool. An MEV searcher can order a `refreshBasket()` call earlier in the block, causing the redemption to be partial. This acts as a net transfer between the RToken redeemer and RSR stakers, who will eventually collect the money.
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR allows an RToken redeemer to specify when they require full redemptions vs accept partial (prorata) redemptions.<br>
-> [reserve-protocol/protocol#615](https://github.com/reserve-protocol/protocol/pull/615)
+
+> This PR allows an RToken redeemer to specify when they require full redemptions vs accept partial (prorata) redemptions.<br> > [reserve-protocol/protocol#615](https://github.com/reserve-protocol/protocol/pull/615)
 
 **Status:** Not fully mitigated. Full details in reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/54), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/14), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/69). Also included in Mitigation Review section below.
 
-
-
-***
+---
 
 ## [[M-05] Early user can call `issue()` and then `melt()` to increase `basketsNeeded` to supply ratio to its maximum value and then `melt()` won't work and contract features like `issue()` won't work](https://github.com/code-423n4/2023-01-reserve-findings/issues/384)
-*Submitted by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/384)*
+
+_Submitted by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/384)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L563-L573><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L801-L814><br>
@@ -922,7 +944,7 @@ As you can see it allows anyone to burn their RToken balance. This is `requireVa
             require(uint192(low) >= 1e9 && uint192(high) <= 1e27, "BU rate out of range");
         }
 
-As you can see it checks and makes sure that  the BU to RToken exchange rate to be in \[1e-9, 1e9]. so Attacker can perform this steps:
+As you can see it checks and makes sure that the BU to RToken exchange rate to be in \[1e-9, 1e9]. so Attacker can perform this steps:
 
 1.  add `1e18` RToken as first issuer by calling `issue()`
 2.  call `melt()` and burn `1e18 - 1` of his RTokens.
@@ -941,26 +963,28 @@ VIM
 Don't allow everyone to melt their tokens or don't allow melting if totalSupply() become very small.
 
 **[tmattimore (Reserve) disagreed with severity and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/384#issuecomment-1403998889):**
- > Understand that `issue()` plus `melt()` can brick an RTokens issuance, but redeem should still work. 
-> 
+
+> Understand that `issue()` plus `melt()` can brick an RTokens issuance, but redeem should still work.
+>
 > So, the RToken would no longer function as expected but no RToken holder funds would be lost. And in fact, RToken holders now have more funds.
-> 
+>
 > Believe this is severity 2 but we should mitigate so that an annoying person / entity cannot DDOS every RToken on deployment w/ small amounts of capital. RToken holders can always continue to redeem though.
 
 **[0xean (judge) decreased severity to Medium and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/384#issuecomment-1409460672):**
- > Agreed on downgrading due to no direct loss of significant funds and this mostly being a griefing type attack.
+
+> Agreed on downgrading due to no direct loss of significant funds and this mostly being a griefing type attack.
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR prevents melting RToken until the RToken supply is at least 1e18: [reserve-protocol/protocol#619](https://github.com/reserve-protocol/protocol/pull/619)
+
+> This PR prevents melting RToken until the RToken supply is at least 1e18: [reserve-protocol/protocol#619](https://github.com/reserve-protocol/protocol/pull/619)
 
 **Status:** Not fully mitigated. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/13) and 0xA5DF ([here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/70) and [here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/55)). Also included in Mitigation Review section below.
 
-
-
-***
+---
 
 ## [[M-06] Too few rewards paid over periods in Furnace and StRSR](https://github.com/code-423n4/2023-01-reserve-findings/issues/377)
-*Submitted by [Franfran](https://github.com/code-423n4/2023-01-reserve-findings/issues/377)*
+
+_Submitted by [Franfran](https://github.com/code-423n4/2023-01-reserve-findings/issues/377)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/Furnace.sol#L77-L79><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L509-L512><br>
@@ -1035,30 +1059,33 @@ uint256 payout = (payoutRatio * rsrRewardsAtLastPayout) / rewardRatio;
 ```
 
 **[tbrent (Reserve) disputed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/377#issuecomment-1405453764):**
- > I think there is a mistake in the math here, possibly arising from the fact that `rsrRewards()` doesn't correspond to how much rewards _has_ been handed out, but how much is _available_ to be handed out. 
-> 
-> I don't understand why the warden is computing the sum of `u_i`. If `u_0` is the value of `rsrRewards()` at time 0, and `u_1` is the value of `rsrRewards()` at time 1, why is the sum of `u_i` for all i interesting? This is double-counting balances, since only some of `u_i` is handed out each time. 
-> 
-> As the number of payouts approach infinity, the total amount handed out approaches `u_0`. 
+
+> I think there is a mistake in the math here, possibly arising from the fact that `rsrRewards()` doesn't correspond to how much rewards _has_ been handed out, but how much is _available_ to be handed out.
+>
+> I don't understand why the warden is computing the sum of `u_i`. If `u_0` is the value of `rsrRewards()` at time 0, and `u_1` is the value of `rsrRewards()` at time 1, why is the sum of `u_i` for all i interesting? This is double-counting balances, since only some of `u_i` is handed out each time.
+>
+> As the number of payouts approach infinity, the total amount handed out approaches `u_0`.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/377#issuecomment-1410642492):**
- > Would be good to get the warden to comment here during QA - will see if we can have that occur to clear up the difference in understanding.
 
-***Please note: the following comment and re-assessment took place after judging and awarding were finalized. As such, this report will leave this finding in its originally assessed risk category as it simply reflects a snapshot in time.***
+> Would be good to get the warden to comment here during QA - will see if we can have that occur to clear up the difference in understanding.
+
+**_Please note: the following comment and re-assessment took place after judging and awarding were finalized. As such, this report will leave this finding in its originally assessed risk category as it simply reflects a snapshot in time._**
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/377#issuecomment-1428771851):**
- > I want to apologize that I missed the fact that no response was given during QA and currently believe this issue to be invalid.  
+
+> I want to apologize that I missed the fact that no response was given during QA and currently believe this issue to be invalid.
 
 **[Franfran (warden) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/377#issuecomment-1429273607):**
- > Hey friends, sorry for not hopping into the discussion earlier!<br>
+
+> Hey friends, sorry for not hopping into the discussion earlier!<br>
 > My reasoning was that if the staker's rewards doesn't compound over time, then there is no reason for them to stay in the pool and not harvest the rewards, which is a costly process if they would have to harvest each cycle.
 
-
-
-***
+---
 
 ## [[M-07] Attacker can steal RToken holders' funds by performing reentrancy attack during `redeem()` function token transfers](https://github.com/code-423n4/2023-01-reserve-findings/issues/347)
-*Submitted by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/347), also found by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/318), [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/304), [ustas](https://github.com/code-423n4/2023-01-reserve-findings/issues/297), and [hihen](https://github.com/code-423n4/2023-01-reserve-findings/issues/95)*
+
+_Submitted by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/347), also found by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/318), [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/304), [ustas](https://github.com/code-423n4/2023-01-reserve-findings/issues/297), and [hihen](https://github.com/code-423n4/2023-01-reserve-findings/issues/95)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L439-L514><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/BackingManager.sol#L105-L150>
@@ -1113,7 +1140,7 @@ This is `redeem()` code:
             if (allZero) revert("Empty redemption");
         }
 
-As you can see code calculates withdrawal amount of each basket erc20 tokens by calling `basketHandler.quote()` and then bounds each withdrawal by the prorata share of token balance, in case protocol is under-collateralized. and then code updates `basketsNeeded` and in the end transfers the tokens.  if one of those tokens were ERC777 then that token would call receiver hook function in token transfer. there may be other 3rd party protocol tokens that calls registered hook functions during the token transfer. as reserve protocol is permission less and tries to work with all tokens so the external call in the token transfer can call hook functions. attacker can use this hook and perform reentrancy attack.
+As you can see code calculates withdrawal amount of each basket erc20 tokens by calling `basketHandler.quote()` and then bounds each withdrawal by the prorata share of token balance, in case protocol is under-collateralized. and then code updates `basketsNeeded` and in the end transfers the tokens. if one of those tokens were ERC777 then that token would call receiver hook function in token transfer. there may be other 3rd party protocol tokens that calls registered hook functions during the token transfer. as reserve protocol is permission less and tries to work with all tokens so the external call in the token transfer can call hook functions. attacker can use this hook and perform reentrancy attack.
 
 This is `fullyCollateralized()` code in BasketHandler:
 
@@ -1132,7 +1159,7 @@ The root cause of the issue is that during tokens transfers in `redeem()` not al
 3.  attacker would register a hook for his address in `SOME_ERC777` token to get called during transfers.
 4.  attacker would call `redeem()` to redeem 15K RToken and code would updated `basketsNeeded` to 135K and code would bounds withdrawal by prorata shares of balance of the BackingManager because protocol is under-collateralized and code would calculated withdrawal amouns as 15K `SOME_ERC777` tokens and 10K `USDT` tokens (instead of 15K `USDT` tokens) for withdraws.
 5.  then contract would transfer 15K `SOME_ERC777` tokens first to attacker address and attacker contract would get called during the hook function and now `basketsNeeded` is 135K and total RTokens is 135K and BackingManager balance is 185K `SOME_ERC777` and 100K `USDT` (`USDT` is not yet transferred). then attacker contract can call `redeem()` again for the remaining 15K RTokens.
-6.  because protocol is under-collateralized code would calculated withdrawal amouns as 15K `SOME_ERC777` and 11.1K `USDT` (USDT_balance &ast; rtokenAmount / totalSupply = 100K &ast; 15K / 135K) and it would burn 15K RToken form caller and the new value of totalSupply of RTokens would be 120K and `basketsNeeded` would be 120K too. then code would transfers 15K `SOME_ERC777` and 11.1K `USDT` for attacker address.
+6.  because protocol is under-collateralized code would calculated withdrawal amouns as 15K `SOME_ERC777` and 11.1K `USDT` (USDT_balance \* rtokenAmount / totalSupply = 100K \* 15K / 135K) and it would burn 15K RToken form caller and the new value of totalSupply of RTokens would be 120K and `basketsNeeded` would be 120K too. then code would transfers 15K `SOME_ERC777` and 11.1K `USDT` for attacker address.
 7.  attacker's hook function would return and `redeem()` would transfer 10K `USDT` to attacker in the rest of the execution. attacker would receive 30K `SOME_ERC777` and 21.1K `USDT` tokens for 15K redeemed RToken but attacker should have get (`100 * 30K / 150K = 20K`) 20K `USDT` tokens because of the bound each withdrawal by the prorata share, in case we're currently under-collateralized.
 8.  so attacker would be able to bypass the bounding check and withdraw more funds and stole other users funds. the attack is more effective if withdrawal battery charge is higher but in general case attacker can perform two withdraw each with about `charge/2` amount of RToken in each block and stole other users funds when protocol is under collaterlized.
 
@@ -1158,28 +1185,32 @@ Prevent reading reentrancy attack by central reentrancy guard or by one main pro
 Or create contract state (similar to basket nonce) which changes after each interaction and check for contracts states change during the call. (start and end of the call)
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/347#issuecomment-1399382867):**
- > Would like to get some sponsor comments on this once prior to final review. 
+
+> Would like to get some sponsor comments on this once prior to final review.
 
 **[tmattimore (Reserve) confirmed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/347#issuecomment-1404024005):**
- > We think it's real. 
-> 
+
+> We think it's real.
+>
 > Other potential mitigation:<br>
+>
 > - governance level norm of excluding erc777 as collateral. Can't fully enforce though, so not a full mitigation.
-> 
+>
 > Will discuss more and decide on mitigation path with team.
 
 **[0xean (judge) decreased severity to Medium and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/347#issuecomment-1409453091):**
- > Thanks @tmattimore - I am going to downgrade to Medium due to the external requirements needed for it to become a reality. If I may ask, what is the hesitancy to simply introduce standard reentrancy modifiers? It's not critical to the audit in any way, just more of my own curiosity. 
+
+> Thanks @tmattimore - I am going to downgrade to Medium due to the external requirements needed for it to become a reality. If I may ask, what is the hesitancy to simply introduce standard reentrancy modifiers? It's not critical to the audit in any way, just more of my own curiosity.
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/347#issuecomment-1426447206):**
- > @0xean - we would need a global mutex in order to prevent the attack noted here, which means lots of gas-inefficient external calls. The classic OZ modifier wouldn't be enough. 
 
+> @0xean - we would need a global mutex in order to prevent the attack noted here, which means lots of gas-inefficient external calls. The classic OZ modifier wouldn't be enough.
 
-
-***
+---
 
 ## [[M-08] `Asset.lotPrice()` doesn't use the most recent price in case of oracle timeout](https://github.com/code-423n4/2023-01-reserve-findings/issues/326)
-*Submitted by [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/326)*
+
+_Submitted by [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/326)_
 
 `Asset.lotPrice()` has a fallback mechanism in case that `tryPrice()` fails - it uses the last saved price and multiplies its value by `lotMultiplier` (a variable that decreases as the time since the last saved price increase) and returns the results.
 
@@ -1191,12 +1222,12 @@ This can cause the backing manager to misestimate the value of the asset, trade 
 
 In the PoC below:
 
-*   Oracle price is set at day 0
-*   The asset is refreshed (e.g. somebody issued/vested/redeemed)
-*   After 5 days the oracle gets an update
-*   25 hours later the `lotPrice()` is calculated based on the oracle price from day 0 even though a price from day 5 is available from the oracle
-*   Oracle gets another update
-*   25 hours later the `lotPrice()` goes down to zero since it considers the price from day 0 (which is more than a week ago) to be the last saved price, even though a price from a day ago is available from the oracle
+- Oracle price is set at day 0
+- The asset is refreshed (e.g. somebody issued/vested/redeemed)
+- After 5 days the oracle gets an update
+- 25 hours later the `lotPrice()` is calculated based on the oracle price from day 0 even though a price from day 5 is available from the oracle
+- Oracle gets another update
+- 25 hours later the `lotPrice()` goes down to zero since it considers the price from day 0 (which is more than a week ago) to be the last saved price, even though a price from a day ago is available from the oracle
 
 ```diff
 diff --git a/test/fixtures.ts b/test/fixtures.ts
@@ -1204,14 +1235,14 @@ index 5299a5f6..75ca8010 100644
 --- a/test/fixtures.ts
 +++ b/test/fixtures.ts
 @@ -69,7 +69,7 @@ export const SLOW = !!useEnv('SLOW')
- 
+
  export const PRICE_TIMEOUT = bn('604800') // 1 week
- 
+
 -export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
 +export const ORACLE_TIMEOUT = bn('86400') // one day
- 
+
  export const ORACLE_ERROR = fp('0.01') // 1% oracle error
- 
+
 diff --git a/test/plugins/Asset.test.ts b/test/plugins/Asset.test.ts
 index d49c53f3..7f2f721e 100644
 --- a/test/plugins/Asset.test.ts
@@ -1219,7 +1250,7 @@ index d49c53f3..7f2f721e 100644
 @@ -233,6 +233,45 @@ describe('Assets contracts #fast', () => {
        )
      })
- 
+
 +    it('PoC lot price doesn\'t use most recent price', async () => {
 +      // Update values in Oracles to 0
 +
@@ -1267,7 +1298,7 @@ index d49c53f3..7f2f721e 100644
      })
    })
 +  return;
- 
+
    describe('Constructor validation', () => {
      it('Should not allow price timeout to be zero', async () => {
 
@@ -1303,16 +1334,16 @@ Allow specifying a timeout to `tryPrice()`, in case that `tryPrice()` fails due 
 If the call succeeds the second time then use it as the most recent price for fallback calculations.
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/326#issuecomment-1405530751):**
- > Nice find! When `StalePrice()`is thrown in `OracleLib.sol`, it should revert with the latest price, and this latest price should be used in the asset plugin.
+
+> Nice find! When `StalePrice()`is thrown in `OracleLib.sol`, it should revert with the latest price, and this latest price should be used in the asset plugin.
 
 **[tbrent (Reserve) acknowledged](https://github.com/code-423n4/2023-01-reserve-findings/issues/326)**
 
-
-
-***
+---
 
 ## [[M-09] Withdrawals will stuck](https://github.com/code-423n4/2023-01-reserve-findings/issues/325)
-*Submitted by [csanuragjain](https://github.com/code-423n4/2023-01-reserve-findings/issues/325)*
+
+_Submitted by [csanuragjain](https://github.com/code-423n4/2023-01-reserve-findings/issues/325)_
 
 If a new era gets started for stakeRSR and draftRSR still point to old era then user will be at risk of losing their future holdings.
 
@@ -1402,28 +1433,30 @@ If a new era gets started for stakeRSR and draftRSR still point to old era then 
 Era should be same for staking and draft. So if User is unstaking at era 1 then withdrawal draft should always be era 1 and not some previous era.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/325#issuecomment-1402728967):**
- > I believe the sequence of events here to be off with when beginDraftEra would be called.
-> 
-> Will leave open for sponsor confirmation on the beginDraftEra call being triggered earlier in the process due to the value of `draftRSR == 0`. 
+
+> I believe the sequence of events here to be off with when beginDraftEra would be called.
+>
+> Will leave open for sponsor confirmation on the beginDraftEra call being triggered earlier in the process due to the value of `draftRSR == 0`.
 
 **[tbrent (Reserve) disputed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/325#issuecomment-1405551460):**
- > In the example described, I'm pretty sure point 4 is wrong: draftRSR would be 0 and both the eras would be changed at the same time.
-> 
-> That said, I don't think it's a problem to have different eras for stakeRSR and draftRSR. It's subtle, but it could be that due to rounding one of these overflows `MAX_STAKE_RATE`/`MAX_DRAFT_RATE`, but not the other. This is fine. This means enough devaluation has happened to one of the polities (current stakers; current withdrawers) that they have been wiped out. It's not a contradiction for the other polity to still be entitled to a small amount of RSR.
-> 
-> It also might be the warden is misunderstanding the intended design here: if you initiate StRSR unstaking, then a sufficient RSR seizure event _should_ result in the inability to withdraw anything after. 
 
-***Please note: the following comment and re-assessment took place after judging and awarding were finalized. As such, this report will leave this finding in its originally assessed risk category as it simply reflects a snapshot in time.***
+> In the example described, I'm pretty sure point 4 is wrong: draftRSR would be 0 and both the eras would be changed at the same time.
+>
+> That said, I don't think it's a problem to have different eras for stakeRSR and draftRSR. It's subtle, but it could be that due to rounding one of these overflows `MAX_STAKE_RATE`/`MAX_DRAFT_RATE`, but not the other. This is fine. This means enough devaluation has happened to one of the polities (current stakers; current withdrawers) that they have been wiped out. It's not a contradiction for the other polity to still be entitled to a small amount of RSR.
+>
+> It also might be the warden is misunderstanding the intended design here: if you initiate StRSR unstaking, then a sufficient RSR seizure event _should_ result in the inability to withdraw anything after.
+
+**_Please note: the following comment and re-assessment took place after judging and awarding were finalized. As such, this report will leave this finding in its originally assessed risk category as it simply reflects a snapshot in time._**
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/325#issuecomment-1428774156):**
- > I wanted to comment and apologize that this issue slipped through the QA process and I didn't give it a second pass to close it out as invalid. While C4 will not change grades or awards retroactively, it is worth noting for the final report that I do not believe this issue to be valid. 
 
+> I wanted to comment and apologize that this issue slipped through the QA process and I didn't give it a second pass to close it out as invalid. While C4 will not change grades or awards retroactively, it is worth noting for the final report that I do not believe this issue to be valid.
 
-
-***
+---
 
 ## [[M-10] Unsafe downcasting in `issue(...)` can be exploited to cause permanent DoS](https://github.com/code-423n4/2023-01-reserve-findings/issues/320)
-*Submitted by [Soosh](https://github.com/code-423n4/2023-01-reserve-findings/issues/320)*
+
+_Submitted by [Soosh](https://github.com/code-423n4/2023-01-reserve-findings/issues/320)_
 
 **Important note!**
 
@@ -1489,7 +1522,7 @@ it('Audit: DoS by downcasting', async function () {
       const tx = await rToken.connect(addr1)['issue(uint256)'](issueAmount)
       const receipt = await tx.wait()
       console.log(receipt.events[0].args)
-  
+
       await token0.connect(addr2).approve(rToken.address, initialBal)
       const tx2 = await rToken.connect(addr2)['issue(uint256)'](initialBal)
       const receipt2 = await tx2.wait()
@@ -1544,7 +1577,7 @@ Expect to see (only important parts shown):
 ### Impact
 
 Permanent DoS would be High risk considering RToken is an asset-backed **currency**.<br>
-*A currency that is unable to issue new currency does not work as a currency*
+_A currency that is unable to issue new currency does not work as a currency_
 
 Also, I believe existing collateral cannot be redeemed due to the extreme values also used in `redeem(...)` function. No PoC written due to time constriant for this case... but above should be enough impact.
 
@@ -1555,110 +1588,123 @@ Many other downcasting issues for this project. But using a safe casting library
 Use some safe casting library. OpenZeppelin's library does not have safe casting for `uint192` type. May have to find another or write your own.
 
 **[0xean (judge) decreased severity to Medium and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/320#issuecomment-1399385997):**
- > Will leave open for sponsor review, I think Medium severity is correct if the finding turns out to be fully valid. If no more issuance can occur, redemption is still possible. Warden would have needed to demonstrate a loss of funds for this to qualify as H severity. 
+
+> Will leave open for sponsor review, I think Medium severity is correct if the finding turns out to be fully valid. If no more issuance can occur, redemption is still possible. Warden would have needed to demonstrate a loss of funds for this to qualify as H severity.
 
 **[tbrent (Reserve) disagreed with severity and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/320#issuecomment-1405572151):**
- > We have supported ranges of value. See `docs/solidity-style.md`. 
-> 
+
+> We have supported ranges of value. See `docs/solidity-style.md`.
+>
 > The only mistake here is that `issue()` has somewhat lacking in-line documentation:<br>
+>
 > > Downcast is safe because an actual quantity of qBUs fits in uint192
-> 
+>
 > The comment in `redeem()` is a bit better:<br>
-> > // downcast is safe: amount < totalSupply and basketsNeeded_ < 1e57 < 2^190 (just barely)
-> 
-> We'll probably improve the comment in `issue()` to match `redeem()`. This should be a QA-level issue. 
+>
+> > // downcast is safe: amount < totalSupply and basketsNeeded\_ < 1e57 < 2^190 (just barely)
+>
+> We'll probably improve the comment in `issue()` to match `redeem()`. This should be a QA-level issue.
 
 **[0xean (judge) decreased severity to Low/Non-Critical](https://github.com/code-423n4/2023-01-reserve-findings/issues/320#issuecomment-1399385997)**
 
 **[Soosh (warden) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/320#issuecomment-1420413631):**
- > I don't see how documentation prevents this issue. 
-> 
+
+> I don't see how documentation prevents this issue.
+>
 > The issue exists because downcasting values above 2^192 does not revert. Maybe the sponsor misunderstood the issue thinking that it would require the attacker to deposit 2^192 of the collateral in order for the attack to succeed which is an extremely unlikely scenario.
-> 
+>
 > Updated the PoC to clearly show that the attacker can permanently disable the `issue(...)` function for the protocol, without owning any amount of the basket token. - addr1 is the attacker with 0 basket tokens, addr2 represents all future users who will not be able to issue new RTokens.
+>
 > ```js
 > it('Audit: DoS by downcasting', async function () {
->       const issueAmount: BigNumber = BigNumber.from(2n ** 192n)
-> 
->       await token0.burn(addr1.address, bn('6.3e57'))
->       await token0.burn(addr2.address, bn('6.3e57'))
->       // await token0.mint(addr1.address, bn('10e18'))
->       await token0.mint(addr2.address, bn('10e18'))
->       expect(await token0.balanceOf(addr1.address)).to.eq(0)
->       expect(await token0.balanceOf(addr2.address)).to.eq(bn('10e18'))
-> 
->       // Set basket
->       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
->       await basketHandler.connect(owner).refreshBasket()
-> 
->       // Attacker issues 2 ** 192, or a multiple of 2 ** 192 RTokens
->       // This will cause allVestAt to be very high, permanent DoS
->       const tx = await rToken.connect(addr1)['issue(uint256)'](issueAmount)
->       const receipt = await tx.wait()
->       console.log(receipt.events[0].args)
->   
->       await token0.connect(addr2).approve(rToken.address, bn('10e18'))
->       const tx2 = await rToken.connect(addr2)['issue(uint256)'](bn('10e18'))
->       const receipt2 = await tx2.wait()
->       console.log(receipt2.events[0].args)
-> 
->       // one eternity later...
->       await advanceTime('123456789123456789')
->       // and still not ready
->       await expect(rToken.connect(addr2).vest(addr2.address, 1))
->         .to.be.revertedWith("issuance not ready")
->     })
+>   const issueAmount: BigNumber = BigNumber.from(2n ** 192n)
+>
+>   await token0.burn(addr1.address, bn('6.3e57'))
+>   await token0.burn(addr2.address, bn('6.3e57'))
+>   // await token0.mint(addr1.address, bn('10e18'))
+>   await token0.mint(addr2.address, bn('10e18'))
+>   expect(await token0.balanceOf(addr1.address)).to.eq(0)
+>   expect(await token0.balanceOf(addr2.address)).to.eq(bn('10e18'))
+>
+>   // Set basket
+>   await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+>   await basketHandler.connect(owner).refreshBasket()
+>
+>   // Attacker issues 2 ** 192, or a multiple of 2 ** 192 RTokens
+>   // This will cause allVestAt to be very high, permanent DoS
+>   const tx = await rToken.connect(addr1)['issue(uint256)'](issueAmount)
+>   const receipt = await tx.wait()
+>   console.log(receipt.events[0].args)
+>
+>   await token0.connect(addr2).approve(rToken.address, bn('10e18'))
+>   const tx2 = await rToken.connect(addr2)['issue(uint256)'](bn('10e18'))
+>   const receipt2 = await tx2.wait()
+>   console.log(receipt2.events[0].args)
+>
+>   // one eternity later...
+>   await advanceTime('123456789123456789')
+>   // and still not ready
+>   await expect(rToken.connect(addr2).vest(addr2.address, 1)).to.be.revertedWith(
+>     'issuance not ready'
+>   )
+> })
 > ```
-> 
+>
 > Additionally, I still believe this issue should be considered High risk as:
-> 
+>
 > 1. Disabling of critical function of the protocol
 > 2. Attack is very simple to exploit, with no cost to the attacker - Low complexity with High likelihood
 > 3. Permanent disabling of RToken issuance means that the **RToken can no longer be used** so all funds must be moved out, this will entail:
+>
 > - Redeeming all existing RTokens, which will take a reasonable amount of time depending on redemption battery parameters
 > - Unstaking all stRSR which will take a reasonable amount of time depending on unstaking delay
-> 4. Gas costs for all the above redeeming and unstaking will be in the thousands for a RToken with reasonable market cap. 
+>
+> 4. Gas costs for all the above redeeming and unstaking will be in the thousands for a RToken with reasonable market cap.
 > 5. RToken is a stable currency which means that it would be used in DeFi protocols. In the case of Lending/Borrowing, it would take even longer for RToken to be redeemed. There may also be loss of funds as a long wait time to redeem RTokens means that the RToken will trade at a discount in secondary markets - this can cause RToken-collateralized loans to be underwater.
-> 
+>
 > There is no **direct** loss of funds but I'd argue the impact is vast due to RToken being used as a currency.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/320#issuecomment-1420866210):**
- > Thanks for the response.  
-> 
+
+> Thanks for the response.
+>
 > > There is no direct loss of funds but I'd argue the impact is vast due to RToken being used as a currency.
-> 
+>
 > If there is no direct loss of funds, how can this issue be High per the C4 criteria, not your own opinion?
-> 
-> I will ask @tbrent to take another look at your POC and do the same as well. 
+>
+> I will ask @tbrent to take another look at your POC and do the same as well.
 
 **[Soosh (warden) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/320#issuecomment-1420954105):**
- > I agree with Medium if following C4 criteria in the docs exactly word for word.
-> 
+
+> I agree with Medium if following C4 criteria in the docs exactly word for word.
+>
 > It is just that there are many High findings in previous contests where High findings did not need to cause direct loss of funds, but break an important functionality in the protocol.
-> 
+>
 > To be clear, this issue does lead to loss of funds. It is just that it may not be considered **direct**.
-> 
+>
 > It is indeed my opinion that the finding should be High, but the points listed below are all facts. I will respect your decision regardless. Thanks!
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/320#issuecomment-1421058666):**
- > Apologies, I misunderstood the issue the first time I read through it...indeed this can be used to mint large amounts of RToken to yourself while putting down very little in collateral, while pushing `allVestAt` extremely far into the future. 
-> 
-> Since `issuanceRate` cannot be disabled, and cannot be above 100%, there is no way for the absurdly high RToken mint to finish vesting. In the event of the attack, RToken issuance would be bricked but redemption would remain enabled, and since no RToken is minted until vesting the redemptions would still function. I think this is a Medium. 
+
+> Apologies, I misunderstood the issue the first time I read through it...indeed this can be used to mint large amounts of RToken to yourself while putting down very little in collateral, while pushing `allVestAt` extremely far into the future.
+>
+> Since `issuanceRate` cannot be disabled, and cannot be above 100%, there is no way for the absurdly high RToken mint to finish vesting. In the event of the attack, RToken issuance would be bricked but redemption would remain enabled, and since no RToken is minted until vesting the redemptions would still function. I think this is a Medium.
 
 **[0xean (judge) increased severity to Medium and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/320#issuecomment-1421336734):**
- > Thanks for all the conversation, marking as Medium. 
+
+> Thanks for all the conversation, marking as Medium.
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR makes all dangerous uint192 downcasts truncation-safe: [reserve-protocol/protocol#628](https://github.com/reserve-protocol/protocol/pull/628)
+
+> This PR makes all dangerous uint192 downcasts truncation-safe: [reserve-protocol/protocol#628](https://github.com/reserve-protocol/protocol/pull/628)
 
 **Status:** Mitigation confirmed. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/19), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/56), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/33).
 
-
-
-***
+---
 
 ## [[M-11] Should Accrue Before Change, Loss of Rewards in case of change of settings](https://github.com/code-423n4/2023-01-reserve-findings/issues/287)
-*Submitted by [GalloDaSballo](https://github.com/code-423n4/2023-01-reserve-findings/issues/287), also found by [chaduke](https://github.com/code-423n4/2023-01-reserve-findings/issues/380), [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/333), and [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/330)*
+
+_Submitted by [GalloDaSballo](https://github.com/code-423n4/2023-01-reserve-findings/issues/287), also found by [chaduke](https://github.com/code-423n4/2023-01-reserve-findings/issues/380), [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/333), and [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/330)_
 
 In `StRSR.sol`, `_payoutRewards` is used to accrue the value of rewards based on the time that has passed since `payoutLastPaid`
 
@@ -1668,7 +1714,7 @@ There is a specific instance, in which `_payoutRewards` should also be called, w
 
 If you imagine the ratio at which rewards are paid out as a line, then you can see that by changing `rewardRatio` and `period` you're changing it's slope.
 
-You should then agree, that while governance can *rightfully* change those settings, it should `_payoutRewards` first, to ensure that the slope of rewards changes only for rewards to be distributed after the setting has changed.
+You should then agree, that while governance can _rightfully_ change those settings, it should `_payoutRewards` first, to ensure that the slope of rewards changes only for rewards to be distributed after the setting has changed.
 
 ### Mitigation
 
@@ -1676,16 +1722,16 @@ Functions that change the slope or period size should accrue rewards up to that 
 
 This is to avoid:
 
-*   Incorrect reward distribution
-*   Change (positive or negative) of rewards from the past
+- Incorrect reward distribution
+- Change (positive or negative) of rewards from the past
 
 Without accrual, the change will apply retroactively from `payoutLastPaid`
 
 Which could:
 
-*   Change the period length prematurely
-*   Start a new period inadvertently
-*   Cause a gain or loss of yield to stakers
+- Change the period length prematurely
+- Start a new period inadvertently
+- Cause a gain or loss of yield to stakers
 
 Instead of starting a new period
 
@@ -1693,35 +1739,37 @@ Instead of starting a new period
 
 ```solidity
 function setRewardPeriod(uint48 val) public governance {
-    require(val > 0 && val <= MAX_REWARD_PERIOD, "invalid rewardPeriod");
-    _payoutRewards(); // @audit Payout rewards for fairness
-    emit RewardPeriodSet(rewardPeriod, val);
-    rewardPeriod = val;
-    require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
+  require(val > 0 && val <= MAX_REWARD_PERIOD, 'invalid rewardPeriod');
+  _payoutRewards(); // @audit Payout rewards for fairness
+  emit RewardPeriodSet(rewardPeriod, val);
+  rewardPeriod = val;
+  require(rewardPeriod * 2 <= unstakingDelay, 'unstakingDelay/rewardPeriod incompatible');
 }
 
 function setRewardRatio(uint192 val) public governance {
-    require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
-    _payoutRewards(); // @audit Payout rewards for fairness
-    emit RewardRatioSet(rewardRatio, val);
-    rewardRatio = val;
+  require(val <= MAX_REWARD_RATIO, 'invalid rewardRatio');
+  _payoutRewards(); // @audit Payout rewards for fairness
+  emit RewardRatioSet(rewardRatio, val);
+  rewardRatio = val;
 }
+
 ```
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/287#issuecomment-1404391327):**
- > Nice finding, agree. 
+
+> Nice finding, agree.
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR adds a `Furnace.melt()`/`StRSR.payoutRewards()` step when governance changes the `rewardRatio`: [reserve-protocol/protocol#622](https://github.com/reserve-protocol/protocol/pull/622)
+
+> This PR adds a `Furnace.melt()`/`StRSR.payoutRewards()` step when governance changes the `rewardRatio`: [reserve-protocol/protocol#622](https://github.com/reserve-protocol/protocol/pull/622)
 
 **Status:** Mitigation confirmed with comments. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/18), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/57), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/34).
 
-
-
-***
+---
 
 ## [[M-12] BackingManager: rsr is distributed across all rsr revenue destinations which is a loss for rsr stakers](https://github.com/code-423n4/2023-01-reserve-findings/issues/276)
-*Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/276)*
+
+_Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/276)_
 
 The `BackingManager.handoutExcessAssets` function sends all `rsr` that the `BackingManager` holds to the `rsrTrader` (<https://github.com/reserve-protocol/protocol/blob/b30ab2068dddf111744b8feed0dd94925e10d947/contracts/p1/BackingManager.sol#L173-L179>).
 
@@ -1739,9 +1787,9 @@ Stakers should only pay for recollateralization of the `RToken`, not however sen
 
 Assume the following situation:
 
-*   A seizure of `rsr` from the `StRSR` contract occurred because the `RToken` was under-collateralized.
+- A seizure of `rsr` from the `StRSR` contract occurred because the `RToken` was under-collateralized.
 
-*   A trade occurred which restored collateralization. However not all `rsr` was sold by the trade and was returned to the `BackingManager`.
+- A trade occurred which restored collateralization. However not all `rsr` was sold by the trade and was returned to the `BackingManager`.
 
 Now `BackingManager.manageTokens` is called which due to the full collateralization calls `BackingManager.handoutExcessAssets` (<https://github.com/reserve-protocol/protocol/blob/b30ab2068dddf111744b8feed0dd94925e10d947/contracts/p1/BackingManager.sol#L118>).
 
@@ -1788,19 +1836,20 @@ However there is no easy way to differentiate where the `rsr` came from.
 Therefore I think it is reasonable to send all `rsr` to `StRSR` and make it clear to developers and users that `rsr` rewards cannot be paid out to `rToken` holders.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/276#issuecomment-1404405069):**
- > Yep, this one is a great find. 
+
+> Yep, this one is a great find.
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/276#issuecomment-1421609180):**
- > Fixed here: https://github.com/reserve-protocol/protocol/pull/584
+
+> Fixed here: https://github.com/reserve-protocol/protocol/pull/584
 
 **Status:** Mitigation confirmed. Full details in reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/58), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/11), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/36).
 
-
-
-***
+---
 
 ## [[M-13] Attacker can prevent vesting for a very long time](https://github.com/code-423n4/2023-01-reserve-findings/issues/267)
-*Submitted by [immeas](https://github.com/code-423n4/2023-01-reserve-findings/issues/267), also found by [wait](https://github.com/code-423n4/2023-01-reserve-findings/issues/367), [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/364), [JTJabba](https://github.com/code-423n4/2023-01-reserve-findings/issues/135), [rvierdiiev](https://github.com/code-423n4/2023-01-reserve-findings/issues/116), [hihen](https://github.com/code-423n4/2023-01-reserve-findings/issues/73), and [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/24)*
+
+_Submitted by [immeas](https://github.com/code-423n4/2023-01-reserve-findings/issues/267), also found by [wait](https://github.com/code-423n4/2023-01-reserve-findings/issues/367), [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/364), [JTJabba](https://github.com/code-423n4/2023-01-reserve-findings/issues/135), [rvierdiiev](https://github.com/code-423n4/2023-01-reserve-findings/issues/116), [hihen](https://github.com/code-423n4/2023-01-reserve-findings/issues/73), and [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/24)_
 
 When a user wants to issue RTokens there is a limit of how many can be issued in the same block. This is determined in the `whenFinished` function.
 
@@ -1868,60 +1917,60 @@ A malicious user can delay issuances a very long time costing only gas.
 PoC test in `RToken.test.ts`:
 
 ```javascript
-    // based on 'Should allow the recipient to rollback minting'
-    it('large issuance and cancel griefs later issuances', async function () {
-      const issueAmount: BigNumber = bn('5000000e18') // flashloan or rich
+// based on 'Should allow the recipient to rollback minting'
+it('large issuance and cancel griefs later issuances', async function () {
+  const issueAmount: BigNumber = bn('5000000e18') // flashloan or rich
 
-      // Provide approvals
-      const [, depositTokenAmounts] = await facade.callStatic.issue(rToken.address, issueAmount)
-      await Promise.all(
-        tokens.map((t, i) => t.connect(addr1).approve(rToken.address, depositTokenAmounts[i]))
-      )
+  // Provide approvals
+  const [, depositTokenAmounts] = await facade.callStatic.issue(rToken.address, issueAmount)
+  await Promise.all(
+    tokens.map((t, i) => t.connect(addr1).approve(rToken.address, depositTokenAmounts[i]))
+  )
 
-      await Promise.all(
-        tokens.map((t, i) => t.connect(addr2).approve(rToken.address, ethers.constants.MaxInt256))
-      )
-      
-      // Get initial balances
-      const initialRecipientBals = await Promise.all(tokens.map((t) => t.balanceOf(addr2.address)))
+  await Promise.all(
+    tokens.map((t, i) => t.connect(addr2).approve(rToken.address, ethers.constants.MaxInt256))
+  )
 
-      // Issue a lot of rTokens
-      await rToken.connect(addr1)['issue(address,uint256)'](addr2.address, issueAmount)
+  // Get initial balances
+  const initialRecipientBals = await Promise.all(tokens.map((t) => t.balanceOf(addr2.address)))
 
-      // Cancel
-      await expect(rToken.connect(addr2).cancel(1, true))
-        .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr2.address, 0, 1, issueAmount)
+  // Issue a lot of rTokens
+  await rToken.connect(addr1)['issue(address,uint256)'](addr2.address, issueAmount)
 
-      // repeat to make allVestAt very large
-      for(let j = 0; j<100 ; j++) {
-        await rToken.connect(addr2)['issue(address,uint256)'](addr2.address, issueAmount)
+  // Cancel
+  await expect(rToken.connect(addr2).cancel(1, true))
+    .to.emit(rToken, 'IssuancesCanceled')
+    .withArgs(addr2.address, 0, 1, issueAmount)
 
-        await expect(rToken.connect(addr2).cancel(1, true))
-          .to.emit(rToken, 'IssuancesCanceled')
-          .withArgs(addr2.address, 0, 1, issueAmount)
-      }
+  // repeat to make allVestAt very large
+  for (let j = 0; j < 100; j++) {
+    await rToken.connect(addr2)['issue(address,uint256)'](addr2.address, issueAmount)
 
-      // Check balances returned to the recipient, addr2
-      await Promise.all(
-        tokens.map(async (t, i) => {
-          const expectedBalance = initialRecipientBals[i].add(depositTokenAmounts[i])
-          expect(await t.balanceOf(addr2.address)).to.equal(expectedBalance)
-        })
-      )
-      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+    await expect(rToken.connect(addr2).cancel(1, true))
+      .to.emit(rToken, 'IssuancesCanceled')
+      .withArgs(addr2.address, 0, 1, issueAmount)
+  }
 
-      const instantIssue: BigNumber = MIN_ISSUANCE_PER_BLOCK.sub(1)
-      await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
-
-      // what should have been immediate issuance will be queued
-      await rToken.connect(addr1)['issue(uint256)'](instantIssue)
-
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-
-      const issuances = await facade.callStatic.pendingIssuances(rToken.address, addr1.address)
-      expect(issuances.length).to.eql(1)
+  // Check balances returned to the recipient, addr2
+  await Promise.all(
+    tokens.map(async (t, i) => {
+      const expectedBalance = initialRecipientBals[i].add(depositTokenAmounts[i])
+      expect(await t.balanceOf(addr2.address)).to.equal(expectedBalance)
     })
+  )
+  expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+
+  const instantIssue: BigNumber = MIN_ISSUANCE_PER_BLOCK.sub(1)
+  await Promise.all(tokens.map((t) => t.connect(addr1).approve(rToken.address, initialBal)))
+
+  // what should have been immediate issuance will be queued
+  await rToken.connect(addr1)['issue(uint256)'](instantIssue)
+
+  expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+
+  const issuances = await facade.callStatic.pendingIssuances(rToken.address, addr1.address)
+  expect(issuances.length).to.eql(1)
+})
 ```
 
 ### Tools Used
@@ -1935,17 +1984,16 @@ Manual auditing and hardhat
 **[tbrent (Reserve) confirmed via duplicate issue `#364`](https://github.com/code-423n4/2023-01-reserve-findings/issues/364#issuecomment-1405483304)**
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR removes the non-atomic issuance mechanism and adds an issuance throttle. The redemption battery is rebranded to a redemption throttle.<br>
-> [reserve-protocol/protocol#571](https://github.com/reserve-protocol/protocol/pull/571)
+
+> This PR removes the non-atomic issuance mechanism and adds an issuance throttle. The redemption battery is rebranded to a redemption throttle.<br> > [reserve-protocol/protocol#571](https://github.com/reserve-protocol/protocol/pull/571)
 
 **Status:** Mitigation confirmed with comments. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/10), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/59), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/37).
 
-
-
-***
+---
 
 ## [[M-14] Unsafe cast of `uint8` datatype to `int8`](https://github.com/code-423n4/2023-01-reserve-findings/issues/265)
-*Submitted by [0xTaylor](https://github.com/code-423n4/2023-01-reserve-findings/issues/265)*
+
+_Submitted by [0xTaylor](https://github.com/code-423n4/2023-01-reserve-findings/issues/265)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/BackingManager.sol#L228><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/BasketHandler.sol#L421>
@@ -1974,19 +2022,20 @@ Chisel
 Validate that the decimals value is within an acceptable upper-bound before attempting to cast it to a signed integer.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/265#issuecomment-1401152907):**
- > The warden does make a reasonable point re: the cast being done here and others have pointed out concerns over assuming that an ERC20 _must_ have a decimals field.
-> 
+
+> The warden does make a reasonable point re: the cast being done here and others have pointed out concerns over assuming that an ERC20 _must_ have a decimals field.
+>
 > Will leave open for sponsor review, but I think this would qualify as Medium.
 
 **[tbrent (Reserve) acknowledged and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/265#issuecomment-1404412161):**
- > Agreed, seems Medium to me. 
 
+> Agreed, seems Medium to me.
 
-
-***
+---
 
 ## [[M-15] The `Furnace#melt()` is vulnerable to sandwich attacks](https://github.com/code-423n4/2023-01-reserve-findings/issues/258)
-*Submitted by [wait](https://github.com/code-423n4/2023-01-reserve-findings/issues/258)*
+
+_Submitted by [wait](https://github.com/code-423n4/2023-01-reserve-findings/issues/258)_
 
 Malicious users can get more of the RToken appreciation benefit brought by [`Furnace.sol#melt()`](https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/Furnace.sol#L70), and long-term RToken holders will get less benefit.
 
@@ -2011,8 +2060,8 @@ This assumption is reasonable because if there are price differentials, they can
 
 The attack can be profitable for:
 
-*   `Furnace#melt()` will increase the price of RToken in issue/redeem (according to basket rate).
-*   Step 2 buys RTokens at a lower price, and then step 3 sells RTokens at a higher price(`melt()` is called first in `redeem()`).
+- `Furnace#melt()` will increase the price of RToken in issue/redeem (according to basket rate).
+- Step 2 buys RTokens at a lower price, and then step 3 sells RTokens at a higher price(`melt()` is called first in `redeem()`).
 
 **A2. Get a higher yield by holding RToken for a short period of time**
 
@@ -2033,21 +2082,22 @@ Alternatively, always use a very small rewardPeriod and rewardRatio, and lower t
 **[0xean (judge) decreased severity to Medium](https://github.com/code-423n4/2023-01-reserve-findings/issues/258)**
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/258#issuecomment-1404414135):**
- > Agreed with the warden. And agree this is a Medium severity issue.
-> 
+
+> Agreed with the warden. And agree this is a Medium severity issue.
+>
 > (aside: we are already planning to fix the period at 12s to mitigate this issue)
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/258#issuecomment-1421613758):**
- > Addressed here: https://github.com/reserve-protocol/protocol/pull/571
+
+> Addressed here: https://github.com/reserve-protocol/protocol/pull/571
 
 **Status:** Mitigation confirmed with comments. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/9), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/60), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/39).
 
-
-
-***
+---
 
 ## [[M-16] RToken permanently insolvent/unusable if a single collateral in the basket behaves unexpectedly](https://github.com/code-423n4/2023-01-reserve-findings/issues/254)
-*Submitted by [0xdeadbeef0x](https://github.com/code-423n4/2023-01-reserve-findings/issues/254), also found by [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/345), [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/183), [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/133), [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/132), and [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/129)*
+
+_Submitted by [0xdeadbeef0x](https://github.com/code-423n4/2023-01-reserve-findings/issues/254), also found by [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/345), [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/183), [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/133), [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/132), and [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/129)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/plugins/assets/CTokenFiatCollateral.sol#L45><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/plugins/assets/CTokenFiatCollateral.sol#L37><br>
@@ -2071,9 +2121,10 @@ This includes (and not limited to):
 The impacts become permanent as the unregistering of bad collateral assets is also dependent on collateral token behavior.
 
 Emphasis of funds lost:<br>
-* A basket holds 2 collateral assets \[cAssetA, cAssetB] where cAssetA holds 1% of the RToken collateral and cAssetB holds 99%.
-* cAssetA gets hacked and self-destructed. This means it will revert on any interaction with it.
-* Even though 99% of funds still exists in cAssetB. They will be permanently locked and RToken will be unusable.
+
+- A basket holds 2 collateral assets \[cAssetA, cAssetB] where cAssetA holds 1% of the RToken collateral and cAssetB holds 99%.
+- cAssetA gets hacked and self-destructed. This means it will revert on any interaction with it.
+- Even though 99% of funds still exists in cAssetB. They will be permanently locked and RToken will be unusable.
 
 ### Proof of Concept
 
@@ -2129,7 +2180,7 @@ As can seen above, `basketHandler.quantity(asset.erc20());` is called as part of
             }
         }
 
-The asset is still registered so the `try` call will succeed and ` coll.refPerTok(); ` will be called.
+The asset is still registered so the `try` call will succeed and `coll.refPerTok();` will be called.
 
 `refPerTok` function in `CTokenFiatCollateral` (which is used as an asset of `cUSDP`):<br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/plugins/assets/CTokenFiatCollateral.sol#L45>
@@ -2174,25 +2225,25 @@ In our case, `CTokenFiatCollateral.refresh()` will revert therefore the call to 
 `AssetRegistry.refresh()` is called in critical functions that will revert:
 
 1.  `_manageTokens` - used manage backing policy, handout excess assets and perform recollateralization
-(<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/BackingManager.sol#L107>)
+    (<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/BackingManager.sol#L107>)
 
 2.  `refreshBucket` - used to switch the basket configuration
-(<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/BasketHandler.sol#L184>)
+    (<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/BasketHandler.sol#L184>)
 
 3.  `issue` - used to issue RTokens to depositors
-(<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L194>)
+    (<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L194>)
 
 4.  `vest` - used to vest issuance of an account
-(<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L380>)
+    (<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L380>)
 
 5.  `redeem` - used to redeem collateral assets for RTokens
-(<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L443>)
+    (<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L443>)
 
 6.  `poke` - in main, used as a refresher
-(<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/Main.sol#L45>)
+    (<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/Main.sol#L45>)
 
 7.  `withdraw` in RSR, stakers will not be able to unstake
-(<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L302>)
+    (<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L302>)
 
 ### Tools Used
 
@@ -2205,23 +2256,24 @@ For plugins to function as intended there has to be a dependency on protocol spe
 In a case that the collateral token is corrupted, the governance should be able to replace to corrupted token. The unregistering flow should never be depended on the token functionality.
 
 **[0xean (judge) decreased severity to Medium and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/254#issuecomment-1400504728):**
- > Downgrading to Medium and leaving open to sponsor review. There are externalities here that do no qualify the issue as High.
+
+> Downgrading to Medium and leaving open to sponsor review. There are externalities here that do no qualify the issue as High.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/254#issuecomment-1404418850):**
- > Nice find!
+
+> Nice find!
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR makes the AssetRegistry more resilient to bad collateral during asset unregistration, and disables staking when frozen.<br>
-> [reserve-protocol/protocol#623](https://github.com/reserve-protocol/protocol/pull/623)
+
+> This PR makes the AssetRegistry more resilient to bad collateral during asset unregistration, and disables staking when frozen.<br> > [reserve-protocol/protocol#623](https://github.com/reserve-protocol/protocol/pull/623)
 
 **Status:** Not fully mitigated. Full details in [report from AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73), and also included in Mitigation Review section below.
 
-
-
-***
+---
 
 ## [[M-17] `refresh()` will revert on Oracle deprecation, effectively disabling part of the protocol](https://github.com/code-423n4/2023-01-reserve-findings/issues/234)
-*Submitted by [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/234)*
+
+_Submitted by [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/234)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/plugins/assets/Asset.sol#L102><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/plugins/assets/FiatCollateral.sol#L149><br>
@@ -2237,15 +2289,15 @@ However, an error with empty data isn't thrown only in case of out of gas, in th
 
 Any function that requires refreshing the assets will fail to execute (till the asset is replaced in the asset registry, passing the proposal via governance would usually take 7 days), that includes:
 
-*   Issuance
-*   Vesting
-*   Redemption
-*   Auctions (`manageTokens()`)
-*   `StRSR.withdraw()`
+- Issuance
+- Vesting
+- Redemption
+- Auctions (`manageTokens()`)
+- `StRSR.withdraw()`
 
 ### Proof of Concept
 
-The [docs](https://github.com/reserve-protocol/protocol/blob/d224c14c398d2727d39d133aa7511e1e6b161833/docs/recollateralization.md#:\~:text=If%20an%20asset%27s%20oracle%20goes%20offline%20forever%2C%20its%20lotPrice\(\)%20will%20eventually%20reach%20%5B0%2C%200%5D%20and%20the%20protocol%20will%20completely%20stop%20trading%20this%20asset.) imply in case of deprecation the protocol is expected continue to operate:
+The [docs](<https://github.com/reserve-protocol/protocol/blob/d224c14c398d2727d39d133aa7511e1e6b161833/docs/recollateralization.md#:~:text=If%20an%20asset%27s%20oracle%20goes%20offline%20forever%2C%20its%20lotPrice()%20will%20eventually%20reach%20%5B0%2C%200%5D%20and%20the%20protocol%20will%20completely%20stop%20trading%20this%20asset.>) imply in case of deprecation the protocol is expected continue to operate:
 
 > If an asset's oracle goes offline forever, its lotPrice() will eventually reach \[0, 0] and the protocol will completely stop trading this asset.
 
@@ -2274,13 +2326,9 @@ import {
   TestIRToken,
   USDCMock,
 } from '../../typechain'
-import {
-  Collateral,
-  defaultFixture,
-} from '../fixtures'
+import { Collateral, defaultFixture } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
-
 
 describe('Assets contracts #fast', () => {
   // Tokens
@@ -2373,31 +2421,29 @@ describe('Assets contracts #fast', () => {
 
   describe('Deployment', () => {
     it('Deployment should setup assets correctly', async () => {
+      console.log(network.config.chainId)
+      // let validOracle = '0x443C5116CdF663Eb387e72C688D276e702135C87';
+      let deprecatedOracle = '0x2E5B04aDC0A3b7dB5Fd34AE817c7D0993315A8a6'
+      let priceTimeout_ = await aaveAsset.priceTimeout(),
+        chainlinkFeed_ = deprecatedOracle,
+        oracleError_ = await aaveAsset.oracleError(),
+        erc20_ = await aaveAsset.erc20(),
+        maxTradeVolume_ = await aaveAsset.maxTradeVolume(),
+        oracleTimeout_ = await aaveAsset.oracleTimeout()
 
-        console.log(network.config.chainId);
-        // let validOracle = '0x443C5116CdF663Eb387e72C688D276e702135C87';
-        let deprecatedOracle = '0x2E5B04aDC0A3b7dB5Fd34AE817c7D0993315A8a6';
-        let priceTimeout_ = await aaveAsset.priceTimeout(),
-         chainlinkFeed_ = deprecatedOracle,
-         oracleError_ = await aaveAsset.oracleError(),
-         erc20_ = await aaveAsset.erc20(),
-         maxTradeVolume_ = await aaveAsset.maxTradeVolume(),
-         oracleTimeout_ = await aaveAsset.oracleTimeout();
-        
-        aaveAsset = await AssetFactory.deploy(priceTimeout_,
-            chainlinkFeed_ ,
-            oracleError_ ,
-            erc20_ ,
-            maxTradeVolume_ ,
-            oracleTimeout_  ) as Asset;
+      aaveAsset = (await AssetFactory.deploy(
+        priceTimeout_,
+        chainlinkFeed_,
+        oracleError_,
+        erc20_,
+        maxTradeVolume_,
+        oracleTimeout_
+      )) as Asset
 
-        await aaveAsset.refresh();
-      
+      await aaveAsset.refresh()
     })
   })
-
 })
-
 ```
 
 Modification of `hardhat.config.ts` to set it to the Polygon network:
@@ -2410,7 +2456,7 @@ index f1886d25..53565799 100644
 @@ -24,18 +24,19 @@ const TIMEOUT = useEnv('SLOW') ? 3_000_000 : 300_000
  const src_dir = `./contracts/${useEnv('PROTO')}`
  const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
- 
+
 +let recentBlockNumber = 38231040;
 +let jan6Block = 37731612; // causes 'missing trie node' error
 +
@@ -2452,8 +2498,8 @@ Output:
 
 Notes:
 
-*   Chainlink list deprecating oracles only till deprecation, afterwards they're removed from the website. For this reason I wasn't able to trace deprecated oracles on the mainnet
-*   I was trying to prove this worked before deprecation, however, I kept getting the 'missing trie node' error when forking the older block. This isn't essential for the PoC so I decided to give up on it for now (writing this PoC was hard enough on its own).
+- Chainlink list deprecating oracles only till deprecation, afterwards they're removed from the website. For this reason I wasn't able to trace deprecated oracles on the mainnet
+- I was trying to prove this worked before deprecation, however, I kept getting the 'missing trie node' error when forking the older block. This isn't essential for the PoC so I decided to give up on it for now (writing this PoC was hard enough on its own).
 
 ### Recommended Mitigation Steps
 
@@ -2462,14 +2508,14 @@ At `OracleLib.price()` catch the error and check if the error data is empty and 
 Another approach might be to check in the `refresh()` function that the `tryPrice()` function didn't revert due to out of gas error by checking the gas before and after (in case of out of gas error only \~1/64 of the gas-before would be left). The advantage of this approach is that it would catch also other errors that might revert with empty data.
 
 **[tbrent (Reserve) acknowledged and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/234#issuecomment-1404422733):**
- > I did not know this! Nice find.
 
+> I did not know this! Nice find.
 
-
-***
+---
 
 ## [[M-18] If name is changed then the domain separator would be wrong](https://github.com/code-423n4/2023-01-reserve-findings/issues/211)
-*Submitted by [fs0c](https://github.com/code-423n4/2023-01-reserve-findings/issues/211)*
+
+_Submitted by [fs0c](https://github.com/code-423n4/2023-01-reserve-findings/issues/211)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L803><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L791>
@@ -2480,8 +2526,9 @@ Now, governance can change this `name` anytime using the following function:
 
 ```solidity
 function setName(string calldata name_) external governance {
-        name = name_;
-    }
+  name = name_;
+}
+
 ```
 
 After that call the domain separator would still be calculated using the old name, which shouldn’t be the case.
@@ -2497,16 +2544,16 @@ While changing the name in setName function, update the domain separator.
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-01-reserve-findings/issues/211)**
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR removes the ability to change StRSR token's name and symbol: [reserve-protocol/protocol#614](https://github.com/reserve-protocol/protocol/pull/614)
+
+> This PR removes the ability to change StRSR token's name and symbol: [reserve-protocol/protocol#614](https://github.com/reserve-protocol/protocol/pull/614)
 
 **Status:** Mitigation confirmed. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/7), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/62), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/42).
 
-
-
-***
+---
 
 ## [[M-19] In case that `unstakingDelay` is decreased, users who have previously unstaked would have to wait more than `unstakingDelay` for new unstakes](https://github.com/code-423n4/2023-01-reserve-findings/issues/210)
-*Submitted by [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/210), also found by [Soosh](https://github.com/code-423n4/2023-01-reserve-findings/issues/151)*
+
+_Submitted by [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/210), also found by [Soosh](https://github.com/code-423n4/2023-01-reserve-findings/issues/151)_
 
 Users who wish to unstake their RSR from StRSR have to first unstake and then wait `unstakingDelay` till they can actually withdraw their stake.
 
@@ -2518,12 +2565,12 @@ The issue is that when the `unstakingDelay` is decreased - users that have pendi
 
 The following PoC shows an example similar to above:
 
-*   Unstaking delay was 6 months
-*   Bob unstaked (create a draft) 1 wei of RSR
-*   Unstaking delay was changed to 2 weeks
-*   Both Bob and Alice unstake their remaining stake
-*   Alice can withdraw her stake after 2 weeks
-*   Bob has to wait 6 months in order to withdraw both that 1 wei and the remaining of the stake
+- Unstaking delay was 6 months
+- Bob unstaked (create a draft) 1 wei of RSR
+- Unstaking delay was changed to 2 weeks
+- Both Bob and Alice unstake their remaining stake
+- Alice can withdraw her stake after 2 weeks
+- Bob has to wait 6 months in order to withdraw both that 1 wei and the remaining of the stake
 
 ```diff
 diff --git a/test/ZZStRSR.test.ts b/test/ZZStRSR.test.ts
@@ -2533,27 +2580,27 @@ index f507cd50..3312686a 100644
 @@ -599,6 +599,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
        let amount2: BigNumber
        let amount3: BigNumber
- 
+
 +      let sixMonths = bn(60*60*24*30*6);
 +
        beforeEach(async () => {
          stkWithdrawalDelay = bn(await stRSR.unstakingDelay()).toNumber()
- 
+
 @@ -608,18 +610,56 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
          amount3 = bn('3e18')
- 
+
          // Approve transfers
 -        await rsr.connect(addr1).approve(stRSR.address, amount1)
 +        await rsr.connect(addr1).approve(stRSR.address, amount1.add(1))
          await rsr.connect(addr2).approve(stRSR.address, amount2.add(amount3))
- 
-+        
+
++
          // Stake
 -        await stRSR.connect(addr1).stake(amount1)
 +        await stRSR.connect(addr1).stake(amount1.add(1))
          await stRSR.connect(addr2).stake(amount2)
          await stRSR.connect(addr2).stake(amount3)
- 
+
 -        // Unstake - Create withdrawal
 -        await stRSR.connect(addr1).unstake(amount1)
 +        // here
@@ -2595,7 +2642,7 @@ index f507cd50..3312686a 100644
 +
 +
        })
- 
+
 +      return; // don't run further test
        it('Should revert withdraw if Main is paused', async () => {
          // Get current balance for user
@@ -2605,7 +2652,7 @@ index f507cd50..3312686a 100644
      })
    })
 +  return; // don't run further test
- 
+
    describe('Add RSR / Rewards', () => {
      const initialRate = fp('1')
 ```
@@ -2614,21 +2661,21 @@ index f507cd50..3312686a 100644
 
 Allow users to use current delay even if it was previously higher. I think this should apply not only to new drafts but also for drafts that were created before the change.
 
-Alternatively, the protocol can set a rule that even if the staking delay was lowered stakers have to wait at least the old delay since the change till they can withdraw.  But in this case the rule should apply to everybody regardless if they have pending drafts or not.
+Alternatively, the protocol can set a rule that even if the staking delay was lowered stakers have to wait at least the old delay since the change till they can withdraw. But in this case the rule should apply to everybody regardless if they have pending drafts or not.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/210#issuecomment-1401184805):**
- > Ultimately this feels like a design tradeoff.  I do agree that the UX would be better if the most recent value was used, but it can cut both ways if the delay is increased. 
+
+> Ultimately this feels like a design tradeoff. I do agree that the UX would be better if the most recent value was used, but it can cut both ways if the delay is increased.
 
 **[0xean (judge) decreased severity to Medium](https://github.com/code-423n4/2023-01-reserve-findings/issues/210)**
 
 **[pmckelvy1 (Reserve) acknowledged via duplicate issue `#151`](https://github.com/code-423n4/2023-01-reserve-findings/issues/151#issuecomment-1404435948)**
 
-
-
-***
+---
 
 ## [[M-20] Shortfall might be calculated incorrectly if a price value for one collateral isn't fetched correctly](https://github.com/code-423n4/2023-01-reserve-findings/issues/200)
-*Submitted by [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/200)*
+
+_Submitted by [severity](https://github.com/code-423n4/2023-01-reserve-findings/issues/200)_
 
 Function `price()` of an asset doesn't revert. It [returns values](https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/plugins/assets/Asset.sol#L117) `(0, FIX_MAX)` for `low, high` values of price in case there's a problem with fetching it. Code that calls `price()` is able to validate returned values to detect that returned price is incorrect.
 
@@ -2643,38 +2690,39 @@ Inside function `collateralShortfall()` of `RecollateralizationLibP1` [collatera
 Check that price is correctly fetched for a collateral.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/200#issuecomment-1401173756):**
- > Mitigation here is a little challenging to understand considering checking a price is hard on chain and hence the concern. 
-> 
-> I think this issue is a bit too general, but would like further comments. 
+
+> Mitigation here is a little challenging to understand considering checking a price is hard on chain and hence the concern.
+>
+> I think this issue is a bit too general, but would like further comments.
 
 **[tbrent (Reserve) acknowledged and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/200#issuecomment-1404438772):**
- > I think this issue is real, but it happens in a super-corner-case that I doubt the warden is thinking about. 
-> 
+
+> I think this issue is real, but it happens in a super-corner-case that I doubt the warden is thinking about.
+>
 > Some related statements:
+>
 > - `prepareRecollateralizationTrade` checks that all collateral in the basket is SOUND before calling `collateralShortfall`
 > - From `docs/collateral.md`: "Should return `(0, FIX_MAX)` if pricing data is unavailable or stale."
-> 
+>
 > `collateralShortfall` should never reach a collateral with `FIX_MAX` high price in the normal flow of things.
-> 
+>
 > But, it is possible for one RToken system instance to have an `RTokenAsset` registered for a 2nd RToken. In this case, it could be that RToken 2 contains a collateral plugin that is now connected to a broken oracle, but RToken 2 may not have recognized this yet. When RToken 1 calls `RTokenAsset.price()`, it could end up reverting because of overflow in this line from `collateralShortfall`:
-> 
+>
 > > shortfall = shortfall.plus(needed.minus(held).mul(priceHigh, CEIL));
-> 
-> 
-> So I think it's a real issue, and I would even leave it as Medium severity. 
+>
+> So I think it's a real issue, and I would even leave it as Medium severity.
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR simplifies and improves the basket range formula. The new logic should provide much tighter basket range estimates and result in smaller haircuts.<br>
-> [reserve-protocol/protocol#585](https://github.com/reserve-protocol/protocol/pull/585)
+
+> This PR simplifies and improves the basket range formula. The new logic should provide much tighter basket range estimates and result in smaller haircuts.<br> > [reserve-protocol/protocol#585](https://github.com/reserve-protocol/protocol/pull/585)
 
 **Status:** Mitigation confirmed with comments. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/21), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/63), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/77).
 
-
-
-***
+---
 
 ## [[M-21] Loss of staking yield for stakers when another user stakes in pause/frozen state](https://github.com/code-423n4/2023-01-reserve-findings/issues/148)
-*Submitted by [Soosh](https://github.com/code-423n4/2023-01-reserve-findings/issues/148), also found by [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/328)*
+
+_Submitted by [Soosh](https://github.com/code-423n4/2023-01-reserve-findings/issues/148), also found by [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/328)_
 
 It is possible for a user to steal the yield from other stakers by staking when the system is paused or frozen.
 
@@ -2683,7 +2731,7 @@ This is because staking is allowed while paused/frozen, but `_payoutRewards()` i
 ```sol
 function stake(uint256 rsrAmount) external {
 	require(rsrAmount > 0, "Cannot stake zero");
-	
+
 	if (!main.pausedOrFrozen()) _payoutRewards();
 	...
 }
@@ -2694,30 +2742,30 @@ function stake(uint256 rsrAmount) external {
 A test case can be included in `ZZStRSR.test.ts` under 'Add RSR / Rewards':
 
 ```js
-    it('Audit: Loss of staking yield for stakers when another user stakes in pause/frozen state', async () => {
-      await rsr.connect(addr1).approve(stRSR.address, stake)
-      await stRSR.connect(addr1).stake(stake)
+it('Audit: Loss of staking yield for stakers when another user stakes in pause/frozen state', async () => {
+  await rsr.connect(addr1).approve(stRSR.address, stake)
+  await stRSR.connect(addr1).stake(stake)
 
-      await advanceTime(Number(config.rewardPeriod) * 5)
-      await main.connect(owner).pause()
+  await advanceTime(Number(config.rewardPeriod) * 5)
+  await main.connect(owner).pause()
 
-      await rsr.connect(addr2).approve(stRSR.address, stake)
-      await stRSR.connect(addr2).stake(stake)
+  await rsr.connect(addr2).approve(stRSR.address, stake)
+  await stRSR.connect(addr2).stake(stake)
 
-      await main.connect(owner).unpause()
+  await main.connect(owner).unpause()
 
-      await stRSR.connect(addr1).unstake(stake)
-      await stRSR.connect(addr2).unstake(stake)
-      await advanceTime(Number(config.unstakingDelay) + 1)
+  await stRSR.connect(addr1).unstake(stake)
+  await stRSR.connect(addr2).unstake(stake)
+  await advanceTime(Number(config.unstakingDelay) + 1)
 
-      await stRSR.connect(addr1).withdraw(addr1.address, 1)
-      await stRSR.connect(addr2).withdraw(addr2.address, 1)
-      const addr1RSR = await rsr.balanceOf(addr1.address)
-      const addr2RSR = await rsr.balanceOf(addr2.address)
-      console.log(`addr1 RSR = ${addr1RSR}`)
-      console.log(`addr2 RSR = ${addr2RSR}`)
-      expect(Number(addr1RSR)).to.be.approximately(Number(addr2RSR), 10)
-    })
+  await stRSR.connect(addr1).withdraw(addr1.address, 1)
+  await stRSR.connect(addr2).withdraw(addr2.address, 1)
+  const addr1RSR = await rsr.balanceOf(addr1.address)
+  const addr2RSR = await rsr.balanceOf(addr2.address)
+  console.log(`addr1 RSR = ${addr1RSR}`)
+  console.log(`addr2 RSR = ${addr2RSR}`)
+  expect(Number(addr1RSR)).to.be.approximately(Number(addr2RSR), 10)
+})
 ```
 
 Note that `await advanceTime(Number(config.rewardPeriod) * 5)` can be before or after the pause, same result will occur.
@@ -2769,17 +2817,18 @@ If the above logic is required, then I would suggest that `poke()` in `Main.sol`
 **[pmckelvy1 (Reserve) confirmed](https://github.com/code-423n4/2023-01-reserve-findings/issues/148#issuecomment-1406612686)**
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > 	This PR makes the AssetRegistry more resilient to bad collateral during asset unregistration, and disables staking when frozen.<br>
+
+>     This PR makes the AssetRegistry more resilient to bad collateral during asset unregistration, and disables staking when frozen.<br>
+>
 > [reserve-protocol/protocol#623](https://github.com/reserve-protocol/protocol/pull/623)
 
 **Status:** Mitigation confirmed. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/6), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/71), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/44).
 
-
-
-***
+---
 
 ## [[M-22] RecollateralizationLib: Dust loss for an asset should be capped at it's low value](https://github.com/code-423n4/2023-01-reserve-findings/issues/106)
-*Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/106)*
+
+_Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/106)_
 
 The `RecollateralizationLib.basketRange` function (<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/mixins/RecollateralizationLib.sol#L152-L202>) internally calls the `RecollateralizationLib.totalAssetValue` function (<https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/mixins/RecollateralizationLib.sol#L226-L281>).
 
@@ -2869,48 +2918,50 @@ The fix first saves the `assetLow` value which should be saved to memory because
     --- a/contracts/p1/mixins/RecollateralizationLib.sol
     +++ b/contracts/p1/mixins/RecollateralizationLib.sol
     @@ -261,7 +261,8 @@ library RecollateralizationLibP1 {
-     
+
                  // Intentionally include value of IFFY/DISABLED collateral when low is nonzero
                  // {UoA} = {UoA} + {UoA/tok} * {tok}
     -            assetsLow += low.mul(bal, FLOOR);
     +            uint192 assetLow = low.mul(bal,FLOOR);
     +            assetsLow += assetLow;
                  // += is same as Fix.plus
-     
+
                  // assetsHigh += high.mul(bal, CEIL), where assetsHigh is [0, FIX_MAX]
     @@ -272,7 +273,7 @@ library RecollateralizationLibP1 {
                  // += is same as Fix.plus
-     
+
                  // Accumulate potential losses to dust
     -            potentialDustLoss = potentialDustLoss.plus(rules.minTradeVolume);
     +            potentialDustLoss = potentialDustLoss.plus(fixMin(rules.minTradeVolume, assetLow));
              }
-     
+
              // Account for all the places dust could get stuck
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/106#issuecomment-1401992675):**
- > It would have been beneficial for the warden to use more realistic values for these trades with the full integer values to show how much of an actual impact this has when we are talking about tokens with 6 or more decimals. Will leave open for sponsor comment.
+
+> It would have been beneficial for the warden to use more realistic values for these trades with the full integer values to show how much of an actual impact this has when we are talking about tokens with 6 or more decimals. Will leave open for sponsor comment.
 
 **[pmckelvy1 (Reserve) disputed](https://github.com/code-423n4/2023-01-reserve-findings/issues/106#issuecomment-1406903842)**
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/106#issuecomment-1406905121):**
- > The balance of the asset before trading has nothing to do with how much value can potentially be lost when we try to _trade into_ that asset. 
+
+> The balance of the asset before trading has nothing to do with how much value can potentially be lost when we try to _trade into_ that asset.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/106#issuecomment-1407107703):**
- > On further thought, this is not really a good response. We have access to the UoA from the asset, and we could use that to potentially limit the contribution to `potentialDustLoss`. 
+
+> On further thought, this is not really a good response. We have access to the UoA from the asset, and we could use that to potentially limit the contribution to `potentialDustLoss`.
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR simplifies and improves the basket range formula. The new logic should provide much tighter basket range estimates and result in smaller haircuts.<br>
-> [reserve-protocol/protocol#585](https://github.com/reserve-protocol/protocol/pull/585)
+
+> This PR simplifies and improves the basket range formula. The new logic should provide much tighter basket range estimates and result in smaller haircuts.<br> > [reserve-protocol/protocol#585](https://github.com/reserve-protocol/protocol/pull/585)
 
 **Status:** Mitigation confirmed. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/5) and [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/64).
 
-
-
-***
+---
 
 ## [[M-23] StRSR: seizeRSR function fails to update rsrRewardsAtLastPayout variable](https://github.com/code-423n4/2023-01-reserve-findings/issues/64)
-*Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/64)*
+
+_Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/64)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L374-L422><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L596-L598><br>
@@ -2987,16 +3038,16 @@ When `StRSR.seizeRSR` is called, the `rsrRewardsAtLastPayout` variable should be
 **[pmckelvy1 (Reserve) confirmed](https://github.com/code-423n4/2023-01-reserve-findings/issues/64#issuecomment-1406912384)**
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/64#issuecomment-1421619875):**
- > Addressed here: https://github.com/reserve-protocol/protocol/pull/584
+
+> Addressed here: https://github.com/reserve-protocol/protocol/pull/584
 
 **Status:** Mitigation confirmed with comments. Full details in reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/65), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/4), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/45).
 
-
-
-***
+---
 
 ## [[M-24] BasketHandler: Users might not be able to redeem their rToken when protocol is paused due to refreshBasket function](https://github.com/code-423n4/2023-01-reserve-findings/issues/39)
-*Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/39)*
+
+_Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/39)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L439-L514><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L448><br>
@@ -3055,7 +3106,7 @@ So the above `require` statement can be changed like this:
     --- a/contracts/p1/BasketHandler.sol
     +++ b/contracts/p1/BasketHandler.sol
     @@ -185,7 +185,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
-     
+
              require(
                  main.hasRole(OWNER, _msgSender()) ||
     -                (status() == CollateralStatus.DISABLED && !main.pausedOrFrozen()),
@@ -3071,24 +3122,26 @@ In other words only disallow it when the protocol is `frozen`.
 This however needs further consideration by the sponsor as it might negatively affect other aspects of the protocol that are beyond the scope of this report.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/39#issuecomment-1401973403):**
- > I believe this to be a design choice. Will leave open to sponsor review and most likely downgrade to QA.
+
+> I believe this to be a design choice. Will leave open to sponsor review and most likely downgrade to QA.
 
 **[pmckelvy1 (Reserve) acknowledged](https://github.com/code-423n4/2023-01-reserve-findings/issues/39#issuecomment-1406917946)**
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/39#issuecomment-1409516991):**
- > The warden identified a state that was inconsistent with sponsors expectations since they acknowledged the issue, I believe this should be Medium as it does affect the availability of the protocol. 
+
+> The warden identified a state that was inconsistent with sponsors expectations since they acknowledged the issue, I believe this should be Medium as it does affect the availability of the protocol.
 
 **[tbrent (Reserve) mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#mitigations-to-be-reviewed):**
- > This PR enables redemption while the basket is DISABLED: [reserve-protocol/protocol#575](https://github.com/reserve-protocol/protocol/pull/575)
+
+> This PR enables redemption while the basket is DISABLED: [reserve-protocol/protocol#575](https://github.com/reserve-protocol/protocol/pull/575)
 
 **Status:** Mitigation confirmed. Full details in reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/66), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/3), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/46).
 
-
-
-***
+---
 
 ## [[M-25] BackingManager: rTokens might not be redeemable when protocol is paused due to missing token allowance](https://github.com/code-423n4/2023-01-reserve-findings/issues/16)
-*Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/16), also found by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/424)*
+
+_Submitted by [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/16), also found by [unforgiven](https://github.com/code-423n4/2023-01-reserve-findings/issues/424)_
 
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L439-L514><br>
 <https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/BackingManager.sol#L72-L77>
@@ -3146,91 +3199,97 @@ The `BackingManager.grantRTokenAllowance` function should use the `notFrozen` mo
              IERC20Upgradeable(address(erc20)).safeApprove(address(main.rToken()), 0);
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/16#issuecomment-1402019974):**
- > I think the warden does identify a possible state of the system that could be problematic, albeit highly unlikely to be realized. Leaving open for sponsor review. 
+
+> I think the warden does identify a possible state of the system that could be problematic, albeit highly unlikely to be realized. Leaving open for sponsor review.
 
 **[pmckelvy1 (Reserve) confirmed](https://github.com/code-423n4/2023-01-reserve-findings/issues/16#issuecomment-1404274024)**
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-01-reserve-findings/issues/16#issuecomment-1421621092):**
- > Addressed here: https://github.com/reserve-protocol/protocol/pull/584
+
+> Addressed here: https://github.com/reserve-protocol/protocol/pull/584
 
 **Status:** Mitigation confirmed. Full details in reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/2), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/67), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/47).
 
-
-
-***
+---
 
 # Low Risk and Non-Critical Issues
 
 For this contest, 41 reports were submitted by wardens detailing low risk and non-critical issues. The [report highlighted below](https://github.com/code-423n4/2023-01-reserve-findings/issues/420) by **CodingNameKiki** received the top score from the judge.
 
-*The following wardens also submitted reports: [brgltd](https://github.com/code-423n4/2023-01-reserve-findings/issues/490), [joestakey](https://github.com/code-423n4/2023-01-reserve-findings/issues/489), [Udsen](https://github.com/code-423n4/2023-01-reserve-findings/issues/477), [0xSmartContract](https://github.com/code-423n4/2023-01-reserve-findings/issues/471), [0xAgro](https://github.com/code-423n4/2023-01-reserve-findings/issues/466), [yongskiws](https://github.com/code-423n4/2023-01-reserve-findings/issues/462), [Aymen0909](https://github.com/code-423n4/2023-01-reserve-findings/issues/458), [Breeje](https://github.com/code-423n4/2023-01-reserve-findings/issues/456), [peanuts](https://github.com/code-423n4/2023-01-reserve-findings/issues/450), [0xNazgul](https://github.com/code-423n4/2023-01-reserve-findings/issues/443), [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/437), [lukris02](https://github.com/code-423n4/2023-01-reserve-findings/issues/429), [delfin454000](https://github.com/code-423n4/2023-01-reserve-findings/issues/417), [luxartvinsec](https://github.com/code-423n4/2023-01-reserve-findings/issues/400), [IllIllI](https://github.com/code-423n4/2023-01-reserve-findings/issues/392), [descharre](https://github.com/code-423n4/2023-01-reserve-findings/issues/359), [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/356), [GalloDaSballo](https://github.com/code-423n4/2023-01-reserve-findings/issues/350), [cryptonue](https://github.com/code-423n4/2023-01-reserve-findings/issues/342), [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/323), [hihen](https://github.com/code-423n4/2023-01-reserve-findings/issues/315), [pedr02b2](https://github.com/code-423n4/2023-01-reserve-findings/issues/306), [carlitox477](https://github.com/code-423n4/2023-01-reserve-findings/issues/286), [SaharDevep](https://github.com/code-423n4/2023-01-reserve-findings/issues/274), [shark](https://github.com/code-423n4/2023-01-reserve-findings/issues/257), [BRONZEDISC](https://github.com/code-423n4/2023-01-reserve-findings/issues/255), [chrisdior4](https://github.com/code-423n4/2023-01-reserve-findings/issues/226), [tnevler](https://github.com/code-423n4/2023-01-reserve-findings/issues/213), [ladboy233](https://github.com/code-423n4/2023-01-reserve-findings/issues/203), [rotcivegaf](https://github.com/code-423n4/2023-01-reserve-findings/issues/179), [MyFDsYours](https://github.com/code-423n4/2023-01-reserve-findings/issues/176), [IceBear](https://github.com/code-423n4/2023-01-reserve-findings/issues/165), [Bnke0x0](https://github.com/code-423n4/2023-01-reserve-findings/issues/118), [Soosh](https://github.com/code-423n4/2023-01-reserve-findings/issues/109), [btk](https://github.com/code-423n4/2023-01-reserve-findings/issues/102), [chaduke](https://github.com/code-423n4/2023-01-reserve-findings/issues/101), [RaymondFam](https://github.com/code-423n4/2023-01-reserve-findings/issues/90), [Ruhum](https://github.com/code-423n4/2023-01-reserve-findings/issues/81), [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/80), and [Sathish9098](https://github.com/code-423n4/2023-01-reserve-findings/issues/66).*
+_The following wardens also submitted reports: [brgltd](https://github.com/code-423n4/2023-01-reserve-findings/issues/490), [joestakey](https://github.com/code-423n4/2023-01-reserve-findings/issues/489), [Udsen](https://github.com/code-423n4/2023-01-reserve-findings/issues/477), [0xSmartContract](https://github.com/code-423n4/2023-01-reserve-findings/issues/471), [0xAgro](https://github.com/code-423n4/2023-01-reserve-findings/issues/466), [yongskiws](https://github.com/code-423n4/2023-01-reserve-findings/issues/462), [Aymen0909](https://github.com/code-423n4/2023-01-reserve-findings/issues/458), [Breeje](https://github.com/code-423n4/2023-01-reserve-findings/issues/456), [peanuts](https://github.com/code-423n4/2023-01-reserve-findings/issues/450), [0xNazgul](https://github.com/code-423n4/2023-01-reserve-findings/issues/443), [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/437), [lukris02](https://github.com/code-423n4/2023-01-reserve-findings/issues/429), [delfin454000](https://github.com/code-423n4/2023-01-reserve-findings/issues/417), [luxartvinsec](https://github.com/code-423n4/2023-01-reserve-findings/issues/400), [IllIllI](https://github.com/code-423n4/2023-01-reserve-findings/issues/392), [descharre](https://github.com/code-423n4/2023-01-reserve-findings/issues/359), [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/356), [GalloDaSballo](https://github.com/code-423n4/2023-01-reserve-findings/issues/350), [cryptonue](https://github.com/code-423n4/2023-01-reserve-findings/issues/342), [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/323), [hihen](https://github.com/code-423n4/2023-01-reserve-findings/issues/315), [pedr02b2](https://github.com/code-423n4/2023-01-reserve-findings/issues/306), [carlitox477](https://github.com/code-423n4/2023-01-reserve-findings/issues/286), [SaharDevep](https://github.com/code-423n4/2023-01-reserve-findings/issues/274), [shark](https://github.com/code-423n4/2023-01-reserve-findings/issues/257), [BRONZEDISC](https://github.com/code-423n4/2023-01-reserve-findings/issues/255), [chrisdior4](https://github.com/code-423n4/2023-01-reserve-findings/issues/226), [tnevler](https://github.com/code-423n4/2023-01-reserve-findings/issues/213), [ladboy233](https://github.com/code-423n4/2023-01-reserve-findings/issues/203), [rotcivegaf](https://github.com/code-423n4/2023-01-reserve-findings/issues/179), [MyFDsYours](https://github.com/code-423n4/2023-01-reserve-findings/issues/176), [IceBear](https://github.com/code-423n4/2023-01-reserve-findings/issues/165), [Bnke0x0](https://github.com/code-423n4/2023-01-reserve-findings/issues/118), [Soosh](https://github.com/code-423n4/2023-01-reserve-findings/issues/109), [btk](https://github.com/code-423n4/2023-01-reserve-findings/issues/102), [chaduke](https://github.com/code-423n4/2023-01-reserve-findings/issues/101), [RaymondFam](https://github.com/code-423n4/2023-01-reserve-findings/issues/90), [Ruhum](https://github.com/code-423n4/2023-01-reserve-findings/issues/81), [HollaDieWaldfee](https://github.com/code-423n4/2023-01-reserve-findings/issues/80), and [Sathish9098](https://github.com/code-423n4/2023-01-reserve-findings/issues/66)._
 
 ## Issues Overview
-| Letter | Name | Description |
-|:--:|:-------:|:-------:|
-| L  | Low risk | Potential risk |
-| NC |  Non-critical | Non risky findings |
-| R  | Refactor | Changing the code |
-| O | Ordinary | Often found issues |
 
-| Total Found Issues | 26 |
-|:--:|:--:|
+| Letter |     Name     |    Description     |
+| :----: | :----------: | :----------------: |
+|   L    |   Low risk   |   Potential risk   |
+|   NC   | Non-critical | Non risky findings |
+|   R    |   Refactor   | Changing the code  |
+|   O    |   Ordinary   | Often found issues |
+
+| Total Found Issues | 26  |
+| :----------------: | :-: |
 
 ### Low Risk Issues
-| Count | Explanation | Instances |
-|:--:|:-------|:--:|
-| [L-01] | Melt function should be only callable by the Furnance contract | 1 |
-| [L-02] | Stake function shouldn't be accessible, when the status is paused or frozen | 1 |
 
-| Total Low Risk Issues | 2 |
-|:--:|:--:|
+| Count  | Explanation                                                                 | Instances |
+| :----: | :-------------------------------------------------------------------------- | :-------: |
+| [L-01] | Melt function should be only callable by the Furnance contract              |     1     |
+| [L-02] | Stake function shouldn't be accessible, when the status is paused or frozen |     1     |
+
+| Total Low Risk Issues |  2  |
+| :-------------------: | :-: |
 
 ### Non-Critical Issues
-| Count | Explanation | Instances |
-|:--:|:-------|:--:|
-| [N-01] | Create your own import names instead of using the regular ones | 17 |
-| [N-02] | Max value can't be applied in the setters | 9 |
-| [N-03] | Using while for unbounded loops isn't recommended | 3 |
-| [N-04] | Inconsistent visibility on the bool "disabled" | 2 |
-| [N-05] | Modifier exists, but not used when needed | 6 |
-| [N-06] | Unused constructor | 2 |
-| [N-07] | Unnecessary check in both the \_mint and \_burn function | 2 |
 
-| Total Non-Critical Issues | 7 |
-|:--:|:--:|
+| Count  | Explanation                                                    | Instances |
+| :----: | :------------------------------------------------------------- | :-------: |
+| [N-01] | Create your own import names instead of using the regular ones |    17     |
+| [N-02] | Max value can't be applied in the setters                      |     9     |
+| [N-03] | Using while for unbounded loops isn't recommended              |     3     |
+| [N-04] | Inconsistent visibility on the bool "disabled"                 |     2     |
+| [N-05] | Modifier exists, but not used when needed                      |     6     |
+| [N-06] | Unused constructor                                             |     2     |
+| [N-07] | Unnecessary check in both the \_mint and \_burn function       |     2     |
+
+| Total Non-Critical Issues |  7  |
+| :-----------------------: | :-: |
 
 ### Refactor Issues
-| Count | Explanation | Instances |
-|:--:|:-------|:--:|
-| [R-01] | Numeric values having to do with time should use time units for readability | 5 |
-| [R-02] | Use require instead of assert | 9 |
-| [R-03] | Unnecessary overflow check can be rafactored in a better way | 1 |
-| [R-04] | If statement should check first, if the status is disabled | 1 |
-| [R-05] | Some number values can be refactored with `_` | 2 |
-| [R-06] | Revert should be used on some functions instead of return | 9 |
-| [R-07] | Modifier can be applied on the function instead of creating require statement | 2 |
-| [R-08] | Shorthand way to write if / else statement | 1 |
-| [R-09] | Function should be deleted, if a modifier already exists doing its job | 1 |
-| [R-10] | The right value should be used instead of downcasting from uint256 to uint192 | 2 |
 
-| Total Refactor Issues | 10 |
-|:--:|:--:|
+| Count  | Explanation                                                                   | Instances |
+| :----: | :---------------------------------------------------------------------------- | :-------: |
+| [R-01] | Numeric values having to do with time should use time units for readability   |     5     |
+| [R-02] | Use require instead of assert                                                 |     9     |
+| [R-03] | Unnecessary overflow check can be rafactored in a better way                  |     1     |
+| [R-04] | If statement should check first, if the status is disabled                    |     1     |
+| [R-05] | Some number values can be refactored with `_`                                 |     2     |
+| [R-06] | Revert should be used on some functions instead of return                     |     9     |
+| [R-07] | Modifier can be applied on the function instead of creating require statement |     2     |
+| [R-08] | Shorthand way to write if / else statement                                    |     1     |
+| [R-09] | Function should be deleted, if a modifier already exists doing its job        |     1     |
+| [R-10] | The right value should be used instead of downcasting from uint256 to uint192 |     2     |
+
+| Total Refactor Issues | 10  |
+| :-------------------: | :-: |
 
 ### Ordinary Issues
-| Count | Explanation | Instances |
-|:--:|:-------|:--:|
-| [O-01] | Code contains empty blocks | 3 |
-| [O-02] | Use a more recent pragma version | 17 |
-| [O-03] | Function Naming suggestions | 6 |
-| [O-04] | Events is missing indexed fields | 2 | 
-| [O-05] | Proper use of get as a function name prefix | 12 |
-| [O-06] | Commented out code | 3 |
-| [O-07] | Value should be unchecked | 1 |
 
-| Total Ordinary Issues | 7 |
-|:--:|:--:|
+| Count  | Explanation                                 | Instances |
+| :----: | :------------------------------------------ | :-------: |
+| [O-01] | Code contains empty blocks                  |     3     |
+| [O-02] | Use a more recent pragma version            |    17     |
+| [O-03] | Function Naming suggestions                 |     6     |
+| [O-04] | Events is missing indexed fields            |     2     |
+| [O-05] | Proper use of get as a function name prefix |    12     |
+| [O-06] | Commented out code                          |     3     |
+| [O-07] | Value should be unchecked                   |     1     |
+
+| Total Ordinary Issues |  7  |
+| :-------------------: | :-: |
 
 ## [L-01] Melt function should be only callable by the Furnance contract
+
 The function `melt` in RToken.sol is supposed to be called only by Furnace.sol, but as how it is right now the function can be called by anyone. This is problematic considering that this function burns tokens, if a user calls it by mistake. His tokens will be lost and he won't be able to get them back.
 
 ```solidity
@@ -3255,6 +3314,7 @@ Consider applying a require statement in the function `melt` that the msg.sender
 ```
 
 ## [L-02] Stake function shouldn't be accessible, when the status is paused or frozen
+
 The function `stake` in StRSR.sol is used by users to stake a RSR amount on the corresponding RToken to earn yield and over-collateralize the system. If the contract is in paused or frozen status, some of the main functions `payoutRewards`, `unstake`, `withdraw` and `seizeRSR` can't be used. The `stake` function will keep operating but will skip to payoutRewards, this is problematic considering if the status is paused or frozen and a user stakes without knowing that. He won't be able to unstake or call any of the core functions, the only option he has is to wait for the status to be unpaused or unfrozen.
 
 Consider if a contract is in paused or frozen status to turn off all of the core functions including staking as well.
@@ -3291,9 +3351,11 @@ contracts/p1/StRSR.sol
 ```
 
 ## [N-01] Create your own import names instead of using the regular ones
+
 For better readability, you should name the imports instead of using the regular ones.
 
 Example:
+
 ```solidity
 6: {IStRSRVotes} import "../interfaces/IStRSRVotes.sol";
 ```
@@ -3301,6 +3363,7 @@ Example:
 Instances - All of the contracts.
 
 ## [N-02] Max value can't be applied in the setters
+
 The function `setTradingDelay` is used by the governance to change the tradingDelay.
 
 However in the require statement applying the maximum delay is not allowed.
@@ -3336,6 +3399,7 @@ contracts/p1/StRSR.sol
 ```
 
 ## [N-03] Using while for unbounded loops isn't recommended
+
 Don't write loops that are unbounded as this can hit the gas limit, causing your transaction to fail.
 
 For the reason above, while and do while loops are rarely used.
@@ -3355,9 +3419,11 @@ contracts/p1/StRSRVotes.sol
 ```
 
 ## [N-04] Inconsistent visibility on the bool "disabled"
+
 In some contracts the visibility of the bool `disabled` is set as private, while on others it is set as public.
 
 Instances:
+
 ```solidity
 contracts/p1/BasketHandler.sol
 
@@ -3369,6 +3435,7 @@ contracts/p1/Broker.sol
 ```
 
 ## [N-05] Modifier exists, but not used when needed
+
 In the RToken contract, a lot of private calls are made to `requireNotPausedOrFrozen()` checking if it's paused or frozen.
 
 While there is already modifier used for this purpose in the contract.
@@ -3408,6 +3475,7 @@ contracts/p1/RToken.sol
 ```
 
 ## [N-06] Unused constructor
+
 The constructor does nothing.
 
 ```solidity
@@ -3421,6 +3489,7 @@ contracts/p1/mixins/Component.sol
 ```
 
 ## [N-07] Unnecessary check in both the \_mint and \_burn function
+
 The function `_mint` and burn in StRSR.sol is called only by someone calling the stake and unstake functions.<br>
 A check is made in the functions to ensure the account to mint and burn the amounts isn't address(0).<br>
 However this isn't possible as both the stake and unstake function input the address of the msg.sender.<br>
@@ -3482,6 +3551,7 @@ contracts/p1/StRSR.sol
 ```
 
 ## [R-01] Numeric values having to do with time should use time units for readability
+
 Suffixes like seconds, minutes, hours, days and weeks after literal numbers can be used to specify units of time where seconds are the base unit and units are considered naively in the following way:
 
 `1 == 1 seconds`<br>
@@ -3507,14 +3577,16 @@ contracts/p1/StRSR.sol
 
 37: uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
 38: uint48 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
-``` 
+```
 
-## [R-02] Use require instead of assert 
+## [R-02] Use require instead of assert
+
 The Solidity assert() function is meant to assert invariants.
 
 Properly functioning code should never reach a failing assert statement.
 
 Instances:
+
 ```solidity
 contracts/p1/mixins/RecollateralizationLib.sol
 
@@ -3550,6 +3622,7 @@ Recommended: Consider whether the condition checked in the assert() is actually 
 If not, replace the assert() statement with a require() statement.
 
 ## [R-03] Unnecessary overflow check can be rafactored in a better way
+
 In the function `quantityMulPrice` an unchecked code is made, where the local variable `rawDelta` is calculated and after that an if statement is created, where is check if `rawDelta` overflows. This check won't be needed if we just move the variable above the unchecked block, so it will revert if this ever happens.
 
 ```solidity
@@ -3571,10 +3644,11 @@ The instance above can be refactored to:
 
 // rawDelta is moved above the unchecked block and reverts if overflows
 364:  uint256 rawDelta = uint256(p) * qty; // {D36} = {D18} * {D18}
-365:  unchecked {          
+365:  unchecked {
 ```
 
 ## [R-04] If statement should check first, if the status is disabled
+
 The if statement in the function `basketsHeldBy` check first if basket's length equals zero and then checks if the basket is invalid and disabled. Consider first checking if the staus is disabled and then if the length equals zero.
 
 ```solidity
@@ -3592,6 +3666,7 @@ Refactor the instance above to:
 ```
 
 ## [R-05] Some number values can be refactored with `_`
+
 Consider using underscores for number values to improve readability.
 
 ```solidity
@@ -3609,6 +3684,7 @@ The above instance can be refactored to:
 ```
 
 ## [R-06] Revert should be used on some functions instead of return
+
 Some instances just return without doing anything, consider applying revert statement instead with a descriptive string why it does that.
 
 ```solidity
@@ -3638,6 +3714,7 @@ contracts/p1/StRSR.sol
 ```
 
 ## [R-07] Modifier can be applied on the function instead of creating require statement
+
 If functions are only allowed to be called by a certain individual, modifier should be used instead of checking with require statement, if the individual is the msg.sender calling the function.
 
 ```solidity
@@ -3670,6 +3747,7 @@ contracts/p1/RToken.sol
 ```
 
 ## [R-08] Shorthand way to write if / else statement
+
 The normal if / else statement can be refactored in a shorthand way to write it:
 
 1. Increases readability
@@ -3711,6 +3789,7 @@ The above instance can be refactored to:
 ```
 
 ## [R-09] Function should be deleted, if a modifier already exists doing its job
+
 The function `requireNotPausedOrFrozen` is created only to hold the modifier notPausedOrFrozen.<br>
 And for this purpose in some functions requireNotPausedOrFrozen is called in order to check if its paused or frozen.<br>
 This function isn't necessary as the modifier notPausedOrFrozen can just be applied on the functions.
@@ -3720,6 +3799,7 @@ contracts/p1/RToken.sol
 
 838: function requireNotPausedOrFrozen() private notPausedOrFrozen {}
 ```
+
 ```solidity
 520: function claimRewards() external {
 521:        requireNotPausedOrFrozen();
@@ -3736,6 +3816,7 @@ Consider removing `requireNotPausedOrFrozen();` and apply the modifier to the fu
 ```
 
 ## [R-10] The right value should be used instead of downcasting from uint256 to uint192
+
 In the function `requireValidBUExchangeRate` local variables are used to calculate the outcome of low and high.<br>
 After that a require statement is made to ensure the BU rate is in range. The problem is that for the local variables uint256 is used and later in the require statement the value are downcasted to uint192.
 
@@ -3766,6 +3847,7 @@ Consider changing the local variables to use uint192 in the first place, instead
 ```
 
 ## [O-01] Code contains empty blocks
+
 There are some empty blocks, which are unused. The code should do something or at least have a description why it is structured that way.
 
 ```solidity
@@ -3775,6 +3857,7 @@ contracts/p1/Main.sol
 ```
 
 Other instances:
+
 ```solidity
 contracts/p1/RToken.sol
 
@@ -3786,6 +3869,7 @@ contracts/p1/mixins/Component.sol
 ```
 
 ## [O-02] Use a more recent pragma version
+
 Old version of solidity is used, consider using the new one `0.8.17`.
 
 You can see what new versions offer regarding bug fixed [here](https://github.com/ethereum/solidity/blob/develop/Changelog.md)
@@ -3793,11 +3877,13 @@ You can see what new versions offer regarding bug fixed [here](https://github.co
 Instances - All of the contracts.
 
 ## [O-03] Function Naming suggestions
+
 Proper use of `_` as a function name prefix and a common pattern is to prefix internal and private function names with `_`.
 
 This pattern is correctly applied in the Party contracts, however there are some inconsistencies in the libraries.
 
 Instances:
+
 ```solidity
 contracts/p1/BackingManager.sol
 
@@ -3813,11 +3899,13 @@ contracts/p1/BasketHandler.sol
 ```
 
 ## [O-04] Events is missing indexed fields
+
 Index event fields make the field more quickly accessible to off-chain.
 
 Each event should use three indexed fields if there are three or more fields.
 
 Instances in:
+
 ```solidity
 contracts/interfaces/IDistributor.sol
 
@@ -3829,9 +3917,11 @@ contracts/interfaces/IRToken.sol
 ```
 
 ## [O-05] Proper use of get as a function name prefix
+
 Clear function names can increase readability. Follow a standard convertion function names such as using get for getter (view/pure) functions.
 
 Instances:
+
 ```solidity
 contracts/p1/BasketHandler.sol
 
@@ -3859,6 +3949,7 @@ contracts/p1/StRSR.sol
 ```
 
 ## [O-06] Commented out code
+
 Commented code in the protocol.
 
 Instances:<br>
@@ -3866,8 +3957,8 @@ Instances:<br>
 [L457-L510](https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/BasketHandler.sol#L457-L510)<br>
 [L339-L372](https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L339-L372)<br>
 
-
 ## [O-07] Value should be unchecked
+
 The function `_mint` is used to mint tokens to user's accounts.
 
 The storage variable `totalStakes` is an uint256 and there is a check before that preventing it from going overflow.
@@ -3904,59 +3995,58 @@ Consider unchecking totalStakes as how it is done in the `_burn` function as wel
 703:    }
 ```
 
-
-
-***
+---
 
 # Gas Optimizations
 
 For this contest, 35 reports were submitted by wardens detailing gas optimizations. The [report highlighted below](https://github.com/code-423n4/2023-01-reserve-findings/issues/391) by **IllIllI** received the top score from the judge.
 
-*The following wardens also submitted reports: [Awesome](https://github.com/code-423n4/2023-01-reserve-findings/issues/493), [SAAJ](https://github.com/code-423n4/2023-01-reserve-findings/issues/485), [NoamYakov](https://github.com/code-423n4/2023-01-reserve-findings/issues/484), [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/476), [c3phas](https://github.com/code-423n4/2023-01-reserve-findings/issues/475), [0xSmartContract](https://github.com/code-423n4/2023-01-reserve-findings/issues/473), [Budaghyan](https://github.com/code-423n4/2023-01-reserve-findings/issues/472), [nadin](https://github.com/code-423n4/2023-01-reserve-findings/issues/453), [Aymen0909](https://github.com/code-423n4/2023-01-reserve-findings/issues/438), [delfin454000](https://github.com/code-423n4/2023-01-reserve-findings/issues/434), [Breeje](https://github.com/code-423n4/2023-01-reserve-findings/issues/433), [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/431), [ReyAdmirado](https://github.com/code-423n4/2023-01-reserve-findings/issues/423), [RHaO-sec](https://github.com/code-423n4/2023-01-reserve-findings/issues/410), [descharre](https://github.com/code-423n4/2023-01-reserve-findings/issues/355), [pavankv](https://github.com/code-423n4/2023-01-reserve-findings/issues/348), [AkshaySrivastav](https://github.com/code-423n4/2023-01-reserve-findings/issues/339), [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/322), [carlitox477](https://github.com/code-423n4/2023-01-reserve-findings/issues/294), [Rageur](https://github.com/code-423n4/2023-01-reserve-findings/issues/288), [SaharDevep](https://github.com/code-423n4/2023-01-reserve-findings/issues/273), [shark](https://github.com/code-423n4/2023-01-reserve-findings/issues/266), [Bauer](https://github.com/code-423n4/2023-01-reserve-findings/issues/263), [amshirif](https://github.com/code-423n4/2023-01-reserve-findings/issues/231), [Madalad](https://github.com/code-423n4/2023-01-reserve-findings/issues/180), [saneryee](https://github.com/code-423n4/2023-01-reserve-findings/issues/152), [RaymondFam](https://github.com/code-423n4/2023-01-reserve-findings/issues/87), [Rolezn](https://github.com/code-423n4/2023-01-reserve-findings/issues/78), [chaduke](https://github.com/code-423n4/2023-01-reserve-findings/issues/74), [Sathish9098](https://github.com/code-423n4/2023-01-reserve-findings/issues/65), [Bnke0x0](https://github.com/code-423n4/2023-01-reserve-findings/issues/38), [oyc\_109](https://github.com/code-423n4/2023-01-reserve-findings/issues/12), [arialblack14](https://github.com/code-423n4/2023-01-reserve-findings/issues/8), and [0xhacksmithh](https://github.com/code-423n4/2023-01-reserve-findings/issues/2).*
+_The following wardens also submitted reports: [Awesome](https://github.com/code-423n4/2023-01-reserve-findings/issues/493), [SAAJ](https://github.com/code-423n4/2023-01-reserve-findings/issues/485), [NoamYakov](https://github.com/code-423n4/2023-01-reserve-findings/issues/484), [0xA5DF](https://github.com/code-423n4/2023-01-reserve-findings/issues/476), [c3phas](https://github.com/code-423n4/2023-01-reserve-findings/issues/475), [0xSmartContract](https://github.com/code-423n4/2023-01-reserve-findings/issues/473), [Budaghyan](https://github.com/code-423n4/2023-01-reserve-findings/issues/472), [nadin](https://github.com/code-423n4/2023-01-reserve-findings/issues/453), [Aymen0909](https://github.com/code-423n4/2023-01-reserve-findings/issues/438), [delfin454000](https://github.com/code-423n4/2023-01-reserve-findings/issues/434), [Breeje](https://github.com/code-423n4/2023-01-reserve-findings/issues/433), [Cyfrin](https://github.com/code-423n4/2023-01-reserve-findings/issues/431), [ReyAdmirado](https://github.com/code-423n4/2023-01-reserve-findings/issues/423), [RHaO-sec](https://github.com/code-423n4/2023-01-reserve-findings/issues/410), [descharre](https://github.com/code-423n4/2023-01-reserve-findings/issues/355), [pavankv](https://github.com/code-423n4/2023-01-reserve-findings/issues/348), [AkshaySrivastav](https://github.com/code-423n4/2023-01-reserve-findings/issues/339), [\_\_141345\_\_](https://github.com/code-423n4/2023-01-reserve-findings/issues/322), [carlitox477](https://github.com/code-423n4/2023-01-reserve-findings/issues/294), [Rageur](https://github.com/code-423n4/2023-01-reserve-findings/issues/288), [SaharDevep](https://github.com/code-423n4/2023-01-reserve-findings/issues/273), [shark](https://github.com/code-423n4/2023-01-reserve-findings/issues/266), [Bauer](https://github.com/code-423n4/2023-01-reserve-findings/issues/263), [amshirif](https://github.com/code-423n4/2023-01-reserve-findings/issues/231), [Madalad](https://github.com/code-423n4/2023-01-reserve-findings/issues/180), [saneryee](https://github.com/code-423n4/2023-01-reserve-findings/issues/152), [RaymondFam](https://github.com/code-423n4/2023-01-reserve-findings/issues/87), [Rolezn](https://github.com/code-423n4/2023-01-reserve-findings/issues/78), [chaduke](https://github.com/code-423n4/2023-01-reserve-findings/issues/74), [Sathish9098](https://github.com/code-423n4/2023-01-reserve-findings/issues/65), [Bnke0x0](https://github.com/code-423n4/2023-01-reserve-findings/issues/38), [oyc_109](https://github.com/code-423n4/2023-01-reserve-findings/issues/12), [arialblack14](https://github.com/code-423n4/2023-01-reserve-findings/issues/8), and [0xhacksmithh](https://github.com/code-423n4/2023-01-reserve-findings/issues/2)._
 
 ## Summary
 
-| |Issue|Instances|Total Gas Saved|
-|-|:-|:-:|:-:|
-| [G&#x2011;01] | Don't apply the same value to state variables | 1 |  - |
-| [G&#x2011;02] | Multiple `address`/ID mappings can be combined into a single `mapping` of an `address`/ID to a `struct`, where appropriate | 4 |  - |
-| [G&#x2011;03] | State variables only set in the constructor should be declared `immutable` | 6 |  12582 |
-| [G&#x2011;04] | State variables can be packed into fewer storage slots | 1 |  - |
-| [G&#x2011;05] | Structs can be packed into fewer storage slots | 1 |  - |
-| [G&#x2011;06] | Using `calldata` instead of `memory` for read-only arguments in `external` functions saves gas | 8 |  960 |
-| [G&#x2011;07] | Using `storage` instead of `memory` for structs/arrays saves gas | 1 |  4200 |
-| [G&#x2011;08] | Avoid contract existence checks by using low level calls | 67 |  6700 |
-| [G&#x2011;09] | State variables should be cached in stack variables rather than re-reading them from storage | 60 |  5820 |
-| [G&#x2011;10] | Multiple accesses of a mapping/array should use a local variable cache | 1 |  42 |
-| [G&#x2011;11] | The result of function calls should be cached rather than re-calling the function | 12 |  - |
-| [G&#x2011;12] | `<x> += <y>` costs more gas than `<x> = <x> + <y>` for state variables | 10 |  1130 |
-| [G&#x2011;13] | `internal` functions only called once can be inlined to save gas | 2 |  40 |
-| [G&#x2011;14] | Add `unchecked {}` for subtractions where the operands cannot underflow because of a previous `require()` or `if`-statement | 6 |  510 |
-| [G&#x2011;15] | `++i`/`i++` should be `unchecked{++i}`/`unchecked{i++}` when it is not possible for them to overflow, as is the case when used in `for`- and `while`-loops | 51 |  3060 |
-| [G&#x2011;16] | `require()`/`revert()` strings longer than 32 bytes cost extra gas | 2 |  - |
-| [G&#x2011;17] | Optimize names to save gas | 49 |  1078 |
-| [G&#x2011;18] | Use a more recent version of solidity | 7 |  - |
-| [G&#x2011;19] | Use a more recent version of solidity | 1 |  - |
-| [G&#x2011;20] | `>=` costs less gas than `>` | 3 |  9 |
-| [G&#x2011;21] | `++i` costs less gas than `i++`, especially when it's used in `for`-loops (`--i`/`i--` too) | 1 |  5 |
-| [G&#x2011;22] | Splitting `require()` statements that use `&&` saves gas | 15 |  45 |
-| [G&#x2011;23] | Usage of `uints`/`ints` smaller than 32 bytes (256 bits) incurs overhead | 68 |  - |
-| [G&#x2011;24] | Using `private` rather than `public` for constants, saves gas | 11 |  - |
-| [G&#x2011;25] | `require()` or `revert()` statements that check input arguments should be at the top of the function | 2 |  - |
-| [G&#x2011;26] | Empty blocks should be removed or emit something | 3 |  - |
-| [G&#x2011;27] | Use custom errors rather than `revert()`/`require()` strings to save gas | 25 |  - |
-| [G&#x2011;28] | Functions guaranteed to revert when called by normal users can be marked `payable` | 2 |  42 |
-| [G&#x2011;29] | Don't use `_msgSender()` if not supporting EIP-2771 | 35 |  560 |
-| [G&#x2011;30] | `public` functions not called by the contract should be declared `external` instead | 2 |  - |
+|               | Issue                                                                                                                                                      | Instances | Total Gas Saved |
+| ------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------: | :-------------: |
+| [G&#x2011;01] | Don't apply the same value to state variables                                                                                                              |     1     |        -        |
+| [G&#x2011;02] | Multiple `address`/ID mappings can be combined into a single `mapping` of an `address`/ID to a `struct`, where appropriate                                 |     4     |        -        |
+| [G&#x2011;03] | State variables only set in the constructor should be declared `immutable`                                                                                 |     6     |      12582      |
+| [G&#x2011;04] | State variables can be packed into fewer storage slots                                                                                                     |     1     |        -        |
+| [G&#x2011;05] | Structs can be packed into fewer storage slots                                                                                                             |     1     |        -        |
+| [G&#x2011;06] | Using `calldata` instead of `memory` for read-only arguments in `external` functions saves gas                                                             |     8     |       960       |
+| [G&#x2011;07] | Using `storage` instead of `memory` for structs/arrays saves gas                                                                                           |     1     |      4200       |
+| [G&#x2011;08] | Avoid contract existence checks by using low level calls                                                                                                   |    67     |      6700       |
+| [G&#x2011;09] | State variables should be cached in stack variables rather than re-reading them from storage                                                               |    60     |      5820       |
+| [G&#x2011;10] | Multiple accesses of a mapping/array should use a local variable cache                                                                                     |     1     |       42        |
+| [G&#x2011;11] | The result of function calls should be cached rather than re-calling the function                                                                          |    12     |        -        |
+| [G&#x2011;12] | `<x> += <y>` costs more gas than `<x> = <x> + <y>` for state variables                                                                                     |    10     |      1130       |
+| [G&#x2011;13] | `internal` functions only called once can be inlined to save gas                                                                                           |     2     |       40        |
+| [G&#x2011;14] | Add `unchecked {}` for subtractions where the operands cannot underflow because of a previous `require()` or `if`-statement                                |     6     |       510       |
+| [G&#x2011;15] | `++i`/`i++` should be `unchecked{++i}`/`unchecked{i++}` when it is not possible for them to overflow, as is the case when used in `for`- and `while`-loops |    51     |      3060       |
+| [G&#x2011;16] | `require()`/`revert()` strings longer than 32 bytes cost extra gas                                                                                         |     2     |        -        |
+| [G&#x2011;17] | Optimize names to save gas                                                                                                                                 |    49     |      1078       |
+| [G&#x2011;18] | Use a more recent version of solidity                                                                                                                      |     7     |        -        |
+| [G&#x2011;19] | Use a more recent version of solidity                                                                                                                      |     1     |        -        |
+| [G&#x2011;20] | `>=` costs less gas than `>`                                                                                                                               |     3     |        9        |
+| [G&#x2011;21] | `++i` costs less gas than `i++`, especially when it's used in `for`-loops (`--i`/`i--` too)                                                                |     1     |        5        |
+| [G&#x2011;22] | Splitting `require()` statements that use `&&` saves gas                                                                                                   |    15     |       45        |
+| [G&#x2011;23] | Usage of `uints`/`ints` smaller than 32 bytes (256 bits) incurs overhead                                                                                   |    68     |        -        |
+| [G&#x2011;24] | Using `private` rather than `public` for constants, saves gas                                                                                              |    11     |        -        |
+| [G&#x2011;25] | `require()` or `revert()` statements that check input arguments should be at the top of the function                                                       |     2     |        -        |
+| [G&#x2011;26] | Empty blocks should be removed or emit something                                                                                                           |     3     |        -        |
+| [G&#x2011;27] | Use custom errors rather than `revert()`/`require()` strings to save gas                                                                                   |    25     |        -        |
+| [G&#x2011;28] | Functions guaranteed to revert when called by normal users can be marked `payable`                                                                         |     2     |       42        |
+| [G&#x2011;29] | Don't use `_msgSender()` if not supporting EIP-2771                                                                                                        |    35     |       560       |
+| [G&#x2011;30] | `public` functions not called by the contract should be declared `external` instead                                                                        |     2     |        -        |
 
 Total: 457 instances over 30 issues with **36783 gas** saved
 
 Gas totals use lower bounds of ranges and count two iterations of each `for`-loop. All values above are runtime, not deployment, values; deployment values are listed in the individual issue descriptions. The table above as well as its gas numbers do not include any of the excluded findings.
 
 ## [G&#x2011;01] Don't apply the same value to state variables
+
 If `_whenDefault` is already `NEVER`, it'll save 2100 gas to not set it to that value again
 
-*There is 1 instance of this issue:*
+_There is 1 instance of this issue:_
 
 ```solidity
 File: /contracts/plugins/assets/FiatCollateral.sol
@@ -3964,24 +4054,28 @@ File: /contracts/plugins/assets/FiatCollateral.sol
 189:             if (sum >= NEVER) _whenDefault = NEVER;
 
 ```
+
 https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/plugins/assets/FiatCollateral.sol#L189
 
 ## [G&#x2011;02] Multiple `address`/ID mappings can be combined into a single `mapping` of an `address`/ID to a `struct`, where appropriate
+
 Saves a storage slot for the mapping. Depending on the circumstances and sizes of types, can avoid a Gsset (**20000 gas**) per mapping combined. Reads and subsequent writes can also be cheaper when a function requires both values and they both fit in the same storage slot. Finally, if both fields are accessed in the same function, can save **~42 gas per access** due to [not having to recalculate the key's keccak256 hash](https://gist.github.com/IllIllI000/ec23a57daa30a8f8ca8b9681c8ccefb0) (Gkeccak256 - 30 gas) and that calculation's associated stack operations.
 
-*There are 4 instances of this issue. (For in-depth details on this and all further gas optimizations with multiple instances, please see the warden's [full report](https://github.com/code-423n4/2023-01-reserve-findings/issues/391).)*
+_There are 4 instances of this issue. (For in-depth details on this and all further gas optimizations with multiple instances, please see the warden's [full report](https://github.com/code-423n4/2023-01-reserve-findings/issues/391).)_
 
 ## [G&#x2011;03] State variables only set in the constructor should be declared `immutable`
-Avoids a Gsset (**20000 gas**) in the constructor, and replaces the first access in each transaction (Gcoldsload - **2100 gas**) and each access thereafter (Gwarmacces - **100 gas**) with a `PUSH32` (**3 gas**). 
+
+Avoids a Gsset (**20000 gas**) in the constructor, and replaces the first access in each transaction (Gcoldsload - **2100 gas**) and each access thereafter (Gwarmacces - **100 gas**) with a `PUSH32` (**3 gas**).
 
 While `string`s are not value types, and therefore cannot be `immutable`/`constant` if not hard-coded outside of the constructor, the same behavior can be achieved by making the current contract `abstract` with `virtual` functions for the `string` accessors, and having a child contract override the functions with the hard-coded implementation-specific values.
 
-*There are 6 instances of this issue.*
+_There are 6 instances of this issue._
 
 ## [G&#x2011;04] State variables can be packed into fewer storage slots
+
 If variables occupying the same slot are both written the same function or by the constructor, avoids a separate Gsset (**20000 gas**). Reads of the variables can also be cheaper.
 
-*There is 1 instance of this issue:*
+_There is 1 instance of this issue:_
 
 ```solidity
 File: contracts/p1/StRSR.sol
@@ -3991,12 +4085,14 @@ File: contracts/p1/StRSR.sol
 42:       string public name; // mutable
 
 ```
+
 https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/StRSR.sol#L42
 
 ## [G&#x2011;05] Structs can be packed into fewer storage slots
+
 Each slot saved can avoid an extra Gsset (**20000 gas**) for the first setting of the struct. Subsequent reads as well as writes have smaller gas savings.
 
-*There is 1 instance of this issue:*
+_There is 1 instance of this issue:_
 
 ```solidity
 File: contracts/interfaces/IGnosis.sol
@@ -4021,21 +4117,24 @@ File: contracts/interfaces/IGnosis.sol
 21:   }
 
 ```
+
 https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/interfaces/IGnosis.sol#L6-L21
 
 ## [G&#x2011;06] Using `calldata` instead of `memory` for read-only arguments in `external` functions saves gas
-When a function with a `memory` array is called externally, the `abi.decode()` step has to use a for-loop to copy each index of the `calldata` to the `memory` index. **Each iteration of this for-loop costs at least 60 gas** (i.e. `60 * <mem_array>.length`). Using `calldata` directly, obliviates the need for such a loop in the contract code and runtime execution. Note that even if an interface defines a function as having `memory` arguments, it's still valid for implementation contracs to use `calldata` arguments instead. 
+
+When a function with a `memory` array is called externally, the `abi.decode()` step has to use a for-loop to copy each index of the `calldata` to the `memory` index. **Each iteration of this for-loop costs at least 60 gas** (i.e. `60 * <mem_array>.length`). Using `calldata` directly, obliviates the need for such a loop in the contract code and runtime execution. Note that even if an interface defines a function as having `memory` arguments, it's still valid for implementation contracs to use `calldata` arguments instead.
 
 If the array is passed to an `internal` function which passes the array to another internal function where the array is modified and therefore `memory` is used in the `external` call, it's still more gass-efficient to use `calldata` when the `external` function uses modifiers, since the modifiers may prevent the internal functions from being called. Structs have the same overhead as an array of length one.
 
 Note that I've also flagged instances where the function is `public` but can be marked as `external` since it's not called by the contract, and cases where a constructor is involved.
 
-*There are 8 instances of this issue.*
+_There are 8 instances of this issue._
 
 ## [G&#x2011;07] Using `storage` instead of `memory` for structs/arrays saves gas
-When fetching data from a storage location, assigning the data to a `memory` variable causes all fields of the struct/array to be read from storage, which incurs a Gcoldsload (**2100 gas**) for *each* field of the struct/array. If the fields are read from the new memory variable, they incur an additional `MLOAD` rather than a cheap stack read. Instead of declearing the variable with the `memory` keyword, declaring the variable with the `storage` keyword and caching any fields that need to be re-read in stack variables, will be much cheaper, only incuring the Gcoldsload for the fields actually read. The only time it makes sense to read the whole struct/array into a `memory` variable, is if the full struct/array is being returned by the function, is being passed to a function that requires `memory`, or if the array/struct is being read from another `memory` array/struct.
 
-*There is 1 instance of this issue:*
+When fetching data from a storage location, assigning the data to a `memory` variable causes all fields of the struct/array to be read from storage, which incurs a Gcoldsload (**2100 gas**) for _each_ field of the struct/array. If the fields are read from the new memory variable, they incur an additional `MLOAD` rather than a cheap stack read. Instead of declearing the variable with the `memory` keyword, declaring the variable with the `storage` keyword and caching any fields that need to be re-read in stack variables, will be much cheaper, only incuring the Gcoldsload for the fields actually read. The only time it makes sense to read the whole struct/array into a `memory` variable, is if the full struct/array is being returned by the function, is being passed to a function that requires `memory`, or if the array/struct is being read from another `memory` array/struct.
+
+_There is 1 instance of this issue:_
 
 ```solidity
 File: contracts/p1/Distributor.sol
@@ -4043,22 +4142,26 @@ File: contracts/p1/Distributor.sol
 134:              Transfer memory t = transfers[i];
 
 ```
+
 https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/Distributor.sol#L134
 
 ## [G&#x2011;08] Avoid contract existence checks by using low level calls
+
 Prior to 0.8.10 the compiler inserted extra code, including `EXTCODESIZE` (**100 gas**), to check for contract existence for external function calls. In more recent solidity versions, the compiler will not insert these checks if the external call has a return value. Similar behavior can be achieved in earlier versions by using low-level calls, since low level calls never check for contract existence.
 
-*There are 67 instances of this issue.*
+_There are 67 instances of this issue._
 
 ## [G&#x2011;09] State variables should be cached in stack variables rather than re-reading them from storage
+
 The instances below point to the second+ access of a state variable within a function. Caching of a state variable replaces each Gwarmaccess (**100 gas**) with a much cheaper stack read. Other less obvious fixes/optimizations include having local memory caches of state variable structs, or having local caches of state variable contracts/addresses.
 
-*There are 60 instances of this issue.*
+_There are 60 instances of this issue._
 
 ## [G&#x2011;10] Multiple accesses of a mapping/array should use a local variable cache
+
 The instances below point to the second+ access of a value inside a mapping/array, within a function. Caching a mapping's value in a local `storage` or `calldata` variable when the value is accessed [multiple times](https://gist.github.com/IllIllI000/ec23a57daa30a8f8ca8b9681c8ccefb0), saves **~42 gas per access** due to not having to recalculate the key's keccak256 hash (Gkeccak256 - **30 gas**) and that calculation's associated stack operations. Caching an array's struct avoids recalculating the array offsets into memory/calldata.
 
-*There is 1 instance of this issue:*
+_There is 1 instance of this issue:_
 
 ```solidity
 File: contracts/p1/RToken.sol
@@ -4067,59 +4170,69 @@ File: contracts/p1/RToken.sol
 635:          return (issueQueues[account].left, issueQueues[account].right);
 
 ```
+
 https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/RToken.sol#L635
 
 ## [G&#x2011;11] The result of function calls should be cached rather than re-calling the function
+
 The instances below point to the second+ call of the function within a single function.
 
-*There are 12 instances of this issue.*
+_There are 12 instances of this issue._
 
 ## [G&#x2011;12] `<x> += <y>` costs more gas than `<x> = <x> + <y>` for state variables
+
 Using the addition operator instead of plus-equals saves **[113 gas](https://gist.github.com/IllIllI000/cbbfb267425b898e5be734d4008d4fe8)**.
 
-*There are 10 instances of this issue.*
+_There are 10 instances of this issue._
 
 ## [G&#x2011;13] `internal` functions only called once can be inlined to save gas
+
 Not inlining costs **20 to 40 gas** because of two extra `JUMP` instructions and additional stack operations needed for function calls.
 
-*There are 2 instances of this issue.*
+_There are 2 instances of this issue._
 
 ## [G&#x2011;14] Add `unchecked {}` for subtractions where the operands cannot underflow because of a previous `require()` or `if`-statement
+
 `require(a <= b); x = b - a` => `require(a <= b); unchecked { x = b - a }`
 
-*There are 6 instances of this issue.*
+_There are 6 instances of this issue._
 
 ## [G&#x2011;15] `++i`/`i++` should be `unchecked{++i}`/`unchecked{i++}` when it is not possible for them to overflow, as is the case when used in `for`- and `while`-loops
+
 The `unchecked` keyword is new in solidity version 0.8.0, so this only applies to that version or higher, which these instances are. This saves **30-40 gas [per loop](https://gist.github.com/hrkrshnn/ee8fabd532058307229d65dcd5836ddc#the-increment-in-for-loop-post-condition-can-be-made-unchecked)**.
 
-*There are 51 instances of this issue.*
+_There are 51 instances of this issue._
 
 ## [G&#x2011;16] `require()`/`revert()` strings longer than 32 bytes cost extra gas
+
 Each extra memory word of bytes past the original 32 [incurs an MSTORE](https://gist.github.com/hrkrshnn/ee8fabd532058307229d65dcd5836ddc#consider-having-short-revert-strings) which costs **3 gas**.
 
-*There are 2 instances of this issue.*
+_There are 2 instances of this issue._
 
 ## [G&#x2011;17] Optimize names to save gas
+
 `public`/`external` function names and `public` member variable names can be optimized to save gas. See [this](https://gist.github.com/IllIllI000/a5d8b486a8259f9f77891a919febd1a9) link for an example of how it works. Below are the interfaces/abstract contracts that can be optimized so that the most frequently-called functions use the least amount of gas possible during method lookup. Method IDs that have two leading zero bytes can save **128 gas** each during deployment, and renaming functions to have lower method IDs will save **22 gas** per call, [per sorted position shifted](https://medium.com/joyso/solidity-how-does-function-name-affect-gas-consumption-in-smart-contract-47d270d8ac92).
 
-*There are 49 instances of this issue.*
+_There are 49 instances of this issue._
 
 ## [G&#x2011;18] Use a more recent version of solidity
+
 - Use a solidity version of at least 0.8.0 to get overflow protection without `SafeMath`
 - Use a solidity version of at least 0.8.2 to get simple compiler automatic inlining
 - Use a solidity version of at least 0.8.3 to get better struct packing and cheaper multiple storage reads
 - Use a solidity version of at least 0.8.4 to get custom errors, which are cheaper at deployment than `revert()/require()` strings
 - Use a solidity version of at least 0.8.10 to have external calls skip contract existence checks if the external call has a return value
 
-*There are 7 instances of this issue.*
+_There are 7 instances of this issue._
 
 ## [G&#x2011;19] Use a more recent version of solidity
+
 - Use a solidity version of at least 0.8.2 to get simple compiler automatic inlining
 - Use a solidity version of at least 0.8.3 to get better struct packing and cheaper multiple storage reads
 - Use a solidity version of at least 0.8.4 to get custom errors, which are cheaper at deployment than `revert()/require()` strings
 - Use a solidity version of at least 0.8.10 to have external calls skip contract existence checks if the external call has a return value
 
-*There is 1 instance of this issue:*
+_There is 1 instance of this issue:_
 
 ```solidity
 File: contracts/plugins/aave/ReentrancyGuard.sol
@@ -4127,17 +4240,20 @@ File: contracts/plugins/aave/ReentrancyGuard.sol
 3:    pragma solidity >=0.6.0 <0.8.0;
 
 ```
+
 https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/plugins/aave/ReentrancyGuard.sol#L3
 
 ## [G&#x2011;20] `>=` costs less gas than `>`
+
 The compiler uses opcodes `GT` and `ISZERO` for solidity code that uses `>`, but only requires `LT` for `>=`, [which saves **3 gas**](https://gist.github.com/IllIllI000/3dc79d25acccfa16dee4e83ffdc6ffde).
 
-*There are 3 instances of this issue.*
+_There are 3 instances of this issue._
 
 ## [G&#x2011;21] `++i` costs less gas than `i++`, especially when it's used in `for`-loops (`--i`/`i--` too)
+
 Saves **5 gas per loop**.
 
-*There is 1 instance of this issue:*
+_There is 1 instance of this issue:_
 
 ```solidity
 File: contracts/p1/mixins/Trading.sol
@@ -4145,92 +4261,107 @@ File: contracts/p1/mixins/Trading.sol
 72:           tradesOpen--;
 
 ```
+
 https://github.com/reserve-protocol/protocol/blob/df7ecadc2bae74244ace5e8b39e94bc992903158/contracts/p1/mixins/Trading.sol#L72
 
 ## [G&#x2011;22] Splitting `require()` statements that use `&&` saves gas
+
 See [this issue](https://github.com/code-423n4/2022-01-xdefi-findings/issues/128) which describes the fact that there is a larger deployment gas cost, but with enough runtime calls, the change ends up being cheaper by **3 gas**.
 
-*There are 15 instances of this issue.*
+_There are 15 instances of this issue._
 
 ## [G&#x2011;23] Usage of `uints`/`ints` smaller than 32 bytes (256 bits) incurs overhead
+
 > When using elements that are smaller than 32 bytes, your contractâ€™s gas usage may be higher. This is because the EVM operates on 32 bytes at a time. Therefore, if the element is smaller than that, the EVM must use more operations in order to reduce the size of the element from 32 bytes to the desired size.
 
 https://docs.soliditylang.org/en/v0.8.11/internals/layout_in_storage.html
 Each operation involving a `uint8` costs an extra [**22-28 gas**](https://gist.github.com/IllIllI000/9388d20c70f9a4632eb3ca7836f54977) (depending on whether the other operand is also a variable of type `uint8`) as compared to ones involving `uint256`, due to the compiler having to clear the higher bits of the memory word before operating on the `uint8`, as well as the associated stack operations of doing so. Use a larger size then downcast where needed.
 
-*There are 68 instances of this issue.*
+_There are 68 instances of this issue._
 
 ## [G&#x2011;24] Using `private` rather than `public` for constants, saves gas
+
 If needed, the values can be read from the verified contract source code, or if there are multiple values there can be a single getter function that [returns a tuple](https://github.com/code-423n4/2022-08-frax/blob/90f55a9ce4e25bceed3a74290b854341d8de6afa/src/contracts/FraxlendPair.sol#L156-L178) of the values of all currently-public constants. Saves **3406-3606 gas** in deployment gas due to the compiler not having to create non-payable getter functions for deployment calldata, not having to store the bytes of the value outside of where it's used, and not adding another entry to the method ID table.
 
-*There are 11 instances of this issue.*
+_There are 11 instances of this issue._
 
 ## [G&#x2011;25] `require()` or `revert()` statements that check input arguments should be at the top of the function
-Checks that involve constants should come before checks that involve state variables, function calls, and calculations. By doing these checks first, the function is able to revert before wasting a Gcoldsload (**2100 gas***) in a function that may ultimately revert in the unhappy case.
 
-*There are 2 instances of this issue.*
+Checks that involve constants should come before checks that involve state variables, function calls, and calculations. By doing these checks first, the function is able to revert before wasting a Gcoldsload (**2100 gas\***) in a function that may ultimately revert in the unhappy case.
 
-## [G&#x2011;26] Empty blocks should be removed or emit something 
+_There are 2 instances of this issue._
+
+## [G&#x2011;26] Empty blocks should be removed or emit something
+
 The code should be refactored such that they no longer exist, or the block should do something useful, such as emitting an event or reverting. If the contract is meant to be extended, the contract should be `abstract` and the function signatures be added without any default implementation. If the block is an empty `if`-statement block to avoid doing subsequent checks in the else-if/else conditions, the else-if/else conditions should be nested under the negation of the if-statement, because they involve different classes of checks, which may lead to the introduction of errors when the code is later modified (`if(x){}else if(y){...}else{...}` => `if(!x){if(y){...}else{...}}`). Empty `receive()`/`fallback() payable` functions that are not used, can be removed to save deployment gas.
 
-*There are 3 instances of this issue.*
+_There are 3 instances of this issue._
 
 ## [G&#x2011;27] Use custom errors rather than `revert()`/`require()` strings to save gas
+
 Custom errors are available from solidity version 0.8.4. Custom errors save [**~50 gas**](https://gist.github.com/IllIllI000/ad1bd0d29a0101b25e57c293b4b0c746) each time they're hit by [avoiding having to allocate and store the revert string](https://blog.soliditylang.org/2021/04/21/custom-errors/#errors-in-depth). Not defining the strings also save deployment gas.
 
-*There are 25 instances of this issue.*
+_There are 25 instances of this issue._
 
 ## [G&#x2011;28] Functions guaranteed to revert when called by normal users can be marked `payable`
-If a function modifier such as `onlyOwner` is used, the function will revert if a normal user tries to pay the function. Marking the function as `payable` will lower the gas cost for legitimate callers because the compiler will not include checks for whether a payment was provided. The extra opcodes avoided are 
+
+If a function modifier such as `onlyOwner` is used, the function will revert if a normal user tries to pay the function. Marking the function as `payable` will lower the gas cost for legitimate callers because the compiler will not include checks for whether a payment was provided. The extra opcodes avoided are
 `CALLVALUE`(2),`DUP1`(3),`ISZERO`(3),`PUSH2`(3),`JUMPI`(10),`PUSH1`(3),`DUP1`(3),`REVERT`(0),`JUMPDEST`(1),`POP`(2), which costs an average of about **21 gas per call** to the function, in addition to the extra deployment cost.
 
-*There are 2 instances of this issue.*
+_There are 2 instances of this issue._
 
 ## [G&#x2011;29] Don't use `_msgSender()` if not supporting EIP-2771
+
 Use `msg.sender` if the code does not implement [EIP-2771 trusted forwarder](https://eips.ethereum.org/EIPS/eip-2771) support.
 
-*There are 35 instances of this issue.*
+_There are 35 instances of this issue._
 
 ## [G&#x2011;30] `public` functions not called by the contract should be declared `external` instead
+
 Contracts [are allowed](https://docs.soliditylang.org/en/latest/contracts.html#function-overriding) to override their parents' functions and change the visibility from `external` to `public` and [prior to solidity version 0.6.9](https://ethereum.stackexchange.com/a/107939) can save gas by doing so.
 
-*There are 2 instances of this issue.*
+_There are 2 instances of this issue._
 
 ## Excluded findings
+
 These findings are excluded from awards calculations because there are publicly-available automated tools that find them. The valid ones appear here for completeness.
 
-| |Issue|Instances|Total Gas Saved|
-|-|:-|:-:|:-:|
-| [G&#x2011;31] | `<array>.length` should not be looked up in every loop of a `for`-loop | 12 |  36 |
-| [G&#x2011;32] | `require()`/`revert()` strings longer than 32 bytes cost extra gas | 18 |  - |
-| [G&#x2011;33] | Using `bool`s for storage incurs overhead | 4 |  68400 |
-| [G&#x2011;34] | Using `> 0` costs more gas than `!= 0` when used on a `uint` in a `require()` statement | 11 |  66 |
-| [G&#x2011;35] | `++i` costs less gas than `i++`, especially when it's used in `for`-loops (`--i`/`i--` too) | 11 |  55 |
-| [G&#x2011;36] | Using `private` rather than `public` for constants, saves gas | 33 |  - |
-| [G&#x2011;37] | Division by two should use bit shifting | 8 |  160 |
-| [G&#x2011;38] | Use custom errors rather than `revert()`/`require()` strings to save gas | 151 |  - |
-| [G&#x2011;39] | Functions guaranteed to revert when called by normal users can be marked `payable` | 12 |  252 |
+|               | Issue                                                                                       | Instances | Total Gas Saved |
+| ------------- | :------------------------------------------------------------------------------------------ | :-------: | :-------------: |
+| [G&#x2011;31] | `<array>.length` should not be looked up in every loop of a `for`-loop                      |    12     |       36        |
+| [G&#x2011;32] | `require()`/`revert()` strings longer than 32 bytes cost extra gas                          |    18     |        -        |
+| [G&#x2011;33] | Using `bool`s for storage incurs overhead                                                   |     4     |      68400      |
+| [G&#x2011;34] | Using `> 0` costs more gas than `!= 0` when used on a `uint` in a `require()` statement     |    11     |       66        |
+| [G&#x2011;35] | `++i` costs less gas than `i++`, especially when it's used in `for`-loops (`--i`/`i--` too) |    11     |       55        |
+| [G&#x2011;36] | Using `private` rather than `public` for constants, saves gas                               |    33     |        -        |
+| [G&#x2011;37] | Division by two should use bit shifting                                                     |     8     |       160       |
+| [G&#x2011;38] | Use custom errors rather than `revert()`/`require()` strings to save gas                    |    151    |        -        |
+| [G&#x2011;39] | Functions guaranteed to revert when called by normal users can be marked `payable`          |    12     |       252       |
 
 Total: 260 instances over 9 issues with **68969 gas** saved
 
 Gas totals use lower bounds of ranges and count two iterations of each `for`-loop. All values above are runtime, not deployment, values; deployment values are listed in the individual issue descriptions.
 
 ## [G&#x2011;31] `<array>.length` should not be looked up in every loop of a `for`-loop
+
 The overheads outlined below are _PER LOOP_, excluding the first loop
-* storage arrays incur a Gwarmaccess (**100 gas**)
-* memory arrays use `MLOAD` (**3 gas**)
-* calldata arrays use `CALLDATALOAD` (**3 gas**)
+
+- storage arrays incur a Gwarmaccess (**100 gas**)
+- memory arrays use `MLOAD` (**3 gas**)
+- calldata arrays use `CALLDATALOAD` (**3 gas**)
 
 Caching the length changes each of these to a `DUP<N>` (**3 gas**), and gets rid of the extra `DUP<N>` needed to store the stack offset.
 
-*There are 12 instances of this issue.*
+_There are 12 instances of this issue._
 
 ## [G&#x2011;32] `require()`/`revert()` strings longer than 32 bytes cost extra gas
+
 Each extra memory word of bytes past the original 32 [incurs an MSTORE](https://gist.github.com/hrkrshnn/ee8fabd532058307229d65dcd5836ddc#consider-having-short-revert-strings) which costs **3 gas**.
 
-*There are 18 instances of this issue.*
+_There are 18 instances of this issue._
 
 ## [G&#x2011;33] Using `bool`s for storage incurs overhead
+
 ```solidity
     // Booleans are more expensive than uint256 or any type that takes up a full
     // word because each write operation emits an extra SLOAD to first read the
@@ -4238,46 +4369,51 @@ Each extra memory word of bytes past the original 32 [incurs an MSTORE](https://
     // back. This is the compiler's defense against contract upgrades and
     // pointer aliasing, and it cannot be disabled.
 ```
+
 https://github.com/OpenZeppelin/openzeppelin-contracts/blob/58f635312aa21f947cae5f8578638a85aa2519f5/contracts/security/ReentrancyGuard.sol#L23-L27
 
 Use `uint256(1)` and `uint256(2)` for true/false to avoid a Gwarmaccess (**[100 gas](https://gist.github.com/IllIllI000/1b70014db712f8572a72378321250058)**) for the extra SLOAD, and to avoid Gsset (**20000 gas**) when changing from `false` to `true`, after having been `true` in the past.
 
-*There are 4 instances of this issue.*
+_There are 4 instances of this issue._
 
 ## [G&#x2011;34] Using `> 0` costs more gas than `!= 0` when used on a `uint` in a `require()` statement
+
 This change saves **[6 gas](https://aws1.discourse-cdn.com/business6/uploads/zeppelin/original/2X/3/363a367d6d68851f27d2679d10706cd16d788b96.png)** per instance. The optimization works until solidity version [0.8.13](https://gist.github.com/IllIllI000/bf2c3120f24a69e489f12b3213c06c94) where there is a regression in gas costs.
 
-*There are 11 instances of this issue.*
+_There are 11 instances of this issue._
 
 ## [G&#x2011;35] `++i` costs less gas than `i++`, especially when it's used in `for`-loops (`--i`/`i--` too)
+
 Saves **5 gas per loop**
 
-*There are 11 instances of this issue.*
+_There are 11 instances of this issue._
 
 ## [G&#x2011;36] Using `private` rather than `public` for constants, saves gas
+
 If needed, the values can be read from the verified contract source code, or if there are multiple values there can be a single getter function that [returns a tuple](https://github.com/code-423n4/2022-08-frax/blob/90f55a9ce4e25bceed3a74290b854341d8de6afa/src/contracts/FraxlendPair.sol#L156-L178) of the values of all currently-public constants. Saves **3406-3606 gas** in deployment gas due to the compiler not having to create non-payable getter functions for deployment calldata, not having to store the bytes of the value outside of where it's used, and not adding another entry to the method ID table.
 
-*There are 33 instances of this issue.*
+_There are 33 instances of this issue._
 
 ## [G&#x2011;37] Division by two should use bit shifting
+
 `<x> / 2` is the same as `<x> >> 1`. While the compiler uses the `SHR` opcode to accomplish both, the version that uses division incurs an overhead of [**20 gas**](https://gist.github.com/IllIllI000/ec0e4e6c4f52a6bca158f137a3afd4ff) due to `JUMP`s to and from a compiler utility function that introduces checks which can be avoided by using `unchecked {}` around the division by two.
 
-*There are 8 instances of this issue.*
+_There are 8 instances of this issue._
 
 ## [G&#x2011;38] Use custom errors rather than `revert()`/`require()` strings to save gas
+
 Custom errors are available from solidity version 0.8.4. Custom errors save [**~50 gas**](https://gist.github.com/IllIllI000/ad1bd0d29a0101b25e57c293b4b0c746) each time they're hit by [avoiding having to allocate and store the revert string](https://blog.soliditylang.org/2021/04/21/custom-errors/#errors-in-depth). Not defining the strings also save deployment gas.
 
-*There are 151 instances of this issue.*
+_There are 151 instances of this issue._
 
 ## [G&#x2011;39] Functions guaranteed to revert when called by normal users can be marked `payable`
-If a function modifier such as `onlyOwner` is used, the function will revert if a normal user tries to pay the function. Marking the function as `payable` will lower the gas cost for legitimate callers because the compiler will not include checks for whether a payment was provided. The extra opcodes avoided are 
+
+If a function modifier such as `onlyOwner` is used, the function will revert if a normal user tries to pay the function. Marking the function as `payable` will lower the gas cost for legitimate callers because the compiler will not include checks for whether a payment was provided. The extra opcodes avoided are
 `CALLVALUE`(2),`DUP1`(3),`ISZERO`(3),`PUSH2`(3),`JUMPI`(10),`PUSH1`(3),`DUP1`(3),`REVERT`(0),`JUMPDEST`(1),`POP`(2), which costs an average of about **21 gas per call** to the function, in addition to the extra deployment cost.
 
-*There are 12 instances of this issue.*
+_There are 12 instances of this issue._
 
-
-
-***
+---
 
 # Mitigation Review
 
@@ -4290,123 +4426,124 @@ Following the C4 audit contest, 3 wardens (0xA5DF, HollaDieWaldfee, and [AkshayS
 **[Summary from the Sponsor](https://github.com/code-423n4/2023-02-reserve-mitigation-contest#overview-of-changes):**
 
 > The sponsors have made many, many changes, in response to the thoughtful feedback from the Wardens. In most cases changes were straightforward and of limited scope, but in at least two cases there were significant reductions or simplifications of large portions of the code. These areas are expanded upon below in their own sections. The 3rd section will cover everything else:
-> 
+>
 > ### 1. Removal of non-atomic RToken issuance (M-13, M-15)
-> 
+>
 > [PR #571: remove non-atomic issuance](https://github.com/reserve-protocol/protocol/pull/571)
-> 
-> This audit, as in previous audits ([ToB](https://github.com/code-423n4/2023-01-reserve/blob/main/audits/Trail%20of%20Bits%20-%20Aug%2011%202022.pdf); [Solidified](https://github.com/code-423n4/2023-01-reserve/blob/main/audits/Solidified%20-%20Oct%2016%202022.pdf)) problems were found with the RToken issuance queue, a fussy cumulative data structure that exists to support constant-time `cancel()` and `vest()` operations for non-atomic issuance. This audit too, another issue was discovered with **M-13**. This prompted us to look for alternatives that achieve a similar purpose to the issuance queue, leading to removal of non-atomic issuance entirely and creation of the issuance throttle. The issuance throttle is at a low-level mechanistically similar to the redemption battery from before, except it is a _net hourly issuance_ measure. This addresses the problem of ingesting large amounts of bad collateral too quickly in a different way and with less frictions for users, both in terms of time and gas fees. 
-> 
-> As wardens will see, large portions of the `RToken` contract code have been removed. This also freed up contract bytecode real estate that allowed us to take libraries internal that were previously external. 
-> 
+>
+> This audit, as in previous audits ([ToB](https://github.com/code-423n4/2023-01-reserve/blob/main/audits/Trail%20of%20Bits%20-%20Aug%2011%202022.pdf); [Solidified](https://github.com/code-423n4/2023-01-reserve/blob/main/audits/Solidified%20-%20Oct%2016%202022.pdf)) problems were found with the RToken issuance queue, a fussy cumulative data structure that exists to support constant-time `cancel()` and `vest()` operations for non-atomic issuance. This audit too, another issue was discovered with **M-13**. This prompted us to look for alternatives that achieve a similar purpose to the issuance queue, leading to removal of non-atomic issuance entirely and creation of the issuance throttle. The issuance throttle is at a low-level mechanistically similar to the redemption battery from before, except it is a _net hourly issuance_ measure. This addresses the problem of ingesting large amounts of bad collateral too quickly in a different way and with less frictions for users, both in terms of time and gas fees.
+>
+> As wardens will see, large portions of the `RToken` contract code have been removed. This also freed up contract bytecode real estate that allowed us to take libraries internal that were previously external.
+>
 > **Context: Original purpose of issuance queue**
-> 
-> The original purpose of the issuance queue was to prevent MEV searchers and other unspeakables from depositing large amounts of collateral right before the basket becomes IFFY and issuance is turned off. The overall IFFY -> DISABLED basket flow can be frontrun, and even though the depositer does not know yet whether a collateral token will default, acquiring a position in the queue acts like a valuable option that pays off if it does and has only opportunity cost otherwise. From the protocol's perspective, this kind of issuance just introduces bad debt. 
-> 
-> The new issunce throttle is purely atomic and serves the same purpose of limiting the loss due to bad debt directly prior to a collateral default. 
-> 
+>
+> The original purpose of the issuance queue was to prevent MEV searchers and other unspeakables from depositing large amounts of collateral right before the basket becomes IFFY and issuance is turned off. The overall IFFY -> DISABLED basket flow can be frontrun, and even though the depositer does not know yet whether a collateral token will default, acquiring a position in the queue acts like a valuable option that pays off if it does and has only opportunity cost otherwise. From the protocol's perspective, this kind of issuance just introduces bad debt.
+>
+> The new issunce throttle is purely atomic and serves the same purpose of limiting the loss due to bad debt directly prior to a collateral default.
+>
 > ### 2. Tightening of the basket range formula (H-02, M-20, M-22)
-> 
+>
 > [PR #585: Narrow bu band](https://github.com/reserve-protocol/protocol/pull/585)
-> 
+>
 > H-02 is the other highly consequential change, from a sheer quantity of SLOC point of view. Indeed, the calculation of the top and bottom of the basket range was highly inefficient and would generally result in larger haircuts than desirable. Below are two datapoints from tests that show the severity of a haircut after default in the absence of RSR overcollateralization:
-> 
-> - **37.5%** loss +  market-even trades
+>
+> - **37.5%** loss + market-even trades
 > - Before: **39.7%** haircut
 > - After: **37.52%** haircut
 > - **15%** loss + worst-case below market trades
 > - Before: **17.87%** haircut
 > - After: **16.38%** haircut
-> 
-> The previous code was more complicated, more costly, and provided worse outcomes. In short this was because it didn't distinguish between capital that needed to be traded vs capital that did not. While the protocol cannot know ahead of time exactly how many BUs it will have after recollateralization, it can use the number of basket units currently held as a bedrock that it knows it will not need to trade, and thus do not differentially contribute to `basket.top` and `basket.bottom`. 
-> 
+>
+> The previous code was more complicated, more costly, and provided worse outcomes. In short this was because it didn't distinguish between capital that needed to be traded vs capital that did not. While the protocol cannot know ahead of time exactly how many BUs it will have after recollateralization, it can use the number of basket units currently held as a bedrock that it knows it will not need to trade, and thus do not differentially contribute to `basket.top` and `basket.bottom`.
+>
 > **Related issues**
-> 
-> In addition to H-02 this PR also addressed M-20 and M-22, which are related to the calculation of the dust loss and potential overflow during the shortfall calculation. The calculation of the dust loss is now capped appropriately and the shortfall calculation has been eliminated. 
-> 
+>
+> In addition to H-02 this PR also addressed M-20 and M-22, which are related to the calculation of the dust loss and potential overflow during the shortfall calculation. The calculation of the dust loss is now capped appropriately and the shortfall calculation has been eliminated.
+>
 > ### 3. Everything else
-> 
+>
 > The mitigations for the remaining issues were more narrow in scope. Most do not require further context or description. But there are 2 smaller clusters of changes worth calling out:
-> 
+>
 > **Universal Revenue Hiding**
-> 
+>
 > [PR #620: Universal revenue hiding](https://github.com/reserve-protocol/protocol/pull/620)
-> 
-> As a warden pointed out in H-01, there are subtleties that can cause the compound v2 cToken rate to decrease, albeit by extremely little. Since we have dealt with Compund V2 for so long, and only just discovered this detail, we reason there are probably more like it. 
-> 
-> To this end we've implemented universal revenue hiding at the collateral plugin level, for all appreciating collateral. The idea is that even a small amount of revenue hiding such as 1-part-in-1-million may end up protecting the collateral plugin from unexpected default while being basically undetectable to humans. 
-> 
-> We mention this change because it can potentially impact other areas of the protocol, such as what prices trades are opened at, or how the basket range is calculated during recollateralization. A warden looking to examine this should focus their attention on `contracts/assets/AppreciatingFiatCollateral.sol`. 
-> 
+>
+> As a warden pointed out in H-01, there are subtleties that can cause the compound v2 cToken rate to decrease, albeit by extremely little. Since we have dealt with Compund V2 for so long, and only just discovered this detail, we reason there are probably more like it.
+>
+> To this end we've implemented universal revenue hiding at the collateral plugin level, for all appreciating collateral. The idea is that even a small amount of revenue hiding such as 1-part-in-1-million may end up protecting the collateral plugin from unexpected default while being basically undetectable to humans.
+>
+> We mention this change because it can potentially impact other areas of the protocol, such as what prices trades are opened at, or how the basket range is calculated during recollateralization. A warden looking to examine this should focus their attention on `contracts/assets/AppreciatingFiatCollateral.sol`.
+>
 > **Redemption while DISABLED**
-> 
+>
 > [PR #575: support redemption while disabled](https://github.com/reserve-protocol/protocol/pull/575)
-> 
+>
 > The final change area to bring attention to is the enabling of RToken redemption while the basket is DISABLED. The motivation for this change is not neatly captured in a single contest issue, though it was something discussed with wardens via DM, and which seems tangentially related to issues like M-03.
-> 
-> Previous behavior: Cannot redeem while DISABLED. `BasketHandler.refreshBasket()` must be called before first redemption can occur, and even then, the redeemer must wait until trading finishes to receive full redemptions. 
-> 
-> Current behavior: Can redeem while DISABLED. Will get full share of collateral until `BasketHandler.refreshBasket()` is called. Can use `revertOnPartialRedemption` redemption param to control behavior along this boundary. 
-> 
-> We mention this change because functionality under different basket conditions is central to the functioning of our protocol. RToken redemption is how capital primarily exits the system, so any change to this area is fundamentally risky. 
-> 
+>
+> Previous behavior: Cannot redeem while DISABLED. `BasketHandler.refreshBasket()` must be called before first redemption can occur, and even then, the redeemer must wait until trading finishes to receive full redemptions.
+>
+> Current behavior: Can redeem while DISABLED. Will get full share of collateral until `BasketHandler.refreshBasket()` is called. Can use `revertOnPartialRedemption` redemption param to control behavior along this boundary.
+>
+> We mention this change because functionality under different basket conditions is central to the functioning of our protocol. RToken redemption is how capital primarily exits the system, so any change to this area is fundamentally risky.
+>
 > A related change is that `BasketHandler._switchBasket()` now skips over IFFY collateral.
 
 ## Mitigation Review Scope
 
-| URL | Mitigation of | Purpose | 
-| ----------- | ------------- | ----------- |
-| https://github.com/reserve-protocol/protocol/pull/571 | M-13, M-15 | This PR removes the non-atomic issuance mechanism and adds an issuance throttle. The redemption battery is rebranded to a redemption throttle. |
-| https://github.com/reserve-protocol/protocol/pull/585 | H-02, M-20, M-22 | This PR simplifies and improves the basket range formula. The new logic should provide much tighter basket range estimates and result in smaller haircuts. |
-| https://github.com/reserve-protocol/protocol/pull/584 | M-01, M-12, M-23, M-25 | This PR bundles mitigations for many small issues together. The full list is in the PR description. Each of these items are small and local in scope. | 
-| https://github.com/reserve-protocol/protocol/pull/575 | M-24 | This PR enables redemption while the basket is DISABLED. |
-| https://github.com/reserve-protocol/protocol/pull/614 | M-18 | This PR removes the ability to change StRSR token's name and symbol. |
-| https://github.com/reserve-protocol/protocol/pull/615 | M-03, M-04 | This PR allows an RToken redeemer to specify when they require full redemptions vs accept partial (prorata) redemptions. |
-| https://github.com/reserve-protocol/protocol/pull/617 | M-02 | This PR prevents paying out StRSR rewards until the StRSR supply is at least 1e18. |
-| https://github.com/reserve-protocol/protocol/pull/619 | M-05 | This PR prevents melting RToken until the RToken supply is at least 1e18. |
-| https://github.com/reserve-protocol/protocol/pull/620 | H-01 | This PR adds universal revenue hiding to all appreciating collateral. |
-| https://github.com/reserve-protocol/protocol/pull/622 | M-11 | This PR adds a Furnace.melt()/StRSR.payoutRewards() step when governance changes the rewardRatio. |
-| https://github.com/reserve-protocol/protocol/pull/623 | M-16, M-21 | This PR makes the AssetRegistry more resilient to bad collateral during asset unregistration, and disables staking when frozen. |
-| https://github.com/reserve-protocol/protocol/pull/628 | M-10 | This PR makes all dangerous uint192 downcasts truncation-safe. |
+| URL                                                   | Mitigation of          | Purpose                                                                                                                                                    |
+| ----------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| https://github.com/reserve-protocol/protocol/pull/571 | M-13, M-15             | This PR removes the non-atomic issuance mechanism and adds an issuance throttle. The redemption battery is rebranded to a redemption throttle.             |
+| https://github.com/reserve-protocol/protocol/pull/585 | H-02, M-20, M-22       | This PR simplifies and improves the basket range formula. The new logic should provide much tighter basket range estimates and result in smaller haircuts. |
+| https://github.com/reserve-protocol/protocol/pull/584 | M-01, M-12, M-23, M-25 | This PR bundles mitigations for many small issues together. The full list is in the PR description. Each of these items are small and local in scope.      |
+| https://github.com/reserve-protocol/protocol/pull/575 | M-24                   | This PR enables redemption while the basket is DISABLED.                                                                                                   |
+| https://github.com/reserve-protocol/protocol/pull/614 | M-18                   | This PR removes the ability to change StRSR token's name and symbol.                                                                                       |
+| https://github.com/reserve-protocol/protocol/pull/615 | M-03, M-04             | This PR allows an RToken redeemer to specify when they require full redemptions vs accept partial (prorata) redemptions.                                   |
+| https://github.com/reserve-protocol/protocol/pull/617 | M-02                   | This PR prevents paying out StRSR rewards until the StRSR supply is at least 1e18.                                                                         |
+| https://github.com/reserve-protocol/protocol/pull/619 | M-05                   | This PR prevents melting RToken until the RToken supply is at least 1e18.                                                                                  |
+| https://github.com/reserve-protocol/protocol/pull/620 | H-01                   | This PR adds universal revenue hiding to all appreciating collateral.                                                                                      |
+| https://github.com/reserve-protocol/protocol/pull/622 | M-11                   | This PR adds a Furnace.melt()/StRSR.payoutRewards() step when governance changes the rewardRatio.                                                          |
+| https://github.com/reserve-protocol/protocol/pull/623 | M-16, M-21             | This PR makes the AssetRegistry more resilient to bad collateral during asset unregistration, and disables staking when frozen.                            |
+| https://github.com/reserve-protocol/protocol/pull/628 | M-10                   | This PR makes all dangerous uint192 downcasts truncation-safe.                                                                                             |
 
-*Note from the sponsor: we want to emphasize this is **not** the complete list of changes between the original [df7eca commit](https://github.com/reserve-protocol/protocol/commit/df7ecadc2bae74244ace5e8b39e94bc992903158) and the mitigation review [27a347 commit](https://github.com/reserve-protocol/protocol/commit/27a3472d553b4fa54f896596007765ec91941348). While it is the **vast majority** of the changes, we urge wardens to check out the diff between the two commits for themselves, as changes may have been made due to addressing gas/QA findings.*
+_Note from the sponsor: we want to emphasize this is **not** the complete list of changes between the original [df7eca commit](https://github.com/reserve-protocol/protocol/commit/df7ecadc2bae74244ace5e8b39e94bc992903158) and the mitigation review [27a347 commit](https://github.com/reserve-protocol/protocol/commit/27a3472d553b4fa54f896596007765ec91941348). While it is the **vast majority** of the changes, we urge wardens to check out the diff between the two commits for themselves, as changes may have been made due to addressing gas/QA findings._
 
 ## Mitigation Review Summary
 
-| Original Issue | Status | Full Details | 
-| ----------- | ------------- | ----------- |
-| [H-01](https://github.com/code-423n4/2023-01-reserve-findings/issues/310) | Mitigation confirmed w/ comments | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/35), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/23), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/25) |
-| [H-02](https://github.com/code-423n4/2023-01-reserve-findings/issues/235) | Not fully mitigated | Report from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/49), and also shared below |
-| [M-01](https://github.com/code-423n4/2023-01-reserve-findings/issues/452) | Mitigation confirmed | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/50), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/16), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/26) |
-| [M-02](https://github.com/code-423n4/2023-01-reserve-findings/issues/439) | Mitigation confirmed w/ comments | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/51), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/20), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/27) |
-| [M-03](https://github.com/code-423n4/2023-01-reserve-findings/issues/416) | This is a duplicate, see M-04 for status | [Comment from judge](https://github.com/code-423n4/2023-01-reserve-findings/issues/416#issuecomment-1428777177) |
-| [M-04](https://github.com/code-423n4/2023-01-reserve-findings/issues/399) | Not fully mitigated | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/54), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/14), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/69), and also shared below |
-| [M-05](https://github.com/code-423n4/2023-01-reserve-findings/issues/384) | Not fully mitigated | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/13) and 0xA5DF ([here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/70) and [here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/55)), and also shared below |
-| [M-06](https://github.com/code-423n4/2023-01-reserve-findings/issues/377) | Per judge: invalid | [Comment from judge](https://github.com/code-423n4/2023-01-reserve-findings/issues/377#issuecomment-1428771851) |
-| [M-07](https://github.com/code-423n4/2023-01-reserve-findings/issues/347) | Confirmed by sponsor | - |
-| [M-08](https://github.com/code-423n4/2023-01-reserve-findings/issues/326) | Acknowledged by sponsor | - |
-| [M-09](https://github.com/code-423n4/2023-01-reserve-findings/issues/325) | Per judge: invalid | [Comment from judge](https://github.com/code-423n4/2023-01-reserve-findings/issues/325#issuecomment-1428774156) |
-| [M-10](https://github.com/code-423n4/2023-01-reserve-findings/issues/320) | Mitigation confirmed | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/19), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/56), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/33) |
-| [M-11](https://github.com/code-423n4/2023-01-reserve-findings/issues/287) | Mitigation confirmed w/ comments | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/18), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/57), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/34) |
-| [M-12](https://github.com/code-423n4/2023-01-reserve-findings/issues/276) | Mitigation confirmed | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/58), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/11), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/36) |
-| [M-13](https://github.com/code-423n4/2023-01-reserve-findings/issues/267) | Mitigation confirmed w/ comments | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/10), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/59), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/37) |
-| [M-14](https://github.com/code-423n4/2023-01-reserve-findings/issues/265) | Acknowledged by sponsor | - |
-| [M-15](https://github.com/code-423n4/2023-01-reserve-findings/issues/258) | Mitigation confirmed w/ comments | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/9), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/60), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/39) |
-| [M-16](https://github.com/code-423n4/2023-01-reserve-findings/issues/254) | Not fully mitigated | Report from [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73), and also shared below |
-| [M-17](https://github.com/code-423n4/2023-01-reserve-findings/issues/234) | Acknowledged by sponsor | - |
-| [M-18](https://github.com/code-423n4/2023-01-reserve-findings/issues/211) | Mitigation confirmed | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/7), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/62), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/42) |
-| [M-19](https://github.com/code-423n4/2023-01-reserve-findings/issues/210) | Acknowledged by sponsor | - |
-| [M-20](https://github.com/code-423n4/2023-01-reserve-findings/issues/200) | Mitigation confirmed w/ comments | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/21), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/63), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/77) |
-| [M-21](https://github.com/code-423n4/2023-01-reserve-findings/issues/148) | Mitigation confirmed | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/6), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/71), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/44) |
-| [M-22](https://github.com/code-423n4/2023-01-reserve-findings/issues/106) | Mitigation confirmed | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/5) and [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/64) |
-| [M-23](https://github.com/code-423n4/2023-01-reserve-findings/issues/64) | Mitigation confirmed w/ comments | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/65), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/4), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/45) |
-| [M-24](https://github.com/code-423n4/2023-01-reserve-findings/issues/39) | Mitigation confirmed | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/66), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/3), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/46) |
-| [M-25](https://github.com/code-423n4/2023-01-reserve-findings/issues/16) | Mitigation confirmed | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/2), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/67), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/47) |
+| Original Issue                                                            | Status                                   | Full Details                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [H-01](https://github.com/code-423n4/2023-01-reserve-findings/issues/310) | Mitigation confirmed w/ comments         | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/35), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/23), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/25)                        |
+| [H-02](https://github.com/code-423n4/2023-01-reserve-findings/issues/235) | Not fully mitigated                      | Report from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/49), and also shared below                                                                                                                                                                                                                      |
+| [M-01](https://github.com/code-423n4/2023-01-reserve-findings/issues/452) | Mitigation confirmed                     | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/50), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/16), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/26)                        |
+| [M-02](https://github.com/code-423n4/2023-01-reserve-findings/issues/439) | Mitigation confirmed w/ comments         | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/51), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/20), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/27)                        |
+| [M-03](https://github.com/code-423n4/2023-01-reserve-findings/issues/416) | This is a duplicate, see M-04 for status | [Comment from judge](https://github.com/code-423n4/2023-01-reserve-findings/issues/416#issuecomment-1428777177)                                                                                                                                                                                                                                       |
+| [M-04](https://github.com/code-423n4/2023-01-reserve-findings/issues/399) | Not fully mitigated                      | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/54), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/14), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/69), and also shared below |
+| [M-05](https://github.com/code-423n4/2023-01-reserve-findings/issues/384) | Not fully mitigated                      | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/13) and 0xA5DF ([here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/70) and [here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/55)), and also shared below   |
+| [M-06](https://github.com/code-423n4/2023-01-reserve-findings/issues/377) | Per judge: invalid                       | [Comment from judge](https://github.com/code-423n4/2023-01-reserve-findings/issues/377#issuecomment-1428771851)                                                                                                                                                                                                                                       |
+| [M-07](https://github.com/code-423n4/2023-01-reserve-findings/issues/347) | Confirmed by sponsor                     | -                                                                                                                                                                                                                                                                                                                                                     |
+| [M-08](https://github.com/code-423n4/2023-01-reserve-findings/issues/326) | Acknowledged by sponsor                  | -                                                                                                                                                                                                                                                                                                                                                     |
+| [M-09](https://github.com/code-423n4/2023-01-reserve-findings/issues/325) | Per judge: invalid                       | [Comment from judge](https://github.com/code-423n4/2023-01-reserve-findings/issues/325#issuecomment-1428774156)                                                                                                                                                                                                                                       |
+| [M-10](https://github.com/code-423n4/2023-01-reserve-findings/issues/320) | Mitigation confirmed                     | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/19), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/56), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/33)                        |
+| [M-11](https://github.com/code-423n4/2023-01-reserve-findings/issues/287) | Mitigation confirmed w/ comments         | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/18), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/57), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/34)                        |
+| [M-12](https://github.com/code-423n4/2023-01-reserve-findings/issues/276) | Mitigation confirmed                     | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/58), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/11), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/36)                        |
+| [M-13](https://github.com/code-423n4/2023-01-reserve-findings/issues/267) | Mitigation confirmed w/ comments         | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/10), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/59), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/37)                        |
+| [M-14](https://github.com/code-423n4/2023-01-reserve-findings/issues/265) | Acknowledged by sponsor                  | -                                                                                                                                                                                                                                                                                                                                                     |
+| [M-15](https://github.com/code-423n4/2023-01-reserve-findings/issues/258) | Mitigation confirmed w/ comments         | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/9), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/60), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/39)                         |
+| [M-16](https://github.com/code-423n4/2023-01-reserve-findings/issues/254) | Not fully mitigated                      | Report from [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73), and also shared below                                                                                                                                                                                                             |
+| [M-17](https://github.com/code-423n4/2023-01-reserve-findings/issues/234) | Acknowledged by sponsor                  | -                                                                                                                                                                                                                                                                                                                                                     |
+| [M-18](https://github.com/code-423n4/2023-01-reserve-findings/issues/211) | Mitigation confirmed                     | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/7), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/62), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/42)                         |
+| [M-19](https://github.com/code-423n4/2023-01-reserve-findings/issues/210) | Acknowledged by sponsor                  | -                                                                                                                                                                                                                                                                                                                                                     |
+| [M-20](https://github.com/code-423n4/2023-01-reserve-findings/issues/200) | Mitigation confirmed w/ comments         | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/21), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/63), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/77)                        |
+| [M-21](https://github.com/code-423n4/2023-01-reserve-findings/issues/148) | Mitigation confirmed                     | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/6), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/71), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/44)                         |
+| [M-22](https://github.com/code-423n4/2023-01-reserve-findings/issues/106) | Mitigation confirmed                     | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/5) and [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/64)                                                                                                                                  |
+| [M-23](https://github.com/code-423n4/2023-01-reserve-findings/issues/64)  | Mitigation confirmed w/ comments         | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/65), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/4), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/45)                         |
+| [M-24](https://github.com/code-423n4/2023-01-reserve-findings/issues/39)  | Mitigation confirmed                     | Reports from [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/66), [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/3), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/46)                         |
+| [M-25](https://github.com/code-423n4/2023-01-reserve-findings/issues/16)  | Mitigation confirmed                     | Reports from [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/2), [0xA5DF](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/67), and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/47)                         |
 
 **There were also 3 new medium severity issues surfaced by the wardens. See below for details regarding the new issues as well as issues that were not fully mitigated.**<br>
 
 ## [Mitigation of H-02: Issue not fully mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/49)
-*Submitted by 0xA5DF*
+
+_Submitted by 0xA5DF_
 
 ### Original Issue
 
@@ -4417,82 +4554,91 @@ H-02: [Basket range formula is inefficient, leading the protocol to unnecessary 
 https://github.com/reserve-protocol/protocol/blob/610cfca553beea41b9508abbfbf4ee4ce16cbc12/contracts/p1/mixins/RecollateralizationLib.sol#L146-L245
 
 ### Not mitigated - top range can still be too high, leading to unnecessary haircut
-* The applied mitigation follows the line of the mitigation suggested (disclosure: by me :)) in the original issue, however after reviewing it I found out that it doesn't fully mitigate the issue.
-* The original issue was that basket range band is too wide, with both top range being too high and bottom range too low
-* The bottom range is mitigated now
-* As for the top range - even though it's more efficient now, it still can result in a top range that doesn't make sense.
+
+- The applied mitigation follows the line of the mitigation suggested (disclosure: by me :)) in the original issue, however after reviewing it I found out that it doesn't fully mitigate the issue.
+- The original issue was that basket range band is too wide, with both top range being too high and bottom range too low
+- The bottom range is mitigated now
+- As for the top range - even though it's more efficient now, it still can result in a top range that doesn't make sense.
 
 ### Impact
+
 Protocol might go for an unnecessary haircut, causing a loss for RToken holders.
 In the scenario below we can trade to get ~99% of baskets needed, but instead the protocol goes for a 50% haircut.
 
 After the haircut the baskets held per supply ratio might grow back via `handoutExcessAssets` and `Furnace` however:
-* Not all excess asset goes to `Furnace`
-* `Furnace` grows slowly over time and in the meantime
-    * Redemption would be at the lower baskets per supply
-    * New users can issue in the meanwhile, diluting the melting effect
+
+- Not all excess asset goes to `Furnace`
+- `Furnace` grows slowly over time and in the meantime
+  - Redemption would be at the lower baskets per supply
+  - New users can issue in the meanwhile, diluting the melting effect
 
 In more extreme cases the baskets held can be an extremely low number that might even cause the haircut to fail due to `exchangeRateIsValidAfter` modifier on `setBasketsNeeded()`. This would mean trading would be disabled till somebody sends enough balance to the undercollateralized asset.
 
 ### Proof of Concept
 
 Consider the following scenario:
-* A basket is composed of 30 USDc and 1 ETH
-* The prices are:
-    * 1 USDc = 1 USD
-    * ETH = 1500 USD
-* Therefore the total basket value is 1515 USD
-* Protocol holds 1000 baskets
-* Governance changes the USDC quantity to 30 USDC
-* Baskets held now is only 500, since we hold only 15K USDC
-* Bottom range would be `basketsHeld + (excess_ETH * ETH_lowPrice / basket_highPrice) = 500 + (1500 * 500 * 0.99 / (1530 * 1.01)) = 980`
-* Top range would be `basketsHeld + (excess_ETH * ETH_highPrice / basket_lowPrice) = 500 + (1500 * 500 * 1.01 / (1530 * 0.99)) = 1000`
-* This is clearly a wrong estimation, which would lead to a haircut of 50% (!) rather than going for a trade.
+
+- A basket is composed of 30 USDc and 1 ETH
+- The prices are:
+  - 1 USDc = 1 USD
+  - ETH = 1500 USD
+- Therefore the total basket value is 1515 USD
+- Protocol holds 1000 baskets
+- Governance changes the USDC quantity to 30 USDC
+- Baskets held now is only 500, since we hold only 15K USDC
+- Bottom range would be `basketsHeld + (excess_ETH * ETH_lowPrice / basket_highPrice) = 500 + (1500 * 500 * 0.99 / (1530 * 1.01)) = 980`
+- Top range would be `basketsHeld + (excess_ETH * ETH_highPrice / basket_lowPrice) = 500 + (1500 * 500 * 1.01 / (1530 * 0.99)) = 1000`
+- This is clearly a wrong estimation, which would lead to a haircut of 50% (!) rather than going for a trade.
 
 Note: I mentioned governance change for simplicity, but this can also happen without governance intervention when a collateral gets disabled, it's value declines and a backup asset kicks in (at first the disabled asset would get traded and cover up some of the deficit and then we'd go for a haircut)
 
 ### Mitigation
-* A more efficient formula would be to use the max baskets held (i.e. the maximum of (each collateral balance divided by the basket_quantity of that collateral)) and then subtract from that the lowest estimation of baskets missing (i.e. lowest value estimation of needed assets to reach that amount divided by highest estimation of basket value).
-    * In the case above that would mean `maxBasketsHeld - (USDC_deficit * USDC_lowPrice / basket_highPrice) = 1000 - (500 * 30 * 0.99 / (1530 * 1.01)) = 990.4`. Freeing up 9.6 ETH for sale
-* The suggested formula might get us a higher top range estimation when the case is the other way around (the collateral that makes the larger part of the basket value is missing, in our case ETH is missing and USDC not), but it wouldn't result in a haircut and still go for trading (since the top range would be closer to baskets held)
 
+- A more efficient formula would be to use the max baskets held (i.e. the maximum of (each collateral balance divided by the basket_quantity of that collateral)) and then subtract from that the lowest estimation of baskets missing (i.e. lowest value estimation of needed assets to reach that amount divided by highest estimation of basket value).
+  - In the case above that would mean `maxBasketsHeld - (USDC_deficit * USDC_lowPrice / basket_highPrice) = 1000 - (500 * 30 * 0.99 / (1530 * 1.01)) = 990.4`. Freeing up 9.6 ETH for sale
+- The suggested formula might get us a higher top range estimation when the case is the other way around (the collateral that makes the larger part of the basket value is missing, in our case ETH is missing and USDC not), but it wouldn't result in a haircut and still go for trading (since the top range would be closer to baskets held)
 
 Even with the mitigation above there can be extreme cases where a single asset holds a very small fraction of the total basket value (e.g. 0.1%) and the mitigation wouldn't help much in this case. There might be a need to come up with a broader mitigation for the issue that haircut is done to the number of baskets held rather than bottom range even though the difference between the two can be significant. Or set a threshold for the fraction of the value that each collateral holds in the total value of the basket.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/49#issuecomment-1435296142):**
- > Confirming, but I believe this issue can only arise when the basket unit is increased in `{UoA}` terms. Can someone confirm this? Does the issue exist when a basket unit is simply allocated differently, as opposed to being increased in size? 
+
+> Confirming, but I believe this issue can only arise when the basket unit is increased in `{UoA}` terms. Can someone confirm this? Does the issue exist when a basket unit is simply allocated differently, as opposed to being increased in size?
 
 **[0xA5DF (warden) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/49#issuecomment-1435768983):**
- > >  Does the issue exist when a basket unit is simply allocated differently
-> 
+
+> > Does the issue exist when a basket unit is simply allocated differently
+>
 > Usually when it's only allocated differently the asset which was decreased in quantity would be used to cover up for the asset that was increased (since top range is capped to baskets needed, the decreased asset would have a surplus). However there can be a scenario under difference in allocation:
-> * Asset A (worth 1515 USD) was switched to mostly asset B (1 ETH as above) and some of asset C (quantity increased from 15 USDC to 30 USDC)
-> * All of asset A was traded for asset B first (since asset B is missing more in value + oracle error caused a 1% difference in price)
-> * We're now facing the same issue as above - we've got 100% of basket B
-> 
+>
+> - Asset A (worth 1515 USD) was switched to mostly asset B (1 ETH as above) and some of asset C (quantity increased from 15 USDC to 30 USDC)
+> - All of asset A was traded for asset B first (since asset B is missing more in value + oracle error caused a 1% difference in price)
+> - We're now facing the same issue as above - we've got 100% of basket B
+>
 > Plus, as mentioned above this can also happen when a collateral gets disabled, went down in value and was switched to backup collateral
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/49#issuecomment-1435769665):**
- > @0xA5DF shouldn't the `range.top` mitigation algo include a (positive) contribution from assets that are not in the basket? That is:
-> 
-> if `quantity() > 0`: then we subtract out  `(asset_deficit * asset_lowPrice / basket_highPrice)`<br>
+
+> @0xA5DF shouldn't the `range.top` mitigation algo include a (positive) contribution from assets that are not in the basket? That is:
+>
+> if `quantity() > 0`: then we subtract out `(asset_deficit * asset_lowPrice / basket_highPrice)`<br>
 > else: then we add in `(asset_balance * asset_highPrice / basket_lowPrice)`
 
 **[0xA5DF (warden) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/49#issuecomment-1435771369):**
- > Yeah, assets that not in the baskets or in the basket and more than needed.
-> 
+
+> Yeah, assets that not in the baskets or in the basket and more than needed.
+>
 > As I mentioned in some edge cases the issue still might persist. Maybe as part of the mitigation we should also don't do a haircut to an amount that's significantly lower than the bottom range.<br>
 > E.g. if the baskets held is 50% (of needed baskets) and bottom range is 98% we should do a haircut only down to 95% (and hopefully in the next round there are more chances we'll be able to trade).
 
 **[tbrent (Reserve) linked to a mitigation PR](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/49#ref-pullrequest-1590520362):**
- > [reserve-protocol/protocol#650](https://github.com/reserve-protocol/protocol/pull/650)
 
+> [reserve-protocol/protocol#650](https://github.com/reserve-protocol/protocol/pull/650)
 
-
-***
+---
 
 ## [Mitigation of M-04: Issue not fully mitigated](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/54)
-*Submitted by 0xA5DF, also found by [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/14) and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/69)*
+
+_Submitted by 0xA5DF, also found by [HollaDieWaldfee](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/14) and [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/69)_
 
 ### Original Issue
 
@@ -4508,34 +4654,36 @@ User might be agreeing to a partial redemption expecting to lose only a small fr
 
 **Details**
 
-* Issue was that user might get only partial redemption when they didn't intend to - they sent a tx to the pool, in the meanwhile an asset got disabled and replaced. Redeemer doesn't get any share of the disabled collateral, and the backup collateral balance is zero.
-* Mitigation adds a parameter named `revertOnPartialRedemption`, if the parameter is false the redeeming would revert if any collateral holds only part of the asset.
-* This is suppose to solve this issue since in the case above the user would set it to false and the redeeming tx would revert
-* The issue is that there might be a case where the protocol holds only a bit less than the quantity required (e.g. 99%), and in that case the user would be setting `revertOnPartialRedemption` to true, expecting to get 99% of the value of the basket. Then if an asset is disabled and replaced the user would suffer a loss much greater than they've agreed to.
+- Issue was that user might get only partial redemption when they didn't intend to - they sent a tx to the pool, in the meanwhile an asset got disabled and replaced. Redeemer doesn't get any share of the disabled collateral, and the backup collateral balance is zero.
+- Mitigation adds a parameter named `revertOnPartialRedemption`, if the parameter is false the redeeming would revert if any collateral holds only part of the asset.
+- This is suppose to solve this issue since in the case above the user would set it to false and the redeeming tx would revert
+- The issue is that there might be a case where the protocol holds only a bit less than the quantity required (e.g. 99%), and in that case the user would be setting `revertOnPartialRedemption` to true, expecting to get 99% of the value of the basket. Then if an asset is disabled and replaced the user would suffer a loss much greater than they've agreed to.
 
 ### Proof of Concept
 
 **Likelihood**
 Mostly the protocol wouldn't be undercollateralized for a long time, since there would either by trading going on to cover it or eventually there would be a haircut. But there can still be periods of time where this happens:
-* Governance increased the basket quantity of one asset a bit (expecting the yield to cover for it), trading won't start till `tradingDelay` passes. Meaning a few hours where only partial redemption would be possible.
-* Another asset got disabled first, and replaced by a backup asset. The protocol either had enough balance of the backup asset or covered up for it via trading. Yet again, this won't last long since eventually all trading would complete and the protocol would go to a haircut, but there can be multiple trading of multiple assets which would make it last up to a few hours.
+
+- Governance increased the basket quantity of one asset a bit (expecting the yield to cover for it), trading won't start till `tradingDelay` passes. Meaning a few hours where only partial redemption would be possible.
+- Another asset got disabled first, and replaced by a backup asset. The protocol either had enough balance of the backup asset or covered up for it via trading. Yet again, this won't last long since eventually all trading would complete and the protocol would go to a haircut, but there can be multiple trading of multiple assets which would make it last up to a few hours.
 
 ### Mitigation
+
 The ideal solution would be to allow the user to specify the min amount for each asset or the min ratio of the between the total redemption value and the basket value, but that would be too expensive and complicated.
 I think the middle way here would be to replace `revertOnPartialRedemption` parameter with a single numeric parameter that specifies the min ratio that the user expects to get (i.e. if that parameter is set to 90%, that means that if any asset holds less than 90% than the quantity it should the redemption would revert).
 This shouldn't cost much more gas, and would cover most of the cases.
 
 **[HollaDieWaldfee (warden) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/54#issuecomment-1435260233):**
- > Agreed
+
+> Agreed
 
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/54#issuecomment-1435343609)**
 
-
-
-***
+---
 
 ## [Early attacker can DOS rToken issuance](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/13)
-*Submitted by HollaDieWaldfee, also found by 0xA5DF ([here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/70) and [here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/55))*
+
+_Submitted by HollaDieWaldfee, also found by 0xA5DF ([here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/70) and [here](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/55))_
 
 Note: related to mitigation for [M-05](https://github.com/code-423n4/2023-01-reserve-findings/issues/384)
 
@@ -4545,81 +4693,89 @@ https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765
 https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/RToken.sol#L132
 
 ### Impact
-An early attacker can DOS the `issue` functionality in the `RToken` contract.  
 
-No issuances can be made. And the DOS cannot be recovered from. It is permanent.  
+An early attacker can DOS the `issue` functionality in the `RToken` contract.
+
+No issuances can be made. And the DOS cannot be recovered from. It is permanent.
 
 ### Proof of Concept
-You can add the following test to the `Furnace.test.ts` file and execute it with `yarn hardhat test --grep 'M-05 Mitigation Error: DOS issue'`.  
+
+You can add the following test to the `Furnace.test.ts` file and execute it with `yarn hardhat test --grep 'M-05 Mitigation Error: DOS issue'`.
 
 ```typescript
 describe('M-05 Mitigation Error', () => {
-    beforeEach(async () => {
-      // Approvals for issuance
-      await token0.connect(addr1).approve(rToken.address, initialBal)
-      await token1.connect(addr1).approve(rToken.address, initialBal)
-      await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3.connect(addr1).approve(rToken.address, initialBal)
+  beforeEach(async () => {
+    // Approvals for issuance
+    await token0.connect(addr1).approve(rToken.address, initialBal)
+    await token1.connect(addr1).approve(rToken.address, initialBal)
+    await token2.connect(addr1).approve(rToken.address, initialBal)
+    await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      await token0.connect(addr2).approve(rToken.address, initialBal)
-      await token1.connect(addr2).approve(rToken.address, initialBal)
-      await token2.connect(addr2).approve(rToken.address, initialBal)
-      await token3.connect(addr2).approve(rToken.address, initialBal)
+    await token0.connect(addr2).approve(rToken.address, initialBal)
+    await token1.connect(addr2).approve(rToken.address, initialBal)
+    await token2.connect(addr2).approve(rToken.address, initialBal)
+    await token3.connect(addr2).approve(rToken.address, initialBal)
 
-      // Issue tokens
-      const issueAmount: BigNumber = bn('100e18')
-      // await rToken.connect(addr1).issue(issueAmount)
-      // await rToken.connect(addr2).issue(issueAmount)
-    })
-
-    it('M-05 Mitigation Error: DOS issue', async () => {
-      /* attack vector actually so bad that attacker can block issuance a loooong time?
-      */
-      console.log("Total supply");
-      console.log(await rToken.totalSupply());
-
-      const issueAmount: BigNumber = bn('1e17')
-      await rToken.connect(addr1).issue(issueAmount)
-
-      console.log("Total supply");
-      console.log(await rToken.totalSupply());
-
-      const transferAmount: BigNumber = bn('1e16')
-      rToken.connect(addr1).transfer(furnace.address, transferAmount);
-
-      await advanceTime(3600);
-
-      await furnace.connect(addr1).melt()
-      
-      await advanceTime(3600);
-
-      console.log("rToken balance of furnace");
-      console.log(await rToken.balanceOf(furnace.address));
-
-      /* rToken can not be issued
-      */
-
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('rToken supply too low to melt')
-
-      console.log("rToken balance of furnace");
-      console.log(await rToken.balanceOf(furnace.address));
-
-      /* rToken can not be issued even after time passes
-      */
-
-      await advanceTime(3600);
-
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('rToken supply too low to melt')
-
-      /* rToken.melt cannot be called directly either
-      */
-
-      await expect(rToken.connect(addr1).melt(transferAmount)).to.be.revertedWith('rToken supply too low to melt')
-    })
+    // Issue tokens
+    const issueAmount: BigNumber = bn('100e18')
+    // await rToken.connect(addr1).issue(issueAmount)
+    // await rToken.connect(addr2).issue(issueAmount)
   })
+
+  it('M-05 Mitigation Error: DOS issue', async () => {
+    /* attack vector actually so bad that attacker can block issuance a loooong time?
+     */
+    console.log('Total supply')
+    console.log(await rToken.totalSupply())
+
+    const issueAmount: BigNumber = bn('1e17')
+    await rToken.connect(addr1).issue(issueAmount)
+
+    console.log('Total supply')
+    console.log(await rToken.totalSupply())
+
+    const transferAmount: BigNumber = bn('1e16')
+    rToken.connect(addr1).transfer(furnace.address, transferAmount)
+
+    await advanceTime(3600)
+
+    await furnace.connect(addr1).melt()
+
+    await advanceTime(3600)
+
+    console.log('rToken balance of furnace')
+    console.log(await rToken.balanceOf(furnace.address))
+
+    /* rToken can not be issued
+     */
+
+    await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+      'rToken supply too low to melt'
+    )
+
+    console.log('rToken balance of furnace')
+    console.log(await rToken.balanceOf(furnace.address))
+
+    /* rToken can not be issued even after time passes
+     */
+
+    await advanceTime(3600)
+
+    await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
+      'rToken supply too low to melt'
+    )
+
+    /* rToken.melt cannot be called directly either
+     */
+
+    await expect(rToken.connect(addr1).melt(transferAmount)).to.be.revertedWith(
+      'rToken supply too low to melt'
+    )
+  })
+})
 ```
 
-The attack performs the following steps:  
+The attack performs the following steps:
 
 1. Issue `1e17` rToken
 2. Transfer `1e16` rToken to the furnace
@@ -4628,10 +4784,12 @@ The attack performs the following steps:
 5. Now `RToken.issue` and `RToken.melt` are permanently DOSed
 
 ### Tools Used
+
 VSCode
 
 ### Recommended Mitigation Steps
-Use a try-catch block for `furnace.melt` in the `RToken.issueTo` function.  
+
+Use a try-catch block for `furnace.melt` in the `RToken.issueTo` function.
 
 ```diff
 diff --git a/contracts/p1/RToken.sol b/contracts/p1/RToken.sol
@@ -4641,28 +4799,27 @@ index 616b1532..fc584688 100644
 @@ -129,7 +129,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
          // Ensure SOUND basket
          require(basketHandler.status() == CollateralStatus.SOUND, "basket unsound");
- 
+
 -        furnace.melt();
 +        try main.furnace().melt() {} catch {}
          uint256 supply = totalSupply();
- 
+
          // Revert if issuance exceeds either supply throttle
 ```
 
-The only instance when `furnace.melt` reverts is when the `totalSupply` is too low. But then it is ok to catch the exception and just continue with the issuance and potentially lose rToken appreciation.  
+The only instance when `furnace.melt` reverts is when the `totalSupply` is too low. But then it is ok to catch the exception and just continue with the issuance and potentially lose rToken appreciation.
 
-Potentially losing some rToken appreciation is definitely better than having this attack vector.  
+Potentially losing some rToken appreciation is definitely better than having this attack vector.
 
-The `RToken.redeemTo` function already has the call to the `furnance.melt` function wrapped in a try-catch block. So redemption cannot be DOSed.  
+The `RToken.redeemTo` function already has the call to the `furnance.melt` function wrapped in a try-catch block. So redemption cannot be DOSed.
 
 **[tbrent (Reserve) confirmed]()**
 
-
-
-***
+---
 
 ## [AssetRegistry cannot disable a bad asset](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73)
-*Submitted by AkshaySrivastav*
+
+_Submitted by AkshaySrivastav_
 
 ### Original Issue
 
@@ -4672,8 +4829,8 @@ M-16: [RToken permanently insolvent/unusable if a single collateral in the baske
 
 https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/AssetRegistry.sol#L91-L104
 
-
 ### Impact
+
 The AssetRegistry contains an `unregister` function which can be used to detach a bad collateral from the RToken system.
 
 Previously [M-16](https://github.com/code-423n4/2023-01-reserve-findings/issues/254) was reported as an issue for the RToken system in which a single bad collateral can stop the working of RToken protocol.
@@ -4686,69 +4843,76 @@ So, if for some reasons the Collateral contract start consuming more gas than th
 
 This essentially prevent governance from unregistering a collateral from the RToken. The unregistering of a collateral is still dependent upon the code execution of the collateral token contract.
 
-
 ### Proof of Concept
+
 Consider this scenario:
 
- - TokenA was registered as an asset in AssetRegistry.
- - Due to an upgrade/bug/hack the TokenA starts consuming all available gas on function calls.
- - The RToken governance decides to unregister the TokenA asset and calls the `AssetRegistry.unregister` function.
- - Internal call chain invokes any function of TokenA contract. The txn reverts with an out of gas error.
- - The governance is now unable to unregister TokenA from RToken protocol and RToken is now unusable.
+- TokenA was registered as an asset in AssetRegistry.
+- Due to an upgrade/bug/hack the TokenA starts consuming all available gas on function calls.
+- The RToken governance decides to unregister the TokenA asset and calls the `AssetRegistry.unregister` function.
+- Internal call chain invokes any function of TokenA contract. The txn reverts with an out of gas error.
+- The governance is now unable to unregister TokenA from RToken protocol and RToken is now unusable.
 
 ### Recommended Mitigation Steps
+
 Consider detaching the interaction with collateral contract completely from the unregistering contract flow. Unregistering a contract must never depend upon the code execution of Collateral token contract.
 
 **[0xA5DF (warden) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435246259):**
- > Under the [1/64 rule](https://eips.ethereum.org/EIPS/eip-150), even if the call runs out of gas we still remain with 1/64 of the gas available before the call.<br>
+
+> Under the [1/64 rule](https://eips.ethereum.org/EIPS/eip-150), even if the call runs out of gas we still remain with 1/64 of the gas available before the call.<br>
 > Even if the remaining of `unregister()` takes about 50K gas units we'd still be fine if we call it with 3.2M gas.
 
 **[tbrent (Reserve) confirmed and commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435314343):**
- > This is a good find!
-> 
-> Seems like another option for mitigation is to make the call to `BasketHandler.quantity()` reserving some quantity (100k?) of gas for later execution. 
+
+> This is a good find!
+>
+> Seems like another option for mitigation is to make the call to `BasketHandler.quantity()` reserving some quantity (100k?) of gas for later execution.
 
 **[AkshaySrivastav (warden) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1435483929):**
- > Ya reserving some gas could be a mitigation.
+
+> Ya reserving some gas could be a mitigation.
 >
 > > Under the [1/64 rule](https://eips.ethereum.org/EIPS/eip-150), even if the call runs out of gas we still remain with 1/64 of the gas available before the call.
-> 
-> I think this can be bypassed, after the call to broken Token contract, a default returndatacopy is done which can be used to consume the remaining 1/64 gas. 
+>
+> I think this can be bypassed, after the call to broken Token contract, a default returndatacopy is done which can be used to consume the remaining 1/64 gas.
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1438884674):**
- > [reserve-protocol/protocol#647](https://github.com/reserve-protocol/protocol/pull/647)
-> 
-> @AkshaySrivastav - does the linked PR address the issue? Any problems you see with it? 
+
+> [reserve-protocol/protocol#647](https://github.com/reserve-protocol/protocol/pull/647)
+>
+> @AkshaySrivastav - does the linked PR address the issue? Any problems you see with it?
 
 **[AkshaySrivastav (warden) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1439457512):**
- > @tbrent some issues I still see which could be concerning are:
-> 
+
+> @tbrent some issues I still see which could be concerning are:
+>
 > 1. As all external contract calls after completion perform a RETURNDATACOPY, this can be misused to drain the 900k gas that you are reserving. The malicious token contract can return a huge data chunk which can consume the 900k gas.<br>
 > 2. The mitigation also opens up another issue. The `unregister()` call can be triggered with ~901k gas (excluding gas cost of require statements for simplicity). This will essentially cause failing of `basketHandler.quantity` call even for non-malicious collateral tokens. This is a more likely scenario as most governance proposals are open to be executed by anyone (once voting is passed and proposal is queued).
-> 
-> The actual mitigation of this issue would be to completely detach the code execution of token contract from the unregistering execution flow. 
+>
+> The actual mitigation of this issue would be to completely detach the code execution of token contract from the unregistering execution flow.
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1440323917):**
- > This seems ok. Not disabling the basket is a UX improvement. If the attack still results in the asset being unregistered then I would say it is not an issue.
+
+> This seems ok. Not disabling the basket is a UX improvement. If the attack still results in the asset being unregistered then I would say it is not an issue.
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/73#issuecomment-1446363327):**
- > After reviewing the documentation for the mitigation contest, I believe this to be a case of mitigation not confirmed and not a mitigation error. 
-> 
+
+> After reviewing the documentation for the mitigation contest, I believe this to be a case of mitigation not confirmed and not a mitigation error.
+>
 > If you read the original M-16 report it states:
-> 
+>
 > > For plugins to function as intended there has to be a dependency on protocol specific function.<br>
 > > In a case that the collateral token is corrupted, the governance should be able to replace to corrupted token. The unregistering flow should never be depended on the token functionality.
-> 
-> The key part of this `The unregistering flow should never be depended on the token functionality.` 
-> 
-> The gas characteristics of the token are part of its functionality, so the mitigation was not sufficient to handle all cases and it's not a mitigation error / new issue. 
+>
+> The key part of this `The unregistering flow should never be depended on the token functionality.`
+>
+> The gas characteristics of the token are part of its functionality, so the mitigation was not sufficient to handle all cases and it's not a mitigation error / new issue.
 
-
-
-***
+---
 
 ## [StRSR: attacker can steal excess rsr that is returned after seizure](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/17)
-*Submitted by HollaDieWaldfee, also found by [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/48)*
+
+_Submitted by HollaDieWaldfee, also found by [AkshaySrivastav](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/48)_
 
 **Severity: Medium**
 
@@ -4757,70 +4921,73 @@ Consider detaching the interaction with collateral contract completely from the 
 https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/BackingManager.sol#L176-L182<br>
 https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/StRSR.sol#L496-L530
 
-
 ### Vulnerability details
 
 **Note:**<br>
 This issue deals with excess `rsr` that was seized from `stRSR` but is returned again.<br>
-The `M-12` issue also deals with excess `rsr`.  
+The `M-12` issue also deals with excess `rsr`.
 
-However `M-12` deals with the fact that not all `rsr` is returned to `stRSR`, whereas this issue deals with the fact that an attacker can steal `rsr` once it is returned to `stRSR`.  
+However `M-12` deals with the fact that not all `rsr` is returned to `stRSR`, whereas this issue deals with the fact that an attacker can steal `rsr` once it is returned to `stRSR`.
 
-So while the issues seem to be similar they in fact are different.  
+So while the issues seem to be similar they in fact are different.
 
-They are separate issues. So I chose to report this separately with the `NEW` keyword.  
+They are separate issues. So I chose to report this separately with the `NEW` keyword.
 
 ### Impact
-`rsr` can be returned to `stRSR` after a seizure if not all seized `rsr` has been necessary to regain full collateralization.  
 
-This happens in the [`BackingManger.handoutExcessAssets`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/BackingManager.sol#L176-L182) function.  
+`rsr` can be returned to `stRSR` after a seizure if not all seized `rsr` has been necessary to regain full collateralization.
 
-This excess `rsr` is then paid out to ALL stakers just like regular `rsr` rewards using the [`StRSR._payoutRewards`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/StRSR.sol#L496-L530) function.  
+This happens in the [`BackingManger.handoutExcessAssets`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/BackingManager.sol#L176-L182) function.
 
-This is unfair. An attacker can abuse this behavior and stake `rsr` to profit from the returned `rsr` which is used to appreciate his `stRSR`.  
+This excess `rsr` is then paid out to ALL stakers just like regular `rsr` rewards using the [`StRSR._payoutRewards`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/StRSR.sol#L496-L530) function.
 
-It would be fair if the `rsr` was returned only to the users that had staked when the seizure occurred.  
+This is unfair. An attacker can abuse this behavior and stake `rsr` to profit from the returned `rsr` which is used to appreciate his `stRSR`.
+
+It would be fair if the `rsr` was returned only to the users that had staked when the seizure occurred.
 
 ### Proof of Concept
-Think of the following scenario:  
 
-1. There are currently 100 stakers with an equal share of the `1000 rsr` total that is currently in the `stRSR` contract.  
+Think of the following scenario:
+
+1. There are currently 100 stakers with an equal share of the `1000 rsr` total that is currently in the `stRSR` contract.
 2. A seizure occurs and `500 rsr` are seized.
 3. Not all `rsr` is sold and some (say `50 rsr`) is returned to `StRSR`
 4. The attacker can front-run the transaction that returns the `rsr` and become a staker himself
-5. The attacker will profit from the returned `rsr` once it is paid out as reward. Say the attacker stakes `100 rsr`. He now owns a share of `100 rsr / (500 rsr + 100 rsr) = 20%`. This means he will also get `20%` of the `50 rsr` that are paid out as rewards.  
+5. The attacker will profit from the returned `rsr` once it is paid out as reward. Say the attacker stakes `100 rsr`. He now owns a share of `100 rsr / (500 rsr + 100 rsr) = 20%`. This means he will also get `20%` of the `50 rsr` that are paid out as rewards.
 
 ### Tools Used
+
 VSCode
 
 ### Recommended Mitigation Steps
-Ideally, as I said above, the `rsr` should be returned only to the users that had staked when the seizure occurred.  
 
-With the current architecture of the `stRSR` contract this is not possible. There is no way to differentiate between stakers.  
+Ideally, as I said above, the `rsr` should be returned only to the users that had staked when the seizure occurred.
 
-Also the scenario described is an edge and relies on a seizure to occur and `rsr` to be returned.  
+With the current architecture of the `stRSR` contract this is not possible. There is no way to differentiate between stakers.
 
-It seems unrealistic that `10%` of the seized `rsr` is returned again. I think a number like `1% - 5%` is more realistic.  
+Also the scenario described is an edge and relies on a seizure to occur and `rsr` to be returned.
 
-But still if the amount of `rsr` that is seized is big enough, `1% - 5%` can be a significant amount in terms of dollar value.  
+It seems unrealistic that `10%` of the seized `rsr` is returned again. I think a number like `1% - 5%` is more realistic.
 
-I estimate this to be `Medium` severity since an attacker can profit at the expense of other stakers and this behavior will decrease the willingness of users to stake as the risk of losing funds is increased.  
+But still if the amount of `rsr` that is seized is big enough, `1% - 5%` can be a significant amount in terms of dollar value.
 
-This severly damages the incentives involved with staking. Stakers are incentivized to wait for seizures to occur and only then stake as they might profit from returned `rsr`.  
+I estimate this to be `Medium` severity since an attacker can profit at the expense of other stakers and this behavior will decrease the willingness of users to stake as the risk of losing funds is increased.
 
-I encourage the sponsor to further assess if there is a better way to return excess `rsr`.  
+This severly damages the incentives involved with staking. Stakers are incentivized to wait for seizures to occur and only then stake as they might profit from returned `rsr`.
+
+I encourage the sponsor to further assess if there is a better way to return excess `rsr`.
 
 **[tbrent (Reserve) acknowledged](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/17#issuecomment-1435353214)**
 
 **[0xean (judge) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/17#issuecomment-1440337932):**
- > I believe that this issue does amount to a "leak of value" and is a valid Medium finding per C4 documentation. It may be accepted by the sponsors as a design tradeoff, but still should be highlighted to end users. 
 
+> I believe that this issue does amount to a "leak of value" and is a valid Medium finding per C4 documentation. It may be accepted by the sponsors as a design tradeoff, but still should be highlighted to end users.
 
-
-***
+---
 
 ## [Attacker can temporary deplete available redemption/issuance by running issuance then redemption or vice versa](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/79)
-*Submitted by 0xA5DF*
+
+_Submitted by 0xA5DF_
 
 **Severity: Medium**
 
@@ -4829,11 +4996,13 @@ I encourage the sponsor to further assess if there is a better way to return exc
 https://github.com/reserve-protocol/protocol/blob/610cfca553beea41b9508abbfbf4ee4ce16cbc12/contracts/libraries/Throttle.sol#L66-L75
 
 ### Impact
+
 Attacker can deplete available issuance or redemption by first issuing and then redeeming in the same tx or vice versa.<br>
 The available redemption/issuance will eventually grow back, but this temporary reduces the available amount.<br>
-This can also use to front run other user who tries to redeem/issue in order to fail their tx. 
+This can also use to front run other user who tries to redeem/issue in order to fail their tx.
 
 ### Proof of Concept
+
 In the PoC below a user is able to reduce the redemption available by more than 99% (1e20 to 1e14), and that's without spending anything but gas (they end up with the same amount of RToken as before)
 
 ```diff
@@ -4844,7 +5013,7 @@ index e04f51db..33044b79 100644
 @@ -1293,6 +1293,31 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
            )
          })
- 
+
 +        it('PoC', async function () {
 +          const rechargePerBlock = config.issuanceThrottle.amtRate.div(BLOCKS_PER_HOUR);
 +
@@ -4872,19 +5041,20 @@ index e04f51db..33044b79 100644
 +
          it('Should update issuance throttle correctly on redemption', async function () {
            const rechargePerBlock = config.issuanceThrottle.amtRate.div(BLOCKS_PER_HOUR)
- 
+
 @@ -1335,6 +1360,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
        })
      })
    })
 +  return;
- 
+
    describe('Melt/Mint #fast', () => {
      const issueAmount: BigNumber = bn('100e18')
 
 ```
 
 Output:
+
 ```
 {
   redemptionAvailable: BigNumber { value: "10000000000000000000" }, // 1e20
@@ -4898,18 +5068,20 @@ after {
 ```
 
 ### Recommended Mitigation Steps
+
 Mitigating this issue seems a bit tricky.
 
 One way is at the end of `currentlyAvailable()` to return the max of `available` and `throttle.lastAvailable` (up to some limit, in order not to allow to much of it to accumulate).
 
 **[HollaDieWaldfee (warden) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/79#issuecomment-1435362326):**
- > Seems valid but I have a doubt about this:
-> 
+
+> Seems valid but I have a doubt about this:
+>
 > rToken issuance uses rounding mode CEIL when calculating how much a user has to pay.<br>
 > rToken redemption uses rounding mode FLOOR when calculating how much a user receives.
-> 
+>
 > So I think there is a bit more cost involved than just gas and the attack needs to be renewed very often.
-> 
+>
 > Also:
 > Might this be mitigated when the redemption limit is chosen significantly higher than the issuance limit?<br>
 > Because then when the attack must be renewed and `issue` is called, the redemption limit will be raised and not so much that it hits its limit.<br>
@@ -4918,17 +5090,18 @@ One way is at the end of `currentlyAvailable()` to return the max of `available`
 **[tbrent (Reserve) confirmed](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/79#issuecomment-1435444036)**
 
 **[tbrent (Reserve) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/79#issuecomment-1435444258):**
- > @HollaDieWaldfee - that's a really nice mitigation! I think that's exactly the thing to do.
+
+> @HollaDieWaldfee - that's a really nice mitigation! I think that's exactly the thing to do.
 
 **[tbrent (Reserve) linked a PR](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/79#issuecomment-1435444258):**
- > [reserve-protocol/protocol#656](https://github.com/reserve-protocol/protocol/pull/656)
 
+> [reserve-protocol/protocol#656](https://github.com/reserve-protocol/protocol/pull/656)
 
-
-***
+---
 
 ## [Attacker can cause loss to rToken holders and stakers by running `BackingManager._manageTokens` before rewards are claimed](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/22)
-*Submitted by HollaDieWaldfee*
+
+_Submitted by HollaDieWaldfee_
 
 **Severity: Medium**
 
@@ -4936,38 +5109,41 @@ One way is at the end of `currentlyAvailable()` to return the max of `available`
 
 https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/BackingManager.sol#L105-L153
 
-
 ### Impact
-The assets that back the rTokens are held by the `BackingManager` and can earn rewards.  
 
-The rewards can be claimed via the [`TradingP1.claimRewards`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/mixins/Trading.sol#L82-L84) and [`TradingP1.claimRewardsSingle`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/mixins/Trading.sol#L90-L92) function.  
+The assets that back the rTokens are held by the `BackingManager` and can earn rewards.
 
-The `BackingManager` inherits from `TradingP1` and therefore the above functions can be used to claim rewards.  
+The rewards can be claimed via the [`TradingP1.claimRewards`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/mixins/Trading.sol#L82-L84) and [`TradingP1.claimRewardsSingle`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/mixins/Trading.sol#L90-L92) function.
 
-The issue is that the `BackingManager` does not claim rewards as part of its [`_manageTokens`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/BackingManager.sol#L105-L153) function.  
+The `BackingManager` inherits from `TradingP1` and therefore the above functions can be used to claim rewards.
 
-So recollateralization can occur before rewards have been claimed.  
+The issue is that the `BackingManager` does not claim rewards as part of its [`_manageTokens`](https://github.com/reserve-protocol/protocol/blob/27a3472d553b4fa54f896596007765ec91941348/contracts/p1/BackingManager.sol#L105-L153) function.
 
-There exist possibilities how an attacker can exploit this to cause a loss to rToken holders and rsr stakers.  
+So recollateralization can occur before rewards have been claimed.
+
+There exist possibilities how an attacker can exploit this to cause a loss to rToken holders and rsr stakers.
 
 ### Proof of Concept
-Let's think about an example for such a scenario:  
+
+Let's think about an example for such a scenario:
 
 Assume that the `RToken` is backed by a considerable amount of `TokenA`
 
-`TokenA` earns rewards but not continuously. Bigger amounts of rewards are paid out periodically. Say 5% rewards every year.  
+`TokenA` earns rewards but not continuously. Bigger amounts of rewards are paid out periodically. Say 5% rewards every year.
 
-Assume further that the `RToken` is currently undercollateralized.  
+Assume further that the `RToken` is currently undercollateralized.
 
-The attacker can now front-run the claiming of rewards and perform recollateralization.  
+The attacker can now front-run the claiming of rewards and perform recollateralization.
 
-The recollateralization might now seize `rsr` from stakers or take an unnecessary haircut.  
+The recollateralization might now seize `rsr` from stakers or take an unnecessary haircut.
 
 ### Tools Used
+
 VSCode
 
 ### Recommended Mitigation Steps
-I suggest that the `BackingManager._manageTokens` function calls `claimRewards`. Even before it calculates how many baskets it holds:  
+
+I suggest that the `BackingManager._manageTokens` function calls `claimRewards`. Even before it calculates how many baskets it holds:
 
 ```diff
 diff --git a/contracts/p1/BackingManager.sol b/contracts/p1/BackingManager.sol
@@ -4977,25 +5153,25 @@ index fc38ce29..e17bb63d 100644
 @@ -113,6 +113,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
          uint48 basketTimestamp = basketHandler.timestamp();
          if (block.timestamp < basketTimestamp + tradingDelay) return;
- 
+
 +        this.claimRewards();
 +
          uint192 basketsHeld = basketHandler.basketsHeldBy(address(this));
- 
+
          // if (basketHandler.fullyCollateralized())
 ```
 
 **[tbrent (Reserve) acknowledged and commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/22#issuecomment-1435352092):**
- > `claimRewards()` can be pretty gas-intensive, so we'll have to see whether we decide this is worth doing or not. But nice find!
+
+> `claimRewards()` can be pretty gas-intensive, so we'll have to see whether we decide this is worth doing or not. But nice find!
 
 **[0xA5DF (warden) commented](https://github.com/code-423n4/2023-02-reserve-mitigation-contest-findings/issues/22#issuecomment-1445186383):**
- > > `claimRewards()` can be pretty gas-intensive, so we'll have to see whether we decide this is worth doing or not. But nice find!
-> 
+
+> > `claimRewards()` can be pretty gas-intensive, so we'll have to see whether we decide this is worth doing or not. But nice find!
+>
 > Maybe instead you can require `claimRewards()` to be called within some time interval - mark the last time it was called using a storage variable and in `_manageTokens()` revert if more than that time interval has passed.
 
-
-
-***
+---
 
 # Disclosures
 

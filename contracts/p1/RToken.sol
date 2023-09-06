@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -87,6 +87,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Issue an RToken on the current basket
+    /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
+    ///     of backing tokens to approve.
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
     function issue(uint256 amount) public {
@@ -94,9 +96,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Issue an RToken on the current basket, to a particular recipient
+    /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
+    ///     of backing tokens to approve.
     /// @param recipient The address to receive the issued RTokens
     /// @param amount {qRTok} The quantity of RToken to issue
-    /// @custom:interaction
+    /// @custom:interaction RCEI
     // BU exchange rate cannot decrease, and it can only increase when < FIX_ONE.
     function issueTo(address recipient, uint256 amount) public notIssuancePausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
@@ -104,6 +108,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // == Refresh ==
 
         assetRegistry.refresh();
+        furnace.melt();
 
         // == Checks-effects block ==
 
@@ -111,8 +116,6 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // Ensure basket is ready, SOUND and not in warmup period
         require(basketHandler.isReady(), "basket not ready");
-
-        furnace.melt();
         uint256 supply = totalSupply();
 
         // Revert if issuance exceeds either supply throttle
@@ -178,10 +181,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction RCEI
     function redeemTo(address recipient, uint256 amount) public notFrozen {
         // == Refresh ==
-
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {} // nice for the redeemer, but not necessary
+        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -249,12 +251,11 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         uint192[] memory portions,
         address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external notFrozen returns (address[] memory erc20sOut, uint256[] memory amountsOut) {
+    ) external notFrozen {
         // == Refresh ==
-
         assetRegistry.refresh();
         // solhint-disable-next-line no-empty-blocks
-        try main.furnace().melt() {} catch {}
+        try furnace.melt() {} catch {} // nice for the redeemer, but not necessary
 
         // == Checks and Effects ==
 
@@ -278,7 +279,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // === Get basket redemption amounts ===
 
-        (erc20sOut, amountsOut) = basketHandler.quoteCustomRedemption(
+        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quoteCustomRedemption(
             basketNonces,
             portions,
             baskets
@@ -286,18 +287,18 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
 
         // ==== Prorate redemption ====
         // i.e, set amounts = min(amounts, balances * amount / totalSupply)
-        //   where balances[i] = erc20sOut[i].balanceOf(backingManager)
+        //   where balances[i] = erc20s[i].balanceOf(backingManager)
 
         // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
-        for (uint256 i = 0; i < erc20sOut.length; ++i) {
+        for (uint256 i = 0; i < erc20s.length; ++i) {
             // {qTok} = {qTok} * {qRTok} / {qRTok}
             uint256 prorata = mulDiv256(
-                IERC20(erc20sOut[i]).balanceOf(address(backingManager)),
+                IERC20(erc20s[i]).balanceOf(address(backingManager)),
                 amount,
                 supply
             ); // FLOOR
 
-            if (prorata < amountsOut[i]) amountsOut[i] = prorata;
+            if (prorata < amounts[i]) amounts[i] = prorata;
         }
 
         // === Save initial recipient balances ===
@@ -313,15 +314,15 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // Distribute tokens; revert if empty redemption
         {
             bool allZero = true;
-            for (uint256 i = 0; i < erc20sOut.length; ++i) {
-                if (amountsOut[i] == 0) continue; // unregistered ERC20s will have 0 amount
+            for (uint256 i = 0; i < erc20s.length; ++i) {
+                if (amounts[i] == 0) continue; // unregistered ERC20s will have 0 amount
                 if (allZero) allZero = false;
 
                 // Send withdrawal
-                IERC20Upgradeable(erc20sOut[i]).safeTransferFrom(
+                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     address(backingManager),
                     recipient,
-                    amountsOut[i]
+                    amounts[i]
                 );
             }
             if (allZero) revert("empty redemption");
@@ -398,8 +399,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         // Note: These are D18s, even though they are uint256s. This is because
         // we cannot assume we stay inside our valid range here, as that is what
         // we are checking in the first place
-        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
-        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
+        uint256 low = (FIX_ONE_256 * basketsNeeded_) / supply; // D18{BU/rTok}
+        uint256 high = (FIX_ONE_256 * basketsNeeded_ + (supply - 1)) / supply; // D18{BU/rTok}
 
         // here we take advantage of an implicit upcast from uint192 exchange rates
         require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
@@ -425,8 +426,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @return available {qRTok} The maximum redemption that can be performed in the current block
     function redemptionAvailable() external view returns (uint256 available) {
         uint256 supply = totalSupply();
-        uint256 hourlyLimit = redemptionThrottle.hourlyLimit(supply);
-        available = redemptionThrottle.currentlyAvailable(hourlyLimit);
+        available = redemptionThrottle.currentlyAvailable(redemptionThrottle.hourlyLimit(supply));
         if (supply < available) available = supply;
     }
 
@@ -445,6 +445,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "issuance amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "issuance amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "issuance pctRate too big");
+        issuanceThrottle.useAvailable(totalSupply(), 0);
+
         emit IssuanceThrottleSet(issuanceThrottle.params, params);
         issuanceThrottle.params = params;
     }
@@ -454,6 +456,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         require(params.amtRate >= MIN_THROTTLE_RATE_AMT, "redemption amtRate too small");
         require(params.amtRate <= MAX_THROTTLE_RATE_AMT, "redemption amtRate too big");
         require(params.pctRate <= MAX_THROTTLE_PCT_AMT, "redemption pctRate too big");
+        redemptionThrottle.useAvailable(totalSupply(), 0);
+
         emit RedemptionThrottleSet(redemptionThrottle.params, params);
         redemptionThrottle.params = params;
     }

@@ -11,7 +11,7 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenVaultMock,
+  CTokenWrapperMock,
   ERC20Mock,
   FacadeTest,
   FiatCollateral,
@@ -76,7 +76,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
   let ERC20Mock: ContractFactory
   let ATokenMockFactory: ContractFactory
-  let CTokenVaultMockFactory: ContractFactory
+  let CTokenWrapperMockFactory: ContractFactory
   let ATokenCollateralFactory: ContractFactory
   let CTokenCollateralFactory: ContractFactory
 
@@ -110,7 +110,7 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
-    CTokenVaultMockFactory = await ethers.getContractFactory('CTokenVaultMock')
+    CTokenWrapperMockFactory = await ethers.getContractFactory('CTokenWrapperMock')
     ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
@@ -157,12 +157,12 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
     return erc20
   }
 
-  const prepCToken = async (index: number): Promise<CTokenVaultMock> => {
+  const prepCToken = async (index: number): Promise<CTokenWrapperMock> => {
     const underlying: ERC20Mock = <ERC20Mock>(
       await ERC20Mock.deploy(`ERC20_NAME:${index}`, `ERC20_SYM:${index}`)
     )
-    const erc20: CTokenVaultMock = <CTokenVaultMock>(
-      await CTokenVaultMockFactory.deploy(
+    const erc20: CTokenWrapperMock = <CTokenWrapperMock>(
+      await CTokenWrapperMockFactory.deploy(
         `CToken_NAME:${index}`,
         `CToken_SYM:${index}`,
         underlying.address,
@@ -480,6 +480,9 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
       await rToken.setIssuanceThrottleParams(noThrottle)
       await rToken.setRedemptionThrottleParams(noThrottle)
+
+      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
+
       await rToken.connect(addr1).issue(rTokenSupply)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
@@ -651,6 +654,9 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
       await rToken.setIssuanceThrottleParams(noThrottle)
       await rToken.setRedemptionThrottleParams(noThrottle)
+
+      await advanceTime(12 * 5 * 60) // 60 minutes, charge fully
+
       await rToken.connect(addr1).issue(rTokenSupply)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 

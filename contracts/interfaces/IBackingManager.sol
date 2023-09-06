@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IBroker.sol";
@@ -18,12 +18,12 @@ interface IBackingManager is IComponent, ITrading {
     /// Emitted when the trading delay is changed
     /// @param oldVal The old trading delay
     /// @param newVal The new trading delay
-    event TradingDelaySet(uint48 indexed oldVal, uint48 indexed newVal);
+    event TradingDelaySet(uint48 oldVal, uint48 newVal);
 
     /// Emitted when the backing buffer is changed
     /// @param oldVal The old backing buffer
     /// @param newVal The new backing buffer
-    event BackingBufferSet(uint192 indexed oldVal, uint192 indexed newVal);
+    event BackingBufferSet(uint192 oldVal, uint192 newVal);
 
     // Initialization
     function init(

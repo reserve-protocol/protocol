@@ -8,7 +8,7 @@ import { advanceTime } from '../utils/time'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
-  CTokenVaultMock,
+  CTokenWrapperMock,
   CTokenNonFiatCollateral,
   ComptrollerMock,
   ERC20Mock,
@@ -52,9 +52,9 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
   // Tokens and Assets
   let wbtc: ERC20Mock
   let wBTCCollateral: SelfReferentialCollateral
-  let cWBTC: CTokenVaultMock
+  let cWBTC: CTokenWrapperMock
   let cWBTCCollateral: CTokenNonFiatCollateral
-  let token0: CTokenVaultMock
+  let token0: CTokenWrapperMock
   let collateral0: Collateral
   let backupToken: ERC20Mock
   let backupCollateral: Collateral
@@ -101,7 +101,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
-    token0 = <CTokenVaultMock>erc20s[4] // cDai
+    token0 = <CTokenWrapperMock>erc20s[4] // cDai
     collateral0 = collateral[4]
 
     wbtc = await (await ethers.getContractFactory('ERC20Mock')).deploy('WBTC Token', 'WBTC')
@@ -131,7 +131,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
 
     // cWBTC
     cWBTC = await (
-      await ethers.getContractFactory('CTokenVaultMock')
+      await ethers.getContractFactory('CTokenWrapperMock')
     ).deploy('cWBTC Token', 'cWBTC', wbtc.address, compToken.address, compoundMock.address)
     cWBTCCollateral = await (
       await ethers.getContractFactory('CTokenNonFiatCollateral')
@@ -219,9 +219,9 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       expect(await cWBTC.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await cWBTC.balanceOf(rsrTrader.address)).to.equal(0)
       await expect(
-        rTokenTrader.manageToken(cWBTC.address, TradeKind.BATCH_AUCTION)
+        rTokenTrader.manageTokens([cWBTC.address], [TradeKind.BATCH_AUCTION])
       ).to.be.revertedWith('0 balance')
-      await expect(rTokenTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rTokenTrader,
         'TradeStarted'
       )
@@ -232,9 +232,9 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       expect(await trade.buy()).to.equal(rToken.address)
 
       await expect(
-        rsrTrader.manageToken(cWBTC.address, TradeKind.BATCH_AUCTION)
+        rsrTrader.manageTokens([cWBTC.address], [TradeKind.BATCH_AUCTION])
       ).to.be.revertedWith('0 balance')
-      await expect(rsrTrader.manageToken(token0.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rsrTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rsrTrader,
         'TradeStarted'
       )
@@ -312,7 +312,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await backingManager.forwardRevenue([cWBTC.address])
 
       // RTokenTrader should be selling cWBTC and buying RToken
-      await expect(rTokenTrader.manageToken(cWBTC.address, TradeKind.BATCH_AUCTION)).to.emit(
+      await expect(rTokenTrader.manageTokens([cWBTC.address], [TradeKind.BATCH_AUCTION])).to.emit(
         rTokenTrader,
         'TradeStarted'
       )

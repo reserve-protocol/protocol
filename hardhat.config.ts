@@ -8,6 +8,7 @@ import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
+import * as tenderly from '@tenderly/hardhat-tenderly'
 
 import { useEnv } from '#/utils/env'
 import { HardhatUserConfig } from 'hardhat/types'
@@ -16,9 +17,12 @@ import forkBlockNumber from '#/test/integration/fork-block-numbers'
 // eslint-disable-next-line node/no-missing-require
 require('#/tasks')
 
+tenderly.setup()
+
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
+const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
@@ -58,6 +62,13 @@ const config: HardhatUserConfig = {
         mnemonic: MNEMONIC,
       },
     },
+    'base-goerli': {
+      chainId: 84531,
+      url: BASE_GOERLI_RPC_URL,
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+    },
     mainnet: {
       chainId: 1,
       url: MAINNET_RPC_URL,
@@ -68,19 +79,19 @@ const config: HardhatUserConfig = {
       gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
     tenderly: {
-      chainId: 1,
+      chainId: 3,
       url: TENDERLY_RPC_URL,
       accounts: {
         mnemonic: MNEMONIC,
       },
       // gasPrice: 10_000_000_000,
-      gasMultiplier: 1.015, // 1.5% buffer; seen failures on RToken deployment and asset refreshes
+      gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
   },
   solidity: {
     compilers: [
       {
-        version: '0.8.17',
+        version: '0.8.19',
         settings,
         // debug: {
         //   // How to treat revert (and require) reason strings.
@@ -93,7 +104,7 @@ const config: HardhatUserConfig = {
       {
         version: '0.6.12',
         settings,
-      }
+      },
     ],
     overrides: {
       'contracts/plugins/assets/convex/vendor/ConvexStakingWrapper.sol': {
@@ -101,7 +112,7 @@ const config: HardhatUserConfig = {
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
       },
       'contracts/facade/FacadeRead.sol': {
-        version: '0.8.17',
+        version: '0.8.19',
         settings: { optimizer: { enabled: true, runs: 1 } }, // contract over-size
       },
     },
@@ -113,6 +124,7 @@ const config: HardhatUserConfig = {
   mocha: {
     timeout: TIMEOUT,
     slow: 1000,
+    retries: 3,
   },
   contractSizer: {
     alphaSort: false,
@@ -127,6 +139,22 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: useEnv('ETHERSCAN_API_KEY'),
+    customChains: [
+      {
+        network: 'base-goerli',
+        chainId: 84531,
+        urls: {
+          apiURL: 'https://api-goerli.basescan.org/api',
+          browserURL: 'https://goerli.basescan.org',
+        },
+      },
+    ],
+  },
+  tenderly: {
+    // see https://github.com/Tenderly/hardhat-tenderly/tree/master/packages/tenderly-hardhat for details
+    username: 'Reserveslug', // org name
+    project: 'testnet', // project name
+    privateVerification: false, // must be false to verify contracts on a testnet or devnet
   },
 }
 

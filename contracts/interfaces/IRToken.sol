@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 // solhint-disable-next-line max-line-length
@@ -25,7 +25,7 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     event Issuance(
         address indexed issuer,
         address indexed recipient,
-        uint256 indexed amount,
+        uint256 amount,
         uint192 baskets
     );
 
@@ -38,7 +38,7 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
     event Redemption(
         address indexed redeemer,
         address indexed recipient,
-        uint256 indexed amount,
+        uint256 amount,
         uint192 baskets
     );
 
@@ -107,7 +107,7 @@ interface IRToken is IComponent, IERC20MetadataUpgradeable, IERC20PermitUpgradea
         uint192[] memory portions,
         address[] memory expectedERC20sOut,
         uint256[] memory minAmounts
-    ) external returns (address[] memory erc20sOut, uint256[] memory amountsOut);
+    ) external;
 
     /// Mint an amount of RToken equivalent to baskets BUs, scaling basketsNeeded up
     /// Callable only by BackingManager

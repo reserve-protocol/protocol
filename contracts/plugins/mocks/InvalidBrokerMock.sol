@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -22,7 +22,9 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
     uint48 public batchAuctionLength; // {s} the length of a batch auction
     uint48 public dutchAuctionLength; // {s} the length of a dutch auction
 
-    bool public disabled = false;
+    bool public batchTradeDisabled = false;
+
+    mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
     function init(
         IMain main_,
@@ -39,15 +41,11 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
     }
 
     /// Invalid implementation - Reverts
-    function openTrade(TradeKind, TradeRequest memory req)
-        external
-        view
-        notTradingPausedOrFrozen
-        returns (ITrade)
-    {
-        require(!disabled, "broker disabled");
-        req;
-
+    function openTrade(
+        TradeKind,
+        TradeRequest memory,
+        TradePrices memory
+    ) external view notTradingPausedOrFrozen returns (ITrade) {
         // Revert when opening trades
         revert("Failure opening trade");
     }
@@ -66,5 +64,9 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
-    function setDisabled(bool disabled_) external governance {}
+    function enableBatchTrade() external governance {}
+
+    /// Dummy implementation
+    /* solhint-disable no-empty-blocks */
+    function enableDutchTrade(IERC20Metadata erc20) external governance {}
 }

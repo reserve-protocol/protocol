@@ -70,16 +70,16 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
   mintCollateralTo: MintCollateralFunc<T>
 
   // a function to reduce the value of `targetPerRef`
-  reduceTargetPerRef: (ctx: T, pctDecrease: BigNumberish) => void
+  reduceTargetPerRef: (ctx: T, pctDecrease: BigNumberish) => Promise<void> | void
 
   // a function to increase the value of `targetPerRef`
-  increaseTargetPerRef: (ctx: T, pctIncrease: BigNumberish) => void
+  increaseTargetPerRef: (ctx: T, pctIncrease: BigNumberish) => Promise<void> | void
 
   // a function to reduce the value of `refPerTok`
-  reduceRefPerTok: (ctx: T, pctDecrease: BigNumberish) => void
+  reduceRefPerTok: (ctx: T, pctDecrease: BigNumberish) => Promise<void> | void
 
   // a function to increase the value of `refPerTok`
-  increaseRefPerTok: (ctx: T, pctIncrease: BigNumberish) => void
+  increaseRefPerTok: (ctx: T, pctIncrease: BigNumberish) => Promise<void> | void
 
   // a function to calculate the expected price (ignoring oracle error)
   //  that should be returned from `plugin.price()`
@@ -111,6 +111,9 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
 
   // the default answer that will come from the chainlink feed after deployment
   chainlinkDefaultAnswer: BigNumberish
+
+  // the default tolerance divisor that will be used in expectPrice checks
+  toleranceDivisor?: BigNumber
 }
 
 export enum CollateralStatus {

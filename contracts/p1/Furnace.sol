@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "../interfaces/IFurnace.sol";
 import "./mixins/Component.sol";
 
@@ -12,8 +13,10 @@ import "./mixins/Component.sol";
 contract FurnaceP1 is ComponentP1, IFurnace {
     using FixLib for uint192;
 
-    uint192 public constant MAX_RATIO = FIX_ONE; // {1} 100%
-    uint48 public constant PERIOD = ONE_BLOCK; // {s} 12 seconds; 1 block on PoS Ethereum
+    uint192 public constant MAX_RATIO = 1e14; // {1} 0.01%
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable PERIOD; // {seconds} 1 block based on network
 
     IRToken private rToken;
 
@@ -23,6 +26,11 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     // === Cached ===
     uint48 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() ComponentP1() {
+        PERIOD = NetworkConfigLib.blocktime();
+    }
 
     // ==== Invariants ====
     // ratio <= MAX_RATIO = 1e18
@@ -82,8 +90,14 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     /// Ratio setting
     /// @custom:governance
     function setRatio(uint192 ratio_) public governance {
-        // solhint-disable-next-line no-empty-blocks
-        if (lastPayout > 0) try this.melt() {} catch {}
+        if (lastPayout > 0) {
+            // solhint-disable-next-line no-empty-blocks
+            try this.melt() {} catch {
+                uint48 numPeriods = uint48((block.timestamp) - lastPayout) / PERIOD;
+                lastPayout += numPeriods * PERIOD;
+                lastPayoutBal = rToken.balanceOf(address(this));
+            }
+        }
         require(ratio_ <= MAX_RATIO, "invalid ratio");
         // The ratio can safely be set to 0 to turn off payouts, though it is not recommended
         emit RatioSet(ratio, ratio_);

@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Gas Reporting RewardableERC20WrapperTest claimRewards 1`] = `174273`;
+
+exports[`Gas Reporting RewardableERC20WrapperTest claimRewards 2`] = `105873`;
+
+exports[`Gas Reporting RewardableERC20WrapperTest deposit 1`] = `119303`;
+
+exports[`Gas Reporting RewardableERC20WrapperTest deposit 2`] = `86643`;
+
+exports[`Gas Reporting RewardableERC20WrapperTest withdraw 1`] = `96090`;
+
+exports[`Gas Reporting RewardableERC20WrapperTest withdraw 2`] = `64590`;
+
+exports[`Gas Reporting RewardableERC4626VaultTest claimRewards 1`] = `174242`;
+
+exports[`Gas Reporting RewardableERC4626VaultTest claimRewards 2`] = `105842`;
+
+exports[`Gas Reporting RewardableERC4626VaultTest deposit 1`] = `121596`;
+
+exports[`Gas Reporting RewardableERC4626VaultTest deposit 2`] = `88936`;
+
+exports[`Gas Reporting RewardableERC4626VaultTest withdraw 1`] = `101629`;
+
+exports[`Gas Reporting RewardableERC4626VaultTest withdraw 2`] = `70129`;

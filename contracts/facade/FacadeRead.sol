@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../plugins/trading/DutchTrade.sol";
@@ -16,6 +16,7 @@ import "../p1/StRSRVotes.sol";
 /**
  * @title Facade
  * @notice A UX-friendly layer for reading out the state of a ^3.0.0 RToken in summary views.
+ *   Backwards-compatible with 2.1.0 RTokens with the exception of `redeemCustom()`.
  * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
 contract FacadeRead is IFacadeRead {
@@ -27,9 +28,14 @@ contract FacadeRead is IFacadeRead {
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256) {
         IMain main = rToken.main();
-        main.poke();
-        // {BU}
 
+        require(!main.frozen(), "frozen");
+
+        // Poke Main
+        main.assetRegistry().refresh();
+        main.furnace().melt();
+
+        // {BU}
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
         uint192 needed = rToken.basketsNeeded();
 
@@ -44,6 +50,8 @@ contract FacadeRead is IFacadeRead {
         return basketsHeld.bottom.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
     }
 
+    /// Do no use inifite approvals.  Instead, use BasketHandler.quote() to determine the amount
+    ///     of backing tokens to approve.
     /// @return tokens The erc20 needed for the issuance
     /// @return deposits {qTok} The deposits necessary to issue `amount` RToken
     /// @return depositsUoA {UoA} The UoA value of the deposits necessary to issue `amount` RToken
@@ -57,10 +65,16 @@ contract FacadeRead is IFacadeRead {
         )
     {
         IMain main = rToken.main();
-        main.poke();
+        require(!main.frozen(), "frozen");
+
+        // Cache components
         IRToken rTok = rToken;
         IBasketHandler bh = main.basketHandler();
         IAssetRegistry reg = main.assetRegistry();
+
+        // Poke Main
+        reg.refresh();
+        main.furnace().melt();
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (rTok.totalSupply() > 0) // {BU}
@@ -85,42 +99,89 @@ contract FacadeRead is IFacadeRead {
     }
 
     /// @return tokens The erc20s returned for the redemption
-    /// @return withdrawals The balances necessary to issue `amount` RToken
-    /// @return isProrata True if the redemption is prorata and not full
+    /// @return withdrawals The balances the reedemer would receive after a full redemption
+    /// @return available The amount actually available, for each token
+    /// @dev If available[i] < withdrawals[i], then RToken.redeem() would revert
     /// @custom:static-call
     function redeem(IRToken rToken, uint256 amount)
         external
         returns (
             address[] memory tokens,
             uint256[] memory withdrawals,
-            bool isProrata
+            uint256[] memory available
         )
     {
         IMain main = rToken.main();
-        main.poke();
+        require(!main.frozen(), "frozen");
+
+        // Cache Components
         IRToken rTok = rToken;
         IBasketHandler bh = main.basketHandler();
+
+        // Poke Main
+        main.assetRegistry().refresh();
+        main.furnace().melt();
+
         uint256 supply = rTok.totalSupply();
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         uint192 basketsRedeemed = rTok.basketsNeeded().muluDivu(amount, supply);
-
         (tokens, withdrawals) = bh.quote(basketsRedeemed, FLOOR);
+        available = new uint256[](tokens.length);
 
-        // Bound each withdrawal by the prorata share, in case we're currently under-collateralized
-        address backingManager = address(main.backingManager());
-        for (uint256 i = 0; i < tokens.length; ++i) {
+        // Calculate prorata amounts
+        for (uint256 i = 0; i < tokens.length; i++) {
             // {qTok} = {qTok} * {qRTok} / {qRTok}
-            uint256 prorata = mulDiv256(
-                IERC20Upgradeable(tokens[i]).balanceOf(backingManager),
+            available[i] = mulDiv256(
+                IERC20(tokens[i]).balanceOf(address(main.backingManager())),
                 amount,
                 supply
             ); // FLOOR
+        }
+    }
 
-            if (prorata < withdrawals[i]) {
-                withdrawals[i] = prorata;
-                isProrata = true;
-            }
+    /// @return tokens The erc20s returned for the redemption
+    /// @return withdrawals The balances necessary to issue `amount` RToken
+    /// @custom:static-call
+    function redeemCustom(
+        IRToken rToken,
+        uint256 amount,
+        uint48[] memory basketNonces,
+        uint192[] memory portions
+    ) external returns (address[] memory tokens, uint256[] memory withdrawals) {
+        IMain main = rToken.main();
+        require(!main.frozen(), "frozen");
+
+        // Call collective state keepers.
+        main.poke();
+
+        uint256 supply = rToken.totalSupply();
+
+        // === Get basket redemption amounts ===
+        uint256 portionsSum;
+        for (uint256 i = 0; i < portions.length; ++i) {
+            portionsSum += portions[i];
+        }
+        require(portionsSum == FIX_ONE, "portions do not add up to FIX_ONE");
+
+        // D18{BU} = D18{BU} * {qRTok} / {qRTok}
+        uint192 basketsRedeemed = rToken.basketsNeeded().muluDivu(amount, supply);
+        (tokens, withdrawals) = main.basketHandler().quoteCustomRedemption(
+            basketNonces,
+            portions,
+            basketsRedeemed
+        );
+
+        // ==== Prorate redemption ====
+        // Bound each withdrawal by the prorata share, in case currently under-collateralized
+        for (uint256 i = 0; i < tokens.length; i++) {
+            // {qTok} = {qTok} * {qRTok} / {qRTok}
+            uint256 prorata = mulDiv256(
+                IERC20(tokens[i]).balanceOf(address(main.backingManager())),
+                amount,
+                supply
+            ); // FLOOR
+            if (prorata < withdrawals[i]) withdrawals[i] = prorata;
         }
     }
 
@@ -139,8 +200,6 @@ contract FacadeRead is IFacadeRead {
         uint256[] memory deposits;
         IAssetRegistry assetRegistry = rToken.main().assetRegistry();
         IBasketHandler basketHandler = rToken.main().basketHandler();
-
-        // (erc20s, deposits) = issue(rToken, FIX_ONE);
 
         // solhint-disable-next-line no-empty-blocks
         try rToken.main().furnace().melt() {} catch {}
@@ -292,9 +351,9 @@ contract FacadeRead is IFacadeRead {
         uint192 uoaHeldInBaskets; // {UoA}
         {
             (address[] memory basketERC20s, uint256[] memory quantities) = rToken
-                .main()
-                .basketHandler()
-                .quote(basketsNeeded, FLOOR);
+            .main()
+            .basketHandler()
+            .quote(basketsNeeded, FLOOR);
 
             IAssetRegistry reg = rToken.main().assetRegistry();
             IBackingManager bm = rToken.main().backingManager();

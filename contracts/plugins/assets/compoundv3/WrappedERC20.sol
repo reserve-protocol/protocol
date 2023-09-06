@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "./IWrappedERC20.sol";
 
@@ -225,9 +225,13 @@ abstract contract WrappedERC20 is IWrappedERC20 {
      * - `account` must have at least `amount` tokens.
      */
     function _burn(address account, uint256 amount) internal virtual {
+        // untestable:
+        //      previously validated, account will not be address(0)
         if (account == address(0)) revert ZeroAddress();
 
         uint256 accountBalance = _balances[account];
+        // untestable:
+        //      ammount previously capped to the account balance
         if (amount > accountBalance) revert ExceedsBalance(amount);
         unchecked {
             _balances[account] = accountBalance - amount;

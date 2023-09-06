@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -76,8 +76,9 @@ library BasketLibP1 {
         empty(self);
         uint256 length = other.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            self.erc20s.push(other.erc20s[i]);
-            self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
+            IERC20 _erc20 = other.erc20s[i]; // gas-saver
+            self.erc20s.push(_erc20);
+            self.refAmts[_erc20] = other.refAmts[_erc20];
         }
     }
 
@@ -165,7 +166,9 @@ library BasketLibP1 {
         IAssetRegistry assetRegistry
     ) internal returns (bool) {
         // targetNames := {}
-        while (targetNames.length() > 0) targetNames.remove(targetNames.at(0));
+        while (targetNames.length() > 0) {
+            targetNames.remove(targetNames.at(targetNames.length() - 1));
+        }
 
         // newBasket := {}
         newBasket.empty();
@@ -193,30 +196,28 @@ library BasketLibP1 {
         for (uint256 i = 0; i < config.erc20s.length; ++i) {
             // Find collateral's targetName index
             uint256 targetIndex;
+            IERC20 _erc20 = config.erc20s[i]; // gas-saver
             for (targetIndex = 0; targetIndex < targetsLength; ++targetIndex) {
-                if (targetNames.at(targetIndex) == config.targetNames[config.erc20s[i]]) break;
+                if (targetNames.at(targetIndex) == config.targetNames[_erc20]) break;
             }
             assert(targetIndex < targetsLength);
             // now, targetNames[targetIndex] == config.targetNames[erc20]
 
             // Set basket weights for good, prime collateral,
             // and accumulate the values of goodWeights and targetWeights
-            uint192 targetWeight = config.targetAmts[config.erc20s[i]];
+            uint192 targetWeight = config.targetAmts[_erc20];
             totalWeights[targetIndex] = totalWeights[targetIndex].plus(targetWeight);
 
             if (
-                goodCollateral(
-                    config.targetNames[config.erc20s[i]],
-                    config.erc20s[i],
-                    assetRegistry
-                ) && targetWeight.gt(FIX_ZERO)
+                goodCollateral(config.targetNames[_erc20], _erc20, assetRegistry) &&
+                targetWeight.gt(FIX_ZERO)
             ) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
                 newBasket.add(
-                    config.erc20s[i],
+                    _erc20,
                     targetWeight.div(
                         // this div is safe: targetPerRef() > 0: goodCollateral check
-                        assetRegistry.toColl(config.erc20s[i]).targetPerRef(),
+                        assetRegistry.toColl(_erc20).targetPerRef(),
                         CEIL
                     )
                 );
@@ -237,16 +238,17 @@ library BasketLibP1 {
         // backup basket for tgt to make up that weight:
         for (uint256 i = 0; i < targetsLength; ++i) {
             if (totalWeights[i].lte(goodWeights[i])) continue; // Don't need any backup weight
+            bytes32 _targetName = targetNames.at(i);
 
             // "tgt" = targetNames[i]
             // Now, unsoundPrimeWt(tgt) > 0
 
             uint256 size = 0; // backup basket size
-            BackupConfig storage backup = config.backups[targetNames.at(i)];
+            BackupConfig storage backup = config.backups[_targetName];
 
             // Find the backup basket size: min(backup.max, # of good backup collateral)
             for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; ++j) {
-                if (goodCollateral(targetNames.at(i), backup.erc20s[j], assetRegistry)) size++;
+                if (goodCollateral(_targetName, backup.erc20s[j], assetRegistry)) size++;
             }
 
             // Now, size = len(backups(tgt)). If empty, fail.
@@ -257,17 +259,16 @@ library BasketLibP1 {
 
             // Loop: for erc20 in backups(tgt)...
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; ++j) {
-                if (goodCollateral(targetNames.at(i), backup.erc20s[j], assetRegistry)) {
+                if (goodCollateral(_targetName, backup.erc20s[j], assetRegistry)) {
+                    uint192 backupWeight = totalWeights[i].minus(goodWeights[i]).div(
+                        // this div is safe: targetPerRef > 0: goodCollateral check
+                        assetRegistry.toColl(backup.erc20s[j]).targetPerRef().mulu(size),
+                        CEIL
+                    );
+
                     // Across this .add(), targetWeight(newBasket',erc20)
                     // = targetWeight(newBasket,erc20) + unsoundPrimeWt(tgt) / len(backups(tgt))
-                    newBasket.add(
-                        backup.erc20s[j],
-                        totalWeights[i].minus(goodWeights[i]).div(
-                            // this div is safe: targetPerRef > 0: goodCollateral check
-                            assetRegistry.toColl(backup.erc20s[j]).targetPerRef().mulu(size),
-                            CEIL
-                        )
-                    );
+                    BasketLibP1.add(newBasket, backup.erc20s[j], backupWeight);
                     assigned++;
                 }
             }

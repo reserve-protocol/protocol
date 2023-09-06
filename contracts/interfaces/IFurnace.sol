@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../libraries/Fixed.sol";
 import "./IComponent.sol";
@@ -15,7 +15,7 @@ interface IFurnace is IComponent {
     /// Emitted when the melting ratio is changed
     /// @param oldRatio The old ratio
     /// @param newRatio The new ratio
-    event RatioSet(uint192 indexed oldRatio, uint192 indexed newRatio);
+    event RatioSet(uint192 oldRatio, uint192 newRatio);
 
     function ratio() external view returns (uint192);
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -153,8 +153,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
-        require(erc20s.length > 0, "cannot empty basket");
-        require(erc20s.length == targetAmts.length, "must be same length");
+        require(erc20s.length > 0, "empty basket");
+        require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
 
         // If this isn't initial setup, require targets remain constant
@@ -317,7 +317,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 : reg.toAsset(basket.erc20s[i]).price();
 
             low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
-            high256 += qty.safeMul(highP, RoundingMode.CEIL);
+
+            if (high256 < FIX_MAX) {
+                if (highP == FIX_MAX) {
+                    high256 = FIX_MAX;
+                } else {
+                    high256 += qty.safeMul(highP, RoundingMode.CEIL);
+                }
+            }
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
@@ -361,9 +368,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint192[] memory portions,
         uint192 amount
     ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
-        require(basketNonces.length == portions.length, "portions does not mirror basketNonces");
+        require(basketNonces.length == portions.length, "bad portions len");
 
         IERC20[] memory erc20sAll = new IERC20[](main.assetRegistry().size());
+        ICollateral[] memory collsAll = new ICollateral[](erc20sAll.length);
         uint192[] memory refAmtsAll = new uint192[](erc20sAll.length);
 
         uint256 len; // length of return arrays
@@ -375,26 +383,38 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
             // Add-in refAmts contribution from historical basket
             for (uint256 j = 0; j < b.erc20s.length; ++j) {
-                IERC20 erc20 = b.erc20s[j];
-                if (address(erc20) == address(0)) continue;
+                if (address(b.erc20s[j]) == address(0)) continue;
 
-                // Ugly search through erc20sAll
+                // Search through erc20sAll
                 uint256 erc20Index = type(uint256).max;
                 for (uint256 k = 0; k < len; ++k) {
-                    if (erc20 == erc20sAll[k]) {
+                    if (b.erc20s[j] == erc20sAll[k]) {
                         erc20Index = k;
                         continue;
                     }
                 }
 
                 // Add new ERC20 entry if not found
-                uint192 amt = portions[i].mul(b.refAmts[erc20], FLOOR);
+                uint192 amt = portions[i].mul(b.refAmts[b.erc20s[j]], FLOOR);
                 if (erc20Index == type(uint256).max) {
-                    erc20sAll[len] = erc20;
+                    // New entry found
 
-                    // {ref} = {1} * {ref}
-                    refAmtsAll[len] = amt;
-                    ++len;
+                    try main.assetRegistry().toAsset(b.erc20s[j]) returns (IAsset asset) {
+                        if (!asset.isCollateral()) continue; // skip token if not collateral
+
+                        erc20sAll[len] = b.erc20s[j];
+                        collsAll[len] = ICollateral(address(asset));
+
+                        // {ref} = {1} * {ref}
+                        refAmtsAll[len] = amt;
+                        ++len;
+                    } catch (bytes memory errData) {
+                        // untested:
+                        //     OOG pattern tested in other contracts, cost to test here is high
+                        // see: docs/solidity-style.md#Catching-Empty-Data
+                        if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                        // skip token if no longer registered or other non-gas issue
+                    }
                 } else {
                     // {ref} = {1} * {ref}
                     refAmtsAll[erc20Index] += amt;
@@ -409,25 +429,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < len; ++i) {
             erc20s[i] = address(erc20sAll[i]);
 
-            try main.assetRegistry().toAsset(IERC20(erc20s[i])) returns (IAsset asset) {
-                if (!asset.isCollateral()) continue; // skip token if no longer registered
-                quantities[i] = FIX_MAX;
-
-                // prevent div-by-zero
-                uint192 refPerTok = ICollateral(address(asset)).refPerTok();
-                if (refPerTok == 0) continue;
-
-                // {tok} = {BU} * {ref/BU} / {ref/tok}
-                quantities[i] = safeMulDivFloor(amount, refAmtsAll[i], refPerTok).shiftl_toUint(
-                    int8(asset.erc20Decimals()),
-                    FLOOR
-                );
-                // marginally more penalizing than its sibling calculation that uses _quantity()
-                // because does not intermediately CEIL as part of the division
-            } catch (bytes memory errData) {
-                // see: docs/solidity-style.md#Catching-Empty-Data
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            }
+            // {tok} = {BU} * {ref/BU} / {ref/tok}
+            quantities[i] = amount
+            .safeMulDiv(refAmtsAll[i], collsAll[i].refPerTok(), FLOOR)
+            .shiftl_toUint(int8(collsAll[i].erc20Decimals()), FLOOR);
+            // marginally more penalizing than its sibling calculation that uses _quantity()
+            // because does not intermediately CEIL as part of the division
         }
     }
 
@@ -655,10 +662,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         IERC20 zero = IERC20(address(0));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            require(erc20s[i] != main.rsr(), "RSR is not valid collateral");
-            require(erc20s[i] != IERC20(address(main.rToken())), "RToken is not valid collateral");
-            require(erc20s[i] != IERC20(address(main.stRSR())), "stRSR is not valid collateral");
-            require(erc20s[i] != zero, "address zero is not valid collateral");
+            require(erc20s[i] != main.rsr(), "invalid collateral");
+            require(erc20s[i] != IERC20(address(main.rToken())), "invalid collateral");
+            require(erc20s[i] != IERC20(address(main.stRSR())), "invalid collateral");
+            require(erc20s[i] != zero, "invalid collateral");
         }
 
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
@@ -688,11 +695,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < newERC20s.length; i++) {
             bytes32 targetName = main.assetRegistry().toColl(newERC20s[i]).targetName();
             (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
-            require(contains && amt >= newTargetAmts[i], "new basket adds target weights");
+            require(contains && amt >= newTargetAmts[i], "new target weights");
             if (amt == newTargetAmts[i]) _targetAmts.remove(targetName);
             else _targetAmts.set(targetName, amt - newTargetAmts[i]);
         }
-        require(_targetAmts.length() == 0, "new basket missing target weights");
+        require(_targetAmts.length() == 0, "missing target weights");
     }
 
     /// Good collateral is registered, collateral, SOUND, has the expected targetName,
@@ -712,25 +719,5 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         } catch {
             return false;
         }
-    }
-
-    // === Private ===
-
-    /// @return The floored result of FixLib.mulDiv
-    function safeMulDivFloor(
-        uint192 x,
-        uint192 y,
-        uint192 z
-    ) private view returns (uint192) {
-        try main.backingManager().mulDiv(x, y, z, FLOOR) returns (uint192 result) {
-            return result;
-        } catch Panic(uint256 errorCode) {
-            // 0x11: overflow
-            // 0x12: div-by-zero
-            assert(errorCode == 0x11 || errorCode == 0x12);
-        } catch (bytes memory reason) {
-            assert(keccak256(reason) == UIntOutofBoundsHash);
-        }
-        return FIX_MAX;
     }
 }

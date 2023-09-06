@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "../interfaces/IMain.sol";
@@ -16,9 +16,9 @@ uint48 constant MAX_LONG_FREEZE = 31536000; // 1 year
 abstract contract Auth is AccessControlUpgradeable, IAuth {
     /**
      * System-wide states (does not impact ERC20 functions)
-     *  - Frozen: only allow OWNER actions and staking
+     *  - Frozen: only allow OWNER actions and staking.
      *  - Trading Paused: only allow OWNER actions, issuance, redemption, staking,
-     *                    and rewards payout
+     *                    and rewards payout.
      *  - Issuance Paused: disallow issuance
      *
      * Typically freezing thaws on its own in a predetermined number of blocks.

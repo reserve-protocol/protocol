@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 1`] = `80249`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after full price timeout 2`] = `75781`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after hard default 1`] = `252288`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after hard default 2`] = `247406`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `80249`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `75781`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after soft default 1`] = `75440`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() after soft default 2`] = `75440`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during SOUND 1`] = `247403`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during SOUND 2`] = `247403`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 1`] = `254981`;
+
+exports[`Collateral: CurveStableMetapoolCollateral - CurveGaugeWrapper collateral functionality Gas Reporting refresh() during soft default 2`] = `247713`;

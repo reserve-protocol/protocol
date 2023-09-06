@@ -1,25 +1,27 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 1`] = `165168`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 1`] = `164974`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 2`] = `165132`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 2`] = `165027`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 3`] = `165132`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 3`] = `165027`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 4`] = `208818`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 4`] = `208624`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 5`] = `229482`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 5`] = `229377`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 6`] = `212382`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 6`] = `212277`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `754579`;
+exports[`Revenues - P1 Gas Reporting Selling RToken 1`] = `1023658`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `1146627`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `773965`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `317989`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `1177817`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `271345`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `311446`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `737479`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `266512`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `248849`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `739765`;
+
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `242306`;

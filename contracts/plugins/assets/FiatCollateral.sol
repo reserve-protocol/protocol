@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../interfaces/IAsset.sol";
@@ -122,7 +122,6 @@ contract FiatCollateral is ICollateral, Asset {
     /// Refresh exchange rates and update default status.
     /// @dev May need to override: limited to handling collateral with refPerTok() = 1
     function refresh() public virtual override(Asset, IAsset) {
-        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         // Check for soft default + save lotPrice
@@ -191,10 +190,6 @@ contract FiatCollateral is ICollateral, Asset {
         } else if (status_ == CollateralStatus.DISABLED) {
             _whenDefault = uint48(block.timestamp);
         }
-    }
-
-    function alreadyDefaulted() internal view returns (bool) {
-        return _whenDefault <= block.timestamp;
     }
 
     function whenDefault() external view returns (uint256) {

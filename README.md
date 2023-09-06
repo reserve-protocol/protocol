@@ -6,7 +6,7 @@ The Reserve Protocol enables a class of token called RToken: self-issued tokens 
 
 RTokens can be minted by depositing a basket of _collateral tokens_, and redeemed for the basket as well. Thus, an RToken will tend to trade at the market value of the entire basket that backs it, as any lower or higher price could be arbitraged.
 
-The definition of the collateral basket is set dynamically on a block-by-block basis with respect to a _reference basket_. While the RToken often does its internal calculus in terms of a single unit of account (USD), what constitutes appreciation is entirely a function of the reference basket, which will often be associated with a variety of units.
+The definition of the issuance/redemption basket is set dynamically on a block-by-block basis with respect to a _reference basket_. While the RToken often does its internal calculus in terms of a single unit of account (USD), what constitutes appreciation is entirely a function of the reference basket, which is a linear combination of reference units.
 
 RTokens can be over-collateralized, which means that if any of their collateral tokens default, there's a pool of value available to make up for the loss. RToken over-collateralization is provided by Reserve Rights (RSR) holders, who may choose to stake their RSR on an RToken instance. Staked RSR can be seized in the case of a default, in a process that is entirely mechanistic based on on-chain price-feeds, and does not depend on governance votes or human judgment.
 
@@ -22,8 +22,10 @@ For a much more detailed explanation of the economic design, including an hour-l
   - [Testing with Echidna](docs/using-echidna.md): Notes so far on setup and usage of Echidna (which is decidedly an integration-in-progress!)
   - [Deployment](docs/deployment.md): How to do test deployments in our environment.
 - [System Design](docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
+- [Deployment Variables](docs/deployment-variables.md) A detailed description of the governance variables of the protocol.
 - [Our Solidity Style](docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, estpecially where those go beyond standard practice.
 - [Writing Collateral Plugins](docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
+- [Building on Top](docs/build-on-top.md): How to build on top of Reserve, including information about long-lived fork environments.
 - [MEV](docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programatically.
 - [Rebalancing Algorithm](docs/recollateralization.md): Description of our trading algorithm during the recollateralization process
 - [Changelog](CHANGELOG.md): Release changelog
@@ -33,8 +35,8 @@ For a much more detailed explanation of the economic design, including an hour-l
 | Implementation Contracts | Address                                                                                                               |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | tradingLib               | [0x81b19Af39ab589D0Ca211DC3Dee4cfF7072eb478](https://etherscan.io/address/0x81b19Af39ab589D0Ca211DC3Dee4cfF7072eb478) |
-| facadeRead               | [0xf535Cab96457558eE3eeAF1402fCA6441E832f08](https://etherscan.io/address/0xf535Cab96457558eE3eeAF1402fCA6441E832f08) |
-| facadeAct                | [0x933c5DBdA80f03C102C560e9ed0c29812998fA78](https://etherscan.io/address/0x933c5DBdA80f03C102C560e9ed0c29812998fA78) |
+| facadeRead               | [0xad0BFAEE863B1102e9fD4e6330A02B08d885C715](https://etherscan.io/address/0xad0BFAEE863B1102e9fD4e6330A02B08d885C715) |
+| facadeAct                | [0x98f292e6Bb4722664fEffb81448cCFB5B7211469](https://etherscan.io/address/0x98f292e6Bb4722664fEffb81448cCFB5B7211469) |
 | facadeWriteLib           | [0xe33cEF9f56F0d8d2b683c6E1F6afcd1e43b77ea8](https://etherscan.io/address/0xe33cEF9f56F0d8d2b683c6E1F6afcd1e43b77ea8) |
 | facadeWrite              | [0x1656D8aAd7Ee892582B9D5c2E9992d9f94ff3629](https://etherscan.io/address/0x1656D8aAd7Ee892582B9D5c2E9992d9f94ff3629) |
 | deployer                 | [0x5c46b718Cd79F2BBA6869A3BeC13401b9a4B69bB](https://etherscan.io/address/0x5c46b718Cd79F2BBA6869A3BeC13401b9a4B69bB) |
@@ -102,13 +104,10 @@ The less-central folders in the repository are dedicated to project management, 
 
 ## Types of Tests
 
-We conceive of several different types of tests:
-
-Finally, inside particular testing, it's quite useful to distinguish unit tests from full end-to-end tests. As such, we expect to write tests of the following 5 types:
-
 ### Unit/System Tests
 
 - Driven by `hardhat test`
+- Addressed by `yarn test:unit`
 - Checks for expected behavior of the system.
 - Can run the same tests against both p0 and p1
 - Uses contract mocks, where helpful to predict component behavior
@@ -118,6 +117,7 @@ Target: Full branch coverage, and testing of any semantically-relevant situation
 ### End-to-End Tests
 
 - Driven by `hardhat test`
+- Addressed by `yarn test:integration`
 - Uses mainnet forking
 - Can run the same tests against both p0 and p1
 - Tests all needed plugin contracts, contract deployment, any migrations, etc.
@@ -136,23 +136,19 @@ Located in `fuzz` branch only.
 Target: The handful of our most depended-upon system properties and invariants are articulated and thoroughly fuzz-tested. Examples of such properties include:
 
 - Unless the basket is switched (due to token default or governance) the protocol always remains fully-collateralized.
-- Unless the protocol is paused, RToken holders can always redeem
-- If the protocol is paused, and governance does not act further, the protocol will later become unpaused.
-
-### Differential Testing
-
-Located in `fuzz` branch only.
-
-- Driven by Echidna
-- Asserts that the behavior of each p1 contract matches that of p0
-
-Target: Intensive equivalence testing, run continuously for days or weeks, sensitive to any difference between observable behaviors of p0 and p1.
+- Unless the protocol is frozen, RToken holders can always redeem
 
 ## Contributing
 
 If you would like to contribute, you'll need to configure a secret in your fork repo in order for our integration tests to pass in CI. The name of the secret should `ALCHEMY_MAINNET_KEY` and it should be equal to the suffix portion of the full URL.
 
 Usage: `https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}`
+
+To get setup with tenderly, install the [tenderly cli](https://github.com/Tenderly/tenderly-cli). and login with `tenderly login --authentication-method access-key --access-key {your_access_key} --force`.
+
+## Responsible Disclosure
+
+See: [Immunifi](https://immunefi.com/bounty/reserve/)
 
 ## External Documentation
 

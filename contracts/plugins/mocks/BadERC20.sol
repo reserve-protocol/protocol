@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../../libraries/Fixed.sol";
@@ -8,16 +8,22 @@ import "./ERC20Mock.sol";
 contract BadERC20 is ERC20Mock {
     using Address for address;
     using FixLib for uint192;
+    uint8 private _decimals;
     uint192 public transferFee; // {1}
-
     bool public revertDecimals;
 
     mapping(address => bool) public censored;
 
-    constructor(string memory name, string memory symbol) ERC20Mock(name, symbol) {}
+    constructor(string memory name, string memory symbol) ERC20Mock(name, symbol) {
+        _decimals = 18;
+    }
 
     function setTransferFee(uint192 newFee) external {
         transferFee = newFee;
+    }
+
+    function setDecimals(uint8 newVal) external {
+        _decimals = newVal;
     }
 
     function setRevertDecimals(bool newVal) external {
@@ -33,7 +39,7 @@ contract BadERC20 is ERC20Mock {
 
         // Make an external staticcall to this address, for a function that does not exist
         if (revertDecimals) address(this).functionStaticCall(data, "No Decimals");
-        return 18;
+        return _decimals;
     }
 
     function transfer(address to, uint256 amount) public virtual override returns (bool) {

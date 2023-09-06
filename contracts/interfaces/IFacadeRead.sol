@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../p1/RToken.sol";
 import "./IRToken.sol";
@@ -31,16 +31,27 @@ interface IFacadeRead {
         );
 
     /// @return tokens The erc20s returned for the redemption
-    /// @return withdrawals The balances necessary to issue `amount` RToken
-    /// @return isProrata True if the redemption is prorata and not full
+    /// @return withdrawals The balances the reedemer would receive after a full redemption
+    /// @return available The amount actually available, for each token
+    /// @dev If available[i] < withdrawals[i], then RToken.redeem() would revert
     /// @custom:static-call
     function redeem(IRToken rToken, uint256 amount)
         external
         returns (
             address[] memory tokens,
             uint256[] memory withdrawals,
-            bool isProrata
+            uint256[] memory available
         );
+
+    /// @return tokens The erc20s returned for the redemption
+    /// @return withdrawals The balances the reedemer would receive after redemption
+    /// @custom:static-call
+    function redeemCustom(
+        IRToken rToken,
+        uint256 amount,
+        uint48[] memory basketNonces,
+        uint192[] memory portions
+    ) external returns (address[] memory tokens, uint256[] memory withdrawals);
 
     /// @return erc20s The ERC20 addresses in the current basket
     /// @return uoaShares The proportion of the basket associated with each ERC20

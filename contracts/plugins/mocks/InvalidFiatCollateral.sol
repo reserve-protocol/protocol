@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../assets/FiatCollateral.sol";
 
@@ -8,6 +8,8 @@ contract InvalidFiatCollateral is FiatCollateral {
 
     bool public simplyRevert;
 
+    bool public unpriced;
+
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config) FiatCollateral(config) {}
 
@@ -15,6 +17,8 @@ contract InvalidFiatCollateral is FiatCollateral {
     function price() public view virtual override(Asset, IAsset) returns (uint192, uint192) {
         if (simplyRevert) {
             revert("errormsg"); // Revert with no reason
+        } else if (unpriced) {
+            return (0, FIX_MAX);
         } else {
             // Run out of gas
             this.infiniteLoop{ gas: 10 }();
@@ -26,6 +30,10 @@ contract InvalidFiatCollateral is FiatCollateral {
 
     function setSimplyRevert(bool on) external {
         simplyRevert = on;
+    }
+
+    function setUnpriced(bool on) external {
+        unpriced = on;
     }
 
     function infiniteLoop() external pure {

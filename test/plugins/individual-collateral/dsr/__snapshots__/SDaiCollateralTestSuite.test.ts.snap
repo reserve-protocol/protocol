@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `116754`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `108442`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after hard default 1`] = `131260`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after hard default 2`] = `123300`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `116573`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `108442`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 1`] = `111428`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() after soft default 2`] = `108101`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `123297`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `123297`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 1`] = `131199`;
+
+exports[`Collateral: SDaiCollateral collateral functionality Gas Reporting refresh() during soft default 2`] = `123653`;

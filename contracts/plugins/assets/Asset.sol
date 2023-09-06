@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -38,6 +38,8 @@ contract Asset is IAsset, VersionedAsset {
     /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
+    /// @dev oracleTimeout_ is also used as the timeout value in lotPrice(), should be highest of
+    ///      all assets' oracleTimeout in a collateral if there are multiple oracles
     constructor(
         uint48 priceTimeout_,
         AggregatorV3Interface chainlinkFeed_,
@@ -137,14 +139,21 @@ contract Asset is IAsset, VersionedAsset {
             // if the price feed is broken, use a decayed historical value
 
             uint48 delta = uint48(block.timestamp) - lastSave; // {s}
-            if (delta >= priceTimeout) return (0, 0); // no price after timeout elapses
+            if (delta <= oracleTimeout) {
+                lotLow = savedLowPrice;
+                lotHigh = savedHighPrice;
+            } else if (delta >= oracleTimeout + priceTimeout) {
+                return (0, 0); // no price after full timeout
+            } else {
+                // oracleTimeout <= delta <= oracleTimeout + priceTimeout
 
-            // {1} = {s} / {s}
-            uint192 lotMultiplier = divuu(priceTimeout - delta, priceTimeout);
+                // {1} = {s} / {s}
+                uint192 lotMultiplier = divuu(oracleTimeout + priceTimeout - delta, priceTimeout);
 
-            // {UoA/tok} = {UoA/tok} * {1}
-            lotLow = savedLowPrice.mul(lotMultiplier);
-            lotHigh = savedHighPrice.mul(lotMultiplier);
+                // {UoA/tok} = {UoA/tok} * {1}
+                lotLow = savedLowPrice.mul(lotMultiplier);
+                lotHigh = savedHighPrice.mul(lotMultiplier);
+            }
         }
         assert(lotLow <= lotHigh);
     }

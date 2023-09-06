@@ -3,7 +3,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
-import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT, REVENUE_HIDING } from '../../../fixtures'
+import {
+  IMPLEMENTATION,
+  Implementation,
+  ORACLE_ERROR,
+  PRICE_TIMEOUT,
+  REVENUE_HIDING,
+} from '../../../fixtures'
 import { DefaultFixture, Fixture, getDefaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 import { getChainId } from '../../../../common/blockchain-utils'
 import forkBlockNumber from '../../../integration/fork-block-numbers'
@@ -26,7 +32,12 @@ import {
   expectUnpriced,
   setOraclePrice,
 } from '../../../utils/oracles'
-import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../../utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+} from '../../../utils/time'
 import {
   Asset,
   ATokenFiatCollateral,
@@ -50,6 +61,10 @@ import {
 } from '../../../../typechain'
 import { useEnv } from '#/utils/env'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
+import snapshotGasCost from '../../../utils/snapshotGasCost'
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 // Setup test environment
 const setup = async (blockNumber: number) => {
@@ -167,7 +182,12 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
     )
     // aDAI token
-    aDai = <IAToken>await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aDAI || '')
+    aDai = <IAToken>(
+      await ethers.getContractAt(
+        '@aave/protocol-v2/contracts/interfaces/IAToken.sol:IAToken',
+        networkConfig[chainId].tokens.aDAI || ''
+      )
+    )
 
     // stkAAVE
     stkAave = <ERC20Mock>(
@@ -687,8 +707,8 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
 
-      // Does not revert with zero price
-      await expectPrice(zeropriceCtokenCollateral.address, bn('0'), bn('0'), false)
+      // Unpriced
+      await expectUnpriced(zeropriceCtokenCollateral.address)
 
       // Refresh should mark status IFFY
       await zeropriceCtokenCollateral.refresh()
@@ -704,7 +724,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newCDaiCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+      const newADaiCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
         await ethers.getContractFactory('ATokenFiatCollateral')
       ).deploy(
         {
@@ -722,36 +742,36 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       )
 
       // Check initial state
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await newADaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newADaiCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       // Depeg one of the underlying tokens - Reducing price 20%
-      await setOraclePrice(newCDaiCollateral.address, bn('8e7')) // -20%
+      await setOraclePrice(newADaiCollateral.address, bn('8e7')) // -20%
 
       // Force updates - Should update whenDefault and status
-      await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+      await expect(newADaiCollateral.refresh())
+        .to.emit(newADaiCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await newADaiCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
         delayUntilDefault
       )
-      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newADaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
       // Move time forward past delayUntilDefault
       await advanceTime(Number(delayUntilDefault))
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newADaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
       // CToken
-      const prevWhenDefault: BigNumber = await newCDaiCollateral.whenDefault()
-      await expect(newCDaiCollateral.refresh()).to.not.emit(
-        newCDaiCollateral,
+      const prevWhenDefault: BigNumber = await newADaiCollateral.whenDefault()
+      await expect(newADaiCollateral.refresh()).to.not.emit(
+        newADaiCollateral,
         'CollateralStatusChanged'
       )
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
+      expect(await newADaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newADaiCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
     // Test for hard default
@@ -769,7 +789,7 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await saDaiMock.setExchangeRate(fp('0.02'))
 
       // Redeploy plugin using the new aDai mock
-      const newCDaiCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+      const newADaiCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
         await ethers.getContractFactory('ATokenFiatCollateral')
       ).deploy(
         {
@@ -785,23 +805,23 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         },
         REVENUE_HIDING
       )
-      await newCDaiCollateral.refresh()
+      await newADaiCollateral.refresh()
 
       // Check initial state
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+      expect(await newADaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newADaiCollateral.whenDefault()).to.equal(MAX_UINT48)
 
       // Decrease rate for aDAI, will disable collateral immediately
       await saDaiMock.setExchangeRate(fp('0.019'))
 
       // Force updates - Should update whenDefault and status for Atokens/aTokens
-      await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+      await expect(newADaiCollateral.refresh())
+        .to.emit(newADaiCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newADaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newADaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
@@ -838,6 +858,159 @@ describeFork(`ATokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await invalidChainlinkFeed.setSimplyRevert(false)
       await expect(invalidCTokenCollateral.refresh()).to.be.reverted
       expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    context('refresh()', () => {
+      beforeEach(async () => {
+        await aDaiCollateral.refresh()
+        expect(await aDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      })
+
+      it('during SOUND', async () => {
+        await snapshotGasCost(aDaiCollateral.refresh())
+        await snapshotGasCost(aDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('during soft default', async () => {
+        // Redeploy plugin using a Chainlink mock feed where we can change the price
+        const newADaiCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+          await ethers.getContractFactory('ATokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: mockChainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: await aDaiCollateral.erc20(),
+            maxTradeVolume: await aDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await aDaiCollateral.oracleTimeout(),
+            targetName: await aDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await aDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+
+        // Check initial state
+        expect(await newADaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newADaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+
+        // Depeg one of the underlying tokens - Reducing price 20%
+        await setOraclePrice(newADaiCollateral.address, bn('8e7')) // -20%
+        await snapshotGasCost(newADaiCollateral.refresh())
+        await snapshotGasCost(newADaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after soft default', async () => {
+        // Redeploy plugin using a Chainlink mock feed where we can change the price
+        const newADaiCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+          await ethers.getContractFactory('ATokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: mockChainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: await aDaiCollateral.erc20(),
+            maxTradeVolume: await aDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await aDaiCollateral.oracleTimeout(),
+            targetName: await aDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await aDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+
+        // Check initial state
+        expect(await newADaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newADaiCollateral.whenDefault()).to.equal(MAX_UINT48)
+
+        // Depeg one of the underlying tokens - Reducing price 20%
+        await setOraclePrice(newADaiCollateral.address, bn('8e7')) // -20%
+
+        // Force updates - Should update whenDefault and status
+        await expect(newADaiCollateral.refresh())
+          .to.emit(newADaiCollateral, 'CollateralStatusChanged')
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+        expect(await newADaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+          delayUntilDefault
+        )
+        expect(await newADaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+        // Move time forward past delayUntilDefault
+        await advanceTime(Number(delayUntilDefault))
+        expect(await newADaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+        // Nothing changes if attempt to refresh after default
+        // CToken
+        const prevWhenDefault: BigNumber = await newADaiCollateral.whenDefault()
+        await expect(newADaiCollateral.refresh()).to.not.emit(
+          newADaiCollateral,
+          'CollateralStatusChanged'
+        )
+        expect(await newADaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await newADaiCollateral.whenDefault()).to.equal(prevWhenDefault)
+        await snapshotGasCost(newADaiCollateral.refresh())
+        await snapshotGasCost(newADaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after oracle timeout', async () => {
+        const oracleTimeout = await aDaiCollateral.oracleTimeout()
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+        await advanceBlocks(bn(oracleTimeout).div(12))
+        await snapshotGasCost(aDaiCollateral.refresh())
+        await snapshotGasCost(aDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after full price timeout', async () => {
+        await advanceTime(
+          (await aDaiCollateral.priceTimeout()) + (await aDaiCollateral.oracleTimeout())
+        )
+        const lotP = await aDaiCollateral.lotPrice()
+        expect(lotP[0]).to.equal(0)
+        expect(lotP[1]).to.equal(0)
+        await snapshotGasCost(aDaiCollateral.refresh())
+        await snapshotGasCost(aDaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('after hard default', async () => {
+        const sATokenMockFactory: ContractFactory = await ethers.getContractFactory(
+          'StaticATokenMock'
+        )
+        const aDaiErc20 = await ethers.getContractAt('ERC20Mock', aDai.address)
+        const symbol = await aDaiErc20.symbol()
+        const saDaiMock: StaticATokenMock = <StaticATokenMock>(
+          await sATokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+        )
+        // Set initial exchange rate to the new aDai Mock
+        await saDaiMock.setExchangeRate(fp('0.02'))
+
+        // Redeploy plugin using the new aDai mock
+        const newADaiCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+          await ethers.getContractFactory('ATokenFiatCollateral')
+        ).deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: await aDaiCollateral.chainlinkFeed(),
+            oracleError: ORACLE_ERROR,
+            erc20: saDaiMock.address,
+            maxTradeVolume: await aDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await aDaiCollateral.oracleTimeout(),
+            targetName: await aDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await aDaiCollateral.delayUntilDefault(),
+          },
+          REVENUE_HIDING
+        )
+        await newADaiCollateral.refresh()
+
+        // Decrease rate for aDAI, will disable collateral immediately
+        await saDaiMock.setExchangeRate(fp('0.019'))
+        await snapshotGasCost(newADaiCollateral.refresh())
+        await snapshotGasCost(newADaiCollateral.refresh()) // 2nd refresh can be different than 1st
+      })
     })
   })
 })

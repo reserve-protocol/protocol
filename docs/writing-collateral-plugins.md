@@ -27,6 +27,7 @@ Here are some basic questions to answer before beginning to write a new collater
 7. **What amount of revenue should this plugin hide? (a minimum of `1e-6`% is recommended, but some collateral may require higher thresholds, and, in rare cases, `0` can be used)**
 8. **Are there rewards that can be claimed by holding this collateral? If so, how are they claimed?** Include a github link to the callable function or an example of how to claim.
 9. **Does the collateral need to be "refreshed" in order to update its internal state before refreshing the plugin?** Include a github link to the callable function.
+10. **Can the `price()` range be kept <5%? What is the largest possible % difference (while priced) between `price().high` and `price().low`?** See [RTokenAsset.tryPrice()](../contracts/plugins/assets/RTokenAsset.sol) and [docs/collateral.md](./collateral.md#price) for additional context.
 
 ## Implementation
 

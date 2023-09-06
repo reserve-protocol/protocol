@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -12,7 +12,8 @@ import "./mixins/Component.sol";
 contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public constant GAS_TO_RESERVE = 900000; // just enough to disable basket on n=128
+    uint256 public constant GAS_FOR_BH_QTY = 100_000; // enough to call bh.quantity
+    uint256 public constant GAS_FOR_DISABLE_BASKET = 900_000; // enough to disable basket on n=128
 
     // Peer-component addresses
     IBasketHandler private basketHandler;
@@ -42,6 +43,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         __Component_init(main_);
         basketHandler = main_.basketHandler();
         backingManager = main_.backingManager();
+
         uint256 length = assets_.length;
         for (uint256 i = 0; i < length; ++i) {
             _register(assets_[i]);
@@ -96,6 +98,8 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Unregister an asset, requiring that it is already registered
+    /// Rewards are NOT claimed by default when unregistering due to security concerns.
+    /// If the collateral is secure, governance should claim rewards before unregistering.
     /// @custom:governance
     // checks: assets[asset.erc20()] == asset
     // effects: assets' = assets - {asset.erc20():_} + {asset.erc20(), asset}
@@ -184,6 +188,13 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = assets.set(asset.erc20(), asset)
     // returns: assets[asset.erc20()] != asset
     function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
+        if (asset.isCollateral()) {
+            require(
+                ICollateral(address(asset)).status() == CollateralStatus.SOUND,
+                "collateral not sound"
+            );
+        }
+
         IERC20Metadata erc20 = asset.erc20();
         if (_erc20s.contains(address(erc20))) {
             if (assets[erc20] == asset) return false;
@@ -207,8 +218,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     function _reserveGas() private view returns (uint256) {
         uint256 gas = gasleft();
-        require(gas > GAS_TO_RESERVE, "not enough gas to unregister safely");
-        return gas - GAS_TO_RESERVE;
+        require(
+            gas > GAS_FOR_DISABLE_BASKET + GAS_FOR_BH_QTY,
+            "not enough gas to unregister safely"
+        );
+        return gas - GAS_FOR_DISABLE_BASKET;
     }
 
     /**

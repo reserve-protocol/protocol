@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Backtest</title>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script>
+      const root = document.getElementById('root')
+      const run = async () => {
+        const data = []
+
+        let html = ''
+        let canvases = ''
+        for (const result of data) {
+          html += `<p><a href='#${result.backtestName}'>${result.backtestName}: ${result.result.pluginStatus}</a></p>`
+          canvases += `
+          <h1 id="${result.backtestName}">${result.backtestName}: ${result.result.pluginStatus}</h1>
+          <canvas id="${result.backtestName}_canvas" width="1000" height="400"></canvas>`
+        }
+        root.innerHTML = html + canvases
+
+        for (const result of data) {
+          const ctx = document.getElementById(`${result.backtestName}_canvas`).getContext('2d')
+
+          const samples = result.result.samples
+
+          const labels = samples.map((sample) => sample.block)
+
+          const high = []
+          const refPrTok = []
+          const low = []
+          samples.forEach((sample) => {
+            high.push(parseFloat(sample.high))
+            refPrTok.push(parseFloat(sample.refPrTok))
+            low.push(parseFloat(sample.low))
+          })
+
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'High',
+                  data: high,
+                  borderWidth: 1,
+                },
+                {
+                  label: 'refPrTok',
+                  data: refPrTok,
+                  borderWidth: 1,
+                },
+                {
+                  label: 'low',
+                  data: low,
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: 'top',
+                },
+                title: {
+                  display: true,
+                  text: result.backtestName,
+                },
+              },
+            },
+          })
+        }
+      }
+      run()
+    </script>
+  </body>
+</html>

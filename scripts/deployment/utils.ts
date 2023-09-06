@@ -1,10 +1,10 @@
-import hre from 'hardhat'
+import hre, { tenderly } from 'hardhat'
 import * as readline from 'readline'
 import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber, BigNumberish } from 'ethers'
 import { bn, fp } from '../../common/numbers'
-import { IComponents } from '../../common/configuration'
+import { IComponents, baseL2Chains } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
@@ -106,42 +106,60 @@ export async function verifyContract(
   console.time(`Verifying ${contract}`)
   console.log(`Verifying ${contract}`)
 
-  // Sleep 0.5s to not overwhelm API
-  await new Promise((r) => setTimeout(r, 500))
-
-  const ETHERSCAN_API_KEY = useEnv('ETHERSCAN_API_KEY')
-
-  // Check to see if already verified
-  const url = `${getEtherscanBaseURL(
-    chainId,
-    true
-  )}/api/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
-  const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
-  if (status != 200 || data['status'] != '1') {
-    throw new Error("Can't communicate with Etherscan API")
-  }
-
-  // Only run verification script if not verified
-  if (data['result'][0]['SourceCode']?.length > 0) {
-    console.log('Already verified. Continuing')
+  if (hre.network.name == 'tenderly') {
+    await tenderly.verify({
+      name: contract,
+      address: address!,
+      libraries,
+    })
   } else {
-    console.log('Running new verification')
-    try {
-      await hre.run('verify:verify', {
-        address,
-        constructorArguments,
-        contract,
-        libraries,
-      })
-    } catch (e) {
-      console.log(
-        `IMPORTANT: failed to verify ${contract}. 
-      ${getEtherscanBaseURL(chainId)}/address/${address}#code`,
-        e
-      )
+    // Sleep 0.5s to not overwhelm API
+    await new Promise((r) => setTimeout(r, 500))
+
+    const ETHERSCAN_API_KEY = useEnv('ETHERSCAN_API_KEY')
+
+    let url: string
+    if (baseL2Chains.includes(hre.network.name)) {
+      // Base L2
+      url = `${getBasescanURL(
+        chainId
+      )}/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
+    } else {
+      // Ethereum
+      url = `${getEtherscanBaseURL(
+        chainId,
+        true
+      )}/api/?module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_API_KEY}`
     }
+
+    // Check to see if already verified
+    const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
+    if (status != 200 || data['status'] != '1') {
+      throw new Error("Can't communicate with Etherscan API")
+    }
+
+    // Only run verification script if not verified
+    if (data['result'][0]['SourceCode']?.length > 0) {
+      console.log('Already verified. Continuing')
+    } else {
+      console.log('Running new verification')
+      try {
+        await hre.run('verify:verify', {
+          address,
+          constructorArguments,
+          contract,
+          libraries,
+        })
+      } catch (e) {
+        console.log(
+          `IMPORTANT: failed to verify ${contract}. 
+        ${getEtherscanBaseURL(chainId)}/address/${address}#code`,
+          e
+        )
+      }
+    }
+    console.timeEnd(`Verifying ${contract}`)
   }
-  console.timeEnd(`Verifying ${contract}`)
 }
 
 export const getEtherscanBaseURL = (chainId: number, api = false) => {
@@ -149,6 +167,15 @@ export const getEtherscanBaseURL = (chainId: number, api = false) => {
   if (api) prefix = chainId == 1 ? 'api.' : `api-${hre.network.name}.`
   else prefix = chainId == 1 ? '' : `${hre.network.name}.`
   return `https://${prefix}etherscan.io`
+}
+
+export const getBasescanURL = (chainId: number) => {
+  // For Base, get URL from HH config
+  const chainConfig = hre.config.etherscan.customChains.find((chain) => chain.chainId == chainId)
+  if (!chainConfig || !chainConfig.urls) {
+    throw new Error(`Missing custom chain configuration for ${hre.network.name}`)
+  }
+  return `${chainConfig.urls.apiURL}`
 }
 
 export const getEmptyDeployment = (): IDeployments => {
@@ -197,6 +224,7 @@ export const prompt = async (query: string): Promise<string> => {
       rl.question(query, (ans) => {
         rl.close()
         resolve(ans)
+        return ans
       })
     )
   } else {

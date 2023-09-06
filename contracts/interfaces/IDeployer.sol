@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../libraries/Throttle.sol";
@@ -30,7 +30,7 @@ struct DeploymentParams {
     uint48 longFreeze; // {s} how long each freeze extension lasts
     //
     // === Rewards (Furnace + StRSR) ===
-    uint192 rewardRatio; // the fraction of available revenues that are paid out each 12s period
+    uint192 rewardRatio; // the fraction of available revenues that are paid out each block period
     //
     // === StRSR ===
     uint48 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
@@ -101,6 +101,10 @@ interface IDeployer is IVersioned {
         address owner,
         DeploymentParams calldata params
     ) external returns (address);
+
+    /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset);
 }
 
 interface TestIDeployer is IDeployer {

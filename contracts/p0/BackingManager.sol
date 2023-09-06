@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -11,6 +11,7 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 
 /**
  * @title BackingManager
@@ -23,10 +24,17 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
 
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
+
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
+
+    constructor() {
+        ONE_BLOCK = NetworkConfigLib.blocktime();
+    }
 
     function init(
         IMain main_,
@@ -81,7 +89,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         main.furnace().melt();
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
-        // Assumption: chain has <= 12s blocktimes
         require(
             _msgSender() == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
             "already rebalancing"
@@ -116,10 +123,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
          */
 
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
-        (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareRecollateralizationTrade(
-            this,
-            basketsHeld
-        );
+        (bool doTrade, TradeRequest memory req, TradePrices memory prices) = TradingLibP0
+        .prepareRecollateralizationTrade(this, basketsHeld);
 
         if (doTrade) {
             // Seize RSR if needed
@@ -129,7 +134,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             }
 
             // Execute Trade
-            ITrade trade = tryTrade(kind, req);
+            ITrade trade = tryTrade(kind, req, prices);
             tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time

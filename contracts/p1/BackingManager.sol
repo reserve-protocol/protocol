@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -8,6 +8,7 @@ import "../interfaces/IBackingManager.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 import "./mixins/Trading.sol";
 import "./mixins/RecollateralizationLib.sol";
 
@@ -19,6 +20,10 @@ import "./mixins/RecollateralizationLib.sol";
 contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
+
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
 
     // Cache of peer components
     IAssetRegistry private assetRegistry;
@@ -41,6 +46,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // ==== Invariants ====
     // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        ONE_BLOCK = NetworkConfigLib.blocktime();
+    }
 
     function init(
         IMain main_,
@@ -71,15 +81,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Settle a single trade. If the caller is the trade, try chaining into rebalance()
     /// While this function is not nonReentrant, its two subsets each individually are
+    /// If the caller is a trade contract, initiate the next trade.
+    /// This is done in order to better align incentives,
+    /// and have the last bidder be the one to start the next auction.
+    /// This behaviour currently only happens for Dutch Trade.
     /// @param sell The sell token in the trade
     /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function settleTrade(IERC20 sell)
-        public
-        override(ITrading, TradingP1)
-        notTradingPausedOrFrozen
-        returns (ITrade trade)
-    {
+    function settleTrade(IERC20 sell) public override(ITrading, TradingP1) returns (ITrade trade) {
         trade = super.settleTrade(sell); // nonReentrant
 
         // if the settler is the trade contract itself, try chaining with another rebalance()
@@ -106,7 +115,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         furnace.melt();
 
         // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
-        // Assumption: chain has <= 12s blocktimes
         require(
             _msgSender() == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
             "already rebalancing"
@@ -140,8 +148,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
          * rToken.basketsNeeded to the current basket holdings. Haircut time.
          */
 
-        (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
-            .prepareRecollateralizationTrade(this, basketsHeld);
+        (
+            bool doTrade,
+            TradeRequest memory req,
+            TradePrices memory prices
+        ) = RecollateralizationLibP1.prepareRecollateralizationTrade(this, basketsHeld);
 
         if (doTrade) {
             // Seize RSR if needed
@@ -151,7 +162,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             }
 
             // Execute Trade
-            ITrade trade = tryTrade(kind, req);
+            ITrade trade = tryTrade(kind, req, prices);
             tradeEnd[kind] = trade.endTime();
         } else {
             // Haircut time

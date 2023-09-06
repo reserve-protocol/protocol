@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -12,7 +12,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     using FixLib for uint192;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public constant GAS_TO_RESERVE = 900000; // just enough to disable basket on n=128
+    uint256 public constant GAS_FOR_BH_QTY = 100_000; // enough to call bh.quantity
+    uint256 public constant GAS_FOR_DISABLE_BASKET = 900_000; // enough to disable basket on n=128
 
     // Registered ERC20s
     EnumerableSet.AddressSet private _erc20s;
@@ -37,8 +38,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
             assets[IERC20(_erc20s.at(i))].refresh();
         }
 
-        IBasketHandler basketHandler = main.basketHandler();
-        basketHandler.trackStatus();
+        main.basketHandler().trackStatus();
         lastRefresh = uint48(block.timestamp);
     }
 
@@ -144,6 +144,13 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Register an asset, unregistering any previous asset with the same ERC20.
     function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
+        if (asset.isCollateral()) {
+            require(
+                ICollateral(address(asset)).status() == CollateralStatus.SOUND,
+                "collateral not sound"
+            );
+        }
+
         if (_erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] == asset)
             return false;
 
@@ -166,7 +173,10 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     function _reserveGas() private view returns (uint256) {
         uint256 gas = gasleft();
-        require(gas > GAS_TO_RESERVE, "not enough gas to unregister safely");
-        return gas - GAS_TO_RESERVE;
+        require(
+            gas > GAS_FOR_DISABLE_BASKET + GAS_FOR_BH_QTY,
+            "not enough gas to unregister safely"
+        );
+        return gas - GAS_FOR_DISABLE_BASKET;
     }
 }

@@ -19,7 +19,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn devchain &
         env:
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
@@ -37,7 +36,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn lint
 
   plugin-tests:
@@ -50,7 +48,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:plugins
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
@@ -62,7 +59,7 @@ jobs:
             hardhat-network-fork-
       - run: yarn test:plugins:integration
         env:
-          NODE_OPTIONS: '--max-old-space-size=4096'
+          NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
 
@@ -76,10 +73,9 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:p0
         env:
-          NODE_OPTIONS: '--max-old-space-size=4096'
+          NODE_OPTIONS: '--max-old-space-size=8192'
 
   p1-tests:
     name: 'P1 Tests'
@@ -91,10 +87,9 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:p1
         env:
-          NODE_OPTIONS: '--max-old-space-size=4096'
+          NODE_OPTIONS: '--max-old-space-size=8192'
 
   scenario-tests:
     name: 'Scenario Tests'
@@ -106,7 +101,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:scenario
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -121,7 +115,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:extreme
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
@@ -133,6 +126,7 @@ jobs:
             hardhat-network-fork-
       - run: yarn test:extreme:integration
         env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
 
@@ -156,9 +150,8 @@ jobs:
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
       - run: yarn install --immutable
-      - run: yarn compile
       - run: yarn test:integration
         env:
-          NODE_OPTIONS: '--max-old-space-size=4096'
+          NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}

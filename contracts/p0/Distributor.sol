@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -41,9 +41,17 @@ contract DistributorP0 is ComponentP0, IDistributor {
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
+    /// Only callable by RevenueTraders
     function distribute(IERC20 erc20, uint256 amount) external {
+        // Intentionally do not check notTradingPausedOrFrozen, since handled by caller
+
         IERC20 rsr = main.rsr();
 
+        require(
+            _msgSender() == address(main.rsrTrader()) ||
+                _msgSender() == address(main.rTokenTrader()),
+            "RevenueTraders only"
+        );
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -32,8 +32,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     // === Governance param ===
     uint192 public maxTradeSlippage; // {%}
-
     uint192 public minTradeVolume; // {UoA}
+
+    // === 3.0.0 ===
+    uint256 public tradesNonce; // to keep track of how many trades have been opened in total
 
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
@@ -110,17 +112,21 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
-    function tryTrade(TradeKind kind, TradeRequest memory req) internal returns (ITrade trade) {
-        /*  */
+    function tryTrade(
+        TradeKind kind,
+        TradeRequest memory req,
+        TradePrices memory prices
+    ) internal returns (ITrade trade) {
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
 
-        trade = broker.openTrade(kind, req);
+        trade = broker.openTrade(kind, req, prices);
         trades[sell] = trade;
         tradesOpen++;
+        tradesNonce++;
 
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
@@ -141,22 +147,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         minTradeVolume = val;
     }
 
-    // === FixLib Helper ===
-
-    /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDiv(
-        uint192 x,
-        uint192 y,
-        uint192 z,
-        RoundingMode round
-    ) external pure returns (uint192) {
-        return x.mulDiv(y, z, round);
-    }
-
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[45] private __gap;
 }
