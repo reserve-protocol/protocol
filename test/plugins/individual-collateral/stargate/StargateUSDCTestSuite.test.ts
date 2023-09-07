@@ -12,6 +12,7 @@ import {
   StargateRewardableWrapper,
   StargateRewardableWrapper__factory,
 } from '@typechain/index'
+import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '#/common/numbers'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -89,6 +90,9 @@ export const deployCollateral = async (
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+
+  // Push forward chainlink feed
+  await pushOracleForward(opts.chainlinkFeed!)
 
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible

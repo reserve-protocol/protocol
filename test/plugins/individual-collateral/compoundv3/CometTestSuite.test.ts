@@ -22,6 +22,7 @@ import {
   CometMock__factory,
   TestICollateral,
 } from '../../../../typechain'
+import { pushOracleForward } from '../../../utils/oracles'
 import { bn, fp } from '../../../../common/numbers'
 import { MAX_UINT48 } from '../../../../common/constants'
 import { expect } from 'chai'
@@ -117,6 +118,9 @@ export const deployCollateral = async (
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
+
+  // Push forward chainlink feed
+  await pushOracleForward(opts.chainlinkFeed!)
 
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
