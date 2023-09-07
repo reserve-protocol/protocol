@@ -56,11 +56,11 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-
   assetCollDeployments.collateral.DAI = daiCollateral
   assetCollDeployments.erc20s.DAI = networkConfig[chainId].tokens.DAI
   deployedCollateral.push(daiCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy Fiat Collateral - USDC  **************************/
   const { collateral: usdcCollateral } = await hre.run('deploy-fiat-collateral', {
@@ -100,11 +100,11 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-
   assetCollDeployments.collateral.USDT = usdtCollateral
   assetCollDeployments.erc20s.USDT = networkConfig[chainId].tokens.USDT
   deployedCollateral.push(usdtCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy Fiat Collateral - USDP  **************************/
   const { collateral: usdpCollateral } = await hre.run('deploy-fiat-collateral', {
@@ -122,11 +122,11 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-
   assetCollDeployments.collateral.USDP = usdpCollateral
   assetCollDeployments.erc20s.USDP = networkConfig[chainId].tokens.USDP
   deployedCollateral.push(usdpCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy Fiat Collateral - TUSD  **************************/
   const { collateral: tusdCollateral } = await hre.run('deploy-fiat-collateral', {
@@ -148,6 +148,8 @@ async function main() {
   assetCollDeployments.erc20s.TUSD = networkConfig[chainId].tokens.TUSD
   deployedCollateral.push(tusdCollateral.toString())
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   /********  Deploy Fiat Collateral - BUSD  **************************/
   const { collateral: busdCollateral } = await hre.run('deploy-fiat-collateral', {
     priceTimeout: priceTimeout.toString(),
@@ -164,11 +166,11 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-
   assetCollDeployments.collateral.BUSD = busdCollateral
   assetCollDeployments.erc20s.BUSD = networkConfig[chainId].tokens.BUSD
   deployedCollateral.push(busdCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy AToken Fiat Collateral - aDAI  **************************/
 
@@ -208,11 +210,11 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
-
   assetCollDeployments.collateral.aDAI = aDaiCollateral
   assetCollDeployments.erc20s.aDAI = adaiStaticToken.address
   deployedCollateral.push(aDaiCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy AToken Fiat Collateral - aUSDC  **************************/
 
