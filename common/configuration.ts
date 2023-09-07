@@ -506,7 +506,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDT: '0xf19d560eb8d2adf07bd6d13ed03e1d11215721f9', // 0.3%, 24hr
       COMP: '0x9dda783de64a9d1a60c49ca761ebe528c35ba428', // 0.5%, 24hr
       cbETH: '0x806b4ac04501c29769051e42783cf04dce41440b', // 0.5%, 24hr
-      RSR: '0xAa98aE504658766Dfe11F31c5D95a0bdcABDe0b1', // 0.5%, 24hr
+      RSR: '0xAa98aE504658766Dfe11F31c5D95a0bdcABDe0b1', // 2%, 24hr
     },
     GNOSIS_EASY_AUCTION: '0xcdf32E323e69090eCA17adDeF058A6A921c3e75A', // mock
   },
