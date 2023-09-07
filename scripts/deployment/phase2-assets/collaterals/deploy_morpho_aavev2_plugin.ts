@@ -189,11 +189,11 @@ async function main() {
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.BTC!,
         erc20: maWBTC.address,
       },
       revenueHiding,
-      networkConfig[chainId].chainlinkFeeds.wBTCBTC!,
+      networkConfig[chainId].chainlinkFeeds.WBTC!,
       oracleTimeout(chainId, '86400').toString() // 1 hr
     )
     assetCollDeployments.collateral.maWBTC = collateral.address
