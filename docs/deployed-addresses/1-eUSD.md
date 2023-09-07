@@ -1,4 +1,4 @@
-# eUSD (Electronic Dollar)
+# [eUSD (Electronic Dollar)](https://etherscan.io/address/0xA0d69E286B938e21CBf7E51D71F6A4c8918f482F)
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |
@@ -13,4 +13,12 @@
 | Distributor | [0x8a77980f82A1d537600891D782BCd8bd41B85472](https://etherscan.io/address/0x8a77980f82A1d537600891D782BCd8bd41B85472) | [0xc78c5a84f30317b5f7d87170ec21dc73df38d569](https://etherscan.io/address/0xc78c5a84f30317b5f7d87170ec21dc73df38d569#code) | 2.0.0 |
 | Furnace | [0x57084b3a6317bea01bA8f7c582eD033d9345c2B2](https://etherscan.io/address/0x57084b3a6317bea01bA8f7c582eD033d9345c2B2) | [0x393002573ea4a3d74a80f3b1af436a3ee3a30c96](https://etherscan.io/address/0x393002573ea4a3d74a80f3b1af436a3ee3a30c96#code) | 2.0.0 |
 | StRSR | [0x18ba6e33ceb80f077DEb9260c9111e62f21aE7B8](https://etherscan.io/address/0x18ba6e33ceb80f077DEb9260c9111e62f21aE7B8) | [0xfda8c62d86e426d5fb653b6c44a455bb657b693f](https://etherscan.io/address/0xfda8c62d86e426d5fb653b6c44a455bb657b693f#code) | 2.1.0 |
+
+
+## Governance Addresses
+| Contract | Address | Implementation | Version |
+| --- | --- | --- | --- |
+| Governor Alexios | [0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6](https://etherscan.io/address/0x7e880d8bD9c9612D6A9759F96aCD23df4A4650E6) | [](https://etherscan.io/address/#code) | 1 |
+| Timelock | [0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c](https://etherscan.io/address/0xc8Ee187A5e5c9dC9b42414Ddf861FFc615446a2c) | [](https://etherscan.io/address/#code) | N/A |
+
         

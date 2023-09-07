@@ -3,9 +3,12 @@ import { task, types } from 'hardhat/config'
 import fs from 'fs'
 import { IAssetCollDeployments, getAssetCollDeploymentFilename, getDeploymentFile, getDeploymentFilename } from '#/scripts/deployment/common'
 import { ITokens } from '#/common/configuration'
+import { MainP1 } from '@typechain/MainP1'
+import { Contract } from 'ethers'
 
 task('get-addys', 'Compile the deployed addresses of an RToken deployment')
   .addOptionalParam('rtoken', 'The address of the RToken', undefined, types.string)
+  .addOptionalParam('gov', 'The address of the RToken Governance', undefined, types.string)
   .addOptionalParam('ver', 'The target version', undefined, types.string)
   .setAction(async (params, hre) => {
 
@@ -16,13 +19,21 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
 
     const etherscanUrl = "https://etherscan.io/address/"
 
+    const getVersion = async (c: Contract) => {
+        try {
+            return await c.version()
+        } catch (e) {
+            return 'N/A'
+        }
+    }
+
     const createRTokenTableRow = async (name: string, address: string) => {
         const url = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
         const response = await fetch(url)
         const data = await response.json()
         const implementation = data.result[0].Implementation
         const component = await hre.ethers.getContractAt('ComponentP1', address)
-        return `| ${name} | [${address}](${etherscanUrl}${address}) | [${implementation}](${etherscanUrl}${implementation}#code) | ${await component.version()} |`
+        return `| ${name} | [${address}](${etherscanUrl}${address}) | [${implementation}](${etherscanUrl}${implementation}#code) | ${await getVersion(component)} |`
     }
 
     const createAssetTableRow = async (name: string, address: string) => {
@@ -39,16 +50,23 @@ task('get-addys', 'Compile the deployed addresses of an RToken deployment')
         return rows.join('\n')
     }
 
-    const createRTokenMarkdown = async (name: string, address: string, rows: string) => {
-        return `# ${name}
+    const createRTokenMarkdown = async (name: string, address: string, rows: string, govRows: string | undefined) => {
+        return `# [${name}](${etherscanUrl}${address})
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |
 ${rows}
+
+${govRows && `
+## Governance Addresses
+| Contract | Address | Implementation | Version |
+| --- | --- | --- | --- |
+${govRows}
+`}
         `
     }
 
-    const createAssetMarkdown = async (name: string, address: string, assets: string, collaterals: string) => {
+    const createAssetMarkdown = async (name: string, assets: string, collaterals: string) => {
         return `# ${name}
 ## Assets
 | Contract | Address |
@@ -79,9 +97,45 @@ ${collaterals}
         return `${outputDir}${chainId}-components-${version}.md`
     }
 
+    const getActiveRoleHolders = async (main: MainP1, role: string) => {
+        // get active owners
+        //
+        const grantedFilter = main.filters.RoleGranted(role)
+        const revokedFilter = main.filters.RoleRevoked(role)
+
+        // get granted owners
+        const ownersGranted = await main.queryFilter(grantedFilter)
+        let owners = ownersGranted.map((event) => {
+            return event.args![1]
+        })
+        interface OwnerCount {
+            [key: string]: number
+        }
+
+        // count granted owners
+        let ownerCount: OwnerCount = {}
+        owners.forEach((owner: string) => {
+            ownerCount[owner] = (ownerCount[owner] || 0) + 1
+        })
+
+        // reduce counts by revoked owners
+        const ownersRevoked = await main.queryFilter(revokedFilter)
+        ownersRevoked.forEach((event) => {
+            const owner = event.args![1]
+            ownerCount[owner] = (ownerCount[owner] || 0) - 1
+        })
+        return Object.keys(ownerCount).filter((owner) => ownerCount[owner] > 0)
+    }
+
+    /*
+        Compile target addresses and create markdown files
+    */
+
     const outputDir = 'docs/deployed-addresses/'
 
-    if (params.rtoken) {
+    if (params.rtoken && params.gov) {
+        // if rtoken address is provided, print component addresses
+
         const rToken = await hre.ethers.getContractAt('IRToken', params.rtoken)
         const mainAddress = await rToken.main()
         const main = await hre.ethers.getContractAt('MainP1', mainAddress)
@@ -108,16 +162,30 @@ ${collaterals}
             { name: 'Furnace', address: furnaceAddress },
             { name: 'StRSR', address: stRSRAddress }
         ]
-        // TODO: add governance addresses
-    
+
+        const governance = await hre.ethers.getContractAt('Governance', params.gov)
+        const timelock = await governance.timelock()
+
+        // confirm timelock is in fact owner of main
+        const isOwner = await main.hasRole(await main.OWNER_ROLE(), timelock)
+        if (!isOwner) {
+            throw new Error('Wrong governance address (Timelock is not owner of Main)')
+        }
+
+        const govComponents = [
+            { name: 'Governor Alexios', address: params.gov },
+            { name: 'Timelock', address: timelock }
+        ]
+        
         const rTokenName = await rToken.name()
         const rTokenSymbol = await rToken.symbol()
 
         const rows = await createTableRows(components, true)
-        const markdown = await createRTokenMarkdown(`${rTokenSymbol} (${rTokenName})`, params.rtoken, rows)
+        const govRows = await createTableRows(govComponents, true)
+        const markdown = await createRTokenMarkdown(`${rTokenSymbol} (${rTokenName})`, params.rtoken, rows, govRows)
         fs.writeFileSync(await getRTokenFileName(params.rtoken), markdown)
     } else if (params.ver) {
-        // print implementation addresses
+        // if version is provided, print implementation addresses
         const version = `${hre.network.name}-${params.ver}`
         const collateralDepl = getDeploymentFile(getAssetCollDeploymentFilename(await getChainId(hre), version)) as IAssetCollDeployments
 
@@ -133,7 +201,7 @@ ${collaterals}
         })
         const assetRows = await createTableRows(assets, false)
 
-        const assetMarkdown = await createAssetMarkdown(`Assets (${capitalize(hre.network.name)} ${params.ver})`, params.rtoken, assetRows, collateralRows)
+        const assetMarkdown = await createAssetMarkdown(`Assets (${capitalize(hre.network.name)} ${params.ver})`, assetRows, collateralRows)
         fs.writeFileSync(await getAssetFileName(params.ver), assetMarkdown)
 
         const componentDepl = getDeploymentFile(getDeploymentFilename(await getChainId(hre), version))
@@ -149,10 +217,11 @@ ${collaterals}
 
         let components = recursiveDestructure(componentDepl as {}, '') as Array<{name: string, address: string}>
         components = components.sort((a, b) => a.name.localeCompare(b.name))
-        const componentMardown = await createRTokenMarkdown(`Component Implementations (${capitalize(hre.network.name)} ${params.ver})`, params.version, await createTableRows(components, false))
-        fs.writeFileSync(await getComponentFileName(params.ver), componentMardown)
+        const componentMarkdown = await createRTokenMarkdown(`Component Implementations (${capitalize(hre.network.name)} ${params.ver})`, params.version, await createTableRows(components, false), undefined)
+        fs.writeFileSync(await getComponentFileName(params.ver), componentMarkdown)
     } else {
-        throw new Error('must provide either RToken address (--rtoken) or Version (--ver)')
+        // if neither rtoken address nor version number is provided, throw error
+        throw new Error('must provide either RToken address (--rtoken) and RToken governance (--gov), or Version (--ver)')
     }
     
 

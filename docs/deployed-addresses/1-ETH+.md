@@ -1,4 +1,4 @@
-# ETH+ (ETHPlus)
+# [ETH+ (ETHPlus)](https://etherscan.io/address/0xE72B141DF173b999AE7c1aDcbF60Cc9833Ce56a8)
 ## Component Addresses
 | Contract | Address | Implementation | Version |
 | --- | --- | --- | --- |
@@ -13,4 +13,12 @@
 | Distributor | [0x954B4770462e8894BcD2451543482F11DC160e1e](https://etherscan.io/address/0x954B4770462e8894BcD2451543482F11DC160e1e) | [](https://etherscan.io/address/#code) | 2.0.0 |
 | Furnace | [0x9862efAB36F81524B24F787e07C97e2F5A6c206e](https://etherscan.io/address/0x9862efAB36F81524B24F787e07C97e2F5A6c206e) | [](https://etherscan.io/address/#code) | 2.0.0 |
 | StRSR | [0xffa151Ad0A0e2e40F39f9e5E9F87cF9E45e819dd](https://etherscan.io/address/0xffa151Ad0A0e2e40F39f9e5E9F87cF9E45e819dd) | [0xfda8c62d86e426d5fb653b6c44a455bb657b693f](https://etherscan.io/address/0xfda8c62d86e426d5fb653b6c44a455bb657b693f#code) | 2.1.0 |
+
+
+## Governance Addresses
+| Contract | Address | Implementation | Version |
+| --- | --- | --- | --- |
+| Governor Alexios | [0x239cDcBE174B4728c870A24F77540dAB3dC5F981](https://etherscan.io/address/0x239cDcBE174B4728c870A24F77540dAB3dC5F981) | [](https://etherscan.io/address/#code) | 1 |
+| Timelock | [0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B](https://etherscan.io/address/0x5f4A10aE2fF68bE3cdA7d7FB432b10C6BFA6457B) | [](https://etherscan.io/address/#code) | N/A |
+
         
