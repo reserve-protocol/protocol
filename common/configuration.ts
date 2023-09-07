@@ -9,6 +9,7 @@ interface ICurrencies {
 export interface ITokens {
   DAI?: string
   USDC?: string
+  USDbC?: string
   USDT?: string
   USDP?: string
   TUSD?: string
@@ -491,7 +492,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     name: 'base',
     tokens: {
       DAI: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',
-      USDC: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA',
+      USDbC: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA',
       RSR: '0xaB36452DbAC151bE02b16Ca17d8919826072f64a',
       COMP: '0x9e1028F5F1D5eDE59748FFceE5532509976840E0',
       WETH: '0x4200000000000000000000000000000000000006',
@@ -503,9 +504,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0xccadc697c55bbb68dc5bcdf8d3cbe83cdd4e071e', // 0.5%, 24hr
       USDC: '0x7e860098f58bbfc8648a4311b374b1d669a2bc6b', // 0.3%, 24hr
       USDT: '0xf19d560eb8d2adf07bd6d13ed03e1d11215721f9', // 0.3%, 24hr
-      RSR: '___TBD___',
       COMP: '0x9dda783de64a9d1a60c49ca761ebe528c35ba428', // 0.5%, 24hr
-      cbETH: '0x806b4ac04501c29769051e42783cf04dce41440b' // 0.5%, 24hr
+      cbETH: '0x806b4ac04501c29769051e42783cf04dce41440b', // 0.5%, 24hr
+      RSR: '0xAa98aE504658766Dfe11F31c5D95a0bdcABDe0b1', // 0.5%, 24hr
     },
     GNOSIS_EASY_AUCTION: '0xcdf32E323e69090eCA17adDeF058A6A921c3e75A', // mock
   },
