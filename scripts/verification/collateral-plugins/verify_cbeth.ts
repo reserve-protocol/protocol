@@ -45,7 +45,7 @@ async function main() {
       networkConfig[chainId].chainlinkFeeds.cbETH!, // refPerTokChainlinkFeed
       oracleTimeout(chainId, '86400').toString(), // refPerTokChainlinkTimeout
     ],
-    'contracts/plugins/assets/cbeth/CBEthCollateral.sol:CBEthCollateral'
+    'contracts/plugins/assets/cbeth/CBETHCollateral.sol:CBEthCollateral'
   )
 }
 
