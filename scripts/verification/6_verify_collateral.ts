@@ -70,7 +70,7 @@ async function main() {
       'Static ' + (await aToken.name()),
       's' + (await aToken.symbol()),
     ],
-    'contracts/plugins/assets/aave/vendor/StaticATokenLM.sol:StaticATokenLM'
+    'contracts/plugins/assets/aave/StaticATokenLM.sol:StaticATokenLM'
   )
   /********  Verify ATokenFiatCollateral - aDAI  **************************/
   await verifyContract(
