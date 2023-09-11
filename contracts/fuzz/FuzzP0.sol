@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "contracts/fuzz/IFuzz.sol";
-import "contracts/fuzz/GnosisTradeMock.sol";
+import "contracts/fuzz/Trades.sol";
 
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
@@ -112,7 +112,7 @@ contract RevenueTraderP0Fuzz is RevenueTraderP0 {
 
 contract RTokenP0Fuzz is IRTokenFuzz, RTokenP0 {
     using FixLib for uint192;
-    
+
     /// The tokens and underlying quantities needed to issue `amount` qRTokens.
     /// @dev this is distinct from basketHandler().quote() b/c the input is in RTokens, not BUs.
     /// @param amount {qRTok} quantity of qRTokens to quote.

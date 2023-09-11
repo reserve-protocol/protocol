@@ -14,7 +14,7 @@ import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/AssetMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/PriceModel.sol";
-import "contracts/fuzz/GnosisTradeMock.sol";
+import "contracts/fuzz/Trades.sol";
 import "contracts/fuzz/Utils.sol";
 import "contracts/fuzz/FuzzP1.sol";
 
@@ -268,10 +268,7 @@ contract NormalOpsScenario {
         main.rToken().redeem(amount);
     }
 
-    function redeemTo(
-        uint256 amount,
-        uint8 recipientID
-    ) public asSender {
+    function redeemTo(uint256 amount, uint8 recipientID) public asSender {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         main.rToken().redeemTo(recipient, amount);
@@ -288,24 +285,18 @@ contract NormalOpsScenario {
         redeemablePortions.push(portion);
     }
 
-    function redeemCustom(
-        uint8 recipientID,
-        uint192 amount
-    ) public asSender {
+    function redeemCustom(uint8 recipientID, uint192 amount) public asSender {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         uint192[] memory portions = new uint192[](redeemablePortions.length);
-        
+
         for (uint256 i = 0; i < redeemablePortions.length; i++) {
-            portions[i] = redeemablePortions[i] * 1e18 / totalPortions;
+            portions[i] = (redeemablePortions[i] * 1e18) / totalPortions;
         }
 
-        (address[] memory erc20sOut, uint256[] memory amountsOut) 
-            = main.basketHandler().quoteCustomRedemption(
-                redeemableBasketNonces,
-                portions,
-                amount
-            );
+        (address[] memory erc20sOut, uint256[] memory amountsOut) = main
+        .basketHandler()
+        .quoteCustomRedemption(redeemableBasketNonces, portions, amount);
 
         main.rToken().redeemCustom(
             recipient,
@@ -339,11 +330,7 @@ contract NormalOpsScenario {
     function cancelUnstake(uint256 endIdSeed) public asSender {
         StRSRP1Fuzz strsr = StRSRP1Fuzz(address(main.stRSR()));
         uint256 len = strsr.draftQueueLen(strsr.getDraftEra(), msg.sender);
-        uint256 id = between(
-            0,
-            len,
-            endIdSeed
-        );
+        uint256 id = between(0, len, endIdSeed);
         strsr.cancelUnstake(id);
     }
 
@@ -561,7 +548,7 @@ contract NormalOpsScenario {
         BrokerP1(address(main.broker())).setDutchAuctionLength(uint48(between(1, 604800, seed)));
         // 604800 is Broker.MAX_AUCTION_LENGTH
     }
-    
+
     function setFurnaceRatio(uint256 seed) public {
         FurnaceP1(address(main.furnace())).setRatio(uint192(between(0, 1e18, seed)));
         // 1e18 is Furnace.MAX_RATIO

@@ -12,7 +12,7 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
 
 import "contracts/fuzz/IFuzz.sol";
-import "contracts/fuzz/GnosisTradeMock.sol";
+import "contracts/fuzz/Trades.sol";
 import "contracts/fuzz/Utils.sol";
 
 import "contracts/p1/AssetRegistry.sol";
@@ -130,7 +130,10 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         Registry memory reg = IMainFuzz(address(main)).assetRegistry().getRegistry();
         uint192[] memory quantities = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            quantities[i] = IMainFuzz(address(main)).basketHandler().quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            quantities[i] = IMainFuzz(address(main)).basketHandler().quantityUnsafe(
+                reg.erc20s[i],
+                reg.assets[i]
+            );
         }
 
         TradingContext memory components = TradingContext({
@@ -159,12 +162,18 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
 
             IAsset asset = components.ar.toAsset(erc20s[i]);
             uint192 bal = asset.bal(address(components.bm)); // {tok}
-            uint192 needed = range.top.mul(IMainFuzz(address(main)).basketHandler().quantity(erc20s[i]), CEIL); // {tok}
+            uint192 needed = range.top.mul(
+                IMainFuzz(address(main)).basketHandler().quantity(erc20s[i]),
+                CEIL
+            ); // {tok}
             if (bal.gt(needed)) {
                 surplusTokens.push(asset.erc20());
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range
-                needed = range.bottom.mul(IMainFuzz(address(main)).basketHandler().quantity(erc20s[i]), CEIL); // {tok};
+                needed = range.bottom.mul(
+                    IMainFuzz(address(main)).basketHandler().quantity(erc20s[i]),
+                    CEIL
+                ); // {tok};
                 if (bal.lt(needed)) {
                     deficitTokens.push(ICollateral(address(asset)).erc20());
                 }
@@ -195,15 +204,14 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         return false;
     }
 
-    function getCurrentBasketRange()
-        public
-        view
-        returns (BasketRange memory)
-    {
+    function getCurrentBasketRange() public view returns (BasketRange memory) {
         Registry memory reg = IMainFuzz(address(main)).assetRegistry().getRegistry();
         uint192[] memory quantities = new uint192[](reg.erc20s.length);
         for (uint256 i = 0; i < reg.erc20s.length; ++i) {
-            quantities[i] = IMainFuzz(address(main)).basketHandler().quantityUnsafe(reg.erc20s[i], reg.assets[i]);
+            quantities[i] = IMainFuzz(address(main)).basketHandler().quantityUnsafe(
+                reg.erc20s[i],
+                reg.assets[i]
+            );
         }
 
         TradingContext memory components = TradingContext({
@@ -219,10 +227,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             quantities: quantities
         });
 
-        return RecollateralizationLibP1.basketRange(
-            components,
-            reg
-        );
+        return RecollateralizationLibP1.basketRange(components, reg);
     }
 
     function _msgSender() internal view virtual override returns (address) {
@@ -261,7 +266,11 @@ contract BrokerP1Fuzz is BrokerP1 {
     //     return trade;
     // }
 
-    function newBatchAuction(TradeRequest memory req, address caller) internal override returns (ITrade) {
+    function newBatchAuction(TradeRequest memory req, address caller)
+        internal
+        override
+        returns (ITrade)
+    {
         require(batchAuctionLength > 0, "batchAuctionLength unset");
         GnosisTradeMock trade = new GnosisTradeMock();
         trades[address(trade)] = true;
@@ -298,7 +307,7 @@ contract BrokerP1Fuzz is BrokerP1 {
             "dutch auctions disabled for token pair"
         );
         require(dutchAuctionLength > 0, "dutch auctions not enabled");
-        DutchTrade trade = new DutchTrade(); // cannot clone in echidna
+        DutchTrade trade = new DutchTradeP1Fuzz(); // cannot clone in echidna
         trades[address(trade)] = true;
 
         // == Interactions ==
@@ -309,6 +318,7 @@ contract BrokerP1Fuzz is BrokerP1 {
         );
 
         trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
+
         tradeSet.add(address(trade));
         tradeKindSet[address(trade)] = uint256(TradeKind.BATCH_AUCTION);
         lastOpenedTrade = trade;
@@ -340,7 +350,8 @@ contract BrokerP1Fuzz is BrokerP1 {
             if (!trades[tradeSet.at(i)]) tradesProp = false;
         }
 
-        bool batchAuctionLengthProp = batchAuctionLength > 0 && batchAuctionLength <= MAX_AUCTION_LENGTH;
+        bool batchAuctionLengthProp = batchAuctionLength > 0 &&
+            batchAuctionLength <= MAX_AUCTION_LENGTH;
         return tradesProp && batchAuctionLengthProp;
     }
 }
@@ -411,7 +422,7 @@ contract RevenueTraderP1Fuzz is RevenueTraderP1 {
 
 contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     using FixLib for uint192;
-    
+
     /// The tokens and underlying quantities needed to issue `amount` qRTokens.
     /// @dev this is distinct from basketHandler().quote() b/c the input is in RTokens, not BUs.
     /// @param amount {qRTok} quantity of qRTokens to quote.

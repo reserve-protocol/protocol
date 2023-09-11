@@ -127,7 +127,13 @@ contract CollateralMock is OracleErrorMock, AppreciatingFiatCollateral {
 // value. Needed for DiffTest, because refresh() doesn't always happen in the same block on both P0
 // and P1.
 contract CollateralNoDecay is CollateralMock {
-    function lotPrice() external view virtual override(Asset, IAsset) returns (uint192 lotLow, uint192 lotHigh) {
+    function lotPrice()
+        external
+        view
+        virtual
+        override(Asset, IAsset)
+        returns (uint192 lotLow, uint192 lotHigh)
+    {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
             // if the price feed is still functioning, use that
             return (low, high);
