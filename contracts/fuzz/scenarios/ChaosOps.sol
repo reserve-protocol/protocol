@@ -14,7 +14,7 @@ import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/AssetMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/PriceModel.sol";
-import "contracts/fuzz/GnosisTradeMock.sol";
+import "contracts/fuzz/Trades.sol";
 import "contracts/fuzz/Utils.sol";
 import "contracts/fuzz/FuzzP1.sol";
 
@@ -110,22 +110,20 @@ contract ChaosOpsScenario {
 
                 // Register Collateral
                 main.assetRegistry().register(
-                    new CollateralMock(
-                        {
-                            erc20_: IERC20Metadata(address(token)),
-                            maxTradeVolume_: maxTradeVolume,
-                            priceTimeout_: 806400,
-                            oracleError_: 0.005e18,
-                            defaultThreshold_: 0.05e18,
-                            delayUntilDefault_: 86400,
-                            targetName_: targetName,
-                            refPerTokModel_: [growing, growing, mayHardDefault][k],
-                            targetPerRefModel_: [justOne, mayDepeg, justOne][k],
-                            uoaPerTargetModel_: [justOne, justOne, justOne][k],
-                            deviationModel_: [stable, volatile, volatile][k],
-                            revenueHiding: uint192(k * 1e12) // 1/1,000,000 % hiding
-                        }
-                    )
+                    new CollateralMock({
+                        erc20_: IERC20Metadata(address(token)),
+                        maxTradeVolume_: maxTradeVolume,
+                        priceTimeout_: 806400,
+                        oracleError_: 0.005e18,
+                        defaultThreshold_: 0.05e18,
+                        delayUntilDefault_: 86400,
+                        targetName_: targetName,
+                        refPerTokModel_: [growing, growing, mayHardDefault][k],
+                        targetPerRefModel_: [justOne, mayDepeg, justOne][k],
+                        uoaPerTargetModel_: [justOne, justOne, justOne][k],
+                        deviationModel_: [stable, volatile, volatile][k],
+                        revenueHiding: uint192(k * 1e12) // 1/1,000,000 % hiding
+                    })
                 );
                 collateralTokens.push(IERC20(token));
             }
@@ -424,10 +422,7 @@ contract ChaosOpsScenario {
         main.rToken().redeem(amount);
     }
 
-    function redeemTo(
-        uint256 amount,
-        uint8 recipientID
-    ) public asSender {
+    function redeemTo(uint256 amount, uint8 recipientID) public asSender {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         main.rToken().redeemTo(recipient, amount);
@@ -444,24 +439,18 @@ contract ChaosOpsScenario {
         redeemablePortions.push(portion);
     }
 
-    function redeemCustom(
-        uint8 recipientID,
-        uint192 amount
-    ) public asSender {
+    function redeemCustom(uint8 recipientID, uint192 amount) public asSender {
         _saveRTokenRate();
         address recipient = main.someAddr(recipientID);
         uint192[] memory portions = new uint192[](redeemablePortions.length);
-        
+
         for (uint256 i = 0; i < redeemablePortions.length; i++) {
-            portions[i] = redeemablePortions[i] * 1e18 / totalPortions;
+            portions[i] = (redeemablePortions[i] * 1e18) / totalPortions;
         }
 
-        (address[] memory erc20sOut, uint256[] memory amountsOut) 
-            = main.basketHandler().quoteCustomRedemption(
-                redeemableBasketNonces,
-                portions,
-                amount
-            );
+        (address[] memory erc20sOut, uint256[] memory amountsOut) = main
+        .basketHandler()
+        .quoteCustomRedemption(redeemableBasketNonces, portions, amount);
 
         main.rToken().redeemCustom(
             recipient,
@@ -495,11 +484,7 @@ contract ChaosOpsScenario {
     function cancelUnstake(uint256 endIdSeed) public asSender {
         StRSRP1Fuzz strsr = StRSRP1Fuzz(address(main.stRSR()));
         uint256 len = strsr.draftQueueLen(strsr.getDraftEra(), msg.sender);
-        uint256 id = between(
-            0,
-            len,
-            endIdSeed
-        );
+        uint256 id = between(0, len, endIdSeed);
         strsr.cancelUnstake(id);
     }
 
@@ -712,9 +697,9 @@ contract ChaosOpsScenario {
             totalWeight += targetAmtsForPrimeBasket[i];
         }
         require(
-            weightA * 1e18 / totalWeight == targetWeightsByName[bytes32("A")]
-            && weightB * 1e18 / totalWeight == targetWeightsByName[bytes32("B")]
-            && weightC * 1e18 / totalWeight == targetWeightsByName[bytes32("C")],
+            (weightA * 1e18) / totalWeight == targetWeightsByName[bytes32("A")] &&
+                (weightB * 1e18) / totalWeight == targetWeightsByName[bytes32("B")] &&
+                (weightC * 1e18) / totalWeight == targetWeightsByName[bytes32("C")],
             "can't rebalance bad weights"
         );
     }

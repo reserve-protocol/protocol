@@ -16,7 +16,7 @@ import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/AssetMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/PriceModel.sol";
-import "contracts/fuzz/GnosisTradeMock.sol";
+import "contracts/fuzz/Trades.sol";
 import "contracts/fuzz/Utils.sol";
 import "contracts/fuzz/FuzzP0.sol";
 

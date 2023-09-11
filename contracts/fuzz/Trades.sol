@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "contracts/plugins/mocks/ERC20Mock.sol";
+import "contracts/plugins/trading/DutchTrade.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/ITrade.sol";
@@ -12,7 +13,7 @@ import "contracts/fuzz/Utils.sol";
 
 contract GnosisTradeMock is ITrade {
     TradeKind public constant KIND = TradeKind.BATCH_AUCTION;
-    
+
     IMainFuzz public main;
 
     IERC20Metadata public sell;
@@ -255,5 +256,11 @@ contract MarketMock is IMarketMock {
 
     function _msgSender() internal view virtual returns (address) {
         return main.translateAddr(msg.sender);
+    }
+}
+
+contract DutchTradeP1Fuzz is DutchTrade {
+    constructor() DutchTrade() {
+        status = TradeStatus.NOT_STARTED; // mirror clone behavior
     }
 }

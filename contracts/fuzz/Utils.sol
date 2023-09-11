@@ -5,13 +5,14 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Throttle.sol";
-import "hardhat/console.sol";
+
 function defaultParams() pure returns (DeploymentParams memory params) {
     // 1 {qRTok} per hour or 5% supply of {qRTok} per hour
-    ThrottleLib.Params memory tParams = ThrottleLib.Params(
-        {amtRate: 20000e18, pctRate: _safeWrap(5e16)}
-    );
-    
+    ThrottleLib.Params memory tParams = ThrottleLib.Params({
+        amtRate: 20000e18,
+        pctRate: _safeWrap(5e16)
+    });
+
     params = DeploymentParams({
         dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),
         minTradeVolume: 1e22,

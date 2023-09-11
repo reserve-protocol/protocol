@@ -132,7 +132,13 @@ describe('CollateralMock', () => {
 
   it('should default collateral - hidden revenue', async () => {
     // 0.1% revenue hidden
-    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM, fp('0.01'))
+    const coll: sc.CollateralMock = await newColl(
+      manualPM,
+      manualPM,
+      manualPM,
+      manualPM,
+      fp('0.01')
+    )
     await coll.refresh()
     await priceAround(coll, fp(1))
 

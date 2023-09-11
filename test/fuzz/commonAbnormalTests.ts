@@ -4,7 +4,15 @@ import { Wallet, Signer } from 'ethers'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 import { fp } from '#/common/numbers'
 import { RoundingMode, TradeStatus, CollateralStatus } from '../../common/constants'
-import { AbnormalScenario, Components, ConAt, FuzzTestContext, FuzzTestFixture, PriceModelKind, exa } from './common'
+import {
+  AbnormalScenario,
+  Components,
+  ConAt,
+  FuzzTestContext,
+  FuzzTestFixture,
+  PriceModelKind,
+  exa,
+} from './common'
 import { whileImpersonating } from '../utils/impersonation'
 import { advanceTime } from '../utils/time'
 import { RebalancingScenario } from '@typechain/RebalancingScenario'
@@ -369,7 +377,11 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
     it('can perform a recollateralization', async () => {
       await warmup()
-      await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('150000'), pctRate: fp('0.5')})
+      await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('150000'), pctRate: fp('0.5') })
+
+      // Recharge throttle
+      await advanceTime(3600)
+
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
       const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
 
@@ -466,7 +478,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
     it('does not fail on refreshBasket after just one call to updatePrice', async () => {
       await scenario.updatePrice(0, 0, 0, 0, 0)
-  
+
       // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
       await comp.basketHandler.savePrev()
       await whileImpersonating(scenario.address, async (asOwner) => {
@@ -480,7 +492,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       await scenario.seizeRSR(1)
       expect(await scenario.echidna_stRSRInvariants()).to.be.true
     })
-  
+
     it('maintains RToken invariants after calling issue', async () => {
       await warmup()
       // As Alice, make allowances
@@ -491,18 +503,18 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       }
       // Issue RTokens and succeed
       await scenario.connect(alice).justIssue(20000n * exa)
-  
+
       expect(await scenario.echidna_rTokenInvariants()).to.be.true
     })
-  
+
     it('does not have the backingManager double-revenue bug', async () => {
       await warmup()
       // Have some RToken in existance
       await scenario.connect(alice).issue(1e6)
-  
+
       // cause C0 to grow against its ref unit
       await scenario.updatePrice(0, fp(1.1), 0, 0, fp(1))
-  
+
       // call manageTokens([C0, C0])
       await scenario.pushBackingToManage(0)
       await scenario.pushBackingToManage(0)

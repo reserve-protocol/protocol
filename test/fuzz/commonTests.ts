@@ -11,7 +11,16 @@ import {
 } from '@nomicfoundation/hardhat-network-helpers'
 import { fp } from '#/common/numbers'
 import { RoundingMode, TradeStatus } from '../../common/constants'
-import { Components, ConAt, F, FuzzTestContext, FuzzTestFixture, Scenario, addr, exa } from './common'
+import {
+  Components,
+  ConAt,
+  F,
+  FuzzTestContext,
+  FuzzTestFixture,
+  Scenario,
+  addr,
+  exa,
+} from './common'
 import { whileImpersonating } from '../utils/impersonation'
 import { advanceTime } from '../utils/time'
 
@@ -605,7 +614,6 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(furnace_bal_init).to.equal(0)
 
       // Manage token in RToken Trader
-      console.log(numTokens)
       await scenario.manageTokenInRTokenTrader(numTokens + 1, 1) // BATCH_AUCTION
 
       const rTokenTrader_bal = await comp.rToken.balanceOf(rTokenTraderAddr)
@@ -682,7 +690,7 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       const rtoken = await ConAt('IRTokenFuzz', comp.rToken.address)
       const issueAmt = 7n * exa
       await scenario.connect(alice).issueTo(issueAmt, 0)
-      await scenario.pushRedeemableBasketNonce(fp(1));
+      await scenario.pushRedeemableBasketNonce(fp(1))
       await scenario.connect(alice).redeemCustom(1, issueAmt / 2n)
       expect(await rtoken.balanceOf(await alice.getAddress())).equal(issueAmt / 2n)
     })
