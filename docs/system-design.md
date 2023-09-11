@@ -170,6 +170,14 @@ The `dutchAuctionLength` can be configured to be any value. The suggested defaul
 
 The "best plausible price" is equal to the exchange rate at the high price of the sell token and the low price of the buy token. The "worst-case price" is equal to the exchange rate at the low price of the sell token and the high price of the sell token, plus an additional discount equal to `maxTradeSlippage`.
 
+#### Trade violation fallback
+
+Dutch auctions become disabled for an asset being traded if a trade clears in the geometric phase. The rationale is that a trade that clears in this range (multiples above the plausible price) only does so because either 1) the auctioned asset's price was manipulated downwards, or 2) the bidding asset was manipulated upwards, such that the protocol accepts an unfavorable trade. All subsequent trades for that particular trading pair will be forced to use the batch auctions as a result. Dutch auctions for disabled assets must be manually re-enabled by governance.
+
+Take for example the scenario of an RToken basket change requiring a trade of 5M USDC for 5M USDT, where the `maxTradeSize` is $1M (therefore requiring at least 5 auctions). If the system's price inputs for USDC was manipulated to read a price of $0.001/USDC, settling the auction in the geometric phase at any multiple less than 1000x will yield a profit for the trader, at a cost to the RToken system. Accordingly, Dutch auctions become disabled for the subsequent trades to swap USDC to USDT.
+
+Dutch auctions for other assets that have not cleared in the geometric zone will remain enabled.
+
 #### Sample price curve
 
 This price curve is for two assets with 1% oracleError, and with a 1% maxTradeSlippage, during a 30-minute auction. The token has 6 decimals and the "even price" occurs at 100,000,000. The phase changes between different portions of the auction are shown with `============` dividers.
