@@ -8,6 +8,6 @@ exports[`Assets contracts #fast Gas Reporting refresh() refresh() after oracle t
 
 exports[`Assets contracts #fast Gas Reporting refresh() refresh() after oracle timeout 2`] = `38605`;
 
-exports[`Assets contracts #fast Gas Reporting refresh() refresh() during SOUND 1`] = `51027`;
+exports[`Assets contracts #fast Gas Reporting refresh() refresh() during SOUND 1`] = `51050`;
 
-exports[`Assets contracts #fast Gas Reporting refresh() refresh() during SOUND 2`] = `51027`;
+exports[`Assets contracts #fast Gas Reporting refresh() refresh() during SOUND 2`] = `51050`;
