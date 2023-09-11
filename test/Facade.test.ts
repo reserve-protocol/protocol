@@ -1139,7 +1139,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
-      await advanceBlocks(1 + auctionLength / 12)
+      await advanceBlocks(2 + auctionLength / 12)
+
+      // Settleable now
+      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(1)
 
       // Settle and start new auction - Will retry
       await expectEvents(
@@ -1164,6 +1167,18 @@ describe('FacadeRead + FacadeAct contracts', () => {
           },
         ]
       )
+
+      // Nothing should be settleable
+      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
+
+      // Advance time till auction ended
+      await advanceBlocks(2 + auctionLength / 12)
+
+      // Settleable now
+      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(1)
+
+      // Should not revert, even when not starting new auctions
+      await facadeAct.runRevenueAuctions(rsrTrader.address, [token.address], [], [])
     })
 
     it('Should handle other versions when running revenue auctions', async () => {
