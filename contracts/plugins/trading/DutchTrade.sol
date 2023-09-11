@@ -169,7 +169,7 @@ contract DutchTrade is ITrade {
         uint256 _endBlock = _startBlock + auctionLength / ONE_BLOCK; // FLOOR; endBlock is inclusive
         endBlock = _endBlock; // gas-saver
 
-        endTime = uint48(block.timestamp + ONE_BLOCK * (_endBlock - _startBlock));
+        endTime = uint48(block.timestamp + ONE_BLOCK * (_endBlock - _startBlock + 1));
 
         // {buyTok/sellTok} = {UoA/sellTok} * {1} / {UoA/buyTok}
         uint192 _worstPrice = prices.sellLow.mulDiv(
