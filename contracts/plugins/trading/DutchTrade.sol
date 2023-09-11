@@ -56,9 +56,7 @@ uint192 constant ONE_POINT_FIVE = 150e16; // {1} 1.5
  *   exists to handle cases where prices change after the auction is started, naturally.
  *
  *   Case 3: Over the next 50% of the auction the price falls from the best plausible price to the
- *   worst price, linearly. The worst price is further discounted by the maxTradeSlippage as a
- *   fraction of how far from minTradeVolume to maxTradeVolume the trade lies.
- *   At maxTradeVolume, no additonal discount beyond the oracle errors is applied.
+ *   worst price, linearly. The worst price is further discounted by the maxTradeSlippage.
  *   This is the phase of the auction where bids will typically occur.
  *
  *   Case 4: Lastly the price stays at the worst price for the final 5% of the auction to allow
@@ -96,7 +94,6 @@ contract DutchTrade is ITrade {
 
     uint192 public bestPrice; // {buyTok/sellTok} The best plausible price based on oracle data
     uint192 public worstPrice; // {buyTok/sellTok} The worst plausible price based on oracle data
-    // and further discounted by a fraction of maxTradeSlippage based on auction volume.
 
     // === Bid ===
     address public bidder;
@@ -174,15 +171,12 @@ contract DutchTrade is ITrade {
 
         endTime = uint48(block.timestamp + ONE_BLOCK * (_endBlock - _startBlock));
 
-        // {1}
-        uint192 slippage = _slippage(
-            sellAmount.mul(prices.sellHigh, FLOOR), // auctionVolume
-            origin.minTradeVolume(), // minTradeVolume
-            fixMin(sell_.maxTradeVolume(), buy_.maxTradeVolume()) // maxTradeVolume
-        );
-
         // {buyTok/sellTok} = {UoA/sellTok} * {1} / {UoA/buyTok}
-        uint192 _worstPrice = prices.sellLow.mulDiv(FIX_ONE - slippage, prices.buyHigh, FLOOR);
+        uint192 _worstPrice = prices.sellLow.mulDiv(
+            FIX_ONE - origin.maxTradeSlippage(),
+            prices.buyHigh,
+            FLOOR
+        );
         uint192 _bestPrice = prices.sellHigh.div(prices.buyLow, CEIL); // no additional slippage
         assert(_worstPrice <= _bestPrice);
         worstPrice = _worstPrice; // gas-saver
@@ -259,30 +253,6 @@ contract DutchTrade is ITrade {
     }
 
     // === Private ===
-
-    /// Return a sliding % from 0 (at maxTradeVolume) to maxTradeSlippage (at minTradeVolume)
-    /// @param auctionVolume {UoA} The actual auction volume
-    /// @param minTradeVolume {UoA} The minimum trade volume
-    /// @param maxTradeVolume {UoA} The maximum trade volume
-    /// @return slippage {1} The fraction of auctionVolume that should be permitted as slippage
-    function _slippage(
-        uint192 auctionVolume,
-        uint192 minTradeVolume,
-        uint192 maxTradeVolume
-    ) private view returns (uint192 slippage) {
-        slippage = origin.maxTradeSlippage(); // {1}
-        if (maxTradeVolume <= minTradeVolume || auctionVolume < minTradeVolume) return slippage;
-
-        // untestable:
-        //     auctionVolume already sized based on maxTradeVolume, so this will not be true
-        if (auctionVolume > maxTradeVolume) return 0; // 0% slippage beyond maxTradeVolume
-
-        // {1} = {1} * ({UoA} - {UoA}} / ({UoA} - {UoA})
-        return
-            slippage.mul(
-                FIX_ONE - divuu(auctionVolume - minTradeVolume, maxTradeVolume - minTradeVolume)
-            );
-    }
 
     /// Return the price of the auction at a particular timestamp
     /// @param blockNumber {block} The block number to get price for
