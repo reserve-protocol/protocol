@@ -189,11 +189,11 @@ async function main() {
         targetName: ethers.utils.formatBytes32String('BTC'),
         defaultThreshold: fp('0.01').add(combinedBTCWBTCError), // ~3.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC!,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.BTC!, // {UoA/target}
         erc20: maWBTC.address,
       },
       revenueHiding,
-      networkConfig[chainId].chainlinkFeeds.wBTCBTC!,
+      networkConfig[chainId].chainlinkFeeds.WBTC!, // {target/ref}
       oracleTimeout(chainId, '86400').toString() // 1 hr
     )
     assetCollDeployments.collateral.maWBTC = collateral.address
@@ -241,7 +241,7 @@ async function main() {
         targetName: ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: fp('0.01').add(combinedOracleErrors), // ~1.5%
         delayUntilDefault: bn('86400'), // 24h
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!, // {UoA/target}
         erc20: maStETH.address,
       },
       revenueHiding,

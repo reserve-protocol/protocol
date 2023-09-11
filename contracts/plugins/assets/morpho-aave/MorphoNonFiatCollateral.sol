@@ -19,8 +19,8 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
     AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {target/ref}
     uint48 public immutable targetUnitOracleTimeout; // {s}
 
-    /// @param config Configuration of this collateral.
-    /// config.erc20 must be a MorphoTokenisedDeposit
+    /// @dev config.erc20 must be a MorphoTokenisedDeposit
+    /// @param config.chainlinkFeed Feed units: {UoA/target}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     /// @param targetUnitChainlinkFeed_ Feed units: {target/ref}
     /// @param targetUnitOracleTimeout_ {s} oracle timeout to use for targetUnitChainlinkFeed
@@ -51,8 +51,8 @@ contract MorphoNonFiatCollateral is MorphoFiatCollateral {
         // {tar/ref} Get current market peg
         pegPrice = targetUnitChainlinkFeed.price(targetUnitOracleTimeout);
 
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(_underlyingRefPerTok());
+        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(pegPrice).mul(_underlyingRefPerTok());
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;
