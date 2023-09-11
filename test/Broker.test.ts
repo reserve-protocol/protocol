@@ -1176,7 +1176,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.startBlock()).to.equal((await getLatestBlockNumber()) + 1)
         const tradeLen = (await trade.endBlock()).sub(await trade.startBlock())
         expect(await trade.endTime()).to.equal(
-          tradeLen.mul(12).add(await getLatestBlockTimestamp())
+          tradeLen
+            .add(1)
+            .mul(12)
+            .add(await getLatestBlockTimestamp())
         )
         expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
