@@ -318,7 +318,6 @@ contract BrokerP1Fuzz is BrokerP1 {
         );
 
         trade.init(caller, req.sell, req.buy, req.sellAmount, dutchAuctionLength, prices);
-
         tradeSet.add(address(trade));
         tradeKindSet[address(trade)] = uint256(TradeKind.BATCH_AUCTION);
         lastOpenedTrade = trade;
