@@ -10,6 +10,7 @@ import { ethers } from 'hardhat'
 import collateralTests from '../collateralTests'
 import { getResetFork } from '../helpers'
 import { CollateralOpts } from '../pluginTestTypes'
+import { pushOracleForward } from '../../../utils/oracles'
 import {
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
@@ -74,6 +75,9 @@ const makeAaveFiatCollateralTestSuite = (
       { gasLimit: 2000000000 }
     )
     await collateral.deployed()
+
+    // Push forward chainlink feed
+    await pushOracleForward(opts.chainlinkFeed!)
 
     await expect(collateral.refresh())
 
