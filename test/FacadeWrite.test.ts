@@ -688,6 +688,9 @@ describe('FacadeWrite contract', () => {
           timelock = <TimelockController>(
             await ethers.getContractAt('TimelockController', timelockAddr)
           )
+          expect(await timelock.hasRole(await timelock.EXECUTOR_ROLE(), governor.address)).to.equal(
+            true
+          )
         })
 
         it('Should setup owner, freezer and pauser correctly', async () => {
@@ -772,6 +775,9 @@ describe('FacadeWrite contract', () => {
           governor = <Governance>await ethers.getContractAt('Governance', governanceAddr)
           timelock = <TimelockController>(
             await ethers.getContractAt('TimelockController', timelockAddr)
+          )
+          expect(await timelock.hasRole(await timelock.EXECUTOR_ROLE(), governor.address)).to.equal(
+            true
           )
         })
 
