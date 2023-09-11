@@ -1,13 +1,28 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { Signer, Wallet } from "ethers"
-import fuzzTests from "./commonTests"
+import { Signer, Wallet } from 'ethers'
+import fuzzTests from './commonTests'
 import abnormalTests from './commonAbnormalTests'
-import { MainP1Fuzz } from "@typechain/MainP1Fuzz"
-import { impersonateAccount, loadFixture, mine, setBalance } from "@nomicfoundation/hardhat-network-helpers"
-import { advanceBlocks, advanceTime } from '../utils/time'
+import { MainP1Fuzz } from '@typechain/MainP1Fuzz'
+import {
+  impersonateAccount,
+  loadFixture,
+  mine,
+  setBalance,
+} from '@nomicfoundation/hardhat-network-helpers'
+import { advanceBlocks, advanceTime, getLatestBlockNumber } from '../utils/time'
 import { RebalancingScenario } from '@typechain/RebalancingScenario'
-import { RebalancingScenarioStatus, Components, FuzzTestContext, componentsOf, FuzzTestFixture, ConAt, F, exa, user } from './common'
+import {
+  RebalancingScenarioStatus,
+  Components,
+  FuzzTestContext,
+  componentsOf,
+  FuzzTestFixture,
+  ConAt,
+  F,
+  exa,
+  user,
+} from './common'
 import { bn, fp } from '#/common/numbers'
 import { CollateralStatus } from '../plugins/individual-collateral/pluginTestTypes'
 import { RoundingMode, TradeStatus } from '#/common/constants'
@@ -15,103 +30,103 @@ import { RoundingMode, TradeStatus } from '#/common/constants'
 type Fixture<T> = () => Promise<T>
 
 const createFixture: Fixture<FuzzTestFixture> = async () => {
-    let scenario: RebalancingScenario
-    let main: MainP1Fuzz
-    let comp: Components
+  let scenario: RebalancingScenario
+  let main: MainP1Fuzz
+  let comp: Components
 
-    let owner: Wallet
-    let alice: Signer
-    let bob: Signer
-    let carol: Signer
+  let owner: Wallet
+  let alice: Signer
+  let bob: Signer
+  let carol: Signer
 
-    let aliceAddr: string
-    let bobAddr: string
-    let carolAddr: string
+  let aliceAddr: string
+  let bobAddr: string
+  let carolAddr: string
 
-    let collaterals: string[] = ['CA0', 'CA1', 'CA2', 'CB0', 'CB1', 'CB2', 'CC0', 'CC1', 'CC2']
-    let rewards: string[] = ['RA0', 'RA1', 'RB0', 'RB1', 'RC0', 'RC1']
-    let stables: string[] = ['SA0', 'SA1', 'SA2', 'SB0', 'SB1', 'SB2', 'SC0', 'SC1', 'SC2']
+  let collaterals: string[] = ['CA0', 'CA1', 'CA2', 'CB0', 'CB1', 'CB2', 'CC0', 'CC1', 'CC2']
+  let rewards: string[] = ['RA0', 'RA1', 'RB0', 'RB1', 'RC0', 'RC1']
+  let stables: string[] = ['SA0', 'SA1', 'SA2', 'SB0', 'SB1', 'SB2', 'SC0', 'SC1', 'SC2']
 
-    // addrIDs: maps addresses to their address IDs. Inverse of main.someAddr.
-    // for any addr the system tracks, main.someAddr(addrIDs(addr)) == addr
-    let addrIDs: Map<string, number>
+  // addrIDs: maps addresses to their address IDs. Inverse of main.someAddr.
+  // for any addr the system tracks, main.someAddr(addrIDs(addr)) == addr
+  let addrIDs: Map<string, number>
 
-    // tokenIDs: maps token symbols to their token IDs.
-    // for any token symbol in the system, main.someToken(tokenIDs(symbol)).symbol() == symbol
-    let tokenIDs: Map<string, number>
+  // tokenIDs: maps token symbols to their token IDs.
+  // for any token symbol in the system, main.someToken(tokenIDs(symbol)).symbol() == symbol
+  let tokenIDs: Map<string, number>
 
-    let warmupPeriod: number
+  let warmupPeriod: number
 
-    const warmup = async () => {
-        await advanceTime(warmupPeriod)
-        await advanceBlocks(warmupPeriod / 12)
-    }
+  const warmup = async () => {
+    await advanceTime(warmupPeriod)
+    await advanceBlocks(warmupPeriod / 12)
+  }
 
-    ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
-    scenario = await (await F('RebalancingScenario')).deploy({ gasLimit: 0x1ffffffff })
-    main = await ConAt('MainP1Fuzz', await scenario.main())
-    comp = await componentsOf(main)
-    
-    addrIDs = new Map()
-    let i = 0
-    while (true) {
-      const address = await main.someAddr(i)
-      if (addrIDs.has(address)) break
-      addrIDs.set(address, i)
-      i++
-    }
-    
-    tokenIDs = new Map()
-    i = 0
-    while (true) {
-      const tokenAddr = await main.someToken(i)
-      const token = await ConAt('ERC20Fuzz', tokenAddr)
-      const symbol = await token.symbol()
-      if (tokenIDs.has(symbol)) break
-      tokenIDs.set(symbol, i)
-      i++
-    }
-    
-    alice = await ethers.getSigner(await main.users(0))
-    bob = await ethers.getSigner(await main.users(1))
-    carol = await ethers.getSigner(await main.users(2))
-    
-    aliceAddr = await alice.getAddress()
-    bobAddr = await bob.getAddress()
-    carolAddr = await carol.getAddress()
-    
-    await setBalance(aliceAddr, exa * exa)
-    await setBalance(bobAddr, exa * exa)
-    await setBalance(carolAddr, exa * exa)
-    await setBalance(main.address, exa * exa)
-    
-    await impersonateAccount(aliceAddr)
-    await impersonateAccount(bobAddr)
-    await impersonateAccount(carolAddr)
-    await impersonateAccount(main.address)
-    
-    await mine(300, { interval: 12 }) // charge battery
-    
-    warmupPeriod = await comp.basketHandler.warmupPeriod()
-    
-    return {
-      scenario,
-      main,
-      comp,
-      owner,
-      alice,
-      bob,
-      carol,
-      aliceAddr,
-      bobAddr,
-      carolAddr,
-      addrIDs,
-      tokenIDs,
-      warmup,
-      collaterals,
-      rewards,
-      stables
-    }
+  ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
+  scenario = await (await F('RebalancingScenario')).deploy({ gasLimit: 0x1ffffffff })
+  main = await ConAt('MainP1Fuzz', await scenario.main())
+  comp = await componentsOf(main)
+
+  addrIDs = new Map()
+  let i = 0
+  while (true) {
+    const address = await main.someAddr(i)
+    if (addrIDs.has(address)) break
+    addrIDs.set(address, i)
+    i++
+  }
+
+  tokenIDs = new Map()
+  i = 0
+  while (true) {
+    const tokenAddr = await main.someToken(i)
+    const token = await ConAt('ERC20Fuzz', tokenAddr)
+    const symbol = await token.symbol()
+    if (tokenIDs.has(symbol)) break
+    tokenIDs.set(symbol, i)
+    i++
+  }
+
+  alice = await ethers.getSigner(await main.users(0))
+  bob = await ethers.getSigner(await main.users(1))
+  carol = await ethers.getSigner(await main.users(2))
+
+  aliceAddr = await alice.getAddress()
+  bobAddr = await bob.getAddress()
+  carolAddr = await carol.getAddress()
+
+  await setBalance(aliceAddr, exa * exa)
+  await setBalance(bobAddr, exa * exa)
+  await setBalance(carolAddr, exa * exa)
+  await setBalance(main.address, exa * exa)
+
+  await impersonateAccount(aliceAddr)
+  await impersonateAccount(bobAddr)
+  await impersonateAccount(carolAddr)
+  await impersonateAccount(main.address)
+
+  await mine(300, { interval: 12 }) // charge battery
+
+  warmupPeriod = await comp.basketHandler.warmupPeriod()
+
+  return {
+    scenario,
+    main,
+    comp,
+    owner,
+    alice,
+    bob,
+    carol,
+    aliceAddr,
+    bobAddr,
+    carolAddr,
+    addrIDs,
+    tokenIDs,
+    warmup,
+    collaterals,
+    rewards,
+    stables,
+  }
 }
 
 const scenarioSpecificTests = () => {
@@ -326,7 +341,11 @@ const scenarioSpecificTests = () => {
 
   it('can manage scenario states - basket switch - covered by RSR [Batch auction]', async () => {
     await warmup()
-    await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('300000'), pctRate: fp('0.5')})
+    await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('300000'), pctRate: fp('0.5') })
+
+    // Recharge throttle
+    await advanceTime(3600)
+
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
@@ -407,16 +426,18 @@ const scenarioSpecificTests = () => {
     await expect(scenario.registerAsset(7, 0, exa, 2n ** 47n, true, true, 0)).to.be.revertedWith(
       'Not valid for current state'
     )
-    await expect(scenario.swapRegisteredAsset(4, 0, exa, 2n ** 47n, true, true, 0)).to.be.revertedWith(
-      'Not valid for current state'
-    )
+    await expect(
+      scenario.swapRegisteredAsset(4, 0, exa, 2n ** 47n, true, true, 0)
+    ).to.be.revertedWith('Not valid for current state')
 
     let iteration = 0
     while ((await scenario.status()) == RebalancingScenarioStatus.REBALANCING_ONGOING) {
       iteration++
+
       // We'll check the echidna properties at each step during rebalancing...
       expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
+
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
       await scenario.saveBasketRange()
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
@@ -442,6 +463,7 @@ const scenarioSpecificTests = () => {
         expect(await c2.balanceOf(comp.backingManager.address)).to.equal(0)
         expect(await c2.balanceOf(trade.address)).to.be.gt(0)
       }
+
       // Wait and settle the trade
       await advanceTime(await comp.broker.batchAuctionLength())
       expect(await trade.canSettle()).to.be.true
@@ -453,6 +475,7 @@ const scenarioSpecificTests = () => {
         // State remains ongoing
         expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_ONGOING)
       }
+
       // Check echidna property is true at all times in the process
       expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
@@ -506,7 +529,11 @@ const scenarioSpecificTests = () => {
 
   it('can manage scenario states - collateral default - partially covered by RSR [Batch auction]', async () => {
     await warmup()
-    await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('400000'), pctRate: fp('0.05')})
+    await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('400000'), pctRate: fp('0.05') })
+
+    // Recharge throttle
+    await advanceTime(3600)
+
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
@@ -638,7 +665,11 @@ const scenarioSpecificTests = () => {
 
   it('can manage scenario states - basket switch - covered by RSR [Dutch auction]', async () => {
     await warmup()
-    await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('300000'), pctRate: fp('0.5')})
+    await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('300000'), pctRate: fp('0.5') })
+
+    // Recharge throttle
+    await advanceTime(3600)
+
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
@@ -719,9 +750,9 @@ const scenarioSpecificTests = () => {
     await expect(scenario.registerAsset(7, 0, exa, 2n ** 47n, true, true, 0)).to.be.revertedWith(
       'Not valid for current state'
     )
-    await expect(scenario.swapRegisteredAsset(4, 0, exa, 2n ** 47n, true, true, 0)).to.be.revertedWith(
-      'Not valid for current state'
-    )
+    await expect(
+      scenario.swapRegisteredAsset(4, 0, exa, 2n ** 47n, true, true, 0)
+    ).to.be.revertedWith('Not valid for current state')
 
     let iteration = 0
     while ((await scenario.status()) == RebalancingScenarioStatus.REBALANCING_ONGOING) {
@@ -742,7 +773,7 @@ const scenarioSpecificTests = () => {
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
       // Check trade
-      const trade = await ConAt('GnosisTradeMock', await comp.broker.lastOpenedTrade())
+      const trade = await ConAt('DutchTrade', await comp.broker.lastOpenedTrade())
 
       expect(await comp.backingManager.tradesOpen()).to.equal(1)
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
@@ -756,6 +787,7 @@ const scenarioSpecificTests = () => {
         expect(await c2.balanceOf(comp.backingManager.address)).to.equal(0)
         expect(await c2.balanceOf(trade.address)).to.be.gt(0)
       }
+
       // Wait and settle the trade
       await advanceTime((await comp.broker.dutchAuctionLength()) - 12)
       expect(await trade.canSettle()).to.be.false
@@ -819,7 +851,11 @@ const scenarioSpecificTests = () => {
 
   it('can manage scenario states - collateral default - partially covered by RSR [Dutch auction]', async () => {
     await warmup()
-    await scenario.setIssuanceThrottleParamsDirect({amtRate: fp('400000'), pctRate: fp('0.05')})
+    await scenario.setIssuanceThrottleParamsDirect({ amtRate: fp('400000'), pctRate: fp('0.05') })
+
+    // Recharge throttle
+    await advanceTime(3600)
+
     // Scenario starts in BEFORE_REBALANCING
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
@@ -997,23 +1033,41 @@ const scenarioSpecificTests = () => {
     await advanceBlocks(1)
     await advanceTime(1)
     await scenario.connect(alice).issue(1)
-    await scenario.connect(alice).updatePrice(bn('121264033233888225265565220287352453623468700216813183789095321412050641'),0,0,bn('3345326469100492675282932145461459020125568694023126'),bn('191742294295487260193499953977383353501355709782'))
+    await scenario
+      .connect(alice)
+      .updatePrice(
+        bn('121264033233888225265565220287352453623468700216813183789095321412050641'),
+        0,
+        0,
+        bn('3345326469100492675282932145461459020125568694023126'),
+        bn('191742294295487260193499953977383353501355709782')
+      )
     await scenario.connect(alice).refreshBasket()
-    await expect(scenario.connect(alice).justIssue(1)).revertedWith("Not valid for current state")
-    await expect(scenario.connect(alice).justIssueTo(1, 0)).revertedWith("Not valid for current state")
-    await expect(scenario.connect(alice).issue(1)).revertedWith("Not valid for current state")
-    await expect(scenario.connect(alice).issueTo(1, 0)).revertedWith("Not valid for current state")
-    await expect(scenario.connect(alice).redeem(1)).revertedWith("Not valid for current state")
-    await expect(scenario.connect(alice).redeemTo(1, 0)).revertedWith("Not valid for current state")
+    await expect(scenario.connect(alice).justIssue(1)).revertedWith('Not valid for current state')
+    await expect(scenario.connect(alice).justIssueTo(1, 0)).revertedWith(
+      'Not valid for current state'
+    )
+    await expect(scenario.connect(alice).issue(1)).revertedWith('Not valid for current state')
+    await expect(scenario.connect(alice).issueTo(1, 0)).revertedWith('Not valid for current state')
+    await expect(scenario.connect(alice).redeem(1)).revertedWith('Not valid for current state')
+    await expect(scenario.connect(alice).redeemTo(1, 0)).revertedWith('Not valid for current state')
   })
 
   it('uses the current basket to run the rebalancingProperties invariant', async () => {
     await warmup()
-    await scenario.connect(alice).issueTo(1,0)
+    await scenario.connect(alice).issueTo(1, 0)
     await scenario.connect(alice).unregisterAsset(0)
-    await scenario.connect(alice).pushBackingToManage(bn('150835712417908919285644013065474027887448859297381733494843312354601897167'))
+    await scenario
+      .connect(alice)
+      .pushBackingToManage(
+        bn('150835712417908919285644013065474027887448859297381733494843312354601897167')
+      )
     await scenario.connect(alice).refreshBasket()
-    await scenario.connect(alice).pushBackingToManage(bn('6277620527355649775567068284304829410240875426814377481773201392576289608'))
+    await scenario
+      .connect(alice)
+      .pushBackingToManage(
+        bn('6277620527355649775567068284304829410240875426814377481773201392576289608')
+      )
     await warmup()
     expect(await scenario.callStatic.echidna_batchRebalancingProperties()).to.equal(true)
     expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
@@ -1024,8 +1078,23 @@ const scenarioSpecificTests = () => {
     await advanceBlocks(1)
     await advanceTime(18)
     await scenario.connect(alice).issue(15)
-    await scenario.connect(alice).updateRewards(bn('5989074762477379593905432766392491628643188479108275170789277813070778'), bn('12263554421802902403200938667897536687116647395531351968278586982578834557'))
-    await scenario.connect(alice).swapRegisteredAsset(0,0,bn('586768731244946216864435810688149951399342547346310326714'),0,false,false,0)
+    await scenario
+      .connect(alice)
+      .updateRewards(
+        bn('5989074762477379593905432766392491628643188479108275170789277813070778'),
+        bn('12263554421802902403200938667897536687116647395531351968278586982578834557')
+      )
+    await scenario
+      .connect(alice)
+      .swapRegisteredAsset(
+        0,
+        0,
+        bn('586768731244946216864435810688149951399342547346310326714'),
+        0,
+        false,
+        false,
+        0
+      )
     await scenario.connect(alice).refreshBasket()
     await scenario.connect(alice).claimRewards(2)
     const check = await scenario.echidna_basketRangeSmallerWhenRebalancing()
@@ -1037,9 +1106,17 @@ const scenarioSpecificTests = () => {
     await advanceBlocks(1)
     await advanceTime(1)
     await scenario.connect(alice).issue(101)
-    await scenario.connect(alice).swapRegisteredAsset(0,0,0,0,false,false,755084)
+    await scenario.connect(alice).swapRegisteredAsset(0, 0, 0, 0, false, false, 755084)
     await scenario.connect(alice).refreshBasket()
-    await scenario.connect(alice).updatePrice(bn('4323490466645790929141000681379989217343309331490685561636627260745769225206'),bn('67360096239366422136176627671622570761630213553489626664'),bn('448235445655748428353993347788358432613042269770005933435'),bn('166780645086412136133053140534918526494436220154790922420'),bn('311571270105666158381426195843102477030798339529245571675'))
+    await scenario
+      .connect(alice)
+      .updatePrice(
+        bn('4323490466645790929141000681379989217343309331490685561636627260745769225206'),
+        bn('67360096239366422136176627671622570761630213553489626664'),
+        bn('448235445655748428353993347788358432613042269770005933435'),
+        bn('166780645086412136133053140534918526494436220154790922420'),
+        bn('311571270105666158381426195843102477030798339529245571675')
+      )
     const check = await scenario.echidna_basketRangeSmallerWhenRebalancing()
     expect(check).to.equal(true)
   })
@@ -1055,14 +1132,24 @@ const scenarioSpecificTests = () => {
   })
 
   it('reverts when trying to set a prime basket with bad target weights', async () => {
-    await scenario.connect(alice).pushBackingForPrimeBasket(bn('2534475810960463152805528040151'), 0)
-    await expect(scenario.connect(alice).setPrimeBasket()).revertedWith("can't rebalance bad weights")
+    await scenario
+      .connect(alice)
+      .pushBackingForPrimeBasket(bn('2534475810960463152805528040151'), 0)
+    await expect(scenario.connect(alice).setPrimeBasket()).revertedWith(
+      "can't rebalance bad weights"
+    )
   })
 
   it('does not revert if trading delay has not passed when checking echidna_rebalancingProperties', async () => {
-    await scenario.connect(alice).pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.4').sub(1))
-    await scenario.connect(alice).pushBackingForPrimeBasket(tokenIDs.get('CB1') as number, fp('0.3').sub(1))
-    await scenario.connect(alice).pushBackingForPrimeBasket(tokenIDs.get('CC1') as number, fp('0.3').sub(1))
+    await scenario
+      .connect(alice)
+      .pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.4').sub(1))
+    await scenario
+      .connect(alice)
+      .pushBackingForPrimeBasket(tokenIDs.get('CB1') as number, fp('0.3').sub(1))
+    await scenario
+      .connect(alice)
+      .pushBackingForPrimeBasket(tokenIDs.get('CC1') as number, fp('0.3').sub(1))
     await scenario.connect(alice).setPrimeBasket()
     await advanceTime(261386)
     await advanceBlocks(405)
@@ -1097,7 +1184,7 @@ const scenarioSpecificTests = () => {
   })
 
   it('invariants hold when collateral is swapped for asset', async () => {
-    await scenario.swapRegisteredAsset(0,0,0,0,false,false,0)
+    await scenario.swapRegisteredAsset(0, 0, 0, 0, false, false, 0)
     await scenario.echidna_RTokenRateNeverFallInNormalOps()
     await scenario.echidna_assetRegistryInvariants()
     await scenario.echidna_backingManagerInvariants()
@@ -1121,9 +1208,9 @@ const scenarioSpecificTests = () => {
 }
 
 const context: FuzzTestContext<FuzzTestFixture> = {
-    f: createFixture,
-    testType: "Rebalancing",
-    scenarioSpecificTests
+  f: createFixture,
+  testType: 'Rebalancing',
+  scenarioSpecificTests,
 }
 
 fuzzTests(context)
