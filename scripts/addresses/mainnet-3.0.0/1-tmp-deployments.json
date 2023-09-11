@@ -17,7 +17,7 @@
     "main": "0xF5366f67FF66A3CefcB18809a762D5b5931FebF8",
     "trading": {
       "gnosisTrade": "0xe416Db92A1B27c4e28D5560C1EEC03f7c582F630",
-      "dutchTrade": "0xd34ef4cDfC066cE8EC7257bBe891f40B75B3a9eF"
+      "dutchTrade": "0x2387C22727ACb91519b80A15AEf393ad40dFdb2F"
     },
     "components": {
       "assetRegistry": "0x773cf50adCF1730964D4A9b664BaEd4b9FFC2450",

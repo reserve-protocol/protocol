@@ -51,6 +51,8 @@ To participate:
 5. Wait until the desired block is reached (hopefully not in the first 40% of the auction)
 6. Call `bid()`. If someone else completes the auction first, this will revert with the error message "bid already received". Approvals do not have to be revoked in the event that another MEV searcher wins the auction. (Though ideally the searcher includes the approval in the same tx they `bid()`)
 
+For a sample price curve, see [docs/system-design.md](./system-design.md#sample-price-curve)
+
 #### GnosisTrade
 
 `GnosisTrade.sol` implements a batch auction on top of Gnosis's [EasyAuction](https://github.com/gnosis/ido-contracts/blob/main/contracts/EasyAuction.sol) platform. In general a batch auction is designed to minimize MEV, and indeed that's why it was chosen in the first place. Both types of auctions (batch + dutch) can be opened at anytime, but the expectation is that dutch auctions will be preferred by MEV searchers because they are more likely to be profitable.
