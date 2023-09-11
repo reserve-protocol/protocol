@@ -93,18 +93,7 @@ export const dutchBuyAmount = async (
   let maxTradeVolume = await assetOut.maxTradeVolume()
   if (inMaxTradeVolume.lt(maxTradeVolume)) maxTradeVolume = inMaxTradeVolume
 
-  const auctionVolume = outAmount.mul(sellHigh).div(fp('1'))
-  const slippage1e18 = maxTradeSlippage.mul(
-    fp('1').sub(
-      auctionVolume.sub(minTradeVolume).mul(fp('1')).div(maxTradeVolume.sub(minTradeVolume))
-    )
-  )
-
-  // Adjust for rounding
-  const leftover = slippage1e18.mod(fp('1'))
-  const slippage = slippage1e18.div(fp('1')).add(leftover.gte(fp('0.5')) ? 1 : 0)
-
-  const worstPrice = sellLow.mul(fp('1').sub(slippage)).div(buyHigh)
+  const worstPrice = sellLow.mul(fp('1').sub(maxTradeSlippage)).div(buyHigh)
   const bestPrice = divCeil(sellHigh.mul(fp('1')), buyLow)
   const highPrice = divCeil(sellHigh.mul(fp('1.5')), buyLow)
 

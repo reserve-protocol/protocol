@@ -1181,7 +1181,10 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         expect(await trade.bestPrice()).to.equal(
           divCeil(prices.sellHigh.mul(fp('1')), prices.buyLow)
         )
-        expect(await trade.worstPrice()).to.equal(prices.sellLow.mul(fp('1')).div(prices.buyHigh))
+        const worstPrice = prices.sellLow
+          .mul(fp('1').sub(await backingManager.maxTradeSlippage()))
+          .div(prices.buyHigh)
+        expect(await trade.worstPrice()).to.equal(worstPrice)
         expect(await trade.canSettle()).to.equal(false)
 
         // Attempt to initialize again
