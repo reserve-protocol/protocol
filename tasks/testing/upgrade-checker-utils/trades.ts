@@ -178,9 +178,8 @@ export const getTokens = async (
     case '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9': // saUSDT
       await getStaticAToken(hre, tokenAddress, amount, recipient)
       break
-    //  TODO: Replace with real addresses
-    case '0xf201fFeA8447AB3d43c98Da3349e0749813C9009': // cUSDCVault
-    case '0x840748F7Fd3EA956E5f4c88001da5CC1ABCBc038': // cUSDTVault
+    case '0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022': // cUSDCVault
+    case '0x4Be33630F92661afD646081BC29079A38b879aA0': // cUSDTVault
       await getCTokenVault(hre, tokenAddress, amount, recipient)
       break
     default:
