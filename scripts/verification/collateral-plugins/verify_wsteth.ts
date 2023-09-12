@@ -40,7 +40,7 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.15').toString(), // 15%
+        defaultThreshold: fp('0.025').toString(), // 2.5% = 2% + 0.5% stethETH feed oracleError
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       fp('1e-4'), // revenueHiding = 0.01%
