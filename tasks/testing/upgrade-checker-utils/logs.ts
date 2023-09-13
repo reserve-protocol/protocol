@@ -44,8 +44,8 @@ const tokens: { [key: string]: string } = {
   [networkConfig['1'].tokens.DAI!.toLowerCase()]: 'DAI',
   ['0x60C384e226b120d93f3e0F4C502957b2B9C32B15'.toLowerCase()]: 'saUSDC',
   ['0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'.toLowerCase()]: 'saUSDT',
-  ['0xf201fFeA8447AB3d43c98Da3349e0749813C9009'.toLowerCase()]: 'cUSDCVault', //  TODO: Replace with real address
-  ['0x840748F7Fd3EA956E5f4c88001da5CC1ABCBc038'.toLowerCase()]: 'cUSDTVault', //  TODO: Replace with real address
+  ['0xf579F9885f1AEa0d3F8bE0F18AfED28c92a43022'.toLowerCase()]: 'cUSDCVault',
+  ['0x4Be33630F92661afD646081BC29079A38b879aA0'.toLowerCase()]: 'cUSDTVault',
 }
 
 export const logToken = (tokenAddress: string) => {
