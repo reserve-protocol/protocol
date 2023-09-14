@@ -8,6 +8,6 @@ exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting r
 
 exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `58026`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `73808`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `73831`;
 
-exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `73808`;
+exports[`Collateral: SFraxEthCollateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `73831`;
