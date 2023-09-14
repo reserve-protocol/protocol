@@ -63,12 +63,12 @@ async function main() {
     POT
   )
   await collateral.deployed()
-  await (await collateral.refresh()).wait()
-  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
     `Deployed DSR-wrapping sDAI to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
+  await (await collateral.refresh()).wait()
+  expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   assetCollDeployments.collateral.sDAI = collateral.address
   assetCollDeployments.erc20s.sDAI = networkConfig[chainId].tokens.sDAI

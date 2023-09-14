@@ -86,7 +86,7 @@ async function main() {
       MIM_THREE_POOL,
       MIM_DEFAULT_THRESHOLD,
     ],
-    'contracts/plugins/assets/convex/CurveStableMetapoolCollateral.sol:CurveStableMetapoolCollateral'
+    'contracts/plugins/assets/curve/CurveStableMetapoolCollateral.sol:CurveStableMetapoolCollateral'
   )
 }
 

@@ -162,7 +162,12 @@ contract DeployerP0 is IDeployer, Versioned {
     }
 
     /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
-    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset) {
-        return new RTokenAsset(rToken, maxTradeVolume);
+    /// @return rTokenAsset The address of the newly deployed RTokenAsset
+    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume)
+        external
+        returns (IAsset rTokenAsset)
+    {
+        rTokenAsset = new RTokenAsset(rToken, maxTradeVolume);
+        emit RTokenAssetCreated(rToken, rTokenAsset);
     }
 }

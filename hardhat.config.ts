@@ -76,7 +76,7 @@ const config: HardhatUserConfig = {
         mnemonic: MNEMONIC,
       },
       // gasPrice: 30_000_000_000,
-      gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
+      gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
     tenderly: {
       chainId: 3,
@@ -85,7 +85,7 @@ const config: HardhatUserConfig = {
         mnemonic: MNEMONIC,
       },
       // gasPrice: 10_000_000_000,
-      gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
+      gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
   },
   solidity: {

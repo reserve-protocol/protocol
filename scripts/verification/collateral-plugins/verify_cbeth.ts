@@ -26,6 +26,7 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   /********  Verify Coinbase staked ETH - CBETH  **************************/
+  const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
   await verifyContract(
     chainId,
     deployments.collateral.cbETH,
@@ -33,19 +34,19 @@ async function main() {
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-        oracleError: combinedError(fp('0.005'), fp('0.02')).toString(), // 0.5% & 2%,
+        oracleError: oracleError.toString(), // 0.5% & 2%,
         erc20: networkConfig[chainId].tokens.cbETH!,
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.15').toString(), // 15%
+        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       fp('1e-4'), // revenueHiding = 0.01%
       networkConfig[chainId].chainlinkFeeds.cbETH!, // refPerTokChainlinkFeed
       oracleTimeout(chainId, '86400').toString(), // refPerTokChainlinkTimeout
     ],
-    'contracts/plugins/assets/cbeth/CBEthCollateral.sol:CBEthCollateral'
+    'contracts/plugins/assets/cbeth/CBETHCollateral.sol:CBEthCollateral'
   )
 }
 

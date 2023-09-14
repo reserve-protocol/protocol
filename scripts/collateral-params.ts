@@ -10,12 +10,12 @@ import {
 // This prints an MD table of all the collateral plugin parameters
 // Usage: npx hardhat run --network mainnet scripts/collateral-params.ts
 async function main() {
-  const header = ['Plugin', 'Tolerance', 'Delay (hrs)', 'Oracle(s)', 'Underlying']
+  const header = ['Plugin', 'Peg Tolerance', 'Delay (hrs)', 'Oracle(s)', 'Underlying']
   const body: string[][] = []
 
   const chainId = await getChainId(hre)
   // Get deployed collateral
-  const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId, 'mainnet-2.1.0')
+  const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId, 'mainnet-3.0.0')
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const { collateral: collaterals } = assetCollDeployments
@@ -34,7 +34,7 @@ async function main() {
     const underlyingMd = getEtherscanMd(underlyingAddr)
     const clFeedMd = getEtherscanMd(chainlinkFeed)
 
-    const NEEDS_ATTENTION = ['[cvxMIM3'] // first 8 chars only
+    const NEEDS_ATTENTION = ['[cvxMIM3', '[crvMIM3'] // first 8 chars only
 
     body.push([
       collateralMd,

@@ -73,7 +73,6 @@ export interface ITokens {
 export interface IFeeds {
   stETHETH?: string
   stETHUSD?: string
-  wBTCBTC?: string
 }
 
 export interface IPools {
@@ -192,7 +191,6 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
-      wBTCBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23', // "WBTC/BTC"
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
@@ -205,15 +203,6 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
-  },
-  '3': {
-    name: 'ropsten',
-    tokens: {
-      USDC: '0x07865c6e87b9f70255377e024ace6630c1eaa37f',
-      RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
-    },
-    chainlinkFeeds: {},
-    COMPTROLLER: '0xcfa7b0e37f5AC60f3ae25226F5e39ec59AD26152',
   },
   '1': {
     name: 'mainnet',
@@ -296,7 +285,6 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
-      wBTCBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23', // "WBTC/BTC"
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_RESERVE_TREASURY: '0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c',
@@ -388,7 +376,6 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stETHUSD: '0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8', // stETH/USD
       rETH: '0x536218f9E9Eb48863970252233c8F271f554C2d0', // rETH/ETH
       cbETH: '0xf017fcb346a1885194689ba23eff2fe6fa5c483b', // cbETH/ETH
-      wBTCBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23', // "WBTC/BTC"
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_RESERVE_TREASURY: '0x464C71f6c2F760DdA6093dCB91C24c39e5d6e18c',
