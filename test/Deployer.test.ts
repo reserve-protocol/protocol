@@ -373,7 +373,9 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         rToken.address,
         bn('1e27')
       )
-      await deployer.deployRTokenAsset(rToken.address, bn('1e27')) // fp('1e9')
+      await expect(deployer.deployRTokenAsset(rToken.address, bn('1e27')))
+        .to.emit(deployer, 'RTokenAssetCreated')
+        .withArgs(rToken.address, newRTokenAssetAddr) // fp('1e9')
       const newRTokenAsset = await ethers.getContractAt('RTokenAsset', newRTokenAssetAddr)
       expect(await newRTokenAsset.maxTradeVolume()).to.equal(bn('1e27')) // fp('1e9')
     })
