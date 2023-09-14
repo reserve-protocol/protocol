@@ -28,6 +28,8 @@ export default async (
   const main = await hre.ethers.getContractAt('IMain', await rToken.main())
   const governor = await hre.ethers.getContractAt('Governance', governorAddress)
   const timelockAddress = await governor.timelock()
+  const timelock = await hre.ethers.getContractAt('TimelockController', timelockAddress)
+
   const assetRegistry = await hre.ethers.getContractAt(
     'AssetRegistryP1',
     await main.assetRegistry()
@@ -311,51 +313,27 @@ export default async (
   })
   console.log(`successfully tested withrawalLeak`)
 
+  /*
+    Governance changes
+  */
+  console.log(`testing governance...`)
+
+  const EXECUTOR_ROLE = await timelock.EXECUTOR_ROLE()
+  expect(await timelock.hasRole(EXECUTOR_ROLE, governor.address)).to.equal(true)
+  expect(await timelock.hasRole(EXECUTOR_ROLE, ZERO_ADDRESS)).to.equal(false)
+
+  console.log(`successfully tested governance`)
+
   // we pushed the chain forward, so we need to keep the rToken SOUND
   await pushOraclesForward(hre, rTokenAddress)
-
-  /*
-    RToken Asset
-  */
-  console.log(`swapping RTokenAsset...`)
-
-  const rTokenAsset = await hre.ethers.getContractAt(
-    'TestIAsset',
-    await assetRegistry.toAsset(rToken.address)
-  )
-  const maxTradeVolumePrev = await rTokenAsset.maxTradeVolume()
-
-  const newRTokenAsset = await (
-    await hre.ethers.getContractFactory('RTokenAsset')
-  ).deploy(rToken.address, maxTradeVolumePrev)
-
-  // Swap RToken Asset
-  await whileImpersonating(hre, timelockAddress, async (tl) => {
-    await assetRegistry.connect(tl).swapRegistered(newRTokenAsset.address)
-  })
-  await assetRegistry.refresh()
-
-  // Check interface behaves properly
-  expect(await newRTokenAsset.isCollateral()).to.equal(false)
-  expect(await newRTokenAsset.erc20()).to.equal(rToken.address)
-  expect(await rToken.decimals()).to.equal(18)
-  expect(await newRTokenAsset.version()).to.equal('3.0.0')
-  expect(await newRTokenAsset.maxTradeVolume()).to.equal(maxTradeVolumePrev)
-
-  const [lowPricePrev, highPricePrev] = await rTokenAsset.price()
-  const [lowPrice, highPrice] = await newRTokenAsset.price()
-  expect(lowPrice).to.equal(lowPricePrev)
-  expect(highPrice).to.equal(highPricePrev)
-
-  await expect(rTokenAsset.claimRewards()).to.not.emit(rTokenAsset, 'RewardsClaimed')
-  console.log(`successfully tested RTokenAsset`)
 
   console.log('\n3.0.0 check succeeded!')
 }
 
 export const proposal_3_0_0: ProposalBuilder = async (
   hre: HardhatRuntimeEnvironment,
-  rTokenAddress: string
+  rTokenAddress: string,
+  governorAddress: string
 ): Promise<Proposal> => {
   const rToken = await hre.ethers.getContractAt('RTokenP1', rTokenAddress)
   const main = await hre.ethers.getContractAt('MainP1', await rToken.main())
@@ -378,6 +356,9 @@ export const proposal_3_0_0: ProposalBuilder = async (
   const rTokenTrader = await hre.ethers.getContractAt('RevenueTraderP1', await main.rTokenTrader())
   const stRSR = await hre.ethers.getContractAt('StRSRP1Votes', await main.stRSR())
 
+  const governor = await hre.ethers.getContractAt('Governance', governorAddress)
+  const timelock = await hre.ethers.getContractAt('TimelockController', await governor.timelock())
+
   const mainImplAddr = '0xF5366f67FF66A3CefcB18809a762D5b5931FebF8'
   const batchTradeImplAddr = '0xe416Db92A1B27c4e28D5560C1EEC03f7c582F630'
   const dutchTradeImplAddr = '0x2387C22727ACb91519b80A15AEf393ad40dFdb2F'
@@ -396,46 +377,100 @@ export const proposal_3_0_0: ProposalBuilder = async (
   const cUSDCVaultCollateralAddr = '0x50a9d529EA175CdE72525Eaa809f5C3c47dAA1bB'
   const cUSDTVaultAddr = '0x4Be33630F92661afD646081BC29079A38b879aA0'
   const cUSDTVaultCollateralAddr = '0x5757fF814da66a2B4f9D11d48570d742e246CfD9'
-  const saUSDCCollateralAddr = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'
-  const saUSDTCollateralAddr = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'
+  const saUSDCAddr = '0x60C384e226b120d93f3e0F4C502957b2B9C32B15'
+  const aUSDCCollateralAddr = '0x7CD9CA6401f743b38B3B16eA314BbaB8e9c1aC51'
+  const saUSDTAddr = '0x21fe646D1Ed0733336F2D4d9b2FE67790a6099D9'
+  const aUSDTCollateralAddr = '0xE39188Ddd4eb27d1D25f5f58cC6A5fD9228EEdeF'
 
-  // Step 1 - Update implementations and config
+  const RSRAssetAddr = '0x7edD40933DfdA0ecEe1ad3E61a5044962284e1A6'
+  const TUSDCollateralAddr = '0x7F9999B2C9D310a5f48dfD070eb5129e1e8565E2'
+  const USDPCollateralAddr = '0x2f98bA77a8ca1c630255c4517b1b3878f6e60C89'
+  const DAICollateralAddr = '0xf7d1C6eE4C0D84C6B530D53A897daa1E9eB56833'
+  const USDTCollateralAddr = '0x58D7bF13D3572b08dE5d96373b8097d94B1325ad'
+  const USDCCollateralAddr = '0xBE9D23040fe22E8Bd8A88BF5101061557355cA04'
+  const COMPAssetAddr = '0xCFA67f42A0fDe4F0Fb612ea5e66170B0465B84c1'
+  const stkAAVEAssetAddr = '0x6647c880Eb8F57948AF50aB45fca8FE86C154D24'
+
+  // Deploy RTokenAsset
+  // TODO: Can be removed and replaced by address once available
+  const rTokenAsset = await hre.ethers.getContractAt(
+    'TestIAsset',
+    await assetRegistry.toAsset(rToken.address)
+  )
+  const maxTradeVolumePrev = await rTokenAsset.maxTradeVolume()
+
+  const newRTokenAsset = await (
+    await hre.ethers.getContractFactory('RTokenAsset')
+  ).deploy(rToken.address, maxTradeVolumePrev)
+  const RTokenAssetAddr = newRTokenAsset.address
+
+  // Step 1 - Update implementations
   const txs = [
-    await main.populateTransaction.upgradeTo(mainImplAddr),
     await assetRegistry.populateTransaction.upgradeTo(assetRegImplAddr),
     await backingManager.populateTransaction.upgradeTo(bckMgrImplAddr),
     await basketHandler.populateTransaction.upgradeTo(bsktHdlImplAddr),
     await broker.populateTransaction.upgradeTo(brokerImplAddr),
     await distributor.populateTransaction.upgradeTo(distImplAddr),
     await furnace.populateTransaction.upgradeTo(furnaceImplAddr),
+    await main.populateTransaction.upgradeTo(mainImplAddr),
     await rsrTrader.populateTransaction.upgradeTo(rsrTraderImplAddr),
     await rTokenTrader.populateTransaction.upgradeTo(rTokenTraderImplAddr),
     await rToken.populateTransaction.upgradeTo(rTokenImplAddr),
     await stRSR.populateTransaction.upgradeTo(stRSRImplAddr),
-    await broker.populateTransaction.setBatchTradeImplementation(batchTradeImplAddr),
-    await broker.populateTransaction.setDutchTradeImplementation(dutchTradeImplAddr),
-    await backingManager.populateTransaction.cacheComponents(),
-    await rsrTrader.populateTransaction.cacheComponents(),
-    await rTokenTrader.populateTransaction.cacheComponents(),
-    await distributor.populateTransaction.cacheComponents(),
-    await basketHandler.populateTransaction.setWarmupPeriod(900),
-    await stRSR.populateTransaction.setWithdrawalLeak(bn('5e16')),
-    await broker.populateTransaction.setDutchAuctionLength(1800),
   ]
 
-  // Step 2 - Basket change
+  // Step 2 - Cache components
+  txs.push(
+    await backingManager.populateTransaction.cacheComponents(),
+    await distributor.populateTransaction.cacheComponents(),
+    await rsrTrader.populateTransaction.cacheComponents(),
+    await rTokenTrader.populateTransaction.cacheComponents()
+  )
+
+  // Step 3 - Register and swap assets
   txs.push(
     await assetRegistry.populateTransaction.register(cUSDCVaultCollateralAddr),
     await assetRegistry.populateTransaction.register(cUSDTVaultCollateralAddr),
+    await assetRegistry.populateTransaction.swapRegistered(aUSDCCollateralAddr),
+    await assetRegistry.populateTransaction.swapRegistered(aUSDTCollateralAddr),
+    await assetRegistry.populateTransaction.swapRegistered(RSRAssetAddr),
+    await assetRegistry.populateTransaction.swapRegistered(TUSDCollateralAddr),
+    await assetRegistry.populateTransaction.swapRegistered(USDPCollateralAddr),
+    await assetRegistry.populateTransaction.swapRegistered(DAICollateralAddr),
+    await assetRegistry.populateTransaction.swapRegistered(USDTCollateralAddr),
+    await assetRegistry.populateTransaction.swapRegistered(USDCCollateralAddr),
+    await assetRegistry.populateTransaction.swapRegistered(COMPAssetAddr),
+    await assetRegistry.populateTransaction.swapRegistered(stkAAVEAssetAddr),
+    await assetRegistry.populateTransaction.swapRegistered(RTokenAssetAddr)
+  )
+
+  // Step 4 - Basket change
+  txs.push(
     await basketHandler.populateTransaction.setPrimeBasket(
-      [saUSDCCollateralAddr, cUSDCVaultAddr, saUSDTCollateralAddr, cUSDTVaultAddr],
+      [cUSDCVaultAddr, cUSDTVaultAddr, saUSDCAddr, saUSDTAddr],
       [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
     ),
     await basketHandler.populateTransaction.refreshBasket()
   )
 
+  // Step 5 - Governance
+  const EXECUTOR_ROLE = await timelock.EXECUTOR_ROLE()
+  txs.push(
+    await timelock.populateTransaction.grantRole(EXECUTOR_ROLE, governor.address),
+    await timelock.populateTransaction.revokeRole(EXECUTOR_ROLE, ZERO_ADDRESS)
+  )
+
+  // Step 6 - Initializations
+  txs.push(
+    await basketHandler.populateTransaction.setWarmupPeriod(900),
+    await stRSR.populateTransaction.setWithdrawalLeak(bn('5e16')),
+    await broker.populateTransaction.setBatchTradeImplementation(batchTradeImplAddr),
+    await broker.populateTransaction.setDutchTradeImplementation(dutchTradeImplAddr),
+    await broker.populateTransaction.setDutchAuctionLength(1800)
+  )
+
   const description =
-    'Upgrade implementations, set trade plugins, components, config values, and update basket'
+    'Upgrade implementations, assets, set trade plugins, config values, and update basket'
 
   return buildProposal(txs, description)
 }
