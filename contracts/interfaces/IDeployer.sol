@@ -85,6 +85,11 @@ interface IDeployer is IVersioned {
         string version
     );
 
+    /// Emitted when a new RTokenAsset is deployed during `deployRTokenAsset`
+    /// @param rToken The address of the RToken ERC20
+    /// @param rTokenAsset The address of the RTokenAsset
+    event RTokenAssetCreated(IRToken indexed rToken, IAsset rTokenAsset);
+
     //
 
     /// Deploys an instance of the entire system
