@@ -153,6 +153,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(owner).setIssuanceThrottleParams(issuanceThrottleParams)
       await rToken.connect(owner).setRedemptionThrottleParams(redemptionThrottleParams)
 
+      // Recharge throttle
+      await advanceTime(3600)
+
       await advanceTime(await basketHandler.warmupPeriod())
 
       // ==== Issue the "initial" rtoken supply to owner
