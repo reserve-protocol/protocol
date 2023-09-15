@@ -141,10 +141,6 @@ Target: The handful of our most depended-upon system properties and invariants a
 
 ## Contributing
 
-If you would like to contribute, you'll need to configure a secret in your fork repo in order for our integration tests to pass in CI. The name of the secret should `ALCHEMY_MAINNET_KEY` and it should be equal to the suffix portion of the full URL.
-
-Usage: `https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}`
-
 To get setup with tenderly, install the [tenderly cli](https://github.com/Tenderly/tenderly-cli). and login with `tenderly login --authentication-method access-key --access-key {your_access_key} --force`.
 
 ## Responsible Disclosure

@@ -89,7 +89,7 @@ hash -r && slither --version
 
 ## Mainnet Forking
 
-The tests located in `test/integration` will require the Mainnet Forking setup in place. This is done by setting the `MAINNET_RPC_URL` variable in your local `.env`. An Alchemy or Ankr node (something with archive data) is needed for Mainnet Forking to properly work. Additional information can be found [here](https://hardhat.org/hardhat-network/guides/mainnet-forking.html).
+The tests located in `test/integration` will require the Mainnet Forking setup in place. This is done by setting the `MAINNET_RPC_URL` variable in your local `.env`. An Alchemy, Infura, or Ankr node (something with archive data) is needed for Mainnet Forking to properly work. Additional information can be found [here](https://hardhat.org/hardhat-network/guides/mainnet-forking.html).
 
 ## Pre-push Validation
 
