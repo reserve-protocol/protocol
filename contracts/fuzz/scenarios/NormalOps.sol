@@ -485,12 +485,32 @@ contract NormalOpsScenario {
         }
     }
 
+    function returnTokens(uint8 which) public {
+        which %= 2;
+        if (which == 0) {
+            main.rsrTrader().returnTokens(backingToManage);
+        } else {
+            main.rTokenTrader().returnTokens(backingToManage);
+        }
+    }
+
     function payRSRProfits() public {
         main.stRSR().payoutRewards();
     }
 
     function payRTokenProfits() public {
         main.furnace().melt();
+    }
+
+    function cacheComponents() public {
+        BackingManagerP1(address(main.backingManager())).cacheComponents();
+        DistributorP1(address(main.distributor())).cacheComponents();
+        RevenueTraderP1(address(main.rsrTrader())).cacheComponents();
+        RevenueTraderP1(address(main.rTokenTrader())).cacheComponents();
+    }
+
+    function trackBasketStatus() public {
+        BasketHandlerP1(address(main.basketHandler())).trackStatus();
     }
 
     // ==== governance changes ====
@@ -611,15 +631,8 @@ contract NormalOpsScenario {
         );
     }
 
-    function cacheComponents() public {
-        BackingManagerP1(address(main.backingManager())).cacheComponents();
-        DistributorP1(address(main.distributor())).cacheComponents();
-        RevenueTraderP1(address(main.rsrTrader())).cacheComponents();
-        RevenueTraderP1(address(main.rTokenTrader())).cacheComponents();
-    }
-
-    function trackBasketStatus() public {
-        BasketHandlerP1(address(main.basketHandler())).trackStatus();
+    function resetStakes() public {
+        main.stRSR().resetStakes();
     }
 
     // ================ System Properties ================
