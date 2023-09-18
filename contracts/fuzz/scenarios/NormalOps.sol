@@ -611,6 +611,17 @@ contract NormalOpsScenario {
         );
     }
 
+    function cacheComponents() public {
+        BackingManagerP1(address(main.backingManager())).cacheComponents();
+        DistributorP1(address(main.distributor())).cacheComponents();
+        RevenueTraderP1(address(main.rsrTrader())).cacheComponents();
+        RevenueTraderP1(address(main.rTokenTrader())).cacheComponents();
+    }
+
+    function trackBasketStatus() public {
+        BasketHandlerP1(address(main.basketHandler())).trackStatus();
+    }
+
     // ================ System Properties ================
 
     // The system is always fully collateralized
