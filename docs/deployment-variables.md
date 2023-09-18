@@ -41,9 +41,9 @@ Dimension: `{1}`
 
 The `rewardRatio` is the fraction of the current reward amount that should be handed out per block.
 
-Default value: `68764601000000` = a half life of 14 days.
+Default value: `6876460100000` = a half life of 14 days.
 
-Mainnet reasonable range: 1e11 to 1e13
+Mainnet reasonable range: 1e12 to 1e14
 
 To calculate: `ln(2) / (60*60*24*desired_days_in_half_life/12)`, and then multiply by 1e18.
 
