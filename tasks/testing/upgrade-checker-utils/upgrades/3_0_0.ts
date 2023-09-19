@@ -390,19 +390,7 @@ export const proposal_3_0_0: ProposalBuilder = async (
   const USDCCollateralAddr = '0xBE9D23040fe22E8Bd8A88BF5101061557355cA04'
   const COMPAssetAddr = '0xCFA67f42A0fDe4F0Fb612ea5e66170B0465B84c1'
   const stkAAVEAssetAddr = '0x6647c880Eb8F57948AF50aB45fca8FE86C154D24'
-
-  // Deploy RTokenAsset
-  // TODO: Can be removed and replaced by address once available
-  const rTokenAsset = await hre.ethers.getContractAt(
-    'TestIAsset',
-    await assetRegistry.toAsset(rToken.address)
-  )
-  const maxTradeVolumePrev = await rTokenAsset.maxTradeVolume()
-
-  const newRTokenAsset = await (
-    await hre.ethers.getContractFactory('RTokenAsset')
-  ).deploy(rToken.address, maxTradeVolumePrev)
-  const RTokenAssetAddr = newRTokenAsset.address
+  const RTokenAssetAddr = '0x70C34352a73b76322cEc6bB965B9fd1a95C77A61'
 
   // Step 1 - Update implementations
   const txs = [
