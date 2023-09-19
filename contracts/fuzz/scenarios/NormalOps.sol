@@ -433,9 +433,6 @@ contract NormalOpsScenario {
     }
 
     // do revenue distribution without doing allowances first
-    /*
-        deprecated
-
     function justDistributeRevenue(
         uint256 tokenID,
         uint8 fromID,
@@ -448,12 +445,8 @@ contract NormalOpsScenario {
         main.distributor().distribute(token, amount);
         main.unspoof(address(this));
     }
-    */
 
     // do revenue distribution granting allowance first - only RSR or RToken
-    /*
-        deprecated
-        
     function distributeRevenue(
         uint8 which,
         uint8 fromID,
@@ -472,7 +465,6 @@ contract NormalOpsScenario {
         main.distributor().distribute(token, amount);
         main.unspoof(address(this));
     }
-    */
 
     function distributeTokenToBuy(uint8 which) public {
         IERC20 token;

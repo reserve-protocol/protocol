@@ -703,6 +703,15 @@ contract RebalancingScenario {
         main.unspoof(address(this));
     }
 
+    function returnTokens(uint8 which) public {
+        which %= 2;
+        if (which == 0) {
+            main.rsrTrader().returnTokens(backingToManage);
+        } else {
+            main.rTokenTrader().returnTokens(backingToManage);
+        }
+    }
+
     function payRSRProfits() public {
         main.stRSR().payoutRewards();
     }
@@ -710,6 +719,17 @@ contract RebalancingScenario {
     function payRTokenProfits() public {
         main.furnace().melt();
         assertFurnacePayouts();
+    }
+
+    function cacheComponents() public {
+        BackingManagerP1(address(main.backingManager())).cacheComponents();
+        DistributorP1(address(main.distributor())).cacheComponents();
+        RevenueTraderP1(address(main.rsrTrader())).cacheComponents();
+        RevenueTraderP1(address(main.rTokenTrader())).cacheComponents();
+    }
+
+    function trackBasketStatus() public {
+        BasketHandlerP1(address(main.basketHandler())).trackStatus();
     }
 
     // Basket handler - this action is required to start Rebalancing
@@ -902,8 +922,8 @@ contract RebalancingScenario {
     }
 
     function setFurnaceRatio(uint256 seed) public {
-        FurnaceP1(address(main.furnace())).setRatio(uint192(between(0, 1e18, seed)));
-        // 1e18 is Furnace.MAX_RATIO
+        FurnaceP1(address(main.furnace())).setRatio(uint192(between(0, 1e14, seed)));
+        // 1e14 is Furnace.MAX_RATIO
     }
 
     function setRSRTraderMaxTradeSlippage(uint256 seed) public {
@@ -913,11 +933,23 @@ contract RebalancingScenario {
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
     }
 
+    function setRSRTraderMinTradeVolume(uint256 seed) public {
+        RevenueTraderP1(address(main.rsrTrader())).setMinTradeVolume(
+            uint192(between(0, 1e29, seed))
+        ); // 1e29 is Trading.MAX_TRADE_VOLUME
+    }
+
     function setRTokenTraderMaxTradeSlippage(uint256 seed) public {
         RevenueTraderP1(address(main.rTokenTrader())).setMaxTradeSlippage(
             uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
+    }
+
+    function setRTokenTraderMinTradeVolume(uint256 seed) public {
+        RevenueTraderP1(address(main.rTokenTrader())).setMinTradeVolume(
+            uint192(between(0, 1e29, seed))
+        ); // 1e29 is Trading.MAX_TRADE_VOLUME
     }
 
     function setBackingManagerMaxTradeSlippage(uint256 seed) public {
@@ -927,8 +959,14 @@ contract RebalancingScenario {
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
     }
 
+    function setBackingManagerMinTradeVolume(uint256 seed) public {
+        BackingManagerP1(address(main.backingManager())).setMinTradeVolume(
+            uint192(between(0, 1e29, seed))
+        ); // 1e29 is Trading.MAX_TRADE_VOLUME
+    }
+
     function setStakeRewardRatio(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setRewardRatio(uint192(between(1, 1e18, seed)));
+        StRSRP1(address(main.stRSR())).setRewardRatio(uint192(between(1, 1e14, seed)));
     }
 
     function setUnstakingDelay(uint256 seed) public {
@@ -968,6 +1006,20 @@ contract RebalancingScenario {
         else if (which == 1) main.revokeRole(SHORT_FREEZER, user);
         else if (which == 2) main.revokeRole(LONG_FREEZER, user);
         else if (which == 3) main.revokeRole(PAUSER, user);
+    }
+
+    function setWithdrawalLeak(uint256 seed) public {
+        StRSRP1(address(main.stRSR())).setWithdrawalLeak(uint48(between(0, 3e17, seed)));
+    }
+
+    function setWarmupPeriod(uint256 seed) public {
+        BasketHandlerP1(address(main.basketHandler())).setWarmupPeriod(
+            uint48(between(60, 31536000, seed))
+        );
+    }
+
+    function resetStakes() public {
+        main.stRSR().resetStakes();
     }
 
     // ================ Internal functions / Helpers ================
