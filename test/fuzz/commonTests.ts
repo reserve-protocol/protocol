@@ -695,6 +695,39 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(await rtoken.balanceOf(await alice.getAddress())).equal(issueAmt / 2n)
     })
 
+    it('can returnTokens to BackingManager', async () => {
+      await warmup()
+      const strsrID = addrIDs.get(addr(2)) as number
+
+      // ==== Mint 1 exa of collateral to the RSR Trader
+      const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol(collaterals[0]))
+      await c0.mint(comp.rsrTrader.address, exa)
+
+      const rsrTraderAddr = comp.rsrTrader.address
+      const bckMgrAddr = comp.backingManager.address
+      const rsrTrader_bal_init = await c0.balanceOf(rsrTraderAddr)
+      const BM_bal_init = await c0.balanceOf(bckMgrAddr)
+
+      expect(rsrTrader_bal_init).to.equal(exa)
+      expect(BM_bal_init).to.equal(0)
+
+      expect(tokenIDs.has(collaterals[0])).to.be.true
+      await scenario.pushBackingToManage(tokenIDs.get(collaterals[0]) as number)
+
+      await expect(scenario.returnTokens(2)).to.be.revertedWith('rsrTotal > 0')
+
+      // RSR Trader - Set 0 distribution
+      await scenario.setDistribution(strsrID, 0, 0)
+
+      await scenario.returnTokens(2)
+
+      const rsrTrader_bal = await c0.balanceOf(rsrTraderAddr)
+      const BM_bal = await c0.balanceOf(bckMgrAddr)
+
+      expect(rsrTrader_bal).to.equal(0)
+      expect(BM_bal).to.equal(exa)
+    })
+
     // after('stop impersonations', async () => {
     //   await stopImpersonatingAccount(aliceAddr)
     //   await stopImpersonatingAccount(bobAddr)
