@@ -26,6 +26,9 @@ export interface ITokens {
   aWETH?: string
   aWBTC?: string
   aCRV?: string
+  aUSDbCv3?: string
+  aWETHv3?: string
+  acbETHv3?: string
   cDAI?: string
   cUSDC?: string
   cUSDT?: string
@@ -52,6 +55,7 @@ export interface ITokens {
   wstETH?: string
   rETH?: string
   cUSDCv3?: string
+  cUSDbCv3?: string
   ONDO?: string
   sDAI?: string
   cbETH?: string
@@ -496,7 +500,10 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       RSR: '0xaB36452DbAC151bE02b16Ca17d8919826072f64a',
       COMP: '0x9e1028F5F1D5eDE59748FFceE5532509976840E0',
       WETH: '0x4200000000000000000000000000000000000006',
-      cUSDCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf'
+      cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
+      aUSDbCv3: '0x0a1d576f3eFeF75b330424287a95A366e8281D54',
+      aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
+      acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad'
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
