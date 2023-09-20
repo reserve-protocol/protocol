@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../p1/RToken.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 
 /**
- * @title IFacade
- * @notice A UX-friendly layer for non-governance protocol interactions
+ * @title IFacadeRead
+ * @notice A UX-friendly layer for read operations, especially those that first require refresh()
  *
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
- * - @custom:view - Regular view
 v */
 interface IFacadeRead {
     // === Static Calls ===
@@ -32,31 +31,50 @@ interface IFacadeRead {
         );
 
     /// @return tokens The erc20s returned for the redemption
-    /// @return withdrawals The balances necessary to issue `amount` RToken
-    /// @return isProrata True if the redemption is prorata and not full
+    /// @return withdrawals The balances the reedemer would receive after a full redemption
+    /// @return available The amount actually available, for each token
+    /// @dev If available[i] < withdrawals[i], then RToken.redeem() would revert
     /// @custom:static-call
-    function redeem(
-        IRToken rToken,
-        uint256 amount,
-        uint48 basketNonce
-    )
+    function redeem(IRToken rToken, uint256 amount)
         external
         returns (
             address[] memory tokens,
             uint256[] memory withdrawals,
-            bool isProrata
+            uint256[] memory available
         );
+
+    /// @return tokens The erc20s returned for the redemption
+    /// @return withdrawals The balances the reedemer would receive after redemption
+    /// @custom:static-call
+    function redeemCustom(
+        IRToken rToken,
+        uint256 amount,
+        uint48[] memory basketNonces,
+        uint192[] memory portions
+    ) external returns (address[] memory tokens, uint256[] memory withdrawals);
 
     /// @return erc20s The ERC20 addresses in the current basket
     /// @return uoaShares The proportion of the basket associated with each ERC20
     /// @return targets The bytes32 representations of the target unit associated with each ERC20
     /// @custom:static-call
-    function basketBreakdown(RTokenP1 rToken)
+    function basketBreakdown(IRToken rToken)
         external
         returns (
             address[] memory erc20s,
             uint192[] memory uoaShares,
             bytes32[] memory targets
+        );
+
+    /// @return erc20s The registered ERC20s
+    /// @return balances {qTok} The held balances of each ERC20 across all traders
+    /// @return balancesNeededByBackingManager {qTok} does not account for backingBuffer
+    /// @custom:static-call
+    function balancesAcrossAllTraders(IRToken rToken)
+        external
+        returns (
+            IERC20[] memory erc20s,
+            uint256[] memory balances,
+            uint256[] memory balancesNeededByBackingManager
         );
 
     // === Views ===
@@ -69,7 +87,6 @@ interface IFacadeRead {
 
     /// @param account The account for the query
     /// @return All the pending StRSR unstakings for an account
-    /// @custom:view
     function pendingUnstakings(RTokenP1 rToken, address account)
         external
         view
@@ -80,7 +97,7 @@ interface IFacadeRead {
     /// @return erc20s The erc20s in the prime basket
     /// @return targetNames The bytes32 name identifier of the target unit, per ERC20
     /// @return targetAmts {target/BU} The amount of the target unit in the basket, per ERC20
-    function primeBasket(RTokenP1 rToken)
+    function primeBasket(IRToken rToken)
         external
         view
         returns (
@@ -93,17 +110,15 @@ interface IFacadeRead {
     /// @param targetName The name of the target unit to lookup the backup for
     /// @return erc20s The backup erc20s for the target unit, in order of most to least desirable
     /// @return max The maximum number of tokens from the array to use at a single time
-    function backupConfig(RTokenP1 rToken, bytes32 targetName)
+    function backupConfig(IRToken rToken, bytes32 targetName)
         external
         view
         returns (IERC20[] memory erc20s, uint256 max);
 
     /// @return tokens The ERC20s backing the RToken
-    /// @custom:view
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens);
 
     /// @return stTokenAddress The address of the corresponding stToken address
-    /// @custom:view
     function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress);
 
     /// @return backing The worst-case collaterazation % the protocol will have after done trading
@@ -113,18 +128,6 @@ interface IFacadeRead {
         external
         view
         returns (uint192 backing, uint192 overCollateralization);
-
-    /// @return erc20s The registered ERC20s
-    /// @return balances {qTok} The held balances of each ERC20 at the trader
-    /// @return balancesNeeded {qTok} The needed balance of each ERC20 at the trader
-    function traderBalances(IRToken rToken, ITrading trader)
-        external
-        view
-        returns (
-            IERC20[] memory erc20s,
-            uint256[] memory balances,
-            uint256[] memory balancesNeeded
-        );
 
     /// @return low {UoA/tok} The low price of the RToken as given by the relevant RTokenAsset
     /// @return high {UoA/tok} The high price of the RToken as given by the relevant RTokenAsset

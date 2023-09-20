@@ -3,7 +3,7 @@ import { ethers } from 'hardhat'
 import fs from 'fs'
 import { backTestPlugin } from './backtester/backtester'
 
-const htmlReportTemplate = fs.readFileSync("./scripts/backtester/report-template.html", "utf8")
+const htmlReportTemplate = fs.readFileSync('./scripts/backtester/report-template.html', 'utf8')
 
 export const main = async () => {
   const provider = new providers.JsonRpcProvider(process.env.MAINNET_RPC_URL)
@@ -11,9 +11,9 @@ export const main = async () => {
   const currentBlock = await provider.getBlockNumber()
   const stride = parseInt(process.env.STRIDE ?? '300', 10)
   const numberOfSamples = parseInt(process.env.SAMPLES ?? '1000', 10)
-  const contractToTest = (await ethers.getContractFactory(process.env.CONTRACT_NAME!)).getDeployTransaction(
-    ...JSON.parse(process.env.CONSTRUCTOR_PARAMETERS!)
-  )
+  const contractToTest = (
+    await ethers.getContractFactory(process.env.CONTRACT_NAME!)
+  ).getDeployTransaction(...JSON.parse(process.env.CONSTRUCTOR_PARAMETERS!))
 
   if (process.env.BACKTEST_RESULT_DIR != null) {
     console.log('Will save results to ', process.env.BACKTEST_RESULT_DIR)
@@ -24,20 +24,16 @@ export const main = async () => {
 
   const start = currentBlock - stride * numberOfSamples
   const result = {
-    ...(await backTestPlugin(
-      [
-        contractToTest.data!
-      ],
-      {
+    ...(
+      await backTestPlugin([contractToTest.data!], {
         start,
         stride,
         numberOfSamples,
         backtestServiceUrl: process.env.BACKTEST_SERVICE_URL!,
-      }
-    ))[0],
-    backtestName: process.env.CONTRACT_NAME!
-  };
-
+      })
+    )[0],
+    backtestName: process.env.CONTRACT_NAME!,
+  }
 
   if (process.env.BACKTEST_RESULT_DIR != null) {
     console.log('Backtest done, saving results')
@@ -47,11 +43,11 @@ export const main = async () => {
       JSON.stringify(result, null, 2)
     )
 
-    const htmlReport = htmlReportTemplate.replace("const data = []", "const data = " + JSON.stringify([result], null, 2))
-    fs.writeFileSync(
-      `${process.env.BACKTEST_RESULT_DIR}/report.html`,
-      htmlReport
+    const htmlReport = htmlReportTemplate.replace(
+      'const data = []',
+      'const data = ' + JSON.stringify([result], null, 2)
     )
+    fs.writeFileSync(`${process.env.BACKTEST_RESULT_DIR}/report.html`, htmlReport)
   } else {
     console.log(JSON.stringify(result, null, 2))
   }

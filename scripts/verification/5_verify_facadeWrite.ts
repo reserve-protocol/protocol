@@ -33,7 +33,8 @@ async function main() {
     chainId,
     deployments.facadeWrite,
     [deployments.deployer],
-    'contracts/facade/FacadeWrite.sol:FacadeWrite'
+    'contracts/facade/FacadeWrite.sol:FacadeWrite',
+    { FacadeWriteLib: deployments.facadeWriteLib }
   )
 }
 

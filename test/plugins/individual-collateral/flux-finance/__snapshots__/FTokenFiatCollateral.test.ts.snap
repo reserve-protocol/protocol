@@ -1,0 +1,97 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `117347`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `115679`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after hard default 1`] = `140981`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after hard default 2`] = `139167`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `117347`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `115679`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after soft default 1`] = `115338`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() after soft default 2`] = `115338`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `139164`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `139164`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() during soft default 1`] = `141114`;
+
+exports[`Collateral: fDAI Collateral collateral functionality Gas Reporting refresh() during soft default 2`] = `139520`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `117539`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `115871`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() after hard default 1`] = `141237`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() after hard default 2`] = `139423`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `117539`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `115871`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() after soft default 1`] = `115530`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() after soft default 2`] = `115530`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `139420`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `139420`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() during soft default 1`] = `141370`;
+
+exports[`Collateral: fFRAX Collateral collateral functionality Gas Reporting refresh() during soft default 2`] = `139702`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `125829`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `124161`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after hard default 1`] = `149949`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after hard default 2`] = `148205`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `125829`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `124161`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after soft default 1`] = `123820`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() after soft default 2`] = `123820`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `148202`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `148202`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() during soft default 1`] = `150082`;
+
+exports[`Collateral: fUSDC Collateral collateral functionality Gas Reporting refresh() during soft default 2`] = `148484`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() after full price timeout 1`] = `120477`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() after full price timeout 2`] = `118809`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() after hard default 1`] = `144383`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() after hard default 2`] = `142569`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `120477`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `118809`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() after soft default 1`] = `118468`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() after soft default 2`] = `118468`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() during SOUND 1`] = `142496`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() during SOUND 2`] = `142566`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() during soft default 1`] = `144446`;
+
+exports[`Collateral: fUSDT Collateral collateral functionality Gas Reporting refresh() during soft default 2`] = `142848`;

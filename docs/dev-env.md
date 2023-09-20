@@ -19,6 +19,8 @@ These instructions assume you already have standard installations of `node`, `np
 
 ## Setup
 
+### Basic Dependencies
+
 Set up yarn and hardhat, needed for compiling and running tests:
 
 ```bash
@@ -39,15 +41,30 @@ yarn prepare
 cp .env.example .env
 ```
 
+### Tenderly
+
+If you are going to use a Tenderly network, do the following:
+
+1. Install the [tenderly cli](https://github.com/Tenderly/tenderly-cli)
+2. Login
+
+```bash
+tenderly login --authentication-method access-key --access-key {your_access_key} --force
+```
+
+3. Configure the `TENDERLY_RPC_URL` in your `.env` file
+
+### Slither
+
 You should also setup `slither`. The [Trail of Bits tools][tob-suite] require solc-select. Check [the installation instructions](https://github.com/crytic/solc-select) to ensure you have all prerequisites. Then:
 
 ```bash
 # Install solc-select and slither
 pip3 install solc-select slither-analyzer
 
-# Install and use solc version 0.8.17
-solc-select install 0.8.17
-solc-select use 0.8.17
+# Install and use solc version 0.8.19
+solc-select install 0.8.19
+solc-select use 0.8.19
 
 # Double-check that your slither version is at least 0.8.3!
 hash -r && slither --version

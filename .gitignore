@@ -34,4 +34,6 @@ scripts/addresses/31337*
 scripts/test.ts
 scripts/playground.ts
 
+# tenderly deployment/verification artifacts
+deployments/
 backtests/

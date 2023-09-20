@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
@@ -132,6 +132,22 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         );
         require(nonce == _useDelegationNonce(signer), "ERC20Votes: invalid nonce");
         _delegate(signer, delegatee);
+    }
+
+    /// Stakes an RSR `amount` on the corresponding RToken and allows to delegate
+    /// votes from the sender to `delegatee` or self
+    function stakeAndDelegate(uint256 rsrAmount, address delegatee) external {
+        stake(rsrAmount);
+        address msgSender = _msgSender();
+        address currentDelegate = delegates(msgSender);
+
+        if (delegatee == address(0) && currentDelegate == address(0)) {
+            // Delegate to self if no delegate defined and no delegatee provided
+            _delegate(msgSender, msgSender);
+        } else if (delegatee != address(0) && currentDelegate != delegatee) {
+            // Delegate to delegatee if provided and different than current delegate
+            _delegate(msgSender, delegatee);
+        }
     }
 
     function _mint(address account, uint256 amount) internal override {

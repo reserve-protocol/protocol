@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
-import "./IsfrxEth.sol";
+import "./vendor/IsfrxEth.sol";
 
 /**
  * @title SFraxEthCollateral

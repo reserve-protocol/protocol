@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../plugins/assets/Asset.sol";
 import "../plugins/assets/RTokenAsset.sol";
+import "../plugins/trading/DutchTrade.sol";
+import "../plugins/trading/GnosisTrade.sol";
 import "./AssetRegistry.sol";
 import "./BackingManager.sol";
 import "./BasketHandler.sol";
@@ -93,7 +95,7 @@ contract DeployerP0 is IDeployer, Versioned {
         );
 
         // Init Basket Handler
-        main.basketHandler().init(main);
+        main.basketHandler().init(main, params.warmupPeriod);
 
         // Init Revenue Traders
         main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);
@@ -110,7 +112,14 @@ contract DeployerP0 is IDeployer, Versioned {
         // Init Furnace
         main.furnace().init(main, params.rewardRatio);
 
-        main.broker().init(main, gnosis, ITrade(address(1)), params.auctionLength);
+        main.broker().init(
+            main,
+            gnosis,
+            ITrade(address(new GnosisTrade())),
+            params.batchAuctionLength,
+            ITrade(address(new DutchTrade())),
+            params.dutchAuctionLength
+        );
 
         // Init StRSR
         {
@@ -121,7 +130,8 @@ contract DeployerP0 is IDeployer, Versioned {
                 stRSRName,
                 stRSRSymbol,
                 params.unstakingDelay,
-                params.rewardRatio
+                params.rewardRatio,
+                params.withdrawalLeak
             );
         }
 
@@ -145,15 +155,19 @@ contract DeployerP0 is IDeployer, Versioned {
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
-        main.grantRole(SHORT_FREEZER, owner);
-        main.grantRole(LONG_FREEZER, owner);
-        main.grantRole(PAUSER, owner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(SHORT_FREEZER, address(this));
-        main.renounceRole(LONG_FREEZER, address(this));
-        main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
         return (address(components.rToken));
+    }
+
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    /// @return rTokenAsset The address of the newly deployed RTokenAsset
+    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume)
+        external
+        returns (IAsset rTokenAsset)
+    {
+        rTokenAsset = new RTokenAsset(rToken, maxTradeVolume);
+        emit RTokenAssetCreated(rToken, rTokenAsset);
     }
 }

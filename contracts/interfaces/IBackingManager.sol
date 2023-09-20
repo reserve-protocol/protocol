@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IBroker.sol";
 import "./IComponent.sol";
 import "./ITrading.sol";
 
@@ -9,16 +10,20 @@ import "./ITrading.sol";
  * @title IBackingManager
  * @notice The BackingManager handles changes in the ERC20 balances that back an RToken.
  *   - It computes which trades to perform, if any, and initiates these trades with the Broker.
+ *     - rebalance()
  *   - If already collateralized, excess assets are transferred to RevenueTraders.
- *
- * `manageTokens(erc20s)` and `manageTokensSortedOrder(erc20s)` are handles for getting at the
- *   same underlying functionality. The former allows an ERC20 list in any order, while the
- *   latter requires a sorted array, and executes in O(n) rather than O(n^2) time. In the
- *   vast majority of cases we expect the the O(n^2) function to be acceptable.
+ *     - forwardRevenue(IERC20[] calldata erc20s)
  */
 interface IBackingManager is IComponent, ITrading {
-    event TradingDelaySet(uint48 indexed oldVal, uint48 indexed newVal);
-    event BackingBufferSet(uint192 indexed oldVal, uint192 indexed newVal);
+    /// Emitted when the trading delay is changed
+    /// @param oldVal The old trading delay
+    /// @param newVal The new trading delay
+    event TradingDelaySet(uint48 oldVal, uint48 newVal);
+
+    /// Emitted when the backing buffer is changed
+    /// @param oldVal The old backing buffer
+    /// @param newVal The new backing buffer
+    event BackingBufferSet(uint192 oldVal, uint192 newVal);
 
     // Initialization
     function init(
@@ -34,16 +39,15 @@ interface IBackingManager is IComponent, ITrading {
     /// @custom:interaction
     function grantRTokenAllowance(IERC20) external;
 
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @dev Performs a uniqueness check on the erc20s list in O(n^2)
-    /// @custom:interaction
-    function manageTokens(IERC20[] memory erc20s) external;
+    /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    /// @custom:interaction RCEI
+    function rebalance(TradeKind kind) external;
 
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @dev Tokens must be in sorted order!
-    /// @dev Performs a uniqueness check on the erc20s list in O(n)
-    /// @custom:interaction
-    function manageTokensSortedOrder(IERC20[] memory erc20s) external;
+    /// Forward revenue to RevenueTraders; reverts if not fully collateralized
+    /// @param erc20s The tokens to forward
+    /// @custom:interaction RCEI
+    function forwardRevenue(IERC20[] calldata erc20s) external;
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

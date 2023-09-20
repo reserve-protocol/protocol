@@ -10,22 +10,22 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenMock,
+  CTokenWrapperMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
-  IBasketHandler,
   TestIStRSR,
   MockV3Aggregator,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIRToken,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import {
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -36,7 +36,6 @@ import { CollateralStatus } from '../../common/constants'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
 import { expectPrice, setOraclePrice } from '../utils/oracles'
-import { expectEvents } from '../../common/events'
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -65,7 +64,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let rsr: ERC20Mock
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
@@ -212,9 +211,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     return atoken
   }
 
-  const makeCToken = async (tokenName: string): Promise<CTokenMock> => {
+  const makeCToken = async (tokenName: string): Promise<CTokenWrapperMock> => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-    const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+    const CTokenWrapperMockFactory: ContractFactory = await ethers.getContractFactory(
+      'CTokenWrapperMock'
+    )
     const CTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     )
@@ -223,8 +224,14 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await ERC20MockFactory.deploy(tokenName, `${tokenName} symbol`)
     )
 
-    const ctoken: CTokenMock = <CTokenMock>(
-      await CTokenMockFactory.deploy('c' + tokenName, `${'c' + tokenName} symbol`, erc20.address)
+    const ctoken: CTokenWrapperMock = <CTokenWrapperMock>(
+      await CTokenWrapperMockFactory.deploy(
+        'c' + tokenName,
+        `${'c' + tokenName} symbol`,
+        erc20.address,
+        compToken.address,
+        compoundMock.address
+      )
     )
 
     const chainlinkFeed = <MockV3Aggregator>(
@@ -243,8 +250,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
           defaultThreshold: DEFAULT_THRESHOLD,
           delayUntilDefault: DELAY_UNTIL_DEFAULT,
         },
-        REVENUE_HIDING,
-        compoundMock.address
+        REVENUE_HIDING
       )
     )
 
@@ -281,7 +287,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       basketHandler,
       facade,
       facadeTest,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Mint initial balances
     initialBal = bn('10000e18')
@@ -324,9 +330,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Redemption
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
+        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt))
       } else {
-        await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+        await rToken.connect(addr1).redeem(issueAmt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     })
@@ -386,6 +392,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         await basketHandler.refreshBasket()
       }
 
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
       // Check new basket
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
       const newBacking: string[] = await facade.basketTokens(rToken.address)
@@ -416,7 +425,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await expectTrade(backingManager, {
         sell: firstDefaultedToken.address,
         buy: backing[0],
-        endTime: auctionTimestamp + Number(config.auctionLength),
+        endTime: auctionTimestamp + Number(config.batchAuctionLength),
         externalId: bn('0'),
       })
     })
@@ -458,9 +467,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Redemption
       if (REPORT_GAS) {
-        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
+        await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt))
       } else {
-        await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+        await rToken.connect(addr1).redeem(issueAmt)
       }
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     })
@@ -482,7 +491,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         await assetRegistry.toColl(backing[0])
       )
       for (let i = maxBasketSize - tokensToDefault; i < backing.length; i++) {
-        const erc20 = await ethers.getContractAt('CTokenMock', backing[i])
+        const erc20 = await ethers.getContractAt('CTokenWrapperMock', backing[i])
         // Decrease rate to cause default in Ctoken
         await erc20.setExchangeRate(fp('0.8'))
 
@@ -506,6 +515,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       } else {
         await basketHandler.refreshBasket()
       }
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
 
       // Check new basket
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
@@ -551,7 +563,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await expectTrade(backingManager, {
         sell: firstDefaultedToken.address,
         buy: backing[0],
-        endTime: auctionTimestamp + Number(config.auctionLength),
+        endTime: auctionTimestamp + Number(config.batchAuctionLength),
         externalId: bn('0'),
       })
     })
@@ -568,20 +580,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       if (REPORT_GAS) {
         await snapshotGasCost(backingManager.claimRewards())
       } else {
-        await expectEvents(backingManager.claimRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmount.mul(20)],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [aaveToken.address, rewardAmount],
-            emitted: true,
-          },
-        ])
+        await backingManager.claimRewards()
       }
 
       // Check balances after

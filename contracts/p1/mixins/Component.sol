@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -38,8 +38,13 @@ abstract contract ComponentP1 is
 
     // === See docs/security.md ===
 
-    modifier notPausedOrFrozen() {
-        require(!main.pausedOrFrozen(), "paused or frozen");
+    modifier notTradingPausedOrFrozen() {
+        require(!main.tradingPausedOrFrozen(), "frozen or trading paused");
+        _;
+    }
+
+    modifier notIssuancePausedOrFrozen() {
+        require(!main.issuancePausedOrFrozen(), "frozen or issuance paused");
         _;
     }
 

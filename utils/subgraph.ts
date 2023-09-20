@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { BigNumber, BigNumberish } from 'ethers'
 import { gql, GraphQLClient } from 'graphql-request'
 import { useEnv } from './env'

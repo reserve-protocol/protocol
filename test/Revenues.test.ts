@@ -1,16 +1,18 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import { loadFixture, getStorageAt, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades } from 'hardhat'
-import { IConfig } from '../common/configuration'
+import { IConfig, GNOSIS_MAX_TOKENS } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
   FURNACE_DEST,
   STRSR_DEST,
   ZERO_ADDRESS,
   CollateralStatus,
+  TradeKind,
+  MAX_UINT192,
 } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, fp, near } from '../common/numbers'
@@ -19,17 +21,17 @@ import {
   ATokenFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenMock,
+  CTokenWrapperMock,
   ERC20Mock,
   FacadeTest,
   GnosisMock,
   IAssetRegistry,
-  IBasketHandler,
   InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDistributor,
   TestIFurnace,
@@ -42,26 +44,30 @@ import {
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import {
+  advanceTime,
+  advanceBlocks,
+  getLatestBlockNumber,
+  getLatestBlockTimestamp,
+} from './utils/time'
 import { withinQuad } from './utils/matchers'
 import {
   Collateral,
   defaultFixture,
   Implementation,
   IMPLEMENTATION,
+  REVENUE_HIDING,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
-  REVENUE_HIDING,
 } from './fixtures'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
-import { expectTrade, getTrade } from './utils/trades'
+import { dutchBuyAmount, expectTrade, getTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
-
-const DEFAULT_THRESHOLD = fp('0.01') // 1%
 
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -73,9 +79,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let rsr: ERC20Mock
   let rsrAsset: Asset
   let compToken: ERC20Mock
-  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
+  let aaveAsset: Asset
 
   // Trading
   let gnosis: GnosisMock
@@ -88,7 +94,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let token0: ERC20Mock
   let token1: USDCMock
   let token2: StaticATokenMock
-  let token3: CTokenMock
+  let token3: CTokenWrapperMock
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
@@ -108,7 +114,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
   let main: TestIMain
 
@@ -136,6 +142,21 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
   }
 
+  const disableBatchTrade = async () => {
+    if (IMPLEMENTATION == Implementation.P1) {
+      const slot = await getStorageAt(broker.address, 205)
+      await setStorageAt(
+        broker.address,
+        205,
+        slot.replace(slot.slice(2, 14), '1'.padStart(12, '0'))
+      )
+    } else {
+      const slot = await getStorageAt(broker.address, 56)
+      await setStorageAt(broker.address, 56, slot.replace(slot.slice(2, 42), '1'.padStart(40, '0')))
+    }
+    expect(await broker.batchTradeDisabled()).to.equal(true)
+  }
+
   beforeEach(async () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
@@ -144,7 +165,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rsr,
       rsrAsset,
       compToken,
-      compAsset,
+      aaveAsset,
       aaveToken,
       compoundMock,
       erc20s,
@@ -182,19 +203,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token3 = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
+    )
 
     // Mint initial balances
     initialBal = bn('1000000e18')
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
-
-    await token0.connect(owner).mint(addr2.address, initialBal)
-    await token1.connect(owner).mint(addr2.address, initialBal)
-    await token2.connect(owner).mint(addr2.address, initialBal)
-    await token3.connect(owner).mint(addr2.address, initialBal)
+    await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
+    if (IMPLEMENTATION === Implementation.P1) {
+      await (await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)).cacheComponents()
+      await (await ethers.getContractAt('RevenueTraderP1', rsrTrader.address)).cacheComponents()
+    }
   })
 
   describe('Deployment', () => {
@@ -363,7 +382,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       let rewardAmountAAVE: BigNumber
 
       beforeEach(async function () {
-        issueAmount = bn('100e18')
+        issueAmount = bn('100000e18')
 
         // Provide approvals
         await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -379,55 +398,49 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade if paused', async () => {
-        await main.connect(owner).pause()
-        await expect(rsrTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+        await main.connect(owner).pauseTrading()
+        await expect(
+          rsrTrader.manageTokens([ZERO_ADDRESS], [TradeKind.BATCH_AUCTION])
+        ).to.be.revertedWith('frozen or trading paused')
       })
 
       it('Should not trade if frozen', async () => {
         await main.connect(owner).freezeShort()
-        await expect(rTokenTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+        await expect(
+          rTokenTrader.manageTokens([ZERO_ADDRESS], [TradeKind.BATCH_AUCTION])
+        ).to.be.revertedWith('frozen or trading paused')
       })
 
       it('Should not claim rewards if paused', async () => {
-        await main.connect(owner).pause()
-        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('paused or frozen')
+        await main.connect(owner).pauseTrading()
+        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('frozen or trading paused')
       })
 
       it('Should not claim rewards if frozen', async () => {
         await main.connect(owner).freezeShort()
-        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('paused or frozen')
+        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('frozen or trading paused')
       })
 
       it('Should not claim single rewards if paused', async () => {
-        await main.connect(owner).pause()
+        await main.connect(owner).pauseTrading()
         await expect(rTokenTrader.claimRewardsSingle(token2.address)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
 
       it('Should not claim single rewards if frozen', async () => {
         await main.connect(owner).freezeShort()
         await expect(rTokenTrader.claimRewardsSingle(token2.address)).to.be.revertedWith(
-          'paused or frozen'
+          'frozen or trading paused'
         )
       })
 
       it('should claim a single reward', async () => {
         const rewardAmt = bn('100e18')
-        await token2.setRewards(rTokenTrader.address, rewardAmt)
-        await rTokenTrader.claimRewardsSingle(token2.address)
-        const balAfter = await aaveToken.balanceOf(rTokenTrader.address)
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        const balAfter = await aaveToken.balanceOf(backingManager.address)
         expect(balAfter).to.equal(rewardAmt)
-      })
-
-      it('Should not settle trade if paused', async () => {
-        await main.connect(owner).pause()
-        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
-      })
-
-      it('Should not settle trade if frozen', async () => {
-        await main.connect(owner).freezeShort()
-        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
       })
 
       it('Should still launch revenue auction if IFFY', async () => {
@@ -438,16 +451,372 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const rtokenPrice = await basketHandler.price()
         const realRtokenPrice = rtokenPrice.low.add(rtokenPrice.high).div(2)
         const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), realRtokenPrice)
-        await expect(rTokenTrader.manageToken(token0.address))
+        await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION]))
           .to.emit(rTokenTrader, 'TradeStarted')
           .withArgs(anyValue, token0.address, rToken.address, issueAmount, withinQuad(minBuyAmt))
       })
 
-      it('Should not launch revenue auction if UNPRICED', async () => {
+      it('Should forward revenue to traders', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.emit(
+          aaveToken,
+          'Transfer'
+        )
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmt.mul(60).div(100))
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmt.mul(40).div(100))
+      })
+
+      it('Should not forward revenue if basket not ready', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Default a token and update basket status
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        await collateral0.refresh()
+        expect(await collateral0.status()).to.equal(CollateralStatus.IFFY)
+        await basketHandler.trackStatus()
+
+        // Cannot forward if not SOUND
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'basket not ready'
+        )
+
+        // Regain SOUND
+        await setOraclePrice(collateral0.address, bn('1e8'))
+        await collateral0.refresh()
+        expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
+        await basketHandler.trackStatus()
+
+        // Still cannot forward revenue, in warmup period
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'basket not ready'
+        )
+
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Advance time post warmup period
+        await advanceTime(Number(config.warmupPeriod) + 1)
+
+        // Now we can forward revenue successfully
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.emit(
+          aaveToken,
+          'Transfer'
+        )
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmt.mul(60).div(100))
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmt.mul(40).div(100))
+      })
+
+      it('Should not forward revenue if paused', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Pause
+        await main.connect(owner).pauseTrading()
+
+        // Cannot forward revenue
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+      })
+
+      it('Should not forward revenue if frozen', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Pause
+        await main.connect(owner).freezeShort()
+
+        // Cannot forward revenue
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+      })
+
+      it('Should forward RSR revenue directly to StRSR', async () => {
+        const amount = bn('2000e18')
+        await rsr.connect(owner).mint(backingManager.address, amount)
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(amount)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        await expect(backingManager.forwardRevenue([rsr.address])).to.emit(rsr, 'Transfer')
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(0)
+      })
+
+      it('Should launch revenue auction at lotPrice if UNPRICED', async () => {
+        // After oracleTimeout the lotPrice should be the original price still
         await advanceTime(ORACLE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(rsr.address)).to.be.revertedWith(
-          'buy asset price unknown'
+        await rTokenTrader.callStatic.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+
+        // After oracleTimeout the lotPrice should be the original price still
+        await advanceTime(PRICE_TIMEOUT.toString())
+        await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+        await expect(
+          rTokenTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+        ).to.be.revertedWith('buy asset price unknown')
+      })
+
+      it('Should not launch revenue auction if 0 erc20s len', async () => {
+        await expect(rTokenTrader.manageTokens([], [])).to.be.revertedWith('empty erc20s list')
+      })
+
+      it('Should not launch revenue auction with uneven length lists', async () => {
+        await expect(rTokenTrader.manageTokens([rsr.address], [])).to.be.revertedWith(
+          'length mismatch'
+        )
+        await expect(
+          rTokenTrader.manageTokens(
+            [rsr.address],
+            [TradeKind.BATCH_AUCTION, TradeKind.DUTCH_AUCTION]
+          )
+        ).to.be.revertedWith('length mismatch')
+        await expect(
+          rTokenTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+        ).to.not.be.revertedWith('length mismatch')
+      })
+
+      it('Should distribute tokenToBuy - distributeTokenToBuy()', async () => {
+        // Use distributeTokenToBuy()
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsrTrader.distributeTokenToBuy()
+        const expectedAmount = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+      })
+
+      it('Should distribute tokenToBuy - manageTokens()', async () => {
+        // Use manageTokens()
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsrTrader.manageTokens([rsr.address], [TradeKind.BATCH_AUCTION])
+        const expectedAmount = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+      })
+
+      it('Should not distribute tokenToBuy if frozen or trading paused', async () => {
+        // Use distributeTokenToBuy()
+        const stRSRBal = await rsr.balanceOf(stRSR.address)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Trading pause
+        await main.connect(owner).pauseTrading()
+
+        // Attempt to distribute
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+
+        // Revert pause and freeze
+        await main.connect(owner).unpauseTrading()
+        await main.connect(owner).freezeShort()
+
+        // Attempt to distribute again
+        await expect(rsrTrader.distributeTokenToBuy()).to.be.revertedWith(
+          'frozen or trading paused'
+        )
+
+        // Unfreeze
+        await main.connect(owner).unfreeze()
+
+        // Can distribute now
+        await rsrTrader.distributeTokenToBuy()
+        const expectedAmount = stRSRBal.add(issueAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(expectedAmount, 100)
+      })
+
+      it('Should return tokens to BackingManager correctly - rsrTrader.returnTokens()', async () => {
+        // Mint tokens
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+        await token0.connect(owner).mint(rsrTrader.address, issueAmount.add(1))
+        await token1.connect(owner).mint(rsrTrader.address, issueAmount.add(2))
+
+        // Should fail when trading paused or frozen
+        await main.connect(owner).pauseIssuance()
+        await main.connect(owner).pauseTrading()
+        await main.connect(owner).freezeForever()
+        await expect(
+          rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('frozen or trading paused')
+        await main.connect(owner).unfreeze()
+        await expect(
+          rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('frozen or trading paused')
+        await main.connect(owner).unpauseTrading()
+
+        // Should fail when distribution is nonzero
+        await expect(
+          rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('rsrTotal > 0')
+        await distributor.setDistribution(STRSR_DEST, { rTokenDist: bn('0'), rsrDist: bn('0') })
+
+        // Should fail for unregistered token
+        await assetRegistry.connect(owner).unregister(collateral1.address)
+        await expect(
+          rsrTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('unregistered erc20')
+
+        // Succeed on just token0 + rsr
+        await expectEvents(rsrTrader.returnTokens([rsr.address, token0.address]), [
+          {
+            contract: rsr,
+            name: 'Transfer',
+            args: [rsrTrader.address, backingManager.address, issueAmount],
+            emitted: true,
+          },
+          {
+            contract: token0,
+            name: 'Transfer',
+            args: [rsrTrader.address, backingManager.address, issueAmount.add(1)],
+            emitted: true,
+          },
+          {
+            contract: token1,
+            name: 'Transfer',
+            emitted: false,
+          },
+        ])
+      })
+
+      it('Should return tokens to BackingManager correctly - rTokenTrader.returnTokens()', async () => {
+        // Mint tokens
+        await rsr.connect(owner).mint(rTokenTrader.address, issueAmount)
+        await token0.connect(owner).mint(rTokenTrader.address, issueAmount.add(1))
+        await token1.connect(owner).mint(rTokenTrader.address, issueAmount.add(2))
+
+        // Should fail when trading paused or frozen
+        await main.connect(owner).pauseIssuance()
+        await main.connect(owner).pauseTrading()
+        await main.connect(owner).freezeForever()
+        await expect(
+          rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('frozen or trading paused')
+        await main.connect(owner).unfreeze()
+        await expect(
+          rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('frozen or trading paused')
+        await main.connect(owner).unpauseTrading()
+
+        // Should fail when distribution is nonzero
+        await expect(
+          rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('rTokenTotal > 0')
+        await distributor.setDistribution(FURNACE_DEST, { rTokenDist: bn('0'), rsrDist: bn('0') })
+
+        // Should fail for unregistered token
+        await assetRegistry.connect(owner).unregister(collateral1.address)
+        await expect(
+          rTokenTrader.returnTokens([rsr.address, token0.address, token1.address])
+        ).to.be.revertedWith('unregistered erc20')
+
+        // Succeed on just token0 + rsr
+        await expectEvents(rTokenTrader.returnTokens([rsr.address, token0.address]), [
+          {
+            contract: rsr,
+            name: 'Transfer',
+            args: [rTokenTrader.address, backingManager.address, issueAmount],
+            emitted: true,
+          },
+          {
+            contract: token0,
+            name: 'Transfer',
+            args: [rTokenTrader.address, backingManager.address, issueAmount.add(1)],
+            emitted: true,
+          },
+          {
+            contract: token1,
+            name: 'Transfer',
+            emitted: false,
+          },
+        ])
+      })
+
+      it('Should launch multiple auctions -- has tokenToBuy', async () => {
+        // Mint AAVE, token0, and RSR to the RSRTrader
+        await aaveToken.connect(owner).mint(rsrTrader.address, issueAmount)
+        await token0.connect(owner).mint(rsrTrader.address, issueAmount)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Start auctions
+        await expectEvents(
+          rsrTrader.manageTokens(
+            [rsr.address, token0.address, aaveToken.address],
+            [TradeKind.BATCH_AUCTION, TradeKind.BATCH_AUCTION, TradeKind.BATCH_AUCTION]
+          ),
+          [
+            {
+              contract: rsr,
+              name: 'Transfer',
+              args: [rsrTrader.address, stRSR.address, anyValue],
+              emitted: true,
+            },
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, token0.address, rsr.address, issueAmount, anyValue],
+              emitted: true,
+            },
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, aaveToken.address, rsr.address, issueAmount, anyValue],
+              emitted: true,
+            },
+          ]
+        )
+      })
+
+      it('Should launch multiple auctions -- involvesRToken', async () => {
+        // Mint AAVE, token0, and RSR to the RSRTrader
+        await rToken.connect(addr1).transfer(rsrTrader.address, issueAmount)
+        await rsr.connect(owner).mint(rsrTrader.address, issueAmount)
+
+        // Start auctions
+        await expectEvents(
+          rsrTrader.manageTokens(
+            [rsr.address, rToken.address],
+            [TradeKind.BATCH_AUCTION, TradeKind.BATCH_AUCTION]
+          ),
+          [
+            {
+              contract: rsr,
+              name: 'Transfer',
+              args: [rsrTrader.address, stRSR.address, anyValue],
+              emitted: true,
+            },
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, rToken.address, rsr.address, issueAmount, anyValue],
+              emitted: true,
+            },
+          ]
         )
       })
 
@@ -457,7 +826,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await advanceTime((await collateral0.delayUntilDefault()).toString())
         expect(await collateral0.status()).to.equal(CollateralStatus.DISABLED)
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
+        await expect(
+          rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
+        ).to.emit(rTokenTrader, 'TradeStarted')
 
         // Trade should have extremely nonzero worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
@@ -482,13 +853,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, rewardAmountCOMP],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, bn(0)],
             emitted: true,
@@ -527,7 +898,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: compToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -535,7 +906,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: compToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -556,7 +927,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(rTokenTrader.settleTrade(aaveToken.address)).to.not.emit
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -610,156 +981,91 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           minBuyAmtRToken.div(bn('1e15'))
         )
       })
+      it('Should be able to start a dust auction BATCH_AUCTION, if enabled', async () => {
+        const minTrade = bn('1e18')
 
-      it('Should not auction 1qTok - Amount too small', async () => {
-        // Set min trade volume for COMP to 1 qtok
-        await backingManager.connect(owner).setMinTradeVolume(0)
-        await rsrTrader.connect(owner).setMinTradeVolume(0)
-        await rTokenTrader.connect(owner).setMinTradeVolume(0)
+        await rTokenTrader.connect(owner).setMinTradeVolume(minTrade)
 
-        // Set f = 1
+        await collateral0.refresh()
+
+        const dustAmount = bn('1e17')
+        await token0.connect(addr1).transfer(rTokenTrader.address, dustAmount)
+
+        const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
+
+        // Disable batch auctions, should not start auction
+        await broker.connect(owner).setBatchAuctionLength(bn(0))
         await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(FURNACE_DEST, bn(0), bn(0))
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
+        ).to.be.revertedWith('batch auctions not enabled')
 
-        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        // Enable batch auctions (normal flow)
+        await broker.connect(owner).setBatchAuctionLength(config.batchAuctionLength)
+
         await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(1))
-
-        // Set COMP tokens as reward -1 qtok
-        rewardAmountCOMP = bn(1)
-
-        // COMP Rewards - 1 qTok
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-
-        // Collect revenue
-        await expectEvents(backingManager.claimRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
-        ])
-
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
-
-        // Check status of destinations at this point
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-
-        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-        ])
-
-        // Check no funds in Market, now in trader
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP)
-
-        // Check destinations, nothing changed
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
+        ).to.emit(rTokenTrader, 'TradeStarted')
       })
 
-      it('Should not sell an asset with 0 price', async () => {
-        // Set f = 1
+      it('Should be able to start a dust auction DUTCH_AUCTION, if enabled', async () => {
+        const minTrade = bn('1e18')
+
+        await rTokenTrader.connect(owner).setMinTradeVolume(minTrade)
+
+        await collateral0.refresh()
+
+        const dustAmount = bn('1e17')
+        await token0.connect(addr1).transfer(rTokenTrader.address, dustAmount)
+
+        const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
+
+        // Disable dutch auctions, should not start auction
+        await broker.connect(owner).setDutchAuctionLength(bn(0))
         await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(FURNACE_DEST, bn(0), bn(0))
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+        ).to.be.revertedWith('dutch auctions not enabled')
 
-        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        // Enable batch auctions (normal flow)
+        await broker.connect(owner).setDutchAuctionLength(config.dutchAuctionLength)
+
         await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(1))
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+        ).to.emit(rTokenTrader, 'TradeStarted')
+      })
 
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1000e18')
+      it('Should only be able to start a dust auction BATCH_AUCTION (and not DUTCH_AUCTION) if oracle has failed', async () => {
+        const minTrade = bn('1e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        await rTokenTrader.connect(owner).setMinTradeVolume(minTrade)
 
-        // Set COMP price to 0
-        await setOraclePrice(compAsset.address, bn(0))
+        const dustAmount = bn('1e17')
+        await token0.connect(addr1).transfer(rTokenTrader.address, dustAmount)
 
-        // Refresh asset so lot price also = 0
-        await compAsset.refresh()
+        const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rTokenTrader.address)
+        await setOraclePrice(collateral0.address, bn(0))
+        await collateral0.refresh()
+        await advanceTime(PRICE_TIMEOUT.add(ORACLE_TIMEOUT).toString())
+        await setOraclePrice(collateral1.address, bn('1e8'))
 
-        // Collect revenue
-        await expectEvents(backingManager.claimRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
-        ])
+        const p = await collateral0.lotPrice()
+        expect(p[0]).to.equal(0)
+        expect(p[1]).to.equal(0)
+        await expect(
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+        ).to.revertedWith('bad sell pricing')
+        await expect(
+          p1RevenueTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
+        ).to.emit(rTokenTrader, 'TradeStarted')
+      })
 
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
-
-        // Check status of destinations at this point
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-
-        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-        ])
-
-        // Check no funds in Market, now in trader
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP)
-
-        // Check destinations, nothing changed
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      it('Should not launch an auction for 1 qTok', async () => {
+        await token0.connect(addr1).transfer(rTokenTrader.address, 1)
+        await expect(
+          rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+        ).to.be.revertedWith('sell amount too low')
+        await expect(
+          rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
+        ).to.be.revertedWith('sell amount too low')
       })
 
       it('Should handle properly an asset with low maxTradeVolume', async () => {
@@ -772,7 +1078,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(0), bn(0))
 
-        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        // Avoid dropping 20 qAAVE by making there be exactly 1 distribution share.
         await expect(
           distributor
             .connect(owner)
@@ -781,49 +1087,49 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(STRSR_DEST, bn(0), bn(1))
 
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1000e18')
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = bn('1000e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
-        // Set new asset for COMP with low maxTradeVolume
-        const newCOMPAsset: Asset = <Asset>await AssetFactory.deploy(
+        // Set new asset for AAVE with low maxTradeVolume
+        const newAAVEAsset: Asset = <Asset>await AssetFactory.deploy(
           PRICE_TIMEOUT,
-          await compAsset.chainlinkFeed(),
+          await aaveAsset.chainlinkFeed(),
           ORACLE_ERROR,
-          compToken.address,
-          bn(1), // very low
+          aaveToken.address,
+          bn(606), // 2 qTok auction at $300 (after accounting for price.high)
           ORACLE_TIMEOUT
         )
 
         // Set a very high price
-        const compPrice = bn('300e8')
-        await setOraclePrice(newCOMPAsset.address, compPrice)
+        const aavePrice = bn('300e8')
+        await setOraclePrice(newAAVEAsset.address, aavePrice)
 
         // Refresh asset
-        await newCOMPAsset.refresh()
+        await newAAVEAsset.refresh()
 
         // Swap asset
-        await assetRegistry.connect(owner).swapRegistered(newCOMPAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newAAVEAsset.address)
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
 
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
 
         // Check status of destinations at this point
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -837,11 +1143,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             emitted: true,
             args: [
               anyValue,
-              compToken.address,
+              aaveToken.address,
               rsr.address,
-              bn(1),
+              bn(2),
               // the 1% increase here offsets the 1% decrease that would normally be applied to the sellAmt, but since 1 is the floor, isn't
-              await toMinBuyAmt(bn(1), fp('303'), fp('1')),
+              await toMinBuyAmt(bn(2), fp('303'), fp('1')),
             ],
           },
           {
@@ -852,13 +1158,62 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check funds now in Market
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(1))
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP.sub(bn(1)))
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(bn(2))
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(bn(0))
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE.sub(bn(2)))
 
         // Check destinations, nothing still -  Auctions need to be completed
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
+      it('Should handle GNOSIS_MAX_TOKENS cap in BATCH_AUCTION', async () => {
+        // Halve price to trigger maxTradeSize() overflow
+        const chainlinkFeed = <MockV3Aggregator>(
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('0.5e8'))
+        )
+
+        // Set Max trade volume very high for both assets in trade
+        const newSellAsset: Asset = <Asset>(
+          await AssetFactory.deploy(
+            PRICE_TIMEOUT,
+            chainlinkFeed.address,
+            ORACLE_ERROR,
+            aaveToken.address,
+            MAX_UINT192,
+            ORACLE_TIMEOUT
+          )
+        )
+
+        const newRSRAsset: Asset = <Asset>(
+          await AssetFactory.deploy(
+            PRICE_TIMEOUT,
+            await rsrAsset.chainlinkFeed(),
+            ORACLE_ERROR,
+            rsr.address,
+            MAX_UINT192,
+            ORACLE_TIMEOUT
+          )
+        )
+
+        // Perform asset swap
+        await assetRegistry.connect(owner).swapRegistered(newSellAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
+        await basketHandler.refreshBasket()
+
+        // Set rewards manually
+        const amount = MAX_UINT192
+        await aaveToken.connect(owner).mint(rsrTrader.address, amount)
+
+        const p1RevenueTrader = await ethers.getContractAt('RevenueTraderP1', rsrTrader.address)
+
+        await expect(
+          p1RevenueTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
+        ).to.emit(rsrTrader, 'TradeStarted')
+
+        // Check trade is using the GNOSIS limits
+        const trade = await getTrade(rsrTrader, aaveToken.address)
+        expect(await trade.initBal()).to.equal(GNOSIS_MAX_TOKENS)
       })
 
       it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -878,13 +1233,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Can also claim through Facade
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -922,7 +1277,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: aaveToken.address,
           buy: rsr.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -930,7 +1285,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -938,7 +1293,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -1003,7 +1358,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             PRICE_TIMEOUT,
             chainlinkFeed.address,
             ORACLE_ERROR,
-            compToken.address,
+            aaveToken.address,
             fp('1'),
             ORACLE_TIMEOUT
           )
@@ -1022,7 +1377,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(0), bn(0))
 
-        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        // Avoid dropping 20 qAAVE by making there be exactly 1 distribution share.
         await expect(
           distributor
             .connect(owner)
@@ -1031,22 +1386,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(STRSR_DEST, bn(0), bn(1))
 
-        // Set COMP tokens as reward
-        rewardAmountCOMP = fp('1.9')
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = fp('1.9')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
@@ -1055,7 +1410,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
+        // Expected values based on Prices between AAVE and RSR = 1 to 1 (for simplification)
         const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to oracle error
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
@@ -1064,7 +1419,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
@@ -1077,17 +1432,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auction registered
-        // COMP -> RSR Auction
+        // AAVE -> RSR Auction
         await expectTrade(rsrTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
         // Check funds in Market and Trader
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt)
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP.sub(sellAmt))
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(sellAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE.sub(sellAmt))
 
         // Another call will not create a new auction (we only allow only one at a time per pair)
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1112,16 +1467,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Run auctions
-        const remainderSellAmt = rewardAmountCOMP.sub(sellAmt)
+        const remainderSellAmt = rewardAmountAAVE.sub(sellAmt)
         const remainderMinBuyAmt = await toMinBuyAmt(remainderSellAmt, fp('1'), fp('1'))
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -1129,7 +1484,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             name: 'TradeStarted',
             args: [
               anyValue,
-              compToken.address,
+              aaveToken.address,
               rsr.address,
               remainderSellAmt,
               withinQuad(remainderMinBuyAmt),
@@ -1144,17 +1499,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check new auction
-        // COMP -> RSR Auction
+        // AAVE -> RSR Auction
         await expectTrade(rsrTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rsr.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
         // Check now all funds in Market
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(remainderSellAmt)
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(remainderSellAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
 
         // Perform Mock Bids for RSR (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, remainderMinBuyAmt)
@@ -1165,14 +1520,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, remainderSellAmt, remainderMinBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, remainderSellAmt, remainderMinBuyAmt],
             emitted: true,
           },
           {
@@ -1243,13 +1598,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1283,7 +1638,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1304,7 +1659,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Another call will create a new auction and close existing
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1339,7 +1694,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          endTime: (await getLatestBlockTimestamp()) + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -1352,7 +1707,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Close auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1384,7 +1739,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // StRSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         // Furnace
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmt.add(minBuyAmtRemainder))
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          minBuyAmt.add(minBuyAmtRemainder),
+          minBuyAmt.add(minBuyAmtRemainder).div(bn('1e4')) // melting
+        )
       })
 
       it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
@@ -1398,7 +1756,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             PRICE_TIMEOUT,
             chainlinkFeed.address,
             ORACLE_ERROR,
-            compToken.address,
+            aaveToken.address,
             fp('1'),
             ORACLE_TIMEOUT
           )
@@ -1424,415 +1782,30 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(FURNACE_DEST, bn(1), bn(0))
 
-        // Set COMP tokens as reward
+        // Set AAVE tokens as reward
         // Based on current f -> 1.6e18 to RSR and 0.4e18 to Rtoken
-        rewardAmountCOMP = bn('2e18')
-
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-
-        // Collect revenue
-        // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
-        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
-
-        const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
-        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
-
-        await expectEvents(backingManager.claimRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
-        ])
-
-        // Check status of destinations at this point
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-
-        // Run auctions
-        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
-            emitted: true,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            args: [
-              anyValue,
-              compToken.address,
-              rToken.address,
-              sellAmtRToken,
-              withinQuad(minBuyAmtRToken),
-            ],
-            emitted: true,
-          },
-        ])
-
-        const auctionTimestamp: number = await getLatestBlockTimestamp()
-
-        // Check auctions registered
-        // COMP -> RSR Auction
-        await expectTrade(rsrTrader, {
-          sell: compToken.address,
-          buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
-        })
-
-        // COMP -> RToken Auction
-        await expectTrade(rTokenTrader, {
-          sell: compToken.address,
-          buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('1'),
-        })
-
-        // Advance time till auctions ended
-        await advanceTime(config.auctionLength.add(100).toString())
-
-        // Perform Mock Bids for RSR and RToken (addr1 has balance)
-        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
-        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
-        await gnosis.placeBid(0, {
-          bidder: addr1.address,
-          sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
-        })
-        await gnosis.placeBid(1, {
-          bidder: addr1.address,
-          sellAmount: sellAmtRToken,
-          buyAmount: minBuyAmtRToken,
-        })
-
-        // Close auctions
-        // Calculate pending amount
-        const sellAmtRemainder: BigNumber = rewardAmountCOMP.sub(sellAmt).sub(sellAmtRToken)
-        const minBuyAmtRemainder: BigNumber = await toMinBuyAmt(sellAmtRemainder, fp('1'), fp('1'))
-
-        // Check funds in Market and Traders
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmtRemainder)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
-
-        // Run auctions
-        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
-          {
-            contract: rsrTrader,
-            name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
-            emitted: true,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeSettled',
-            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
-            emitted: true,
-          },
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            args: [
-              anyValue,
-              compToken.address,
-              rsr.address,
-              sellAmtRemainder,
-              withinQuad(minBuyAmtRemainder),
-            ],
-            emitted: true,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-        ])
-
-        // Check destinations at this stage
-        // StRSR
-        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 15)
-        // Furnace
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
-
-        // Run final auction until all funds are converted
-        // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
-
-        // Perform Mock Bids for RSR and RToken (addr1 has balance)
-        await rsr.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)
-        await gnosis.placeBid(2, {
-          bidder: addr1.address,
-          sellAmount: sellAmtRemainder,
-          buyAmount: minBuyAmtRemainder,
-        })
-
-        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
-          {
-            contract: rsrTrader,
-            name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
-            emitted: true,
-          },
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-        ])
-
-        // Check balances at destinations
-        // StRSR
-        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
-          minBuyAmt.add(minBuyAmtRemainder),
-          15
-        )
-        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken, 15)
-      })
-
-      it('Should not distribute if paused or frozen', async () => {
-        const distAmount: BigNumber = bn('100e18')
-
-        await main.connect(owner).pause()
-
-        await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
-          'paused or frozen'
-        )
-
-        await main.connect(owner).unpause()
-
-        await main.connect(owner).freezeShort()
-
-        await expect(distributor.distribute(rsr.address, distAmount)).to.be.revertedWith(
-          'paused or frozen'
-        )
-      })
-
-      it('Should allow anyone to call distribute', async () => {
-        const distAmount: BigNumber = bn('100e18')
-
-        // Transfer some RSR to BackingManager
-        await rsr.connect(addr1).transfer(backingManager.address, distAmount)
-
-        // Set f = 1
-        await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(FURNACE_DEST, bn(0), bn(0))
-        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
-        await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(1))
-
-        // Check funds in Backing Manager and destinations
-        expect(await rsr.balanceOf(backingManager.address)).to.equal(distAmount)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-
-        // Distribute the RSR
-        await whileImpersonating(backingManager.address, async (bmSigner) => {
-          await rsr.connect(bmSigner).approve(distributor.address, distAmount)
-
-          await expect(distributor.connect(bmSigner).distribute(rsr.address, distAmount))
-            .to.emit(distributor, 'RevenueDistributed')
-            .withArgs(rsr.address, backingManager.address, distAmount)
-        })
-
-        //  Check all funds distributed to StRSR
-        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(distAmount)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-      })
-
-      it('Should revert if no distribution exists for a specific token', async () => {
-        // Check funds in Backing Manager and destinations
-        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-
-        // Set f = 0, avoid dropping tokens
-        await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(FURNACE_DEST, bn(1), bn(0))
-        await expect(
-          distributor
-            .connect(owner)
-            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-        )
-          .to.emit(distributor, 'DistributionSet')
-          .withArgs(STRSR_DEST, bn(0), bn(0))
-
-        await expect(distributor.distribute(rsr.address, bn(100))).to.be.revertedWith(
-          'nothing to distribute'
-        )
-
-        //  Check funds, nothing changed
-        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-      })
-
-      it('Should not trade dust when claiming rewards', async () => {
-        // Set COMP tokens as reward - both halves are < dust
-        rewardAmountCOMP = bn('0.01e18')
-
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-
-        // Collect revenue
-        await expectEvents(backingManager.claimRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
-        ])
-
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
-
-        // Set expected values, based on f = 0.6
-        const expectedToTrader = rewardAmountCOMP.mul(60).div(100)
-        const expectedToFurnace = rewardAmountCOMP.sub(expectedToTrader)
-
-        // Check status of traders and destinations at this point
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-
-        // Run auctions - should not start any auctions
-        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
-          {
-            contract: rsrTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-          {
-            contract: rTokenTrader,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-        ])
-
-        // Check funds sent to traders
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
-
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-      })
-
-      it('Should not trade if price for buy token = 0', async () => {
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1e18')
-
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-
-        // Collect revenue
-        await expectEvents(backingManager.claimRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
-            emitted: true,
-          },
-        ])
-
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
-
-        // Set expected values, based on f = 0.6
-        const expectedToTrader = rewardAmountCOMP.mul(60).div(100)
-        const expectedToFurnace = rewardAmountCOMP.sub(expectedToTrader)
-
-        // Check status of traders at this point
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
-
-        // Handout COMP tokens to Traders
-        await backingManager.manageTokens([compToken.address])
-
-        // Check funds sent to traders
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
-
-        // Set RSR price to 0
-        await setOraclePrice(rsrAsset.address, bn('0'))
-
-        // Should revert
-        await expect(rsrTrader.manageToken(compToken.address)).to.be.revertedWith(
-          'buy asset price unknown'
-        )
-
-        // Funds still in Trader
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
-      })
-
-      it('Should report violation when auction behaves incorrectly', async () => {
-        rewardAmountAAVE = bn('0.5e18')
+        rewardAmountAAVE = bn('2e18')
 
         // AAVE Rewards
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const sellAmt: BigNumber = fp('1').mul(100).div(101) // due to high price setting trade size
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
-        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
         const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
-        // Claim rewards
-
-        await expectEvents(facadeTest.claimRewards(rToken.address), [
+        await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1872,7 +1845,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: aaveToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -1880,12 +1853,342 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: aaveToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
+          externalId: bn('1'),
+        })
+
+        // Advance time till auctions ended
+        await advanceTime(config.batchAuctionLength.add(100).toString())
+
+        // Perform Mock Bids for RSR and RToken (addr1 has balance)
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+        await gnosis.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken,
+        })
+
+        // Close auctions
+        // Calculate pending amount
+        const sellAmtRemainder: BigNumber = rewardAmountAAVE.sub(sellAmt).sub(sellAmtRToken)
+        const minBuyAmtRemainder: BigNumber = await toMinBuyAmt(sellAmtRemainder, fp('1'), fp('1'))
+
+        // Check funds in Market and Traders
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(sellAmtRemainder)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Run auctions
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeSettled',
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
+            emitted: true,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeSettled',
+            args: [anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            emitted: true,
+          },
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            args: [
+              anyValue,
+              aaveToken.address,
+              rsr.address,
+              sellAmtRemainder,
+              withinQuad(minBuyAmtRemainder),
+            ],
+            emitted: true,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check destinations at this stage
+        // StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 15)
+        // Furnace
+        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+
+        // Run final auction until all funds are converted
+        // Advance time till auction ended
+        await advanceTime(config.batchAuctionLength.add(100).toString())
+
+        // Perform Mock Bids for RSR and RToken (addr1 has balance)
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)
+        await gnosis.placeBid(2, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRemainder,
+          buyAmount: minBuyAmtRemainder,
+        })
+
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeSettled',
+            args: [anyValue, aaveToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
+            emitted: true,
+          },
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check balances at destinations
+        // StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+          minBuyAmt.add(minBuyAmtRemainder),
+          15
+        )
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          minBuyAmtRToken,
+          minBuyAmtRToken.div(bn('1e4')) // melting
+        )
+      })
+
+      it('Should only allow RevenueTraders to call distribute()', async () => {
+        const distAmount: BigNumber = bn('100e18')
+
+        // Transfer some RSR to RevenueTraders
+        await rsr.connect(addr1).transfer(rTokenTrader.address, distAmount)
+        await rsr.connect(addr1).transfer(rsrTrader.address, distAmount)
+
+        // Set f = 1
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(0), bn(0))
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(1))
+
+        // Check funds in RevenueTraders and destinations
+        expect(await rsr.balanceOf(rTokenTrader.address)).to.equal(distAmount)
+        expect(await rsr.balanceOf(rsrTrader.address)).to.equal(distAmount)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Try and fail to distribute the RSR from random account and BackingManager
+        await expect(
+          distributor.connect(owner).distribute(rsr.address, distAmount)
+        ).to.be.revertedWith('RevenueTraders only')
+        await whileImpersonating(backingManager.address, async (bmSigner) => {
+          await rsr.connect(bmSigner).approve(distributor.address, distAmount)
+
+          await expect(
+            distributor.connect(bmSigner).distribute(rsr.address, distAmount)
+          ).to.be.revertedWith('RevenueTraders only')
+        })
+
+        // Should succeed for RevenueTraders
+        await whileImpersonating(rTokenTrader.address, async (bmSigner) => {
+          await rsr.connect(bmSigner).approve(distributor.address, distAmount)
+          await distributor.connect(bmSigner).distribute(rsr.address, distAmount)
+        })
+        await whileImpersonating(rsrTrader.address, async (bmSigner) => {
+          await rsr.connect(bmSigner).approve(distributor.address, distAmount)
+          await distributor.connect(bmSigner).distribute(rsr.address, distAmount)
+        })
+
+        // RSR should be in staking pool
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(distAmount.mul(2))
+      })
+
+      it('Should revert if no distribution exists for a specific token', async () => {
+        // Check funds in Backing Manager and destinations
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Set f = 0, avoid dropping tokens
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(1), bn(0))
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(0))
+
+        await whileImpersonating(rTokenTrader.address, async (bmSigner) => {
+          await expect(
+            distributor.connect(bmSigner).distribute(rsr.address, bn(100))
+          ).to.be.revertedWith('nothing to distribute')
+        })
+
+        //  Check funds, nothing changed
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
+      it('Should trade even if price for buy token = 0', async () => {
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = bn('1e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        await expectEvents(backingManager.claimRewards(), [
+          {
+            contract: token3,
+            name: 'RewardsClaimed',
+            args: [compToken.address, bn(0)],
+            emitted: true,
+          },
+          {
+            contract: token2,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, rewardAmountAAVE],
+            emitted: true,
+          },
+        ])
+
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
+
+        // Set expected values, based on f = 0.6
+        const expectedToTrader = rewardAmountAAVE.mul(60).div(100)
+        const expectedToFurnace = rewardAmountAAVE.sub(expectedToTrader)
+
+        // Check status of traders at this point
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Handout AAVE tokens to Traders
+        await backingManager.forwardRevenue([aaveToken.address])
+
+        // Check funds sent to traders
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
+
+        // Set RSR price to 0
+        await setOraclePrice(rsrAsset.address, bn('0'))
+
+        // Should not revert
+        await expect(rsrTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])).to.not
+          .be.reverted
+
+        // Trade open for aaveToken
+        const t = await getTrade(rsrTrader, aaveToken.address)
+        expect(t.address).to.not.equal(ZERO_ADDRESS)
+      })
+
+      it('Should report violation when Batch Auction behaves incorrectly', async () => {
+        // This test needs to be in this file and not Broker.test.ts because settleTrade()
+        // requires the BackingManager _actually_ started the trade
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
+
+        // Claim rewards
+
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
+          {
+            contract: token3,
+            name: 'RewardsClaimed',
+            args: [compToken.address, bn(0)],
+            emitted: true,
+          },
+          {
+            contract: token2,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, rewardAmountAAVE],
+            emitted: true,
+          },
+        ])
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            emitted: true,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRToken,
+              withinQuad(minBuyAmtRToken),
+            ],
+            emitted: true,
+          },
+        ])
+
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
+
+        // Check auctions registered
+        // AAVE -> RSR Auction
+        await expectTrade(rsrTrader, {
+          sell: aaveToken.address,
+          buy: rsr.address,
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
+          externalId: bn('0'),
+        })
+
+        // AAVE -> RToken Auction
+        await expectTrade(rTokenTrader, {
+          sell: aaveToken.address,
+          buy: rToken.address,
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         // In order to force deactivation we provide an amount below minBuyAmt, this will represent for our tests an invalid behavior although in a real scenario would retrigger auction
@@ -1907,7 +2210,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: broker,
-            name: 'DisabledSet',
+            name: 'BatchTradeDisabledSet',
             args: [false, true],
             emitted: true,
           },
@@ -1946,7 +2249,233 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(minBuyAmtRToken.sub(10), 50)
       })
 
-      it('Should not perform auction if Broker is disabled', async () => {
+      it('Should not report violation when Dutch Auction clears in geometric phase', async () => {
+        // This test needs to be in this file and not Broker.test.ts because settleTrade()
+        // requires the BackingManager _actually_ started the trade
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
+
+        // Claim rewards
+
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
+          {
+            contract: token3,
+            name: 'RewardsClaimed',
+            args: [compToken.address, bn(0)],
+            emitted: true,
+          },
+          {
+            contract: token2,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, rewardAmountAAVE],
+            emitted: true,
+          },
+        ])
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions
+        await expectEvents(
+          facadeTest.runAuctionsForAllTradersForKind(rToken.address, TradeKind.DUTCH_AUCTION),
+          [
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+              emitted: true,
+            },
+            {
+              contract: rTokenTrader,
+              name: 'TradeStarted',
+              args: [
+                anyValue,
+                aaveToken.address,
+                rToken.address,
+                sellAmtRToken,
+                withinQuad(minBuyAmtRToken),
+              ],
+              emitted: true,
+            },
+          ]
+        )
+
+        // Check auctions registered
+        // AAVE -> RSR Auction
+        const rsrTrade = await ethers.getContractAt(
+          'DutchTrade',
+          (
+            await getTrade(rsrTrader, aaveToken.address)
+          ).address
+        )
+        expect(await rsrTrade.sell()).to.equal(aaveToken.address)
+        expect(await rsrTrade.buy()).to.equal(rsr.address)
+        expect(await rsrTrade.sellAmount()).to.equal(sellAmt)
+
+        // AAVE -> RToken Auction
+        const rTokenTrade = await ethers.getContractAt(
+          'DutchTrade',
+          (
+            await getTrade(rTokenTrader, aaveToken.address)
+          ).address
+        )
+        expect(await rTokenTrade.sell()).to.equal(aaveToken.address)
+        expect(await rTokenTrade.buy()).to.equal(rToken.address)
+        expect(await rTokenTrade.sellAmount()).to.equal(sellAmtRToken)
+
+        // Should not be disabled to start
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
+
+        // Advance time near end of geometric phase
+        await advanceBlocks(config.dutchAuctionLength.div(12).div(5).sub(5))
+
+        // Should settle RSR auction without disabling dutch auctions
+        await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
+        await expect(rsrTrade.connect(addr1).bid())
+          .to.emit(rsrTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+
+        // Should still be able to settle RToken auction
+        await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
+        await expect(rTokenTrade.connect(addr1).bid())
+          .to.emit(rTokenTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
+
+        // Check all no tokens are disabled for dutch auctions
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
+      })
+
+      it('Should not report violation when Dutch Auction clears in first linear phase', async () => {
+        // This test needs to be in this file and not Broker.test.ts because settleTrade()
+        // requires the BackingManager _actually_ started the trade
+
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
+
+        // Claim rewards
+
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
+          {
+            contract: token3,
+            name: 'RewardsClaimed',
+            args: [compToken.address, bn(0)],
+            emitted: true,
+          },
+          {
+            contract: token2,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, rewardAmountAAVE],
+            emitted: true,
+          },
+        ])
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Run auctions
+        await expectEvents(
+          facadeTest.runAuctionsForAllTradersForKind(rToken.address, TradeKind.DUTCH_AUCTION),
+          [
+            {
+              contract: rsrTrader,
+              name: 'TradeStarted',
+              args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+              emitted: true,
+            },
+            {
+              contract: rTokenTrader,
+              name: 'TradeStarted',
+              args: [
+                anyValue,
+                aaveToken.address,
+                rToken.address,
+                sellAmtRToken,
+                withinQuad(minBuyAmtRToken),
+              ],
+              emitted: true,
+            },
+          ]
+        )
+
+        // Check auctions registered
+        // AAVE -> RSR Auction
+        const rsrTrade = await ethers.getContractAt(
+          'DutchTrade',
+          (
+            await getTrade(rsrTrader, aaveToken.address)
+          ).address
+        )
+        expect(await rsrTrade.sell()).to.equal(aaveToken.address)
+        expect(await rsrTrade.buy()).to.equal(rsr.address)
+        expect(await rsrTrade.sellAmount()).to.equal(sellAmt)
+
+        // AAVE -> RToken Auction
+        const rTokenTrade = await ethers.getContractAt(
+          'DutchTrade',
+          (
+            await getTrade(rTokenTrader, aaveToken.address)
+          ).address
+        )
+        expect(await rTokenTrade.sell()).to.equal(aaveToken.address)
+        expect(await rTokenTrade.buy()).to.equal(rToken.address)
+        expect(await rTokenTrade.sellAmount()).to.equal(sellAmtRToken)
+
+        // Should not be disabled to start
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
+
+        // Advance time to middle of first linear phase
+        await advanceBlocks(config.dutchAuctionLength.div(12).div(3))
+
+        // Should settle RSR auction
+        await rsr.connect(addr1).approve(rsrTrade.address, sellAmt.mul(10))
+        await expect(rsrTrade.connect(addr1).bid())
+          .to.emit(rsrTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, anyValue)
+
+        // Should settle RToken auction
+        await rToken.connect(addr1).approve(rTokenTrade.address, sellAmtRToken.mul(10))
+        await expect(rTokenTrade.connect(addr1).bid())
+          .to.emit(rTokenTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, anyValue)
+
+        // Should not have disabled anything
+        expect(await broker.dutchTradeDisabled(aaveToken.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rsr.address)).to.equal(false)
+        expect(await broker.dutchTradeDisabled(rToken.address)).to.equal(false)
+      })
+
+      it('Should not perform auction if Batch Trades are disabled', async () => {
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -1955,13 +2484,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Claim rewards
         await expectEvents(facadeTest.claimRewards(rToken.address), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -1976,18 +2505,20 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Disable broker
-        await broker.connect(owner).setDisabled(true)
+        await disableBatchTrade()
 
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
         const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
 
         // Attempt to run auctions
-        await backingManager.manageTokens([aaveToken.address])
-        await expect(rsrTrader.manageToken(aaveToken.address)).to.be.revertedWith('broker disabled')
-        await expect(rTokenTrader.manageToken(aaveToken.address)).to.be.revertedWith(
-          'broker disabled'
-        )
+        await backingManager.forwardRevenue([aaveToken.address])
+        await expect(
+          rsrTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
+        ).to.be.revertedWith('batch auctions disabled')
+        await expect(
+          rTokenTrader.manageTokens([aaveToken.address], [TradeKind.BATCH_AUCTION])
+        ).to.be.revertedWith('batch auctions disabled')
 
         // Check funds - remain in traders
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -1998,41 +2529,41 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not distribute other tokens beyond RSR/RToken', async () => {
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1e18')
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = bn('1e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
 
         // Check funds in Backing Manager and destinations
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
-        // Attempt to distribute COMP token
-        await whileImpersonating(basketHandler.address, async (signer) => {
+        // Attempt to distribute AAVE token
+        await whileImpersonating(rTokenTrader.address, async (signer) => {
           await expect(
-            distributor.connect(signer).distribute(compToken.address, rewardAmountCOMP)
+            distributor.connect(signer).distribute(aaveToken.address, rewardAmountAAVE)
           ).to.be.revertedWith('RSR or RToken')
         })
         //  Check nothing changed
-        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
@@ -2047,31 +2578,31 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.emit(distributor, 'DistributionSet')
           .withArgs(other.address, bn(40), bn(60))
 
-        // Set COMP tokens as reward
-        rewardAmountCOMP = bn('1e18')
+        // Set AAVE tokens as reward
+        rewardAmountAAVE = bn('1e18')
 
-        // COMP Rewards
-        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Collect revenue
-        // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
-        const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
         const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
-            args: [compToken.address, rewardAmountCOMP],
+            args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
-            args: [aaveToken.address, bn(0)],
+            args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
         ])
@@ -2087,7 +2618,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
@@ -2095,7 +2626,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             name: 'TradeStarted',
             args: [
               anyValue,
-              compToken.address,
+              aaveToken.address,
               rToken.address,
               sellAmtRToken,
               withinQuad(minBuyAmtRToken),
@@ -2107,27 +2638,27 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
         // Check auctions registered
-        // COMP -> RSR Auction
+        // AAVE -> RSR Auction
         await expectTrade(rsrTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
-        // COMP -> RToken Auction
+        // AAVE -> RToken Auction
         await expectTrade(rTokenTrader, {
-          sell: compToken.address,
+          sell: aaveToken.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
         // Check funds in Market
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
 
         // Advance time till auctions ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Perform Mock Bids for RSR and RToken (addr1 has balance)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2148,13 +2679,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -2204,13 +2735,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         await expectEvents(rsrTrader.claimRewards(), [
           {
-            contract: rsrTrader,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: rsrTrader,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
@@ -2245,19 +2776,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Claim and sweep rewards
         await expectEvents(backingManager.claimRewards(), [
           {
-            contract: backingManager,
+            contract: token3,
             name: 'RewardsClaimed',
             args: [compToken.address, bn(0)],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: token2,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE],
             emitted: true,
           },
           {
-            contract: backingManager,
+            contract: newToken,
             name: 'RewardsClaimed',
             args: [aaveToken.address, rewardAmountAAVE.add(1)],
             emitted: true,
@@ -2270,7 +2801,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it('Should revert on invalid claim logic', async () => {
+      it('Should not revert on invalid claim logic', async () => {
+        // Here the aToken is going to have an invalid claimRewards on its asset,
+        // while the cToken will have it on the ERC20
+
+        // cToken
+        rewardAmountCOMP = bn('0.5e18')
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+        await token3.setRevertClaimRewards(true)
+
         // Setup a new aToken with invalid claim data
         const ATokenCollateralFactory = await ethers.getContractFactory(
           'InvalidATokenFiatCollateralMock'
@@ -2290,7 +2829,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             maxTradeVolume: config.rTokenMaxTradeVolume,
             oracleTimeout: ORACLE_TIMEOUT,
             targetName: ethers.utils.formatBytes32String('USD'),
-            defaultThreshold: DEFAULT_THRESHOLD,
+            defaultThreshold: fp('0.05'),
             delayUntilDefault: await collateral2.delayUntilDefault(),
           },
           REVENUE_HIDING
@@ -2310,11 +2849,190 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // AAVE Rewards
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
-        // Claim and sweep rewards - should revert and bubble up msg
-        await expect(backingManager.claimRewards()).to.be.revertedWith('claimRewards() error')
+        // Claim and sweep rewards -- should succeed
+        await expect(backingManager.claimRewards()).not.to.be.reverted
+      })
 
-        // Check status - nothing claimed
-        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+      context('DutchTrade', () => {
+        const auctionLength = 1800 // 30 minutes
+        beforeEach(async () => {
+          await broker.connect(owner).setDutchAuctionLength(auctionLength)
+        })
+
+        it('Should not trade when paused', async () => {
+          await main.connect(owner).pauseTrading()
+          await expect(
+            rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+          ).to.be.revertedWith('frozen or trading paused')
+        })
+
+        it('Should not trade when frozen', async () => {
+          await main.connect(owner).freezeLong()
+          await expect(
+            rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+          ).to.be.revertedWith('frozen or trading paused')
+        })
+
+        it('Should trade if issuance paused', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await main.connect(owner).pauseIssuance()
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+        })
+
+        it('Should only run 1 trade per ERC20 at a time', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+          await expect(
+            rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+          ).to.be.revertedWith('trade open')
+          await expect(
+            rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])
+          ).to.be.revertedWith('trade open')
+
+          // Other ERC20 should be able to open trade
+          await token1.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageTokens([token1.address], [TradeKind.DUTCH_AUCTION])
+        })
+
+        it('Should not return bid amount before auction starts', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+
+          // Cannot get bid amount yet
+          await expect(
+            trade.connect(addr1).bidAmount(await getLatestBlockNumber())
+          ).to.be.revertedWith('auction not started')
+
+          // Can get bid amount in following block
+          await advanceBlocks(1)
+          const actual = await trade.connect(addr1).bidAmount(await getLatestBlockNumber())
+          expect(actual).to.be.gt(bn(0))
+        })
+
+        it('Should allow one bidder', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount.div(2000))
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+
+          // Bid
+          await rToken.connect(addr1).approve(trade.address, issueAmount)
+          await trade.connect(addr1).bid()
+          expect(await trade.bidder()).to.equal(addr1.address)
+
+          // Cannot bid once is settled
+          await expect(trade.connect(addr1).bid()).to.be.revertedWith('bid already received')
+        })
+
+        it('Should quote piecewise-falling price correctly throughout entirety of auction', async () => {
+          issueAmount = issueAmount.div(10000)
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+          await rToken.connect(addr1).approve(trade.address, initialBal)
+
+          const start = await trade.startBlock()
+          const end = await trade.endBlock()
+
+          // Simulate 30 minutes of blocks, should swap at right price each time
+          let now = bn(await getLatestBlockNumber())
+          while (now.lt(end)) {
+            const actual = await trade.connect(addr1).bidAmount(now)
+            const expected = await dutchBuyAmount(
+              fp(now.sub(start)).div(end.sub(start)),
+              rTokenAsset.address,
+              collateral0.address,
+              issueAmount,
+              config.minTradeVolume,
+              config.maxTradeSlippage
+            )
+            expect(actual).to.be.closeTo(expected, expected.div(bn('1e15')))
+
+            const staticResult = await trade.connect(addr1).callStatic.bid()
+            expect(staticResult).to.equal(actual)
+            await advanceBlocks(1)
+            now = bn(await getLatestBlockNumber())
+          }
+        })
+
+        it('Should handle no bid case correctly', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+          await rToken.connect(addr1).approve(trade.address, initialBal)
+
+          await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).add(1))
+          await expect(
+            trade.connect(addr1).bidAmount(await getLatestBlockNumber())
+          ).to.be.revertedWith('auction over')
+          await expect(trade.connect(addr1).bid()).be.revertedWith('auction over')
+
+          // Should be able to settle
+          await expect(trade.settle()).to.be.revertedWith('only origin can settle')
+          await expect(rTokenTrader.settleTrade(token0.address))
+            .to.emit(rTokenTrader, 'TradeSettled')
+            .withArgs(trade.address, token0.address, rToken.address, 0, 0)
+
+          // Should NOT start another auction, since caller was not DutchTrade
+          expect(await backingManager.tradesOpen()).to.equal(0)
+        })
+
+        it('Should bid at exactly endBlock() and not launch another auction', async () => {
+          await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+          await rTokenTrader.manageTokens([token0.address], [TradeKind.DUTCH_AUCTION])
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token0.address)
+          )
+          await rToken.connect(addr1).approve(trade.address, initialBal)
+          await expect(trade.bidAmount(await trade.endBlock())).to.not.be.reverted
+
+          // Snipe auction at 0s left
+          await advanceBlocks((await trade.endBlock()).sub(await getLatestBlockNumber()).sub(1))
+          await trade.connect(addr1).bid()
+          expect(await trade.canSettle()).to.equal(false)
+          expect(await trade.status()).to.equal(2) // Status.CLOSED
+          expect(await trade.bidder()).to.equal(addr1.address)
+          expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
+
+          const expected = await dutchBuyAmount(
+            fp(auctionLength).div(auctionLength), // last possible second
+            rTokenAsset.address,
+            collateral0.address,
+            issueAmount,
+            config.minTradeVolume,
+            config.maxTradeSlippage
+          )
+          expect(await rTokenTrader.tradesOpen()).to.equal(0)
+          expect(await rToken.balanceOf(rTokenTrader.address)).to.be.closeTo(0, 100)
+          expect(await rToken.balanceOf(furnace.address)).to.equal(expected)
+        })
+
+        it('Should return lot() in {qSellTok} and sellAmount() in {sellTok}', async () => {
+          const amt = bn('1e6')
+          await token1.connect(addr1).transfer(rTokenTrader.address, amt)
+          await rTokenTrader.manageTokens([token1.address], [TradeKind.DUTCH_AUCTION])
+          const trade = await ethers.getContractAt(
+            'DutchTrade',
+            await rTokenTrader.trades(token1.address)
+          )
+          expect(await trade.lot()).to.equal(amt)
+          expect(await trade.sellAmount()).to.equal(amt.mul(bn('1e12')))
+        })
       })
     })
 
@@ -2412,7 +3130,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2420,7 +3138,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2432,7 +3150,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2572,7 +3290,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2580,7 +3298,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -2595,7 +3313,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // Mock auction by minting the buy tokens (in this case RSR and RToken)
         await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2654,18 +3372,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 100)).to.equal(true)
       })
 
-      it('Should not overspend if backingManager.manageTokens() is called with duplicate tokens', async () => {
+      it('Should not oversend if backingManager.forwardRevenue() is called with duplicate tokens', async () => {
         expect(await basketHandler.fullyCollateralized()).to.be.true
 
         // Change redemption rate for AToken and CToken to double
         await token2.setExchangeRate(fp('1.2'))
 
         await expect(
-          backingManager.manageTokens([token2.address, token2.address])
+          backingManager.forwardRevenue([token2.address, token2.address])
         ).to.be.revertedWith('duplicate tokens')
 
         await expect(
-          backingManager.manageTokens([
+          backingManager.forwardRevenue([
             token2.address,
             token2.address,
             token2.address,
@@ -2674,11 +3392,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('duplicate tokens')
 
         await expect(
-          backingManager.manageTokens([token2.address, token1.address, token2.address])
+          backingManager.forwardRevenue([token2.address, token1.address, token2.address])
         ).to.be.revertedWith('duplicate tokens')
 
         await expect(
-          backingManager.manageTokens([
+          backingManager.forwardRevenue([
             token1.address,
             token2.address,
             token3.address,
@@ -2687,7 +3405,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('duplicate tokens')
 
         await expect(
-          backingManager.manageTokens([
+          backingManager.forwardRevenue([
             token1.address,
             token2.address,
             token3.address,
@@ -2696,66 +3414,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('duplicate tokens')
 
         // Remove duplicates, should work
-        await expect(backingManager.manageTokens([token1.address, token2.address, token3.address]))
-          .to.not.be.reverted
-      })
-
-      it('Should not overspend if backingManager.manageTokensSortedOrder() is called with duplicate tokens', async () => {
-        expect(await basketHandler.fullyCollateralized()).to.be.true
-
-        // Change redemption rate for AToken and CToken to double
-        await token2.setExchangeRate(fp('1.2'))
-
         await expect(
-          backingManager.manageTokensSortedOrder([token2.address, token2.address])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        await expect(
-          backingManager.manageTokensSortedOrder([
-            token2.address,
-            token2.address,
-            token2.address,
-            token2.address,
-          ])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        await expect(
-          backingManager.manageTokensSortedOrder([token2.address, token1.address, token2.address])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        await expect(
-          backingManager.manageTokensSortedOrder([
-            token1.address,
-            token2.address,
-            token3.address,
-            token2.address,
-          ])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        await expect(
-          backingManager.manageTokensSortedOrder([
-            token1.address,
-            token2.address,
-            token3.address,
-            token3.address,
-          ])
-        ).to.be.revertedWith('duplicate/unsorted tokens')
-
-        // Remove duplicates but unsort
-        const sorted = [token1.address, token2.address, token3.address].sort((a, b) => {
-          const x = BigNumber.from(a)
-          const y = BigNumber.from(b)
-          if (x.lt(y)) return -1
-          if (x.gt(y)) return 1
-          return 0
-        })
-        const unsorted = [sorted[2], sorted[0], sorted[1]]
-        await expect(backingManager.manageTokensSortedOrder(unsorted)).to.be.revertedWith(
-          'duplicate/unsorted tokens'
-        )
-
-        // Remove duplicates and sort, should work
-        await expect(backingManager.manageTokensSortedOrder(sorted)).to.not.be.reverted
+          backingManager.forwardRevenue([token1.address, token2.address, token3.address])
+        ).to.not.be.reverted
       })
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
@@ -2830,7 +3491,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: rToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -2843,7 +3504,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         //  End current auction - will not start new one
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3017,7 +3678,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: rToken.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('0'),
         })
 
@@ -3025,7 +3686,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rsrTrader, {
           sell: token2.address,
           buy: rsr.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('1'),
         })
 
@@ -3033,7 +3694,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expectTrade(rTokenTrader, {
           sell: token2.address,
           buy: rToken.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
+          endTime: auctionTimestamp + Number(config.batchAuctionLength),
           externalId: bn('2'),
         })
 
@@ -3061,7 +3722,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         //  Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
+        await advanceTime(config.batchAuctionLength.add(100).toString())
 
         // End current auction, should start a new one with same amount
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -3144,7 +3805,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
 
-      it('Should be unable to handout excess assets', async () => {
+      it('Should be able to forwardRevenue without changing BU exchange rate', async () => {
         // Check Price and Assets value
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
@@ -3159,7 +3820,49 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token2.connect(owner).mint(backingManager.address, mintAmt)
         await token3.connect(owner).mint(backingManager.address, mintAmt)
 
-        await expect(backingManager.manageTokens([])).revertedWith('BU rate out of range')
+        await expect(backingManager.forwardRevenue([])).to.emit(rToken, 'Transfer')
+        expect(await rToken.totalSupply()).to.equal(mintAmt.mul(2))
+        expect(await rToken.basketsNeeded()).to.equal(mintAmt.mul(2))
+      })
+
+      it('Should not forward revenue before trading delay', async () => {
+        // Set trading delay
+        const newDelay = 3600
+        await backingManager.connect(owner).setTradingDelay(newDelay) // 1 hour
+
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(backingManager.address, rewardAmt)
+        await backingManager.claimRewardsSingle(token2.address)
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Switch basket
+        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+        await expect(basketHandler.connect(owner).refreshBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(3, [token1.address], [fp('1')], false)
+
+        // Cannot forward revenue yet
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.be.revertedWith(
+          'trading delayed'
+        )
+
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmt)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Advance time post trading delay
+        await advanceTime(newDelay + 1)
+
+        // Now we can forward revenue successfully
+        await expect(backingManager.forwardRevenue([aaveToken.address])).to.emit(
+          aaveToken,
+          'Transfer'
+        )
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmt.mul(60).div(100))
+        expect(await aaveToken.balanceOf(rTokenTrader.address)).to.equal(rewardAmt.mul(40).div(100))
       })
     })
   })
@@ -3170,7 +3873,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     let rewardAmountAAVE: BigNumber
 
     beforeEach(async function () {
-      issueAmount = bn('100e18')
+      issueAmount = bn('100000e18')
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -3180,6 +3883,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
+
+      // Send BackingManager with nonzero RToken balance to incur maximum gas costs
+      await rToken.connect(addr1).transfer(backingManager.address, 1000)
 
       // Mint some RSR
       await rsr.connect(owner).mint(addr1.address, initialBal)
@@ -3196,7 +3902,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rewardAmountAAVE = bn('0.6e18')
 
       // COMP Rewards
-      await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+      await compoundMock.setRewards(token3.address, rewardAmountCOMP)
       await compoundMock.setRewards(rsrTrader.address, rewardAmountCOMP)
       await compoundMock.setRewards(rTokenTrader.address, rewardAmountCOMP)
       await compoundMock.setRewards(rToken.address, rewardAmountCOMP)
@@ -3259,12 +3965,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await backingManager.claimRewards()
 
       // Manage Funds
-      await backingManager.manageTokens([compToken.address])
-      await snapshotGasCost(rsrTrader.manageToken(compToken.address))
-      await snapshotGasCost(rTokenTrader.manageToken(compToken.address))
+      await backingManager.forwardRevenue([compToken.address])
+      await snapshotGasCost(rsrTrader.manageTokens([compToken.address], [TradeKind.BATCH_AUCTION]))
+      await snapshotGasCost(
+        rTokenTrader.manageTokens([compToken.address], [TradeKind.BATCH_AUCTION])
+      )
 
       // Advance time till auctions ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Perform Mock Bids for RSR and RToken (addr1 has balance)
       await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -3291,12 +3999,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(rTokenTrader.settleTrade(compToken.address))
 
       // Manage Funds
-      await snapshotGasCost(rsrTrader.manageToken(compToken.address))
-      await snapshotGasCost(rTokenTrader.manageToken(compToken.address))
+      await snapshotGasCost(rsrTrader.manageTokens([compToken.address], [TradeKind.BATCH_AUCTION]))
 
       // Run final auction until all funds are converted
       // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+      await advanceTime(config.batchAuctionLength.add(100).toString())
 
       // Perform Mock Bids for RSR and RToken (addr1 has balance)
       await rsr.connect(addr1).approve(gnosis.address, minBuyAmtRemainder)
@@ -3309,7 +4016,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       // Run auctions - Order: Settle trades, then Manage funds
       // Settle trades
       await snapshotGasCost(rsrTrader.settleTrade(compToken.address))
-      await snapshotGasCost(rTokenTrader.settleTrade(compToken.address))
+    })
+
+    it('Selling RToken', async () => {
+      await rToken.connect(addr1).transfer(rsrTrader.address, fp('1'))
+      await snapshotGasCost(rsrTrader.manageTokens([rToken.address], [TradeKind.DUTCH_AUCTION]))
     })
   })
 })

@@ -12,9 +12,9 @@ import {
   FacadeRead,
   GnosisMock,
   IAssetRegistry,
-  IBasketHandler,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
@@ -58,7 +58,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let main: TestIMain
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let distributor: TestIDistributor
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
@@ -157,7 +157,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
             rsrTrader: mock.address,
             rTokenTrader: mock.address,
           },
-          trade: mock.address,
+          trading: { gnosisTrade: mock.address, dutchTrade: mock.address },
         }
 
         await expect(
@@ -180,12 +180,19 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('invalid address')
         implementations.main = mock.address
 
-        // Trade
-        implementations.trade = ZERO_ADDRESS
+        // GnosisTrade
+        implementations.trading.gnosisTrade = ZERO_ADDRESS
         await expect(
           deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
-        implementations.trade = mock.address
+        implementations.trading.gnosisTrade = mock.address
+
+        // DutchTrade
+        implementations.trading.dutchTrade = ZERO_ADDRESS
+        await expect(
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
+        ).to.be.revertedWith('invalid address')
+        implementations.trading.dutchTrade = mock.address
 
         await validateComponent(implementations, 'assetRegistry')
         await validateComponent(implementations, 'backingManager')
@@ -356,6 +363,21 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await stRSR.decimals()).to.equal(18)
       expect(await stRSR.totalSupply()).to.equal(0)
       expect(await stRSR.main()).to.equal(main.address)
+    })
+  })
+
+  describe('deployRTokenAsset', () => {
+    it('Should deploy new RTokenAsset', async () => {
+      expect(await rTokenAsset.maxTradeVolume()).to.equal(bn('1e24')) // fp('1e6')
+      const newRTokenAssetAddr = await deployer.callStatic.deployRTokenAsset(
+        rToken.address,
+        bn('1e27')
+      )
+      await expect(deployer.deployRTokenAsset(rToken.address, bn('1e27')))
+        .to.emit(deployer, 'RTokenAssetCreated')
+        .withArgs(rToken.address, newRTokenAssetAddr) // fp('1e9')
+      const newRTokenAsset = await ethers.getContractAt('RTokenAsset', newRTokenAssetAddr)
+      expect(await newRTokenAsset.maxTradeVolume()).to.equal(bn('1e27')) // fp('1e9')
     })
   })
 })

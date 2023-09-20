@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
+import "../../../interfaces/IRewardable.sol";
+import "../erc20/RewardableERC20Wrapper.sol";
 import "./ICToken.sol";
 
 /**
@@ -20,19 +22,16 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
     uint8 public immutable referenceERC20Decimals;
 
-    IComptroller public immutable comptroller;
+    ICToken public immutable cToken; // gas-optimization: access underlying cToken directly
 
+    /// @param config.erc20 Should be a CTokenWrapper
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
-    /// @param comptroller_ The CompoundFinance Comptroller
-    constructor(
-        CollateralConfig memory config,
-        uint192 revenueHiding,
-        IComptroller comptroller_
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(comptroller_) != address(0), "comptroller missing");
-        ICToken erc20 = ICToken(address(config.erc20));
-        referenceERC20Decimals = IERC20Metadata(erc20.underlying()).decimals();
-        comptroller = comptroller_;
+    constructor(CollateralConfig memory config, uint192 revenueHiding)
+        AppreciatingFiatCollateral(config, revenueHiding)
+    {
+        cToken = ICToken(address(RewardableERC20Wrapper(address(config.erc20)).underlying()));
+        referenceERC20Decimals = IERC20Metadata(cToken.underlying()).decimals();
+        require(referenceERC20Decimals > 0, "referenceERC20Decimals missing");
     }
 
     /// Refresh exchange rates and update default status.
@@ -40,7 +39,19 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     function refresh() public virtual override {
         // == Refresh ==
         // Update the Compound Protocol
-        ICToken(address(erc20)).exchangeRateCurrent();
+        // solhint-disable no-empty-blocks
+        try cToken.exchangeRateCurrent() {} catch (bytes memory errData) {
+            CollateralStatus oldStatus = status();
+
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            markStatus(CollateralStatus.DISABLED);
+
+            CollateralStatus newStatus = status();
+            if (oldStatus != newStatus) {
+                emit CollateralStatusChanged(oldStatus, newStatus);
+            }
+        }
 
         // Intentional and correct for the super call to be last!
         super.refresh(); // already handles all necessary default checks
@@ -48,17 +59,14 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        uint256 rate = ICToken(address(erc20)).exchangeRateStored();
+        uint256 rate = cToken.exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
         return shiftl_toFix(rate, shiftLeft);
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev delegatecall
+    /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external virtual override(Asset, IRewardable) {
-        IERC20 comp = IERC20(comptroller.getCompAddress());
-        uint256 oldBal = comp.balanceOf(address(this));
-        comptroller.claimComp(address(this));
-        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
+        IRewardable(address(erc20)).claimRewards();
     }
 }

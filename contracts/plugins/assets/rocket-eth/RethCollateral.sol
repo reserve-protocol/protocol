@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../../libraries/Fixed.sol";
-import "../AppreciatingFiatCollateral.sol";
-import "../OracleLib.sol";
-import "./IReth.sol";
+import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
+import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
+import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
+import { IReth } from "./vendor/IReth.sol";
 
 /**
  * @title RethCollateral
- * @notice Collateral plugin for Rocket-Pool ETH,
+ * @notice Collateral plugin for Rocket-Pool ETH
  * tok = rETH
- * ref = ETH
+ * ref = ETH2
  * tar = ETH
  * UoA = USD
  */
@@ -19,20 +18,22 @@ contract RethCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    AggregatorV3Interface public immutable refPerTokChainlinkFeed;
-    uint48 public immutable refPerTokChainlinkTimeout;
+    AggregatorV3Interface public immutable targetPerTokChainlinkFeed;
+    uint48 public immutable targetPerTokChainlinkTimeout;
 
-    /// @param config.chainlinkFeed Feed units: {UoA/ref}
+    /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
+    /// @param _targetPerTokChainlinkFeed {target/tok} price of rETH in ETH terms
     constructor(
         CollateralConfig memory config,
         uint192 revenueHiding,
-        AggregatorV3Interface _refPerTokChainlinkFeed,
-        uint48 _refPerTokChainlinkTimeout
+        AggregatorV3Interface _targetPerTokChainlinkFeed,
+        uint48 _targetPerTokChainlinkTimeout
     ) AppreciatingFiatCollateral(config, revenueHiding) {
-        require(address(_refPerTokChainlinkFeed) != address(0), "missing refPerTok feed");
-        require(_refPerTokChainlinkTimeout != 0, "refPerTokChainlinkTimeout zero");
-        refPerTokChainlinkFeed = _refPerTokChainlinkFeed;
-        refPerTokChainlinkTimeout = _refPerTokChainlinkTimeout;
+        require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
+        require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
+
+        targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
+        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
     }
 
     /// Can revert, used by other contract functions in order to catch errors
@@ -49,17 +50,18 @@ contract RethCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = chainlinkFeed.price(oracleTimeout).mul(
-            refPerTokChainlinkFeed.price(refPerTokChainlinkTimeout)
-        );
+        uint192 targetPerTok = targetPerTokChainlinkFeed.price(targetPerTokChainlinkTimeout);
+
+        // {UoA/tok} = {UoA/target} * {target/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(targetPerTok);
         uint192 err = p.mul(oracleError, CEIL);
 
         high = p + err;
         low = p - err;
         // assert(low <= high); obviously true just by inspection
 
-        pegPrice = targetPerRef(); // {target/ref} ETH/ETH is always 1
+        // {target/ref} = {target/tok} / {ref/tok}
+        pegPrice = targetPerTok.div(_underlyingRefPerTok());
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

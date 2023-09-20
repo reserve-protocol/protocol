@@ -13,7 +13,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { CvxStableCollateral } from '../../../../typechain'
+import { CurveStableCollateral } from '../../../../typechain'
 import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CurvePoolType,
@@ -33,7 +33,7 @@ import {
   USDT_ORACLE_ERROR,
   USDT_ORACLE_TIMEOUT,
   USDT_USD_FEED,
-} from '../../../../test/plugins/individual-collateral/convex/constants'
+} from '../../../../test/plugins/individual-collateral/curve/constants'
 
 // This file specifically deploys Convex Stable Plugin for 3pool
 
@@ -66,7 +66,7 @@ async function main() {
   /********  Deploy Convex Stable Pool for 3pool  **************************/
 
   const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
-  const CvxStableCollateralFactory = await hre.ethers.getContractFactory('CvxStableCollateral')
+  const CurveStableCollateralFactory = await hre.ethers.getContractFactory('CurveStableCollateral')
   const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
     libraries: { CvxMining: CvxMining.address },
   })
@@ -75,14 +75,20 @@ async function main() {
   await w3Pool.deployed()
   await (await w3Pool.initialize(THREE_POOL_CVX_POOL_ID)).wait()
 
-  const collateral = <CvxStableCollateral>await CvxStableCollateralFactory.connect(deployer).deploy(
+  console.log(
+    `Deployed wrapper for Convex Stable 3Pool on ${hre.network.name} (${chainId}): ${w3Pool.address} `
+  )
+
+  const collateral = <CurveStableCollateral>await CurveStableCollateralFactory.connect(
+    deployer
+  ).deploy(
     {
       erc20: w3Pool.address,
       targetName: ethers.utils.formatBytes32String('USD'),
       priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: ONE_ADDRESS, // unused but cannot be zero
       oracleError: bn('1'), // unused but cannot be zero
-      oracleTimeout: bn('1'), // unused but cannot be zero
+      oracleTimeout: oracleTimeout(chainId, USDC_ORACLE_TIMEOUT), // max of oracleTimeouts
       maxTradeVolume: MAX_TRADE_VOL,
       defaultThreshold: DEFAULT_THRESHOLD,
       delayUntilDefault: DELAY_UNTIL_DEFAULT,
@@ -111,6 +117,7 @@ async function main() {
   )
 
   assetCollDeployments.collateral.cvx3Pool = collateral.address
+  assetCollDeployments.erc20s.cvx3Pool = w3Pool.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

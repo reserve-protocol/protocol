@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAsset.sol";
@@ -37,6 +37,25 @@ interface IAssetRegistry is IComponent {
     /// @custom:interaction
     function refresh() external;
 
+    /// Register `asset`
+    /// If either the erc20 address or the asset was already registered, fail
+    /// @return true if the erc20 address was not already registered.
+    /// @custom:governance
+    function register(IAsset asset) external returns (bool);
+
+    /// Register `asset` if and only if its erc20 address is already registered.
+    /// If the erc20 address was not registered, revert.
+    /// @return swapped If the asset was swapped for a previously-registered asset
+    /// @custom:governance
+    function swapRegistered(IAsset asset) external returns (bool swapped);
+
+    /// Unregister an asset, requiring that it is already registered
+    /// @custom:governance
+    function unregister(IAsset asset) external;
+
+    /// @return {s} The timestamp of the last refresh
+    function lastRefresh() external view returns (uint48);
+
     /// @return The corresponding asset for ERC20, or reverts if not registered
     function toAsset(IERC20 erc20) external view returns (IAsset);
 
@@ -52,9 +71,6 @@ interface IAssetRegistry is IComponent {
     /// @return reg The list of registered ERC20s and Assets, in the same order
     function getRegistry() external view returns (Registry memory reg);
 
-    function register(IAsset asset) external returns (bool);
-
-    function swapRegistered(IAsset asset) external returns (bool swapped);
-
-    function unregister(IAsset asset) external;
+    /// @return The number of registered ERC20s
+    function size() external view returns (uint256);
 }

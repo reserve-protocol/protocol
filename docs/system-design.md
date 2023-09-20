@@ -33,9 +33,24 @@ Some of the core contracts in our system regularly own ERC20 tokens. In each cas
 
 ### RToken Lifecycle
 
-1. During SlowIssuance, the `RToken` transfers collateral tokens from the caller's address into itself.
-2. At vesting time, the `RToken` contract mints new RToken to the recipient and transfers the held collateral to the `BackingManager`. If the `BasketHandler` has updated the basket since issuance began, then the collateral is instead returned to the recipient and no RToken is minted.
-3. During redemption, RToken is burnt from the redeemer's account and they are transferred a prorata share of backing collateral from the `BackingManager`.
+1. During minting, the `RToken` transfers collateral tokens from the caller's address into itself and mints new RToken to the caller's address. Minting amount must be less than the current throttle limit, or the transaction will revert.
+2. During redemption, RToken is burnt from the redeemer's account and they are transferred a prorata share of backing collateral from the `BackingManager`.
+
+## Protocol Assumptions
+
+### Blocktime = 12s
+
+The protocol (weakly) assumes a 12-second blocktime. This section documents the places where this assumption is made and whether changes would be required if blocktime were different.
+
+#### Should-be-changed if blocktime different
+
+- The `Furnace` melts RToken in periods of 12 seconds. If the protocol is deployed to a chain with shorter blocktime, it is possible it may be rational to issue right before melting and redeem directly after, in order to selfishly benefit. The `Furnace` shouild be updated to melt more often.
+
+#### Probably fine if blocktime different
+
+- `DutchTrade` price curve can handle 1s blocktimes as-is, as well as longer blocktimes
+- The `StRSR` contract hands out RSR rewards in periods of 12 seconds. Since the unstaking period is usually much larger than this, it is fine to deploy StRSR to another chain without changing anything, with shorter or longer blocktimes
+- `BackingManager` spaces out same-kind auctions by 12s. No change is required is blocktime is less; some change required is blocktime is longer
 
 ## Some Monetary Units
 
@@ -110,8 +125,9 @@ On the other hand, while a redemption is pending in the mempool, the quantities 
 
 ## System States
 
-- `paused`: all interactions disabled EXCEPT ERC20 functions + RToken.redeem + StRSR.stake + StRSR.payoutRewards
-- `frozen`: all interactions disabled EXCEPT ERC20 functions + StRSR.stake
+- `tradingPaused`: all interactions disabled EXCEPT ERC20 functions + RToken.issue + RToken.redeem + StRSR.stake + StRSR.payoutRewards
+- `issuancePaused`: all interactions enabled EXCEPT RToken.issue
+- `frozen`: all interactions disabled EXCEPT ERC20 functions + StRSR.stake + StRSR.payoutRewards
 
 Freezing can occur over two timescales: short freezing + long freezing.
 
@@ -131,186 +147,193 @@ Design intentions:
 
 The Reserve Protocol makes a few different types of trades:
 
-- from collateral to RSR or RToken, in order to distribute collateral yields. These happen often.
-- from reward tokens to RSR or RToken, in order to distribute tokens rewards from collateral. These also happen often.
-- collateral to collateral, in order to change the distribution of collateral due to a basket change. Basket changes should be rare, happening only when governance changes the basket, or when some collateral token defaults.
-- RSR to collateral, in order to recollateralize the protocol from stRSR over-collateralization, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using the over-collateralization buffer.
+- from collateral to RSR or RToken, in order to distribute collateral yields. These happen often in a RevenueTrader.
+- from reward tokens to RSR or RToken, in order to distribute tokens rewards from collateral. These also happen often in a RevenueTrader.
+- collateral to collateral, in order to change the distribution of collateral due to a basket change. Basket changes should be rare, happening only when governance changes the basket, or when some collateral token defaults. This only happens in the BackingManager.
+- RSR to collateral, in order to recollateralize the protocol from stRSR over-collateralization, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using the over-collateralization buffer. These auctions also happen in the BackingManager.
 
-Each type of trade can currently happen in only one way; the protocol launches a Gnosis EasyAuction. The Reserve Protocol is designed to make it easy to add other trading methods, but none others are currently supported.
+Each type of trade can happen two ways: either by a falling-price ductch auction (DutchTrade) or by a batch auction via Gnosis EasyAuction (GnosisTrade). More trading methods can be added in the future.
+
+### Gnosis EasyAuction Batch Auctions (GnosisTrade)
 
 A good explainer for how Gnosis auctions work can be found (on their github)[https://github.com/gnosis/ido-contracts].
 
-## Deployment Parameters
-
-### `dist` (revenue split)
-
-The fraction of revenues that should go towards RToken holders vs stakers, as given by the relative values of `dist.rTokenDist` and `dist.rsrDist`. This can be thought of as a single variable between 0 and 100% (during deployment).
-
-Default value: 60% to stakers and 40% to RToken holders.
-Mainnet reasonable range: 0% to 100%
-
-### `minTradeVolume`
-
-Dimension: `{UoA}`
-
-The minimum sized trade that can be performed, in terms of the unit of account.
-
-Setting this too high will result in auctions happening infrequently or the RToken taking a haircut when it cannot be sure it has enough staked RSR to succeed in rebalancing at par.
-
-Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `auctionLength` seconds.
-
-This variable should NOT be interpreted to mean that auction sizes above this value will necessarily clear. It could be the case that gas frictions are so high that auctions launched at this size are not worthy of bids.
-
-This parameter can be set to zero.
-
-Default value: `1e21` = $1k
-Mainnet reasonable range: 1e19 to 1e23
-
-#### `rTokenMaxTradeVolume`
-
-Dimension: `{UoA}`
-
-The maximum sized trade for any trade involving RToken, in terms of the unit of account. The high end of the price is applied to this variable to convert it to a token quantity.
-
-This parameter can be set to zero.
-
-Default value: `1e24` = $1M
-Mainnet reasonable range: 1e22 to 1e27.
-
-### `rewardRatio`
-
-Dimension: `{1}`
-
-The `rewardRatio` is the fraction of the current reward amount that should be handed out per block.
-
-Default value: `3209014700000` = a half life of 30 days.
-
-Mainnet reasonable range: 1e11 to 1e13
-
-To calculate: `ln(2) / (60*60*24*desired_days_in_half_life/12)`, and then multiply by 1e18.
-
-### `unstakingDelay`
-
-Dimension: `{seconds}`
-
-The unstaking delay is the number of seconds that all RSR unstakings must be delayed in order to account for stakers trying to frontrun defaults. It must be longer than governance cycle, and must be long enough that RSR stakers do not unstake in advance of foreseeable basket change in order to avoid being expensed for slippage.
-
-Default value: `1209600` = 2 weeks
-Mainnet reasonable range: 1 to 31536000
-
-### `tradingDelay`
-
-Dimension: `{seconds}`
-
-The trading delay is how many seconds should pass after the basket has been changed before a trade can be opened. In the long term this can be set to 0 after MEV searchers are firmly integrated, but at the start it may be useful to have a delay before trading in order to avoid worst-case prices.
-
-Default value: `7200` = 2 hours
-Mainnet reasonable range: 0 to 604800
-
-### `auctionLength`
-
-Dimension: `{seconds}`
-
-The auction length is how many seconds long Gnosis EasyAuctions should be.
-
-Default value: `900` = 15 minutes
-Mainnet reasonable range: 60 to 3600
-
-### `backingBuffer`
-
-Dimension: `{1}`
-
-The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This buffer allows collateral tokens to be periodically converted into the RToken, which is a more efficient form of revenue production than trading each individual collateral for the desired RToken. It also adds a small buffer that can prevent RSR from being seized when there are small losses due to slippage during rebalancing.
-
-Default value: `1e15` = 0.1%
-Mainnet reasonable range: 1e12 to 1e18
-
-### `maxTradeSlippage`
-
-Dimension: `{1}`
-
-The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at. Oracle prices have ranges of their own; the maximum trade slippage permits additional price movement beyond the worst-case oracle price.
-
-Default value: `0.01e18` = 1%
-Mainnet reasonable range: 1e12 to 1e18
-
-### `shortFreeze`
-
-Dimension: `{s}`
-
-The number of seconds a short freeze lasts. Governance can freeze forever.
-
-Default value: `259200` = 3 days
-Mainnet reasonable range: 3600 to 2592000 (1 hour to 1 month)
-
-### `longFreeze`
-
-Dimension: `{s}`
-
-The number of seconds a long freeze lasts. Long freezes can be disabled by removing all addresses from the `LONG_FREEZER` role. A long freezer has 6 charges that can be used.
-
-Default value: `604800` = 7 days
-Mainnet reasonable range: 86400 to 31536000 (1 day to 1 year)
-
-### `RToken Supply Throttles`
-
-In order to restrict the system to organic patterns of behavior, we maintain two supply throttles, one for net issuance and one for net redemption. When a supply change occurs, a check is performed to ensure this does not move the supply more than an acceptable range over a period; a period is fixed to be an hour. The acceptable range (per throttle) is a function of the `amtRate` and `pctRate` variables. **It is the maximum of whichever variable provides the larger rate.**
-
-Note the differing units: the `amtRate` variable is in terms of `{qRTok/hour}` while the `pctRate` variable is in terms of `{1/hour}`, i.e a fraction.
-
-#### `issuanceThrottle.amtRate`
-
-Dimension: `{qRTok/hour}`
-
-A quantity of RToken that serves as a lower-bound for how much net issuance to allow per hour.
-
-Must be at least 1 whole RToken, or 1e18. Can be as large as 1e48. Set it to 1e48 if you want to effectively disable the issuance throttle altogether.
-
-Default value: `1e24` = 1,000,000 RToken
-Mainnet reasonable range: 1e23 to 1e27
-
-#### `issuanceThrottle.pctRate`
-
-Dimension: `{1/hour}`
-
-A fraction of the RToken supply that indicates how much net issuance to allow per hour.
-
-Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
-
-Default value: `2.5e16` = 2.5% per hour
-Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
-
-#### `redemptionThrottle.amtRate`
-
-Dimension: `{qRTok/hour}`
-
-A quantity of RToken that serves as a lower-bound for how much net redemption to allow per hour.
-
-Must be at least 1 whole RToken, or 1e18. Can be as large as 1e48. Set it to 1e48 if you want to effectively disable the redemption throttle altogether.
-
-Default value: `2e24` = 2,000,000 RToken
-Mainnet reasonable range: 1e23 to 1e27
-
-#### `redemptionThrottle.pctRate`
-
-Dimension: `{1/hour}`
-
-A fraction of the RToken supply that indicates how much net redemption to allow per hour.
-
-Can be 0 to solely rely on `amtRate`; cannot be above 1e18.
-
-Default value: `5e16` = 5% per hour
-Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
-
-### Governance Parameters
-
-Governance is 8 days end-to-end.
-
-**Default values**
-
-- Voting delay: 2 day
-- Voting period: 3 days
-- Execution delay: 3 days
-
-Proposal Threshold: 0.01%
-Quorum: 10% of the StRSR supply (not RSR)
+### Dutch Auctions (DutchTrade)
+
+The Dutch auction occurs in two phases:
+
+Geometric/Exponential Phase (first 40% of auction): The price starts at about 1000x the best plausible price and decays down to the best plausible price following a geometric/exponential series. The price decreases by the same percentage each time. This phase is primarily defensive, and it's not expected to receive a bid; it merely protects against manipulated prices.
+
+Linear Phase (last 60% of auction): During this phase, the price decreases linearly from the best plausible price to the worst plausible price.
+
+The `dutchAuctionLength` can be configured to be any value. The suggested default is 30 minutes for a blockchain with a 12-second blocktime. At this ratio of blocktime to auction length, there is a 10.87% price drop per block during the geometric/exponential period and a 0.05% drop during the linear period. The duration of the auction can be adjusted, which will impact the size of the price decreases per block.
+
+The "best plausible price" is equal to the exchange rate at the high price of the sell token and the low price of the buy token. The "worst-case price" is equal to the exchange rate at the low price of the sell token and the high price of the sell token, plus an additional discount equal to `maxTradeSlippage`.
+
+#### Trade violation fallback
+
+Dutch auctions become disabled for an asset being traded if a trade clears in the geometric phase. The rationale is that a trade that clears in this range (multiples above the plausible price) only does so because either 1) the auctioned asset's price was manipulated downwards, or 2) the bidding asset was manipulated upwards, such that the protocol accepts an unfavorable trade. All subsequent trades for that particular trading pair will be forced to use the batch auctions as a result. Dutch auctions for disabled assets must be manually re-enabled by governance.
+
+Take for example the scenario of an RToken basket change requiring a trade of 5M USDC for 5M USDT, where the `maxTradeSize` is $1M (therefore requiring at least 5 auctions). If the system's price inputs for USDC was manipulated to read a price of $0.001/USDC, settling the auction in the geometric phase at any multiple less than 1000x will yield a profit for the trader, at a cost to the RToken system. Accordingly, Dutch auctions become disabled for the subsequent trades to swap USDC to USDT.
+
+Dutch auctions for other assets that have not cleared in the geometric zone will remain enabled.
+
+#### Sample price curve
+
+This price curve is for two assets with 1% oracleError, and with a 1% maxTradeSlippage, during a 30-minute auction. The token has 6 decimals and the "even price" occurs at 100,000,000. The phase changes between different portions of the auction are shown with `============` dividers.
+
+```
+BigNumber { value: "102020210210" }
+BigNumber { value: "82140223099" }
+BigNumber { value: "66134114376" }
+BigNumber { value: "53247007608" }
+BigNumber { value: "42871124018" }
+BigNumber { value: "34517153077" }
+BigNumber { value: "27791029333" }
+BigNumber { value: "22375579749" }
+BigNumber { value: "18015402132" }
+BigNumber { value: "14504862785" }
+BigNumber { value: "11678398454" }
+BigNumber { value: "9402708076" }
+BigNumber { value: "7570466062" }
+BigNumber { value: "6095260636" }
+BigNumber { value: "4907518495" }
+BigNumber { value: "3951227569" }
+BigNumber { value: "3181278625" }
+BigNumber { value: "2561364414" }
+BigNumber { value: "2062248686" }
+BigNumber { value: "1660392258" }
+BigNumber { value: "1336842869" }
+BigNumber { value: "1076341357" }
+BigNumber { value: "866602010" }
+BigNumber { value: "697733148" }
+BigNumber { value: "561770617" }
+BigNumber { value: "452302636" }
+BigNumber { value: "364165486" }
+BigNumber { value: "293203025" }
+BigNumber { value: "236068538" }
+BigNumber { value: "190067462" }
+BigNumber { value: "153030304" }
+============
+BigNumber { value: "151670034" }
+BigNumber { value: "150309765" }
+BigNumber { value: "148949495" }
+BigNumber { value: "147589226" }
+BigNumber { value: "146228957" }
+BigNumber { value: "144868687" }
+BigNumber { value: "143508418" }
+BigNumber { value: "142148149" }
+BigNumber { value: "140787879" }
+BigNumber { value: "139427610" }
+BigNumber { value: "138067341" }
+BigNumber { value: "136707071" }
+BigNumber { value: "135346802" }
+BigNumber { value: "133986532" }
+BigNumber { value: "132626263" }
+BigNumber { value: "131265994" }
+BigNumber { value: "129905724" }
+BigNumber { value: "128545455" }
+BigNumber { value: "127185186" }
+BigNumber { value: "125824916" }
+BigNumber { value: "124464647" }
+BigNumber { value: "123104378" }
+BigNumber { value: "121744108" }
+BigNumber { value: "120383839" }
+BigNumber { value: "119023570" }
+BigNumber { value: "117663300" }
+BigNumber { value: "116303031" }
+BigNumber { value: "114942761" }
+BigNumber { value: "113582492" }
+BigNumber { value: "112222223" }
+BigNumber { value: "110861953" }
+BigNumber { value: "109501684" }
+BigNumber { value: "108141415" }
+BigNumber { value: "106781145" }
+BigNumber { value: "105420876" }
+BigNumber { value: "104060607" }
+BigNumber { value: "102700337" }
+============
+BigNumber { value: "101986999" }
+BigNumber { value: "101920591" }
+BigNumber { value: "101854183" }
+BigNumber { value: "101787775" }
+BigNumber { value: "101721367" }
+BigNumber { value: "101654959" }
+BigNumber { value: "101588551" }
+BigNumber { value: "101522143" }
+BigNumber { value: "101455735" }
+BigNumber { value: "101389327" }
+BigNumber { value: "101322919" }
+BigNumber { value: "101256511" }
+BigNumber { value: "101190103" }
+BigNumber { value: "101123695" }
+BigNumber { value: "101057287" }
+BigNumber { value: "100990879" }
+BigNumber { value: "100924471" }
+BigNumber { value: "100858063" }
+BigNumber { value: "100791655" }
+BigNumber { value: "100725247" }
+BigNumber { value: "100658839" }
+BigNumber { value: "100592431" }
+BigNumber { value: "100526023" }
+BigNumber { value: "100459615" }
+BigNumber { value: "100393207" }
+BigNumber { value: "100326799" }
+BigNumber { value: "100260391" }
+BigNumber { value: "100193983" }
+BigNumber { value: "100127575" }
+BigNumber { value: "100061167" }
+BigNumber { value: "99994759" }
+BigNumber { value: "99928351" }
+BigNumber { value: "99861943" }
+BigNumber { value: "99795535" }
+BigNumber { value: "99729127" }
+BigNumber { value: "99662719" }
+BigNumber { value: "99596311" }
+BigNumber { value: "99529903" }
+BigNumber { value: "99463496" }
+BigNumber { value: "99397088" }
+BigNumber { value: "99330680" }
+BigNumber { value: "99264272" }
+BigNumber { value: "99197864" }
+BigNumber { value: "99131456" }
+BigNumber { value: "99065048" }
+BigNumber { value: "98998640" }
+BigNumber { value: "98932232" }
+BigNumber { value: "98865824" }
+BigNumber { value: "98799416" }
+BigNumber { value: "98733008" }
+BigNumber { value: "98666600" }
+BigNumber { value: "98600192" }
+BigNumber { value: "98533784" }
+BigNumber { value: "98467376" }
+BigNumber { value: "98400968" }
+BigNumber { value: "98334560" }
+BigNumber { value: "98268152" }
+BigNumber { value: "98201744" }
+BigNumber { value: "98135336" }
+BigNumber { value: "98068928" }
+BigNumber { value: "98002520" }
+BigNumber { value: "97936112" }
+BigNumber { value: "97869704" }
+BigNumber { value: "97803296" }
+BigNumber { value: "97736888" }
+BigNumber { value: "97670480" }
+BigNumber { value: "97604072" }
+BigNumber { value: "97537664" }
+BigNumber { value: "97471256" }
+BigNumber { value: "97404848" }
+BigNumber { value: "97338440" }
+BigNumber { value: "97272032" }
+BigNumber { value: "97205624" }
+BigNumber { value: "97139216" }
+BigNumber { value: "97072808" }
+============
+BigNumber { value: "97039604" }
+BigNumber { value: "97039604" }
+BigNumber { value: "97039604" }
+BigNumber { value: "97039604" }
+BigNumber { value: "97039604" }
+BigNumber { value: "97039604" }
+BigNumber { value: "97039604" }
+```

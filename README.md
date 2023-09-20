@@ -6,7 +6,7 @@ The Reserve Protocol enables a class of token called RToken: self-issued tokens 
 
 RTokens can be minted by depositing a basket of _collateral tokens_, and redeemed for the basket as well. Thus, an RToken will tend to trade at the market value of the entire basket that backs it, as any lower or higher price could be arbitraged.
 
-The definition of the collateral basket is set dynamically on a block-by-block basis with respect to a _reference basket_. While the RToken often does its internal calculus in terms of a single unit of account (USD), what constitutes appreciation is entirely a function of the reference basket, which will often be associated with a variety of units.
+The definition of the issuance/redemption basket is set dynamically on a block-by-block basis with respect to a _reference basket_. While the RToken often does its internal calculus in terms of a single unit of account (USD), what constitutes appreciation is entirely a function of the reference basket, which is a linear combination of reference units.
 
 RTokens can be over-collateralized, which means that if any of their collateral tokens default, there's a pool of value available to make up for the loss. RToken over-collateralization is provided by Reserve Rights (RSR) holders, who may choose to stake their RSR on an RToken instance. Staked RSR can be seized in the case of a default, in a process that is entirely mechanistic based on on-chain price-feeds, and does not depend on governance votes or human judgment.
 
@@ -22,35 +22,38 @@ For a much more detailed explanation of the economic design, including an hour-l
   - [Testing with Echidna](docs/using-echidna.md): Notes so far on setup and usage of Echidna (which is decidedly an integration-in-progress!)
   - [Deployment](docs/deployment.md): How to do test deployments in our environment.
 - [System Design](docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
+- [Deployment Variables](docs/deployment-variables.md) A detailed description of the governance variables of the protocol.
 - [Our Solidity Style](docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, estpecially where those go beyond standard practice.
 - [Writing Collateral Plugins](docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
+- [Building on Top](docs/build-on-top.md): How to build on top of Reserve, including information about long-lived fork environments.
 - [MEV](docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programatically.
 - [Rebalancing Algorithm](docs/recollateralization.md): Description of our trading algorithm during the recollateralization process
 - [Changelog](CHANGELOG.md): Release changelog
 
-## Mainnet Addresses (v2.1.0)
+## Mainnet Addresses (v3.0.0)
 
 | Implementation Contracts | Address                                                                                                               |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| tradingLib               | [0x81b19Af39ab589D0Ca211DC3Dee4cfF7072eb478](https://etherscan.io/address/0x81b19Af39ab589D0Ca211DC3Dee4cfF7072eb478) |
-| facadeRead               | [0xad0BFAEE863B1102e9fD4e6330A02B08d885C715](https://etherscan.io/address/0xad0BFAEE863B1102e9fD4e6330A02B08d885C715) |
-| facadeAct                | [0x98f292e6Bb4722664fEffb81448cCFB5B7211469](https://etherscan.io/address/0x98f292e6Bb4722664fEffb81448cCFB5B7211469) |
-| facadeWriteLib           | [0xe33cEF9f56F0d8d2b683c6E1F6afcd1e43b77ea8](https://etherscan.io/address/0xe33cEF9f56F0d8d2b683c6E1F6afcd1e43b77ea8) |
-| facadeWrite              | [0x1656D8aAd7Ee892582B9D5c2E9992d9f94ff3629](https://etherscan.io/address/0x1656D8aAd7Ee892582B9D5c2E9992d9f94ff3629) |
-| deployer                 | [0x5c46b718Cd79F2BBA6869A3BeC13401b9a4B69bB](https://etherscan.io/address/0x5c46b718Cd79F2BBA6869A3BeC13401b9a4B69bB) |
-| rsrAsset                 | [0x9cd0F8387672fEaaf7C269b62c34C53590d7e948](https://etherscan.io/address/0x9cd0F8387672fEaaf7C269b62c34C53590d7e948) |
-| main                     | [0x143C35bFe04720394eBd18AbECa83eA9D8BEdE2F](https://etherscan.io/address/0x143C35bFe04720394eBd18AbECa83eA9D8BEdE2F) |
-| trade                    | [0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439](https://etherscan.io/address/0xAd4B0B11B041BB1342fEA16fc9c12Ef2a6443439) |
-| assetRegistry            | [0x5a004F70b2450E909B4048050c585549Ab8afeB8](https://etherscan.io/address/0x5a004F70b2450E909B4048050c585549Ab8afeB8) |
-| backingManager           | [0xa0D4b6aD503E776457dBF4695d462DdF8621A1CC](https://etherscan.io/address/0xa0D4b6aD503E776457dBF4695d462DdF8621A1CC) |
-| basketHandler            | [0x5c13b3b6f40aD4bF7aa4793F844BA24E85482030](https://etherscan.io/address/0x5c13b3b6f40aD4bF7aa4793F844BA24E85482030) |
-| broker                   | [0x89209a52d085D975b14555F3e828F43fb7EaF3B7](https://etherscan.io/address/0x89209a52d085D975b14555F3e828F43fb7EaF3B7) |
-| distributor              | [0xc78c5a84F30317B5F7D87170Ec21DC73Df38d569](https://etherscan.io/address/0xc78c5a84F30317B5F7D87170Ec21DC73Df38d569) |
-| furnace                  | [0x393002573ea4A3d74A80F3B1Af436a3ee3A30c96](https://etherscan.io/address/0x393002573ea4A3d74A80F3B1Af436a3ee3A30c96) |
-| rsrTrader                | [0xE5bD2249118b6a4B39Be195951579dC9Af05029a](https://etherscan.io/address/0xE5bD2249118b6a4B39Be195951579dC9Af05029a) |
-| rTokenTrader             | [0xE5bD2249118b6a4B39Be195951579dC9Af05029a](https://etherscan.io/address/0xE5bD2249118b6a4B39Be195951579dC9Af05029a) |
-| rToken                   | [0x5643D5AC6b79ae8467Cf2F416da6D465d8e7D9C1](https://etherscan.io/address/0x5643D5AC6b79ae8467Cf2F416da6D465d8e7D9C1) |
-| stRSR                    | [0xfDa8C62d86E426D5fB653B6c44a455Bb657b693f](https://etherscan.io/address/0xfDa8C62d86E426D5fB653B6c44a455Bb657b693f) |
+| tradingLib               | [0xB81a1fa9A497953CEC7f370CACFA5cc364871A73](https://etherscan.io/address/0xB81a1fa9A497953CEC7f370CACFA5cc364871A73) |
+| facadeRead               | [0x81b9Ae0740CcA7cDc5211b2737de735FBC4BeB3C](https://etherscan.io/address/0x81b9Ae0740CcA7cDc5211b2737de735FBC4BeB3C) |
+| facadeAct                | [0x801fF27bacc7C00fBef17FC901504c79D59E845C](https://etherscan.io/address/0x801fF27bacc7C00fBef17FC901504c79D59E845C) |
+| facadeWriteLib           | [0x0776Ad71Ae99D759354B3f06fe17454b94837B0D](https://etherscan.io/address/0x0776Ad71Ae99D759354B3f06fe17454b94837B0D) |
+| facadeWrite              | [0x41edAFFB50CA1c2FEC86C629F845b8490ced8A2c](https://etherscan.io/address/0x41edAFFB50CA1c2FEC86C629F845b8490ced8A2c) |
+| deployer                 | [0x15480f5B5ED98A94e1d36b52Dd20e9a35453A38e](https://etherscan.io/address/0x15480f5B5ED98A94e1d36b52Dd20e9a35453A38e) |
+| rsrAsset                 | [0x7edD40933DfdA0ecEe1ad3E61a5044962284e1A6](https://etherscan.io/address/0x7edD40933DfdA0ecEe1ad3E61a5044962284e1A6) |
+| main                     | [0xF5366f67FF66A3CefcB18809a762D5b5931FebF8](https://etherscan.io/address/0xF5366f67FF66A3CefcB18809a762D5b5931FebF8) |
+| gnosisTrade              | [0xe416Db92A1B27c4e28D5560C1EEC03f7c582F630](https://etherscan.io/address/0xe416Db92A1B27c4e28D5560C1EEC03f7c582F630) |
+| dutchTrade               | [0x2387C22727ACb91519b80A15AEf393ad40dFdb2F](https://etherscan.io/address/0x2387C22727ACb91519b80A15AEf393ad40dFdb2F) |
+| assetRegistry            | [0x773cf50adCF1730964D4A9b664BaEd4b9FFC2450](https://etherscan.io/address/0x773cf50adCF1730964D4A9b664BaEd4b9FFC2450) |
+| backingManager           | [0x0A388FC05AA017b31fb084e43e7aEaFdBc043080](https://etherscan.io/address/0x0A388FC05AA017b31fb084e43e7aEaFdBc043080) |
+| basketHandler            | [0x5ccca36CbB66a4E4033B08b4F6D7bAc96bA55cDc](https://etherscan.io/address/0x5ccca36CbB66a4E4033B08b4F6D7bAc96bA55cDc) |
+| broker                   | [0x9A5F8A9bB91a868b7501139eEdB20dC129D28F04](https://etherscan.io/address/0x9A5F8A9bB91a868b7501139eEdB20dC129D28F04) |
+| distributor              | [0x0e8439a17bA5cBb2D9823c03a02566B9dd5d96Ac](https://etherscan.io/address/0x0e8439a17bA5cBb2D9823c03a02566B9dd5d96Ac) |
+| furnace                  | [0x99580Fc649c02347eBc7750524CAAe5cAcf9d34c](https://etherscan.io/address/0x99580Fc649c02347eBc7750524CAAe5cAcf9d34c) |
+| rsrTrader                | [0x1cCa3FBB11C4b734183f997679d52DeFA74b613A](https://etherscan.io/address/0x1cCa3FBB11C4b734183f997679d52DeFA74b613A) |
+| rTokenTrader             | [0x1cCa3FBB11C4b734183f997679d52DeFA74b613A](https://etherscan.io/address/0x1cCa3FBB11C4b734183f997679d52DeFA74b613A) |
+| rToken                   | [0xb6f01Aa21defA4a4DE33Bed16BcC06cfd23b6A6F](https://etherscan.io/address/0xb6f01Aa21defA4a4DE33Bed16BcC06cfd23b6A6F) |
+| stRSR                    | [0xC98eaFc9F249D90e3E35E729e3679DD75A899c10](https://etherscan.io/address/0xC98eaFc9F249D90e3E35E729e3679DD75A899c10) |
 
 The DeployerRegistry, which contains a link to all official releases via their Deployer contracts, can be found [here](https://etherscan.io/address/0xD85Fac03804a3e44D29c494f3761D11A2262cBBe).
 
@@ -102,13 +105,10 @@ The less-central folders in the repository are dedicated to project management, 
 
 ## Types of Tests
 
-We conceive of several different types of tests:
-
-Finally, inside particular testing, it's quite useful to distinguish unit tests from full end-to-end tests. As such, we expect to write tests of the following 5 types:
-
 ### Unit/System Tests
 
 - Driven by `hardhat test`
+- Addressed by `yarn test:unit`
 - Checks for expected behavior of the system.
 - Can run the same tests against both p0 and p1
 - Uses contract mocks, where helpful to predict component behavior
@@ -118,6 +118,7 @@ Target: Full branch coverage, and testing of any semantically-relevant situation
 ### End-to-End Tests
 
 - Driven by `hardhat test`
+- Addressed by `yarn test:integration`
 - Uses mainnet forking
 - Can run the same tests against both p0 and p1
 - Tests all needed plugin contracts, contract deployment, any migrations, etc.
@@ -136,23 +137,19 @@ Located in `fuzz` branch only.
 Target: The handful of our most depended-upon system properties and invariants are articulated and thoroughly fuzz-tested. Examples of such properties include:
 
 - Unless the basket is switched (due to token default or governance) the protocol always remains fully-collateralized.
-- Unless the protocol is paused, RToken holders can always redeem
-- If the protocol is paused, and governance does not act further, the protocol will later become unpaused.
-
-### Differential Testing
-
-Located in `fuzz` branch only.
-
-- Driven by Echidna
-- Asserts that the behavior of each p1 contract matches that of p0
-
-Target: Intensive equivalence testing, run continuously for days or weeks, sensitive to any difference between observable behaviors of p0 and p1.
+- Unless the protocol is frozen, RToken holders can always redeem
 
 ## Contributing
 
 If you would like to contribute, you'll need to configure a secret in your fork repo in order for our integration tests to pass in CI. The name of the secret should `ALCHEMY_MAINNET_KEY` and it should be equal to the suffix portion of the full URL.
 
 Usage: `https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}`
+
+To get setup with tenderly, install the [tenderly cli](https://github.com/Tenderly/tenderly-cli). and login with `tenderly login --authentication-method access-key --access-key {your_access_key} --force`.
+
+## Responsible Disclosure
+
+See: [Immunifi](https://immunefi.com/bounty/reserve/)
 
 ## External Documentation
 

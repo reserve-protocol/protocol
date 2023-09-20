@@ -29,9 +29,7 @@ import snapshotGasCost from './utils/snapshotGasCost'
 import {
   Asset,
   CTokenFiatCollateral,
-  CTokenMock,
   ERC20Mock,
-  IBasketHandler,
   FacadeRead,
   FacadeTest,
   FacadeWrite,
@@ -40,6 +38,7 @@ import {
   IAssetRegistry,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIBroker,
   TestIDeployer,
   TestIDistributor,
@@ -50,6 +49,7 @@ import {
   TestIRToken,
   TimelockController,
   USDCMock,
+  CTokenWrapperMock,
 } from '../typechain'
 import {
   Collateral,
@@ -68,6 +68,7 @@ describe('FacadeWrite contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
+  let addr3: SignerWithAddress
   let beneficiary1: SignerWithAddress
   let beneficiary2: SignerWithAddress
 
@@ -78,7 +79,7 @@ describe('FacadeWrite contract', () => {
   // Tokens
   let token: ERC20Mock
   let usdc: USDCMock
-  let cToken: CTokenMock
+  let cTokenVault: CTokenWrapperMock
   let basket: Collateral[]
 
   // Aave / Comp
@@ -110,7 +111,7 @@ describe('FacadeWrite contract', () => {
   let main: TestIMain
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let broker: TestIBroker
   let distributor: TestIDistributor
   let furnace: TestIFurnace
@@ -129,7 +130,8 @@ describe('FacadeWrite contract', () => {
   let revShare2: IRevenueShare
 
   beforeEach(async () => {
-    ;[deployerUser, owner, addr1, addr2, beneficiary1, beneficiary2] = await ethers.getSigners()
+    ;[deployerUser, owner, addr1, addr2, addr3, beneficiary1, beneficiary2] =
+      await ethers.getSigners()
 
     // Deploy fixture
     ;({ rsr, compToken, compAsset, basket, config, facade, facadeTest, deployer } =
@@ -142,7 +144,9 @@ describe('FacadeWrite contract', () => {
 
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
+    cTokenVault = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await cTokenAsset.erc20())
+    )
 
     // Deploy DFacadeWriteLib lib
     const facadeWriteLib = await (await ethers.getContractFactory('FacadeWriteLib')).deploy()
@@ -312,8 +316,8 @@ describe('FacadeWrite contract', () => {
       backingManager = <TestIBackingManager>(
         await ethers.getContractAt('TestIBackingManager', await main.backingManager())
       )
-      basketHandler = <IBasketHandler>(
-        await ethers.getContractAt('IBasketHandler', await main.basketHandler())
+      basketHandler = <TestIBasketHandler>(
+        await ethers.getContractAt('TestIBasketHandler', await main.basketHandler())
       )
 
       broker = <TestIBroker>await ethers.getContractAt('TestIBroker', await main.broker())
@@ -378,12 +382,14 @@ describe('FacadeWrite contract', () => {
         expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
         expect(await main.hasRole(OWNER, facadeWrite.address)).to.equal(true)
-        expect(await main.hasRole(SHORT_FREEZER, facadeWrite.address)).to.equal(true)
-        expect(await main.hasRole(LONG_FREEZER, facadeWrite.address)).to.equal(true)
-        expect(await main.hasRole(PAUSER, facadeWrite.address)).to.equal(true)
+        expect(await main.hasRole(SHORT_FREEZER, facadeWrite.address)).to.equal(false)
+        expect(await main.hasRole(LONG_FREEZER, facadeWrite.address)).to.equal(false)
+        expect(await main.hasRole(PAUSER, facadeWrite.address)).to.equal(false)
         expect(await main.frozen()).to.equal(false)
-        expect(await main.paused()).to.equal(true)
-        expect(await main.pausedOrFrozen()).to.equal(true)
+        expect(await main.tradingPaused()).to.equal(true)
+        expect(await main.tradingPausedOrFrozen()).to.equal(true)
+        expect(await main.issuancePaused()).to.equal(true)
+        expect(await main.issuancePausedOrFrozen()).to.equal(true)
 
         // RToken
         expect(await assetRegistry.toAsset(rToken.address)).to.equal(rTokenAsset.address)
@@ -499,14 +505,11 @@ describe('FacadeWrite contract', () => {
           await facadeWrite
             .connect(deployerUser)
             .setupGovernance(rToken.address, false, false, govParams, newGovRoles)
-          await main.connect(owner).grantRole(PAUSER, owner.address)
-          await main.connect(owner).grantRole(SHORT_FREEZER, owner.address)
-          await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
         })
 
         it('Should register Basket correctly', async () => {
-          // Unpause
-          await main.connect(owner).unpause()
+          await main.connect(addr1).unpauseTrading()
+          await main.connect(addr1).unpauseIssuance()
 
           // Basket
           expect(await basketHandler.fullyCollateralized()).to.equal(true)
@@ -564,14 +567,20 @@ describe('FacadeWrite contract', () => {
           // Check new state - backing updated
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
           tokens = await facade.basketTokens(rToken.address)
-          expect(tokens).to.eql([token.address, cToken.address])
+          expect(tokens).to.eql([token.address, cTokenVault.address])
         })
 
         it('Should setup roles correctly', async () => {
           expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
-          expect(await main.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)
-          expect(await main.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
-          expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
+          expect(await main.hasRole(SHORT_FREEZER, owner.address)).to.equal(false)
+          expect(await main.hasRole(LONG_FREEZER, owner.address)).to.equal(false)
+          expect(await main.hasRole(PAUSER, owner.address)).to.equal(false)
+
+          // Pauser
+          expect(await main.hasRole(OWNER, addr1.address)).to.equal(false)
+          expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(false)
+          expect(await main.hasRole(LONG_FREEZER, addr1.address)).to.equal(false)
+          expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
 
           expect(await main.hasRole(OWNER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(SHORT_FREEZER, facadeWrite.address)).to.equal(false)
@@ -584,8 +593,10 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
-          expect(await main.paused()).to.equal(true)
-          expect(await main.pausedOrFrozen()).to.equal(true)
+          expect(await main.tradingPaused()).to.equal(true)
+          expect(await main.tradingPausedOrFrozen()).to.equal(true)
+          expect(await main.issuancePaused()).to.equal(true)
+          expect(await main.issuancePausedOrFrozen()).to.equal(true)
         })
 
         it('Should not allow to complete setup again if already complete', async () => {
@@ -605,6 +616,7 @@ describe('FacadeWrite contract', () => {
           newGovRoles.pausers.push(addr2.address)
           newGovRoles.shortFreezers.push(addr2.address)
           newGovRoles.longFreezers.push(owner.address) // make owner freezer
+          newGovRoles.longFreezers.push(addr3.address) // add another long freezer
 
           // Deploy RToken via FacadeWrite
           await facadeWrite
@@ -628,6 +640,11 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, addr2.address)).to.equal(true)
 
+          expect(await main.hasRole(OWNER, addr3.address)).to.equal(false)
+          expect(await main.hasRole(SHORT_FREEZER, addr3.address)).to.equal(false)
+          expect(await main.hasRole(LONG_FREEZER, addr3.address)).to.equal(true)
+          expect(await main.hasRole(PAUSER, addr3.address)).to.equal(false)
+
           expect(await main.hasRole(OWNER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(SHORT_FREEZER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(LONG_FREEZER, facadeWrite.address)).to.equal(false)
@@ -639,8 +656,10 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
-          expect(await main.paused()).to.equal(false)
-          expect(await main.pausedOrFrozen()).to.equal(false)
+          expect(await main.tradingPaused()).to.equal(false)
+          expect(await main.tradingPausedOrFrozen()).to.equal(false)
+          expect(await main.issuancePaused()).to.equal(false)
+          expect(await main.issuancePausedOrFrozen()).to.equal(false)
         })
       })
 
@@ -651,8 +670,9 @@ describe('FacadeWrite contract', () => {
           newGovRoles.owner = ZERO_ADDRESS
           newGovRoles.guardian = addr1.address
           newGovRoles.pausers.push(addr1.address)
-          newGovRoles.shortFreezers.push(addr1.address)
-          newGovRoles.longFreezers.push(addr1.address)
+          newGovRoles.pausers.push(addr2.address)
+          newGovRoles.shortFreezers.push(addr2.address)
+          newGovRoles.shortFreezers.push(addr3.address)
 
           // Deploy RToken via FacadeWrite
           const receipt = await (
@@ -668,6 +688,9 @@ describe('FacadeWrite contract', () => {
           timelock = <TimelockController>(
             await ethers.getContractAt('TimelockController', timelockAddr)
           )
+          expect(await timelock.hasRole(await timelock.EXECUTOR_ROLE(), governor.address)).to.equal(
+            true
+          )
         })
 
         it('Should setup owner, freezer and pauser correctly', async () => {
@@ -677,14 +700,19 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, timelock.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, addr1.address)).to.equal(false)
-          expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(true)
-          expect(await main.hasRole(LONG_FREEZER, addr1.address)).to.equal(true)
+          expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(false)
+          expect(await main.hasRole(LONG_FREEZER, addr1.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
 
           expect(await main.hasRole(OWNER, addr2.address)).to.equal(false)
-          expect(await main.hasRole(SHORT_FREEZER, addr2.address)).to.equal(false)
+          expect(await main.hasRole(SHORT_FREEZER, addr2.address)).to.equal(true)
           expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(false)
-          expect(await main.hasRole(PAUSER, addr2.address)).to.equal(false)
+          expect(await main.hasRole(PAUSER, addr2.address)).to.equal(true)
+
+          expect(await main.hasRole(OWNER, addr3.address)).to.equal(false)
+          expect(await main.hasRole(SHORT_FREEZER, addr3.address)).to.equal(true)
+          expect(await main.hasRole(LONG_FREEZER, addr3.address)).to.equal(false)
+          expect(await main.hasRole(PAUSER, addr3.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(SHORT_FREEZER, facadeWrite.address)).to.equal(false)
@@ -697,8 +725,10 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
-          expect(await main.paused()).to.equal(true)
-          expect(await main.pausedOrFrozen()).to.equal(true)
+          expect(await main.tradingPaused()).to.equal(true)
+          expect(await main.tradingPausedOrFrozen()).to.equal(true)
+          expect(await main.issuancePaused()).to.equal(true)
+          expect(await main.issuancePausedOrFrozen()).to.equal(true)
         })
 
         it('Should deploy Governor correctly', async () => {
@@ -725,6 +755,8 @@ describe('FacadeWrite contract', () => {
           // Remove owner
           const newGovRoles = { ...govRoles }
           newGovRoles.owner = ZERO_ADDRESS
+          newGovRoles.pausers.push(addr1.address)
+          newGovRoles.shortFreezers.push(addr1.address)
 
           // Should handle Zero addresses
           newGovRoles.pausers.push(ZERO_ADDRESS)
@@ -744,6 +776,9 @@ describe('FacadeWrite contract', () => {
           timelock = <TimelockController>(
             await ethers.getContractAt('TimelockController', timelockAddr)
           )
+          expect(await timelock.hasRole(await timelock.EXECUTOR_ROLE(), governor.address)).to.equal(
+            true
+          )
         })
 
         it('Should setup owner, freezer and pauser correctly', async () => {
@@ -753,9 +788,9 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, timelock.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, addr1.address)).to.equal(false)
-          expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(false)
+          expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(true)
           expect(await main.hasRole(LONG_FREEZER, addr1.address)).to.equal(false)
-          expect(await main.hasRole(PAUSER, addr1.address)).to.equal(false)
+          expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
 
           expect(await main.hasRole(OWNER, addr2.address)).to.equal(false)
           expect(await main.hasRole(SHORT_FREEZER, addr2.address)).to.equal(false)
@@ -773,8 +808,10 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
-          expect(await main.paused()).to.equal(false)
-          expect(await main.pausedOrFrozen()).to.equal(false)
+          expect(await main.tradingPaused()).to.equal(false)
+          expect(await main.tradingPausedOrFrozen()).to.equal(false)
+          expect(await main.issuancePaused()).to.equal(false)
+          expect(await main.issuancePausedOrFrozen()).to.equal(false)
         })
       })
     })

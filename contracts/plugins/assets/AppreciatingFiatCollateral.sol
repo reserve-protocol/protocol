@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../interfaces/IAsset.sol";
@@ -75,12 +75,6 @@ abstract contract AppreciatingFiatCollateral is FiatCollateral {
     /// Refresh exchange rates and update default status.
     /// @dev Should not need to override: can handle collateral with variable refPerTok()
     function refresh() public virtual override {
-        if (alreadyDefaulted()) {
-            // continue to update rates
-            exposedReferencePrice = _underlyingRefPerTok().mul(revenueShowing);
-            return;
-        }
-
         CollateralStatus oldStatus = status();
 
         // Check for hard default

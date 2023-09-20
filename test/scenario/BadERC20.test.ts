@@ -5,15 +5,16 @@ import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
+import { TradeKind } from '../../common/constants'
 import { bn, divCeil, fp } from '../../common/numbers'
 import {
   BadERC20,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIFurnace,
   TestIStRSR,
   TestIRevenueTrader,
@@ -24,7 +25,7 @@ import { getTrade } from '../utils/trades'
 import { advanceTime } from '../utils/time'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -62,7 +63,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let backingManager: TestIBackingManager
   let rTokenTrader: TestIRevenueTrader
   let rsrTrader: TestIRevenueTrader
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
 
   // Computes the minBuyAmt for a sellAmt at two prices
   // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
@@ -107,7 +108,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       rTokenTrader,
       rsrTrader,
       rTokenAsset,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     token0 = await (await ethers.getContractFactory('BadERC20')).deploy('Bad ERC20', 'BERC20')
@@ -141,6 +142,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       backupToken.address,
     ])
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(backupToken.address)
 
@@ -200,13 +202,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should revert during redemption', async () => {
-      await expect(
-        rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
-      ).to.be.revertedWith('No Decimals')
+      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.revertedWith('No Decimals')
 
       // Should work now
       await token0.setRevertDecimals(false)
-      await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmt)
     })
 
     it('should revert during trading', async () => {
@@ -215,8 +215,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(3, [backupToken.address], [fp('1')], false)
-      await expect(backingManager.manageTokens([])).to.be.reverted // can't catch No Decimals
+        .withArgs(2, [backupToken.address], [fp('1')], false)
+      await advanceTime(config.warmupPeriod.toNumber() + 1)
+      await expect(backingManager.forwardRevenue([])).to.be.reverted // can't catch No Decimals
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.reverted // can't catch No Decimals
     })
 
     it('should keep collateral working', async () => {
@@ -249,8 +251,15 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(3, [backupToken.address], [fp('1')], false)
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+        .withArgs(2, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
 
       // Should be trading RSR for backup token
       const trade = await getTrade(backingManager, rsr.address)
@@ -293,14 +302,12 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should revert during redemption', async () => {
-      await expect(
-        rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
-      ).to.be.revertedWith('censored')
+      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.revertedWith('censored')
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
       await token0.setCensored(rToken.address, false)
-      await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce())
+      await rToken.connect(addr1).redeem(issueAmt)
     })
 
     it('should revert during trading', async () => {
@@ -309,12 +316,16 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(3, [backupToken.address], [fp('1')], false)
-      await expect(backingManager.manageTokens([])).to.be.revertedWith('censored')
+        .withArgs(2, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith('censored')
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
-      await backingManager.manageTokens([])
+      await backingManager.rebalance(TradeKind.BATCH_AUCTION)
     })
 
     it('should keep collateral working', async () => {
@@ -351,8 +362,15 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(3, [backupToken.address], [fp('1')], false)
-      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+        .withArgs(2, [backupToken.address], [fp('1')], false)
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
+        backingManager,
+        'TradeStarted'
+      )
 
       // Should be trading RSR for backup token
       const trade = await getTrade(backingManager, rsr.address)
@@ -364,10 +382,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     it('should be able to process any uncensored assets already accumulated at RevenueTraders', async () => {
       await rToken.connect(addr1).transfer(rTokenTrader.address, issueAmt.div(2))
       await rToken.connect(addr1).transfer(rsrTrader.address, issueAmt.div(2))
-      await expect(rTokenTrader.manageToken(rToken.address))
+      await expect(rTokenTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION]))
         .to.emit(rToken, 'Transfer')
         .withArgs(rTokenTrader.address, furnace.address, issueAmt.div(2))
-      await expect(rsrTrader.manageToken(rToken.address))
+      await expect(rsrTrader.manageTokens([rToken.address], [TradeKind.BATCH_AUCTION]))
         .to.emit(rsrTrader, 'TradeStarted')
         .withArgs(
           anyValue,

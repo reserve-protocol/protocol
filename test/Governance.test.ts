@@ -104,8 +104,8 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
     // Setup Governor as only proposer
     await timelock.grantRole(proposerRole, governor.address)
 
-    // Setup anyone as executor
-    await timelock.grantRole(executorRole, ZERO_ADDRESS)
+    // Setup Governor as only executor
+    await timelock.grantRole(executorRole, governor.address)
 
     // Setup guardian as canceller
     await timelock.grantRole(cancellerRole, guardian.address)
@@ -198,10 +198,9 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.getVotes(addr2.address, currBlockNumber)).to.equal(0)
       expect(await governor.getVotes(addr3.address, currBlockNumber)).to.equal(0)
 
-      // Stake some RSR with addr2 - And delegate
+      // Stake some RSR with addr2, delegate in same transaction
       await rsr.connect(addr2).approve(stRSRVotes.address, stkAmt1)
-      await stRSRVotes.connect(addr2).stake(stkAmt1)
-      await stRSRVotes.connect(addr2).delegate(addr2.address)
+      await stRSRVotes.connect(addr2).stakeAndDelegate(stkAmt1, ZERO_ADDRESS)
 
       // Advance a few blocks
       await advanceBlocks(2)
@@ -504,6 +503,23 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance time required by timelock
       await advanceTime(MIN_DELAY + 1)
       await advanceBlocks(1)
+
+      // Regression test -- Should fail to execute from random EOA
+      await expect(
+        timelock
+          .connect(addr3)
+          .executeBatch(
+            [backingManager.address],
+            [0],
+            [encodedFunctionCall],
+            '0x0000000000000000000000000000000000000000000000000000000000000000',
+            proposalDescHash
+          )
+      ).to.be.revertedWith(
+        'AccessControl: account ' +
+          addr3.address.toLowerCase() +
+          ' is missing role 0xd8aa0f3194971a2a116679f7c2090f6939c8d4e01a2a8d7e41d55e5351469e63' // executor role
+      )
 
       // Execute
       await governor

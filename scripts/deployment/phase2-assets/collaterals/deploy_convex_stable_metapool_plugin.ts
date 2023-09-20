@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { CvxStableMetapoolCollateral } from '../../../../typechain'
+import { CurveStableMetapoolCollateral } from '../../../../typechain'
 import { revenueHiding, oracleTimeout } from '../../utils'
 import {
   CurvePoolType,
@@ -37,7 +37,7 @@ import {
   USDT_ORACLE_ERROR,
   USDT_ORACLE_TIMEOUT,
   USDT_USD_FEED,
-} from '../../../../test/plugins/individual-collateral/convex/constants'
+} from '../../../../test/plugins/individual-collateral/curve/constants'
 
 // This file specifically deploys Convex Metapool Plugin for MIM/3Pool
 
@@ -47,7 +47,7 @@ async function main() {
 
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying CvxStableMetapoolCollateral to network ${hre.network.name} (${chainId})
+  console.log(`Deploying CurveStableMetapoolCollateral to network ${hre.network.name} (${chainId})
     with burner account: ${deployer.address}`)
 
   if (!networkConfig[chainId]) {
@@ -70,8 +70,8 @@ async function main() {
   /********  Deploy Convex Stable Metapool for MIM/3Pool  **************************/
 
   const CvxMining = await ethers.getContractAt('CvxMining', deployments.cvxMiningLib)
-  const CvxStableCollateralFactory = await hre.ethers.getContractFactory(
-    'CvxStableMetapoolCollateral'
+  const CurveStableCollateralFactory = await hre.ethers.getContractFactory(
+    'CurveStableMetapoolCollateral'
   )
   const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
     libraries: { CvxMining: CvxMining.address },
@@ -81,7 +81,11 @@ async function main() {
   await wPool.deployed()
   await (await wPool.initialize(MIM_THREE_POOL_POOL_ID)).wait()
 
-  const collateral = <CvxStableMetapoolCollateral>await CvxStableCollateralFactory.connect(
+  console.log(
+    `Deployed wrapper for Convex Stable MIM/3Pool on ${hre.network.name} (${chainId}): ${wPool.address} `
+  )
+
+  const collateral = <CurveStableMetapoolCollateral>await CurveStableCollateralFactory.connect(
     deployer
   ).deploy(
     {
@@ -117,10 +121,11 @@ async function main() {
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(
-    `Deployed Convex RToken Metapool Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+    `Deployed Convex Metapool Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
   )
 
   assetCollDeployments.collateral.cvxMIM3Pool = collateral.address
+  assetCollDeployments.erc20s.cvxMIM3Pool = wPool.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

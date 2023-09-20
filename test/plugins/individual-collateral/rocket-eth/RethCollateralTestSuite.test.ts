@@ -38,12 +38,12 @@ import { whileImpersonating } from '#/test/utils/impersonation'
 interface RethCollateralFixtureContext extends CollateralFixtureContext {
   weth: WETH9
   reth: IReth
-  refPerTokChainlinkFeed: MockV3Aggregator
+  targetPerTokChainlinkFeed: MockV3Aggregator
 }
 
 interface RethCollateralOpts extends CollateralOpts {
-  refPerTokChainlinkFeed?: string
-  refPerTokChainlinkTimeout?: BigNumberish
+  targetPerTokChainlinkFeed?: string
+  targetPerTokChainlinkTimeout?: BigNumberish
 }
 
 /*
@@ -61,8 +61,8 @@ export const defaultRethCollateralOpts: RethCollateralOpts = {
   maxTradeVolume: MAX_TRADE_VOL,
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
-  refPerTokChainlinkFeed: RETH_ETH_PRICE_FEED,
-  refPerTokChainlinkTimeout: ORACLE_TIMEOUT,
+  targetPerTokChainlinkFeed: RETH_ETH_PRICE_FEED,
+  targetPerTokChainlinkTimeout: ORACLE_TIMEOUT,
   revenueHiding: fp('0'),
 }
 
@@ -84,8 +84,8 @@ export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<T
       delayUntilDefault: opts.delayUntilDefault,
     },
     opts.revenueHiding,
-    opts.refPerTokChainlinkFeed,
-    opts.refPerTokChainlinkTimeout,
+    opts.targetPerTokChainlinkFeed,
+    opts.targetPerTokChainlinkTimeout,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()
@@ -97,7 +97,7 @@ export const deployCollateral = async (opts: RethCollateralOpts = {}): Promise<T
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
-const refPerTokChainlinkDefaultAnswer = fp('1')
+const refPerTokChainlinkDefaultAnswer = fp('1.0859')
 
 type Fixture<T> = () => Promise<T>
 
@@ -116,11 +116,11 @@ const makeCollateralFixtureContext = (
       await MockV3AggregatorFactory.deploy(8, chainlinkDefaultAnswer)
     )
 
-    const refPerTokChainlinkFeed = <MockV3Aggregator>(
+    const targetPerTokChainlinkFeed = <MockV3Aggregator>(
       await MockV3AggregatorFactory.deploy(18, refPerTokChainlinkDefaultAnswer)
     )
     collateralOpts.chainlinkFeed = chainlinkFeed.address
-    collateralOpts.refPerTokChainlinkFeed = refPerTokChainlinkFeed.address
+    collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
 
     const weth = (await ethers.getContractAt('WETH9', WETH)) as WETH9
     const reth = (await ethers.getContractAt('IReth', RETH)) as IReth
@@ -133,7 +133,7 @@ const makeCollateralFixtureContext = (
       chainlinkFeed,
       weth,
       reth,
-      refPerTokChainlinkFeed,
+      targetPerTokChainlinkFeed,
       tok: reth,
       rewardToken,
     }
@@ -205,19 +205,29 @@ const mintCollateralTo: MintCollateralFunc<RethCollateralFixtureContext> = async
   await mintRETH(ctx.reth, user, amount, recipient)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const reduceTargetPerRef = async () => {}
+const changeTargetPerRef = async (ctx: RethCollateralFixtureContext, percentChange: BigNumber) => {
+  // We leave the actual refPerTok exchange where it is and just change {target/tok}
+  {
+    const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
+    const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
+    await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  }
+}
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const increaseTargetPerRef = async () => {}
+const reduceTargetPerRef = async (ctx: RethCollateralFixtureContext, pctDecrease: BigNumberish) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease).mul(-1))
+}
+
+const increaseTargetPerRef = async (
+  ctx: RethCollateralFixtureContext,
+  pctDecrease: BigNumberish
+) => {
+  await changeTargetPerRef(ctx, bn(pctDecrease))
+}
 
 const rocketBalanceKey = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('network.balance.total'))
 
-// prettier-ignore
-const reduceRefPerTok = async (
-  ctx: RethCollateralFixtureContext,
-  pctDecrease: BigNumberish 
-) => {
+const reduceRefPerTok = async (ctx: RethCollateralFixtureContext, pctDecrease: BigNumberish) => {
   const rethNetworkBalances = await ethers.getContractAt(
     'IRocketNetworkBalances',
     RETH_NETWORK_BALANCES
@@ -229,16 +239,12 @@ const reduceRefPerTok = async (
     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
   })
 
-  const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+  const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.sub(lastRound.answer.mul(pctDecrease).div(100))
-  await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
-// prettier-ignore
-const increaseRefPerTok = async (
-  ctx: RethCollateralFixtureContext,
-  pctIncrease: BigNumberish 
-) => {
+const increaseRefPerTok = async (ctx: RethCollateralFixtureContext, pctIncrease: BigNumberish) => {
   const rethNetworkBalances = await ethers.getContractAt(
     'IRocketNetworkBalances',
     RETH_NETWORK_BALANCES
@@ -250,17 +256,17 @@ const increaseRefPerTok = async (
     await rocketStorage.connect(rethSigner).setUint(rocketBalanceKey, lowerBal)
   })
 
-  const lastRound = await ctx.refPerTokChainlinkFeed.latestRoundData()
+  const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(pctIncrease).div(100))
-  await ctx.refPerTokChainlinkFeed.updateAnswer(nextAnswer)
+  await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
 }
 
 const getExpectedPrice = async (ctx: RethCollateralFixtureContext): Promise<BigNumber> => {
   const clData = await ctx.chainlinkFeed.latestRoundData()
   const clDecimals = await ctx.chainlinkFeed.decimals()
 
-  const clRptData = await ctx.refPerTokChainlinkFeed.latestRoundData()
-  const clRptDecimals = await ctx.refPerTokChainlinkFeed.decimals()
+  const clRptData = await ctx.targetPerTokChainlinkFeed.latestRoundData()
+  const clRptDecimals = await ctx.targetPerTokChainlinkFeed.decimals()
 
   return clData.answer
     .mul(bn(10).pow(18 - clDecimals))
@@ -272,8 +278,19 @@ const getExpectedPrice = async (ctx: RethCollateralFixtureContext): Promise<BigN
   Define collateral-specific tests
 */
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const collateralSpecificConstructorTests = () => {}
+const collateralSpecificConstructorTests = () => {
+  it('does not allow missing targetPerTok chainlink feed', async () => {
+    await expect(
+      deployCollateral({ targetPerTokChainlinkFeed: ethers.constants.AddressZero })
+    ).to.be.revertedWith('missing targetPerTok feed')
+  })
+
+  it('does not allow targetPerTok oracle timeout at 0', async () => {
+    await expect(deployCollateral({ targetPerTokChainlinkTimeout: 0 })).to.be.revertedWith(
+      'targetPerTokChainlinkTimeout zero'
+    )
+  })
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const collateralSpecificStatusTests = () => {}
@@ -298,13 +315,14 @@ const opts = {
   increaseRefPerTok,
   getExpectedPrice,
   itClaimsRewards: it.skip,
-  itChecksTargetPerRefDefault: it.skip,
+  itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itChecksPriceChanges: it,
   itHasRevenueHiding: it,
   resetFork,
   collateralName: 'RocketPoolETH',
   chainlinkDefaultAnswer,
+  itIsPricedByPeg: true,
 }
 
 collateralTests(opts)

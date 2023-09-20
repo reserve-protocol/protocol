@@ -48,7 +48,7 @@ We're using 192 bits instead of the full 256 bits because it makes typical multi
 Initial versions of this code were written using the custom type `Fix` everywhere, and `Fixed` contained the line `type Fix is int192`. We found later that:
 
 - We had essentially no need for negative `Fix` values, so spending a storage bit on sign, and juggling the possibility of negative values, cost extra gas and harmed the clarity of our code.
-- While `solc 0.8.17` allows custom types without any issue, practically all of the other tools we want to use on our Solidity source -- `slither`, `prettier`, `solhint` -- would fail when encountering substantial code using a custom type.
+- While `solc 0.8.19` allows custom types without any issue, practically all of the other tools we want to use on our Solidity source -- `slither`, `prettier`, `solhint` -- would fail when encountering substantial code using a custom type.
 
 Reintroducing this custom type should be mostly mechanicanizable, but now that P1 contains a handful of hotspot optimizations that do raw arithmetic internally to eliminate Fixlib calls, it won't be trivial to do so. Still, if and when those tools achieve adequate support for custom types, we will probably do this conversion ourselves, if only to ensure that conversions between the Fix and integer interpretations of uints are carefully type-checked.
 
@@ -153,13 +153,16 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 
 - stRSR.stake()
 - stRSR.unstake()
+- stRSR.cancelUnstaking()
+- stRSR.withdraw()
 - rToken.issue()
 - rToken.redeem()
 - {rsrTrader,rTokenTrader,backingManager}.claimRewards()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.grantRTokenAllowances()
-- backingManager.manageTokens\*()
-- {rsrTrader,rTokenTrader}.manageToken()
+- backingManager.rebalance\*()
+- backingManager.forwardRevenue\*()
+- {rsrTrader,rTokenTrader}.manageTokens()
 
 ### `@custom:governance`
 
@@ -282,34 +285,37 @@ The OpenZeppelin documentation has good material on [how to write upgradable con
 
 Prior to initial launch, the most glaring consequence of keeping this upgrade pattern is that core P1 contracts cannot rely on their constructor to initialize values in contract state. Instead, each contract must define a separate initializer function to initialize its state.
 
+Following subsequent upgrades, the most important check that has to be performed is related to making sure the storage layouts are compatible and no storage slots are overwritten by mistake.
+
 [writing-upgradable]: https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
 
 ### Performing upgrades
 
-When upgrading smart contracts it is crucial to keep in mind the limitations of what can be changed/modified to avoid breaking the contracts. As OZ recommends, we use their upgrades plugin for Hardhat to ensure that implementations are upgrade-safe before upgrading any smart contract.
+When upgrading smart contracts it is crucial to keep in mind there are limitations of what can be changed/modified to avoid breaking the contracts.
 
-The recommended process to perform an upgrade is the following:
+To check for upgradeability and perform the required validations we use the **[OpenZeppelin Upgrades Plugin](https://docs.openzeppelin.com/upgrades-plugins/1.x/),** designed for Hardhat.
 
-- Create the new implementation version of the contract. This should follow all the recommendations from the article linked above, to make sure the implementation is "Upgrade Safe"
+The Plugin relies on an internal file (per network) which is stored in the `.openzeppelin` folder in the repository, and is version controlled in Github for Mainnet (there is no need to track local or forked networks). Additional information can be found [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/network-files).
 
-- Ensure metadata of the existing/deployed proxies is created for the required network. This is located in a folder names `.openzeppelin`, which should be persisted in `git` for Production networks. Because the initial proxies are deployed via the `Deployer` factory contract, this folder needs to be created using the [forceImport][] function provided by the plugin. A concrete example on how to use this function is provided in our Upgradeability test file (`test/Upgradeability.test.ts`)
+This file keeps track of deployed “implementation” contracts, and their storage layout at the time of deployment, so they can be used later to be compared with the new version and validate if there are no issues in terms of storage handling.
 
-- Using mainnet forking, make sure you perform tests to check the new implementation behaves as expected. Proxies should be updated using the `upgradeProxy` function provided by the plugin to ensure all validations and checks are performed.
+The **recommended** process to perform an upgrade is the following:
 
-- Create a deployemnt script to the required network (Mainnet), using `upgradeProxy`. Ensure the new version of the `.openzeppelin` files are checked into `git` for future reference.
+- Ensure metadata of the existing/deployed implementations is created for the required network. This is located in a folder names `.openzeppelin`, which should be persisted in `git` for Production networks. This can be done for prior versions using the `upgrades/force-import.ts` task in our repository. This task is limited to be run only on Mainnet.
+
+- Create the new implementation version of the contract. This should follow all the recommendations from the article linked above, to make sure the implementation is "Upgrade Safe". At anytime you can check for compatibility by running the `upgrades/validate-upgrade.ts` task in our repo, in a Mainnet fork. This task would compare the current code vs. a previously deployed implementation and validate if it is "upgrade safe". Make sure the MAINNET_BLOCK is set up appropiately.
+
+- To deploy to Mainnet the new version, make sure you use the script provided in `scripts/deployment/phase1-common/2_deploy_implementations.ts`. If you are upgrading a previous version you need to specify the `LAST_VERSION_DEPLOYED` value at the top of the script. For new, clean deployments just leave that empty. This script will perform all validations on the new code, deploy the new implementation contracts, and register the deployment in the network file. It relies on the `deployImplementation` (for new deployments) or `prepareUpgrade` functions of the OZ Plugin.
+
+- Ensure the new version of the `.openzeppelin` files are checked into `git` for future reference.
 
 For additional information on how to use the plugins and how to perform upgrades on smart contracts please refer to the [OZ docs][upgrades-docs].
 
 [upgrades-docs]: https://docs.openzeppelin.com/upgrades
-[forceimport]: https://docs.openzeppelin/upgrades-plugins/1.x/api-hardhat-upgrades#force-import
-
-### Why it's safe to use multicall on our upgradable contracts
-
-In our P1 implementation both our RevenueTrader and BackingManager components contain `delegatecall`, even though they are themselves implementations that sit behind an ERC1967Proxy (UUPSUpgradeable). This is disallowed by default by OZ's upgradable plugin.
-
-In this case, we think it is acceptable. The special danger of containing a `delegatecall` in a proxy implementation contract is that the `delegatecall` can self-destruct the proxy if the executed code contains `selfdestruct`. In this case `Multicall` executes `delegatecall` on `address(this)`, which resolves to the address of its caller, the proxy. This executes the `fallback` function, which results in another `delegatecall` to the implementation contract. So the only way for a `selfdestruct` to happen is if the implementation contract itself contains a `selfdestruct`, which it does not.
-
-Note that `delegatecall` can also be dangerous for other reasons, such as transferring tokens out of the address in an unintended way. The same argument applies to any such case; only the code from the implementation contract can be called.
+[forceimport]: https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#force-import
+[validateupgrade]: https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#validate-upgrade
+[deployimplementation]: https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#deploy-implementation
+[prepareupgrade]: https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#prepare-upgrade
 
 ### Developer discipline
 

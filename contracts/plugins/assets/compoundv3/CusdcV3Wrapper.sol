@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./vendor/CometInterface.sol";
@@ -161,6 +161,8 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         // occasionally comet will withdraw 1-10 wei more than we asked for.
         // this is ok because 9 times out of 10 we are rounding in favor of the wrapper.
         // safe because we have already capped the comet withdraw amount to src underlying bal.
+        // untested:
+        //      difficult to trigger, depends on comet rules regarding rounding
         if (srcBalPre <= burnAmt) burnAmt = srcBalPre;
 
         accrueAccountRewards(src);
@@ -182,6 +184,10 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         accrueAccountRewards(dst);
     }
 
+    function claimRewards() external {
+        claimTo(msg.sender, msg.sender);
+    }
+
     /// @param src The account to claim from
     /// @param dst The address to send claimed rewards to
     function claimTo(address src, address dst) public {
@@ -191,15 +197,15 @@ contract CusdcV3Wrapper is ICusdcV3Wrapper, WrappedERC20, CometHelpers {
         accrueAccount(src);
         uint256 claimed = rewardsClaimed[src];
         uint256 accrued = baseTrackingAccrued[src] * RESCALE_FACTOR;
-
+        uint256 owed;
         if (accrued > claimed) {
-            uint256 owed = accrued - claimed;
+            owed = accrued - claimed;
             rewardsClaimed[src] = accrued;
 
             rewardsAddr.claimTo(address(underlyingComet), address(this), address(this), true);
             IERC20(rewardERC20).safeTransfer(dst, owed);
-            emit RewardClaimed(src, dst, address(rewardERC20), owed);
         }
+        emit RewardsClaimed(rewardERC20, owed);
     }
 
     /// Accure the cUSDCv3 account of the wrapper

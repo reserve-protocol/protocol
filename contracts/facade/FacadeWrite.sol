@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "../interfaces/IFacadeWrite.sol";
 import "./lib/FacadeWriteLib.sol";
@@ -111,7 +111,10 @@ contract FacadeWrite is IFacadeWrite {
         }
 
         // Pause until setupGovernance
-        main.pause();
+        main.grantRole(PAUSER, address(this));
+        main.pauseTrading();
+        main.pauseIssuance();
+        main.revokeRole(PAUSER, address(this));
 
         // Setup deployer as owner to complete next step - do not renounce roles yet
         main.grantRole(OWNER, msg.sender);
@@ -162,7 +165,7 @@ contract FacadeWrite is IFacadeWrite {
             timelock.grantRole(timelock.PROPOSER_ROLE(), governance); // Gov only proposer
             // Set Guardian as canceller, if address(0) then no one can cancel
             timelock.grantRole(timelock.CANCELLER_ROLE(), govRoles.guardian);
-            timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0)); // Anyone as executor
+            timelock.grantRole(timelock.EXECUTOR_ROLE(), governance); // Gov only executor
             timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this)); // Revoke admin role
 
             // Set new owner to timelock
@@ -171,15 +174,6 @@ contract FacadeWrite is IFacadeWrite {
             require(govRoles.owner != address(0), "owner not defined");
             newOwner = govRoles.owner;
         }
-
-        // Unpause if required
-        if (unpause) {
-            main.unpause();
-        }
-
-        main.revokeRole(PAUSER, address(this));
-        main.revokeRole(SHORT_FREEZER, address(this));
-        main.revokeRole(LONG_FREEZER, address(this));
 
         // Setup pausers
         for (uint256 i = 0; i < govRoles.pausers.length; ++i) {
@@ -200,6 +194,14 @@ contract FacadeWrite is IFacadeWrite {
             if (govRoles.longFreezers[i] != address(0)) {
                 main.grantRole(LONG_FREEZER, govRoles.longFreezers[i]);
             }
+        }
+
+        // Unpause if required
+        if (unpause) {
+            main.grantRole(PAUSER, address(this));
+            main.unpauseTrading();
+            main.unpauseIssuance();
+            main.revokeRole(PAUSER, address(this));
         }
 
         // Transfer Ownership and renounce owner role

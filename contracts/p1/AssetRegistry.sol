@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -12,7 +12,8 @@ import "./mixins/Component.sol";
 contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public constant GAS_TO_RESERVE = 900000; // just enough to disable basket on n=128
+    uint256 public constant GAS_FOR_BH_QTY = 100_000; // enough to call bh.quantity
+    uint256 public constant GAS_FOR_DISABLE_BASKET = 900_000; // enough to disable basket on n=128
 
     // Peer-component addresses
     IBasketHandler private basketHandler;
@@ -23,6 +24,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     // Registered Assets
     mapping(IERC20 => IAsset) private assets;
+
+    // === 3.0.0 ===
+
+    uint48 public lastRefresh; // {s}
 
     /* ==== Contract Invariants ====
        The contract state is just the mapping assets; _erc20s is ignored in properties.
@@ -38,6 +43,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         __Component_init(main_);
         basketHandler = main_.basketHandler();
         backingManager = main_.backingManager();
+
         uint256 length = assets_.length;
         for (uint256 i = 0; i < length; ++i) {
             _register(assets_[i]);
@@ -46,13 +52,18 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     /// Update the state of all assets
     /// @custom:refresher
-    // actions: calls refresh(c) for c in keys(assets) when c.isCollateral()
+    // actions:
+    //   calls refresh(c) for c in keys(assets) when c.isCollateral()
+    //   tracks basket status on basketHandler
     function refresh() public {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
             assets[IERC20(_erc20s.at(i))].refresh();
         }
+
+        basketHandler.trackStatus();
+        lastRefresh = uint48(block.timestamp); // safer to do this at end than start, actually
     }
 
     /// Register `asset`
@@ -87,6 +98,8 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Unregister an asset, requiring that it is already registered
+    /// Rewards are NOT claimed by default when unregistering due to security concerns.
+    /// If the collateral is secure, governance should claim rewards before unregistering.
     /// @custom:governance
     // checks: assets[asset.erc20()] == asset
     // effects: assets' = assets - {asset.erc20():_} + {asset.erc20(), asset}
@@ -140,6 +153,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     /// Returns keys(assets), values(assets) as (duplicate-free) lists.
     // returns: [keys(assets)], [values(assets)] without duplicates.
+    /// @return reg The list of registered ERC20s and Assets, in the same order
     function getRegistry() external view returns (Registry memory reg) {
         uint256 length = _erc20s.length();
         reg.erc20s = new IERC20[](length);
@@ -148,6 +162,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             reg.erc20s[i] = IERC20(_erc20s.at(i));
             reg.assets[i] = assets[IERC20(_erc20s.at(i))];
         }
+    }
+
+    /// @return The number of registered ERC20s
+    function size() external view returns (uint256) {
+        return _erc20s.length();
     }
 
     /// Register an asset
@@ -169,6 +188,13 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = assets.set(asset.erc20(), asset)
     // returns: assets[asset.erc20()] != asset
     function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
+        if (asset.isCollateral()) {
+            require(
+                ICollateral(address(asset)).status() == CollateralStatus.SOUND,
+                "collateral not sound"
+            );
+        }
+
         IERC20Metadata erc20 = asset.erc20();
         if (_erc20s.contains(address(erc20))) {
             if (assets[erc20] == asset) return false;
@@ -192,8 +218,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     function _reserveGas() private view returns (uint256) {
         uint256 gas = gasleft();
-        require(gas > GAS_TO_RESERVE, "not enough gas to unregister safely");
-        return gas - GAS_TO_RESERVE;
+        require(
+            gas > GAS_FOR_DISABLE_BASKET + GAS_FOR_BH_QTY,
+            "not enough gas to unregister safely"
+        );
+        return gas - GAS_FOR_DISABLE_BASKET;
     }
 
     /**
@@ -201,5 +230,5 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[47] private __gap;
+    uint256[46] private __gap;
 }

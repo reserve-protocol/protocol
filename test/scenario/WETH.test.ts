@@ -5,26 +5,27 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, TradeKind } from '../../common/constants'
 import {
   CTokenMock,
   SelfReferentialCollateral,
   ERC20Mock,
   IAssetRegistry,
-  IBasketHandler,
   IFacadeTest,
   MockV3Aggregator,
   TestIBackingManager,
+  TestIBasketHandler,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
   WETH9,
 } from '../../typechain'
 import { setOraclePrice } from '../utils/oracles'
+import { advanceTime } from '../utils/time'
 import { getTrade } from '../utils/trades'
 import {
   Collateral,
-  defaultFixture,
+  defaultFixtureNoBasket,
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
@@ -58,7 +59,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
+  let basketHandler: TestIBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let facadeTest: IFacadeTest
@@ -84,7 +85,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       rsrTrader,
       rTokenTrader,
       facadeTest,
-    } = await loadFixture(defaultFixture))
+    } = await loadFixture(defaultFixtureNoBasket))
 
     // Main ERC20
     token0 = <CTokenMock>erc20s[4] // cDai
@@ -122,6 +123,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       backupToken.address,
     ])
     await basketHandler.refreshBasket()
+    await advanceTime(config.warmupPeriod.toNumber() + 1)
 
     await backingManager.grantRTokenAllowance(token0.address)
     await backingManager.grantRTokenAllowance(weth.address)
@@ -165,22 +167,32 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
 
     it('should sell appreciating collateral and ignore WETH', async () => {
       await token0.setExchangeRate(fp('1.1')) // 10% appreciation
-      await expect(backingManager.manageTokens([token0.address])).to.not.emit(
-        backingManager,
-        'TradeStarted'
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.be.revertedWith(
+        'already collateralized'
       )
+      await backingManager.forwardRevenue([weth.address, token0.address])
       expect(await weth.balanceOf(rTokenTrader.address)).to.equal(0)
       expect(await weth.balanceOf(rsrTrader.address)).to.equal(0)
-      await expect(rTokenTrader.manageToken(weth.address)).to.not.emit(rTokenTrader, 'TradeStarted')
-      await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
+      await expect(
+        rTokenTrader.manageTokens([weth.address], [TradeKind.BATCH_AUCTION])
+      ).to.be.revertedWith('0 balance')
+      await expect(rTokenTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
+        rTokenTrader,
+        'TradeStarted'
+      )
 
       // RTokenTrader should be selling token0 and buying RToken
       const trade = await getTrade(rTokenTrader, token0.address)
       expect(await trade.sell()).to.equal(token0.address)
       expect(await trade.buy()).to.equal(rToken.address)
 
-      await expect(rsrTrader.manageToken(weth.address)).to.not.emit(rsrTrader, 'TradeStarted')
-      await expect(rsrTrader.manageToken(token0.address)).to.emit(rsrTrader, 'TradeStarted')
+      await expect(
+        rsrTrader.manageTokens([weth.address], [TradeKind.BATCH_AUCTION])
+      ).to.be.revertedWith('0 balance')
+      await expect(rsrTrader.manageTokens([token0.address], [TradeKind.BATCH_AUCTION])).to.emit(
+        rsrTrader,
+        'TradeStarted'
+      )
 
       // RSRTrader should be selling token0 and buying RToken
       const trade2 = await getTrade(rsrTrader, token0.address)
@@ -191,7 +203,11 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
     it('should change basket around WETH', async () => {
       await token0.setExchangeRate(fp('0.99')) // default
       await basketHandler.refreshBasket()
-      await expect(backingManager.manageTokens([token0.address, weth.address])).to.emit(
+
+      // Advance time post warmup period - SOUND just regained
+      await advanceTime(Number(config.warmupPeriod) + 1)
+
+      await expect(backingManager.rebalance(TradeKind.BATCH_AUCTION)).to.emit(
         backingManager,
         'TradeStarted'
       )
@@ -210,7 +226,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       await setOraclePrice(wethCollateral.address, bn('2e8')) // doubling of price
 
       // Price change should not impact share of redemption tokens
-      expect(await rToken.connect(addr1).redeem(issueAmt, await basketHandler.nonce()))
+      expect(await rToken.connect(addr1).redeem(issueAmt))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await weth.balanceOf(addr1.address)).to.equal(ethBal)
     })
@@ -233,26 +249,6 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
 
       // Should be in disabled state, as there are no backups for WETH
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-    })
-
-    it('should be able to switch away from WETH', async () => {
-      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      await basketHandler.refreshBasket()
-
-      // Should be fully collateralized
-      expect(await basketHandler.fullyCollateralized()).to.equal(true)
-      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await facadeTest.wholeBasketsHeldBy(rToken.address, backingManager.address)).to.equal(
-        issueAmt
-      )
-
-      // Should view WETH as surplus
-      await expect(backingManager.manageTokens([token0.address, weth.address])).to.not.emit(
-        backingManager,
-        'TradeStarted'
-      )
-      await expect(rsrTrader.manageToken(weth.address)).to.emit(rsrTrader, 'TradeStarted')
-      await expect(rTokenTrader.manageToken(weth.address)).to.emit(rTokenTrader, 'TradeStarted')
     })
   })
 })

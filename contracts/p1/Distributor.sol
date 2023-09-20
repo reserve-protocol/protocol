@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -23,7 +23,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // distribution[FURNACE].rsrDist == 0
     // distribution[ST_RSR].rTokenDist == 0
     // distribution has no more than MAX_DESTINATIONS_ALLOWED key-value entries
-    // all distribution-share values are <= 10000
+    // all distribution-share values are <= MAX_DISTRIBUTION
 
     // ==== destinations:
     // distribution[dest] != (0,0) if and only if dest in destinations
@@ -31,20 +31,18 @@ contract DistributorP1 is ComponentP1, IDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
-    uint8 public constant MAX_DESTINATIONS_ALLOWED = 100;
+    uint8 public constant MAX_DESTINATIONS_ALLOWED = MAX_DESTINATIONS; // 100
 
     IERC20 private rsr;
     IERC20 private rToken;
     address private furnace;
     address private stRSR;
+    address private rTokenTrader;
+    address private rsrTrader;
 
     function init(IMain main_, RevenueShare calldata dist) external initializer {
         __Component_init(main_);
-
-        rsr = main_.rsr();
-        rToken = IERC20(address(main_.rToken()));
-        furnace = address(main_.furnace());
-        stRSR = address(main_.stRSR());
+        cacheComponents();
 
         _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
@@ -73,7 +71,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
-    /// @custom:interaction CEI
+    /// Only callable by RevenueTraders
+    /// @custom:protected CEI
     // let:
     //   w = the map such that w[dest] = distribution[dest].{erc20}Shares
     //   tokensPerShare = floor(amount / sum(values(w)))
@@ -84,7 +83,11 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // actions:
     //   for dest where w[dest] != 0:
     //     erc20.transferFrom(from, addrOf(dest), tokensPerShare * w[dest])
-    function distribute(IERC20 erc20, uint256 amount) external notPausedOrFrozen {
+    function distribute(IERC20 erc20, uint256 amount) external {
+        // Intentionally do not check notTradingPausedOrFrozen, since handled by caller
+
+        address caller = _msgSender();
+        require(caller == rsrTrader || caller == rTokenTrader, "RevenueTraders only");
         require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;
@@ -101,6 +104,9 @@ contract DistributorP1 is ComponentP1, IDistributor {
         Transfer[] memory transfers = new Transfer[](destinations.length());
         uint256 numTransfers;
 
+        address furnaceAddr = furnace; // gas-saver
+        address stRSRAddr = stRSR; // gas-saver
+
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
 
@@ -111,9 +117,9 @@ contract DistributorP1 is ComponentP1, IDistributor {
             uint256 transferAmt = tokensPerShare * numberOfShares;
 
             if (addrTo == FURNACE) {
-                addrTo = furnace;
+                addrTo = furnaceAddr;
             } else if (addrTo == ST_RSR) {
-                addrTo = stRSR;
+                addrTo = stRSRAddr;
             }
 
             transfers[numTransfers] = Transfer({
@@ -123,12 +129,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
             });
             numTransfers++;
         }
-        emit RevenueDistributed(erc20, _msgSender(), amount);
+        emit RevenueDistributed(erc20, caller, amount);
 
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; i++) {
             Transfer memory t = transfers[i];
-            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(_msgSender(), t.addrTo, t.amount);
+            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(caller, t.addrTo, t.amount);
         }
     }
 
@@ -149,7 +155,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // checks:
     //   distribution'[FURNACE].rsrDist == 0
     //   distribution'[ST_RSR].rTokenDist == 0
-    //   share.rsrDist <= 10000
+    //   share.rsrDist <= MAX_DISTRIBUTION
     //   size(destinations') <= MAX_DESTINATIONS_ALLOWED
     // effects:
     //   destinations' = destinations.add(dest)
@@ -162,8 +168,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
         );
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
-        require(share.rsrDist <= 10000, "RSR distribution too high");
-        require(share.rTokenDist <= 10000, "RToken distribution too high");
+        require(share.rsrDist <= MAX_DISTRIBUTION, "RSR distribution too high");
+        require(share.rTokenDist <= MAX_DISTRIBUTION, "RToken distribution too high");
 
         if (share.rsrDist == 0 && share.rTokenDist == 0) {
             destinations.remove(dest);
@@ -182,10 +188,20 @@ contract DistributorP1 is ComponentP1, IDistributor {
         require(rTokenDist > 0 || rsrDist > 0, "no distribution defined");
     }
 
+    /// Call after upgrade to >= 3.0.0
+    function cacheComponents() public {
+        rsr = main.rsr();
+        rToken = IERC20(address(main.rToken()));
+        furnace = address(main.furnace());
+        stRSR = address(main.stRSR());
+        rTokenTrader = address(main.rTokenTrader());
+        rsrTrader = address(main.rsrTrader());
+    }
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[44] private __gap;
 }

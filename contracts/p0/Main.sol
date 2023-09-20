@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -37,9 +37,8 @@ contract MainP0 is Versioned, Initializable, Auth, ComponentRegistry, IMain {
 
     /// @custom:refresher
     function poke() external {
-        require(!pausedOrFrozen(), "paused or frozen");
         assetRegistry.refresh();
-        furnace.melt();
+        if (!frozen()) furnace.melt();
         stRSR.payoutRewards();
         // NOT basketHandler.refreshBasket
     }

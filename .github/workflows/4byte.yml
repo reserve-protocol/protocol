@@ -1,0 +1,27 @@
+name: Sync 4byte Signatures
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  sync-signatures:
+    name: '4byte Sync'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn run:4byte

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../interfaces/IAsset.sol";
 import "../interfaces/IAssetRegistry.sol";
@@ -107,8 +108,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     using CollateralStatusComparator for CollateralStatus;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
+    using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
     using FixLib for uint192;
 
+    uint48 public constant MIN_WARMUP_PERIOD = 60; // {s} 1 minute
+    uint48 public constant MAX_WARMUP_PERIOD = 31536000; // {s} 1 year
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
@@ -119,12 +123,30 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // basket is the current basket.
     Basket private basket;
 
-    uint48 public override nonce; // A unique identifier for this basket instance
-    uint48 public override timestamp; // The timestamp when this basket was last set
+    uint48 public nonce; // {basketNonce} A unique identifier for this basket instance
+    uint48 public timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
     // be paused.
     bool private disabled;
+
+    // These are effectively local variables of _switchBasket.
+    // Nothing should use their values from previous transactions.
+    EnumerableSet.Bytes32Set private targetNames;
+    Basket private newBasket;
+
+    // Effectively local variable of `requireConstantConfigTargets()`
+    EnumerableMap.Bytes32ToUintMap private _targetAmts; // targetName -> {target/BU}
+
+    uint48 public warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
+
+    // basket status changes, mainly set when `trackStatus()` is called
+    // used to enforce warmup period, after regaining SOUND
+    uint48 private lastStatusTimestamp;
+    CollateralStatus private lastStatus;
+
+    // A history of baskets by basket nonce; includes current basket
+    mapping(uint48 => Basket) private basketHistory;
 
     // ==== Invariants ====
     // basket is a valid Basket:
@@ -136,8 +158,15 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     // if basket.erc20s is empty then disabled == true
 
     // BasketHandler.init() just leaves the BasketHandler state zeroed
-    function init(IMain main_) external initializer {
+    function init(IMain main_, uint48 warmupPeriod_) external initializer {
         __Component_init(main_);
+
+        setWarmupPeriod(warmupPeriod_);
+
+        // Set last status to DISABLED (default)
+        lastStatus = CollateralStatus.DISABLED;
+        lastStatusTimestamp = uint48(block.timestamp);
+
         disabled = true;
     }
 
@@ -170,10 +199,24 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         require(
             main.hasRole(OWNER, _msgSender()) ||
-                (status() == CollateralStatus.DISABLED && !main.pausedOrFrozen()),
+                (status() == CollateralStatus.DISABLED && !main.tradingPausedOrFrozen()),
             "basket unrefreshable"
         );
         _switchBasket();
+
+        trackStatus();
+    }
+
+    /// Track basket status changes if they ocurred
+    // effects: lastStatus' = status(), and lastStatusTimestamp' = current timestamp
+    /// @custom:refresher
+    function trackStatus() public {
+        CollateralStatus currentStatus = status();
+        if (currentStatus != lastStatus) {
+            emit BasketStatusChanged(lastStatus, currentStatus);
+            lastStatus = currentStatus;
+            lastStatusTimestamp = uint48(block.timestamp);
+        }
     }
 
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
@@ -195,9 +238,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
-        require(erc20s.length > 0, "cannot empty basket");
-        require(erc20s.length == targetAmts.length, "must be same length");
+        require(erc20s.length > 0, "empty basket");
+        require(erc20s.length == targetAmts.length, "len mismatch");
         requireValidCollArray(erc20s);
+
+        // If this isn't initial setup, require targets remain constant
+        if (config.erc20s.length > 0) requireConstantConfigTargets(erc20s, targetAmts);
 
         // Clean up previous basket config
         for (uint256 i = 0; i < config.erc20s.length; ++i) {
@@ -213,7 +259,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
-            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(reg.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
             require(0 < targetAmts[i], "invalid target amount; must be nonzero");
             require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
 
@@ -249,7 +295,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
-            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(reg.toAsset(erc20s[i]).isCollateral(), "erc20 is not collateral");
             conf.erc20s.push(erc20s[i]);
         }
         emit BackupConfigSet(targetName, max, erc20s);
@@ -273,6 +319,13 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
             if (s.worseThan(status_)) status_ = s;
         }
+    }
+
+    /// @return Whether the basket is ready to issue and trade
+    function isReady() external view returns (bool) {
+        return
+            status() == CollateralStatus.SOUND &&
+            (block.timestamp >= lastStatusTimestamp + warmupPeriod);
     }
 
     /// @param erc20 The token contract to check for quantity for
@@ -349,7 +402,14 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 : reg.toAsset(basket.erc20s[i]).price();
 
             low256 += qty.safeMul(lowP, RoundingMode.FLOOR);
-            high256 += qty.safeMul(highP, RoundingMode.CEIL);
+
+            if (high256 < FIX_MAX) {
+                if (highP == FIX_MAX) {
+                    high256 = FIX_MAX;
+                } else {
+                    high256 += qty.safeMul(highP, RoundingMode.CEIL);
+                }
+            }
         }
 
         // safe downcast: FIX_MAX is type(uint192).max
@@ -378,6 +438,88 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
                 rounding
             );
+        }
+    }
+
+    /// Return the redemption value of `amount` BUs for a linear combination of historical baskets
+    /// @param basketNonces An array of basket nonces to do redemption from
+    /// @param portions {1} An array of Fix quantities
+    /// @param amount {BU}
+    /// @return erc20s The backing collateral erc20s
+    /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
+    // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
+    function quoteCustomRedemption(
+        uint48[] memory basketNonces,
+        uint192[] memory portions,
+        uint192 amount
+    ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
+        require(basketNonces.length == portions.length, "bad portions len");
+
+        IERC20[] memory erc20sAll = new IERC20[](main.assetRegistry().size());
+        ICollateral[] memory collsAll = new ICollateral[](erc20sAll.length);
+        uint192[] memory refAmtsAll = new uint192[](erc20sAll.length);
+
+        uint256 len; // length of return arrays
+
+        // Calculate the linear combination basket
+        for (uint48 i = 0; i < basketNonces.length; ++i) {
+            require(basketNonces[i] <= nonce, "invalid basketNonce");
+            Basket storage b = basketHistory[basketNonces[i]];
+
+            // Add-in refAmts contribution from historical basket
+            for (uint256 j = 0; j < b.erc20s.length; ++j) {
+                if (address(b.erc20s[j]) == address(0)) continue;
+
+                // Search through erc20sAll
+                uint256 erc20Index = type(uint256).max;
+                for (uint256 k = 0; k < len; ++k) {
+                    if (b.erc20s[j] == erc20sAll[k]) {
+                        erc20Index = k;
+                        continue;
+                    }
+                }
+
+                // Add new ERC20 entry if not found
+                uint192 amt = portions[i].mul(b.refAmts[b.erc20s[j]], FLOOR);
+                if (erc20Index == type(uint256).max) {
+                    // New entry found
+
+                    try main.assetRegistry().toAsset(b.erc20s[j]) returns (IAsset asset) {
+                        if (!asset.isCollateral()) continue; // skip token if not collateral
+
+                        erc20sAll[len] = b.erc20s[j];
+                        collsAll[len] = ICollateral(address(asset));
+
+                        // {ref} = {1} * {ref}
+                        refAmtsAll[len] = amt;
+                        ++len;
+                    } catch (bytes memory errData) {
+                        // untested:
+                        //     OOG pattern tested in other contracts, cost to test here is high
+                        // see: docs/solidity-style.md#Catching-Empty-Data
+                        if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                        // skip token if no longer registered or other non-gas issue
+                    }
+                } else {
+                    // {ref} = {1} * {ref}
+                    refAmtsAll[erc20Index] += amt;
+                }
+            }
+        }
+
+        erc20s = new address[](len);
+        quantities = new uint256[](len);
+
+        // Calculate quantities
+        for (uint256 i = 0; i < len; ++i) {
+            erc20s[i] = address(erc20sAll[i]);
+
+            // {tok} = {BU} * {ref/BU} / {ref/tok}
+            quantities[i] = amount
+            .safeMulDiv(refAmtsAll[i], collsAll[i].refPerTok(), FLOOR)
+            .shiftl_toUint(int8(collsAll[i].erc20Decimals()), FLOOR);
+            // marginally more penalizing than its sibling calculation that uses _quantity()
+            // because does not intermediately CEIL as part of the division
         }
     }
 
@@ -410,6 +552,15 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             baskets.bottom = fixMin(baskets.bottom, inBUs);
             baskets.top = fixMax(baskets.top, inBUs);
         }
+    }
+
+    // === Governance Setters ===
+
+    /// @custom:governance
+    function setWarmupPeriod(uint48 val) public governance {
+        require(val >= MIN_WARMUP_PERIOD && val <= MAX_WARMUP_PERIOD, "invalid warmupPeriod");
+        emit WarmupPeriodSet(warmupPeriod, val);
+        warmupPeriod = val;
     }
 
     /* _switchBasket computes basket' from three inputs:
@@ -466,11 +617,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
          nonce' = nonce + 1
          timestamp' = now
     */
-
-    // These are effectively local variables of _switchBasket.
-    // Nothing should use their values from previous transactions.
-    EnumerableSet.Bytes32Set private targetNames;
-    Basket private newBasket; // Always empty
 
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// (The mutator that actually does all the work in this contract.)
@@ -582,8 +728,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
         // Update the basket if it's not disabled
         if (!disabled) {
-            basket.setFrom(newBasket);
             nonce += 1;
+            basket.setFrom(newBasket);
+            basketHistory[nonce].setFrom(newBasket);
             timestamp = uint48(block.timestamp);
         }
 
@@ -596,20 +743,48 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Require that erc20s is a valid collateral array
-    function requireValidCollArray(IERC20[] calldata erc20s) internal view {
-        IERC20 rsr = main.rsr();
-        IERC20 rToken = IERC20(address(main.rToken()));
-        IERC20 stRSR = IERC20(address(main.stRSR()));
+    function requireValidCollArray(IERC20[] calldata erc20s) private view {
         IERC20 zero = IERC20(address(0));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            require(erc20s[i] != rsr, "RSR is not valid collateral");
-            require(erc20s[i] != rToken, "RToken is not valid collateral");
-            require(erc20s[i] != stRSR, "stRSR is not valid collateral");
-            require(erc20s[i] != zero, "address zero is not valid collateral");
+            require(erc20s[i] != main.rsr(), "invalid collateral");
+            require(erc20s[i] != IERC20(address(main.rToken())), "invalid collateral");
+            require(erc20s[i] != IERC20(address(main.stRSR())), "invalid collateral");
+            require(erc20s[i] != zero, "invalid collateral");
         }
 
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
+    }
+
+    /// Require that newERC20s and newTargetAmts preserve the current config targets
+    function requireConstantConfigTargets(
+        IERC20[] calldata newERC20s,
+        uint192[] calldata newTargetAmts
+    ) private {
+        // Empty _targetAmts mapping
+        while (_targetAmts.length() > 0) {
+            (bytes32 key, ) = _targetAmts.at(0);
+            _targetAmts.remove(key);
+        }
+
+        // Populate _targetAmts mapping with old basket config
+        for (uint256 i = 0; i < config.erc20s.length; i++) {
+            IERC20 erc20 = config.erc20s[i];
+            bytes32 targetName = config.targetNames[erc20];
+            uint192 targetAmt = config.targetAmts[erc20];
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            _targetAmts.set(targetName, contains ? amt + targetAmt : targetAmt);
+        }
+
+        // Require new basket is exactly equal to old basket, in terms of targetAmts by targetName
+        for (uint256 i = 0; i < newERC20s.length; i++) {
+            bytes32 targetName = main.assetRegistry().toColl(newERC20s[i]).targetName();
+            (bool contains, uint256 amt) = _targetAmts.tryGet(targetName);
+            require(contains && amt >= newTargetAmts[i], "new target weights");
+            if (amt == newTargetAmts[i]) _targetAmts.remove(targetName);
+            else _targetAmts.set(targetName, amt - newTargetAmts[i]);
+        }
+        require(_targetAmts.length() == 0, "missing target weights");
     }
 
     /// Good collateral is registered, collateral, SOUND, has the expected targetName,
@@ -630,11 +805,4 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             return false;
         }
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[48] private __gap;
 }

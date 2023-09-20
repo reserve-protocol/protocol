@@ -1,8 +1,9 @@
+import { Decimal } from 'decimal.js'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { TestITrading, GnosisTrade } from '../../typechain'
-import { fp, divCeil } from '../../common/numbers'
+import { bn, fp, divCeil, divRound } from '../../common/numbers'
 
 export const expectTrade = async (trader: TestITrading, auctionInfo: Partial<ITradeInfo>) => {
   if (!auctionInfo.sell) throw new Error('Must provide sell token to find trade')
@@ -72,4 +73,49 @@ export const toMinBuyAmt = (
     .mul(lowSellPrice) // (b)
 
   return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+}
+
+// Returns the buy amount in the auction for the given progression
+export const dutchBuyAmount = async (
+  progression: BigNumber,
+  assetInAddr: string,
+  assetOutAddr: string,
+  outAmount: BigNumber,
+  minTradeVolume: BigNumber,
+  maxTradeSlippage: BigNumber
+): Promise<BigNumber> => {
+  const assetIn = await ethers.getContractAt('IAsset', assetInAddr)
+  const assetOut = await ethers.getContractAt('IAsset', assetOutAddr)
+  const [sellLow, sellHigh] = await assetOut.price() // {UoA/sellTok}
+  const [buyLow, buyHigh] = await assetIn.price() // {UoA/buyTok}
+
+  const inMaxTradeVolume = await assetIn.maxTradeVolume()
+  let maxTradeVolume = await assetOut.maxTradeVolume()
+  if (inMaxTradeVolume.lt(maxTradeVolume)) maxTradeVolume = inMaxTradeVolume
+
+  const worstPrice = sellLow.mul(fp('1').sub(maxTradeSlippage)).div(buyHigh)
+  const bestPrice = divCeil(sellHigh.mul(fp('1')), buyLow)
+  const highPrice = divCeil(sellHigh.mul(fp('1.5')), buyLow)
+
+  let price: BigNumber
+  if (progression.lt(fp('0.2'))) {
+    const exp = divRound(bn('6502287').mul(fp('0.2').sub(progression)), fp('0.2'))
+    const divisor = new Decimal('999999').div('1000000').pow(exp.toString())
+    price = divCeil(highPrice.mul(fp('1')), fp(divisor.toString()))
+  } else if (progression.lt(fp('0.45'))) {
+    price = highPrice.sub(
+      highPrice
+        .sub(bestPrice)
+        .mul(progression.sub(fp('0.2')))
+        .div(fp('0.25'))
+    )
+  } else if (progression.lt(fp('0.95'))) {
+    price = bestPrice.sub(
+      bestPrice
+        .sub(worstPrice)
+        .mul(progression.sub(fp('0.45')))
+        .div(fp('0.5'))
+    )
+  } else price = worstPrice
+  return divCeil(outAmount.mul(price), fp('1'))
 }

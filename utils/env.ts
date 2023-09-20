@@ -20,6 +20,8 @@ type IEnvVars =
   | 'EXTREME'
   | 'SUBGRAPH_URL'
   | 'TENDERLY_RPC_URL'
+  | 'SKIP_PROMPT'
+  | 'BASE_GOERLI_RPC_URL'
 
 export function useEnv(key: IEnvVars | IEnvVars[], _default = ''): string {
   if (typeof key === 'string') {

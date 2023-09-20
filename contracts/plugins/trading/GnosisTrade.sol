@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -9,13 +9,6 @@ import "../../interfaces/IBroker.sol";
 import "../../interfaces/IGnosis.sol";
 import "../../interfaces/ITrade.sol";
 
-enum TradeStatus {
-    NOT_STARTED, // before init()
-    OPEN, // after init() and before settle()
-    CLOSED, // after settle()
-    PENDING // during init() or settle() (reentrancy protection)
-}
-
 // Modifications to this contract's state must only ever be made when status=PENDING!
 
 /// Trade contract against the Gnosis EasyAuction mechanism
@@ -24,11 +17,12 @@ contract GnosisTrade is ITrade {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // ==== Constants
+    TradeKind public constant KIND = TradeKind.BATCH_AUCTION;
     uint256 public constant FEE_DENOMINATOR = 1000;
 
     // Upper bound for the max number of orders we're happy to have the auction clear in;
     // When we have good price information, this determines the minimum buy amount per order.
-    uint96 public constant MAX_ORDERS = 1e5;
+    uint96 public constant MAX_ORDERS = 5000; // bounded to avoid going beyond block gas limit
 
     // raw "/" for compile-time const
     uint192 public constant DEFAULT_MIN_BID = FIX_ONE / 100; // {tok}
@@ -64,6 +58,10 @@ contract GnosisTrade is ITrade {
         status = end;
     }
 
+    constructor() {
+        status = TradeStatus.CLOSED;
+    }
+
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
     /// @custom:interaction reentrancy-safe b/c state-locking
@@ -82,7 +80,7 @@ contract GnosisTrade is ITrade {
         IBroker broker_,
         address origin_,
         IGnosis gnosis_,
-        uint48 auctionLength,
+        uint48 batchAuctionLength,
         TradeRequest calldata req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sellAmount <= type(uint96).max, "sellAmount too large");
@@ -100,7 +98,7 @@ contract GnosisTrade is ITrade {
         broker = broker_;
         origin = origin_;
         gnosis = gnosis_;
-        endTime = uint48(block.timestamp) + auctionLength;
+        endTime = uint48(block.timestamp) + batchAuctionLength;
 
         // {buyTok/sellTok}
         worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(
@@ -186,11 +184,18 @@ contract GnosisTrade is ITrade {
 
         // Transfer balances to origin
         uint256 sellBal = sell.balanceOf(address(this));
+
+        // As raised in C4's review, this balance can be manupulated by a frontrunner
+        // It won't really affect the outcome of the trade, as protocol still gets paid
+        // and it just gets a better clearing price than expected.
+        // Fixing it would require some complex logic, as SimpleAuction does not expose
+        // the amount of tokens bought by the auction after the tokens are settled.
+        // So we will live with this for now. Worst case, there will be a mismatch between
+        // the trades recorded by the IDO contracts and on our side.
         boughtAmt = buy.balanceOf(address(this));
 
         if (sellBal > 0) IERC20Upgradeable(address(sell)).safeTransfer(origin, sellBal);
         if (boughtAmt > 0) IERC20Upgradeable(address(buy)).safeTransfer(origin, boughtAmt);
-
         // Check clearing prices
         if (sellBal < initBal) {
             soldAmt = initBal - sellBal;

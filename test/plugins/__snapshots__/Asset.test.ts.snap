@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Assets contracts #fast Gas Reporting refresh() refresh() after full price timeout 1`] = `38605`;
+
+exports[`Assets contracts #fast Gas Reporting refresh() refresh() after full price timeout 2`] = `38605`;
+
+exports[`Assets contracts #fast Gas Reporting refresh() refresh() after oracle timeout 1`] = `38605`;
+
+exports[`Assets contracts #fast Gas Reporting refresh() refresh() after oracle timeout 2`] = `38605`;
+
+exports[`Assets contracts #fast Gas Reporting refresh() refresh() during SOUND 1`] = `51050`;
+
+exports[`Assets contracts #fast Gas Reporting refresh() refresh() during SOUND 2`] = `51050`;

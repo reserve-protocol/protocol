@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -21,7 +21,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
-    uint8 public constant MAX_DESTINATIONS_ALLOWED = 100;
+    uint8 public constant MAX_DESTINATIONS_ALLOWED = MAX_DESTINATIONS; // 100
 
     function init(IMain main_, RevenueShare memory dist) public initializer {
         __Component_init(main_);
@@ -41,9 +41,17 @@ contract DistributorP0 is ComponentP0, IDistributor {
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
-    function distribute(IERC20 erc20, uint256 amount) external notPausedOrFrozen {
+    /// Only callable by RevenueTraders
+    function distribute(IERC20 erc20, uint256 amount) external {
+        // Intentionally do not check notTradingPausedOrFrozen, since handled by caller
+
         IERC20 rsr = main.rsr();
 
+        require(
+            _msgSender() == address(main.rsrTrader()) ||
+                _msgSender() == address(main.rTokenTrader()),
+            "RevenueTraders only"
+        );
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;
@@ -94,8 +102,8 @@ contract DistributorP0 is ComponentP0, IDistributor {
         );
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
-        require(share.rsrDist <= 10000, "RSR distribution too high");
-        require(share.rTokenDist <= 10000, "RToken distribution too high");
+        require(share.rsrDist <= MAX_DISTRIBUTION, "RSR distribution too high");
+        require(share.rTokenDist <= MAX_DISTRIBUTION, "RToken distribution too high");
 
         if (share.rsrDist == 0 && share.rTokenDist == 0) {
             destinations.remove(dest);

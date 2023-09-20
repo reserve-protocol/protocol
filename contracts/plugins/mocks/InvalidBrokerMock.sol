@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -19,26 +19,33 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     mapping(address => bool) private trades;
 
-    uint48 public auctionLength; // {s} the length of an auction
+    uint48 public batchAuctionLength; // {s} the length of a batch auction
+    uint48 public dutchAuctionLength; // {s} the length of a dutch auction
 
-    bool public disabled = false;
+    bool public batchTradeDisabled = false;
+
+    mapping(IERC20Metadata => bool) public dutchTradeDisabled;
 
     function init(
         IMain main_,
         IGnosis gnosis_,
         ITrade,
-        uint48 auctionLength_
+        uint48 batchAuctionLength_,
+        ITrade,
+        uint48 dutchAuctionLength_
     ) public initializer {
         __Component_init(main_);
         gnosis = gnosis_;
-        auctionLength = auctionLength_;
+        batchAuctionLength = batchAuctionLength_;
+        dutchAuctionLength = dutchAuctionLength_;
     }
 
     /// Invalid implementation - Reverts
-    function openTrade(TradeRequest memory req) external view notPausedOrFrozen returns (ITrade) {
-        require(!disabled, "broker disabled");
-        req;
-
+    function openTrade(
+        TradeKind,
+        TradeRequest memory,
+        TradePrices memory
+    ) external view notTradingPausedOrFrozen returns (ITrade) {
         // Revert when opening trades
         revert("Failure opening trade");
     }
@@ -49,9 +56,17 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
-    function setAuctionLength(uint48 newAuctionLength) external governance {}
+    function setBatchAuctionLength(uint48 newAuctionLength) external governance {}
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
-    function setDisabled(bool disabled_) external governance {}
+    function setDutchAuctionLength(uint48 newAuctionLength) external governance {}
+
+    /// Dummy implementation
+    /* solhint-disable no-empty-blocks */
+    function enableBatchTrade() external governance {}
+
+    /// Dummy implementation
+    /* solhint-disable no-empty-blocks */
+    function enableDutchTrade(IERC20Metadata erc20) external governance {}
 }

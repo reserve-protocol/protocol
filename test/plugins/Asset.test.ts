@@ -3,7 +3,12 @@ import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+} from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
@@ -18,11 +23,10 @@ import {
   Asset,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
-  CTokenMock,
+  CTokenWrapperMock,
   ERC20Mock,
   FiatCollateral,
   IAssetRegistry,
-  IBasketHandler,
   InvalidFiatCollateral,
   InvalidMockV3Aggregator,
   RTokenAsset,
@@ -35,10 +39,18 @@ import {
 import {
   Collateral,
   defaultFixture,
+  IMPLEMENTATION,
+  Implementation,
   ORACLE_TIMEOUT,
   ORACLE_ERROR,
   PRICE_TIMEOUT,
+  VERSION,
 } from '../fixtures'
+import { useEnv } from '#/utils/env'
+import snapshotGasCost from '../utils/snapshotGasCost'
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 const DEFAULT_THRESHOLD = fp('0.01') // 1%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -52,7 +64,7 @@ describe('Assets contracts #fast', () => {
   let token: ERC20Mock
   let usdc: USDCMock
   let aToken: StaticATokenMock
-  let cToken: CTokenMock
+  let cToken: CTokenWrapperMock
 
   // Assets
   let collateral0: FiatCollateral
@@ -74,7 +86,6 @@ describe('Assets contracts #fast', () => {
   let wallet: Wallet
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
-  let basketHandler: IBasketHandler
 
   // Factory
   let AssetFactory: ContractFactory
@@ -101,7 +112,6 @@ describe('Assets contracts #fast', () => {
       config,
       rToken,
       rTokenAsset,
-      basketHandler,
     } = await loadFixture(defaultFixture))
 
     // Get collateral tokens
@@ -114,18 +124,20 @@ describe('Assets contracts #fast', () => {
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    cToken = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
+    )
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)
     await aaveToken.connect(wallet).mint(wallet.address, amt)
-
     // Issue RToken to enable RToken.price
     for (let i = 0; i < basket.length; i++) {
       const tok = await ethers.getContractAt('ERC20Mock', await basket[i].erc20())
       await tok.connect(wallet).mint(wallet.address, amt)
       await tok.connect(wallet).approve(rToken.address, amt)
     }
+
     await rToken.connect(wallet).issue(amt)
 
     AssetFactory = await ethers.getContractFactory('Asset')
@@ -138,6 +150,7 @@ describe('Assets contracts #fast', () => {
       expect(await rsrAsset.isCollateral()).to.equal(false)
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await rsr.decimals()).to.equal(18)
+      expect(await rsrAsset.version()).to.equal(VERSION)
       expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await rsrAsset.bal(wallet.address)).to.equal(amt)
       await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
@@ -147,6 +160,7 @@ describe('Assets contracts #fast', () => {
       expect(await compAsset.isCollateral()).to.equal(false)
       expect(await compAsset.erc20()).to.equal(compToken.address)
       expect(await compToken.decimals()).to.equal(18)
+      expect(await compAsset.version()).to.equal(VERSION)
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await compAsset.bal(wallet.address)).to.equal(amt)
       await expectPrice(compAsset.address, fp('1'), ORACLE_ERROR, true)
@@ -156,6 +170,7 @@ describe('Assets contracts #fast', () => {
       expect(await aaveAsset.isCollateral()).to.equal(false)
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
       expect(await aaveToken.decimals()).to.equal(18)
+      expect(await aaveAsset.version()).to.equal(VERSION)
       expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await aaveAsset.bal(wallet.address)).to.equal(amt)
       await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, true)
@@ -165,6 +180,7 @@ describe('Assets contracts #fast', () => {
       expect(await rTokenAsset.isCollateral()).to.equal(false)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await rToken.decimals()).to.equal(18)
+      expect(await rTokenAsset.version()).to.equal(VERSION)
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await rTokenAsset.bal(wallet.address)).to.equal(amt)
       await expectRTokenPrice(
@@ -234,45 +250,44 @@ describe('Assets contracts #fast', () => {
       )
     })
 
-    it('Should return (0, 0) if price is zero', async () => {
+    it('Should become unpriced if price is zero', async () => {
+      const compInitPrice = await compAsset.price()
+      const aaveInitPrice = await aaveAsset.price()
+      const rsrInitPrice = await rsrAsset.price()
+      const rTokenInitPrice = await rTokenAsset.price()
+
       // Update values in Oracles to 0
       await setOraclePrice(compAsset.address, bn('0'))
       await setOraclePrice(aaveAsset.address, bn('0'))
       await setOraclePrice(rsrAsset.address, bn('0'))
 
-      // New prices should be (0, 0)
-      await expectPrice(rsrAsset.address, bn('0'), bn('0'), false)
-      await expectPrice(compAsset.address, bn('0'), bn('0'), false)
-      await expectPrice(aaveAsset.address, bn('0'), bn('0'), false)
+      // Should be unpriced
+      await expectUnpriced(rsrAsset.address)
+      await expectUnpriced(compAsset.address)
+      await expectUnpriced(aaveAsset.address)
 
-      // Fallback prices should be zero
-      let [lotLow, lotHigh] = await rsrAsset.lotPrice()
-      expect(lotLow).to.eq(0)
-      expect(lotHigh).to.eq(0)
+      // Fallback prices should be initial prices
+      let [lotLow, lotHigh] = await compAsset.lotPrice()
+      expect(lotLow).to.eq(compInitPrice[0])
+      expect(lotHigh).to.eq(compInitPrice[1])
       ;[lotLow, lotHigh] = await rsrAsset.lotPrice()
-      expect(lotLow).to.eq(0)
-      expect(lotHigh).to.eq(0)
+      expect(lotLow).to.eq(rsrInitPrice[0])
+      expect(lotHigh).to.eq(rsrInitPrice[1])
       ;[lotLow, lotHigh] = await aaveAsset.lotPrice()
-      expect(lotLow).to.eq(0)
-      expect(lotHigh).to.eq(0)
+      expect(lotLow).to.eq(aaveInitPrice[0])
+      expect(lotHigh).to.eq(aaveInitPrice[1])
 
       // Update values of underlying tokens of RToken to 0
       await setOraclePrice(collateral0.address, bn(0))
       await setOraclePrice(collateral1.address, bn(0))
 
       // RTokenAsset should be unpriced now
-      await expectRTokenPrice(
-        rTokenAsset.address,
-        bn(0),
-        ORACLE_ERROR,
-        await backingManager.maxTradeSlippage(),
-        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
-      )
+      await expectUnpriced(rTokenAsset.address)
 
-      // Should have lot price
+      // Should have initial lot price
       ;[lotLow, lotHigh] = await rTokenAsset.lotPrice()
-      expect(lotLow).to.eq(0)
-      expect(lotHigh).to.eq(0)
+      expect(lotLow).to.eq(rTokenInitPrice[0])
+      expect(lotHigh).to.eq(rTokenInitPrice[1])
     })
 
     it('Should return 0 price for RTokenAsset in full haircut scenario', async () => {
@@ -293,7 +308,7 @@ describe('Assets contracts #fast', () => {
     it('Should not revert RToken price if supply is zero', async () => {
       // Redeem RToken to make price function revert
       // Note: To get RToken price to 0, a full basket refresh needs to occur (covered in RToken tests)
-      await rToken.connect(wallet).redeem(amt, await basketHandler.nonce())
+      await rToken.connect(wallet).redeem(amt)
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),
@@ -302,6 +317,12 @@ describe('Assets contracts #fast', () => {
         config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+
+      // Should have lot price, equal to price when feed works OK
+      const [lowPrice, highPrice] = await rTokenAsset.price()
+      const [lotLow, lotHigh] = await rTokenAsset.lotPrice()
+      expect(lotLow).to.equal(lowPrice)
+      expect(lotHigh).to.equal(highPrice)
     })
 
     it('Should calculate trade min correctly', async () => {
@@ -359,7 +380,7 @@ describe('Assets contracts #fast', () => {
       await expectUnpriced(aaveAsset.address)
     })
 
-    it('Should handle unpriced edge cases for RToken', async () => {
+    it('Should handle reverting edge cases for RToken', async () => {
       // Swap one of the collaterals for an invalid one
       const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
       const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
@@ -386,12 +407,41 @@ describe('Assets contracts #fast', () => {
       // Check RToken unpriced
       await expectUnpriced(rTokenAsset.address)
 
-      //  Runnning out of gas
+      // Runnning out of gas
       await invalidFiatCollateral.setSimplyRevert(false)
       await expect(invalidFiatCollateral.price()).to.be.reverted
 
-      //  Check RToken price reverrts
+      //  Check RToken price reverts
       await expect(rTokenAsset.price()).to.be.reverted
+    })
+
+    it('Regression test -- Should handle unpriced collateral for RToken', async () => {
+      // https://github.com/code-423n4/2023-07-reserve-findings/issues/20
+
+      // Swap one of the collaterals for an invalid one
+      const InvalidFiatCollateralFactory = await ethers.getContractFactory('InvalidFiatCollateral')
+      const invalidFiatCollateral: InvalidFiatCollateral = <InvalidFiatCollateral>(
+        await InvalidFiatCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: await collateral0.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: await collateral0.erc20(),
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
+      )
+
+      // Swap asset
+      await assetRegistry.swapRegistered(invalidFiatCollateral.address)
+
+      // Set unpriced collateral
+      await invalidFiatCollateral.setUnpriced(true)
+
+      // Check RToken is unpriced
+      await expectUnpriced(rTokenAsset.address)
     })
 
     it('Should be able to refresh saved prices', async () => {
@@ -549,6 +599,8 @@ describe('Assets contracts #fast', () => {
     })
 
     it('Should handle lot price correctly', async () => {
+      await rsrAsset.refresh()
+
       // Check lot prices - use RSR as example
       const currBlockTimestamp: number = await getLatestBlockTimestamp()
       await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
@@ -574,26 +626,34 @@ describe('Assets contracts #fast', () => {
       expect(await rsrAsset.savedHighPrice()).to.equal(prevHighPrice)
       expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
 
-      // Lot price decreases a bit
+      // At first lot price doesn't decrease
       const [lotLowPrice2, lotHighPrice2] = await rsrAsset.lotPrice()
-      expect(lotLowPrice2).to.be.lt(lotLowPrice1)
-      expect(lotHighPrice2).to.be.lt(lotHighPrice1)
+      expect(lotLowPrice2).to.eq(lotLowPrice1)
+      expect(lotHighPrice2).to.eq(lotHighPrice1)
 
-      // Advance blocks, lot price keeps decreasing
-      await advanceBlocks(100)
+      // Advance past oracleTimeout
+      await advanceTime(await rsrAsset.oracleTimeout())
+
+      // Now lot price decreases
       const [lotLowPrice3, lotHighPrice3] = await rsrAsset.lotPrice()
       expect(lotLowPrice3).to.be.lt(lotLowPrice2)
       expect(lotHighPrice3).to.be.lt(lotHighPrice2)
 
-      // Advance blocks beyond PRICE_TIMEOUT
-      await advanceBlocks(PRICE_TIMEOUT)
-
-      // Lot price returns 0 once time elapses
+      // Advance block, lot price keeps decreasing
+      await advanceBlocks(1)
       const [lotLowPrice4, lotHighPrice4] = await rsrAsset.lotPrice()
       expect(lotLowPrice4).to.be.lt(lotLowPrice3)
       expect(lotHighPrice4).to.be.lt(lotHighPrice3)
-      expect(lotLowPrice4).to.be.equal(bn(0))
-      expect(lotHighPrice4).to.be.equal(bn(0))
+
+      // Advance blocks beyond PRICE_TIMEOUT
+      await advanceTime(PRICE_TIMEOUT.toNumber())
+
+      // Lot price returns 0 once time elapses
+      const [lotLowPrice5, lotHighPrice5] = await rsrAsset.lotPrice()
+      expect(lotLowPrice5).to.be.lt(lotLowPrice4)
+      expect(lotHighPrice5).to.be.lt(lotHighPrice4)
+      expect(lotLowPrice5).to.be.equal(bn(0))
+      expect(lotHighPrice5).to.be.equal(bn(0))
     })
   })
 
@@ -642,6 +702,32 @@ describe('Assets contracts #fast', () => {
       await expect(RTokenAssetFactory.deploy(rToken.address, 0)).to.be.revertedWith(
         'invalid max trade volume'
       )
+    })
+  })
+
+  describeGas('Gas Reporting', () => {
+    context('refresh()', () => {
+      afterEach(async () => {
+        await snapshotGasCost(rsrAsset.refresh())
+        await snapshotGasCost(rsrAsset.refresh()) // 2nd refresh can be different than 1st
+      })
+
+      it('refresh() during SOUND', async () => {
+        // pass
+      })
+
+      it('refresh() after oracle timeout', async () => {
+        const oracleTimeout = await rsrAsset.oracleTimeout()
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + oracleTimeout)
+        await advanceBlocks(bn(oracleTimeout).div(12))
+      })
+
+      it('refresh() after full price timeout', async () => {
+        await advanceTime((await rsrAsset.priceTimeout()) + (await rsrAsset.oracleTimeout()))
+        const lotP = await rsrAsset.lotPrice()
+        expect(lotP[0]).to.equal(0)
+        expect(lotP[1]).to.equal(0)
+      })
     })
   })
 })

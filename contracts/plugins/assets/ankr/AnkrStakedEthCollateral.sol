@@ -1,31 +1,42 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../../libraries/Fixed.sol";
 import "../AppreciatingFiatCollateral.sol";
 import "../OracleLib.sol";
-import "./IAnkrETH.sol";
+import "./vendor/IAnkrETH.sol";
 
 /**
  * @title Ankr Staked Eth Collateral
- * @notice Collateral plugin for Ankr ankrETH,
+ * @notice Collateral plugin for Ankr's ankrETH
  * tok = ankrETH
- * ref = ETH
+ * ref = ETH2
  * tar = ETH
  * UoA = USD
+ * @dev Not ready to deploy yet. Missing a {target/tok} feed from Chainlink.
  */
 contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    // solhint-disable no-empty-blocks
-    /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(CollateralConfig memory config, uint192 revenueHiding)
-        AppreciatingFiatCollateral(config, revenueHiding)
-    {}
+    AggregatorV3Interface public immutable targetPerTokChainlinkFeed; // {target/tok}
+    uint48 public immutable targetPerTokChainlinkTimeout;
 
-    // solhint-enable no-empty-blocks
+    /// @param config.chainlinkFeed {UoA/target} price of ETH in USD terms
+    /// @param _targetPerTokChainlinkFeed {target/tok} price of cbETH in ETH terms
+    constructor(
+        CollateralConfig memory config,
+        uint192 revenueHiding,
+        AggregatorV3Interface _targetPerTokChainlinkFeed,
+        uint48 _targetPerTokChainlinkTimeout
+    ) AppreciatingFiatCollateral(config, revenueHiding) {
+        require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
+        require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
+
+        targetPerTokChainlinkFeed = _targetPerTokChainlinkFeed;
+        targetPerTokChainlinkTimeout = _targetPerTokChainlinkTimeout;
+    }
 
     /// Can revert, used by other contract functions in order to catch errors
     /// @return low {UoA/tok} The low price estimate
@@ -41,22 +52,22 @@ contract AnkrStakedEthCollateral is AppreciatingFiatCollateral {
             uint192 pegPrice
         )
     {
-        uint192 pricePerRef = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
+        uint192 targetPerTok = targetPerTokChainlinkFeed.price(targetPerTokChainlinkTimeout);
 
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        uint192 p = pricePerRef.mul(_underlyingRefPerTok());
+        // {UoA/tok} = {UoA/target} * {target/tok}
+        uint192 p = chainlinkFeed.price(oracleTimeout).mul(targetPerTok);
         uint192 err = p.mul(oracleError, CEIL);
 
-        low = p - err;
         high = p + err;
+        low = p - err;
         // assert(low <= high); obviously true just by inspection
 
-        pegPrice = targetPerRef(); // ETH/ETH
+        // {target/ref} = {target/tok} / {ref/tok}
+        pegPrice = targetPerTok.div(_underlyingRefPerTok());
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function _underlyingRefPerTok() internal view override returns (uint192) {
-        uint256 rate = IAnkrETH(address(erc20)).ratio();
-        return FIX_ONE.div(_safeWrap(rate), FLOOR);
+        return FIX_ONE.div(_safeWrap(IAnkrETH(address(erc20)).ratio()), FLOOR);
     }
 }

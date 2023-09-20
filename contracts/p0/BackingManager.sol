@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -11,6 +11,7 @@ import "../interfaces/IBroker.sol";
 import "../interfaces/IMain.sol";
 import "../libraries/Array.sol";
 import "../libraries/Fixed.sol";
+import "../libraries/NetworkConfigLib.sol";
 
 /**
  * @title BackingManager
@@ -23,8 +24,17 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
 
+    // solhint-disable-next-line var-name-mixedcase
+    uint48 public immutable ONE_BLOCK; // {s} 1 block based on network
+
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
+
+    mapping(TradeKind => uint48) private tradeEnd; // {s} last endTime() of an auction per kind
+
+    constructor() {
+        ONE_BLOCK = NetworkConfigLib.blocktime();
+    }
 
     function init(
         IMain main_,
@@ -48,80 +58,108 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         erc20.safeApprove(address(main.rToken()), type(uint256).max);
     }
 
-    /// Maintain the overall backing policy; handout assets otherwise
+    /// Settle a single trade. If DUTCH_AUCTION, try rebalance()
+    /// @param sell The sell token in the trade
+    /// @return trade The ITrade contract settled
     /// @custom:interaction
-    function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
-        // Token list must not contain duplicates
-        require(ArrayLib.allUnique(erc20s), "duplicate tokens");
-        _manageTokens(erc20s);
-    }
+    function settleTrade(IERC20 sell)
+        public
+        override(ITrading, TradingP0)
+        notTradingPausedOrFrozen
+        returns (ITrade trade)
+    {
+        trade = super.settleTrade(sell);
 
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @dev Tokens must be in sorted order!
-    /// @dev Performs a uniqueness check on the erc20s list in O(n)
-    /// @custom:interaction
-    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notPausedOrFrozen {
-        // Token list must not contain duplicates
-        require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate/unsorted tokens");
-        _manageTokens(erc20s);
-    }
-
-    function _manageTokens(IERC20[] calldata erc20s) private {
-        // Call keepers before
-        main.poke();
-
-        if (tradesOpen > 0) return;
-
-        // Do not trade when not SOUND
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
-
-        uint48 basketTimestamp = main.basketHandler().timestamp();
-        if (block.timestamp < basketTimestamp + tradingDelay) return;
-
-        BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
-
-        if (main.basketHandler().fullyCollateralized()) {
-            handoutExcessAssets(erc20s, basketsHeld.bottom);
-        } else {
-            /*
-             * Recollateralization
-             *
-             * Strategy: iteratively move the system on a forgiving path towards capitalization
-             * through a narrowing BU price band. The initial large spread reflects the
-             * uncertainty associated with the market price of defaulted/volatile collateral, as
-             * well as potential losses due to trading slippage. In the absence of further
-             * collateral default, the size of the BU price band should decrease with each trade
-             * until it is 0, at which point capitalization is restored.
-             *
-             * ======
-             *
-             * If we run out of capital and are still undercollateralized, we compromise
-             * rToken.basketsNeeded to the current basket holdings. Haircut time.
-             */
-
-            (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareRecollateralizationTrade(
-                this,
-                basketsHeld
-            );
-
-            if (doTrade) {
-                // Seize RSR if needed
-                if (req.sell.erc20() == main.rsr()) {
-                    uint256 bal = req.sell.erc20().balanceOf(address(this));
-                    if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
-                }
-
-                tryTrade(req);
-            } else {
-                // Haircut time
-                compromiseBasketsNeeded(basketsHeld.bottom);
+        // if the settler is the trade contract itself, try chaining with another rebalance()
+        if (_msgSender() == address(trade)) {
+            // solhint-disable-next-line no-empty-blocks
+            try this.rebalance(trade.KIND()) {} catch (bytes memory errData) {
+                // prevent MEV searchers from providing less gas on purpose by reverting if OOG
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
         }
     }
 
-    /// Send excess assets to the RSR and RToken traders
-    /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager
-    function handoutExcessAssets(IERC20[] calldata erc20s, uint192 wholeBasketsHeld) private {
+    /// Apply the overall backing policy using the specified TradeKind, taking a haircut if unable
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    /// @custom:interaction
+    function rebalance(TradeKind kind) external notTradingPausedOrFrozen {
+        main.assetRegistry().refresh();
+        main.furnace().melt();
+
+        // DoS prevention: unless caller is self, require 1 empty block between like-kind auctions
+        require(
+            _msgSender() == address(this) || tradeEnd[kind] + ONE_BLOCK < block.timestamp,
+            "already rebalancing"
+        );
+
+        require(tradesOpen == 0, "trade open");
+        require(main.basketHandler().isReady(), "basket not ready");
+        require(
+            block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
+            "trading delayed"
+        );
+        require(!main.basketHandler().fullyCollateralized(), "already collateralized");
+
+        // First dissolve any held RToken balance above Distributor-dust
+        // gas-optimization: 1 whole RToken must be worth 100 trillion dollars for this to skip $1
+        uint256 balance = main.rToken().balanceOf(address(this));
+        if (balance >= MAX_DISTRIBUTION * MAX_DESTINATIONS) main.rToken().dissolve(balance);
+        if (main.basketHandler().fullyCollateralized()) return; // return if now capitalized
+
+        /*
+         * Recollateralization
+         *
+         * Strategy: iteratively move the system on a forgiving path towards collateralization
+         * through a narrowing BU price band. The initial large spread reflects the
+         * uncertainty associated with the market price of defaulted/volatile collateral, as
+         * well as potential losses due to trading slippage. In the absence of further
+         * collateral default, the size of the BU price band should decrease with each trade
+         * until it is 0, at which point collateralization is restored.
+         *
+         * If we run out of capital and are still undercollateralized, we compromise
+         * rToken.basketsNeeded to the current basket holdings. Haircut time.
+         */
+
+        BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
+        (bool doTrade, TradeRequest memory req, TradePrices memory prices) = TradingLibP0
+        .prepareRecollateralizationTrade(this, basketsHeld);
+
+        if (doTrade) {
+            // Seize RSR if needed
+            if (req.sell.erc20() == main.rsr()) {
+                uint256 bal = req.sell.erc20().balanceOf(address(this));
+                if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
+            }
+
+            // Execute Trade
+            ITrade trade = tryTrade(kind, req, prices);
+            tradeEnd[kind] = trade.endTime();
+        } else {
+            // Haircut time
+            compromiseBasketsNeeded(basketsHeld.bottom);
+        }
+    }
+
+    /// Forward revenue to RevenueTraders; reverts if not fully collateralized
+    /// @param erc20s The tokens to forward
+    /// @custom:interaction
+    function forwardRevenue(IERC20[] calldata erc20s) external notTradingPausedOrFrozen {
+        require(ArrayLib.allUnique(erc20s), "duplicate tokens");
+
+        main.assetRegistry().refresh();
+        main.furnace().melt();
+
+        require(tradesOpen == 0, "trade open");
+        require(main.basketHandler().isReady(), "basket not ready");
+        require(
+            block.timestamp >= main.basketHandler().timestamp() + tradingDelay,
+            "trading delayed"
+        );
+        require(main.basketHandler().fullyCollateralized(), "undercollateralized");
+
+        BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(address(this));
         assert(main.basketHandler().status() == CollateralStatus.SOUND);
 
         // Special-case RSR to forward to StRSR pool
@@ -131,27 +169,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
 
         // Mint revenue RToken
-        uint192 needed; // {BU}
-        {
-            IRToken rToken = main.rToken();
-            needed = rToken.basketsNeeded(); // {BU}
-            if (wholeBasketsHeld.gt(needed)) {
-                int8 decimals = int8(rToken.decimals());
-                uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
-
-                // {BU} = {BU} - {BU}
-                uint192 extraBUs = wholeBasketsHeld.minus(needed);
-
-                // {qRTok: Fix} = {BU} * {qRTok / BU} (if needed == 0, conv rate is 1 qRTok/BU)
-                uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
-
-                rToken.mint(address(this), rTok);
-                rToken.setBasketsNeeded(wholeBasketsHeld);
-            }
+        // Keep backingBuffer worth of collateral before recognizing revenue
+        uint192 needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // {BU}
+        if (basketsHeld.bottom.gt(needed)) {
+            main.rToken().mint(basketsHeld.bottom.minus(needed));
+            needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer)); // keep buffer
         }
-
-        // Keep a small surplus of individual collateral
-        needed = main.rToken().basketsNeeded().mul(FIX_ONE.plus(backingBuffer));
 
         // Handout excess assets above what is needed, including any newly minted RToken
         RevenueTotals memory totals = main.distributor().totals();
@@ -172,12 +195,15 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 }
                 {
                     uint256 toRToken = tokensPerShare * totals.rTokenTotal;
-                    if (toRToken > 0)
+                    if (toRToken > 0) {
                         erc20s[i].safeTransfer(address(main.rTokenTrader()), toRToken);
+                    }
                 }
             }
         }
     }
+
+    // === Private ===
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     /// @param wholeBasketsHeld {BU} The number of full basket units held by the BackingManager

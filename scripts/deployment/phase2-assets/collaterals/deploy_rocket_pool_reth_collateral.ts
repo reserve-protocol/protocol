@@ -40,26 +40,43 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
+  const deployedOracle: string[] = []
+
+  /********  Deploy Mock Oracle (if needed)  **************************/
+  let rethOracleAddress: string = networkConfig[chainId].chainlinkFeeds.rETH!
+  if (chainId == 5) {
+    const MockOracleFactory = await hre.ethers.getContractFactory('MockV3Aggregator')
+    const mockOracle = await MockOracleFactory.connect(deployer).deploy(8, fp(2000))
+    await mockOracle.deployed()
+    console.log(
+      `Deployed MockV3Aggregator on ${hre.network.name} (${chainId}): ${mockOracle.address} `
+    )
+    deployedOracle.push(mockOracle.address)
+    rethOracleAddress = mockOracle.address
+  }
+
   /********  Deploy Rocket Pool ETH Collateral - rETH  **************************/
 
   const RethCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
     'RethCollateral'
   )
 
+  const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
+
   const collateral = <RethCollateral>await RethCollateralFactory.connect(deployer).deploy(
     {
       priceTimeout: priceTimeout.toString(),
       chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-      oracleError: combinedError(fp('0.005'), fp('0.02')).toString(), // 0.5% & 2%,
+      oracleError: oracleError.toString(), // 0.5% & 2%
       erc20: networkConfig[chainId].tokens.rETH,
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      defaultThreshold: fp('0.15').toString(), // 15%
+      defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
     fp('1e-4').toString(), // revenueHiding = 0.01%
-    networkConfig[chainId].chainlinkFeeds.rETH, // refPerTokChainlinkFeed
+    rethOracleAddress, // refPerTokChainlinkFeed
     oracleTimeout(chainId, '86400').toString() // refPerTokChainlinkTimeout
   )
   await collateral.deployed()
@@ -69,6 +86,7 @@ async function main() {
   console.log(`Deployed Rocketpool rETH to ${hre.network.name} (${chainId}): ${collateral.address}`)
 
   assetCollDeployments.collateral.rETH = collateral.address
+  assetCollDeployments.erc20s.rETH = networkConfig[chainId].tokens.rETH
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

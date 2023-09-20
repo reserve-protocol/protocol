@@ -34,7 +34,6 @@ async function main() {
     'phase1-common/5_deploy_deployer.ts',
     'phase1-common/6_deploy_facadeWrite.ts',
     'phase1-common/7_deploy_facadeAct.ts',
-    'phase1-common/8_deploy_facadeMonitor.ts',
     // =============================================
     'phase2-assets/0_setup_deployments.ts',
     'phase2-assets/1_deploy_assets.ts',
@@ -46,9 +45,14 @@ async function main() {
     'phase2-assets/collaterals/deploy_flux_finance_collateral.ts',
     'phase2-assets/collaterals/deploy_ctokenv3_usdc_collateral.ts',
     'phase2-assets/collaterals/deploy_convex_stable_plugin.ts',
-    'phase2-assets/collaterals/deploy_convex_volatile_plugin.ts',
     'phase2-assets/collaterals/deploy_convex_rToken_metapool_plugin.ts',
     'phase2-assets/collaterals/deploy_convex_stable_metapool_plugin.ts',
+    'phase2-assets/collaterals/deploy_curve_stable_plugin.ts',
+    'phase2-assets/collaterals/deploy_curve_rToken_metapool_plugin.ts',
+    'phase2-assets/collaterals/deploy_curve_stable_metapool_plugin.ts',
+    'phase2-assets/collaterals/deploy_dsr_sdai.ts',
+    'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
+    'phase2-assets/collaterals/deploy_morpho_aavev2_plugin.ts',
     // ===============================================
     // These phase3 scripts will not deploy functional RTokens or Governance. They deploy bricked
     // versions that are used for verification only. Further deployment is left up to the Register.

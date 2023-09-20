@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../libraries/Throttle.sol";
@@ -30,14 +30,19 @@ struct DeploymentParams {
     uint48 longFreeze; // {s} how long each freeze extension lasts
     //
     // === Rewards (Furnace + StRSR) ===
-    uint192 rewardRatio; // the fraction of available revenues that are paid out each 12s period
+    uint192 rewardRatio; // the fraction of available revenues that are paid out each block period
     //
     // === StRSR ===
     uint48 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
+    uint192 withdrawalLeak; // {1} fraction of RSR that can be withdrawn without refresh
+    //
+    // === BasketHandler ===
+    uint48 warmupPeriod; // {s} how long to wait until issuance/trading after regaining SOUND
     //
     // === BackingManager ===
     uint48 tradingDelay; // {s} how long to wait until starting auctions after switching basket
-    uint48 auctionLength; // {s} the length of an auction
+    uint48 batchAuctionLength; // {s} the length of a Gnosis EasyAuction
+    uint48 dutchAuctionLength; // {s} the length of a falling-price dutch auction
     uint192 backingBuffer; // {1} how much extra backing collateral to keep
     uint192 maxTradeSlippage; // {1} max slippage acceptable in a trade
     //
@@ -53,7 +58,12 @@ struct DeploymentParams {
 struct Implementations {
     IMain main;
     Components components;
-    ITrade trade;
+    TradePlugins trading;
+}
+
+struct TradePlugins {
+    ITrade gnosisTrade;
+    ITrade dutchTrade;
 }
 
 /**
@@ -75,6 +85,11 @@ interface IDeployer is IVersioned {
         string version
     );
 
+    /// Emitted when a new RTokenAsset is deployed during `deployRTokenAsset`
+    /// @param rToken The address of the RToken ERC20
+    /// @param rTokenAsset The address of the RTokenAsset
+    event RTokenAssetCreated(IRToken indexed rToken, IAsset rTokenAsset);
+
     //
 
     /// Deploys an instance of the entire system
@@ -91,6 +106,10 @@ interface IDeployer is IVersioned {
         address owner,
         DeploymentParams calldata params
     ) external returns (address);
+
+    /// Deploys a new RTokenAsset instance. Not needed during normal deployment flow
+    /// @param maxTradeVolume {UoA} The maximum trade volume for the RTokenAsset
+    function deployRTokenAsset(IRToken rToken, uint192 maxTradeVolume) external returns (IAsset);
 }
 
 interface TestIDeployer is IDeployer {

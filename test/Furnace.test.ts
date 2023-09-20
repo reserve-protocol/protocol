@@ -1,4 +1,4 @@
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import { loadFixture, setStorageAt } from '@nomicfoundation/hardhat-network-helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory } from 'ethers'
@@ -6,7 +6,7 @@ import hre, { ethers, upgrades } from 'hardhat'
 import { IConfig, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
 import {
-  CTokenMock,
+  CTokenWrapperMock,
   ERC20Mock,
   StaticATokenMock,
   TestIFurnace,
@@ -26,12 +26,13 @@ import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
 import { ONE_PERIOD, ZERO_ADDRESS } from '../common/constants'
 import { useEnv } from '#/utils/env'
+import { mintCollaterals } from './utils/tokens'
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe.only : describe.skip
 
 const describeExtreme =
-  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe
+  IMPLEMENTATION == Implementation.P1 && useEnv('EXTREME') ? describe.only : describe.skip
 
 describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
@@ -51,7 +52,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let token0: ERC20Mock
   let token1: ERC20Mock
   let token2: StaticATokenMock
-  let token3: CTokenMock
+  let token3: CTokenWrapperMock
 
   let collateral0: Collateral
   let collateral1: Collateral
@@ -62,9 +63,41 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
   // Implementation-agnostic interface for deploying the Furnace
   const deployNewFurnace = async (): Promise<TestIFurnace> => {
-    // Deploy fixture
-    ;({ furnace } = await loadFixture(defaultFixture))
+    let FurnaceFactory: ContractFactory
+    let furnace: TestIFurnace
+    if (IMPLEMENTATION == Implementation.P0) {
+      FurnaceFactory = await ethers.getContractFactory('FurnaceP0')
+      furnace = <TestIFurnace>await FurnaceFactory.deploy()
+    } else if (IMPLEMENTATION == Implementation.P1) {
+      FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
+      furnace = <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
+        kind: 'uups',
+      })
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    }
+
     return furnace
+  }
+
+  const setFurnace = async (main: TestIMain, furnace: TestIFurnace) => {
+    if (IMPLEMENTATION == Implementation.P0) {
+      // Setup new furnace correctly in MainP0 - Slot 209 (0xD1)
+      await setStorageAt(
+        main.address,
+        '0xD1',
+        ethers.utils.hexlify(ethers.utils.zeroPad(furnace.address, 32))
+      )
+    } else if (IMPLEMENTATION == Implementation.P1) {
+      // Setup new furnace correctly in RTokenP1 - Slot 357 (0x165)
+      await setStorageAt(
+        await main.rToken(),
+        '0x165',
+        ethers.utils.hexlify(ethers.utils.zeroPad(furnace.address, 32))
+      )
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    }
   }
 
   beforeEach(async () => {
@@ -84,18 +117,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
-    token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token3 = <CTokenWrapperMock>(
+      await ethers.getContractAt('CTokenWrapperMock', await collateral3.erc20())
+    )
 
     // Mint Tokens
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
-
-    await token0.connect(owner).mint(addr2.address, initialBal)
-    await token1.connect(owner).mint(addr2.address, initialBal)
-    await token2.connect(owner).mint(addr2.address, initialBal)
-    await token3.connect(owner).mint(addr2.address, initialBal)
+    await mintCollaterals(owner, [addr1, addr2], initialBal, basket)
   })
 
   describe('Deployment #fast', () => {
@@ -107,19 +134,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
     // Applies to all components - used here as an example
     it('Deployment does not accept invalid main address', async () => {
-      let FurnaceFactory: ContractFactory
-      if (IMPLEMENTATION == Implementation.P0) {
-        FurnaceFactory = await ethers.getContractFactory('FurnaceP0')
-        return <TestIFurnace>await FurnaceFactory.deploy()
-      } else if (IMPLEMENTATION == Implementation.P1) {
-        FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
-        return <TestIFurnace>await upgrades.deployProxy(FurnaceFactory, [], {
-          kind: 'uups',
-        })
-      } else {
-        throw new Error('PROTO_IMPL must be set to either `0` or `1`')
-      }
-      const newFurnace = await FurnaceFactory.deploy()
+      const newFurnace: TestIFurnace = await deployNewFurnace()
       await expect(newFurnace.init(ZERO_ADDRESS, config.rewardRatio)).to.be.revertedWith(
         'main is zero address'
       )
@@ -179,14 +194,19 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr2).issue(issueAmount)
     })
 
-    it('Should not melt if paused #fast', async () => {
-      await main.connect(owner).pause()
-      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
+    it('Should melt if trading paused #fast', async () => {
+      await main.connect(owner).pauseTrading()
+      await furnace.connect(addr1).melt()
+    })
+
+    it('Should melt if issuance paused #fast', async () => {
+      await main.connect(owner).pauseIssuance()
+      await furnace.connect(addr1).melt()
     })
 
     it('Should not melt if frozen #fast', async () => {
       await main.connect(owner).freezeShort()
-      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
+      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('frozen')
     })
 
     it('Should not melt any funds in the initial block #fast', async () => {
@@ -237,12 +257,13 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
 
       // Advance one period
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await advanceTime(Number(ONE_PERIOD))
 
       // Melt
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
-      // Another call to melt should also have no impact
+      // Another immediate call to melt should also have no impact
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
@@ -256,7 +277,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).transfer(furnace.address, hndAmt)
 
       // Get past first noop melt
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await advanceTime(Number(ONE_PERIOD))
 
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
@@ -274,81 +295,12 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
         .to.emit(rToken, 'Melted')
         .withArgs(hndAmt.sub(expAmt))
 
-      // Another call to melt should have no impact
+      // Another call to melt right away before next period should have no impact
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
-    })
-
-    it('Should accumulate negligible error - parallel furnaces', async () => {
-      // Maintain two furnaces in parallel, one burning every block and one burning annually
-      // We have to use two brand new instances here to ensure their timestamps are synced
-      const firstFurnace = await deployNewFurnace()
-      const secondFurnace = await deployNewFurnace()
-
-      // Set automine to false for multiple transactions in one block
-      await hre.network.provider.send('evm_setAutomine', [false])
-
-      // Populate balances
-      const hndAmt: BigNumber = bn('1e18')
-      await rToken.connect(addr1).transfer(firstFurnace.address, hndAmt)
-      await rToken.connect(addr1).transfer(secondFurnace.address, hndAmt)
-      await firstFurnace.init(main.address, config.rewardRatio)
-      await secondFurnace.init(main.address, config.rewardRatio)
-      await advanceBlocks(1)
-
-      // Set automine to true again
-      await hre.network.provider.send('evm_setAutomine', [true])
-
-      const oneDay = bn('86400')
-      for (let i = 0; i < Number(oneDay.div(ONE_PERIOD)); i++) {
-        // Advance a period
-        await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-        await firstFurnace.melt()
-        // secondFurnace does not melt
-      }
-
-      // SecondFurnace melts once
-      await secondFurnace.melt()
-
-      const one = await rToken.balanceOf(firstFurnace.address)
-      const two = await rToken.balanceOf(secondFurnace.address)
-      const diff = one.sub(two).abs() // {qRTok}
-      const expectedDiff = bn(3555) // empirical exact diff
-      // At a rate of 3555 qRToken per day error, a year's worth of error would result in
-      // a difference only starting in the 12th decimal place: .000000000001
-      // This seems more than acceptable
-
-      expect(diff).to.be.lte(expectedDiff)
-    })
-
-    it('Should accumulate negligible error - a year all at once', async () => {
-      const hndAmt: BigNumber = bn('10e18')
-
-      // Transfer
-      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
-
-      // Get past first noop melt
-      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
-      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
-      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
-
-      const periods = 2628000 // one year worth
-
-      // Advance a year's worth of periods
-      await setNextBlockTimestamp(
-        Number(await getLatestBlockTimestamp()) + periods * Number(ONE_PERIOD)
-      )
-
-      // Precise JS calculation should be within 3 atto
-      const decayFn = makeDecayFn(await furnace.ratio())
-      const expAmt = decayFn(hndAmt, periods)
-      const error = bn('3')
-      await expect(furnace.melt()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt).add(error))
-      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
-      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt.sub(error))
     })
 
     it('Should allow melt - two periods, one at a time #fast', async () => {
@@ -411,15 +363,127 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       const expAmt = decayFn(hndAmt, 1) // 1 period
 
       // Melt
-      await expect(furnace.setRatio(bn('1e17')))
+      await expect(furnace.setRatio(bn('1e13')))
         .to.emit(rToken, 'Melted')
         .withArgs(hndAmt.sub(expAmt))
 
-      // Another call to melt should have no impact
+      // Another call to melt right away before next period should have no impact
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 1)
       await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
       expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt)
+    })
+
+    it('Should accumulate negligible error - a year all at once', async () => {
+      const hndAmt: BigNumber = bn('10e18')
+
+      // Transfer
+      await rToken.connect(addr1).transfer(furnace.address, hndAmt)
+
+      // Get past first noop melt
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await expect(furnace.connect(addr1).melt()).to.not.emit(rToken, 'Melted')
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(hndAmt)
+
+      const periods = 2628000 // one year worth
+
+      // Advance a year's worth of periods
+      await setNextBlockTimestamp(
+        Number(await getLatestBlockTimestamp()) + periods * Number(ONE_PERIOD)
+      )
+
+      // Precise JS calculation should be within 3 atto
+      const decayFn = makeDecayFn(await furnace.ratio())
+      const expAmt = decayFn(hndAmt, periods)
+      const error = bn('3')
+      await expect(furnace.melt()).to.emit(rToken, 'Melted').withArgs(hndAmt.sub(expAmt).add(error))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.sub(hndAmt))
+      expect(await rToken.balanceOf(furnace.address)).to.equal(expAmt.sub(error))
+    })
+
+    it('Should accumulate negligible error - parallel furnaces', async () => {
+      // Maintain two furnaces in parallel, one burning every block and one burning annually
+      // We have to use two brand new instances here to ensure their timestamps are synced
+      const firstFurnace = await deployNewFurnace()
+      const secondFurnace = await deployNewFurnace()
+
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      // Populate balances
+      const hndAmt: BigNumber = bn('1e18')
+      await rToken.connect(addr1).transfer(firstFurnace.address, hndAmt)
+      await rToken.connect(addr1).transfer(secondFurnace.address, hndAmt)
+      await firstFurnace.init(main.address, config.rewardRatio)
+      await secondFurnace.init(main.address, config.rewardRatio)
+      await advanceBlocks(1)
+
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
+
+      const oneDay = bn('86400')
+      await setFurnace(main, firstFurnace)
+      for (let i = 0; i < Number(oneDay.div(ONE_PERIOD)); i++) {
+        // Advance a period
+        await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+        await firstFurnace.melt()
+        // secondFurnace does not melt
+      }
+
+      // SecondFurnace melts once
+      await setFurnace(main, secondFurnace)
+      await secondFurnace.melt()
+
+      const one = await rToken.balanceOf(firstFurnace.address)
+      const two = await rToken.balanceOf(secondFurnace.address)
+      const diff = one.sub(two).abs() // {qRTok}
+      const expectedDiff = bn(3555) // empirical exact diff
+      // At a rate of 3555 qRToken per day error, a year's worth of error would result in
+      // a difference only starting in the 12th decimal place: .000000000001
+      // This seems more than acceptable
+
+      expect(diff).to.be.lte(expectedDiff)
+    })
+
+    it('Regression test -- C4 June 2023 Issue #29', async () => {
+      // https://github.com/code-423n4/2023-06-reserve-findings/issues/29
+
+      // Transfer to Furnace and do first melt
+      await rToken.connect(addr1).transfer(furnace.address, bn('10e18'))
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await furnace.melt()
+
+      // Should have updated lastPayout + lastPayoutBal
+      expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
+      expect(await furnace.lastPayout()).to.be.lte(await getLatestBlockTimestamp())
+      expect(await furnace.lastPayoutBal()).to.equal(bn('10e18'))
+
+      // Advance 99 periods -- should melt at old ratio
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 99 * Number(ONE_PERIOD))
+
+      // Freeze and change ratio
+      await main.connect(owner).freezeForever()
+      const maxRatio = bn('1e14')
+      await expect(furnace.connect(owner).setRatio(maxRatio))
+        .to.emit(furnace, 'RatioSet')
+        .withArgs(config.rewardRatio, maxRatio)
+
+      // Should have updated lastPayout + lastPayoutBal
+      expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
+      expect(await furnace.lastPayout()).to.be.lte(await getLatestBlockTimestamp())
+      expect(await furnace.lastPayoutBal()).to.equal(bn('10e18')) // no change
+
+      // Unfreeze and advance 1 period
+      await main.connect(owner).unfreeze()
+      await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + Number(ONE_PERIOD))
+      await expect(furnace.melt()).to.emit(rToken, 'Melted')
+
+      // Should have updated lastPayout + lastPayoutBal
+      expect(await furnace.lastPayout()).to.be.closeTo(await getLatestBlockTimestamp(), 12)
+      expect(await furnace.lastPayout()).to.be.lte(await getLatestBlockTimestamp())
+      expect(await furnace.lastPayoutBal()).to.equal(bn('9.999e18'))
     })
   })
 
@@ -458,7 +522,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     }
 
     it('Should not revert at extremes', async () => {
-      const ratios = [fp('1'), fp('0'), fp('0.000001069671574938')]
+      const ratios = [bn('1e14'), fp('0'), fp('0.000001069671574938')]
 
       const bals = [fp('1e18'), fp('0'), bn('1e9')]
 

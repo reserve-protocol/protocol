@@ -28,12 +28,20 @@ async function main() {
     'contracts/p1/Main.sol:MainP1'
   )
 
-  // /** ******************** Verify Trade implementation ****************************************/
+  // /** ******************** Verify GnosisTrade implementation ****************************************/
   await verifyContract(
     chainId,
-    deployments.implementations.trade,
+    deployments.implementations.trading.gnosisTrade,
     [],
     'contracts/plugins/trading/GnosisTrade.sol:GnosisTrade'
+  )
+
+  // /** ******************** Verify DutchTrade implementation ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.implementations.trading.dutchTrade,
+    [],
+    'contracts/plugins/trading/DutchTrade.sol:DutchTrade'
   )
 
   /** ******************** Verify Components  ****************************************/
@@ -56,11 +64,17 @@ async function main() {
       name: 'backingManager',
       desc: 'BackingManager',
       contract: 'contracts/p1/BackingManager.sol:BackingManagerP1',
+      libraries: {
+        RecollateralizationLibP1: deployments.tradingLib,
+      },
     },
     {
       name: 'basketHandler',
       desc: 'BasketHandler',
       contract: 'contracts/p1/BasketHandler.sol:BasketHandlerP1',
+      libraries: {
+        BasketLibP1: deployments.basketLib,
+      },
     },
     {
       name: 'broker',

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -11,8 +11,11 @@ import "../../libraries/Fixed.sol";
 import "./Component.sol";
 import "./RewardableLib.sol";
 
-/// Abstract trading mixin for all Traders, to be paired with TradingLib
-/// @dev See docs/security for discussion of Multicall safety
+/// Abstract trading mixin for BackingManager + RevenueTrader.
+/// @dev The use of Multicall here instead of MulticallUpgradeable cannot be
+///   changed without breaking <3.0.0 RTokens. The only difference in
+///   MulticallUpgradeable is the 50 slot storage gap and an empty constructor.
+///   It should be fine to leave the non-upgradeable Multicall here permanently.
 abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeable, ITrading {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -29,8 +32,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     // === Governance param ===
     uint192 public maxTradeSlippage; // {%}
-
     uint192 public minTradeVolume; // {UoA}
+
+    // === 3.0.0 ===
+    uint256 public tradesNonce; // to keep track of how many trades have been opened in total
 
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
@@ -51,11 +56,29 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         setMinTradeVolume(minTradeVolume_);
     }
 
+    /// Claim all rewards
+    /// Collective Action
+    /// @custom:interaction CEI
+    function claimRewards() external notTradingPausedOrFrozen {
+        RewardableLibP1.claimRewards(main.assetRegistry());
+    }
+
+    /// Claim rewards for a single asset
+    /// Collective Action
+    /// @param erc20 The ERC20 to claimRewards on
+    /// @custom:interaction CEI
+    function claimRewardsSingle(IERC20 erc20) external notTradingPausedOrFrozen {
+        RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
+    }
+
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
+    /// @param sell The sell token in the trade
+    /// @return trade The ITrade contract settled
     /// @custom:interaction (only reads or writes trades, and is marked `nonReentrant`)
     // checks:
-    //   !paused, !frozen
+    //   !paused (trading), !frozen
     //   trade[sell].canSettle()
+    //   (see override)
     // actions:
     //   trade[sell].settle()
     // effects:
@@ -63,9 +86,9 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     //   tradesOpen' = tradesOpen - 1
     // untested:
     //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    function settleTrade(IERC20 sell) external notPausedOrFrozen nonReentrant {
-        ITrade trade = trades[sell];
-        if (address(trade) == address(0)) return;
+    function settleTrade(IERC20 sell) public virtual nonReentrant returns (ITrade trade) {
+        trade = trades[sell];
+        require(address(trade) != address(0), "no trade open");
         require(trade.canSettle(), "cannot settle yet");
 
         delete trades[sell];
@@ -76,23 +99,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
     }
 
-    /// Claim all rewards
-    /// Collective Action
-    /// @custom:interaction CEI
-    function claimRewards() external notPausedOrFrozen {
-        RewardableLibP1.claimRewards(main.assetRegistry());
-    }
-
-    /// Claim rewards for a single asset
-    /// Collective Action
-    /// @param erc20 The ERC20 to claimRewards on
-    /// @custom:interaction CEI
-    function claimRewardsSingle(IERC20 erc20) external notPausedOrFrozen {
-        RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
-    }
-
     /// Try to initiate a trade with a trading partner provided by the broker
-    /// @custom:interaction (only reads or writes `trades`, and is marked `nonReentrant`)
+    /// @param kind TradeKind.DUTCH_AUCTION or TradeKind.BATCH_AUCTION
+    /// @return trade The trade contract created
+    /// @custom:interaction Assumption: Caller is nonReentrant
     // checks:
     //   (not external, so we don't need auth or pause checks)
     //   trades[req.sell] == 0
@@ -102,23 +112,22 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
-    //
-    // untested:
-    //      OZ nonReentrant line is assumed to be working. cost/benefit of direct testing is high
-    // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
-    // this contract that changes state this function refers to.
-    // slither-disable-next-line reentrancy-vulnerabilities-1
-    function tryTrade(TradeRequest memory req) internal nonReentrant {
-        /*  */
+    function tryTrade(
+        TradeKind kind,
+        TradeRequest memory req,
+        TradePrices memory prices
+    ) internal returns (ITrade trade) {
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
         IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
-        ITrade trade = broker.openTrade(req);
 
+        trade = broker.openTrade(kind, req, prices);
         trades[sell] = trade;
         tradesOpen++;
+        tradesNonce++;
+
         emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
@@ -138,21 +147,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         minTradeVolume = val;
     }
 
-    // === FixLib Helper ===
-
-    /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDivCeil(
-        uint192 x,
-        uint192 y,
-        uint192 z
-    ) external pure returns (uint192) {
-        return x.mulDiv(y, z, CEIL);
-    }
-
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[45] private __gap;
 }
