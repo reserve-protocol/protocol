@@ -60,13 +60,13 @@ You should also setup `slither`. The [Trail of Bits tools][tob-suite] require so
 
 ```bash
 # Install solc-select and slither
-pip3 install solc-select slither-analyzer
+pip3 install solc-select slither-analyzer==0.9.3
 
 # Install and use solc version 0.8.19
 solc-select install 0.8.19
 solc-select use 0.8.19
 
-# Double-check that your slither version is at least 0.8.3!
+# Double-check that your slither version is 0.9.3!
 hash -r && slither --version
 ```
 
