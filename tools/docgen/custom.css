@@ -1,0 +1,116 @@
+:root {
+    font-size: 62.5%;
+    --rp-blue: rgb(1, 81, 175);
+    --rp-offwhite: #F9EDDD;
+    --rp-black: #000000;
+    --rp-cream: #F9EDDD;
+    --white: #ffffff;
+}
+
+html {
+    font-family: "Arial";
+    color: var(--rp-black);
+    background-color: var(--white);
+    text-size-adjust: none;
+    -webkit-text-size-adjust: none;
+}
+
+body {
+    margin: 0;
+    font-size: 2rem;
+    line-height: 1.6;
+    overflow-x: hidden;
+    background-color: var(--white);
+}
+
+/* Typography */
+h1 a, h2 a, h3 a, body h4, body header {
+    color: var(--rp-blue) !important;
+}
+
+.menu-title {
+    color: var(--rp-black);
+    opacity: 70%;
+    font-size: larger;
+    font-family: "Open Sans";
+}
+
+.chapter li a.active {
+    font-weight: bold;
+    color: var(--rp-cream);
+}
+
+/* Table Styles */
+table thead {
+    background-color: var(--rp-blue) !important;
+}
+
+table tbody tr {
+    background-color: var(--rp-cream) !important;
+}
+
+tr th {
+    color: var(--rp-offwhite);
+}
+
+/* Blockquote Style */
+blockquote {
+    margin: 20px 0;
+    padding: 0 20px;
+    color: var(--rp-black);
+    background-color: var(--rp-cream);
+    border-top: 0.1em solid var(--rp-blue);
+    border-bottom: 0.1em solid var(--rp-blue);
+}
+
+/* Code Style */
+code.hljs {
+    background-color: var(--rp-offwhite);
+    color: var(--rp-blue) !important;
+}
+
+/* Form Styles */
+textarea {
+    background-color: var(--white);
+    color: var(--rp-black);
+}
+
+#searchbar {
+    background-color: var(--rp-cream);
+}
+
+#searchbar:focus {
+    box-shadow: 0 0 2px var(--rp-blue);
+}
+
+#searchbar:focus-visible {
+    outline: var(--rp-blue) solid 0.5px;
+    outline-offset: 0px;
+}
+
+/* Navigation Styles */
+#menu-bar {
+    background-color: var(--rp-offwhite);
+    border: none;
+}
+
+.nav-chapters:hover, .mobile-nav-chapters {
+    background-color: var(--rp-offwhite) !important;
+}
+
+.chapter-item {
+    font-size: larger;
+}
+
+.sidebar-scrollbox, .fa-copy:hover {
+    background-color: var(--rp-blue) !important;
+}
+
+/* Icon Styles */
+.fa-copy {
+    background-color: var(--rp-cream) !important;
+}
+
+i.fa-paint-brush {
+    display: none !important;
+}
