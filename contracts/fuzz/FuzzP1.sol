@@ -445,6 +445,8 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
         return (FIX_ONE_256 * basketsNeeded) / totalSupply();
     }
 
+    /*
+    *  deprecated 3.0.0 - we can now go beyond MIN and MAX exchange rate with melt()
     function invariantsHold() external view returns (bool) {
         uint256 supply = totalSupply();
         if (supply == 0) return true;
@@ -459,6 +461,8 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
         require(low >= MIN_EXCHANGE_RATE && high <= MAX_EXCHANGE_RATE, "BU rate out of range");
         return true;
     }
+    *
+    */
 }
 
 contract StRSRP1Fuzz is StRSRP1 {

@@ -320,7 +320,8 @@ const scenarioSpecificTests = () => {
     expect(await scenario.echidna_furnaceInvariants()).to.be.true
     expect(await scenario.echidna_rsrTraderInvariants()).to.be.true
     expect(await scenario.echidna_rTokenTraderInvariants()).to.be.true
-    expect(await scenario.echidna_rTokenInvariants()).to.be.true
+    // deprecated 3.0.0
+    // expect(await scenario.echidna_rTokenInvariants()).to.be.true
     expect(await scenario.echidna_stRSRInvariants()).to.be.true
     expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.be.true
   })

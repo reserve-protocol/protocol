@@ -493,6 +493,8 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
       expect(await scenario.echidna_stRSRInvariants()).to.be.true
     })
 
+    /* deprecated 3.0.0
+     *
     it('maintains RToken invariants after calling issue', async () => {
       await warmup()
       // As Alice, make allowances
@@ -506,6 +508,8 @@ export default function fn<X extends FuzzTestFixture>(context: FuzzTestContext<X
 
       expect(await scenario.echidna_rTokenInvariants()).to.be.true
     })
+    *
+    */
 
     it('does not have the backingManager double-revenue bug', async () => {
       await warmup()

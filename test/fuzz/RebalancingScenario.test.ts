@@ -320,7 +320,8 @@ const scenarioSpecificTests = () => {
     expect(await scenario.echidna_furnaceInvariants()).to.be.true
     expect(await scenario.echidna_rsrTraderInvariants()).to.be.true
     expect(await scenario.echidna_rTokenTraderInvariants()).to.be.true
-    expect(await scenario.echidna_rTokenInvariants()).to.be.true
+    // deprecated 3.0.0
+    // expect(await scenario.echidna_rTokenInvariants()).to.be.true
     expect(await scenario.echidna_stRSRInvariants()).to.be.true
     expect(await scenario.callStatic.echidna_refreshBasketIsNoopDuringAfterRebalancing()).to.be.true
     expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.be.true
@@ -997,6 +998,8 @@ const scenarioSpecificTests = () => {
       expect(await scenario.callStatic.echidna_dutchRebalancingProperties()).to.equal(true)
     })
 
+    /* deprecated 3.0.0
+    *
     it('the rToken invariant had an underflowing index computation', async () => {
       await warmup()
       await scenario.connect(alice).issue(20_000n * exa)
@@ -1004,6 +1007,8 @@ const scenarioSpecificTests = () => {
       await advanceBlocks(1)
       expect(await scenario.callStatic.echidna_rTokenInvariants()).to.be.true
     })
+    *
+    */
 
     it('the quoteProportional property would fail right after a hard default', async () => {
       await warmup()
@@ -1175,7 +1180,8 @@ const scenarioSpecificTests = () => {
     await scenario.echidna_isFullyCollateralizedAfterRebalancing()
     await scenario.echidna_mainInvariants()
     await scenario.echidna_quoteProportionalWhenFullyCollateralized()
-    await scenario.echidna_rTokenInvariants()
+    // deprecated 3.0.0
+    // await scenario.echidna_rTokenInvariants()
     await scenario.echidna_rTokenTraderInvariants()
     await scenario.echidna_refreshBasketIsNoopDuringAfterRebalancing()
     await scenario.echidna_refreshBasketProperties()
@@ -1198,7 +1204,8 @@ const scenarioSpecificTests = () => {
     await scenario.echidna_isFullyCollateralizedAfterRebalancing()
     await scenario.echidna_mainInvariants()
     await scenario.echidna_quoteProportionalWhenFullyCollateralized()
-    await scenario.echidna_rTokenInvariants()
+    // deprecated 3.0.0
+    // await scenario.echidna_rTokenInvariants()
     await scenario.echidna_rTokenTraderInvariants()
     await scenario.echidna_refreshBasketIsNoopDuringAfterRebalancing()
     await scenario.echidna_refreshBasketProperties()

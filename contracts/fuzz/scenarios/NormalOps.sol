@@ -731,9 +731,13 @@ contract NormalOpsScenario {
         return RevenueTraderP1Fuzz(address(main.rTokenTrader())).invariantsHold();
     }
 
+    /* deprecated 3.0.0
+    *
     function echidna_rTokenInvariants() external view returns (bool) {
         return RTokenP1Fuzz(address(main.rToken())).invariantsHold();
     }
+    *
+    */
 
     function echidna_stRSRInvariants() external view returns (bool) {
         return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
