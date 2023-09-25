@@ -22,6 +22,9 @@ type IEnvVars =
   | 'TENDERLY_RPC_URL'
   | 'SKIP_PROMPT'
   | 'BASE_GOERLI_RPC_URL'
+  | 'BASE_RPC_URL'
+  | 'FORK_NETWORK'
+  | 'FORK_BLOCK'
 
 export function useEnv(key: IEnvVars | IEnvVars[], _default = ''): string {
   if (typeof key === 'string') {

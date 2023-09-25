@@ -5,6 +5,7 @@ import { networkConfig } from '../../../../common/configuration'
 export const RSR = networkConfig['31337'].tokens.RSR as string
 export const STETH_USD_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.stETHUSD as string
 export const STETH_ETH_PRICE_FEED = networkConfig['31337'].chainlinkFeeds.stETHETH as string
+export const WSTETH_STETH_EXCHANGE_RATE_FEED = networkConfig['8453'].chainlinkFeeds.wstETHstETHexr as string
 export const STETH = networkConfig['31337'].tokens.stETH as string
 export const WSTETH = networkConfig['31337'].tokens.wstETH as string
 export const WETH = networkConfig['31337'].tokens.WETH as string

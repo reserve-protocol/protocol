@@ -14,6 +14,9 @@ import { L2LSDCollateral } from "../L2LSDCollateral.sol";
  * ref = ETH2
  * tar = ETH
  * UoA = USD
+ * 
+ * NOTE: This collateral is not currently useable, as there is no rETH deployed on any L2s.
+ * 
  */
 contract RethCollateralL2 is L2LSDCollateral {
     using OracleLib for AggregatorV3Interface;

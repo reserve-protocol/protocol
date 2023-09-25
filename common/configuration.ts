@@ -78,6 +78,8 @@ export interface ITokens {
 export interface IFeeds {
   stETHETH?: string
   stETHUSD?: string
+  wstETHstETHexr?: string
+  cbETHETHexr?: string
 }
 
 export interface IPools {
@@ -487,6 +489,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       RSR: '0xaB36452DbAC151bE02b16Ca17d8919826072f64a',
       COMP: '0x9e1028F5F1D5eDE59748FFceE5532509976840E0',
       WETH: '0x4200000000000000000000000000000000000006',
+      cbETH: '0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22',
       cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
       aUSDbCv3: '0x0a1d576f3eFeF75b330424287a95A366e8281D54',
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
@@ -501,6 +504,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       COMP: '0x9dda783de64a9d1a60c49ca761ebe528c35ba428', // 0.5%, 24hr
       cbETH: '0x806b4ac04501c29769051e42783cf04dce41440b', // 0.5%, 24hr
       RSR: '0xAa98aE504658766Dfe11F31c5D95a0bdcABDe0b1', // 2%, 24hr
+      wstETHstETHexr: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24hr
+      cbETHETHexr: '0x868a501e68F3D1E89CfC0D22F6b22E8dabce5F04', // 0.5%, 24hr
     },
     GNOSIS_EASY_AUCTION: '0xcdf32E323e69090eCA17adDeF058A6A921c3e75A', // mock
   },

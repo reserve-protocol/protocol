@@ -15,6 +15,9 @@ import "../L2LSDCollateral.sol";
  * ref = stETH (pegged to ETH 1:1)
  * tar = ETH
  * UoA = USD
+ * 
+ * * NOTE: This collateral is not currently useable, as there is no wstETH deployed on any L2s.
+ * 
  */
 contract LidoStakedEthCollateralL2 is L2LSDCollateral {
     using OracleLib for AggregatorV3Interface;

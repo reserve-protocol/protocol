@@ -23,8 +23,15 @@ const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
 const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
+const BASE_RPC_URL = useEnv('BASE_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
+
+type Network = 'mainnet' | 'base'
+const forkRpcs = {
+  'mainnet': MAINNET_RPC_URL,
+  'base': BASE_RPC_URL,
+}
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
@@ -36,8 +43,8 @@ const config: HardhatUserConfig = {
       // network for tests/in-process stuff
       forking: useEnv('FORK')
         ? {
-            url: MAINNET_RPC_URL,
-            blockNumber: Number(useEnv('MAINNET_BLOCK', forkBlockNumber['default'].toString())),
+            url: forkRpcs[useEnv('FORK_NETWORK') as Network ?? 'mainnet'],
+            blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
           }
         : undefined,
       gas: 0x1ffffffff,
