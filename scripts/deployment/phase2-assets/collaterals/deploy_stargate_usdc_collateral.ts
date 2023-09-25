@@ -70,17 +70,20 @@ async function main() {
 
   const collateral = <StargatePoolFiatCollateral>await StargateCollateralFactory.connect(
     deployer
-  ).deploy({
-    priceTimeout: priceTimeout.toString(),
-    chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-    oracleError: fp('0.0025').toString(), // 0.25%,
-    erc20: erc20.address,
-    maxTradeVolume: fp('1e6').toString(), // $1m,
-    oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h hr,
-    targetName: hre.ethers.utils.formatBytes32String('USD'),
-    defaultThreshold: fp('0.0125').toString(), // 1.25%
-    delayUntilDefault: bn('86400').toString(), // 24h
-  })
+  ).deploy(
+    {
+      priceTimeout: priceTimeout.toString(),
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
+      oracleError: fp('0.0025').toString(), // 0.25%,
+      erc20: erc20.address,
+      maxTradeVolume: fp('1e6').toString(), // $1m,
+      oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24h hr,
+      targetName: hre.ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: fp('0.0125').toString(), // 1.25%
+      delayUntilDefault: bn('86400').toString(), // 24h
+    },
+    fp('0') // no revenueHiding
+  )
   await collateral.deployed()
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
