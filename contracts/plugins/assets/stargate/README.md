@@ -45,10 +45,10 @@ To use the wrapper token for automatic staking and reward collection, follow the
 
 ## Collateral plugin
 
-There are 2 variants of this plugin that can be deployed.
+There are 2 variants of this plugin:
 
-1. **`StargatePoolFiatCollateral`**: This contract serves for the USDC, USDT and any other USD-pegged token. The target for these collaterals is **USD**.
-2. **`StargatePoolETHCollateral`**: This contract serves the ETH pool. The underlying token for the Stargate ETH pool is SGETH which is mapped 1:1 with ETH. The chainlink feed that will then be provided during deployment would be an ETH-USD oracle. The target for this collateral is **ETH**.
+1. **`StargatePoolFiatCollateral`**: This contract serves for the USDC, USDT and any other USD-pegged token. The target for these collaterals is **USD**. Ready for deployment and use.
+2. **`StargatePoolETHCollateral`**: _DEPRECATED_. This contract serves the ETH pool. The underlying token for the Stargate ETH pool is SGETH which is mapped 1:1 with ETH. The chainlink feed that will then be provided during deployment would be an ETH-USD oracle. The target for this collateral is **ETH**. _Warning: Not ready to be used in Production_
 
 The **`{ref/tok}`** is computed as the ratio of the total liquidity to the total LP tokens in circulation. This ratio never drops except for a very rare occasion where the pool's total supply drops to zero, in which case the **`{ref/tok}`** falls back to 1 and the plugin will default under such circumstances.
 

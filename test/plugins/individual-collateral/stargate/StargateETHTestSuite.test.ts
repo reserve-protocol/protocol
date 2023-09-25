@@ -1,3 +1,4 @@
+/** DEPRECATED
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import collateralTests from '../collateralTests'
 import { ETH_USD_PRICE_FEED } from './constants'
@@ -26,3 +27,4 @@ const volatileOpts = {
 }
 
 collateralTests(volatileOpts)
+*/
