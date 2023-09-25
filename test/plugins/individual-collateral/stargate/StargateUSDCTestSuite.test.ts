@@ -63,6 +63,7 @@ export const defaultStargateCollateralOpts: StargateCollateralOpts = {
   defaultThreshold: DEFAULT_THRESHOLD,
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   type: CollateralType.STABLE,
+  revenueHiding: fp('0'),
 }
 
 export const deployCollateral = async (
@@ -86,6 +87,7 @@ export const deployCollateral = async (
       defaultThreshold: opts.defaultThreshold,
       delayUntilDefault: opts.delayUntilDefault,
     },
+    opts.revenueHiding,
     { gasLimit: 2000000000 }
   )
   await collateral.deployed()

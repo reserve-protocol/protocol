@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import "./interfaces/IStargateLPStaking.sol";
 import "./interfaces/IStargatePool.sol";
-
 import "../erc20/RewardableERC20Wrapper.sol";
 
 contract StargateRewardableWrapper is RewardableERC20Wrapper {
@@ -42,9 +41,7 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
     }
 
     function _claimAssetRewards() internal override {
-        IStargateLPStaking.PoolInfo memory poolInfo = stakingContract.poolInfo(poolId);
-
-        if (poolInfo.allocPoint != 0 && totalSupply() != 0) {
+        if (stakingContract.totalAllocPoint() != 0 && totalSupply() != 0) {
             stakingContract.deposit(poolId, 0);
         } else {
             stakingContract.emergencyWithdraw(poolId);
