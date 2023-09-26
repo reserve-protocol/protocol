@@ -5,7 +5,7 @@ import { CEIL, FIX_MAX, FixLib, _safeWrap } from "../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "./OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "./AppreciatingFiatCollateral.sol";
 import { CollateralStatus } from "../../interfaces/IAsset.sol";
-import "hardhat/console.sol";
+
 /**
  * @title L2LSDCollateral
  * @notice Base collateral plugin for LSDs on L2s.  Inherited per collateral.
@@ -85,7 +85,6 @@ contract L2LSDCollateral is AppreciatingFiatCollateral {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 markStatus(CollateralStatus.IFFY);
             }
-
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string

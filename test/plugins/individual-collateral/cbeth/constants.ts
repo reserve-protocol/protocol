@@ -13,7 +13,8 @@ export const ETH_USD_PRICE_FEED_BASE = networkConfig['8453'].chainlinkFeeds.ETH 
 export const CBETH_ETH_PRICE_FEED_BASE = networkConfig['8453'].chainlinkFeeds.cbETH as string
 export const CB_ETH_BASE = networkConfig['8453'].tokens.cbETH as string
 export const WETH_BASE = networkConfig['8453'].tokens.WETH as string
-export const CBETH_ETH_EXCHANGE_RATE_FEED_BASE = networkConfig['8453'].chainlinkFeeds.cbETHETHexr as string
+export const CBETH_ETH_EXCHANGE_RATE_FEED_BASE = networkConfig['8453'].chainlinkFeeds
+  .cbETHETHexr as string
 export const CB_ETH_MINTER_BASE = '0x4200000000000000000000000000000000000010'
 
 export const PRICE_TIMEOUT = bn('604800') // 1 week

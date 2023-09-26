@@ -12,7 +12,7 @@ export const getResetFork = (forkBlock: number) => {
       params: [
         {
           forking: {
-            jsonRpcUrl: forkRpcs[useEnv('FORK_NETWORK') as Network ?? 'mainnet'],
+            jsonRpcUrl: forkRpcs[(useEnv('FORK_NETWORK') as Network) ?? 'mainnet'],
             blockNumber: forkBlock,
           },
         },

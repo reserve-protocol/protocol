@@ -3,7 +3,6 @@ import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '..
 import {
   CBETH_ETH_PRICE_FEED,
   CB_ETH,
-  CB_ETH_MINTER,
   CB_ETH_ORACLE,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,

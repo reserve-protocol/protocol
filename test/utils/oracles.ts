@@ -118,7 +118,6 @@ export const setInvalidOracleAnsweredRound = async (assetAddr: string) => {
   await v3Aggregator.setInvalidAnsweredRound()
 }
 
-
 // === Pushing oracles (real or mock) forward ===
 
 export const overrideOracle = async (oracleAddress: string): Promise<EACAggregatorProxyMock> => {

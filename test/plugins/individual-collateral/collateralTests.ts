@@ -30,7 +30,7 @@ import snapshotGasCost from '../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation } from '../../fixtures'
 
 // const describeFork = useEnv('FORK') ? describe : describe.skip
-const getDescribeFork = (targetNetwork: string = 'mainnet') => {
+const getDescribeFork = (targetNetwork = 'mainnet') => {
   return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
 }
 
@@ -62,7 +62,7 @@ export default function fn<X extends CollateralFixtureContext>(
     collateralName,
     chainlinkDefaultAnswer,
     toleranceDivisor,
-    targetNetwork
+    targetNetwork,
   } = fixtures
 
   getDescribeFork(targetNetwork)(`Collateral: ${collateralName}`, () => {

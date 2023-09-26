@@ -32,12 +32,14 @@ contract CBEthCollateralL2 is L2LSDCollateral {
         uint48 _targetPerTokChainlinkTimeout,
         AggregatorV3Interface _exchangeRateChainlinkFeed,
         uint48 _exchangeRateChainlinkTimeout
-    ) L2LSDCollateral(
-        config,
-        revenueHiding,
-        _exchangeRateChainlinkFeed,
-        _exchangeRateChainlinkTimeout
-    ) {
+    )
+        L2LSDCollateral(
+            config,
+            revenueHiding,
+            _exchangeRateChainlinkFeed,
+            _exchangeRateChainlinkTimeout
+        )
+    {
         require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
         require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
 

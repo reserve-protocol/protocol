@@ -12,7 +12,6 @@ import {
   FORK_BLOCK_BASE,
   CB_ETH_BASE,
   ETH_USD_PRICE_FEED_BASE,
-  CB_ETH_MINTER_BASE
 } from './constants'
 import { BigNumber, BigNumberish, ContractFactory } from 'ethers'
 import { bn, fp } from '#/common/numbers'
@@ -22,9 +21,7 @@ import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MockV3Aggregator } from '@typechain/MockV3Aggregator'
 import { CBEth, CBEthCollateralL2, ERC20Mock, MockV3Aggregator__factory } from '@typechain/index'
-import { mintCBETH, mintCBETHBase } from './helpers'
-import { whileImpersonating } from '#/utils/impersonation'
-import hre from 'hardhat'
+import { mintCBETHBase } from './helpers'
 import { pushOracleForward } from '../../../utils/oracles'
 import { getResetFork } from '../helpers'
 
@@ -46,8 +43,10 @@ export const deployCollateral = async (
 ): Promise<TestICollateral> => {
   opts = { ...defaultCBEthCollateralL2Opts, ...opts }
 
-  const CBETHCollateralFactory: ContractFactory = await ethers.getContractFactory('CBEthCollateralL2')
-  
+  const CBETHCollateralFactory: ContractFactory = await ethers.getContractFactory(
+    'CBEthCollateralL2'
+  )
+
   const collateral = <TestICollateral>await CBETHCollateralFactory.deploy(
     {
       erc20: opts.erc20,
@@ -141,7 +140,10 @@ const mintCollateralTo: MintCollateralFunc<CbEthCollateralL2FixtureContext> = as
   await mintCBETHBase(amount, recipient)
 }
 
-const changeTargetPerRef = async (ctx: CbEthCollateralL2FixtureContext, percentChange: BigNumber) => {
+const changeTargetPerRef = async (
+  ctx: CbEthCollateralL2FixtureContext,
+  percentChange: BigNumber
+) => {
   const lastRound = await ctx.targetPerTokChainlinkFeed.latestRoundData()
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
   await ctx.targetPerTokChainlinkFeed.updateAnswer(nextAnswer)
@@ -163,12 +165,18 @@ const increaseTargetPerRef = async (
 
 const changeRefPerTok = async (ctx: CbEthCollateralL2FixtureContext, percentChange: BigNumber) => {
   const collateral = ctx.collateral as unknown as CBEthCollateralL2
-  const exchangeRateOracle = await ethers.getContractAt('MockV3Aggregator', await collateral.exchangeRateChainlinkFeed())
+  const exchangeRateOracle = await ethers.getContractAt(
+    'MockV3Aggregator',
+    await collateral.exchangeRateChainlinkFeed()
+  )
   const lastRound = await exchangeRateOracle.latestRoundData()
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
   await exchangeRateOracle.updateAnswer(nextAnswer)
 
-  const targetPerTokOracle = await ethers.getContractAt('MockV3Aggregator', await collateral.targetPerTokChainlinkFeed())
+  const targetPerTokOracle = await ethers.getContractAt(
+    'MockV3Aggregator',
+    await collateral.targetPerTokChainlinkFeed()
+  )
   const lastRoundtpt = await targetPerTokOracle.latestRoundData()
   const nextAnswertpt = lastRoundtpt.answer.add(lastRoundtpt.answer.mul(percentChange).div(100))
   await targetPerTokOracle.updateAnswer(nextAnswertpt)
@@ -178,7 +186,10 @@ const reduceRefPerTok = async (ctx: CbEthCollateralL2FixtureContext, pctDecrease
   await changeRefPerTok(ctx, bn(pctDecrease).mul(-1))
 }
 
-const increaseRefPerTok = async (ctx: CbEthCollateralL2FixtureContext, pctIncrease: BigNumberish) => {
+const increaseRefPerTok = async (
+  ctx: CbEthCollateralL2FixtureContext,
+  pctIncrease: BigNumberish
+) => {
   await changeRefPerTok(ctx, bn(pctIncrease))
 }
 const getExpectedPrice = async (ctx: CbEthCollateralL2FixtureContext): Promise<BigNumber> => {
@@ -270,7 +281,7 @@ const opts = {
   collateralName: 'CBEthCollateralL2',
   chainlinkDefaultAnswer,
   itIsPricedByPeg: true,
-  targetNetwork: 'base'
+  targetNetwork: 'base',
 }
 
 collateralTests(opts)
