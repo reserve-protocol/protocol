@@ -41,10 +41,8 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
     }
 
     function _claimAssetRewards() internal override {
-        if (stakingContract.totalAllocPoint() != 0 && totalSupply() != 0) {
+        if (stakingContract.totalAllocPoint() != 0) {
             stakingContract.deposit(poolId, 0);
-        } else {
-            stakingContract.emergencyWithdraw(poolId);
         }
     }
 
