@@ -16,6 +16,7 @@ import { PRICE_TIMEOUT } from '#/test/fixtures'
 import { networkConfig } from '#/common/configuration'
 import { getResetFork } from '../helpers'
 import { whileImpersonating } from '#/test/utils/impersonation'
+import { AAVE_V3_USDC_POOL, AAVE_V3_INCENTIVES_CONTROLLER } from './constants'
 
 interface AaveV3FiatCollateralFixtureContext extends CollateralFixtureContext {
   staticWrapper: MockStaticATokenV3LM
@@ -49,15 +50,12 @@ export const deployCollateral = async (opts: Partial<CollateralParams> = {}) => 
 
   if (!combinedOpts.erc20 || combinedOpts.erc20 === '') {
     const V3LMFactory = await ethers.getContractFactory('MockStaticATokenV3LM')
-    const staticWrapper = await V3LMFactory.deploy(
-      '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2', // USDC Pool
-      '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb' // Aave V3 Incentives Controller
-    )
+    const staticWrapper = await V3LMFactory.deploy(AAVE_V3_USDC_POOL, AAVE_V3_INCENTIVES_CONTROLLER)
     await staticWrapper.deployed()
     await staticWrapper.initialize(
-      '0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c',
+      networkConfig[1].tokens.aEthUSDC!,
       'Static Aave Ethereum USDC',
-      'stataEthUSDC'
+      'saEthUSDC'
     )
 
     combinedOpts.erc20 = staticWrapper.address
@@ -108,6 +106,10 @@ const makeCollateralFixtureContext = (
       chainlinkFeed,
       tok: await ethers.getContractAt('IERC20Metadata', await collateral.erc20()),
       baseToken: await ethers.getContractAt('IERC20Metadata', await staticWrapper.asset()),
+      // rewardToken: await ethers.getContractAt(
+      //   'IERC20Metadata',
+      //   '0x4da27a545c0c5b758a6ba100e3a049001de870f5'
+      // ),
     }
   }
 
@@ -206,7 +208,7 @@ export const stableOpts = {
   collateralName: 'Aave V3 Fiat Collateral (USDC)',
   reduceTargetPerRef,
   increaseTargetPerRef,
-  itClaimsRewards: it.skip,
+  itClaimsRewards: it,
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
   itHasRevenueHiding: it,
