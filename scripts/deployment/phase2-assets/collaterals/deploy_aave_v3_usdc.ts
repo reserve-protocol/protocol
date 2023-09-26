@@ -11,13 +11,13 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
+import { bn, fp } from '#/common/numbers'
 import { AaveV3FiatCollateral } from '../../../../typechain'
-import { revenueHiding, oracleTimeout } from '../../utils'
+import { priceTimeout, revenueHiding, oracleTimeout } from '../../utils'
 import {
   AAVE_V3_USDC_POOL,
   AAVE_V3_INCENTIVES_CONTROLLER,
 } from '../../../../test/plugins/individual-collateral/aave-v3/constants'
-import { defaultCollateralOpts } from '../../../../test/plugins/individual-collateral/aave-v3/AaveV3FiatCollateral.test'
 
 // This file specifically deploys Aave V3 USDC collateral
 
@@ -66,13 +66,19 @@ async function main() {
   /********  Deploy Aave V3 USDC collateral plugin  **************************/
 
   const CollateralFactory = await ethers.getContractFactory('AaveV3FiatCollateral')
-  const collateralOpts = defaultCollateralOpts
-  collateralOpts.chainlinkFeed = networkConfig[chainId].chainlinkFeeds.USDC!
-  collateralOpts.erc20 = erc20.address
-  collateralOpts.oracleTimeout = oracleTimeout(chainId, collateralOpts.oracleTimeout)
-
-  const collateral = <AaveV3FiatCollateral>(
-    await CollateralFactory.connect(deployer).deploy(collateralOpts, revenueHiding)
+  const collateral = <AaveV3FiatCollateral>await CollateralFactory.connect(deployer).deploy(
+    {
+      priceTimeout: priceTimeout,
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
+      oracleError: fp('0.0025'),
+      erc20: erc20.address,
+      maxTradeVolume: fp('1e6'),
+      oracleTimeout: oracleTimeout(chainId, bn('86400')),
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: fp('0.0125'),
+      delayUntilDefault: bn('86400'),
+    },
+    revenueHiding
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()
