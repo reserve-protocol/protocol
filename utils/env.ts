@@ -14,7 +14,6 @@ type IEnvVars =
   | 'PROTO_IMPL'
   | 'ETHERSCAN_API_KEY'
   | 'NO_OPT'
-  | 'MAINNET_BLOCK'
   | 'ONLY_FAST'
   | 'JOBS'
   | 'EXTREME'
