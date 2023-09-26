@@ -5,7 +5,6 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
-import { ICBEth } from "./vendor/ICBEth.sol";
 import { L2LSDCollateral } from "../L2LSDCollateral.sol";
 
 /**

@@ -11,7 +11,7 @@ import { CollateralStatus } from "../../interfaces/IAsset.sol";
  * @notice Base collateral plugin for LSDs on L2s.  Inherited per collateral.
  * @notice _underlyingRefPerTok uses a chainlink feed rather than direct contract calls.
  */
-contract L2LSDCollateral is AppreciatingFiatCollateral {
+abstract contract L2LSDCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
