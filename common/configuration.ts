@@ -507,7 +507,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       wstETHstETHexr: '0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061', // 0.5%, 24hr
       cbETHETHexr: '0x868a501e68F3D1E89CfC0D22F6b22E8dabce5F04', // 0.5%, 24hr
     },
-    GNOSIS_EASY_AUCTION: '0xcdf32E323e69090eCA17adDeF058A6A921c3e75A', // mock
+    GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
   },
 }
 
