@@ -11,6 +11,7 @@ import 'solidity-coverage'
 import * as tenderly from '@tenderly/hardhat-tenderly'
 
 import { useEnv } from '#/utils/env'
+import { forkRpcs, Network } from '#/utils/fork'
 import { HardhatUserConfig } from 'hardhat/types'
 import forkBlockNumber from '#/test/integration/fork-block-numbers'
 
@@ -26,12 +27,6 @@ const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
 const BASE_RPC_URL = useEnv('BASE_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
-
-type Network = 'mainnet' | 'base'
-const forkRpcs = {
-  'mainnet': MAINNET_RPC_URL,
-  'base': BASE_RPC_URL,
-}
 
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
@@ -124,7 +119,7 @@ const config: HardhatUserConfig = {
   mocha: {
     timeout: TIMEOUT,
     slow: 1000,
-    retries: 3,
+    retries: 0,
   },
   contractSizer: {
     alphaSort: false,

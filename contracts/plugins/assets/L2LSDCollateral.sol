@@ -5,7 +5,7 @@ import { CEIL, FIX_MAX, FixLib, _safeWrap } from "../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "./OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "./AppreciatingFiatCollateral.sol";
 import { CollateralStatus } from "../../interfaces/IAsset.sol";
-
+import "hardhat/console.sol";
 /**
  * @title L2LSDCollateral
  * @notice Base collateral plugin for LSDs on L2s.  Inherited per collateral.

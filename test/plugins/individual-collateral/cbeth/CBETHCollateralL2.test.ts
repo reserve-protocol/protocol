@@ -1,16 +1,18 @@
 import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import {
-  CBETH_ETH_PRICE_FEED,
-  CB_ETH,
+  CBETH_ETH_PRICE_FEED_BASE,
   DEFAULT_THRESHOLD,
   DELAY_UNTIL_DEFAULT,
-  ETH_USD_PRICE_FEED,
   MAX_TRADE_VOL,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
-  CBETH_ETH_EXCHANGE_RATE_FEED_BASE
+  CBETH_ETH_EXCHANGE_RATE_FEED_BASE,
+  FORK_BLOCK_BASE,
+  CB_ETH_BASE,
+  ETH_USD_PRICE_FEED_BASE,
+  CB_ETH_MINTER_BASE
 } from './constants'
 import { BigNumber, BigNumberish, ContractFactory } from 'ethers'
 import { bn, fp } from '#/common/numbers'
@@ -19,10 +21,12 @@ import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { MockV3Aggregator } from '@typechain/MockV3Aggregator'
-import { CBEth, ERC20Mock, MockV3Aggregator__factory } from '@typechain/index'
-import { mintCBETH, resetFork } from './helpers'
+import { CBEth, CBEthCollateralL2, ERC20Mock, MockV3Aggregator__factory } from '@typechain/index'
+import { mintCBETH, mintCBETHBase } from './helpers'
 import { whileImpersonating } from '#/utils/impersonation'
 import hre from 'hardhat'
+import { pushOracleForward } from '../../../utils/oracles'
+import { getResetFork } from '../helpers'
 
 interface CbEthCollateralL2FixtureContext extends CollateralFixtureContext {
   cbETH: CBEth
@@ -43,7 +47,7 @@ export const deployCollateral = async (
   opts = { ...defaultCBEthCollateralL2Opts, ...opts }
 
   const CBETHCollateralFactory: ContractFactory = await ethers.getContractFactory('CBEthCollateralL2')
-
+  
   const collateral = <TestICollateral>await CBETHCollateralFactory.deploy(
     {
       erc20: opts.erc20,
@@ -57,7 +61,7 @@ export const deployCollateral = async (
       delayUntilDefault: opts.delayUntilDefault,
     },
     opts.revenueHiding,
-    opts.targetPerTokChainlinkFeed ?? CBETH_ETH_PRICE_FEED,
+    opts.targetPerTokChainlinkFeed ?? CBETH_ETH_PRICE_FEED_BASE,
     opts.targetPerTokChainlinkTimeout ?? ORACLE_TIMEOUT,
     opts.exchangeRateChainlinkFeed ?? CBETH_ETH_EXCHANGE_RATE_FEED_BASE,
     opts.exchangeRateChainlinkTimeout ?? ORACLE_TIMEOUT,
@@ -65,14 +69,18 @@ export const deployCollateral = async (
   )
   await collateral.deployed()
 
+  await pushOracleForward(opts.chainlinkFeed!)
+  await pushOracleForward(opts.targetPerTokChainlinkFeed ?? CBETH_ETH_PRICE_FEED_BASE)
+  await pushOracleForward(opts.exchangeRateChainlinkFeed ?? CBETH_ETH_EXCHANGE_RATE_FEED_BASE)
+
   await expect(collateral.refresh())
 
   return collateral
 }
 
 const chainlinkDefaultAnswer = bn('1600e8')
-const targetPerTokChainlinkDefaultAnswer = bn('1.04027709e18')
-const exchangeRateChainlinkFeedDefaultAnswer = bn('1.050545e18')
+const targetPerTokChainlinkDefaultAnswer = bn('1e18')
+const exchangeRateChainlinkFeedDefaultAnswer = bn('1e18')
 
 type Fixture<T> = () => Promise<T>
 
@@ -104,7 +112,7 @@ const makeCollateralFixtureContext = (
     collateralOpts.exchangeRateChainlinkFeed = exchangeRateChainlinkFeed.address
     collateralOpts.exchangeRateChainlinkTimeout = ORACLE_TIMEOUT
 
-    const cbETH = (await ethers.getContractAt('CBEth', CB_ETH)) as unknown as CBEth
+    const cbETH = (await ethers.getContractAt('CBEth', CB_ETH_BASE)) as unknown as CBEth
     const collateral = await deployCollateral(collateralOpts)
 
     return {
@@ -130,7 +138,7 @@ const mintCollateralTo: MintCollateralFunc<CbEthCollateralL2FixtureContext> = as
   user: SignerWithAddress,
   recipient: string
 ) => {
-  await mintCBETH(amount, recipient)
+  await mintCBETHBase(amount, recipient)
 }
 
 const changeTargetPerRef = async (ctx: CbEthCollateralL2FixtureContext, percentChange: BigNumber) => {
@@ -154,9 +162,16 @@ const increaseTargetPerRef = async (
 }
 
 const changeRefPerTok = async (ctx: CbEthCollateralL2FixtureContext, percentChange: BigNumber) => {
-  const lastRound = await ctx.exchangeRateChainlinkFeed.latestRoundData()
+  const collateral = ctx.collateral as unknown as CBEthCollateralL2
+  const exchangeRateOracle = await ethers.getContractAt('MockV3Aggregator', await collateral.exchangeRateChainlinkFeed())
+  const lastRound = await exchangeRateOracle.latestRoundData()
   const nextAnswer = lastRound.answer.add(lastRound.answer.mul(percentChange).div(100))
-  await ctx.exchangeRateChainlinkFeed.updateAnswer(nextAnswer)
+  await exchangeRateOracle.updateAnswer(nextAnswer)
+
+  const targetPerTokOracle = await ethers.getContractAt('MockV3Aggregator', await collateral.targetPerTokChainlinkFeed())
+  const lastRoundtpt = await targetPerTokOracle.latestRoundData()
+  const nextAnswertpt = lastRoundtpt.answer.add(lastRoundtpt.answer.mul(percentChange).div(100))
+  await targetPerTokOracle.updateAnswer(nextAnswertpt)
 }
 
 const reduceRefPerTok = async (ctx: CbEthCollateralL2FixtureContext, pctDecrease: BigNumberish) => {
@@ -216,10 +231,10 @@ const collateralSpecificStatusTests = () => {}
 const beforeEachRewardsTest = async () => {}
 
 export const defaultCBEthCollateralL2Opts: CollateralOpts = {
-  erc20: CB_ETH,
+  erc20: CB_ETH_BASE,
   targetName: ethers.utils.formatBytes32String('ETH'),
   priceTimeout: PRICE_TIMEOUT,
-  chainlinkFeed: ETH_USD_PRICE_FEED,
+  chainlinkFeed: ETH_USD_PRICE_FEED_BASE,
   oracleTimeout: ORACLE_TIMEOUT,
   oracleError: ORACLE_ERROR,
   maxTradeVolume: MAX_TRADE_VOL,
@@ -227,6 +242,8 @@ export const defaultCBEthCollateralL2Opts: CollateralOpts = {
   delayUntilDefault: DELAY_UNTIL_DEFAULT,
   revenueHiding: fp('0'),
 }
+
+export const resetFork = getResetFork(FORK_BLOCK_BASE)
 
 /*
   Run the test suite
