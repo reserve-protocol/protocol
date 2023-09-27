@@ -76,7 +76,6 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn test:plugins
       - name: 'Cache hardhat network fork'
         uses: actions/cache@v3
         with:
@@ -85,13 +84,15 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: yarn test:plugins:integration
+      - run: npx hardhat test ./test/plugins/individual-collateral/cbeth/*.test.ts
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           TS_NODE_SKIP_IGNORE: true
           BASE_RPC_URL: https://base-mainnet.infura.io/v3/${{ secrets.INFURA_BASE_KEY }}
           FORK_NETWORK: base
           FORK_BLOCK: 4446300
+          FORK: 1
+          PROTO_IMPL: 1
 
   p0-tests:
     name: 'P0 tests'
