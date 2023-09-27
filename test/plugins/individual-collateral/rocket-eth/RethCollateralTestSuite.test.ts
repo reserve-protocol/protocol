@@ -142,56 +142,6 @@ const makeCollateralFixtureContext = (
   return makeCollateralFixtureContext
 }
 
-// const deployCollateralCometMockContext = async (
-//   opts: CometCollateralOpts = {}
-// ): Promise<RethCollateralFixtureContextMockComet> => {
-//   const collateralOpts = { ...defaultCometCollateralOpts, ...opts }
-
-//   const MockV3AggregatorFactory = <MockV3Aggregator__factory>(
-//     await ethers.getContractFactory('MockV3Aggregator')
-//   )
-//   const chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
-//   collateralOpts.chainlinkFeed = chainlinkFeed.address
-
-//   const CometFactory = <CometMock__factory>await ethers.getContractFactory('CometMock')
-//   const cusdcV3 = <CometMock>await CometFactory.deploy(bn('5e15'), bn('1e15'), CUSDC_V3)
-
-//   const CusdcV3WrapperFactory = <CusdcV3Wrapper__factory>(
-//     await ethers.getContractFactory('CusdcV3Wrapper')
-//   )
-//   const wcusdcV3 = <ICusdcV3Wrapper>(
-//     await CusdcV3WrapperFactory.deploy(cusdcV3.address, REWARDS, COMP)
-//   )
-//   const CusdcV3WrapperMockFactory = <CusdcV3WrapperMock__factory>(
-//     await ethers.getContractFactory('CusdcV3WrapperMock')
-//   )
-//   const wcusdcV3Mock = await (<ICusdcV3WrapperMock>(
-//     await CusdcV3WrapperMockFactory.deploy(wcusdcV3.address)
-//   ))
-
-//   const realMock = (await ethers.getContractAt(
-//     'ICusdcV3WrapperMock',
-//     wcusdcV3Mock.address
-//   )) as ICusdcV3WrapperMock
-//   collateralOpts.erc20 = wcusdcV3.address
-//   collateralOpts.erc20 = realMock.address
-//   const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', USDC)
-//   const collateral = await deployCollateral(collateralOpts)
-
-//   const rewardToken = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP)
-
-//   return {
-//     collateral,
-//     chainlinkFeed,
-//     cusdcV3,
-//     wcusdcV3: <ICusdcV3WrapperMock>wcusdcV3Mock,
-//     wcusdcV3Mock,
-//     usdc,
-//     tok: wcusdcV3,
-//     rewardToken,
-//   }
-// }
-
 /*
   Define helper functions
 */

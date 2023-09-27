@@ -5,7 +5,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { CEIL, FixLib, _safeWrap } from "../../../libraries/Fixed.sol";
 import { AggregatorV3Interface, OracleLib } from "../OracleLib.sol";
 import { CollateralConfig, AppreciatingFiatCollateral } from "../AppreciatingFiatCollateral.sol";
-import { ICBEth } from "./vendor/ICBEth.sol";
+import { L2LSDCollateral } from "../L2LSDCollateral.sol";
 
 /**
  * @title CBEthCollateral
@@ -15,7 +15,7 @@ import { ICBEth } from "./vendor/ICBEth.sol";
  * tar = ETH
  * UoA = USD
  */
-contract CBEthCollateral is AppreciatingFiatCollateral {
+contract CBEthCollateralL2 is L2LSDCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -28,8 +28,17 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
         CollateralConfig memory config,
         uint192 revenueHiding,
         AggregatorV3Interface _targetPerTokChainlinkFeed,
-        uint48 _targetPerTokChainlinkTimeout
-    ) AppreciatingFiatCollateral(config, revenueHiding) {
+        uint48 _targetPerTokChainlinkTimeout,
+        AggregatorV3Interface _exchangeRateChainlinkFeed,
+        uint48 _exchangeRateChainlinkTimeout
+    )
+        L2LSDCollateral(
+            config,
+            revenueHiding,
+            _exchangeRateChainlinkFeed,
+            _exchangeRateChainlinkTimeout
+        )
+    {
         require(address(_targetPerTokChainlinkFeed) != address(0), "missing targetPerTok feed");
         require(_targetPerTokChainlinkTimeout != 0, "targetPerTokChainlinkTimeout zero");
 
@@ -63,10 +72,5 @@ contract CBEthCollateral is AppreciatingFiatCollateral {
 
         // {target/ref} = {target/tok} / {ref/tok}
         pegPrice = targetPerTok.div(_underlyingRefPerTok());
-    }
-
-    /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
-    function _underlyingRefPerTok() internal view override returns (uint192) {
-        return _safeWrap(ICBEth(address(erc20)).exchangeRate());
     }
 }

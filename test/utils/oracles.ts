@@ -1,5 +1,7 @@
+import { setCode } from '@nomicfoundation/hardhat-network-helpers'
+import { EACAggregatorProxyMock } from '@typechain/EACAggregatorProxyMock'
 import { BigNumber } from 'ethers'
-import { ethers } from 'hardhat'
+import { ethers, network } from 'hardhat'
 import { expect } from 'chai'
 import { fp, bn, divCeil } from '../../common/numbers'
 import { MAX_UINT192 } from '../../common/constants'
@@ -114,4 +116,34 @@ export const setInvalidOracleAnsweredRound = async (assetAddr: string) => {
   const chainlinkFeedAddr = await asset.chainlinkFeed()
   const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
   await v3Aggregator.setInvalidAnsweredRound()
+}
+
+// === Pushing oracles (real or mock) forward ===
+
+export const overrideOracle = async (oracleAddress: string): Promise<EACAggregatorProxyMock> => {
+  const oracle = await ethers.getContractAt(
+    'contracts/plugins/mocks/EACAggregatorProxyMock.sol:EACAggregatorProxy',
+    oracleAddress
+  )
+  const aggregator = await oracle.aggregator()
+  const accessController = await oracle.accessController()
+  const initPrice = await oracle.latestAnswer()
+  const mockOracleFactory = await ethers.getContractFactory('EACAggregatorProxyMock')
+  const mockOracle = await mockOracleFactory.deploy(aggregator, accessController, initPrice)
+  const bytecode = await network.provider.send('eth_getCode', [mockOracle.address])
+  await setCode(oracleAddress, bytecode)
+  return ethers.getContractAt('EACAggregatorProxyMock', oracleAddress)
+}
+
+export const pushOracleForward = async (chainlinkAddr: string) => {
+  const chainlinkFeed = await ethers.getContractAt('MockV3Aggregator', await chainlinkAddr)
+  const initPrice = await chainlinkFeed.latestAnswer()
+  try {
+    // Try to update as if it's a mock already
+    await chainlinkFeed.updateAnswer(initPrice)
+  } catch {
+    // Not a mock; need to override the oracle first
+    const oracle = await overrideOracle(chainlinkFeed.address)
+    await oracle.updateAnswer(initPrice)
+  }
 }
