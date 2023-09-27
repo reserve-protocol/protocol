@@ -30,8 +30,7 @@ import snapshotGasCost from '../../utils/snapshotGasCost'
 import { IMPLEMENTATION, Implementation } from '../../fixtures'
 
 // const describeFork = useEnv('FORK') ? describe : describe.skip
-const getDescribeFork = (targetNetwork: string = 'mainnet') => {
-  console.log('check fork', useEnv('FORK'), useEnv('FORK_NETWORK'), targetNetwork, hre.ethers.provider.connection.url, useEnv('BASE_RPC_URL'))
+const getDescribeFork = (targetNetwork = 'mainnet') => {
   return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
 }
 
