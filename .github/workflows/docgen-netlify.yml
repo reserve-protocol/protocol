@@ -3,7 +3,7 @@ name: Generate and Deploy Reserve Docs to Netlify
 on:
   push:
     branches:
-      - feat/devdocs
+      - master
 
 env:
   NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_ARTORIAS_AUTH_TOKEN }}
