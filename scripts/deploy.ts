@@ -53,6 +53,7 @@ async function main() {
     'phase2-assets/collaterals/deploy_dsr_sdai.ts',
     'phase2-assets/collaterals/deploy_cbeth_collateral.ts',
     'phase2-assets/collaterals/deploy_morpho_aavev2_plugin.ts',
+    'phase2-assets/collaterals/deploy_aave_v3_usdc.ts',
     // ===============================================
     // These phase3 scripts will not deploy functional RTokens or Governance. They deploy bricked
     // versions that are used for verification only. Further deployment is left up to the Register.
