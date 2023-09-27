@@ -92,7 +92,7 @@ const makeCollateralFixtureContext = (
     collateralOpts.targetPerTokChainlinkFeed = targetPerTokChainlinkFeed.address
     collateralOpts.targetPerTokChainlinkTimeout = ORACLE_TIMEOUT
 
-    const cbETH = (await ethers.getContractAt('CBEth', CB_ETH)) as unknown as ICBEth
+    const cbETH = (await ethers.getContractAt('ICBEth', CB_ETH)) as unknown as ICBEth
     const collateral = await deployCollateral(collateralOpts)
 
     return {
