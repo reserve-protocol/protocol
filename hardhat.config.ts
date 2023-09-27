@@ -31,6 +31,8 @@ const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 const src_dir = `./contracts/${useEnv('PROTO')}`
 const settings = useEnv('NO_OPT') ? {} : { optimizer: { enabled: true, runs: 200 } }
 
+console.log('running on rpc', BASE_RPC_URL, forkRpcs[useEnv('FORK_NETWORK') as Network ?? 'mainnet'])
+
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
   networks: {
