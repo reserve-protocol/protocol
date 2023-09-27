@@ -31,6 +31,7 @@ import { IMPLEMENTATION, Implementation } from '../../fixtures'
 
 // const describeFork = useEnv('FORK') ? describe : describe.skip
 const getDescribeFork = (targetNetwork = 'mainnet') => {
+  console.log('check fork', useEnv('FORK'), useEnv('FORK_NETWORK'), targetNetwork, hre.ethers.provider.connection.url)
   return useEnv('FORK') && useEnv('FORK_NETWORK') === targetNetwork ? describe : describe.skip
 }
 
