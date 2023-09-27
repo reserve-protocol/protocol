@@ -43,7 +43,7 @@ async function main() {
 
   let collateral: CBEthCollateral | CBEthCollateralL2;
 
-  if (chainId === 1 || chainId === 1337 || chainId === 31337) {
+  if (chainId == '1' || chainId == '1337' || chainId == '31337') {
     const CBETHCollateralFactory: CBEthCollateral__factory = (await hre.ethers.getContractFactory(
       'CBEthCollateral'
     )) as CBEthCollateral__factory
@@ -69,7 +69,7 @@ async function main() {
     await collateral.deployed()
     await (await collateral.refresh()).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-  } else if (chainId == 8453) {
+  } else if (chainId == '8453') {
     const CBETHCollateralFactory: CBEthCollateralL2__factory = (await hre.ethers.getContractFactory(
       'CBEthCollateralL2'
     )) as CBEthCollateralL2__factory
