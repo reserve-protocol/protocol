@@ -1,5 +1,6 @@
 import hre from 'hardhat'
 import { useEnv } from '#/utils/env'
+import { forkRpcs, Network } from '#/utils/fork'
 
 export const getResetFork = (forkBlock: number) => {
   return async () => {
@@ -11,7 +12,7 @@ export const getResetFork = (forkBlock: number) => {
       params: [
         {
           forking: {
-            jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
+            jsonRpcUrl: forkRpcs[(useEnv('FORK_NETWORK') as Network) ?? 'mainnet'],
             blockNumber: forkBlock,
           },
         },
