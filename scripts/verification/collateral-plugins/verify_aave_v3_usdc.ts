@@ -1,14 +1,13 @@
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
-import { developmentChains, networkConfig } from '../../../common/configuration'
+import { baseL2Chains, developmentChains, networkConfig } from '../../../common/configuration'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../../deployment/common'
-import { verifyContract } from '../../deployment/utils'
-import { revenueHiding } from '../../deployment/utils'
-import { defaultCollateralOpts } from '../../../test/plugins/individual-collateral/aave-v3/AaveV3FiatCollateral.test'
+import { fp, bn } from '../../../common/numbers'
+import { priceTimeout, oracleTimeout, verifyContract, revenueHiding } from '../../deployment/utils'
 
 let deployments: IAssetCollDeployments
 
@@ -40,10 +39,8 @@ async function main() {
   )
 
   /********  Verify Aave V3 USDC plugin  **************************/
-  const collateral = await ethers.getContractAt(
-    'AaveV3FiatCollateral',
-    deployments.collateral.aEthUSDC as string
-  )
+  const usdcOracleTimeout = 86400 // 24 hr
+  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
   await verifyContract(
     chainId,
@@ -51,14 +48,14 @@ async function main() {
     [
       {
         erc20: erc20.address,
-        targetName: await collateral.targetName(),
-        priceTimeout: await collateral.priceTimeout(),
-        chainlinkFeed: await collateral.chainlinkFeed(),
-        oracleError: await collateral.oracleError(),
-        oracleTimeout: await collateral.oracleTimeout(),
-        maxTradeVolume: await collateral.maxTradeVolume(),
-        defaultThreshold: defaultCollateralOpts.defaultThreshold.toString(),
-        delayUntilDefault: await collateral.delayUntilDefault(),
+        targetName: ethers.utils.formatBytes32String('USD'),
+        priceTimeout: priceTimeout.toString(),
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
+        oracleError: usdcOracleError.toString(),
+        oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(), // 24 hr
+        maxTradeVolume: fp('1e6').toString(),
+        defaultThreshold: fp('0.0125').toString(),
+        delayUntilDefault: bn('86400').toString(),
       },
       revenueHiding.toString(),
     ],
