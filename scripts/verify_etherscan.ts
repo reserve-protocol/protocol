@@ -60,7 +60,8 @@ async function main() {
       'collateral-plugins/verify_wsteth.ts',
       'collateral-plugins/verify_cbeth.ts',
       'collateral-plugins/verify_sdai.ts',
-      'collateral-plugins/verify_morpho.ts'
+      'collateral-plugins/verify_morpho.ts',
+      'collateral-plugins/verify_aave_v3_usdc.ts',
     )
   } else if (chainId == '8453' || chainId == '84531') {
     // Base L2 chains

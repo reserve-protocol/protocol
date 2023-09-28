@@ -33,7 +33,10 @@ import { IRewardable } from "../../../../interfaces/IRewardable.sol";
  * a token which balance doesn't increase automatically, but uses an ever-increasing exchange rate.
  * It supports claiming liquidity mining rewards from the Aave system.
  * @author BGD Labs
- * @dev This contract is a modified by Reserve to include the claimRewards() function
+ * From https://github.com/bgd-labs/static-a-token-v3/blob/b9f6f86b6d89c7407eeb0013af248d3c5f4d09c8/src/StaticATokenLM.sol
+ * Original source was formally verified
+ * https://github.com/bgd-labs/static-a-token-v3/blob/b9f6f86b6d89c7407eeb0013af248d3c5f4d09c8/audits/Formal_Verification_Report_staticAToken.pdf
+ * @dev This contract has been further modified by Reserve to include the claimRewards() function. This is the only change.
  */
 contract StaticATokenV3LM is
     Initializable,
