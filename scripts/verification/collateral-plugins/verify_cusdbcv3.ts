@@ -22,12 +22,17 @@ async function main() {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
 
+  // Only exists on Base L2
+  if (!baseL2Chains.includes(hre.network.name)) {
+    throw new Error(`Invalid network ${hre.network.name} - only available on Base`)
+  }
+
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const collateral = await ethers.getContractAt(
     'CTokenV3Collateral',
-    deployments.collateral.cUSDCv3 as string
+    deployments.collateral.cUSDbCv3 as string
   )
 
   /********  Verify Wrapper token - wcUSDCv3 **************************/
@@ -36,21 +41,21 @@ async function main() {
     chainId,
     await collateral.erc20(),
     [
-      networkConfig[chainId].tokens.cUSDCv3,
+      networkConfig[chainId].tokens.cUSDbCv3,
       networkConfig[chainId].COMET_REWARDS,
       networkConfig[chainId].tokens.COMP,
     ],
     'contracts/plugins/assets/compoundv3/CusdcV3Wrapper.sol:CusdcV3Wrapper'
   )
 
-  /********  Verify Collateral - wcUSDCv3  **************************/
+  /********  Verify Collateral - wcUSDbCv3  **************************/
 
   const usdcOracleTimeout = 86400 // 24 hr
-  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+  const usdcOracleError = fp('0.003') // 0.3% (Base)
 
   await verifyContract(
     chainId,
-    deployments.collateral.cUSDCv3,
+    deployments.collateral.cUSDbCv3,
     [
       {
         priceTimeout: priceTimeout.toString(),
