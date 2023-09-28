@@ -1,0 +1,52 @@
+name: Generate and Deploy Reserve Docs to Netlify
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_ARTORIAS_AUTH_TOKEN }}
+  NETLIFY_SITE_ID: ${{ secrets.NETLIFY_DOCS_SITE_ID }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: yarn
+
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install node dependencies
+        run: yarn install
+        shell: bash
+
+      - name: Setup Forge config
+        run: forge config --config-path tools/docgen/foundry.toml
+        shell: bash
+
+      - name: Generate docs
+        run: forge doc --build --out tools/docgen
+        shell: bash
+
+      - name: Deploy to Netlify
+        uses: jsmrcaga/action-netlify-deploy@v2.0.0
+        with:
+          NETLIFY_AUTH_TOKEN: ${{ env.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ env.NETLIFY_SITE_ID }}
+          NETLIFY_DEPLOY_MESSAGE: "Prod deploy v${{ github.ref }}"
+          NETLIFY_DEPLOY_TO_PROD: true
+          build_directory: tools/docgen/book
+          install_command: "echo Skipping installing the dependencies"
+          build_command: "echo Skipping building the web files"
