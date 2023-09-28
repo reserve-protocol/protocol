@@ -38,7 +38,7 @@ const config: HardhatUserConfig = {
       // network for tests/in-process stuff
       forking: useEnv('FORK')
         ? {
-            url: forkRpcs[useEnv('FORK_NETWORK') as Network ?? 'mainnet'],
+            url: forkRpcs[(useEnv('FORK_NETWORK') as Network) ?? 'mainnet'],
             blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
           }
         : undefined,
@@ -142,6 +142,14 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: useEnv('ETHERSCAN_API_KEY'),
     customChains: [
+      {
+        network: 'base',
+        chainId: 8453,
+        urls: {
+          apiURL: 'https://api.basescan.org/api',
+          browserURL: 'https://basescan.org',
+        },
+      },
       {
         network: 'base-goerli',
         chainId: 84531,

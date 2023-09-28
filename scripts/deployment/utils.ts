@@ -17,7 +17,7 @@ export const longOracleTimeout = bn('4294967296')
 
 // Returns the base plus 1 minute
 export const oracleTimeout = (chainId: string, base: BigNumberish) => {
-  return chainId == '1' ? bn('60').add(base) : longOracleTimeout
+  return chainId == '1' || chainId == '8453' ? bn('60').add(base) : longOracleTimeout
 }
 
 export const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
