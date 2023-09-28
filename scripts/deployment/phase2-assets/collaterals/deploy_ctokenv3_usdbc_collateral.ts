@@ -29,6 +29,11 @@ async function main() {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
+  // Only exists on Base L2
+  if (!baseL2Chains.includes(hre.network.name)) {
+    throw new Error(`Invalid network ${hre.network.name} - only available on Base`)
+  }
+
   // Get phase1 deployment
   const phase1File = getDeploymentFilename(chainId)
   if (!fileExists(phase1File)) {
@@ -40,22 +45,24 @@ async function main() {
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy CompoundV3 USDC - cUSDCv3 **************************/
+  /********  Deploy CompoundV3 USDC - cUSDbCv3 **************************/
 
   const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('CusdcV3Wrapper')
   const erc20 = await WrapperFactory.deploy(
-    networkConfig[chainId].tokens.cUSDCv3,
+    networkConfig[chainId].tokens.cUSDbCv3,
     networkConfig[chainId].COMET_REWARDS,
     networkConfig[chainId].tokens.COMP
   )
   await erc20.deployed()
 
-  console.log(`Deployed wrapper for cUSDCv3 on ${hre.network.name} (${chainId}): ${erc20.address} `)
+  console.log(
+    `Deployed wrapper for cUSDbCv3 on ${hre.network.name} (${chainId}): ${erc20.address} `
+  )
 
   const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
 
   const usdcOracleTimeout = 86400 // 24 hr
-  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+  const usdcOracleError = fp('0.003') // 0.3% (Base)
 
   const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
     {
@@ -76,10 +83,12 @@ async function main() {
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed CompoundV3 USDC to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(
+    `Deployed CompoundV3 USDbC to ${hre.network.name} (${chainId}): ${collateral.address}`
+  )
 
-  assetCollDeployments.collateral.cUSDCv3 = collateral.address
-  assetCollDeployments.erc20s.cUSDCv3 = erc20.address
+  assetCollDeployments.collateral.cUSDbCv3 = collateral.address
+  assetCollDeployments.erc20s.cUSDbCv3 = erc20.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))

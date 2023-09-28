@@ -1,7 +1,7 @@
 import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
-import { networkConfig } from '../../../../common/configuration'
+import { baseL2Chains, networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
@@ -13,7 +13,12 @@ import {
   fileExists,
 } from '../../common'
 import { priceTimeout, oracleTimeout, combinedError } from '../../utils'
-import { CBEthCollateral, CBEthCollateralL2, CBEthCollateralL2__factory, CBEthCollateral__factory } from '../../../../typechain'
+import {
+  CBEthCollateral,
+  CBEthCollateralL2,
+  CBEthCollateralL2__factory,
+  CBEthCollateral__factory,
+} from '../../../../typechain'
 
 async function main() {
   // ==== Read Configuration ====
@@ -41,15 +46,15 @@ async function main() {
 
   /********  Deploy Coinbase ETH Collateral - CBETH  **************************/
 
-  let collateral: CBEthCollateral | CBEthCollateralL2;
+  let collateral: CBEthCollateral | CBEthCollateralL2
 
-  if (chainId == '1' || chainId == '1337' || chainId == '31337') {
+  if (!baseL2Chains.includes(hre.network.name)) {
     const CBETHCollateralFactory: CBEthCollateral__factory = (await hre.ethers.getContractFactory(
       'CBEthCollateral'
     )) as CBEthCollateral__factory
-  
+
     const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
-  
+
     collateral = await CBETHCollateralFactory.connect(deployer).deploy(
       {
         priceTimeout: priceTimeout.toString(),
@@ -69,23 +74,24 @@ async function main() {
     await collateral.deployed()
     await (await collateral.refresh()).wait()
     expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
-  } else if (chainId == '8453') {
+  } else if (chainId == '8453' || chainId == '84531') {
+    // Base L2 chains
     const CBETHCollateralFactory: CBEthCollateralL2__factory = (await hre.ethers.getContractFactory(
       'CBEthCollateralL2'
     )) as CBEthCollateralL2__factory
-  
-    const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
-  
+
+    const oracleError = combinedError(fp('0.0015'), fp('0.005')) // 0.15% & 0.5%
+
     collateral = await CBETHCollateralFactory.connect(deployer).deploy(
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH!,
-        oracleError: oracleError.toString(), // 0.5% & 2%,
+        oracleError: oracleError.toString(), // 0.15% & 0.5%,
         erc20: networkConfig[chainId].tokens.cbETH!,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
+        oracleTimeout: oracleTimeout(chainId, '1200').toString(), // 20 min
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
+        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~2.5%
         delayUntilDefault: bn('86400').toString(), // 24h
       },
       fp('1e-4').toString(), // revenueHiding = 0.01%
