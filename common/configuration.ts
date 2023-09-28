@@ -108,6 +108,7 @@ interface INetworkConfig {
   MORPHO_AAVE_CONTROLLER?: string
   MORPHO_REWARDS_DISTRIBUTOR?: string
   MORPHO_AAVE_LENS?: string
+  COMET_REWARDS?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -210,6 +211,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
+    COMET_REWARDS: '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
   },
   '1': {
     name: 'mainnet',
@@ -301,6 +303,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
+    COMET_REWARDS: '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
   },
   '3': {
     name: 'tenderly',
@@ -392,6 +395,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     MORPHO_AAVE_LENS: '0x507fA343d0A90786d86C7cd885f5C49263A91FF4',
     MORPHO_AAVE_CONTROLLER: '0x777777c9898D384F785Ee44Acfe945efDFf5f3E0',
     MORPHO_REWARDS_DISTRIBUTOR: '0x3b14e5c73e0a56d607a8688098326fd4b4292135',
+    COMET_REWARDS: '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
   },
   '5': {
     name: 'goerli',
@@ -493,11 +497,11 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cUSDbCv3: '0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf',
       aUSDbCv3: '0x0a1d576f3eFeF75b330424287a95A366e8281D54',
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
-      acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad'
+      acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
-      ETH: '0x71041dddad3595f9ced3dccfbe3d1f4b0a16bb70', // 0.5%, 24hr
+      ETH: '0x71041dddad3595f9ced3dccfbe3d1f4b0a16bb70', // 0.15%, 20min
       WBTC: '0xccadc697c55bbb68dc5bcdf8d3cbe83cdd4e071e', // 0.5%, 24hr
       USDC: '0x7e860098f58bbfc8648a4311b374b1d669a2bc6b', // 0.3%, 24hr
       USDT: '0xf19d560eb8d2adf07bd6d13ed03e1d11215721f9', // 0.3%, 24hr
@@ -508,6 +512,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cbETHETHexr: '0x868a501e68F3D1E89CfC0D22F6b22E8dabce5F04', // 0.5%, 24hr
     },
     GNOSIS_EASY_AUCTION: '0xb1875Feaeea32Bbb02DE83D81772e07E37A40f02', // mock
+    COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
   },
 }
 
