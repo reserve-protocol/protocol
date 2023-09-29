@@ -49,12 +49,37 @@ async function main() {
         maxTradeVolume: fp('1e6').toString(), // $1m,
         oracleTimeout: oracleTimeout(chainId, daiOracleTimeout).toString(),
         targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.0125').toString(), // 1.25%
+        defaultThreshold: fp('0.01').add(daiOracleError).toString(),
         delayUntilDefault: bn('86400').toString(), // 24h
       },
     ],
     'contracts/plugins/assets/FiatCollateral.sol:FiatCollateral'
   )
+
+  /********  Verify Fiat Collateral - USDbC  **************************/
+  const usdcOracleTimeout = 86400 // 24 hr
+  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+
+  if (baseL2Chains.includes(hre.network.name)) {
+    await verifyContract(
+      chainId,
+      deployments.collateral.USDbC,
+      [
+        {
+          priceTimeout: priceTimeout.toString(),
+          chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
+          oracleError: usdcOracleError.toString(),
+          erc20: networkConfig[chainId].tokens.USDbC,
+          maxTradeVolume: fp('1e6').toString(), // $1m,
+          oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(),
+          targetName: hre.ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
+          delayUntilDefault: bn('86400').toString(), // 24h
+        },
+      ],
+      'contracts/plugins/assets/FiatCollateral.sol:FiatCollateral'
+    )
+  }
 
   /********  Verify StaticATokenLM - aDAI  **************************/
   // Get AToken to retrieve name and symbol

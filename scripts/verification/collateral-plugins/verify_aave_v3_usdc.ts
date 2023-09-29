@@ -54,7 +54,7 @@ async function main() {
         oracleError: usdcOracleError.toString(),
         oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(), // 24 hr
         maxTradeVolume: fp('1e6').toString(),
-        defaultThreshold: fp('0.0125').toString(),
+        defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
         delayUntilDefault: bn('86400').toString(),
       },
       revenueHiding.toString(),
