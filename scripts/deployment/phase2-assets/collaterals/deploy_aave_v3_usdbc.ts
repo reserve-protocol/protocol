@@ -79,18 +79,14 @@ async function main() {
       maxTradeVolume: fp('1e6'),
       oracleTimeout: oracleTimeout(chainId, bn('86400')), // 24 hr
       targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.0125'),
+      defaultThreshold: fp('0.013'),
       delayUntilDefault: bn('86400'),
     },
     revenueHiding
   )
-  console.log(1)
+
   await collateral.deployed()
-
-  console.log(2)
   await (await collateral.refresh()).wait()
-
-  console.log(3)
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
   console.log(

@@ -76,7 +76,7 @@ async function main() {
       maxTradeVolume: fp('1e6'),
       oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout),
       targetName: ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.0125'),
+      defaultThreshold: fp('0.01').add(usdcOracleError),
       delayUntilDefault: bn('86400'),
     },
     revenueHiding

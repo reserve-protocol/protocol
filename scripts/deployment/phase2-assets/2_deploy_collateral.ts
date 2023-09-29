@@ -43,10 +43,10 @@ async function main() {
   let collateral: ICollateral
 
   /********  Deploy Fiat Collateral - DAI  **************************/
-  if (networkConfig[chainId].tokens.DAI && networkConfig[chainId].chainlinkFeeds.DAI) {
-    const daiOracleTimeout = baseL2Chains.includes(hre.network.name) ? 86400 : 3600 // 24 hr (Base) or 1 hour
-    const daiOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+  const daiOracleTimeout = baseL2Chains.includes(hre.network.name) ? 86400 : 3600 // 24 hr (Base) or 1 hour
+  const daiOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
+  if (networkConfig[chainId].tokens.DAI && networkConfig[chainId].chainlinkFeeds.DAI) {
     const { collateral: daiCollateral } = await hre.run('deploy-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
@@ -55,7 +55,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: oracleTimeout(chainId, daiOracleTimeout).toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.0125').toString(), // 1.25%
+      defaultThreshold: fp('0.01').add(daiOracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', daiCollateral)
@@ -69,17 +69,20 @@ async function main() {
     fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
   }
 
+  const usdcOracleTimeout = 86400 // 24 hr
+  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+
   /********  Deploy Fiat Collateral - USDC  **************************/
   if (networkConfig[chainId].tokens.USDC && networkConfig[chainId].chainlinkFeeds.USDC) {
     const { collateral: usdcCollateral } = await hre.run('deploy-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
-      oracleError: fp('0.0025').toString(), // 0.25%
+      oracleError: usdcOracleError.toString(),
       tokenAddress: networkConfig[chainId].tokens.USDC,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
+      oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(), // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.0125').toString(), // 1.25%
+      defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdcCollateral)
@@ -94,16 +97,19 @@ async function main() {
   }
 
   /********  Deploy Fiat Collateral - USDT  **************************/
+  const usdtOracleTimeout = 86400 // 24 hr
+  const usdtOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+
   if (networkConfig[chainId].tokens.USDT && networkConfig[chainId].chainlinkFeeds.USDT) {
     const { collateral: usdtCollateral } = await hre.run('deploy-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
-      oracleError: fp('0.0025').toString(), // 0.25%
+      oracleError: usdtOracleError.toString(),
       tokenAddress: networkConfig[chainId].tokens.USDT,
       maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, '86400').toString(), // 24 hr
+      oracleTimeout: oracleTimeout(chainId, usdtOracleTimeout).toString(), // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.0125').toString(), // 1.25%
+      defaultThreshold: fp('0.01').add(usdtOracleError).toString(),
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdtCollateral)
@@ -191,9 +197,6 @@ async function main() {
 
   /********  Base L2 - Deploy Fiat Collateral - USDbC  **************************/
   if (networkConfig[chainId].tokens.USDbC && networkConfig[chainId].chainlinkFeeds.USDC) {
-    const usdcOracleTimeout = 86400 // 24 hr
-    const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
-
     const { collateral: usdcCollateral } = await hre.run('deploy-fiat-collateral', {
       priceTimeout: priceTimeout.toString(),
       priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
@@ -202,7 +205,7 @@ async function main() {
       maxTradeVolume: fp('1e6').toString(), // $1m,
       oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(), // 24 hr
       targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.0125').toString(), // 1.25%
+      defaultThreshold: fp('0.01').add(usdcOracleError).toString(), // 1.3%
       delayUntilDefault: bn('86400').toString(), // 24h
     })
     collateral = <ICollateral>await ethers.getContractAt('ICollateral', usdcCollateral)
