@@ -14,7 +14,7 @@ export const mintFToken = async (
   await whileImpersonating(holderUnderlying, async (signer) => {
     const balUnderlying = await underlying.balanceOf(signer.address)
     await underlying.connect(signer).approve(fToken.address, balUnderlying)
-    await fToken.connect(signer).mint(amount)
+    await fToken.connect(signer).mint(balUnderlying)
     await fToken.connect(signer).transfer(recipient, amount)
   })
 }
