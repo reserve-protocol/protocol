@@ -31,18 +31,18 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     {
         ICToken _cToken = ICToken(address(config.erc20));
         address _underlying = _cToken.underlying();
-        uint8 _decimals;
+        uint8 _referenceERC20Decimals;
 
         // _underlying might be a wrapper at this point, try to go one level further
         try ICToken(_underlying).underlying() returns (address _mostUnderlying) {
             _cToken = ICToken(_underlying);
-            _decimals = IERC20Metadata(_mostUnderlying).decimals();
+            _referenceERC20Decimals = IERC20Metadata(_mostUnderlying).decimals();
         } catch {
-            _decimals = IERC20Metadata(_underlying).decimals();
+            _referenceERC20Decimals = IERC20Metadata(_underlying).decimals();
         }
 
         cToken = _cToken;
-        referenceERC20Decimals = _decimals;
+        referenceERC20Decimals = _referenceERC20Decimals;
         require(referenceERC20Decimals > 0, "referenceERC20Decimals missing");
     }
 
