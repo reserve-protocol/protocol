@@ -29,6 +29,11 @@ async function main() {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
+  // Only exists on Mainnet
+  if (baseL2Chains.includes(hre.network.name)) {
+    throw new Error(`Invalid network ${hre.network.name} - only available on Mainnet`)
+  }
+
   // Get phase1 deployment
   const phase1File = getDeploymentFilename(chainId)
   if (!fileExists(phase1File)) {
