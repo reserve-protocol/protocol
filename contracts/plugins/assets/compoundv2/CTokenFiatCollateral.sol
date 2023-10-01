@@ -12,7 +12,7 @@ import "./ICToken.sol";
  * @title CTokenFiatCollateral
  * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
- * Also used for FluxFinance
+ * Also used for FluxFinance. Flexible enough to work with and without CTokenWrapper.
  */
 contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -24,13 +24,25 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
 
     ICToken public immutable cToken; // gas-optimization: access underlying cToken directly
 
-    /// @param config.erc20 Should be a CTokenWrapper
+    /// @param config.erc20 May be a CTokenWrapper or the cToken itself
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)
     {
-        cToken = ICToken(address(RewardableERC20Wrapper(address(config.erc20)).underlying()));
-        referenceERC20Decimals = IERC20Metadata(cToken.underlying()).decimals();
+        ICToken _cToken = ICToken(address(config.erc20));
+        address _underlying = _cToken.underlying();
+        uint8 _referenceERC20Decimals;
+
+        // _underlying might be a wrapper at this point, try to go one level further
+        try ICToken(_underlying).underlying() returns (address _mostUnderlying) {
+            _cToken = ICToken(_underlying);
+            _referenceERC20Decimals = IERC20Metadata(_mostUnderlying).decimals();
+        } catch {
+            _referenceERC20Decimals = IERC20Metadata(_underlying).decimals();
+        }
+
+        cToken = _cToken;
+        referenceERC20Decimals = _referenceERC20Decimals;
         require(referenceERC20Decimals > 0, "referenceERC20Decimals missing");
     }
 
@@ -67,6 +79,8 @@ contract CTokenFiatCollateral is AppreciatingFiatCollateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// DEPRECATED: claimRewards() will be removed from all assets and collateral plugins
     function claimRewards() external virtual override(Asset, IRewardable) {
-        IRewardable(address(erc20)).claimRewards();
+        // solhint-ignore-next-line no-empty-blocks
+        try IRewardable(address(erc20)).claimRewards() {} catch {}
+        // erc20 may not be a CTokenWrapper
     }
 }
