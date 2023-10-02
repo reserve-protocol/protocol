@@ -1,6 +1,5 @@
 # Changelog
 
-<<<<<<< HEAD
 # 3.1.0 - Unreleased
 
 ### Upgrade Steps -- Required
@@ -49,30 +48,6 @@ _All_ asset plugins (and their corresponding ERC20s) must be upgraded. The only 
 
 Call the following functions, once it is desired to turn on the new features:
 
-=======
-# 3.0.0
-
-### Upgrade Steps
-
-#### Required Steps
-
-Update _all_ component contracts, including Main.
-
-Call the following functions:
-
-- `BackingManager.cacheComponents()`
-- `RevenueTrader.cacheComponents()` (for both rsrTrader and rTokenTrader)
-- `Distributor.cacheComponents()`
-
-_All_ asset plugins (and their corresponding ERC20s) must be upgraded. The only exception is the `StaticATokenLM` ERC20s from Aave V2. These can be left the same, however their assets should upgraded.
-
-- Note: Make sure to use `Deployer.deployRTokenAsset()` to create new `RTokenAsset` instances. This asset should be swapped too.
-
-#### Optional Steps
-
-Call the following functions, once it is desired to turn on the new features:
-
->>>>>>> master
 - `BasketHandler.setWarmupPeriod()`
 - `StRSR.setWithdrawalLeak()`
 - `Broker.setDutchAuctionLength()`
@@ -83,9 +58,7 @@ It is acceptable to leave these function calls out of the initial upgrade tx and
 ### Core Protocol Contracts
 
 - `AssetRegistry` [+1 slot]
-  Summary: StRSR contract need to know when refresh() was last called
-  - # Add last refresh timestamp tracking and expose via `lastRefresh()` getter
-    Summary: Other component contracts need to know when refresh() was last called
+  Summary: Other component contracts need to know when refresh() was last called
   - Add `lastRefresh()` timestamp getter
   - Add `size()` getter for number of registered assets
   - Require asset is SOUND on registration
@@ -204,8 +177,6 @@ It is acceptable to leave these function calls out of the initial upgrade tx and
   - Add `UnstakingCancelled()` event
   - Allow payout of (already acquired) RSR rewards while frozen
   - Add ability for governance to `resetStakes()` when stake rate falls outside (1e12, 1e24)
-<<<<<<< HEAD
-    <<<<<<< HEAD
 
 - `StRSRVotes` [+0 slots]
   - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function to encourage people to receive voting weight upon staking
@@ -227,33 +198,10 @@ Remove `FacadeMonitor` - now redundant with `nextRecollateralizationAuction()` a
 - `FacadeRead`
   Summary: Add new data summary views frontends may be interested in
 
-=======
-
-- `StRSRVotes` [+0 slots]
-  - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function to encourage people to receive voting weight upon staking
-
-### Facades
-
-Remove `FacadeMonitor` - now redundant with `nextRecollateralizationAuction()` and `revenueOverview()`
-
-- `FacadeAct`
-  Summary: Remove unused `getActCalldata()` and add way to run revenue auctions
-
-  - Remove `getActCalldata(..)`
-  - Remove `canRunRecollateralizationAuctions(..)`
-  - Remove `runRevenueAuctions(..)`
-  - Add `revenueOverview(IRevenueTrader) returns ( IERC20[] memory erc20s, bool[] memory canStart, uint256[] memory surpluses, uint256[] memory minTradeAmounts)`
-  - Add `nextRecollateralizationAuction(..) returns (bool canStart, IERC20 sell, IERC20 buy, uint256 sellAmount)`
-  - Modify all functions to work on both 3.0.0 and 2.1.0 RTokens
-
-- `FacadeRead`
-  Summary: Add new data summary views frontends may be interested in
-
->>>>>>> master
-  - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
-  - Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
-  - Remove `traderBalances(..)`
-  - Add `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
+- Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
+- Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
+- Remove `traderBalances(..)`
+- Add `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
 
 - `FacadeWrite`
   Summary: More expressive and fine-grained control over the set of pausers and freezers
@@ -317,7 +265,6 @@ Duration: 30 min (default)
   - Modify `backingOverview() to handle unpriced cases`
 - `FacadeAct`
   - Add `runRevenueAuctions()`
-<<<<<<< HEAD
 
 ### Plugins
 
@@ -406,65 +353,12 @@ Duration: 30 min (default)
 - Bugfix: Adjust `Curve*Collateral` and `RTokenAsset` to treat FIX_MAX correctly as +inf
 - Bugfix: Continue updating cached price after collateral default (impacts all appreciating collateral)
 
-# 2.1.0
-
-### Core protocol contracts
-
-- `BasketHandler`
-  - Bugfix for `getPrimeBasket()` view
-  - Minor change to `_price()` rounding
-  - Minor natspec improvement to `refreshBasket()`
-- `Broker`
-  - Fix `GnosisTrade` trade implemention to treat defensive rounding by EasyAuction correctly
-  - Add `setGnosis()` and `setTradeImplementation()` governance functions
-- `RToken`
-  - Minor gas optimization added to `redeemTo` to use saved `assetRegistry` variable
-- `StRSR`
-  - Expose RSR variables via `getDraftRSR()`, `getStakeRSR()`, and `getTotalDrafts()` views
-
-### Facades
-
-- `FacadeRead`
-  - Extend `issue()` to return the estimated USD value of deposits as `depositsUoA`
-  - Add `traderBalances()`
-  - Add `auctionsSettleable()`
-  - Add `nextRecollateralizationAuction()`
-  - Modify `backingOverview() to handle unpriced cases`
-- `FacadeAct`
-  - Add `runRevenueAuctions()`
-
-=======
-
->>>>>>> master
-### Plugins
-
-#### Assets and Collateral
-
-Across all collateral, `tryPrice()` was updated to exclude revenueHiding considerations
-
-- Deploy CRV + CVX plugins
-- Add `AnkrStakedEthCollateral` + tests + deployment/verification scripts for ankrETH
-- Add FluxFinance collateral tests + deployment/verification scripts for fUSDC, fUSDT, fDAI, and fFRAX
-- Add CompoundV3 `CTokenV3Collateral` + tests + deployment/verification scripts for cUSDCV3
-- Add Convex `CvxStableCollateral` + tests + deployment/verification scripts for 3Pool
-- Add Convex `CvxVolatileCollateral` + tests + deployment/verification scripts for Tricrypto
-- Add Convex `CvxStableMetapoolCollateral` + tests + deployment/verification scripts for MIM/3Pool
-- Add Convex `CvxStableRTokenMetapoolCollateral` + tests + deployment/verification scripts for eUSD/fraxBP
-- Add Frax `SFraxEthCollateral` + tests + deployment/verification scripts for sfrxETH
-- Add Lido `LidoStakedEthCollateral` + tests + deployment/verification scripts for wstETH
-- Add RocketPool `RethCollateral` + tests + deployment/verification scripts for rETH
-
 ### Testing
 
 - Add generic collateral testing suite at `test/plugins/individual-collateral/collateralTests.ts`
 - Add EasyAuction regression test for Broker false positive (observed during USDC de-peg)
 - Add EasyAuction extreme tests
 
-<<<<<<< HEAD
-> > > > > > > master
-
-=======
->>>>>>> master
 ### Documentation
 
 - Add `docs/plugin-addresses.md` as well as accompanying script for generation at `scripts/collateral-params.ts`

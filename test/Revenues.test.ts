@@ -1050,8 +1050,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           minBuyAmtRToken.div(bn('1e15'))
         )
       })
-      it('Should be able to start a dust auction BATCH_AUCTION, if enabled', async () => {
-        const minTrade = bn('1e18')
 
       it('Should be able to start a dust auction BATCH_AUCTION, if enabled', async () => {
         const minTrade = bn('1e18')
@@ -3026,7 +3024,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               rTokenAsset.address,
               collateral0.address,
               issueAmount,
-              config.minTradeVolume,
               config.maxTradeSlippage
             )
             expect(actual).to.be.closeTo(expected, expected.div(bn('1e15')))
@@ -3086,7 +3083,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             rTokenAsset.address,
             collateral0.address,
             issueAmount,
-            config.minTradeVolume,
             config.maxTradeSlippage
           )
           expect(await rTokenTrader.tradesOpen()).to.equal(0)
