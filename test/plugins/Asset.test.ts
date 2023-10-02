@@ -324,7 +324,7 @@ describe('Assets contracts #fast', () => {
       )
     })
 
-    it('Should not revert during RToken price() if supply is zero', async () => {
+    it('Should not revert RToken price if supply is zero', async () => {
       // Redeem RToken to make price function revert
       // Note: To get RToken price to 0, a full basket refresh needs to occur (covered in RToken tests)
       await rToken.connect(wallet).redeem(amt)
@@ -336,12 +336,6 @@ describe('Assets contracts #fast', () => {
         config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-
-      // Should have lot price, equal to price when feed works OK
-      const [lowPrice, highPrice] = await rTokenAsset.price()
-      const [lotLow, lotHigh] = await rTokenAsset.lotPrice()
-      expect(lotLow).to.equal(lowPrice)
-      expect(lotHigh).to.equal(highPrice)
     })
 
     it('Should calculate trade min correctly', async () => {

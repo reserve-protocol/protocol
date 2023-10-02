@@ -304,9 +304,7 @@ library TradingLibP0 {
             }
 
             (uint192 low, uint192 high) = asset.price(); // {UoA/tok}
-            // price() is better than lotPrice() here: it's important to not underestimate how
-            // much value could be in a token that is unpriced by using a decaying high lotPrice.
-            // price() will return [0, FIX_MAX] in this case, which is preferable.
+            // low decays down; high decays up
 
             // Skip over dust-balance assets not in the basket
             // Intentionally include value of IFFY/DISABLED collateral

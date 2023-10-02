@@ -214,7 +214,7 @@ This would be sensible for many UNI v2 pools, but someone holding value in a two
 
 Revenue Hiding should be employed when the function underlying `refPerTok()` is not necessarily _strongly_ non-decreasing, or simply if there is uncertainty surrounding the guarantee. In general we recommend including a very small amount (1e-6) of revenue hiding for all appreciating collateral. This is already implemented in [AppreciatingFiatCollateral.sol](../contracts/plugins/assets/AppreciatingFiatCollateral.sol).
 
-When implementing Revenue Hiding, the `price/lotPrice()` functions should NOT hide revenue; they should use the current underlying exchange rate to calculate a best-effort estimate of what the collateral will trade at on secondary markets. A side-effect of this approach is that the RToken's price on markets becomes more variable.
+When implementing Revenue Hiding, the `price` function should NOT hide revenue; they should use the current underlying exchange rate to calculate a best-effort estimate of what the collateral will trade at on secondary markets. A side-effect of this approach is that the RToken's price on markets becomes more variable.
 
 ## Important Properties for Collateral Plugins
 
