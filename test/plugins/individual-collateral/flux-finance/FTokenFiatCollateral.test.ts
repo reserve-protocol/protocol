@@ -4,14 +4,13 @@ import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '..
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish } from 'ethers'
 import {
-  CTokenWrapper,
+  ICToken,
   MockV3Aggregator,
   MockV3Aggregator__factory,
   TestICollateral,
 } from '../../../../typechain'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
-import { ZERO_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -108,29 +107,13 @@ all.forEach((curr: FTokenEnumeration) => {
   const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
     opts = { ...defaultCollateralOpts, ...opts }
 
-    let erc20Address = opts.erc20
-
-    if (erc20Address && erc20Address != ZERO_ADDRESS && erc20Address == curr.fToken) {
-      const erc20 = await ethers.getContractAt('ERC20Mock', opts.erc20!)
-      const CTokenWrapperFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-      const fTokenVault = <CTokenWrapper>(
-        await CTokenWrapperFactory.deploy(
-          opts.erc20,
-          await erc20.name(),
-          await erc20.symbol(),
-          opts.comptroller!
-        )
-      )
-      erc20Address = fTokenVault.address
-    }
-
     const FTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     ) // fTokens are the same as cTokens modulo some extra stuff we don't care about
 
     const collateral = <TestICollateral>await FTokenCollateralFactory.deploy(
       {
-        erc20: erc20Address,
+        erc20: opts.erc20,
         targetName: opts.targetName,
         priceTimeout: opts.priceTimeout,
         chainlinkFeed: opts.chainlinkFeed,
@@ -169,10 +152,7 @@ all.forEach((curr: FTokenEnumeration) => {
       collateralOpts.chainlinkFeed = chainlinkFeed.address
 
       const collateral = await deployCollateral(collateralOpts)
-      const erc20 = await ethers.getContractAt(
-        'CTokenWrapper',
-        (await collateral.erc20()) as string
-      ) // the fToken
+      const erc20 = await ethers.getContractAt('ICToken', (await collateral.erc20()) as string) // the fToken
 
       return {
         alice,
@@ -195,10 +175,9 @@ all.forEach((curr: FTokenEnumeration) => {
     user: SignerWithAddress,
     recipient: string
   ) => {
-    const tok = ctx.tok as CTokenWrapper
-    const fToken = await ethers.getContractAt('ICToken', await tok.underlying())
-    const underlying = await ethers.getContractAt('IERC20Metadata', await fToken.underlying())
-    await mintFToken(underlying, curr.holderUnderlying, fToken, tok, amount, recipient)
+    const tok = ctx.tok as ICToken
+    const underlying = await ethers.getContractAt('IERC20Metadata', await tok.underlying())
+    await mintFToken(underlying, curr.holderUnderlying, tok, amount, recipient)
   }
 
   const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
@@ -214,22 +193,18 @@ all.forEach((curr: FTokenEnumeration) => {
   }
 
   const increaseRefPerTok = async (ctx: CollateralFixtureContext, pctIncrease: BigNumberish) => {
-    const tok = ctx.tok as CTokenWrapper
-    const fToken = await ethers.getContractAt('ICToken', await tok.underlying())
-    const totalSupply = await fToken.totalSupply()
+    const totalSupply = await ctx.tok.totalSupply()
     await setStorageAt(
-      fToken.address,
+      ctx.tok.address,
       13, // interesting, the storage slot is 13 for fTokens and 14 for cTokens
       totalSupply.sub(totalSupply.mul(pctIncrease).div(100))
     ) // expand supply by pctDecrease, since it's denominator of exchange rate calculation
   }
 
   const reduceRefPerTok = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {
-    const tok = ctx.tok as CTokenWrapper
-    const fToken = await ethers.getContractAt('ICToken', await tok.underlying())
-    const totalSupply = await fToken.totalSupply()
+    const totalSupply = await ctx.tok.totalSupply()
     await setStorageAt(
-      fToken.address,
+      ctx.tok.address,
       13, // interesting, the storage slot is 13 for fTokens and 14 for cTokens
       totalSupply.add(totalSupply.mul(pctDecrease).div(100))
     ) // expand supply by pctDecrease, since it's denominator of exchange rate calculation
