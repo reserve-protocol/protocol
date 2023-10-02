@@ -1,5 +1,6 @@
 # Changelog
 
+<<<<<<< HEAD
 # 3.1.0 - Unreleased
 
 ### Upgrade Steps -- Required
@@ -48,6 +49,30 @@ _All_ asset plugins (and their corresponding ERC20s) must be upgraded. The only 
 
 Call the following functions, once it is desired to turn on the new features:
 
+=======
+# 3.0.0
+
+### Upgrade Steps
+
+#### Required Steps
+
+Update _all_ component contracts, including Main.
+
+Call the following functions:
+
+- `BackingManager.cacheComponents()`
+- `RevenueTrader.cacheComponents()` (for both rsrTrader and rTokenTrader)
+- `Distributor.cacheComponents()`
+
+_All_ asset plugins (and their corresponding ERC20s) must be upgraded. The only exception is the `StaticATokenLM` ERC20s from Aave V2. These can be left the same, however their assets should upgraded.
+
+- Note: Make sure to use `Deployer.deployRTokenAsset()` to create new `RTokenAsset` instances. This asset should be swapped too.
+
+#### Optional Steps
+
+Call the following functions, once it is desired to turn on the new features:
+
+>>>>>>> master
 - `BasketHandler.setWarmupPeriod()`
 - `StRSR.setWithdrawalLeak()`
 - `Broker.setDutchAuctionLength()`
@@ -179,6 +204,7 @@ It is acceptable to leave these function calls out of the initial upgrade tx and
   - Add `UnstakingCancelled()` event
   - Allow payout of (already acquired) RSR rewards while frozen
   - Add ability for governance to `resetStakes()` when stake rate falls outside (1e12, 1e24)
+<<<<<<< HEAD
     <<<<<<< HEAD
 
 - `StRSRVotes` [+0 slots]
@@ -201,6 +227,29 @@ Remove `FacadeMonitor` - now redundant with `nextRecollateralizationAuction()` a
 - `FacadeRead`
   Summary: Add new data summary views frontends may be interested in
 
+=======
+
+- `StRSRVotes` [+0 slots]
+  - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function to encourage people to receive voting weight upon staking
+
+### Facades
+
+Remove `FacadeMonitor` - now redundant with `nextRecollateralizationAuction()` and `revenueOverview()`
+
+- `FacadeAct`
+  Summary: Remove unused `getActCalldata()` and add way to run revenue auctions
+
+  - Remove `getActCalldata(..)`
+  - Remove `canRunRecollateralizationAuctions(..)`
+  - Remove `runRevenueAuctions(..)`
+  - Add `revenueOverview(IRevenueTrader) returns ( IERC20[] memory erc20s, bool[] memory canStart, uint256[] memory surpluses, uint256[] memory minTradeAmounts)`
+  - Add `nextRecollateralizationAuction(..) returns (bool canStart, IERC20 sell, IERC20 buy, uint256 sellAmount)`
+  - Modify all functions to work on both 3.0.0 and 2.1.0 RTokens
+
+- `FacadeRead`
+  Summary: Add new data summary views frontends may be interested in
+
+>>>>>>> master
   - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
   - Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
   - Remove `traderBalances(..)`
@@ -268,6 +317,7 @@ Duration: 30 min (default)
   - Modify `backingOverview() to handle unpriced cases`
 - `FacadeAct`
   - Add `runRevenueAuctions()`
+<<<<<<< HEAD
 
 ### Plugins
 
@@ -383,6 +433,9 @@ Duration: 30 min (default)
 - `FacadeAct`
   - Add `runRevenueAuctions()`
 
+=======
+
+>>>>>>> master
 ### Plugins
 
 #### Assets and Collateral
@@ -407,8 +460,11 @@ Across all collateral, `tryPrice()` was updated to exclude revenueHiding conside
 - Add EasyAuction regression test for Broker false positive (observed during USDC de-peg)
 - Add EasyAuction extreme tests
 
+<<<<<<< HEAD
 > > > > > > > master
 
+=======
+>>>>>>> master
 ### Documentation
 
 - Add `docs/plugin-addresses.md` as well as accompanying script for generation at `scripts/collateral-params.ts`

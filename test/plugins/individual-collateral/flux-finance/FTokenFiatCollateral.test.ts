@@ -12,6 +12,7 @@ import {
 import { pushOracleForward } from '../../../utils/oracles'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
+import { ZERO_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {
@@ -108,29 +109,13 @@ all.forEach((curr: FTokenEnumeration) => {
   const deployCollateral = async (opts: FTokenCollateralOpts = {}): Promise<TestICollateral> => {
     opts = { ...defaultCollateralOpts, ...opts }
 
-    let erc20Address = opts.erc20
-
-    if (erc20Address && erc20Address != ZERO_ADDRESS && erc20Address == curr.fToken) {
-      const erc20 = await ethers.getContractAt('ERC20Mock', opts.erc20!)
-      const CTokenWrapperFactory: ContractFactory = await ethers.getContractFactory('CTokenWrapper')
-      const fTokenVault = <CTokenWrapper>(
-        await CTokenWrapperFactory.deploy(
-          opts.erc20,
-          await erc20.name(),
-          await erc20.symbol(),
-          opts.comptroller!
-        )
-      )
-      erc20Address = fTokenVault.address
-    }
-
     const FTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
       'CTokenFiatCollateral'
     ) // fTokens are the same as cTokens modulo some extra stuff we don't care about
 
     const collateral = <TestICollateral>await FTokenCollateralFactory.deploy(
       {
-        erc20: erc20Address,
+        erc20: opts.erc20,
         targetName: opts.targetName,
         priceTimeout: opts.priceTimeout,
         chainlinkFeed: opts.chainlinkFeed,
@@ -195,10 +180,9 @@ all.forEach((curr: FTokenEnumeration) => {
     user: SignerWithAddress,
     recipient: string
   ) => {
-    const tok = ctx.tok as CTokenWrapper
-    const fToken = await ethers.getContractAt('ICToken', await tok.underlying())
-    const underlying = await ethers.getContractAt('IERC20Metadata', await fToken.underlying())
-    await mintFToken(underlying, curr.holderUnderlying, fToken, tok, amount, recipient)
+    const tok = ctx.tok as ICToken
+    const underlying = await ethers.getContractAt('IERC20Metadata', await tok.underlying())
+    await mintFToken(underlying, curr.holderUnderlying, tok, amount, recipient)
   }
 
   const reduceTargetPerRef = async (ctx: CollateralFixtureContext, pctDecrease: BigNumberish) => {

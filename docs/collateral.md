@@ -147,10 +147,16 @@ Note that a value denoted `{tok}` is a number of "whole tokens" with 18 decimals
 ### Reference unit `{ref}`
 
 The _reference unit_, `{ref}`, is the measure of value that the protocol computes revenue against. When the exchange rate `refPerTok()` rises, the protocol keeps a constant amount of `{ref}` as backing, and considers any surplus balance of the token revenue.
+<<<<<<< HEAD
 
 There's room for flexibility and creativity in the choice of a Collateral's reference unit. The chief constraints is that `refPerTok()` must be nondecreasing over time, and as soon as this fails to be the case the `CollateralStatus` should become permanently `DISABLED`.
 
-In many cases, the choice of reference unit is clear. For example:
+=======
+
+There's room for flexibility and creativity in the choice of a Collateral's reference unit. The chief constraints is that `refPerTok()` must be nondecreasing over time, and as soon as this fails to be the case the `CollateralStatus` should become permanently `DISABLED`.
+
+> > > > > > > master
+> > > > > > > In many cases, the choice of reference unit is clear. For example:
 
 - The collateral token cUSDC (compound USDC) has a natural reference unit of USDC. cUSDC is permissionlessly redeemable in the Compound protocol for an ever-increasing amount of USDC.
 - The collateral token USDT is its own natural reference unit. It's not natively redeemable for anything else on-chain, and we think of it as non-appreciating collateral. The reference unit is not USD, because the USDT/USD exchange rate often has small fluctuations in both direction which would otherwise cause `refPerTok()` to decrease.
@@ -247,7 +253,12 @@ There is a simple ERC20 wrapper that can be easily extended at [RewardableERC20W
 
 Because it’s called at the beginning of many transactions, `refresh()` should never revert. If `refresh()` encounters a critical error, it should change the Collateral contract’s state so that `status()` becomes `DISABLED`.
 
+<<<<<<< HEAD
 To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
+=======
+To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/assets/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`lotPrice()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
+
+> > > > > > > master
 
 ### The `IFFY` status should be temporary.
 
@@ -364,18 +375,6 @@ Lower estimate must be <= upper estimate.
 Should return `(0, FIX_MAX)` if pricing data is unavailable or stale.
 
 Recommend decaying low estimate downwards and high estimate upwards over time.
-
-Should be gas-efficient.
-
-The difference between the upper and lower estimate should not exceed ~5%, though this is not a hard-and-fast rule. When the difference (usually arising from an oracleError) is large, it can lead to [the price estimation of the RToken](../contracts/plugins/assets/RTokenAsset.sol) somewhat degrading. While this is not usually an issue it can come into play when one RToken is using another RToken as collateral either directly or indirectly through an LP token. If there is RSR overcollateralization then this issue is mitigated.
-
-### lotPrice() `{UoA/tok}`
-
-Should never revert.
-
-Lower estimate must be <= upper estimate.
-
-The low estimate should be nonzero while the asset is worth selling.
 
 Should be gas-efficient.
 
