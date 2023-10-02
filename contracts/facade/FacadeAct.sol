@@ -59,6 +59,8 @@ contract FacadeAct is IFacadeAct, Multicall {
             );
         }
 
+        if (toStart.length == 0) return;
+
         // Transfer revenue backingManager -> revenueTrader
         _forwardRevenue(revenueTrader.main().backingManager(), toStart);
 

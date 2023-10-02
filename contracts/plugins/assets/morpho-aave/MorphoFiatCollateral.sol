@@ -21,8 +21,8 @@ contract MorphoFiatCollateral is AppreciatingFiatCollateral {
     uint256 private immutable oneShare;
     int8 private immutable refDecimals;
 
-    /// @param config Configuration of this collateral
     /// config.erc20 must be a MorphoTokenisedDeposit
+    /// @param config.chainlinkFeed Feed units: {UoA/ref}
     /// @param revenueHiding {1} A value like 1e-6 that represents the maximum refPerTok to hide
     constructor(CollateralConfig memory config, uint192 revenueHiding)
         AppreciatingFiatCollateral(config, revenueHiding)

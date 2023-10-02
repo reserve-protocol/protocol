@@ -1,25 +1,25 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `70876`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after full price timeout 1`] = `70887`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `66407`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after full price timeout 2`] = `66418`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after hard default 1`] = `113875`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after hard default 1`] = `113943`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after hard default 2`] = `106192`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after hard default 2`] = `106260`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `70876`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after oracle timeout 1`] = `70887`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `66407`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after oracle timeout 2`] = `66418`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after soft default 1`] = `66066`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after soft default 1`] = `66077`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after soft default 2`] = `66066`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() after soft default 2`] = `66077`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `106189`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() during SOUND 1`] = `106257`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `106189`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() during SOUND 2`] = `106257`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() during soft default 1`] = `113740`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() during soft default 1`] = `113808`;
 
-exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() during soft default 2`] = `106471`;
+exports[`Collateral: RocketPoolETH collateral functionality Gas Reporting refresh() during soft default 2`] = `106539`;

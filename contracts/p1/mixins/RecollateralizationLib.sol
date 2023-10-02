@@ -130,8 +130,7 @@ library RecollateralizationLibP1 {
     // Compute the target basket range
     // Algorithm intuition: Trade conservatively. Quantify uncertainty based on the proportion of
     // token balances requiring trading vs not requiring trading. Seek to decrease uncertainty
-    // the largest amount possible with each trade. As long as trades clear within the expected
-    // range of prices, the basket range should narrow with each iteration (under constant prices)
+    // the largest amount possible with each trade.
     //
     // How do we know this algorithm converges?
     // Assumption: constant oracle prices; monotonically increasing refPerTok()
@@ -143,8 +142,8 @@ library RecollateralizationLibP1 {
     //       run-to-run, but will never increase it
     //
     // Preconditions:
-    // - ctx is correctly populated, with current basketsHeld + quantities
-    // - reg contains erc20 + asset arrays in same order and without duplicates
+    // - ctx is correctly populated, with current basketsHeld.bottom + basketsHeld.top
+    // - reg contains erc20 + asset + quantities arrays in same order and without duplicates
     // Trading Strategy:
     // - We will not aim to hold more than rToken.basketsNeeded() BUs
     // - No double trades: capital converted from token A to token B should not go to token C

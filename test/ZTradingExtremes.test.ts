@@ -342,6 +342,8 @@ describeExtreme(`Trading Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, 
       const noThrottle = { amtRate: MAX_THROTTLE_AMT_RATE, pctRate: 0 }
       await rToken.setIssuanceThrottleParams(noThrottle)
       await rToken.setRedemptionThrottleParams(noThrottle)
+      // Recharge throttle
+      await advanceTime(3600)
       await rToken.connect(addr1).issue(rTokenSupply)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 

@@ -51,6 +51,7 @@ Call the following functions, once it is desired to turn on the new features:
 - `BasketHandler.setWarmupPeriod()`
 - `StRSR.setWithdrawalLeak()`
 - `Broker.setDutchAuctionLength()`
+- `Broker.setDutchTradeImplementation()`
 
 It is acceptable to leave these function calls out of the initial upgrade tx and follow up with them later. The protocol will continue to function, just without dutch auctions, RSR unstaking gas-savings, and the warmup period.
 
@@ -178,6 +179,7 @@ It is acceptable to leave these function calls out of the initial upgrade tx and
   - Add `UnstakingCancelled()` event
   - Allow payout of (already acquired) RSR rewards while frozen
   - Add ability for governance to `resetStakes()` when stake rate falls outside (1e12, 1e24)
+    <<<<<<< HEAD
 
 - `StRSRVotes` [+0 slots]
   - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function to encourage people to receive voting weight upon staking
@@ -290,6 +292,122 @@ Across all collateral, `tryPrice()` was updated to exclude revenueHiding conside
 - Add generic collateral testing suite at `test/plugins/individual-collateral/collateralTests.ts`
 - Add EasyAuction regression test for Broker false positive (observed during USDC de-peg)
 - Add EasyAuction extreme tests
+
+=======
+
+- `StRSRVotes` [+0 slots]
+  - Add `stakeAndDelegate(uint256 rsrAmount, address delegate)` function to encourage people to receive voting weight upon staking
+
+### Facades
+
+Remove `FacadeMonitor` - now redundant with `nextRecollateralizationAuction()` and `revenueOverview()`
+
+- `FacadeAct`
+  Summary: Remove unused `getActCalldata()` and add way to run revenue auctions
+
+  - Remove `getActCalldata(..)`
+  - Remove `canRunRecollateralizationAuctions(..)`
+  - Remove `runRevenueAuctions(..)`
+  - Add `revenueOverview(IRevenueTrader) returns ( IERC20[] memory erc20s, bool[] memory canStart, uint256[] memory surpluses, uint256[] memory minTradeAmounts)`
+  - Add `nextRecollateralizationAuction(..) returns (bool canStart, IERC20 sell, IERC20 buy, uint256 sellAmount)`
+  - Modify all functions to work on both 3.0.0 and 2.1.0 RTokens
+
+- `FacadeRead`
+  Summary: Add new data summary views frontends may be interested in
+
+  - Remove `basketNonce` from `redeem(.., uint48 basketNonce)`
+  - Add `redeemCustom(.., uint48[] memory basketNonces, uint192[] memory portions)` callstatic to simulate multi-basket redemptions
+  - Remove `traderBalances(..)`
+  - Add `balancesAcrossAllTraders(IBackingManager) returns (IERC20[] memory erc20s, uint256[] memory balances, uint256[] memory balancesNeededByBackingManager)`
+
+- `FacadeWrite`
+  Summary: More expressive and fine-grained control over the set of pausers and freezers
+
+  - Do not automatically grant Guardian PAUSER/SHORT_FREEZER/LONG_FREEZER
+  - Do not automatically grant Owner PAUSER/SHORT_FREEZER/LONG_FREEZER
+  - Add ability to initialize with multiple pausers, short freezers, and long freezers
+  - Modify `setupGovernance(.., address owner, address guardian, address pauser)` -> `setupGovernance(.., GovernanceRoles calldata govRoles)`
+
+## Plugins
+
+### DutchTrade
+
+A cheaper, simpler, trading method. Intended to be the new dominant trading method, with GnosisTrade (batch auctions) available as a backup option. Generally speaking the batch auction length can be kept shorter than the dutch auction length.
+
+DutchTrade implements a four-stage, single-lot, falling price dutch auction:
+
+1. In the first 20% of the auction, the price falls from 1000x the best price to the best price in a geometric/exponential decay as a price manipulation defense mechanism. Bids are not expected to occur (but note: unlike the GnosisTrade batch auction, this mechanism is not resistant to _arbitrary_ price manipulation). If a bid occurs, then trading for the pair of tokens is disabled as long as the trade was started by the BackingManager.
+2. Between 20% and 45%, the price falls linearly from 1.5x the best price to the best price.
+3. Between 45% and 95%, the price falls linearly from the best price to the worst price.
+4. Over the last 5% of the auction, the price remains constant at the worst price.
+
+Duration: 30 min (default)
+
+### Assets and Collateral
+
+- Add `version() return (string)` getter to pave way for separation of asset versioning and core protocol versioning
+- Deprecate `claimRewards()`
+- Add `lastSave()` to `RTokenAsset`
+- Remove `CurveVolatileCollateral`
+- Switch `CToken*Collateral` (Compound V2) to using a CTokenVault ERC20 rather than the raw cToken
+- Bugfix: `lotPrice()` now begins at 100% the lastSavedPrice, instead of below 100%. It can be at 100% for up to the oracleTimeout in the worst-case.
+- Bugfix: Handle oracle deprecation as indicated by the `aggregator()` being set to the zero address
+- Bugfix: `AnkrStakedETHCollateral`/`CBETHCollateral`/`RethCollateral` now correctly detects soft default (note that Ankr still requires a new oracle before it can be deployed)
+- Bugfix: Adjust `Curve*Collateral` and `RTokenAsset` to treat FIX_MAX correctly as +inf
+- Bugfix: Continue updating cached price after collateral default (impacts all appreciating collateral)
+
+# 2.1.0
+
+### Core protocol contracts
+
+- `BasketHandler`
+  - Bugfix for `getPrimeBasket()` view
+  - Minor change to `_price()` rounding
+  - Minor natspec improvement to `refreshBasket()`
+- `Broker`
+  - Fix `GnosisTrade` trade implemention to treat defensive rounding by EasyAuction correctly
+  - Add `setGnosis()` and `setTradeImplementation()` governance functions
+- `RToken`
+  - Minor gas optimization added to `redeemTo` to use saved `assetRegistry` variable
+- `StRSR`
+  - Expose RSR variables via `getDraftRSR()`, `getStakeRSR()`, and `getTotalDrafts()` views
+
+### Facades
+
+- `FacadeRead`
+  - Extend `issue()` to return the estimated USD value of deposits as `depositsUoA`
+  - Add `traderBalances()`
+  - Add `auctionsSettleable()`
+  - Add `nextRecollateralizationAuction()`
+  - Modify `backingOverview() to handle unpriced cases`
+- `FacadeAct`
+  - Add `runRevenueAuctions()`
+
+### Plugins
+
+#### Assets and Collateral
+
+Across all collateral, `tryPrice()` was updated to exclude revenueHiding considerations
+
+- Deploy CRV + CVX plugins
+- Add `AnkrStakedEthCollateral` + tests + deployment/verification scripts for ankrETH
+- Add FluxFinance collateral tests + deployment/verification scripts for fUSDC, fUSDT, fDAI, and fFRAX
+- Add CompoundV3 `CTokenV3Collateral` + tests + deployment/verification scripts for cUSDCV3
+- Add Convex `CvxStableCollateral` + tests + deployment/verification scripts for 3Pool
+- Add Convex `CvxVolatileCollateral` + tests + deployment/verification scripts for Tricrypto
+- Add Convex `CvxStableMetapoolCollateral` + tests + deployment/verification scripts for MIM/3Pool
+- Add Convex `CvxStableRTokenMetapoolCollateral` + tests + deployment/verification scripts for eUSD/fraxBP
+- Add Frax `SFraxEthCollateral` + tests + deployment/verification scripts for sfrxETH
+- Add Lido `LidoStakedEthCollateral` + tests + deployment/verification scripts for wstETH
+- Add RocketPool `RethCollateral` + tests + deployment/verification scripts for rETH
+
+### Testing
+
+- Add generic collateral testing suite at `test/plugins/individual-collateral/collateralTests.ts`
+- Add EasyAuction regression test for Broker false positive (observed during USDC de-peg)
+- Add EasyAuction extreme tests
+
+> > > > > > > master
 
 ### Documentation
 

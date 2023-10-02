@@ -111,6 +111,12 @@ export interface CollateralTestSuiteFixtures<T extends CollateralFixtureContext>
 
   // the default answer that will come from the chainlink feed after deployment
   chainlinkDefaultAnswer: BigNumberish
+
+  // the default tolerance divisor that will be used in expectPrice checks
+  toleranceDivisor?: BigNumber
+
+  // the target network to run the collaterals tests on (only runs if forking this network)
+  targetNetwork?: string
 }
 
 export enum CollateralStatus {

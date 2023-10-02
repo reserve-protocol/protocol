@@ -11,6 +11,7 @@ import 'solidity-coverage'
 import * as tenderly from '@tenderly/hardhat-tenderly'
 
 import { useEnv } from '#/utils/env'
+import { forkRpcs, Network } from '#/utils/fork'
 import { HardhatUserConfig } from 'hardhat/types'
 import forkBlockNumber from '#/test/integration/fork-block-numbers'
 
@@ -23,6 +24,7 @@ const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 const TENDERLY_RPC_URL = useEnv('TENDERLY_RPC_URL')
 const GOERLI_RPC_URL = useEnv('GOERLI_RPC_URL')
 const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
+const BASE_RPC_URL = useEnv('BASE_RPC_URL')
 const MNEMONIC = useEnv('MNEMONIC') ?? 'test test test test test test test test test test test junk'
 const TIMEOUT = useEnv('SLOW') ? 6_000_000 : 600_000
 
@@ -36,8 +38,8 @@ const config: HardhatUserConfig = {
       // network for tests/in-process stuff
       forking: useEnv('FORK')
         ? {
-            url: MAINNET_RPC_URL,
-            blockNumber: Number(useEnv('MAINNET_BLOCK', forkBlockNumber['default'].toString())),
+            url: forkRpcs[(useEnv('FORK_NETWORK') ?? 'mainnet') as Network],
+            blockNumber: Number(useEnv(`FORK_BLOCK`, forkBlockNumber['default'].toString())),
           }
         : undefined,
       gas: 0x1ffffffff,
@@ -69,6 +71,13 @@ const config: HardhatUserConfig = {
         mnemonic: MNEMONIC,
       },
     },
+    base: {
+      chainId: 8453,
+      url: BASE_RPC_URL,
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+    },
     mainnet: {
       chainId: 1,
       url: MAINNET_RPC_URL,
@@ -76,7 +85,7 @@ const config: HardhatUserConfig = {
         mnemonic: MNEMONIC,
       },
       // gasPrice: 30_000_000_000,
-      gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
+      gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
     tenderly: {
       chainId: 3,
@@ -85,7 +94,7 @@ const config: HardhatUserConfig = {
         mnemonic: MNEMONIC,
       },
       // gasPrice: 10_000_000_000,
-      gasMultiplier: 1.05, // 5% buffer; seen failures on RToken deployment and asset refreshes otherwise
+      gasMultiplier: 2, // 100% buffer; seen failures on RToken deployment and asset refreshes otherwise
     },
   },
   solidity: {
@@ -133,6 +142,14 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: useEnv('ETHERSCAN_API_KEY'),
     customChains: [
+      {
+        network: 'base',
+        chainId: 8453,
+        urls: {
+          apiURL: 'https://api.basescan.org/api',
+          browserURL: 'https://basescan.org',
+        },
+      },
       {
         network: 'base-goerli',
         chainId: 84531,

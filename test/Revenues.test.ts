@@ -1050,6 +1050,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           minBuyAmtRToken.div(bn('1e15'))
         )
       })
+      it('Should be able to start a dust auction BATCH_AUCTION, if enabled', async () => {
+        const minTrade = bn('1e18')
 
       it('Should be able to start a dust auction BATCH_AUCTION, if enabled', async () => {
         const minTrade = bn('1e18')

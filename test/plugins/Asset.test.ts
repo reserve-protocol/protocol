@@ -336,6 +336,12 @@ describe('Assets contracts #fast', () => {
         config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+
+      // Should have lot price, equal to price when feed works OK
+      const [lowPrice, highPrice] = await rTokenAsset.price()
+      const [lotLow, lotHigh] = await rTokenAsset.lotPrice()
+      expect(lotLow).to.equal(lowPrice)
+      expect(lotHigh).to.equal(highPrice)
     })
 
     it('Should calculate trade min correctly', async () => {
