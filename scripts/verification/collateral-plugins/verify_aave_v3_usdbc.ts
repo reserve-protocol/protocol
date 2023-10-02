@@ -22,39 +22,41 @@ async function main() {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
 
+  // Only exists on Base L2
+  if (!baseL2Chains.includes(hre.network.name)) {
+    throw new Error(`Invalid network ${hre.network.name} - only available on Base`)
+  }
+
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   /********  Verify Wrapper  **************************/
   const erc20 = await ethers.getContractAt(
     'StaticATokenV3LM',
-    deployments.erc20s.aEthUSDC as string
+    deployments.erc20s.aBasUSDbC as string
   )
 
   await verifyContract(
     chainId,
-    deployments.erc20s.aEthUSDC,
+    deployments.erc20s.aBasUSDbC,
     [await erc20.POOL(), await erc20.INCENTIVES_CONTROLLER()],
     'contracts/plugins/assets/aave-v3/vendor/StaticATokenV3LM.sol:StaticATokenV3LM'
   )
 
-  /********  Verify Aave V3 USDC plugin  **************************/
-  const usdcOracleTimeout = 86400 // 24 hr
-  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
-
+  /********  Verify Aave V3 USDbC plugin  **************************/
   await verifyContract(
     chainId,
-    deployments.collateral.aEthUSDC,
+    deployments.collateral.aBasUSDbC,
     [
       {
         erc20: erc20.address,
         targetName: ethers.utils.formatBytes32String('USD'),
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
-        oracleError: usdcOracleError.toString(),
-        oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(), // 24 hr
+        oracleError: fp('0.003').toString(), // 3%
+        oracleTimeout: oracleTimeout(chainId, bn('86400')).toString(), // 24 hr
         maxTradeVolume: fp('1e6').toString(),
-        defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
+        defaultThreshold: fp('0.013').toString(),
         delayUntilDefault: bn('86400').toString(),
       },
       revenueHiding.toString(),

@@ -7,6 +7,6 @@ const BASE_GOERLI_RPC_URL = useEnv('BASE_GOERLI_RPC_URL')
 const BASE_RPC_URL = useEnv('BASE_RPC_URL')
 export type Network = 'mainnet' | 'base'
 export const forkRpcs = {
-  'mainnet': MAINNET_RPC_URL,
-  'base': BASE_RPC_URL,
+  mainnet: MAINNET_RPC_URL,
+  base: BASE_RPC_URL,
 }

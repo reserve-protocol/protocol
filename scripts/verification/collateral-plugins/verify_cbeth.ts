@@ -1,6 +1,6 @@
 import hre from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
-import { developmentChains, networkConfig } from '../../../common/configuration'
+import { baseL2Chains, developmentChains, networkConfig } from '../../../common/configuration'
 import { fp, bn } from '../../../common/numbers'
 import {
   getDeploymentFile,
@@ -26,28 +26,57 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   /********  Verify Coinbase staked ETH - CBETH  **************************/
-  const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
-  await verifyContract(
-    chainId,
-    deployments.collateral.cbETH,
-    [
-      {
-        priceTimeout: priceTimeout.toString(),
-        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-        oracleError: oracleError.toString(), // 0.5% & 2%,
-        erc20: networkConfig[chainId].tokens.cbETH!,
-        maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr,
-        targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
-        delayUntilDefault: bn('86400').toString(), // 24h
-      },
-      fp('1e-4'), // revenueHiding = 0.01%
-      networkConfig[chainId].chainlinkFeeds.cbETH!, // refPerTokChainlinkFeed
-      oracleTimeout(chainId, '86400').toString(), // refPerTokChainlinkTimeout
-    ],
-    'contracts/plugins/assets/cbeth/CBETHCollateral.sol:CBEthCollateral'
-  )
+
+  if (!baseL2Chains.includes(hre.network.name)) {
+    const oracleError = combinedError(fp('0.005'), fp('0.02')) // 0.5% & 2%
+
+    await verifyContract(
+      chainId,
+      deployments.collateral.cbETH,
+      [
+        {
+          priceTimeout: priceTimeout.toString(),
+          chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
+          oracleError: oracleError.toString(), // 0.5% & 2%
+          erc20: networkConfig[chainId].tokens.cbETH!,
+          maxTradeVolume: fp('1e6').toString(), // $1m,
+          oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
+          targetName: hre.ethers.utils.formatBytes32String('ETH'),
+          defaultThreshold: fp('0.02').add(oracleError).toString(), // ~4.5%
+          delayUntilDefault: bn('86400').toString(), // 24h
+        },
+        fp('1e-4'), // revenueHiding = 0.01%
+        networkConfig[chainId].chainlinkFeeds.cbETH!, // refPerTokChainlinkFeed
+        oracleTimeout(chainId, '86400').toString(), // refPerTokChainlinkTimeout
+      ],
+      'contracts/plugins/assets/cbeth/CBETHCollateral.sol:CBEthCollateral'
+    )
+  } else if (chainId == '8453' || chainId == '84531') {
+    const oracleError = combinedError(fp('0.0015'), fp('0.005')) // 0.15% & 0.5%
+    await verifyContract(
+      chainId,
+      deployments.collateral.cbETH,
+      [
+        {
+          priceTimeout: priceTimeout.toString(),
+          chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
+          oracleError: oracleError.toString(), // 0.15% & 0.5%,
+          erc20: networkConfig[chainId].tokens.cbETH!,
+          maxTradeVolume: fp('1e6').toString(), // $1m,
+          oracleTimeout: oracleTimeout(chainId, '1200').toString(), // 20 min
+          targetName: hre.ethers.utils.formatBytes32String('ETH'),
+          defaultThreshold: fp('0.02').add(oracleError).toString(), // ~2.5%
+          delayUntilDefault: bn('86400').toString(), // 24h
+        },
+        fp('1e-4'), // revenueHiding = 0.01%
+        networkConfig[chainId].chainlinkFeeds.cbETH!, // refPerTokChainlinkFeed
+        oracleTimeout(chainId, '86400').toString(), // refPerTokChainlinkTimeout
+        networkConfig[chainId].chainlinkFeeds.cbETHETHexr!, // exchangeRateChainlinkFeed
+        oracleTimeout(chainId, '86400').toString(), // exchangeRateChainlinkTimeout
+      ],
+      'contracts/plugins/assets/cbeth/CBETHCollateralL2.sol:CBEthCollateralL2'
+    )
+  }
 }
 
 main().catch((error) => {

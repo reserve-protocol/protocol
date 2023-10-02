@@ -143,6 +143,14 @@ const config: HardhatUserConfig = {
     apiKey: useEnv('ETHERSCAN_API_KEY'),
     customChains: [
       {
+        network: 'base',
+        chainId: 8453,
+        urls: {
+          apiURL: 'https://api.basescan.org/api',
+          browserURL: 'https://basescan.org',
+        },
+      },
+      {
         network: 'base-goerli',
         chainId: 84531,
         urls: {
