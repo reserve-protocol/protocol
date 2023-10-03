@@ -247,7 +247,7 @@ There is a simple ERC20 wrapper that can be easily extended at [RewardableERC20W
 
 Because it’s called at the beginning of many transactions, `refresh()` should never revert. If `refresh()` encounters a critical error, it should change the Collateral contract’s state so that `status()` becomes `DISABLED`.
 
-To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
+To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/assets/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
 
 ### The `IFFY` status should be temporary.
 
@@ -361,9 +361,9 @@ The difference between the upper and lower estimate should not exceed 5%, though
 
 Lower estimate must be <= upper estimate.
 
-Should return `(0, FIX_MAX)` if pricing data is unavailable or stale.
+Under no price data, the low estimate shoulddecay downwards and high estimate upwards.
 
-Recommend decaying low estimate downwards and high estimate upwards over time.
+Should return `(0, FIX_MAX)` if pricing data is _completely_ unavailable or stale.
 
 Should be gas-efficient.
 
