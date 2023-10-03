@@ -58,7 +58,7 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
 
     function _beforeWithdraw(uint256 _amount, address) internal override {
         IStargateLPStaking.PoolInfo memory poolInfo = stakingContract.poolInfo(poolId);
-        
+
         uint256 underlyingBalance = underlying.balanceOf(address(this));
         if (underlyingBalance < _amount) {
             if (poolInfo.allocPoint != 0) {
@@ -66,6 +66,6 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
             } else {
                 stakingContract.emergencyWithdraw(poolId);
             }
-        } 
+        }
     }
 }
