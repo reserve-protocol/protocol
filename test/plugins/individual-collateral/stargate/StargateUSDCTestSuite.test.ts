@@ -128,7 +128,7 @@ const deployCollateralStargateMockContext = async (
   )
   let chainlinkFeed: MockV3Aggregator
   if (collateralOpts.type === CollateralType.STABLE)
-    chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e6'))
+    chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   else {
     chainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1995e8'))
   }
