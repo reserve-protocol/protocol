@@ -191,14 +191,13 @@ contract FacadeRead is IFacadeRead {
     EnumerableMap.AddressToUintMap private _erc20Bals;
 
     /// Return the `portions` for a `RToken.redeemCustom()` call that maximizes redemption value.
-    /// Use `FacadeRead.redeemCustom()` to calculate the expected min amounts out.
-    /// @param earliestNonce {basketNonce} The earliest basket nonce to use; pass 0 if unsure
-    /// @param basketNonces {basketNonce} The array of basket nonces to redeem from
-    /// @param portions {1} The fraction of the custom redemption to pull from the basket nonce
+    /// Use `FacadeRead.redeemCustom()` to calculate the expected min amounts out
+    /// Will skip any basket nonces for which any collateral have been unregistered
+    /// @param portions {1} The fraction of the custom redemption to pull from each basket nonce
     /// @custom:static-call
-    function customRedemptionPortions(RTokenP1 rToken, uint256 earliestNonce)
+    function customRedemptionPortions(RTokenP1 rToken)
         external
-        returns (uint48[] memory basketNonces, uint192[] memory portions)
+        returns (uint192[] memory portions)
     {
         assert(_erc20Bals.length() == 0); // should be empty to start
         rToken.main().poke();
@@ -215,27 +214,26 @@ contract FacadeRead is IFacadeRead {
             }
         }
 
-        if (earliestNonce == 0) earliestNonce = 1;
-        basketNonces = new uint48[](currentNonce - earliestNonce);
-        uint192[] memory basketsToUse = new uint192[](currentNonce - earliestNonce);
-
         // Walk backwards from current nonce, deducting from basketsNeeded greedily
+        uint192[] memory basketsToUse = new uint192[](currentNonce + 1);
         {
             uint192 basketsNeeded = rToken.basketsNeeded();
 
-            for (uint48 nonce = currentNonce; nonce >= earliestNonce; nonce--) {
-                uint256 index = nonce - earliestNonce;
-                basketNonces[index] = nonce;
-
+            for (uint48 nonce = currentNonce; nonce > 0; nonce--) {
                 if (basketsNeeded == 0) continue; // stop searching when we have a full redemption
 
                 (IERC20[] memory erc20s, uint256[] memory quantities) = bh.getHistoricalBasket(
                     nonce
                 );
 
-                // Compute basketsToUse[index]
-                basketsToUse[index] = FIX_MAX;
+                // Compute basketsToUse[nonce]
+                basketsToUse[nonce] = FIX_MAX;
                 for (uint256 i = 0; i < erc20s.length; i++) {
+                    if (!_erc20Bals.contains(address(erc20s[i]))) {
+                        basketsToUse[nonce] = FIX_MAX;
+                        break;
+                    }
+
                     if (quantities[i] == 0) continue;
 
                     (bool success, uint256 availableBal) = _erc20Bals.tryGet(address(erc20s[i]));
@@ -243,21 +241,21 @@ contract FacadeRead is IFacadeRead {
 
                     // {BU} = {qTok} / {qTok/BU}
                     uint192 baskets = divuu(availableBal, quantities[i]); // FLOOR
-                    if (baskets < basketsToUse[index]) basketsToUse[index] = baskets;
+                    if (baskets < basketsToUse[nonce]) basketsToUse[nonce] = baskets;
                 }
 
-                // Cap basketsToUse[index] and deduct from basketsNeeded
-                if (basketsToUse[index] == 0 || basketsToUse[index] == FIX_MAX) continue;
-                if (basketsNeeded < basketsToUse[index]) basketsToUse[index] = basketsNeeded;
-                basketsNeeded -= basketsToUse[index];
+                // Cap basketsToUse[nonce] and deduct from basketsNeeded
+                if (basketsToUse[nonce] == 0 || basketsToUse[nonce] == FIX_MAX) continue;
+                if (basketsNeeded < basketsToUse[nonce]) basketsToUse[nonce] = basketsNeeded;
+                basketsNeeded -= basketsToUse[nonce];
 
-                // Deduct balances corresponding to basketsToUse[index] from _erc20Bals
+                // Deduct balances corresponding to basketsToUse[nonce] from _erc20Bals
                 for (uint256 i = 0; i < erc20s.length; i++) {
                     (bool success, uint256 availableBal) = _erc20Bals.tryGet(address(erc20s[i]));
                     if (!success) continue;
 
                     // {qTok} = {BU} * {qTok/BU}
-                    uint256 balToUse = basketsToUse[index].mul(_safeWrap(quantities[i]), FLOOR);
+                    uint256 balToUse = basketsToUse[nonce].mul(_safeWrap(quantities[i]), FLOOR);
                     _erc20Bals.set(address(erc20s[i]), availableBal - balToUse);
                 }
             }
@@ -269,7 +267,7 @@ contract FacadeRead is IFacadeRead {
             _erc20Bals.remove(erc20);
         }
 
-        return (basketNonces, normedArray(basketsToUse));
+        return normedArray(basketsToUse);
     }
 
     /// Norm an array, returning a new array that sums to FIX_ONE
@@ -287,7 +285,7 @@ contract FacadeRead is IFacadeRead {
             normedSum += normed[i];
         }
 
-        // Ensure normed array sums to FIX_ONE
+        // Ensure normed array sums to FIX_ONE; dump into 0th element of array
         if (normedSum < FIX_ONE) normed[0] += FIX_ONE - normedSum;
     }
 
