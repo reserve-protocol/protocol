@@ -47,7 +47,7 @@ task('upgrade-checker', 'Mints all the tokens to an address')
   .addParam('governor', 'the address of the OWNER of the RToken being upgraded')
   .addOptionalParam('proposalid', 'the ID of the governance proposal', undefined)
   .setAction(async (params, hre) => {
-    await resetFork(hre, Number(useEnv('MAINNET_BLOCK')))
+    await resetFork(hre, Number(useEnv('FORK_BLOCK')))
     const [tester] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)

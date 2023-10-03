@@ -1,7 +1,7 @@
 import hre, { ethers } from 'hardhat'
 
 import { getChainId } from '../../common/blockchain-utils'
-import { developmentChains, networkConfig } from '../../common/configuration'
+import { baseL2Chains, developmentChains, networkConfig } from '../../common/configuration'
 import { fp, bn } from '../../common/numbers'
 import {
   getDeploymentFile,
@@ -34,6 +34,9 @@ async function main() {
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   /********  Verify Fiat Collateral - DAI  **************************/
+  const daiOracleTimeout = baseL2Chains.includes(hre.network.name) ? 86400 : 3600 // 24 hr (Base) or 1 hour
+  const daiOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+
   await verifyContract(
     chainId,
     deployments.collateral.DAI,
@@ -41,17 +44,43 @@ async function main() {
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI,
-        oracleError: fp('0.0025').toString(), // 0.25%
+        oracleError: daiOracleError.toString(),
         erc20: networkConfig[chainId].tokens.DAI,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(), // 1 hr
+        oracleTimeout: oracleTimeout(chainId, daiOracleTimeout).toString(),
         targetName: hre.ethers.utils.formatBytes32String('USD'),
-        defaultThreshold: fp('0.0125').toString(), // 1.25%
+        defaultThreshold: fp('0.01').add(daiOracleError).toString(),
         delayUntilDefault: bn('86400').toString(), // 24h
       },
     ],
     'contracts/plugins/assets/FiatCollateral.sol:FiatCollateral'
   )
+
+  /********  Verify Fiat Collateral - USDbC  **************************/
+  const usdcOracleTimeout = 86400 // 24 hr
+  const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
+
+  if (baseL2Chains.includes(hre.network.name)) {
+    await verifyContract(
+      chainId,
+      deployments.collateral.USDbC,
+      [
+        {
+          priceTimeout: priceTimeout.toString(),
+          chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
+          oracleError: usdcOracleError.toString(),
+          erc20: networkConfig[chainId].tokens.USDbC,
+          maxTradeVolume: fp('1e6').toString(), // $1m,
+          oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(),
+          targetName: hre.ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
+          delayUntilDefault: bn('86400').toString(), // 24h
+        },
+      ],
+      'contracts/plugins/assets/FiatCollateral.sol:FiatCollateral'
+    )
+  }
+
   /********  Verify StaticATokenLM - aDAI  **************************/
   // Get AToken to retrieve name and symbol
   const aToken: ATokenMock = <ATokenMock>(
@@ -200,7 +229,11 @@ async function main() {
     ],
     'contracts/plugins/assets/NonFiatCollateral.sol:NonFiatCollateral'
   )
+
   /********************** Verify SelfReferentialCollateral - WETH  ****************************************/
+  const ethOracleTimeout = baseL2Chains.includes(hre.network.name) ? 1200 : 3600 // 20 min (Base) or 1 hr
+  const ethOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.0015') : fp('0.005') // 0.15% (Base) or 0.5%
+
   await verifyContract(
     chainId,
     deployments.collateral.WETH,
@@ -208,10 +241,10 @@ async function main() {
       {
         priceTimeout: priceTimeout.toString(),
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-        oracleError: fp('0.005').toString(), // 0.5%
+        oracleError: ethOracleError.toString(), // 0.5%
         erc20: networkConfig[chainId].tokens.WETH,
         maxTradeVolume: fp('1e6').toString(), // $1m,
-        oracleTimeout: oracleTimeout(chainId, '3600').toString(),
+        oracleTimeout: oracleTimeout(chainId, ethOracleTimeout).toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         defaultThreshold: '0',
         delayUntilDefault: '0',

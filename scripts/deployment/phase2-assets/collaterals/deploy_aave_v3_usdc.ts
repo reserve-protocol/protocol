@@ -1,8 +1,7 @@
 import fs from 'fs'
-import hre from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { baseL2Chains, networkConfig } from '../../../../common/configuration'
-import { bn, fp } from '../../../../common/numbers'
 import { expect } from 'chai'
 import { CollateralStatus } from '../../../../common/constants'
 import {
@@ -12,9 +11,11 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout, revenueHiding } from '../../utils'
-import { CTokenV3Collateral } from '../../../../typechain'
-import { ContractFactory } from 'ethers'
+import { bn, fp } from '#/common/numbers'
+import { AaveV3FiatCollateral } from '../../../../typechain'
+import { priceTimeout, revenueHiding, oracleTimeout } from '../../utils'
+
+// This file specifically deploys Aave V3 USDC collateral
 
 async function main() {
   // ==== Read Configuration ====
@@ -39,52 +40,62 @@ async function main() {
   if (!fileExists(phase1File)) {
     throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
   }
+
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   const deployedCollateral: string[] = []
 
-  /********  Deploy CompoundV3 USDC - cUSDCv3 **************************/
+  /********  Deploy Aave V3 USDC wrapper  **************************/
 
-  const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('CusdcV3Wrapper')
-  const erc20 = await WrapperFactory.deploy(
-    networkConfig[chainId].tokens.cUSDCv3,
-    networkConfig[chainId].COMET_REWARDS,
-    networkConfig[chainId].tokens.COMP
+  const StaticATokenFactory = await hre.ethers.getContractFactory('StaticATokenV3LM')
+  const erc20 = await StaticATokenFactory.deploy(
+    networkConfig[chainId].AAVE_V3_POOL!,
+    networkConfig[chainId].AAVE_V3_INCENTIVES_CONTROLLER!
   )
   await erc20.deployed()
+  await (
+    await erc20.initialize(
+      networkConfig[chainId].tokens.aEthUSDC!,
+      'Static Aave Ethereum USDC',
+      'saEthUSDC'
+    )
+  ).wait()
 
-  console.log(`Deployed wrapper for cUSDCv3 on ${hre.network.name} (${chainId}): ${erc20.address} `)
+  console.log(
+    `Deployed wrapper for Aave V3 USDC on ${hre.network.name} (${chainId}): ${erc20.address} `
+  )
 
-  const CTokenV3Factory: ContractFactory = await hre.ethers.getContractFactory('CTokenV3Collateral')
-
+  /********  Deploy Aave V3 USDC collateral plugin  **************************/
   const usdcOracleTimeout = 86400 // 24 hr
   const usdcOracleError = baseL2Chains.includes(hre.network.name) ? fp('0.003') : fp('0.0025') // 0.3% (Base) or 0.25%
 
-  const collateral = <CTokenV3Collateral>await CTokenV3Factory.connect(deployer).deploy(
+  const CollateralFactory = await ethers.getContractFactory('AaveV3FiatCollateral')
+  const collateral = <AaveV3FiatCollateral>await CollateralFactory.connect(deployer).deploy(
     {
-      priceTimeout: priceTimeout.toString(),
-      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC,
-      oracleError: usdcOracleError.toString(),
+      priceTimeout: priceTimeout,
+      chainlinkFeed: networkConfig[chainId].chainlinkFeeds.USDC!,
+      oracleError: usdcOracleError,
       erc20: erc20.address,
-      maxTradeVolume: fp('1e6').toString(), // $1m,
-      oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout).toString(), // 24h hr,
-      targetName: hre.ethers.utils.formatBytes32String('USD'),
-      defaultThreshold: fp('0.01').add(usdcOracleError).toString(),
-      delayUntilDefault: bn('86400').toString(), // 24h
+      maxTradeVolume: fp('1e6'),
+      oracleTimeout: oracleTimeout(chainId, usdcOracleTimeout),
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: fp('0.01').add(usdcOracleError),
+      delayUntilDefault: bn('86400'),
     },
-    revenueHiding.toString(),
-    bn('10000e6').toString() // $10k
+    revenueHiding
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()
   expect(await collateral.status()).to.equal(CollateralStatus.SOUND)
 
-  console.log(`Deployed CompoundV3 USDC to ${hre.network.name} (${chainId}): ${collateral.address}`)
+  console.log(
+    `Deployed Aave V3 USDC collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+  )
 
-  assetCollDeployments.collateral.cUSDCv3 = collateral.address
-  assetCollDeployments.erc20s.cUSDCv3 = erc20.address
+  assetCollDeployments.collateral.aEthUSDC = collateral.address
+  assetCollDeployments.erc20s.aEthUSDC = erc20.address
   deployedCollateral.push(collateral.address.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
