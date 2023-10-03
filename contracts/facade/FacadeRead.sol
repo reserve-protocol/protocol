@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.19;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../plugins/trading/DutchTrade.sol";
 import "../interfaces/IAsset.sol";
@@ -21,6 +22,7 @@ import "../p1/StRSRVotes.sol";
  */
 contract FacadeRead is IFacadeRead {
     using FixLib for uint192;
+    using EnumerableMap for EnumerableMap.AddressToUintMap;
 
     // === Static Calls ===
 
@@ -141,7 +143,7 @@ contract FacadeRead is IFacadeRead {
     }
 
     /// @return tokens The erc20s returned for the redemption
-    /// @return withdrawals The balances necessary to issue `amount` RToken
+    /// @return withdrawals The balances received during the redemption
     /// @custom:static-call
     function redeemCustom(
         IRToken rToken,
@@ -183,6 +185,110 @@ contract FacadeRead is IFacadeRead {
             ); // FLOOR
             if (prorata < withdrawals[i]) withdrawals[i] = prorata;
         }
+    }
+
+    // Local-variable of `customRedemptionPortions()`. Should always be empty.
+    EnumerableMap.AddressToUintMap private _erc20Bals;
+
+    /// Return the `portions` for a `RToken.redeemCustom()` call that maximizes redemption value.
+    /// Use `FacadeRead.redeemCustom()` to calculate the expected min amounts out.
+    /// @param earliestNonce {basketNonce} The earliest basket nonce to use; pass 0 if unsure
+    /// @param basketNonces {basketNonce} The array of basket nonces to redeem from
+    /// @param portions {1} The fraction of the custom redemption to pull from the basket nonce
+    /// @custom:static-call
+    function customRedemptionPortions(RTokenP1 rToken, uint256 earliestNonce)
+        external
+        returns (uint48[] memory basketNonces, uint192[] memory portions)
+    {
+        assert(_erc20Bals.length() == 0); // should be empty to start
+        rToken.main().poke();
+
+        address bm = address(rToken.main().backingManager());
+        BasketHandlerP1 bh = BasketHandlerP1(address(rToken.main().basketHandler()));
+        uint48 currentNonce = bh.nonce();
+
+        // Populate `_erc20Bals` with the registered erc20s and their initial balances
+        {
+            IERC20[] memory erc20s = rToken.main().assetRegistry().erc20s();
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                _erc20Bals.set(address(erc20s[i]), erc20s[i].balanceOf(bm));
+            }
+        }
+
+        if (earliestNonce == 0) earliestNonce = 1;
+        basketNonces = new uint48[](currentNonce - earliestNonce);
+        uint192[] memory basketsToUse = new uint192[](currentNonce - earliestNonce);
+
+        // Walk backwards from current nonce, deducting from basketsNeeded greedily
+        {
+            uint192 basketsNeeded = rToken.basketsNeeded();
+
+            for (uint48 nonce = currentNonce; nonce >= earliestNonce; nonce--) {
+                uint256 index = nonce - earliestNonce;
+                basketNonces[index] = nonce;
+
+                if (basketsNeeded == 0) continue; // stop searching when we have a full redemption
+
+                (IERC20[] memory erc20s, uint256[] memory quantities) = bh.getHistoricalBasket(
+                    nonce
+                );
+
+                // Compute basketsToUse[index]
+                basketsToUse[index] = FIX_MAX;
+                for (uint256 i = 0; i < erc20s.length; i++) {
+                    if (quantities[i] == 0) continue;
+
+                    (bool success, uint256 availableBal) = _erc20Bals.tryGet(address(erc20s[i]));
+                    if (!success) continue;
+
+                    // {BU} = {qTok} / {qTok/BU}
+                    uint192 baskets = divuu(availableBal, quantities[i]); // FLOOR
+                    if (baskets < basketsToUse[index]) basketsToUse[index] = baskets;
+                }
+
+                // Cap basketsToUse[index] and deduct from basketsNeeded
+                if (basketsToUse[index] == 0 || basketsToUse[index] == FIX_MAX) continue;
+                if (basketsNeeded < basketsToUse[index]) basketsToUse[index] = basketsNeeded;
+                basketsNeeded -= basketsToUse[index];
+
+                // Deduct balances corresponding to basketsToUse[index] from _erc20Bals
+                for (uint256 i = 0; i < erc20s.length; i++) {
+                    (bool success, uint256 availableBal) = _erc20Bals.tryGet(address(erc20s[i]));
+                    if (!success) continue;
+
+                    // {qTok} = {BU} * {qTok/BU}
+                    uint256 balToUse = basketsToUse[index].mul(_safeWrap(quantities[i]), FLOOR);
+                    _erc20Bals.set(address(erc20s[i]), availableBal - balToUse);
+                }
+            }
+        }
+
+        // Empty _erc20Bals, just in-case someone accidentally executes this function
+        while (_erc20Bals.length() > 0) {
+            (address erc20, ) = _erc20Bals.at(_erc20Bals.length() - 1);
+            _erc20Bals.remove(erc20);
+        }
+
+        return (basketNonces, normedArray(basketsToUse));
+    }
+
+    /// Norm an array, returning a new array that sums to FIX_ONE
+    /// @param array {X} An array of any type that needs to be normed
+    /// @return normed {1} The normed array; sums to FIX_ONE
+    function normedArray(uint192[] memory array) private pure returns (uint192[] memory normed) {
+        normed = new uint192[](array.length);
+
+        uint192 arraySum; // {X}
+        for (uint256 i = 0; i < array.length; i++) arraySum += array[i];
+
+        uint192 normedSum; // {1}
+        for (uint256 i = 0; i < array.length; i++) {
+            normed[i] = array[i].div(arraySum); // FLOOR
+            normedSum += normed[i];
+        }
+
+        // Ensure normed array sums to FIX_ONE
+        if (normedSum < FIX_ONE) normed[0] += FIX_ONE - normedSum;
     }
 
     /// @return erc20s The ERC20 addresses in the current basket
