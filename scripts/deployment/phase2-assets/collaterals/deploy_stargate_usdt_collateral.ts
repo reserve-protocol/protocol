@@ -12,7 +12,7 @@ import {
   getDeploymentFilename,
   fileExists,
 } from '../../common'
-import { priceTimeout, oracleTimeout } from '../../utils'
+import { revenueHiding, priceTimeout, oracleTimeout } from '../../utils'
 import {
   StargatePoolFiatCollateral,
   StargatePoolFiatCollateral__factory,
@@ -82,7 +82,7 @@ async function main() {
       defaultThreshold: fp('0.0125').toString(), // 1.25%
       delayUntilDefault: bn('86400').toString(), // 24h
     },
-    fp('0') // no revenueHiding
+    revenueHiding.toString()
   )
   await collateral.deployed()
   await (await collateral.refresh()).wait()
