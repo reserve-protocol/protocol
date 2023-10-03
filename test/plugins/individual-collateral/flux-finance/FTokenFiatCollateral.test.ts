@@ -12,7 +12,6 @@ import {
 import { pushOracleForward } from '../../../utils/oracles'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp } from '../../../../common/numbers'
-import { ZERO_ADDRESS } from '../../../../common/constants'
 import { expect } from 'chai'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import {

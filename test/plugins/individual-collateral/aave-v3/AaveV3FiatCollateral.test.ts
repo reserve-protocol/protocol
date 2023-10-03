@@ -17,6 +17,7 @@ import { networkConfig } from '#/common/configuration'
 import { getResetFork } from '../helpers'
 import { whileImpersonating } from '#/test/utils/impersonation'
 import { AAVE_V3_USDC_POOL, AAVE_V3_INCENTIVES_CONTROLLER } from './constants'
+import { pushOracleForward } from '../../../utils/oracles'
 
 interface AaveV3FiatCollateralFixtureContext extends CollateralFixtureContext {
   staticWrapper: MockStaticATokenV3LM
@@ -69,6 +70,9 @@ export const deployCollateral = async (opts: Partial<CollateralParams> = {}) => 
     }
   )
   await collateral.deployed()
+
+  // Push forward chainlink feed
+  await pushOracleForward(combinedOpts.chainlinkFeed!)
 
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
