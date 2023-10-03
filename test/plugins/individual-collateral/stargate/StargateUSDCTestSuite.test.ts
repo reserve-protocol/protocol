@@ -143,7 +143,7 @@ const deployCollateralStargateMockContext = async (
     await ethers.getContractFactory('StargatePoolMock')
   ).deploy('Mock Pool', 'MSP', collateralOpts.type === CollateralType.STABLE ? 6 : 8)
   await stakingContract.add(bn('5000'), mockPool.address)
-  await mockPool.mint(stakingContract.address, bn(1))
+  await mockPool.mint(stakingContract.address, bn(1e6))
   await mockPool.setExchangeRate(fp(1))
   const wrapper = await StargateRewardableWrapperFactory.deploy(
     'wMocked Pool',
@@ -196,7 +196,7 @@ const reduceRefPerTok = async (
   ctx: StargateCollateralFixtureContext,
   pctDecrease: BigNumberish
 ) => {
-  const currentExchangeRate = await ctx.collateral.refPerTok()
+  const currentExchangeRate = await ctx.pool.exchangeRate()
   await ctx.pool.setExchangeRate(
     currentExchangeRate.sub(currentExchangeRate.mul(pctDecrease).div(100))
   )
@@ -262,7 +262,7 @@ export const stableOpts = {
   itClaimsRewards: it.skip, // reward growth not supported in mock
   itChecksTargetPerRefDefault: it,
   itChecksRefPerTokDefault: it,
-  itHasRevenueHiding: it.skip, // no revenue hiding
+  itHasRevenueHiding: it,
   itIsPricedByPeg: true,
   chainlinkDefaultAnswer: 1e8,
   itChecksPriceChanges: it,
