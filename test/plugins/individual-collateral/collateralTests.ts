@@ -385,10 +385,6 @@ export default function fn<X extends CollateralFixtureContext>(
 
           await advanceTime(await collateral.oracleTimeout())
 
-          await advanceTime(await collateral.oracleTimeout())
-
-          await advanceTime(await collateral.oracleTimeout())
-
           // Should be roughly half, after half of priceTimeout
           const priceTimeout = await collateral.priceTimeout()
           await advanceTime(priceTimeout / 2)
