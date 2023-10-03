@@ -206,7 +206,7 @@ const increaseRefPerTok = async (
   ctx: StargateCollateralFixtureContext,
   pctIncrease: BigNumberish
 ) => {
-  const currentExchangeRate = await ctx.collateral.refPerTok()
+  const currentExchangeRate = await ctx.pool.exchangeRate()
   await ctx.pool.setExchangeRate(
     currentExchangeRate.add(currentExchangeRate.mul(pctIncrease).div(100))
   )
