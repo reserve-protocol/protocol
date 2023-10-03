@@ -93,8 +93,8 @@ export const deployCollateral = async (
   )
   await collateral.deployed()
 
-   // Push forward chainlink feed
-   await pushOracleForward(opts.chainlinkFeed!)
+  // Push forward chainlink feed
+  await pushOracleForward(opts.chainlinkFeed!)
 
   // sometimes we are trying to test a negative test case and we want this to fail silently
   // fortunately this syntax fails silently because our tools are terrible
