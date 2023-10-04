@@ -2,6 +2,7 @@ import collateralTests from '../collateralTests'
 import { CollateralFixtureContext, CollateralOpts, MintCollateralFunc } from '../pluginTestTypes'
 import { ethers } from 'hardhat'
 import { ContractFactory, BigNumberish, BigNumber } from 'ethers'
+import { resetFork } from './helpers'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -259,7 +260,7 @@ export const stableOpts = {
   mintCollateralTo,
   reduceRefPerTok,
   increaseRefPerTok,
-  resetFork: noop,
+  resetFork,
   collateralName: 'Stargate USDC Pool',
   reduceTargetPerRef,
   increaseTargetPerRef,
