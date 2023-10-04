@@ -1,25 +1,25 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Issue RToken 1`] = `856813`;
+exports[`CTokenVault contract Gas Reporting, cTokens Unwrapped Issue RToken 1`] = `816857`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Issue RToken 2`] = `711462`;
+exports[`CTokenVault contract Gas Reporting, cTokens Unwrapped Issue RToken 2`] = `677455`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Redeem RToken 1`] = `713340`;
+exports[`CTokenVault contract Gas Reporting, cTokens Unwrapped Redeem RToken 1`] = `679421`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Transfer 1`] = `142890`;
+exports[`CTokenVault contract Gas Reporting, cTokens Unwrapped Transfer 1`] = `159307`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Transfer 2`] = `105867`;
+exports[`CTokenVault contract Gas Reporting, cTokens Unwrapped Transfer 2`] = `127937`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Transfer 3`] = `105879`;
+exports[`CTokenVault contract Gas Reporting, cTokens Unwrapped Transfer 3`] = `110849`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Issue RToken 1`] = `875647`;
+exports[`CTokenVault contract Gas Reporting, cTokens Wrapped Issue RToken 1`] = `965241`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Issue RToken 2`] = `731074`;
+exports[`CTokenVault contract Gas Reporting, cTokens Wrapped Issue RToken 2`] = `753143`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Redeem RToken 1`] = `726889`;
+exports[`CTokenVault contract Gas Reporting, cTokens Wrapped Redeem RToken 1`] = `748958`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Transfer 1`] = `164610`;
+exports[`CTokenVault contract Gas Reporting, cTokens Wrapped Transfer 1`] = `310005`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Transfer 2`] = `127579`;
+exports[`CTokenVault contract Gas Reporting, cTokens Wrapped Transfer 2`] = `193085`;
 
-exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Transfer 3`] = `127591`;
+exports[`CTokenVault contract Gas Reporting, cTokens Wrapped Transfer 3`] = `175997`;

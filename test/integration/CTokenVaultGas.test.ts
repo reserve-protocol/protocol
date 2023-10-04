@@ -37,11 +37,11 @@ describe(`CTokenVault contract`, () => {
 
   // Tokens and Assets
   let initialBal: BigNumber
-  let fTokenUnwrapped: ICToken
-  let fTokenWrapped: CTokenWrapper
+  let cTokenUnwrapped: ICToken
+  let cTokenWrapped: CTokenWrapper
 
-  let fluxCollateralUnwrapped: Collateral
-  let fluxCollateralWrapped: Collateral
+  let cTokenCollateralUnwrapped: Collateral
+  let cTokenCollateralWrapped: Collateral
 
   // Config values
   let config: IConfig
@@ -63,12 +63,12 @@ describe(`CTokenVault contract`, () => {
     const defaultThreshold = fp('0.01') // 1%
     const delayUntilDefault = bn('86400') // 24h
     const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
-    fluxCollateralUnwrapped = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
+    cTokenCollateralUnwrapped = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: networkConfig['31337'].chainlinkFeeds.DAI!,
         oracleError: ORACLE_ERROR,
-        erc20: networkConfig['31337'].tokens.fDAI!,
+        erc20: networkConfig['31337'].tokens.cDAI!,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -77,24 +77,24 @@ describe(`CTokenVault contract`, () => {
       },
       REVENUE_HIDING
     )
-    await fluxCollateralUnwrapped.refresh()
+    await cTokenCollateralUnwrapped.refresh()
 
     const CTokenWrapperFactory = await ethers.getContractFactory('CTokenWrapper')
     const erc20: IERC20Metadata = <IERC20Metadata>(
-      await ethers.getContractAt('ICToken', networkConfig['31337'].tokens.fDAI!)
+      await ethers.getContractAt('ICToken', networkConfig['31337'].tokens.cDAI!)
     )
-    fTokenWrapped = await CTokenWrapperFactory.deploy(
+    cTokenWrapped = await CTokenWrapperFactory.deploy(
       erc20.address,
       `${await erc20.name()} Vault`,
       `${await erc20.symbol()}-VAULT`,
-      networkConfig['31337'].FLUX_FINANCE_COMPTROLLER!
+      networkConfig['31337'].COMPTROLLER!
     )
-    fluxCollateralWrapped = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
+    cTokenCollateralWrapped = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
         priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: networkConfig['31337'].chainlinkFeeds.DAI!,
         oracleError: ORACLE_ERROR,
-        erc20: fTokenWrapped.address,
+        erc20: cTokenWrapped.address,
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String('USD'),
@@ -103,64 +103,64 @@ describe(`CTokenVault contract`, () => {
       },
       REVENUE_HIDING
     )
-    await fluxCollateralWrapped.refresh()
+    await cTokenCollateralWrapped.refresh()
 
     // Advance time post warmup period
     await advanceTime(Number(config.warmupPeriod) + 1)
 
     // Mint initial balances
     const dai = await ethers.getContractAt('ERC20Mock', networkConfig['31337'].tokens.DAI!)
-    fTokenUnwrapped = await ethers.getContractAt('ICToken', networkConfig['31337'].tokens.fDAI!)
+    cTokenUnwrapped = await ethers.getContractAt('ICToken', networkConfig['31337'].tokens.cDAI!)
     const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
     initialBal = fp('1e7') // 10x the issuance throttle amount
     await whileImpersonating(holderDAI, async (daiSigner) => {
       await dai.connect(daiSigner).transfer(addr1.address, initialBal)
     })
-    await dai.connect(addr1).approve(fTokenUnwrapped.address, initialBal)
-    await fTokenUnwrapped.connect(addr1).mint(initialBal)
+    await dai.connect(addr1).approve(cTokenUnwrapped.address, initialBal)
+    await cTokenUnwrapped.connect(addr1).mint(initialBal)
   })
 
-  describeGas('Gas Reporting, Flux Tokens', () => {
+  describeGas('Gas Reporting, cTokens', () => {
     const initialBal = fp('1e7')
 
     describe('Unwrapped', () => {
       let tokenBal: BigNumber
 
       beforeEach(async () => {
-        await assetRegistry.connect(owner).register(fluxCollateralUnwrapped.address)
+        await assetRegistry.connect(owner).register(cTokenCollateralUnwrapped.address)
 
         const basketsNeededAmts = [fp('1.0')]
         await basketHandler
           .connect(owner)
-          .setPrimeBasket([fTokenUnwrapped.address], basketsNeededAmts)
+          .setPrimeBasket([cTokenUnwrapped.address], basketsNeededAmts)
         await basketHandler.connect(owner).refreshBasket()
 
         // Set up allowances
-        await backingManager.grantRTokenAllowance(fTokenUnwrapped.address)
+        await backingManager.grantRTokenAllowance(cTokenUnwrapped.address)
 
         // Charge throttle
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
 
-        tokenBal = await fTokenUnwrapped.balanceOf(addr1.address)
+        tokenBal = await cTokenUnwrapped.balanceOf(addr1.address)
 
         // Provide approvals
-        await fTokenUnwrapped.connect(addr1).approve(rToken.address, initialBal)
+        await cTokenUnwrapped.connect(addr1).approve(rToken.address, initialBal)
       })
 
       it('Transfer', async () => {
         // Transfer
         await snapshotGasCost(
-          fTokenUnwrapped.connect(addr1).transfer(addr2.address, tokenBal.div(10))
+          cTokenUnwrapped.connect(addr1).transfer(addr2.address, tokenBal.div(10))
         )
 
         // Transfer again
         await snapshotGasCost(
-          fTokenUnwrapped.connect(addr1).transfer(addr2.address, tokenBal.div(10))
+          cTokenUnwrapped.connect(addr1).transfer(addr2.address, tokenBal.div(10))
         )
 
         // Transfer back
         await snapshotGasCost(
-          fTokenUnwrapped.connect(addr2).transfer(addr1.address, tokenBal.div(10))
+          cTokenUnwrapped.connect(addr2).transfer(addr1.address, tokenBal.div(10))
         )
       })
 
@@ -180,43 +180,43 @@ describe(`CTokenVault contract`, () => {
       let tokenBal: BigNumber
 
       beforeEach(async () => {
-        const unwrappedBal = await fTokenUnwrapped.balanceOf(addr1.address)
-        await fTokenUnwrapped.connect(addr1).approve(fTokenWrapped.address, unwrappedBal)
-        await fTokenWrapped.connect(addr1).deposit(unwrappedBal, addr1.address)
-        await assetRegistry.connect(owner).register(fluxCollateralWrapped.address)
+        const unwrappedBal = await cTokenUnwrapped.balanceOf(addr1.address)
+        await cTokenUnwrapped.connect(addr1).approve(cTokenWrapped.address, unwrappedBal)
+        await cTokenWrapped.connect(addr1).deposit(unwrappedBal, addr1.address)
+        await assetRegistry.connect(owner).register(cTokenCollateralWrapped.address)
 
         const basketsNeededAmts = [fp('1.0')]
         await basketHandler
           .connect(owner)
-          .setPrimeBasket([fTokenWrapped.address], basketsNeededAmts)
+          .setPrimeBasket([cTokenWrapped.address], basketsNeededAmts)
         await basketHandler.connect(owner).refreshBasket()
 
         // Set up allowances
-        await backingManager.grantRTokenAllowance(fTokenWrapped.address)
+        await backingManager.grantRTokenAllowance(cTokenWrapped.address)
 
         // Charge throttle
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + 3600)
 
-        tokenBal = await fTokenWrapped.balanceOf(addr1.address)
+        tokenBal = await cTokenWrapped.balanceOf(addr1.address)
 
         // Provide approvals
-        await fTokenWrapped.connect(addr1).approve(rToken.address, initialBal)
+        await cTokenWrapped.connect(addr1).approve(rToken.address, initialBal)
       })
 
       it('Transfer', async () => {
         // Transfer
         await snapshotGasCost(
-          fTokenWrapped.connect(addr1).transfer(addr2.address, tokenBal.div(10))
+          cTokenWrapped.connect(addr1).transfer(addr2.address, tokenBal.div(10))
         )
 
         // Transfer again
         await snapshotGasCost(
-          fTokenWrapped.connect(addr1).transfer(addr2.address, tokenBal.div(10))
+          cTokenWrapped.connect(addr1).transfer(addr2.address, tokenBal.div(10))
         )
 
         // Transfer back
         await snapshotGasCost(
-          fTokenWrapped.connect(addr2).transfer(addr1.address, tokenBal.div(10))
+          cTokenWrapped.connect(addr2).transfer(addr1.address, tokenBal.div(10))
         )
       })
 
