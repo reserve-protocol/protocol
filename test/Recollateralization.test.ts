@@ -22,6 +22,7 @@ import {
   CTokenWrapperMock,
   ERC20Mock,
   FacadeRead,
+  FacadeMint,
   FacadeTest,
   FiatCollateral,
   GnosisMock,
@@ -104,7 +105,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
   let stRSR: TestIStRSR
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
+  let facadeMint: FacadeMint
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -118,7 +120,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   }
 
   const expectCurrentBacking = async (backingInfo: Partial<IBackingInfo>) => {
-    const tokens = await facade.basketTokens(rToken.address)
+    const tokens = await facadeRead.basketTokens(rToken.address)
     expect(tokens).to.eql(backingInfo.tokens)
 
     for (let i = 0; i < tokens.length; i++) {
@@ -166,7 +168,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
       rToken,
       stRSR,
       gnosis,
-      facade,
+      facadeRead,
+      facadeMint,
       facadeTest,
       assetRegistry,
       backingManager,
@@ -268,7 +271,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token1 to default - 50% price reduction
@@ -324,7 +327,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
       })
 
@@ -348,7 +351,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token2 to hard default - Decrease rate
@@ -394,7 +397,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql([
           initialQuotes[0],
           initialQuotes[1],
@@ -420,7 +423,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token0 to default - 50% price reduction
@@ -460,7 +463,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql([initialQuotes[1], bn('0.75e18')])
       })
 
@@ -480,7 +483,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token3 to hard default - Decrease rate (cDai)
@@ -506,7 +509,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         // Incremented the weight for token0
         expect(quotes).to.eql([bn('0.5e18'), initialQuotes[1], initialQuotes[2]])
       })
@@ -519,7 +522,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token1 to default - 50% price reduction
@@ -571,7 +574,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token2 to hard default - Decrease rate
@@ -610,7 +613,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[1], initialQuotes[3], bn('0.25e18')])
       })
     })
@@ -703,7 +706,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set new EUR Token to default - 50% price reduction
@@ -742,7 +745,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: newTokens,
           quantities: newQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], bn('0.5e18')])
       })
 
@@ -762,7 +765,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           tokens: initialTokens,
           quantities: initialQuantities,
         })
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Set the USD Token to default - 50% price reduction
@@ -3524,7 +3527,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Check no Backup tokens available
@@ -3577,7 +3580,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Running auctions will trigger recollateralization - All balance will be redeemed
@@ -3674,7 +3677,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -3736,7 +3739,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -3769,7 +3772,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Check no Backup tokens available
@@ -3822,7 +3825,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Running auctions will trigger recollateralization - All balance will be redeemed
@@ -3909,7 +3912,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -3971,7 +3974,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -4040,7 +4043,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -4099,7 +4102,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -4159,7 +4162,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, newPrice, ORACLE_ERROR)
 
         // Check quotes - reduced by 15.01% as well (less collateral is required to match the new price)
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         const finalQuotes = newQuotes.map((q) => {
           return q.mul(newPrice).div(fp('1'))
         })
@@ -4189,7 +4192,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         //  Leave only token0 in the basket, adjust weights
@@ -4228,7 +4231,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Add some additional token2 to get it selected for recollateralization
@@ -4312,7 +4315,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Perform Mock Bids (addr1 has balance)
@@ -4373,7 +4376,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         await token0.connect(addr1).approve(gnosis.address, minBuyAmt3)
@@ -4454,7 +4457,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
         // Check no Backup tokens available
@@ -4507,7 +4510,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await advanceTime(Number(config.warmupPeriod) + 1)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Running auctions will trigger recollateralization - All balance will be redeemed
@@ -4599,7 +4602,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -4666,7 +4669,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -4740,7 +4743,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -4806,7 +4809,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Check Backup tokens available
@@ -4872,7 +4875,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Perform Mock Bids for the new Token (addr1 has balance)
@@ -4923,7 +4926,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check quotes
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
         // Perform Mock Bids for the new Token (addr1 has balance)
@@ -4987,7 +4990,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
 
         // Check quotes - reduced by ~38.15% as well (less collateral is required to match the new price)
-        ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
+        ;[, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         const finalQuotes = newQuotes.map((q) => {
           return divCeil(q.mul(exactRTokenPrice), fp('1'))
         })

@@ -103,7 +103,7 @@ describe('FacadeWrite contract', () => {
   let timelock: TimelockController
 
   // Facade
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
   let facadeTest: FacadeTest
   let facadeWriteLibAddr: string
 
@@ -134,7 +134,7 @@ describe('FacadeWrite contract', () => {
       await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, compToken, compAsset, basket, config, facade, facadeTest, deployer } =
+    ;({ rsr, compToken, compAsset, basket, config, facadeRead, facadeTest, deployer } =
       await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -448,7 +448,7 @@ describe('FacadeWrite contract', () => {
         expect(await assetRegistry.toAsset(erc20s[3])).to.equal(tokenAsset.address)
         expect(await assetRegistry.toAsset(erc20s[4])).to.equal(usdcAsset.address)
         expect(await assetRegistry.toAsset(erc20s[5])).to.equal(cTokenAsset.address) // Backup token
-        expect(erc20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
+        expect(erc20s.length).to.eql((await facadeRead.basketTokens(rToken.address)).length + 4)
 
         // Collaterals
         expect(await assetRegistry.toColl(ERC20s[3])).to.equal(tokenAsset.address)
@@ -513,7 +513,7 @@ describe('FacadeWrite contract', () => {
 
           // Basket
           expect(await basketHandler.fullyCollateralized()).to.equal(true)
-          const backing = await facade.basketTokens(rToken.address)
+          const backing = await facadeRead.basketTokens(rToken.address)
           expect(backing[0]).to.equal(token.address)
           expect(backing[1]).to.equal(usdc.address)
 
@@ -533,7 +533,7 @@ describe('FacadeWrite contract', () => {
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
           // Check backing
-          let tokens = await facade.basketTokens(rToken.address)
+          let tokens = await facadeRead.basketTokens(rToken.address)
           expect(tokens).to.eql([token.address, usdc.address])
 
           // Set Usdc to default - 50% price reduction
@@ -555,7 +555,7 @@ describe('FacadeWrite contract', () => {
           expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
           // Backing did not change
-          tokens = await facade.basketTokens(rToken.address)
+          tokens = await facadeRead.basketTokens(rToken.address)
           expect(tokens).to.eql([token.address, usdc.address])
 
           // Basket switch
@@ -566,7 +566,7 @@ describe('FacadeWrite contract', () => {
 
           // Check new state - backing updated
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-          tokens = await facade.basketTokens(rToken.address)
+          tokens = await facadeRead.basketTokens(rToken.address)
           expect(tokens).to.eql([token.address, cTokenVault.address])
         })
 

@@ -114,7 +114,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let basketHandler: TestIBasketHandler
 
   let deployer: TestIDeployer
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
   let govParams: IGovParams
@@ -174,9 +174,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } = await loadFixture(
-      defaultFixture
-    ))
+    ;({ rsr, rsrAsset, deployer, facadeRead, facadeTest, facadeWrite, govParams } =
+      await loadFixture(defaultFixture))
 
     // Get required contracts for cDAI
     // COMP token
@@ -389,7 +388,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     it('Should register Basket correctly', async () => {
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
-      const backing = await facade.basketTokens(rToken.address)
+      const backing = await facadeRead.basketTokens(rToken.address)
       expect(backing[0]).to.equal(cDaiVault.address)
       expect(backing.length).to.equal(1)
 

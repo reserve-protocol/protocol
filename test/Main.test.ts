@@ -139,7 +139,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let main: TestIMain
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -175,7 +175,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       stRSR,
       gnosis,
       broker,
-      facade,
+      facadeRead,
       facadeTest,
       rsrTrader,
       rTokenTrader,
@@ -278,7 +278,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         })
       )
       expect(ERC20s.slice(4)).to.eql(initialTokens)
-      expect(ERC20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
+      expect(ERC20s.length).to.eql((await facadeRead.basketTokens(rToken.address)).length + 4)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
@@ -300,7 +300,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should register Basket correctly', async () => {
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
-      const backing = await facade.basketTokens(rToken.address)
+      const backing = await facadeRead.basketTokens(rToken.address)
       expect(backing[0]).to.equal(token0.address)
       expect(backing[1]).to.equal(token1.address)
       expect(backing[2]).to.equal(token2.address)
@@ -1084,7 +1084,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should return backing tokens', async () => {
-      expect(await facade.basketTokens(rToken.address)).to.eql([
+      expect(await facadeRead.basketTokens(rToken.address)).to.eql([
         token0.address,
         token1.address,
         token2.address,
@@ -2668,7 +2668,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Basket remains the same in this case
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
-      const backing = await facade.basketTokens(rToken.address)
+      const backing = await facadeRead.basketTokens(rToken.address)
       expect(backing[0]).to.equal(token0.address)
       expect(backing[1]).to.equal(token1.address)
       expect(backing[2]).to.equal(token2.address)
@@ -2712,7 +2712,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Basket should be 100% collateral0
-      const toks = await facade.basketTokens(rToken.address)
+      const toks = await facadeRead.basketTokens(rToken.address)
       expect(toks.length).to.equal(1)
       expect(toks[0]).to.equal(token0.address)
 
@@ -2727,7 +2727,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(2, [], [], true)
 
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      // toks = await facade.basketTokens(rToken.address)
+      // toks = await facadeRead.basketTokens(rToken.address)
       // expect(await basketHandler.quantity(token1.address)).to.equal(0)
       // expect(toks.length).to.equal(0)
     })
@@ -3219,7 +3219,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // New basket should not contain token0
-      const newBasket = await facade.basketTokens(rToken.address)
+      const newBasket = await facadeRead.basketTokens(rToken.address)
       for (let i = 0; i < newBasket.length; i++) {
         expect(newBasket[i]).to.not.equal(token0.address)
       }

@@ -154,7 +154,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let rToken: TestIRToken
   let rTokenAsset: RTokenAsset
   let main: TestIMain
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -216,7 +216,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         basketHandler,
         rToken,
         rTokenAsset,
-        facade,
+        facadeRead,
         facadeTest,
         config,
       } = await loadFixture(defaultFixtureNoBasket))
@@ -1729,7 +1729,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           })
         )
         expect(ERC20s.slice(4)).to.eql(initialTokens)
-        expect(ERC20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
+        expect(ERC20s.length).to.eql((await facadeRead.basketTokens(rToken.address)).length + 4)
 
         // Assets
         expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
@@ -1749,7 +1749,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       it('Should register simple Basket correctly', async () => {
         // Basket
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        const backing = await facade.basketTokens(rToken.address)
+        const backing = await facadeRead.basketTokens(rToken.address)
         expect(backing[0]).to.equal(dai.address)
         expect(backing[1]).to.equal(stataDai.address)
         expect(backing[2]).to.equal(cDaiVault.address)
@@ -2173,7 +2173,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         // Check Basket
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        const backing = await facade.basketTokens(rToken.address)
+        const backing = await facadeRead.basketTokens(rToken.address)
         expect(backing[0]).to.equal(wbtc.address)
         expect(backing[1]).to.equal(cWBTCVault.address)
         expect(backing[2]).to.equal(weth.address)
@@ -2390,7 +2390,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         // Check Basket
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        const backing = await facade.basketTokens(rToken.address)
+        const backing = await facadeRead.basketTokens(rToken.address)
         expect(backing[0]).to.equal(usdt.address)
         expect(backing.length).to.equal(1)
 
@@ -2499,7 +2499,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         basketHandler,
         rToken,
         rTokenAsset,
-        facade,
+        facadeRead,
       } = await loadFixture(defaultFixtureNoBasket))
 
       // Get assets and tokens for default basket

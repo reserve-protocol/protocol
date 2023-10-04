@@ -48,7 +48,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   // Market / Facade
   let gnosis: GnosisMock
   let broker: TestIBroker
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
 
   // Core contracts
   let rToken: TestIRToken
@@ -108,7 +108,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       stRSR,
       broker,
       gnosis,
-      facade,
+      facadeRead,
       rsrTrader,
       rTokenTrader,
     } = await loadFixture(defaultFixture))
@@ -238,9 +238,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       expect(distributor.address).to.not.equal(ZERO_ADDRESS)
       expect(rsrTrader.address).to.not.equal(ZERO_ADDRESS)
       expect(rTokenTrader.address).to.not.equal(ZERO_ADDRESS)
-
-      // Other contracts
-      expect(facade.address).to.not.equal(ZERO_ADDRESS)
     })
 
     it('Should setup versioning correctly', async () => {
@@ -310,7 +307,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rsrAsset.address)
       expect(await assetRegistry.toAsset(erc20s[2])).to.equal(aaveAsset.address)
       expect(await assetRegistry.toAsset(erc20s[3])).to.equal(compAsset.address)
-      expect(erc20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
+      expect(erc20s.length).to.eql((await facadeRead.basketTokens(rToken.address)).length + 4)
 
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)

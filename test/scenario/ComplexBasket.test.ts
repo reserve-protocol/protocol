@@ -12,6 +12,7 @@ import {
   CTokenWrapperMock,
   ERC20Mock,
   FacadeRead,
+  FacadeMint,
   FacadeTest,
   GnosisMock,
   IAssetRegistry,
@@ -101,7 +102,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
   let basketHandler: TestIBasketHandler
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
+  let facadeMint: FacadeMint
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
 
@@ -131,7 +133,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      facade,
+      facadeRead,
+      facadeMint,
       facadeTest,
       rsr,
       rsrAsset,
@@ -410,7 +413,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await advanceTime(Number(config.warmupPeriod) + 1)
 
     // Mint and approve initial balances
-    const backing: string[] = await facade.basketTokens(rToken.address)
+    const backing: string[] = await facadeRead.basketTokens(rToken.address)
     await prepareBacking(backing)
     // WETH needs to be deposited
     wethDepositAmt = initialBal
@@ -422,7 +425,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   it('Should Issue/Redeem correctly', async () => {
     // Basket
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
-    const backing: string[] = await facade.basketTokens(rToken.address)
+    const backing: string[] = await facadeRead.basketTokens(rToken.address)
     expect(backing.length).to.equal(8)
 
     // Check other values
@@ -434,7 +437,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const issueAmt = bn('10e18')
 
     // Get quotes
-    const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmt)
+    const [, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, issueAmt)
 
     // Issue
     await rToken.connect(addr1).issue(issueAmt)
@@ -673,7 +676,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const issueAmount = bn('1e18')
 
     // Get quotes for RToken
-    const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
+    const [, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, issueAmount)
 
     // Requires 200 cDAI (at $0.02 = $4 USD)
     expect(quotes[2]).to.equal(bn(200e8))
@@ -714,7 +717,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Token2:  100 cDAI @ 0.004 = 4 USD
     // Token5:  1280 cWBTCVault @ 500 = 640K USD
     // Token7:  6095.23 cETHVault @ 25.2 = $153,600 USD
-    const [, newQuotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
+    const [, newQuotes] = await facadeMint
+      .connect(addr1)
+      .callStatic.issue(rToken.address, issueAmount)
 
     await assetRegistry.refresh() // refresh to update refPerTok()
     const expectedTkn2: BigNumber = toBNDecimals(
@@ -1319,7 +1324,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
     // Get quotes for RToken
-    const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
+    const [, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, issueAmount)
     const expectedTkn4: BigNumber = issueAmount
       .mul(targetAmts[4])
       .div(await collateral[4].refPerTok())
@@ -1354,7 +1359,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Advance time post warmup period
     await advanceTime(Number(config.warmupPeriod) + 1)
 
-    const [, newQuotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
+    const [, newQuotes] = await facadeMint
+      .connect(addr1)
+      .callStatic.issue(rToken.address, issueAmount)
     const newExpectedTkn4: BigNumber = issueAmount
       .mul(targetAmts[4].add(targetAmts[5]))
       .div(await collateral[4].refPerTok())
@@ -1363,7 +1370,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Check new basket
     expect(await basketHandler.fullyCollateralized()).to.equal(false)
-    const newBacking: string[] = await facade.basketTokens(rToken.address)
+    const newBacking: string[] = await facadeRead.basketTokens(rToken.address)
     expect(newBacking.length).to.equal(7) // One less token
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
@@ -1547,7 +1554,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
     // Get quotes for RToken
-    const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
+    const [, quotes] = await facadeMint.connect(addr1).callStatic.issue(rToken.address, issueAmount)
     const expectedTkn6: BigNumber = issueAmount
       .mul(targetAmts[6])
       .div(await collateral[6].refPerTok())
@@ -1582,7 +1589,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Advance time post warmup period
     await advanceTime(Number(config.warmupPeriod) + 1)
 
-    const [, newQuotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
+    const [, newQuotes] = await facadeMint
+      .connect(addr1)
+      .callStatic.issue(rToken.address, issueAmount)
     const newExpectedTkn6: BigNumber = issueAmount
       .mul(targetAmts[6].add(targetAmts[7]))
       .div(await collateral[6].refPerTok())
@@ -1591,7 +1600,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Check new basket
     expect(await basketHandler.fullyCollateralized()).to.equal(false)
-    const newBacking: string[] = await facade.basketTokens(rToken.address)
+    const newBacking: string[] = await facadeRead.basketTokens(rToken.address)
     expect(newBacking.length).to.equal(7) // One less token
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 

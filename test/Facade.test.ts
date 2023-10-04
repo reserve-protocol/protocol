@@ -19,6 +19,7 @@ import {
   ERC20Mock,
   FacadeAct,
   FacadeRead,
+  FacadeMint,
   FacadeTest,
   MockV3Aggregator,
   RecollateralizationLibP1,
@@ -55,7 +56,7 @@ const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.ski
 
 const itP1 = IMPLEMENTATION == Implementation.P1 ? it : it.skip
 
-describe('FacadeRead + FacadeAct contracts', () => {
+describe('FacadeAct + FacadeMint + FacadeRead contracts', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -80,9 +81,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
   let cTokenAsset: Collateral
 
   // Facade
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
   let facadeTest: FacadeTest
   let facadeAct: FacadeAct
+  let facadeMint: FacadeMint
 
   // Main
   let rToken: TestIRToken
@@ -122,8 +124,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
       rsrAsset,
       basket,
       config,
-      facade,
       facadeAct,
+      facadeRead,
+      facadeMint,
       facadeTest,
       rToken,
       main,
@@ -183,7 +186,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
     let issueAmount: BigNumber
 
     const expectValidBasketBreakdown = async (rToken: TestIRToken) => {
-      const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
+      const [erc20s, breakdown, targets] = await facadeRead.callStatic.basketBreakdown(
+        rToken.address
+      )
       expect(erc20s.length).to.equal(4)
       expect(breakdown.length).to.equal(4)
       expect(targets.length).to.equal(4)
@@ -219,38 +224,41 @@ describe('FacadeRead + FacadeAct contracts', () => {
       await rToken.connect(addr1).issue(issueAmount)
     })
 
-    it('should return the correct facade address', async () => {
-      expect(await facade.stToken(rToken.address)).to.equal(stRSR.address)
+    it('should return the correct facadeRead address', async () => {
+      expect(await facadeRead.stToken(rToken.address)).to.equal(stRSR.address)
     })
 
     it('Should return maxIssuable correctly', async () => {
       // Check values
-      expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
+      expect(await facadeMint.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
         bn('39999999900e18')
       )
-      expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
+      expect(await facadeMint.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
         bn('40000000000e18')
       )
-      expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
+      expect(await facadeMint.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
 
       // Redeem all RTokens
       await rToken.connect(addr1).redeem(issueAmount)
 
       // With 0 baskets needed - Returns correct value
-      expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
+      expect(await facadeMint.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
         bn('40000000000e18')
       )
     })
 
     it('Should revert maxIssuable when frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.be.revertedWith(
-        'frozen'
-      )
+      await expect(
+        facadeMint.callStatic.maxIssuable(rToken.address, addr1.address)
+      ).to.be.revertedWith('frozen')
     })
 
     it('Should return issuable quantities correctly', async () => {
-      const [toks, quantities, uoas] = await facade.callStatic.issue(rToken.address, issueAmount)
+      const [toks, quantities, uoas] = await facadeMint.callStatic.issue(
+        rToken.address,
+        issueAmount
+      )
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
       expect(toks[1]).to.equal(usdc.address)
@@ -271,7 +279,10 @@ describe('FacadeRead + FacadeAct contracts', () => {
     it('Should handle UNPRICED when returning issuable quantities', async () => {
       // Set unpriced assets, should return UoA = 0
       await setOraclePrice(tokenAsset.address, MAX_UINT256.div(2).sub(1))
-      const [toks, quantities, uoas] = await facade.callStatic.issue(rToken.address, issueAmount)
+      const [toks, quantities, uoas] = await facadeMint.callStatic.issue(
+        rToken.address,
+        issueAmount
+      )
       expect(toks.length).to.equal(4)
       expect(toks[0]).to.equal(token.address)
       expect(toks[1]).to.equal(usdc.address)
@@ -292,13 +303,13 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     it('Should revert when returning issuable quantities if frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(facade.callStatic.issue(rToken.address, issueAmount)).to.be.revertedWith(
+      await expect(facadeMint.callStatic.issue(rToken.address, issueAmount)).to.be.revertedWith(
         'frozen'
       )
     })
 
     it('Should return redeemable quantities correctly', async () => {
-      const [toks, quantities, available] = await facade.callStatic.redeem(
+      const [toks, quantities, available] = await facadeMint.callStatic.redeem(
         rToken.address,
         issueAmount
       )
@@ -317,7 +328,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect(available[3]).to.equal(issueAmount.div(4).mul(50).div(bn('1e10')))
 
       // redeemCustom
-      const [toksCustom, quantitiesCustom] = await facade.callStatic.redeemCustom(
+      const [toksCustom, quantitiesCustom] = await facadeMint.callStatic.redeemCustom(
         rToken.address,
         issueAmount,
         [await basketHandler.nonce()],
@@ -335,7 +346,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
       // Prorata case -- burn half
       await token.burn(await main.backingManager(), issueAmount.div(8))
-      const [newToks, newQuantities, newAvailable] = await facade.callStatic.redeem(
+      const [newToks, newQuantities, newAvailable] = await facadeMint.callStatic.redeem(
         rToken.address,
         issueAmount
       )
@@ -344,7 +355,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       expect(newAvailable[0]).to.equal(issueAmount.div(4).div(2))
 
       // redeemCustom
-      const [newToksCustom, newQuantitiesCustom] = await facade.callStatic.redeemCustom(
+      const [newToksCustom, newQuantitiesCustom] = await facadeMint.callStatic.redeemCustom(
         rToken.address,
         issueAmount,
         [await basketHandler.nonce()],
@@ -362,8 +373,8 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
       // refreshBasket()
       await basketHandler.connect(owner).refreshBasket()
-      await expect(facade.callStatic.redeem(rToken.address, issueAmount)).not.to.be.reverted
-      const [prevBasketTokens, prevBasketQuantities] = await facade.callStatic.redeemCustom(
+      await expect(facadeMint.callStatic.redeem(rToken.address, issueAmount)).not.to.be.reverted
+      const [prevBasketTokens, prevBasketQuantities] = await facadeMint.callStatic.redeemCustom(
         rToken.address,
         issueAmount,
         [(await basketHandler.nonce()) - 1],
@@ -382,13 +393,15 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     it('Should revert when returning redeemable quantities if frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(facade.callStatic.redeem(rToken.address, issueAmount)).to.be.revertedWith(
+      await expect(facadeMint.callStatic.redeem(rToken.address, issueAmount)).to.be.revertedWith(
         'frozen'
       )
     })
 
     it('Should return backingOverview correctly', async () => {
-      let [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      let [backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
+        rToken.address
+      )
 
       // Check values - Fully collateralized and no over-collateralization
       expect(backing).to.equal(fp('1'))
@@ -401,7 +414,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
       // Stake some RSR
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
-      ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      ;[backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
+        rToken.address
+      )
 
       // Check values - Fully collateralized and fully over-collateralized
       expect(backing).to.equal(fp('1'))
@@ -410,7 +425,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
       // Stake more RSR
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
-      ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      ;[backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
+        rToken.address
+      )
 
       expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(fp('1'))
@@ -419,7 +436,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
       await rToken.connect(addr1).redeem(issueAmount)
 
       // Check values = 0 (no supply)
-      ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      ;[backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
+        rToken.address
+      )
 
       // Check values - No supply, returns 0
       expect(backing).to.equal(0)
@@ -430,7 +449,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       const backingManager = await main.backingManager()
       await usdc.burn(backingManager, (await usdc.balanceOf(backingManager)).div(2))
       await basketHandler.refreshBasket()
-      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+      const [backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
         rToken.address
       )
 
@@ -441,7 +460,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     it('Should return backingOverview backing correctly when an asset price is 0', async () => {
       await setOraclePrice(tokenAsset.address, bn(0))
-      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+      const [backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
         rToken.address
       )
 
@@ -453,7 +472,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
     it('Should return backingOverview backing correctly when basket collateral is UNPRICED', async () => {
       await setOraclePrice(tokenAsset.address, MAX_UINT256.div(2).sub(1))
       await basketHandler.refreshBasket()
-      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+      const [backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
         rToken.address
       )
 
@@ -471,7 +490,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
 
-      const [backing, overCollateralization] = await facade.callStatic.backingOverview(
+      const [backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
         rToken.address
       )
 
@@ -482,7 +501,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       // Set price to 0
       await setOraclePrice(rsrAsset.address, bn(0))
 
-      const [backing2, overCollateralization2] = await facade.callStatic.backingOverview(
+      const [backing2, overCollateralization2] = await facadeRead.callStatic.backingOverview(
         rToken.address
       )
 
@@ -501,12 +520,16 @@ describe('FacadeRead + FacadeAct contracts', () => {
       await stRSR.connect(addr1).stake(stakeAmount)
 
       // Check values - Fully collateralized and with 50%-collateralization
-      let [backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      let [backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
+        rToken.address
+      )
       expect(backing).to.equal(fp('1'))
       expect(overCollateralization).to.equal(fp('0.5'))
 
       await setOraclePrice(rsrAsset.address, MAX_UINT256.div(2).sub(1))
-      ;[backing, overCollateralization] = await facade.callStatic.backingOverview(rToken.address)
+      ;[backing, overCollateralization] = await facadeRead.callStatic.backingOverview(
+        rToken.address
+      )
 
       // Check values - Fully collateralized and no over-collateralization
       expect(backing).to.equal(fp('1'))
@@ -526,7 +549,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
       // Balances
       const [erc20s, balances, balancesNeededByBackingManager] =
-        await facade.callStatic.balancesAcrossAllTraders(rToken.address)
+        await facadeRead.callStatic.balancesAcrossAllTraders(rToken.address)
       expect(erc20s.length).to.equal(8)
       expect(balances.length).to.equal(8)
       expect(balancesNeededByBackingManager.length).to.equal(8)
@@ -605,13 +628,13 @@ describe('FacadeRead + FacadeAct contracts', () => {
         expect(canStart).to.eql(Array(8).fill(false))
 
         // Nothing should be settleable
-        expect((await facade.auctionsSettleable(trader.address)).length).to.equal(0)
+        expect((await facadeRead.auctionsSettleable(trader.address)).length).to.equal(0)
 
         // Advance time till auction is over
         await advanceBlocks(2 + auctionLength / 12)
 
         // Now should be settleable
-        const settleable = await facade.auctionsSettleable(trader.address)
+        const settleable = await facadeRead.auctionsSettleable(trader.address)
         expect(settleable.length).to.equal(1)
         expect(settleable[0]).to.equal(token.address)
 
@@ -893,7 +916,9 @@ describe('FacadeRead + FacadeAct contracts', () => {
       // set price of dai to 0
       await chainlinkFeed.updateAnswer(0)
       await main.connect(owner).pauseTrading()
-      const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
+      const [erc20s, breakdown, targets] = await facadeRead.callStatic.basketBreakdown(
+        rToken.address
+      )
       expect(erc20s.length).to.equal(4)
       expect(breakdown.length).to.equal(4)
       expect(targets.length).to.equal(4)
@@ -924,7 +949,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
 
     it('Should return RToken price correctly', async () => {
       const avgPrice = fp('1')
-      const [lowPrice, highPrice] = await facade.price(rToken.address)
+      const [lowPrice, highPrice] = await facadeRead.price(rToken.address)
       const delta = avgPrice.mul(ORACLE_ERROR).div(fp('1'))
       const expectedLow = avgPrice.sub(delta)
       const expectedHigh = avgPrice.add(delta)
@@ -950,7 +975,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
         await stRSRP1.connect(addr1).unstake(unstakeAmount)
         await stRSRP1.connect(addr1).unstake(unstakeAmount.add(1))
 
-        const pendings = await facade.pendingUnstakings(rToken.address, addr1.address)
+        const pendings = await facadeRead.pendingUnstakings(rToken.address, addr1.address)
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
         expect(pendings[0][2]).to.eql(unstakeAmount) // amount
@@ -960,7 +985,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
       })
 
       it('Should return prime basket', async () => {
-        const [erc20s, targetNames, targetAmts] = await facade.primeBasket(rToken.address)
+        const [erc20s, targetNames, targetAmts] = await facadeRead.primeBasket(rToken.address)
         expect(erc20s.length).to.equal(4)
         expect(targetNames.length).to.equal(4)
         expect(targetAmts.length).to.equal(4)
@@ -992,7 +1017,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
         // prime basket should still be all 4 tokens
-        const [erc20s, targetNames, targetAmts] = await facade.primeBasket(rToken.address)
+        const [erc20s, targetNames, targetAmts] = await facadeRead.primeBasket(rToken.address)
         expect(erc20s.length).to.equal(4)
         expect(targetNames.length).to.equal(4)
         expect(targetAmts.length).to.equal(4)
@@ -1014,7 +1039,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
           ])
 
         // Expect that config
-        let [erc20s, max] = await facade.backupConfig(
+        let [erc20s, max] = await facadeRead.backupConfig(
           rToken.address,
           ethers.utils.formatBytes32String('USD')
         )
@@ -1024,7 +1049,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
         expect(max).to.equal(1)
 
         // Expect empty config for non-USD
-        ;[erc20s, max] = await facade.backupConfig(
+        ;[erc20s, max] = await facadeRead.backupConfig(
           rToken.address,
           ethers.utils.formatBytes32String('EUR')
         )
@@ -1136,13 +1161,13 @@ describe('FacadeRead + FacadeAct contracts', () => {
         .withArgs(anyValue, token.address, rsr.address, anyValue, anyValue)
 
       // Nothing should be settleable
-      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
+      expect((await facadeRead.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
       await advanceBlocks(2 + auctionLength / 12)
 
       // Settleable now
-      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(1)
+      expect((await facadeRead.auctionsSettleable(rsrTrader.address)).length).to.equal(1)
 
       // Settle and start new auction - Will retry
       await expectEvents(
@@ -1169,13 +1194,13 @@ describe('FacadeRead + FacadeAct contracts', () => {
       )
 
       // Nothing should be settleable
-      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
+      expect((await facadeRead.auctionsSettleable(rsrTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
       await advanceBlocks(2 + auctionLength / 12)
 
       // Settleable now
-      expect((await facade.auctionsSettleable(rsrTrader.address)).length).to.equal(1)
+      expect((await facadeRead.auctionsSettleable(rsrTrader.address)).length).to.equal(1)
 
       // Should not revert, even when not starting new auctions
       await facadeAct.runRevenueAuctions(rsrTrader.address, [token.address], [], [])
@@ -1215,7 +1240,7 @@ describe('FacadeRead + FacadeAct contracts', () => {
         .withArgs(anyValue, token.address, rToken.address, anyValue, anyValue)
 
       // Nothing should be settleable
-      expect((await facade.auctionsSettleable(rTokenTrader.address)).length).to.equal(0)
+      expect((await facadeRead.auctionsSettleable(rTokenTrader.address)).length).to.equal(0)
 
       // Advance time till auction ended
       await advanceBlocks(1 + auctionLength / 12)

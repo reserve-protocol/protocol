@@ -65,7 +65,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
   let basketHandler: TestIBasketHandler
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
 
@@ -285,7 +285,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      facade,
+      facadeRead,
       facadeTest,
     } = await loadFixture(defaultFixtureNoBasket))
 
@@ -307,7 +307,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     it('Should Issue/Redeem with max basket correctly', async () => {
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
-      const backing: string[] = await facade.basketTokens(rToken.address)
+      const backing: string[] = await facadeRead.basketTokens(rToken.address)
       expect(backing.length).to.equal(maxBasketSize)
 
       // Check other values
@@ -338,7 +338,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should switch basket correctly', async () => {
-      const backing = await facade.basketTokens(rToken.address)
+      const backing = await facadeRead.basketTokens(rToken.address)
 
       // Mint and approve initial balances
       await prepareBacking(backing)
@@ -397,7 +397,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Check new basket
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
-      const newBacking: string[] = await facade.basketTokens(rToken.address)
+      const newBacking: string[] = await facadeRead.basketTokens(rToken.address)
       expect(newBacking.length).to.equal(maxBasketSize - tokensToDefault)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
@@ -444,7 +444,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     it('Should Issue/Redeem with max basket correctly', async () => {
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
-      const backing: string[] = await facade.basketTokens(rToken.address)
+      const backing: string[] = await facadeRead.basketTokens(rToken.address)
       expect(backing.length).to.equal(maxBasketSize)
 
       // Check other values
@@ -475,7 +475,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should switch basket correctly', async () => {
-      const backing = await facade.basketTokens(rToken.address)
+      const backing = await facadeRead.basketTokens(rToken.address)
 
       // Mint and approve initial balances
       await prepareBacking(backing)
@@ -521,7 +521,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Check new basket
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
-      const newBacking: string[] = await facade.basketTokens(rToken.address)
+      const newBacking: string[] = await facadeRead.basketTokens(rToken.address)
       expect(newBacking.length).to.equal(maxBasketSize - tokensToDefault)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 

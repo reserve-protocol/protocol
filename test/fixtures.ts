@@ -24,6 +24,7 @@ import {
   DutchTrade,
   FacadeRead,
   FacadeAct,
+  FacadeMint,
   FacadeTest,
   DistributorP1,
   FiatCollateral,
@@ -407,7 +408,8 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   rTokenAsset: RTokenAsset
   furnace: TestIFurnace
   stRSR: TestIStRSR
-  facade: FacadeRead
+  facadeRead: FacadeRead
+  facadeMint: FacadeMint
   facadeAct: FacadeAct
   facadeTest: FacadeTest
   broker: TestIBroker
@@ -472,7 +474,11 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
 
   // Deploy FacadeRead
   const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
-  const facade = <FacadeRead>await FacadeReadFactory.deploy()
+  const facadeRead = <FacadeRead>await FacadeReadFactory.deploy()
+
+  // Deploy FacadeMint
+  const FacadeMintFactory: ContractFactory = await ethers.getContractFactory('FacadeMint')
+  const facadeMint = <FacadeMint>await FacadeMintFactory.deploy()
 
   // Deploy FacadeAct
   const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
@@ -746,7 +752,8 @@ const makeDefaultFixture = async (setBasket: boolean): Promise<DefaultFixture> =
     broker,
     gnosis,
     easyAuction,
-    facade,
+    facadeRead,
+    facadeMint,
     facadeAct,
     facadeTest,
     rsrTrader,

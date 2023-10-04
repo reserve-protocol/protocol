@@ -12,7 +12,7 @@ Any ERC20 token that our system knows how to deal with is wrapped and modelled i
 
 The remained solidity files in our repository are either:
 
-- `Facade.sol` and `FacadeAct.sol`, which is a stateless generic interface that can be used with any RToken. This enables convenient external interactions and app development. There can be multiple facades.
+- `FacadeRead.sol`/`FacadeMint.sol`/`FacadeAct.sol`, which are a stateless generic interfaces that can be used with any RToken. This enables convenient external interactions and app development.
 - `FacadeWrite.sol`, which allows to easily deploy and configure an RToken in a few simple transactions.
 - `Deployer.sol`, which deploys the clones of implementation contracts as needed to initialize a new RToken
 - `Fixed.sol`, which provides fixed-point fractional arithmetic operations

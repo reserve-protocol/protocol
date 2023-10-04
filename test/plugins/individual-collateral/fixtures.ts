@@ -16,8 +16,9 @@ import {
   DistributorP1,
   DutchTrade,
   ERC20Mock,
-  FacadeRead,
   FacadeAct,
+  FacadeRead,
+  FacadeMint,
   FacadeTest,
   FacadeWrite,
   FurnaceP1,
@@ -63,7 +64,8 @@ export interface DefaultFixture extends RSRAndModuleFixture {
   salt: string
   deployer: TestIDeployer
   rsrAsset: Asset
-  facade: FacadeRead
+  facadeRead: FacadeRead
+  facadeMint: FacadeMint
   facadeAct: FacadeAct
   facadeTest: FacadeTest
   facadeWrite: FacadeWrite
@@ -81,7 +83,11 @@ export const getDefaultFixture = async function (salt: string) {
 
     // Deploy FacadeRead
     const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
-    const facade = <FacadeRead>await FacadeReadFactory.deploy()
+    const facadeRead = <FacadeRead>await FacadeReadFactory.deploy()
+
+    // Deploy FacadeMint
+    const FacadeMintFactory: ContractFactory = await ethers.getContractFactory('FacadeMint')
+    const facadeMint = <FacadeMint>await FacadeMintFactory.deploy()
 
     // Deploy FacadeAct
     const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
@@ -225,7 +231,8 @@ export const getDefaultFixture = async function (salt: string) {
       rsrAsset,
       deployer,
       gnosis,
-      facade,
+      facadeRead,
+      facadeMint,
       facadeAct,
       facadeTest,
       facadeWrite,

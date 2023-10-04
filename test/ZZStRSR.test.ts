@@ -69,7 +69,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: TestIBasketHandler
   let rToken: TestIRToken
-  let facade: FacadeRead
+  let facadeRead: FacadeRead
   let assetRegistry: IAssetRegistry
 
   // StRSR
@@ -159,7 +159,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       backingManager,
       basketHandler,
       rToken,
-      facade,
+      facadeRead,
       assetRegistry,
     } = await loadFixture(defaultFixture))
 
@@ -862,7 +862,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Move forward past stakingWithdrawalDelay
         await setNextBlockTimestamp(Number(await getLatestBlockTimestamp()) + stkWithdrawalDelay)
 
-        const erc20s = await facade.basketTokens(rToken.address)
+        const erc20s = await facadeRead.basketTokens(rToken.address)
 
         // Set not fully collateralized by changing basket
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
