@@ -47,4 +47,6 @@ interface IStargateLPStaking {
     function add(uint256 _allocPoint, IERC20 _lpToken) external;
 
     function owner() external view returns (address);
+
+    function totalAllocPoint() external view returns (uint256);
 }

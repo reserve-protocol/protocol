@@ -17,7 +17,9 @@ import {
   WSUSDC_NAME,
   WSUSDC_SYMBOL,
   USDC_HOLDER,
+  FORK_BLOCK,
 } from './constants'
+import { getResetFork } from '../helpers'
 
 interface WrappedstgUSDCFixture {
   usdc: ERC20Mock
@@ -91,3 +93,5 @@ export const mintWStgUSDC = async (
 
   return realAmount
 }
+
+export const resetFork = getResetFork(FORK_BLOCK)
