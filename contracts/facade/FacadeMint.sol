@@ -208,22 +208,22 @@ contract FacadeMint is IFacadeMint {
         }
 
         // Walk backwards from current nonce, deducting from basketsNeeded greedily
-        uint192[] memory basketsToUse = new uint192[](currentNonce + 1);
+        uint192[] memory basketsPerNonce = new uint192[](currentNonce + 1);
         {
             uint192 basketsNeeded = rToken.basketsNeeded();
 
-            for (uint48 nonce = currentNonce; nonce > 0; nonce--) {
+            for (uint48 nonce = 1; nonce <= currentNonce; nonce++) {
                 if (basketsNeeded == 0) continue; // stop searching when we have a full redemption
 
                 (IERC20[] memory erc20s, uint256[] memory quantities) = bh.getHistoricalBasket(
                     nonce
                 );
 
-                // Compute basketsToUse[nonce]
-                basketsToUse[nonce] = FIX_MAX;
+                // Compute basketsToUse for the nonce
+                uint192 basketsToUse = FIX_MAX;
                 for (uint256 i = 0; i < erc20s.length; i++) {
                     if (!_erc20Bals.contains(address(erc20s[i]))) {
-                        basketsToUse[nonce] = FIX_MAX;
+                        basketsToUse = FIX_MAX;
                         break;
                     }
 
@@ -234,23 +234,25 @@ contract FacadeMint is IFacadeMint {
 
                     // {BU} = {qTok} / {qTok/BU}
                     uint192 baskets = divuu(availableBal, quantities[i]); // FLOOR
-                    if (baskets < basketsToUse[nonce]) basketsToUse[nonce] = baskets;
+                    if (baskets < basketsToUse) basketsToUse = baskets;
                 }
 
-                // Cap basketsToUse[nonce] and deduct from basketsNeeded
-                if (basketsToUse[nonce] == 0 || basketsToUse[nonce] == FIX_MAX) continue;
-                if (basketsNeeded < basketsToUse[nonce]) basketsToUse[nonce] = basketsNeeded;
-                basketsNeeded -= basketsToUse[nonce];
+                // Cap basketsToUse and deduct from basketsNeeded
+                if (basketsToUse == 0 || basketsToUse == FIX_MAX) continue;
+                if (basketsNeeded < basketsToUse) basketsToUse = basketsNeeded;
+                basketsNeeded -= basketsToUse;
 
-                // Deduct balances corresponding to basketsToUse[nonce] from _erc20Bals
+                // Deduct balances corresponding to basketsToUse from _erc20Bals
                 for (uint256 i = 0; i < erc20s.length; i++) {
                     (bool success, uint256 availableBal) = _erc20Bals.tryGet(address(erc20s[i]));
                     if (!success) continue;
 
                     // {qTok} = {BU} * {qTok/BU}
-                    uint256 balToUse = basketsToUse[nonce].mul(_safeWrap(quantities[i]), FLOOR);
+                    uint256 balToUse = basketsToUse.mul(_safeWrap(quantities[i]), FLOOR);
                     _erc20Bals.set(address(erc20s[i]), availableBal - balToUse);
                 }
+
+                basketsPerNonce[nonce] = basketsToUse;
             }
         }
 
@@ -260,7 +262,7 @@ contract FacadeMint is IFacadeMint {
             _erc20Bals.remove(erc20);
         }
 
-        return normedArray(basketsToUse);
+        return normedArray(basketsPerNonce);
     }
 
     // === Private ===
