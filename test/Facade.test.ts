@@ -56,7 +56,7 @@ const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.ski
 
 const itP1 = IMPLEMENTATION == Implementation.P1 ? it : it.skip
 
-describe('FacadeAct + FacadeMint + FacadeRead contracts', () => {
+describe('Facade contracts', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -372,6 +372,53 @@ describe('FacadeAct + FacadeMint + FacadeRead contracts', () => {
         await expect(facadeMint.callStatic.redeem(rToken.address, issueAmount)).to.be.revertedWith(
           'frozen'
         )
+      })
+
+      itP1('Should calculate customRedeem portions correctly', async () => {
+        // At first, custom redemption portions should be [0, 1]
+        let portions = await facadeMint.callStatic.customRedemptionPortions(rToken.address)
+        expect(portions.length).to.equal(2)
+        expect(portions[0]).to.equal(0)
+        expect(portions[1]).to.equal(fp('1'))
+
+        // After a basket change but before rebalancing, portions should be [0, 1, 0]
+        await basketHandler.connect(owner).setPrimeBasket([usdc.address], [fp('1')])
+        await expect(basketHandler.connect(owner).refreshBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(anyValue, [usdc.address], [fp('1')], false)
+        portions = await facadeMint.callStatic.customRedemptionPortions(rToken.address)
+        expect(portions.length).to.equal(3)
+        expect(portions[0]).to.equal(0)
+        expect(portions[1]).to.equal(fp('1'))
+        expect(portions[2]).to.equal(0)
+
+        // After unregistering an asset, should skip over that basket and portions should be [0, 0, 1]
+        await assetRegistry.connect(owner).unregister(tokenAsset.address)
+        portions = await facadeMint.callStatic.customRedemptionPortions(rToken.address)
+        expect(portions.length).to.equal(3)
+        expect(portions[0]).to.equal(0)
+        expect(portions[1]).to.equal(0)
+        expect(portions[2]).to.equal(fp('1'))
+
+        // Re-registering the asset and burning one balance should also result in [0, 0, 1]
+        await assetRegistry.connect(owner).register(tokenAsset.address)
+        await token.burn(backingManager.address, await token.balanceOf(backingManager.address))
+        portions = await facadeMint.callStatic.customRedemptionPortions(rToken.address)
+        expect(portions.length).to.equal(3)
+        expect(portions[0]).to.equal(0)
+        expect(portions[1]).to.equal(0)
+        expect(portions[2]).to.equal(fp('1'))
+
+        // After rebalancing is complete, portions should [0, 0, 1]
+        await usdc.mint(
+          backingManager.address,
+          (await usdc.balanceOf(backingManager.address)).mul(3)
+        )
+        portions = await facadeMint.callStatic.customRedemptionPortions(rToken.address)
+        expect(portions.length).to.equal(3)
+        expect(portions[0]).to.equal(0)
+        expect(portions[1]).to.equal(0)
+        expect(portions[2]).to.equal(fp('1'))
       })
     })
 
