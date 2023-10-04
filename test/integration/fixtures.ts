@@ -146,7 +146,7 @@ interface CollateralFixture {
   basketsNeededAmts: BigNumber[] // reference amounts
 }
 
-async function collateralFixture(
+export async function collateralFixture(
   comptroller: ComptrollerMock,
   aaveLendingPool: AaveLendingPoolMock,
   config: IConfig

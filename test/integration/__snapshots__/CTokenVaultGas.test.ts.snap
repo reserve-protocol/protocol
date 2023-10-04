@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Issue RToken 1`] = `856813`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Issue RToken 2`] = `711462`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Redeem RToken 1`] = `713340`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Transfer 1`] = `142890`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Transfer 2`] = `105867`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Unwrapped Transfer 3`] = `105879`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Issue RToken 1`] = `875647`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Issue RToken 2`] = `731074`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Redeem RToken 1`] = `726889`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Transfer 1`] = `164610`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Transfer 2`] = `127579`;
+
+exports[`CTokenVault contract Gas Reporting, Flux Tokens Wrapped Transfer 3`] = `127591`;
