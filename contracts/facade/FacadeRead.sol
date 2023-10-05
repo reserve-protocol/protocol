@@ -33,7 +33,6 @@ contract FacadeRead is IFacadeRead {
 
         // Poke Main
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         // {BU}
         BasketRange memory basketsHeld = main.basketHandler().basketsHeldBy(account);
@@ -74,7 +73,6 @@ contract FacadeRead is IFacadeRead {
 
         // Poke Main
         reg.refresh();
-        main.furnace().melt();
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (rTok.totalSupply() > 0) // {BU}
@@ -120,7 +118,6 @@ contract FacadeRead is IFacadeRead {
 
         // Poke Main
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         uint256 supply = rTok.totalSupply();
 
@@ -241,7 +238,6 @@ contract FacadeRead is IFacadeRead {
     {
         IMain main = rToken.main();
         main.assetRegistry().refresh();
-        main.furnace().melt();
 
         erc20s = main.assetRegistry().erc20s();
         balances = new uint256[](erc20s.length);

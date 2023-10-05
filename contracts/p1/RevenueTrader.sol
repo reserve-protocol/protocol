@@ -123,10 +123,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         IAsset assetToBuy = assetRegistry.toAsset(tokenToBuy);
 
         // Refresh everything if RToken is involved
-        if (involvesRToken) {
-            assetRegistry.refresh();
-            furnace.melt();
-        } else {
+        if (involvesRToken) assetRegistry.refresh();
+        else {
             // Otherwise: refresh just the needed assets and nothing more
             for (uint256 i = 0; i < len; ++i) {
                 assetRegistry.toAsset(erc20s[i]).refresh();

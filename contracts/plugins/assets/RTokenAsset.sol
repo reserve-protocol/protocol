@@ -22,6 +22,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     IBasketHandler public immutable basketHandler;
     IAssetRegistry public immutable assetRegistry;
     IBackingManager public immutable backingManager;
+    IFurnace public immutable furnace;
 
     IERC20Metadata public immutable erc20;
 
@@ -41,6 +42,7 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
         basketHandler = main.basketHandler();
         assetRegistry = main.assetRegistry();
         backingManager = main.backingManager();
+        furnace = main.furnace();
 
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();
@@ -80,6 +82,9 @@ contract RTokenAsset is IAsset, VersionedAsset, IRTokenOracle {
     // solhint-disable no-empty-blocks
     function refresh() public virtual override {
         // No need to save lastPrice; can piggyback off the backing collateral's saved prices
+
+        if (msg.sender != address(assetRegistry)) assetRegistry.refresh();
+        furnace.melt();
 
         cachedOracleData.cachedAtTime = 0; // force oracle refresh
     }
