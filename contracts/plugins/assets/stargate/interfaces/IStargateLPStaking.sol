@@ -6,7 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 interface IStargateLPStaking {
     function poolLength() external view returns (uint256);
 
-    function stargate() external view returns (IERC20);
+    function stargate() external view returns (address);
+    function eToken() external view returns (address);
 
     // Info of each pool.
     struct PoolInfo {

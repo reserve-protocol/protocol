@@ -23,7 +23,12 @@ contract StargateRewardableWrapper is RewardableERC20Wrapper {
                 address(pool_) != address(0),
             "Invalid address"
         );
-        require(address(stargate_) == address(stakingContract_.stargate()), "Wrong stargate");
+        try stakingContract_.stargate() returns (address stargateAddress) {
+            require(stargateAddress == address(stargate_), "Wrong stargate");
+        } catch {
+            // using LPStakingTime contract instead
+            require(stakingContract_.eToken() == address(stargate_), "Wrong stargate");
+        }
 
         uint256 poolLength = stakingContract_.poolLength();
         uint256 pid = type(uint256).max;
