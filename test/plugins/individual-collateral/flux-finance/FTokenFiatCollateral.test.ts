@@ -169,7 +169,10 @@ all.forEach((curr: FTokenEnumeration) => {
       collateralOpts.chainlinkFeed = chainlinkFeed.address
 
       const collateral = await deployCollateral(collateralOpts)
-      const erc20 = await ethers.getContractAt('CTokenWrapper', (await collateral.erc20()) as string) // the fToken
+      const erc20 = await ethers.getContractAt(
+        'CTokenWrapper',
+        (await collateral.erc20()) as string
+      ) // the fToken
 
       return {
         alice,
