@@ -62,6 +62,7 @@ export interface ITokens {
   cbETH?: string
   STG?: string
   sUSDC?: string
+  sUSDbC?: string
   sUSDT?: string
   sETH?: string
   MORPHO?: string
@@ -112,6 +113,7 @@ interface INetworkConfig {
   COMET_REWARDS?: string
   AAVE_V3_INCENTIVES_CONTROLLER?: string
   AAVE_V3_POOL?: string
+  STARGATE_STAKING_CONTRACT?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -218,6 +220,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_REWARDS: '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
+    STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
   },
   '1': {
     name: 'mainnet',
@@ -313,6 +316,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_REWARDS: '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
+    STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
   },
   '3': {
     name: 'tenderly',
@@ -408,6 +412,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_REWARDS: '0x1B0e765F6224C21223AeA2af16c1C46E38885a40',
     AAVE_V3_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     AAVE_V3_INCENTIVES_CONTROLLER: '0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb',
+    STARGATE_STAKING_CONTRACT: '0xB0D502E938ed5f4df2E681fE6E419ff29631d62b'
   },
   '5': {
     name: 'goerli',
@@ -510,6 +515,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aBasUSDbC: '0x0a1d576f3eFeF75b330424287a95A366e8281D54',
       aWETHv3: '0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7',
       acbETHv3: '0xcf3D55c10DB69f28fD1A75Bd73f3D8A2d9c595ad',
+      sUSDbC: '0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca',
+      STG: '0xE3B53AF74a4BF62Ae5511055290838050bf764Df'
     },
     chainlinkFeeds: {
       DAI: '0x591e79239a7d679378ec8c847e5038150364c78f', // 0.3%, 24hr
@@ -527,6 +534,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMET_REWARDS: '0x123964802e6ABabBE1Bc9547D72Ef1B69B00A6b1',
     AAVE_V3_POOL: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
     AAVE_V3_INCENTIVES_CONTROLLER: '0xf9cc4F0D883F1a1eb2c253bdb46c254Ca51E1F44',
+    STARGATE_STAKING_CONTRACT: '0x06Eb48763f117c7Be887296CDcdfad2E4092739C'
   },
 }
 

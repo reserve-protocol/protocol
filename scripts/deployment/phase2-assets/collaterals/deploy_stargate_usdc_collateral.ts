@@ -52,6 +52,14 @@ async function main() {
 
   const WrapperFactory: ContractFactory = await hre.ethers.getContractFactory('StargatePoolWrapper')
 
+  let name = 'Wrapped Stargate USDC'
+  let symbol = 'wSTG-USDC'
+
+  if (chainId == '8453') {
+    name = 'Wrapped Stargate USDbC'
+    symbol = 'wSTG-USDbC'
+  }
+
   const erc20 = await WrapperFactory.deploy(
     'Wrapped Stargate USDC',
     'wSTG-USDC',
