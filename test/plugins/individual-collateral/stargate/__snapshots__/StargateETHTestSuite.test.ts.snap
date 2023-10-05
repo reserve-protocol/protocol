@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Collateral: Stargate ETH Pool collateral functionality Gas Reporting ERC20 transfer 1`] = `114735`;
+
+exports[`Collateral: Stargate ETH Pool collateral functionality Gas Reporting ERC20 transfer 2`] = `97635`;
+
 exports[`Collateral: Stargate ETH Pool collateral functionality Gas Reporting refresh() after full price timeout 1`] = `55263`;
 
 exports[`Collateral: Stargate ETH Pool collateral functionality Gas Reporting refresh() after full price timeout 2`] = `50795`;
@@ -23,6 +27,10 @@ exports[`Collateral: Stargate ETH Pool collateral functionality Gas Reporting re
 exports[`Collateral: Stargate ETH Pool collateral functionality Gas Reporting refresh() during soft default 1`] = `73810`;
 
 exports[`Collateral: Stargate ETH Pool collateral functionality Gas Reporting refresh() during soft default 2`] = `66542`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting ERC20 transfer 1`] = `114735`;
+
+exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting ERC20 transfer 2`] = `97635`;
 
 exports[`Collateral: Stargate USDC Pool collateral functionality Gas Reporting refresh() after full price timeout 1`] = `55263`;
 
