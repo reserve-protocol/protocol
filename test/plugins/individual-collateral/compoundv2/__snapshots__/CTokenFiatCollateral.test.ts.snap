@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`CTokenFiatCollateral - Mainnet Forking P1 Gas Reporting ERC20 transfer 1`] = `309933`;
+
+exports[`CTokenFiatCollateral - Mainnet Forking P1 Gas Reporting ERC20 transfer 2`] = `173113`;
+
 exports[`CTokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after full price timeout 1`] = `119361`;
 
 exports[`CTokenFiatCollateral - Mainnet Forking P1 Gas Reporting refresh() after full price timeout 2`] = `117692`;
